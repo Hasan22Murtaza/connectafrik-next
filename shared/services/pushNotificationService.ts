@@ -24,12 +24,14 @@ class PushNotificationService {
   private subscription: PushSubscription | null = null
 
   constructor() {
-    // Get VAPID public key from environment
-    this.vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY || ''
+    // Get VAPID public key from environment (Next.js uses process.env)
+    this.vapidPublicKey = (typeof window !== 'undefined' 
+      ? (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '')
+      : '')
     
     // If no VAPID key is provided, we'll use a fallback approach
     if (!this.vapidPublicKey) {
-      console.warn('VITE_VAPID_PUBLIC_KEY not found. Push notifications may not work properly.')
+      console.warn('NEXT_PUBLIC_VAPID_PUBLIC_KEY not found. Push notifications may not work properly.')
     } else {
       // Debug: Validate VAPID key format
       this.debugVapidKey()
@@ -120,7 +122,7 @@ class PushNotificationService {
 
       // Check if VAPID key is available
       if (!this.vapidPublicKey) {
-        console.error('VAPID public key not configured. Please set VITE_VAPID_PUBLIC_KEY in your environment variables.')
+        console.error('VAPID public key not configured. Please set NEXT_PUBLIC_VAPID_PUBLIC_KEY in your .env.local file.')
         return null
       }
 
@@ -157,7 +159,7 @@ class PushNotificationService {
       
       // Provide helpful error messages
       if ((error as any).name === 'InvalidAccessError') {
-        console.error('VAPID key is invalid. Please check your VITE_VAPID_PUBLIC_KEY environment variable.')
+        console.error('VAPID key is invalid. Please check your NEXT_PUBLIC_VAPID_PUBLIC_KEY in .env.local file.')
       } else if ((error as any).name === 'NotSupportedError') {
         console.error('Push notifications are not supported in this browser.')
       } else if ((error as any).name === 'NotAllowedError') {
@@ -342,7 +344,7 @@ class PushNotificationService {
       console.error('Key length:', base64String.length)
       console.error('Key starts with:', base64String.substring(0, 20))
       console.error('Key ends with:', base64String.substring(base64String.length - 20))
-      throw new Error('Invalid VAPID key format. Please check your VITE_VAPID_PUBLIC_KEY environment variable.')
+      throw new Error('Invalid VAPID key format. Please check your NEXT_PUBLIC_VAPID_PUBLIC_KEY in .env.local file.')
     }
   }
 
