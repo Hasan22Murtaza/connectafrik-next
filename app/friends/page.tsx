@@ -6,33 +6,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { Friend, FriendRequest } from '@/shared/types'
 import toast from 'react-hot-toast'
-
-interface Friend {
-  id: string
-  username: string
-  full_name: string
-  avatar_url?: string
-  country?: string
-  bio?: string
-  friendship_date?: string
-}
-
-interface FriendRequest {
-  id: string
-  requester_id: string
-  recipient_id: string
-  status: string
-  message?: string
-  created_at: string
-  requester?: {
-    id: string
-    username: string
-    full_name: string
-    avatar_url?: string
-    country?: string
-  }
-}
 
 const FriendsPage: React.FC = () => {
   const { user } = useAuth()

@@ -49,6 +49,32 @@ export interface Profile {
   login_alerts?: boolean
 }
 
+export interface Friend {
+  id: string
+  username: string
+  full_name: string
+  avatar_url?: string
+  country?: string
+  bio?: string
+  friendship_date?: string
+}
+
+export interface FriendRequest {
+  id: string
+  requester_id: string
+  recipient_id: string
+  status: string
+  message?: string
+  created_at: string
+  requester?: {
+    id: string
+    username: string
+    full_name: string
+    avatar_url?: string
+    country?: string
+  }
+}
+
 export interface Comment {
   id: string
   post_id: string
