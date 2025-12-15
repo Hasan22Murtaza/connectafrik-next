@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --primary-50: #f0fdf4;
+  --primary-100: #dcfce7;
+  --primary-200: #bbf7d0;
+  --primary-300: #86efac;
+  --primary-400: #4ade80;
+  --primary-500: #22c55e;
+  --primary-600: #16a34a;
+  --primary-700: #15803d;
+  --african-green: #16a34a;
+  --african-gold: #eab308;
 }
 
 @theme inline {
@@ -23,4 +33,112 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Button Styles */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background-color: #16a34a;
+  color: white;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background-color: #15803d;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background-color: white;
+  color: #16a34a;
+  font-weight: 600;
+  border: 2px solid #16a34a;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  background-color: #f0fdf4;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Card Styles */
+.card {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.2s;
+}
+
+/* Utility Classes */
+.text-primary-600 {
+  color: #16a34a;
+}
+
+.bg-primary-50 {
+  background-color: #f0fdf4;
+}
+
+.bg-primary-100 {
+  background-color: #dcfce7;
+}
+
+.bg-primary-200 {
+  background-color: #bbf7d0;
+}
+
+.text-primary-600 {
+  color: #16a34a;
+}
+
+.hover\:bg-primary-200:hover {
+  background-color: #bbf7d0;
+}
+
+.from-primary-50 {
+  --tw-gradient-from: #f0fdf4;
+}
+
+.to-african-green\/5 {
+  --tw-gradient-to: rgba(22, 163, 74, 0.05);
+}
+
+/* Input Field Styles */
+.input-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.2s;
+  background-color: white;
+  color: #111827;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.input-field::placeholder {
+  color: #9ca3af;
+}
+
+.to-african-green\/10 {
+  --tw-gradient-to: rgba(22, 163, 74, 0.1);
 }

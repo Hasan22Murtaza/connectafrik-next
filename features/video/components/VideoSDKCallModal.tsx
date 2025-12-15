@@ -1,0 +1,1569 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, MoreVertical, Share2, Hand, MessageSquare } from 'lucide-react';
+import { ringtoneService } from '@/features/video/services/ringtoneService';
+import { videoSDKService } from '@/features/video/services/videoSDKService';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
+import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
+import { supabase } from '@/lib/supabase';
+import { VideoSDK } from '@videosdk.live/js-sdk';
+
+export interface VideoSDKCallModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  callType: 'audio' | 'video';
+  callerName: string;
+  recipientName: string;
+  isIncoming?: boolean;
+  onAccept?: () => void;
+  onReject?: () => void;
+  onCallEnd?: () => void;
+  threadId?: string;
+  currentUserId?: string;
+  roomIdHint?: string;
+  tokenHint?: string;
+}
+
+const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
+  isOpen,
+  onClose,
+  callType,
+  callerName,
+  recipientName,
+  isIncoming = false,
+  onAccept,
+  onReject,
+  onCallEnd,
+  threadId,
+  currentUserId,
+  roomIdHint,
+  tokenHint
+}) => {
+  const { user } = useAuth();
+  const [callStatus, setCallStatus] = useState<'connecting' | 'ringing' | 'connected' | 'ended'>('connecting');
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoEnabled, setIsVideoEnabled] = useState(callType === 'video');
+  const [isSpeakerEnabled, setIsSpeakerEnabled] = useState(true);
+  const [callDuration, setCallDuration] = useState(0);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
+  const [roomId, setRoomId] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isHandRaised, setIsHandRaised] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [showMessageInput, setShowMessageInput] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('good');
+  const [lastReactionEmoji, setLastReactionEmoji] = useState<string | null>(null);
+  const [reactionAnimation, setReactionAnimation] = useState(false);
+
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const ringtoneRef = useRef<{ stop: () => void } | null>(null);
+  const callTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamsRef = useRef<MediaStream[]>([]);
+  const hasInitializedRef = useRef(false);
+  const isMountedRef = useRef(false);
+  const currentMeetingRef = useRef<any>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const updateLocalStream = useCallback((stream: MediaStream | null) => {
+    localStreamRef.current = stream;
+    setLocalStream(stream);
+  }, []);
+
+  const updateRemoteStreams = useCallback((updater: (prev: MediaStream[]) => MediaStream[]) => {
+    setRemoteStreams((prev) => {
+      const next = updater(prev);
+      remoteStreamsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const cleanupResources = useCallback(() => {
+    console.log('📞 VideoSDKCallModal cleanup - stopping all media and ringtones');
+
+    // Clear timeout first
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+      callTimeoutRef.current = null;
+    }
+
+    // Stop ringtone
+    if (ringtoneRef.current) {
+      try {
+        ringtoneRef.current.stop();
+      } catch (error) {
+        console.warn('⚠️ Error stopping ringtone:', error);
+      }
+      ringtoneRef.current = null;
+    }
+    ringtoneService.stopRingtone();
+
+    // Leave the VideoSDK meeting BEFORE stopping streams
+    if (currentMeetingRef.current) {
+      try {
+        console.log('📞 Leaving VideoSDK meeting...');
+        currentMeetingRef.current.leave();
+      } catch (error) {
+        console.warn('⚠️ Error leaving meeting:', error);
+      }
+      currentMeetingRef.current = null;
+    }
+
+    // Stop local stream
+    const currentLocalStream = localStreamRef.current;
+    if (currentLocalStream) {
+      try {
+        currentLocalStream.getTracks().forEach((track) => {
+          track.stop();
+          console.log('🛑 Stopped local track:', track.kind);
+        });
+      } catch (error) {
+        console.warn('⚠️ Error stopping local stream:', error);
+      }
+      localStreamRef.current = null;
+    }
+    if (isMountedRef.current) {
+      updateLocalStream(null);
+    }
+
+    // Stop remote streams
+    if (remoteStreamsRef.current.length) {
+      remoteStreamsRef.current.forEach((stream) => {
+        try {
+          stream.getTracks().forEach((track) => {
+            track.stop();
+            console.log('🛑 Stopped remote track:', track.kind);
+          });
+        } catch (error) {
+          console.warn('⚠️ Error stopping remote stream:', error);
+        }
+      });
+      remoteStreamsRef.current = [];
+    }
+    if (isMountedRef.current) {
+      updateRemoteStreams(() => []);
+    }
+
+    // Clear video/audio element references
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    if (remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = null;
+    }
+
+    // Keep these for backward compatibility (if any other code uses them)
+    try {
+      videoSDKWebRTCManager.leaveMeeting();
+      videoSDKWebRTCManager.setLocalStream(null);
+      videoSDKService.leaveRoom();
+    } catch (error) {
+      console.warn('⚠️ Error in backward compatibility cleanup:', error);
+    }
+
+    if (isMountedRef.current) {
+      setParticipants([]);
+      setCallStatus('ended');
+      setRoomId('');
+      setError('');
+    }
+    hasInitializedRef.current = false;
+  }, [updateLocalStream, updateRemoteStreams]);
+
+  // Initialize room and get media when call starts
+  useEffect(() => {
+    if (!isOpen) {
+      // Only cleanup if we're actually closing, not just initializing
+      if (hasInitializedRef.current || currentMeetingRef.current) {
+        cleanupResources();
+      }
+      return;
+    }
+
+    // For incoming calls, DON'T initialize - wait for user to accept
+    if (isIncoming) {
+      if (roomIdHint) {
+        console.log('📞 Incoming call for room:', roomIdHint);
+        setRoomId(roomIdHint);
+        // Set status to ringing for incoming calls
+        if (callStatus === 'connecting') {
+          setCallStatus('ringing');
+        }
+      }
+      return; // Don't initialize call automatically for incoming calls
+    }
+
+    // For outgoing calls, initialize immediately
+    if (!isIncoming) {
+      if (!hasInitializedRef.current) {
+        hasInitializedRef.current = true;
+        initializeCall().catch((error) => {
+          console.error('❌ Failed to initialize call:', error);
+          if (isMountedRef.current) {
+            setError('Failed to start call. Please try again.');
+            setCallStatus('ended');
+          }
+        });
+      }
+    }
+
+    return () => {
+      // Only cleanup on unmount or when closing
+      if (!isOpen) {
+        cleanupResources();
+      }
+    };
+    // We intentionally exclude initializeCall from deps to avoid re-running on state updates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isIncoming, roomIdHint, callStatus, cleanupResources]);
+
+  // Listen for call_accepted messages (for caller's side) - Only during ringing
+  useEffect(() => {
+    if (!isOpen || isIncoming || !threadId || callStatus !== 'ringing') {
+      return;
+    }
+
+    console.log('📞 Setting up call_accepted listener for caller (ringing state only)');
+
+    let hasAccepted = false; // Guard to prevent multiple triggers
+
+    const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
+      if (!hasAccepted && message.message_type === 'call_accepted' && message.metadata?.acceptedBy) {
+        console.log('📞 Call accepted by receiver - stopping ringtone and transitioning to connected');
+        hasAccepted = true; // Prevent re-triggering
+
+        // Stop ringtone immediately
+        if (ringtoneRef.current) {
+          ringtoneRef.current.stop();
+          ringtoneRef.current = null;
+        }
+        ringtoneService.stopRingtone();
+
+        // Clear timeout
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current);
+          callTimeoutRef.current = null;
+        }
+
+        // Transition to connected state
+        // Note: The actual connection happens via participant-joined event
+        // This just updates the UI state
+        if (isMountedRef.current) {
+          setCallStatus('connected');
+        }
+      }
+    });
+
+    return () => {
+      console.log('📞 Cleaning up call_accepted listener');
+      unsubscribe();
+    };
+  }, [isOpen, isIncoming, threadId, callStatus]); // Added callStatus dependency
+
+  const addRemoteStream = (stream: MediaStream) => {
+    updateRemoteStreams((prev) => {
+      const existingIndex = prev.findIndex((existing) => existing.id === stream.id);
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next[existingIndex] = stream;
+        return next;
+      }
+      return [...prev, stream];
+    });
+  };
+
+  const removeRemoteStream = (streamId: string) => {
+    updateRemoteStreams((prev) => prev.filter((stream) => stream.id !== streamId));
+  };
+
+  // Helper function to get VideoSDK JWT token
+  // Uses supabase.functions.invoke() to automatically add Authorization header
+  const getVideoSDKToken = async (meetingId?: string, userId?: string): Promise<string> => {
+    console.log('📞 Requesting VideoSDK token from Edge Function');
+
+    const { data, error } = await supabase.functions.invoke('generate-videosdk-token', {
+      body: {
+        roomId: meetingId || roomIdHint || `room_${Date.now()}`,
+        userId: userId || user?.id || ''
+      }
+    });
+
+    if (error) {
+      console.error('❌ Failed to get VideoSDK token:', error);
+      throw new Error(`Failed to get VideoSDK token: ${error.message}`);
+    }
+
+    if (!data?.token || typeof data.token !== 'string') {
+      console.error('❌ Edge Function response missing token:', data);
+      throw new Error('Failed to get VideoSDK token from Edge Function: no token in response');
+    }
+
+    console.log('✅ VideoSDK token received from Edge Function');
+    return data.token as string;
+  };
+
+  const initializeCall = async () => {
+    try {
+      setCallStatus('connecting');
+      setError('');
+
+      const meetingId = roomIdHint || `room_${Date.now()}`;
+
+      // ✅ Get secure JWT token from Supabase edge function
+      const token = await getVideoSDKToken(meetingId, user?.id);
+      setRoomId(meetingId);
+
+      console.log('📞 Starting meeting join:', meetingId);
+      console.log('🔑 Using JWT token for authentication');
+
+      // ✅ Configure VideoSDK with JWT token (VideoSDK.config expects a string token)
+      VideoSDK.config(token);
+      console.log('🔑 VideoSDK configured with JWT token');
+
+      // ✅ Initialize VideoSDK meeting
+      const meeting = VideoSDK.initMeeting({
+        meetingId,
+        name: user?.user_metadata?.full_name || user?.email || 'User',
+        micEnabled: true,
+        webcamEnabled: callType === 'video' && isVideoEnabled,
+      });
+
+      // Store meeting reference for cleanup
+      currentMeetingRef.current = meeting;
+
+      // ✅ Set WebRTC callbacks BEFORE joining (CRITICAL FIX)
+      meeting.on("meeting-joined", () => {
+        console.log("🎥 Meeting joined");
+        if (isMountedRef.current) {
+          setCallStatus(isIncoming ? 'connected' : 'ringing');
+
+          if (!isIncoming) {
+            ringtoneService.playRingtone().then(r => {
+              if (isMountedRef.current) {
+                ringtoneRef.current = r;
+              }
+            });
+          }
+        }
+      });
+
+      meeting.on("participant-joined", (p: any) => {
+        console.log("👤 Participant joined:", p.id);
+        if (isMountedRef.current) {
+          setParticipants(prev => {
+            const exists = prev.find(x => x.id === p.id);
+            if (exists) return prev;
+            const updated = [...prev, p];
+            console.log("📊 Total participants:", updated.length);
+            
+            // Enable streams for the new participant
+            try {
+              // VideoSDK: Subscribe to participant's streams
+              if (p.streams) {
+                p.streams.forEach((stream: any) => {
+                  if (stream && stream.stream) {
+                    console.log("📹 Adding stream from participant:", p.id);
+                    addRemoteStream(stream.stream);
+                  }
+                });
+              }
+              
+              // Also try to get streams directly from participant object
+              // VideoSDK may expose streams differently
+              if (p.webcamStream) {
+                console.log("📹 Adding webcam stream from participant:", p.id);
+                addRemoteStream(p.webcamStream);
+              }
+              if (p.micStream) {
+                console.log("🎤 Adding mic stream from participant:", p.id);
+                addRemoteStream(p.micStream);
+              }
+            } catch (error) {
+              console.warn('⚠️ Error handling participant streams:', error);
+            }
+            
+            return updated;
+          });
+        }
+      });
+
+      meeting.on("participant-left", (p: any) => {
+        console.log("👤 Participant left:", p.id);
+        if (isMountedRef.current) {
+          setParticipants(prev => prev.filter((x: any) => x.id !== p.id));
+        }
+      });
+
+      meeting.on("stream-enabled", (streamInfo: any) => {
+        console.log("📹 Stream enabled:", streamInfo);
+        const stream = streamInfo instanceof MediaStream ? streamInfo : streamInfo.stream;
+        if (stream && isMountedRef.current) {
+          addRemoteStream(stream);
+        }
+      });
+
+      meeting.on("stream-disabled", (streamInfo: any) => {
+        console.log("📹 Stream disabled:", streamInfo);
+        const streamId = streamInfo?.streamId || streamInfo?.id || streamInfo?.stream?.id;
+        if (streamId && isMountedRef.current) {
+          removeRemoteStream(streamId);
+        }
+      });
+
+      // ✅ Add handler for when meeting ends unexpectedly
+      meeting.on("meeting-left", () => {
+        console.log("👋 Meeting left");
+        if (isMountedRef.current) {
+          setCallStatus('ended');
+        }
+        cleanupResources();
+      });
+
+      // ✅ Join meeting AFTER all handlers are set up (token already configured)
+      console.log('📞 Joining meeting...');
+      
+      // Add connection timeout (30 seconds)
+      const joinTimeout = setTimeout(() => {
+        if (isMountedRef.current && currentMeetingRef.current) {
+          console.error('❌ Meeting join timeout');
+          if (isMountedRef.current) {
+            setError('Connection timeout. Please check your internet connection and try again.');
+            setCallStatus('ended');
+          }
+          cleanupResources();
+        }
+      }, 30000);
+      
+      try {
+        await meeting.join();
+        clearTimeout(joinTimeout);
+        console.log('✅ Meeting join initiated');
+      } catch (joinError: any) {
+        clearTimeout(joinTimeout);
+        throw joinError;
+      }
+
+      // ✅ Local media setup
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: callType === 'video' && isVideoEnabled,
+        audio: true
+      });
+
+      updateLocalStream(stream);
+
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) audioTrack.enabled = true;
+
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      // ✅ Ensure meeting is still valid before proceeding
+      if (!currentMeetingRef.current) {
+        throw new Error('Meeting initialization failed');
+      }
+
+    } catch (error: any) {
+      console.error("❌ Error initializing call:", error);
+      setError(`Failed to start call: ${error.message || 'Please check permissions and try again.'}`);
+      setCallStatus('ended');
+      cleanupResources();
+    }
+  };
+
+  const handleAcceptCall = async () => {
+    try {
+      console.log('📞 Accepting call - stopping ringtone');
+      // Stop ringtone immediately
+      if (ringtoneRef.current) {
+        ringtoneRef.current.stop();
+        ringtoneRef.current = null;
+      }
+      ringtoneService.stopRingtone();
+
+      if (!roomIdHint) {
+        console.error('❌ Cannot accept call - no roomIdHint provided');
+        setError('Cannot accept call - missing room information.');
+        return;
+      }
+
+      setCallStatus('connecting');
+
+      // ✅ Get secure JWT token from Supabase edge function
+      const token = await getVideoSDKToken(roomIdHint, user?.id);
+      setRoomId(roomIdHint);
+
+      console.log('📞 Accepting call with meetingId:', roomIdHint);
+      console.log('🔑 Using JWT token (NOT API KEY)');
+
+      // ✅ Configure VideoSDK with token BEFORE initMeeting (VideoSDK.config expects a string token)
+      VideoSDK.config(token);
+
+      // ✅ Initialize VideoSDK meeting for accepted call
+      const meeting = VideoSDK.initMeeting({
+        meetingId: roomIdHint,
+        name: user?.user_metadata?.full_name || user?.email || 'User',
+        micEnabled: true,
+        webcamEnabled: callType === 'video' && isVideoEnabled,
+      });
+
+      // Store meeting reference for cleanup
+      currentMeetingRef.current = meeting;
+
+      // ✅ Set WebRTC callbacks BEFORE joining (CRITICAL FIX)
+      meeting.on("meeting-joined", () => {
+        console.log("🎥 Meeting joined on accept");
+        if (isMountedRef.current) {
+          setCallStatus('connected');
+        }
+      });
+
+      meeting.on("participant-joined", (p: any) => {
+        console.log("👤 Participant joined:", p.id);
+        if (isMountedRef.current) {
+          setParticipants(prev => {
+            const exists = prev.find(x => x.id === p.id);
+            if (exists) return prev;
+            const updated = [...prev, p];
+            console.log("📊 Total participants:", updated.length);
+            
+            // Enable streams for the new participant
+            try {
+              // VideoSDK: Subscribe to participant's streams
+              if (p.streams) {
+                p.streams.forEach((stream: any) => {
+                  if (stream && stream.stream) {
+                    console.log("📹 Adding stream from participant:", p.id);
+                    addRemoteStream(stream.stream);
+                  }
+                });
+              }
+              
+              // Also try to get streams directly from participant object
+              // VideoSDK may expose streams differently
+              if (p.webcamStream) {
+                console.log("📹 Adding webcam stream from participant:", p.id);
+                addRemoteStream(p.webcamStream);
+              }
+              if (p.micStream) {
+                console.log("🎤 Adding mic stream from participant:", p.id);
+                addRemoteStream(p.micStream);
+              }
+            } catch (error) {
+              console.warn('⚠️ Error handling participant streams:', error);
+            }
+            
+            return updated;
+          });
+        }
+      });
+
+      meeting.on("participant-left", (p: any) => {
+        console.log("👤 Participant left:", p.id);
+        if (isMountedRef.current) {
+          setParticipants(prev => prev.filter((x: any) => x.id !== p.id));
+        }
+      });
+
+      meeting.on("stream-enabled", (streamInfo: any) => {
+        console.log("📹 Stream enabled:", streamInfo);
+        const stream = streamInfo instanceof MediaStream ? streamInfo : streamInfo.stream;
+        if (stream && isMountedRef.current) {
+          addRemoteStream(stream);
+        }
+      });
+
+      meeting.on("stream-disabled", (streamInfo: any) => {
+        console.log("📹 Stream disabled:", streamInfo);
+        const streamId = streamInfo?.streamId || streamInfo?.id || streamInfo?.stream?.id;
+        if (streamId && isMountedRef.current) {
+          removeRemoteStream(streamId);
+        }
+      });
+
+      // Get local stream for accepted call BEFORE joining
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: callType === 'video' && isVideoEnabled,
+        audio: true
+      });
+
+      updateLocalStream(stream);
+
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) audioTrack.enabled = true;
+
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+      // ✅ Ensure meeting is still valid before proceeding
+      if (!currentMeetingRef.current) {
+        throw new Error('Meeting initialization failed');
+      }
+
+      // ✅ NOW join the meeting (after all handlers are set up)
+      console.log('📞 Joining meeting...');
+      await meeting.join();
+      console.log('✅ Meeting join initiated');
+
+      // Send call_accepted notification to caller
+      if (threadId && currentUserId) {
+        try {
+          await supabaseMessagingService.sendMessage(
+            threadId,
+            {
+              content: `✅ Call accepted`,
+              message_type: 'call_accepted',
+              metadata: {
+                callType: callType,
+                acceptedBy: currentUserId,
+                acceptedAt: new Date().toISOString()
+              }
+            },
+            { id: currentUserId, name: recipientName }
+          );
+        } catch (msgError) {
+          console.warn('⚠️ Failed to send call_accepted message:', msgError);
+          // Don't fail the call if message sending fails
+        }
+      }
+
+      onAccept?.();
+    } catch (error: any) {
+      console.error('❌ Error accepting call:', error);
+      setError(`Failed to accept call: ${error.message || 'Please check your camera and microphone permissions.'}`);
+      setCallStatus('ended');
+      cleanupResources();
+    }
+  };
+
+  const handleRejectCall = () => {
+    console.log('📞 Rejecting call - stopping ringtone');
+    if (ringtoneRef.current) {
+      ringtoneRef.current.stop();
+      ringtoneRef.current = null;
+    }
+    ringtoneService.stopRingtone();
+    setCallStatus('ended');
+    onReject?.();
+    setTimeout(() => onClose(), 1000);
+  };
+
+  const handleEndCall = () => {
+    console.log('📞 Ending call - stopping all media and ringtone');
+    cleanupResources();
+    onCallEnd?.();
+    setTimeout(() => onClose(), 1000);
+  };
+
+  const toggleMute = () => {
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+
+    // Direct control of local audio track (primary method)
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        // When muting (newMutedState = true), disable the track
+        // When unmuting (newMutedState = false), enable the track
+        audioTrack.enabled = !newMutedState;
+        console.log('🎤 Audio track enabled:', audioTrack.enabled, 'isMuted:', newMutedState);
+      } else {
+        console.warn('⚠️ No audio track found in local stream');
+      }
+    } else {
+      console.warn('⚠️ No local stream available for audio control');
+    }
+
+    // Also try to use VideoSDK WebRTC (as fallback/secondary control)
+    try {
+      if (videoSDKWebRTCManager && typeof videoSDKWebRTCManager.toggleMic === 'function') {
+        videoSDKWebRTCManager.toggleMic();
+        console.log('🎤 VideoSDK toggleMic called');
+      }
+    } catch (error) {
+      console.warn('⚠️ VideoSDK toggleMic failed (non-critical, using local track control):', error);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (callType === 'video') {
+      const newVideoState = !isVideoEnabled;
+      setIsVideoEnabled(newVideoState);
+
+      // Direct control of local video track (primary method)
+      if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          videoTrack.enabled = newVideoState;
+          console.log('📹 Video track enabled:', newVideoState);
+        } else {
+          console.warn('⚠️ No video track found in local stream');
+        }
+      } else {
+        console.warn('⚠️ No local stream available for video control');
+      }
+
+      // Also try to use VideoSDK WebRTC (as fallback/secondary control)
+      try {
+        if (videoSDKWebRTCManager && typeof videoSDKWebRTCManager.toggleWebcam === 'function') {
+          videoSDKWebRTCManager.toggleWebcam();
+          console.log('📹 VideoSDK toggleWebcam called');
+        }
+      } catch (error) {
+        console.warn('⚠️ VideoSDK toggleWebcam failed (non-critical, using local track control):', error);
+      }
+    }
+  };
+
+  const toggleSpeaker = () => {
+    setIsSpeakerEnabled(prev => {
+      const next = !prev;
+      const audioElement = remoteAudioRef.current;
+      if (audioElement) {
+        audioElement.muted = !next;
+        if (next) {
+          const playPromise = audioElement.play();
+          if (playPromise) {
+            playPromise.catch(() => undefined);
+          }
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleRaiseHand = () => {
+    const newHandRaised = !isHandRaised;
+    setIsHandRaised(newHandRaised);
+    console.log('✋ Hand raised:', newHandRaised);
+
+    // Send notification to other participant
+    if (threadId && currentUserId) {
+      supabaseMessagingService.sendMessage(
+        threadId,
+        {
+          content: newHandRaised ? '✋ Hand raised' : '✋ Hand lowered',
+          message_type: 'hand_raised',
+          metadata: {
+            handRaised: newHandRaised,
+            raisedBy: currentUserId,
+            timestamp: new Date().toISOString()
+          }
+        },
+        { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+      ).catch(err => console.error('Failed to send hand raised notification:', err));
+    }
+  };
+
+  const handleShareScreen = async () => {
+    try {
+      console.log('📺 Starting screen share...');
+      setIsScreenSharing(true);
+      setShowMenu(false);
+
+      // Get screen stream
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { cursor: 'always' } as any,
+        audio: false
+      });
+
+      console.log('📺 Screen stream obtained, switching to screen share');
+      // In a full implementation, you would switch the video track in VideoSDK
+      // For now, we'll show a notification
+      if (threadId && currentUserId) {
+        await supabaseMessagingService.sendMessage(
+          threadId,
+          {
+            content: '📺 Screen sharing started',
+            message_type: 'screen_share_started',
+            metadata: {
+              sharedBy: currentUserId,
+              timestamp: new Date().toISOString()
+            }
+          },
+          { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+        );
+      }
+
+      // Handle screen share stop
+      screenStream.getTracks().forEach(track => {
+        track.onended = () => {
+          setIsScreenSharing(false);
+          console.log('📺 Screen share ended');
+          if (threadId && currentUserId) {
+            supabaseMessagingService.sendMessage(
+              threadId,
+              {
+                content: '📺 Screen sharing stopped',
+                message_type: 'screen_share_stopped',
+                metadata: {
+                  stoppedBy: currentUserId,
+                  timestamp: new Date().toISOString()
+                }
+              },
+              { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+            ).catch(err => console.error('Failed to notify screen share stop:', err));
+          }
+        };
+      });
+    } catch (error: any) {
+      if (error.name !== 'NotAllowedError') {
+        console.error('❌ Screen share failed:', error);
+      }
+      setIsScreenSharing(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) return;
+
+    try {
+      console.log('💬 Sending message during call:', messageText);
+      if (threadId && currentUserId) {
+        await supabaseMessagingService.sendMessage(
+          threadId,
+          {
+            content: messageText,
+            message_type: 'text'
+          },
+          { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+        );
+        setMessageText('');
+        setShowMessageInput(false);
+        console.log('💬 Message sent successfully');
+      }
+    } catch (error) {
+      console.error('❌ Failed to send message:', error);
+    }
+  };
+
+  useEffect(() => {
+    const audioElement = remoteAudioRef.current;
+    if (audioElement && remoteStreams.length > 0) {
+      try {
+        // Create a combined stream from all audio tracks in remote streams
+        const combinedStream = new MediaStream();
+        const addedTrackIds = new Set<string>();
+
+        console.log('🎤 Processing', remoteStreams.length, 'remote stream(s)');
+
+        remoteStreams.forEach((stream, index) => {
+          const audioTracks = stream.getAudioTracks();
+          const videoTracks = stream.getVideoTracks();
+          console.log(`📊 Stream ${index}: ${audioTracks.length} audio track(s), ${videoTracks.length} video track(s)`);
+
+          audioTracks.forEach(track => {
+            // Only add each track once
+            if (!addedTrackIds.has(track.id)) {
+              console.log(`🎤 Adding audio track: ${track.id}, enabled: ${track.enabled}, readyState: ${track.readyState}`);
+              combinedStream.addTrack(track);
+              addedTrackIds.add(track.id);
+
+              // Ensure audio track is enabled
+              if (!track.enabled) {
+                track.enabled = true;
+                console.log(`🎤 Audio track was disabled, enabling now`);
+              }
+            }
+          });
+        });
+
+        // Attach combined stream to audio element
+        const audioTrackCount = combinedStream.getAudioTracks().length;
+        console.log(`🔊 Combined stream has ${audioTrackCount} audio track(s)`);
+
+        if (audioTrackCount > 0) {
+          if (audioElement.srcObject !== combinedStream) {
+            audioElement.srcObject = combinedStream;
+            console.log('🔊 Audio stream attached with', audioTrackCount, 'track(s)');
+          }
+
+          // Control mute state
+          audioElement.muted = !isSpeakerEnabled;
+          console.log(`🔊 Audio element muted: ${audioElement.muted}, speaker enabled: ${isSpeakerEnabled}`);
+
+          // Ensure audio is playing
+          if (isSpeakerEnabled && audioElement.paused) {
+            console.log('🎵 Audio is paused, attempting to play...');
+            const playPromise = audioElement.play();
+            if (playPromise) {
+              playPromise
+                .then(() => console.log('🎵 Audio playback started successfully'))
+                .catch(err => console.warn('⚠️ Audio playback error:', err));
+            }
+          }
+        } else {
+          console.warn('⚠️ No audio tracks available in remote streams');
+          audioElement.srcObject = null;
+        }
+      } catch (error) {
+        console.error('❌ Error managing audio element:', error);
+      }
+    } else if (audioElement) {
+      audioElement.srcObject = null;
+      console.log('📊 No remote streams available');
+    }
+
+    const videoElement = remoteVideoRef.current;
+    if (videoElement && callType === 'video' && remoteStreams.length > 0) {
+      try {
+        const streamWithVideo = remoteStreams.find(stream => stream.getVideoTracks().length > 0);
+        if (streamWithVideo) {
+          if (videoElement.srcObject !== streamWithVideo) {
+            videoElement.srcObject = streamWithVideo;
+            console.log('📹 Video stream attached');
+          }
+          // Ensure video is playing
+          if (videoElement.paused) {
+            videoElement.play().catch(err => console.warn('⚠️ Video playback error:', err));
+          }
+        } else {
+          videoElement.srcObject = null;
+        }
+      } catch (error) {
+        console.error('❌ Error managing video element:', error);
+      }
+    } else if (videoElement) {
+      videoElement.srcObject = null;
+    }
+  }, [remoteStreams, isSpeakerEnabled, callType]);
+
+
+  // Simulate call duration timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (callStatus === 'connected') {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [callStatus]);
+
+  // Listen for call accepted event (for outgoing calls)
+  useEffect(() => {
+    const handleCallAccepted = (event: any) => {
+      if (event.detail?.threadId === threadId && !isIncoming) {
+        console.log('📞 Call accepted event received - stopping ringtone and connecting');
+        if (ringtoneRef.current) {
+          ringtoneRef.current.stop();
+          ringtoneRef.current = null;
+        }
+        ringtoneService.stopRingtone();
+        setCallStatus('connected');
+      }
+    };
+
+    window.addEventListener('call-accepted', handleCallAccepted);
+    return () => window.removeEventListener('call-accepted', handleCallAccepted);
+  }, [threadId, isIncoming]);
+
+  // Auto-connect for incoming calls (simulate)
+  useEffect(() => {
+    console.log('📞 Call status changed:', callStatus, 'isIncoming:', isIncoming, 'isOpen:', isOpen);
+
+    // Only transition to ringing once for incoming calls
+    if (isIncoming && isOpen && callStatus === 'connecting') {
+      const timer = setTimeout(() => {
+        console.log('📞 Setting status to ringing for incoming call');
+        setCallStatus('ringing');
+        ringtoneService.playRingtone().then(ringtone => {
+          ringtoneRef.current = ringtone;
+        });
+
+        // Start 45-second timeout for incoming calls
+        callTimeoutRef.current = setTimeout(() => {
+          console.log('📞 Call timeout - no answer after 45 seconds');
+          handleRejectCall(); // Auto-reject if not answered
+        }, 45000); // 45 seconds
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isIncoming, isOpen, callStatus]);
+
+  // Auto-disconnect timeout for outgoing calls
+  useEffect(() => {
+    if (!isIncoming && callStatus === 'ringing') {
+      console.log('📞 Starting 45-second timeout for outgoing call');
+      callTimeoutRef.current = setTimeout(() => {
+        console.log('📞 Call timeout - no answer after 45 seconds');
+        handleEndCall(); // Auto-end if not answered
+      }, 45000); // 45 seconds
+    }
+
+    // Clear timeout if call is answered or ended
+    if (callStatus === 'connected' || callStatus === 'ended') {
+      if (callTimeoutRef.current) {
+        console.log('📞 Clearing call timeout - call status:', callStatus);
+        clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+    }
+
+    return () => {
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+    };
+  }, [callStatus, isIncoming]);
+
+  // Separate effect for ringtone cleanup to avoid re-running
+  useEffect(() => {
+    // Stop ringtone if call status changes from ringing to connected
+    if (callStatus === 'connected') {
+      console.log('📞 Stopping ringtone - call connected');
+      if (ringtoneRef.current) {
+        ringtoneRef.current.stop();
+        ringtoneRef.current = null;
+      }
+      ringtoneService.stopRingtone();
+    }
+
+    // Stop ringtone if call ends
+    if (callStatus === 'ended') {
+      console.log('📞 Stopping ringtone - call ended');
+      if (ringtoneRef.current) {
+        ringtoneRef.current.stop();
+        ringtoneRef.current = null;
+      }
+      ringtoneService.stopRingtone();
+    }
+  }, [callStatus]);
+
+  // Auto-close modal when call ends
+  useEffect(() => {
+    if (callStatus === 'ended' && isOpen) {
+      console.log('📞 Call ended - closing modal after 2 seconds');
+      const closeTimer = setTimeout(() => {
+        console.log('📞 Closing modal');
+        onClose();
+      }, 2000); // Wait 2 seconds to show "Call Ended" message before closing
+
+      return () => clearTimeout(closeTimer);
+    }
+  }, [callStatus, isOpen, onClose]);
+
+  // Monitor connection quality during call
+  useEffect(() => {
+    if (callStatus !== 'connected') return;
+
+    const checkConnectionQuality = () => {
+      // Simple heuristic-based connection quality detection
+      // In a real implementation, you would use VideoSDK stats API
+
+      let quality: 'excellent' | 'good' | 'fair' | 'poor' = 'good';
+
+      // Check if streams are connected
+      if (remoteStreams.length === 0) {
+        quality = 'poor';
+      } else if (participants.length > 1) {
+        // Multiple participants = harder connection = fair
+        quality = 'fair';
+      } else {
+        // Simulate varying quality based on random factor
+        // In production, use actual network stats from VideoSDK
+        const random = Math.random();
+        if (random > 0.7) {
+          quality = 'excellent';
+        } else if (random > 0.4) {
+          quality = 'good';
+        } else if (random > 0.2) {
+          quality = 'fair';
+        } else {
+          quality = 'poor';
+        }
+      }
+
+      setConnectionQuality(quality);
+      console.log('📡 Connection quality:', quality);
+    };
+
+    // Check connection quality every 3 seconds
+    const interval = setInterval(checkConnectionQuality, 3000);
+
+    // Initial check
+    checkConnectionQuality();
+
+    return () => clearInterval(interval);
+  }, [callStatus, remoteStreams.length, participants.length]);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getConnectionQualityIcon = () => {
+    switch (connectionQuality) {
+      case 'excellent':
+        return '🟢 Excellent';
+      case 'good':
+        return '🟢 Good connection';
+      case 'fair':
+        return '🟡 Fair connection';
+      case 'poor':
+        return '🔴 Poor connection';
+      default:
+        return '🟢 Good connection';
+    }
+  };
+
+  const getConnectionQualityBars = () => {
+    const barCount = {
+      excellent: 4,
+      good: 3,
+      fair: 2,
+      poor: 1
+    };
+    return barCount[connectionQuality] || 3;
+  };
+
+  const handleEmojiReaction = (emoji: string) => {
+    // Send emoji reaction
+    if (threadId && currentUserId) {
+      supabaseMessagingService.sendMessage(
+        threadId,
+        {
+          content: emoji,
+          message_type: 'reaction',
+          metadata: { emoji: emoji, sentBy: currentUserId }
+        },
+        { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+      );
+    }
+
+    // Trigger animation
+    setLastReactionEmoji(emoji);
+    setReactionAnimation(true);
+    setTimeout(() => {
+      setReactionAnimation(false);
+    }, 1000);
+  };
+
+  // Don't render if not open, but also check if we're in the middle of a call
+  if (!isOpen && callStatus === 'connecting') return null;
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-slideIn">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-5 flex items-center justify-between shadow-lg">
+          <div className="flex items-center space-x-3">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center ring-2 ring-white/30">
+              <span className="text-xl font-bold">
+                {callType === 'video' ? '📹' : '📞'}
+              </span>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg leading-tight">
+                {isIncoming ? callerName : recipientName}
+              </h3>
+              <p className="text-sm opacity-90 font-medium">
+                {callType === 'video' ? 'Video Call' : 'Voice Call'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50"
+            aria-label="Close call"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 animate-slideIn">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-red-800">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Video/Audio Content */}
+        <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 aspect-video overflow-hidden">
+          {/* Remote Videos - Show all participants */}
+          {remoteStreams.length > 0 && callType === 'video' && (
+            <div className="w-full h-full">
+              {remoteStreams.map((stream, index) => (
+                <video
+                  key={stream.id}
+                  ref={index === 0 ? remoteVideoRef : undefined}
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                  style={{ display: isVideoEnabled ? 'block' : 'none' }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Local Video */}
+          {localStream && callType === 'video' && isVideoEnabled && (
+            <div className="absolute top-4 right-4 w-28 h-36 bg-gray-800 rounded-xl overflow-hidden border-2 border-white shadow-2xl ring-2 ring-white/20 hover:scale-105 transition-transform duration-200">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          {/* Audio Call Avatar */}
+          {callType === 'audio' && (
+            <div className="flex items-center justify-center h-full">
+              <div className="w-36 h-36 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center shadow-2xl ring-4 ring-primary-200/50 animate-pulse-glow">
+                <span className="text-5xl font-bold text-white">
+                  {isIncoming ? callerName.charAt(0).toUpperCase() : recipientName.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Participants Count */}
+          {participants.length > 0 && (
+            <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg border border-white/20">
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                {participants.length} participant{participants.length > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
+
+          <audio ref={remoteAudioRef} autoPlay playsInline muted={!isSpeakerEnabled} className="hidden" />
+
+          {/* Call Status Overlay */}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+            <div className="text-center text-white">
+              <div className="mb-4">
+                {callStatus === 'connecting' && (
+                  <div className="flex flex-col items-center">
+                    <div className="animate-spin rounded-full h-14 w-14 border-4 border-white border-t-transparent mb-3"></div>
+                    <div className="text-base font-medium">Connecting...</div>
+                  </div>
+                )}
+                {callStatus === 'ringing' && (
+                  <div className="animate-pulse">
+                    <div className="text-5xl mb-3 animate-bounce">📞</div>
+                    <div className="text-xl font-semibold">Ringing...</div>
+                    <div className="text-sm opacity-75 mt-1">Waiting for answer</div>
+                  </div>
+                )}
+                {callStatus === 'connected' && (
+                  <div className="space-y-2">
+                    <div className="text-2xl font-bold tracking-wider">{formatDuration(callDuration)}</div>
+                    <div className="text-sm opacity-80 font-medium">Connected</div>
+                  </div>
+                )}
+                {callStatus === 'ended' && (
+                  <div>
+                    <div className="text-xl font-semibold mb-1">Call Ended</div>
+                    <div className="text-sm opacity-75">Duration: {formatDuration(callDuration)}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="p-6">
+          {callStatus === 'ringing' && isIncoming && (
+            <div className="flex justify-center space-x-6 mb-4">
+              <button
+                onClick={handleAcceptCall}
+                className="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white rounded-full p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300"
+                title="Answer Call"
+                aria-label="Answer call"
+              >
+                <PhoneOff className="w-7 h-7 rotate-180" />
+              </button>
+              <button
+                onClick={handleRejectCall}
+                className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                title="Decline Call"
+                aria-label="Decline call"
+              >
+                <PhoneOff className="w-7 h-7" />
+              </button>
+            </div>
+          )}
+
+          {callStatus === 'ringing' && !isIncoming && (
+            <div className="space-y-4">
+              <div className="flex justify-center space-x-4 mb-4">
+                <button
+                  onClick={handleEndCall}
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                  title="Drop Call"
+                  aria-label="Drop call"
+                >
+                  <PhoneOff className="w-7 h-7" />
+                </button>
+              </div>
+              {/* Three-dot menu for ringing */}
+              <div className="relative flex justify-center">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="text-gray-600 hover:text-gray-900 p-2 transition-colors"
+                  title="More options"
+                >
+                  <MoreVertical className="w-6 h-6" />
+                </button>
+                {showMenu && (
+                  <div className="absolute top-12 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-max overflow-hidden animate-slideIn">
+                    <button
+                      onClick={handleShareScreen}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>Share Screen</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMessageInput(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium border-t border-gray-200"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Send Message</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {callStatus === 'connected' && (
+            <div className="space-y-4">
+              {/* Connection Quality Indicator */}
+              <div className="text-center bg-gray-50 rounded-lg py-2 px-4 border border-gray-200">
+                <div className="flex justify-center items-center gap-3 text-sm font-medium text-gray-700">
+                  <span className="text-xs">{getConnectionQualityIcon()}</span>
+                  <div className="flex gap-1 items-end h-4">
+                    {[...Array(4)].map((_, i) => (
+                      <div
+                        key={i}
+                        className={`w-1.5 rounded-full transition-all duration-300 ${
+                          i < getConnectionQualityBars()
+                            ? 'bg-green-500 shadow-sm'
+                            : 'bg-gray-300'
+                        }`}
+                        style={{ height: `${(i + 1) * 25}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Emoji reactions with animation - only show during connected call */}
+              <div className="relative">
+                {/* Floating reaction animation */}
+                {reactionAnimation && lastReactionEmoji && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div
+                      className="text-5xl animate-ping"
+                      style={{
+                        animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) 1'
+                      }}
+                    >
+                      {lastReactionEmoji}
+                    </div>
+                  </div>
+                )}
+
+                {/* Emoji buttons */}
+                <div className="flex justify-center gap-2 flex-wrap">
+                  {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => handleEmojiReaction(emoji)}
+                      className="text-2xl hover:scale-125 active:scale-150 transition-transform duration-200 hover:drop-shadow-lg"
+                      title={
+                        {
+                          '👍': 'Thumbs up',
+                          '❤️': 'Love',
+                          '😂': 'Laughing',
+                          '😮': 'Surprised',
+                          '😢': 'Sad',
+                          '🙏': 'Praying'
+                        }[emoji]
+                      }
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Main controls - Mute, Video, Speaker, End */}
+              <div className="flex justify-center items-center gap-3 flex-wrap">
+                <button
+                  onClick={toggleMute}
+                  className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    isMuted 
+                      ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300' 
+                      : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400'
+                  }`}
+                  title={isMuted ? 'Unmute' : 'Mute'}
+                  aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                >
+                  {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                </button>
+
+                {callType === 'video' && (
+                  <button
+                    onClick={toggleVideo}
+                    className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      isVideoEnabled 
+                        ? 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400' 
+                        : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
+                    }`}
+                    title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+                    aria-label={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+                  >
+                    {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                  </button>
+                )}
+
+                <button
+                  onClick={toggleSpeaker}
+                  className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    isSpeakerEnabled 
+                      ? 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400' 
+                      : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
+                  }`}
+                  title={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
+                  aria-label={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
+                >
+                  {isSpeakerEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+                </button>
+
+                {/* Raise Hand Button - Highlight when raised */}
+                <button
+                  onClick={handleRaiseHand}
+                  className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    isHandRaised 
+                      ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white focus:ring-orange-300' 
+                      : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400'
+                  }`}
+                  title={isHandRaised ? 'Lower hand' : 'Raise hand'}
+                  aria-label={isHandRaised ? 'Lower hand' : 'Raise hand'}
+                >
+                  <Hand className="w-6 h-6" />
+                </button>
+
+                <button
+                  onClick={handleEndCall}
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                  title="End call"
+                  aria-label="End call"
+                >
+                  <PhoneOff className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Three-dot menu for connected call */}
+              <div className="relative flex justify-center">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="text-gray-600 hover:text-gray-900 p-2 transition-colors"
+                  title="More options"
+                >
+                  <MoreVertical className="w-6 h-6" />
+                </button>
+                {showMenu && (
+                  <div className="absolute bottom-12 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-max overflow-hidden animate-slideIn">
+                    <button
+                      onClick={handleShareScreen}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 font-medium ${
+                        isScreenSharing 
+                          ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' 
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span>{isScreenSharing ? 'Stop Screen' : 'Share Screen'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMessageInput(true);
+                        setShowMenu(false);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium border-t border-gray-200"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Send Message</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Message Input - Show when user clicks Send Message */}
+              {showMessageInput && (
+                <div className="flex gap-2 animate-slideIn">
+                  <input
+                    type="text"
+                    value={messageText}
+                    onChange={(e) => setMessageText(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder="Type a message..."
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 text-sm"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white px-5 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  >
+                    Send
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowMessageInput(false);
+                      setMessageText('');
+                    }}
+                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 px-5 py-2.5 rounded-lg transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default VideoSDKCallModal;
