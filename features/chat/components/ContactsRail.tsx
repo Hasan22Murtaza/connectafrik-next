@@ -3,6 +3,7 @@ import { MessageCircle, Phone, Video, Circle } from 'lucide-react'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant, PresenceStatus } from '@/shared/types/chat'
+import { ChatThread } from '@/features/chat/services/supabaseMessagingService'
 
 const statusColor: Record<PresenceStatus, string> = {
   online: 'text-green-500',
@@ -35,8 +36,8 @@ const ContactsRail: React.FC = () => {
   )
 
   const ensureThread = async (contact: ChatParticipant): Promise<string | null> => {
-    const existingThread = threads.find((thread) =>
-      thread.participants.some((participant) => participant.id === contact.id)
+    const existingThread = threads.find((thread: ChatThread) =>
+      thread.participants.some((participant: ChatParticipant) => participant.id === contact.id)
     )
 
     if (existingThread) {

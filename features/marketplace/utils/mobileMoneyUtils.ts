@@ -1,32 +1,8 @@
-import axios from 'axios'
-
-const PAYSTACK_SECRET_KEY = import.meta.env.VITE_PAYSTACK_SECRET_KEY
-const PAYSTACK_API = 'https://api.paystack.co'
-
 export interface MobileMoneyProvider {
   code: string
   name: string
   country: string
   currency: string
-}
-
-export interface MobileMoneyCharge {
-  email: string
-  amount: number // in kobo/pesewas/cents
-  currency: string
-  mobile_money: {
-    phone: string
-    provider: string
-  }
-  metadata?: Record<string, any>
-}
-
-export interface MobileMoneyRecipient {
-  type: 'mobile_money'
-  name: string
-  phone: string
-  currency: string
-  provider_code: string
 }
 
 /**
@@ -94,93 +70,6 @@ export function detectProviderFromPhone(phone: string, country: string): string 
   }
 
   return null
-}
-
-/**
- * Initiate mobile money payment charge
- */
-export async function chargeMobileMoney(data: MobileMoneyCharge) {
-  try {
-    const response = await axios.post(
-      `${PAYSTACK_API}/charge`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-
-    return {
-      success: true,
-      reference: response.data.data.reference,
-      status: response.data.data.status,
-      display_text: response.data.data.display_text,
-      data: response.data.data
-    }
-  } catch (error: any) {
-    console.error('Error charging mobile money:', error.response?.data)
-    throw new Error(error.response?.data?.message || 'Mobile money charge failed')
-  }
-}
-
-/**
- * Verify mobile money account (check if phone is registered)
- */
-export async function verifyMobileMoneyAccount(phone: string, providerCode: string) {
-  try {
-    const response = await axios.get(
-      `${PAYSTACK_API}/bank/resolve_mobile_money`,
-      {
-        params: {
-          phone: phone,
-          provider: providerCode
-        },
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
-        }
-      }
-    )
-
-    return {
-      success: true,
-      account_name: response.data.data.account_name,
-      phone: response.data.data.phone,
-      provider: response.data.data.provider,
-      is_registered: response.data.data.is_registered
-    }
-  } catch (error: any) {
-    console.error('Error verifying mobile money account:', error.response?.data)
-    throw new Error(error.response?.data?.message || 'Account verification failed')
-  }
-}
-
-/**
- * Create mobile money transfer recipient
- */
-export async function createMobileMoneyRecipient(data: MobileMoneyRecipient) {
-  try {
-    const response = await axios.post(
-      `${PAYSTACK_API}/transferrecipient`,
-      data,
-      {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    )
-
-    return {
-      success: true,
-      recipient_code: response.data.data.recipient_code,
-      details: response.data.data
-    }
-  } catch (error: any) {
-    console.error('Error creating mobile money recipient:', error.response?.data)
-    throw new Error(error.response?.data?.message || 'Failed to create recipient')
-  }
 }
 
 /**
@@ -256,3 +145,4 @@ export function validatePhoneNumber(phone: string, country: string): { valid: bo
     message: `Invalid ${validation.name} phone number. Expected format: 0XXXXXXXXX (10 digits)`
   }
 }
+

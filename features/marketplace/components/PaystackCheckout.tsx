@@ -530,7 +530,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
               Cancel
             </button>
             <PaystackButton
-              {...componentProps}
+              {...componentProps as any}
               className={`flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 !isFormValid() ? 'opacity-50 cursor-not-allowed' : ''
               }`}

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { Building2, Save, Check, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { getBanks, resolveAccountNumber } from '@/features/marketplace/services/paystackTransferService'
 import toast from 'react-hot-toast'
 
 interface Bank {
@@ -39,7 +38,13 @@ const BankAccountSettings: React.FC = () => {
 
   const loadBanks = async () => {
     try {
-      const banksData = await getBanks('nigeria')
+      const response = await fetch('/api/paystack/banks?country=nigeria')
+      
+      if (!response.ok) {
+        throw new Error('Failed to load banks')
+      }
+
+      const banksData = await response.json()
       setBanks(banksData)
     } catch (error) {
       console.error('Error loading banks:', error)
@@ -101,10 +106,16 @@ const BankAccountSettings: React.FC = () => {
 
     setIsVerifying(true)
     try {
-      const result = await resolveAccountNumber(
-        bankDetails.account_number,
-        bankDetails.bank_code
+      const response = await fetch(
+        `/api/paystack/banks/resolve?account_number=${encodeURIComponent(bankDetails.account_number)}&bank_code=${encodeURIComponent(bankDetails.bank_code)}`
       )
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to verify account number')
+      }
+
+      const result = await response.json()
 
       if (result.success) {
         setBankDetails({

@@ -133,7 +133,7 @@ export async function confirmDelivery(
 ): Promise<{ success: boolean; order_id: string; seller_payout: number; status: string }> {
   try {
     // Use auto-payout function if enabled, otherwise use manual confirm_delivery
-    const useAutoPayout = import.meta.env.VITE_ENABLE_AUTO_PAYOUTS === 'true'
+    const useAutoPayout = process.env.NEXT_PUBLIC_ENABLE_AUTO_PAYOUTS === 'true'
 
     const { data, error } = await supabase.rpc(
       useAutoPayout ? 'confirm_delivery_with_auto_payout' : 'confirm_delivery',

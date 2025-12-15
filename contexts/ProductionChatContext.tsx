@@ -43,6 +43,7 @@ interface ProductionChatContextType {
   sendMessage: (threadId: string, text: string, payload?: any) => Promise<void>
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
+  threads: ChatThread[]
 }
 
 const ProductionChatContext = createContext<ProductionChatContextType | undefined>(undefined)
@@ -244,7 +245,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     getMessagesForThread,
     sendMessage,
     minimizedThreadIds,
-    markThreadRead
+    markThreadRead,
+    threads
   }
 
   return (

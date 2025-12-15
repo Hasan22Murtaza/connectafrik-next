@@ -51,7 +51,7 @@ const ReelCard: React.FC<ReelCardProps> = ({
   const [isDeleting, setIsDeleting] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
-  const controlsTimeoutRef = useRef<NodeJS.Timeout>()
+  const controlsTimeoutRef = useRef<number | undefined>(undefined)
   const watchTrackerRef = useRef<VideoWatchTracker | null>(null)
 
   // Check if user is following the reel author on mount
