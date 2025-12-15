@@ -38,17 +38,17 @@ const Home: React.FC = () => {
   return (
     <>
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-green-50 via-white to-green-50/50 pt-24 pb-20">
+      <section className="bg-gradient-to-br from-orange-50 via-white to-orange-50/50 pt-24 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex items-center justify-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-600 to-yellow-500 rounded-full flex items-center justify-center">
+              <div className="w-20 h-20 bg-gradient-to-r from-green-600 to-orange-500 rounded-full flex items-center justify-center">
                 <Globe className="w-10 h-10 text-white" />
               </div>
             </div>
             
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-              Connect<span className="text-green-600">Afrik</span>
+              Connect<span className="text-orange-500">Afrik</span>
             </h1>
             
             <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
@@ -74,7 +74,7 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">
+                <div className="text-3xl md:text-4xl font-bold text-orange-500 mb-2">
                   {stat.number}
                 </div>
                 <div className="text-gray-600 font-medium">{stat.label}</div>
@@ -102,8 +102,8 @@ const Home: React.FC = () => {
               const IconComponent = feature.icon
               return (
                 <div key={index} className="text-center group">
-                  <div className="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mx-auto mb-6 group-hover:bg-green-200 transition-colors duration-200">
-                    <IconComponent className="w-8 h-8 text-green-600" />
+                  <div className="flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mx-auto mb-6 group-hover:bg-orange-200 transition-colors duration-200">
+                    <IconComponent className="w-8 h-8 text-orange-500" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">
                     {feature.title}
@@ -211,18 +211,18 @@ const Home: React.FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-green-600 to-green-700">
+      <section className="py-20 bg-gradient-to-r from-orange-500 to-orange-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Ready to Join the Conversation?
           </h2>
-          <p className="text-xl text-green-100 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-orange-100 mb-8 max-w-3xl mx-auto">
             Connect with thousands of Africans sharing their stories, insights, and culture. 
             Your voice matters in shaping our continent's future.
           </p>
           <Link
             href="/signup"
-            className="inline-flex items-center px-8 py-3 bg-white text-green-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            className="inline-flex items-center px-8 py-3 bg-white text-orange-500 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
           >
             Get Started Today
           </Link>

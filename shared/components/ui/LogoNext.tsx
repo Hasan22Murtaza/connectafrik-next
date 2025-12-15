@@ -15,11 +15,11 @@ const Logo: React.FC<LogoProps> = ({ size = 'md', className = '' }) => {
 
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
-      <div className={`${sizeClasses[size]} bg-gradient-to-r from-green-600 to-yellow-500 rounded-full flex items-center justify-center`}>
+      <div className={`${sizeClasses[size]} bg-gradient-to-r from-green-600 to-orange-500 rounded-full flex items-center justify-center`}>
         <Globe className={`${size === 'sm' ? 'w-4 h-4' : size === 'md' ? 'w-6 h-6' : 'w-8 h-8'} text-white`} />
       </div>
       <span className={`font-bold ${size === 'sm' ? 'text-lg' : size === 'md' ? 'text-xl' : 'text-2xl'} text-gray-900`}>
-        Connect<span className="text-green-600">Afrik</span>
+        Connect<span className="text-orange-500">Afrik</span>
       </span>
     </div>
   )
