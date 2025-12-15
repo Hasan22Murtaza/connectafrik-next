@@ -12,7 +12,6 @@ import {
   Heart,
   Globe
 } from 'lucide-react'
-import LogoNext from '../ui/LogoNext'
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear()
@@ -24,9 +23,10 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <LogoNext size="lg" className="text-black" />
+            <img src="/assets/images/logo_2.png" alt="" className="w-30" />
             <p className="text-gray-800 text-sm leading-relaxed">
-              Connecting the African continent and diaspora through meaningful conversations about politics, culture, and community building.
+              Connecting the African continent and diaspora through meaningful
+              conversations about politics, culture, and community building.
             </p>
             <div className="flex space-x-4">
               <a
@@ -69,22 +69,34 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold text-black">Quick Links</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/feed" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/feed"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Community Feed
                 </Link>
               </li>
               <li>
-                <Link href="/politics" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/politics"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Political Discussions
                 </Link>
               </li>
               <li>
-                <Link href="/culture" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/culture"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Cultural Heritage
                 </Link>
               </li>
               <li>
-                <Link href="/groups" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/groups"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Community Groups
                 </Link>
               </li>
@@ -96,22 +108,34 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold text-black">Support & Info</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/support" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/support"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Support Center
                 </Link>
               </li>
               <li>
-                <Link href="/guidelines" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/guidelines"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Community Guidelines
                 </Link>
               </li>
               <li>
-                <Link href="/privacy-policy" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/privacy-policy"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms-of-service" className="text-gray-800 hover:text-black transition-colors">
+                <Link
+                  href="/terms-of-service"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
                   Terms of Service
                 </Link>
               </li>
@@ -170,13 +194,22 @@ const Footer: React.FC = () => {
               <span>for the African community worldwide.</span>
             </div>
             <div className="flex items-center space-x-6 text-sm text-gray-800">
-              <Link href="/privacy-policy" className="hover:text-black transition-colors">
+              <Link
+                href="/privacy-policy"
+                className="hover:text-black transition-colors"
+              >
                 Privacy
               </Link>
-              <Link href="/terms-of-service" className="hover:text-black transition-colors">
+              <Link
+                href="/terms-of-service"
+                className="hover:text-black transition-colors"
+              >
                 Terms
               </Link>
-              <Link href="/guidelines" className="hover:text-black transition-colors">
+              <Link
+                href="/guidelines"
+                className="hover:text-black transition-colors"
+              >
                 Guidelines
               </Link>
             </div>
@@ -184,7 +217,7 @@ const Footer: React.FC = () => {
         </div>
       </div>
     </footer>
-  )
+  );
 }
 
 export default Footer

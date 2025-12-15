@@ -65,8 +65,12 @@ const Signup: React.FC = () => {
               <Globe className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Join ConnectAfrik</h1>
-          <p className="text-gray-600">Create your account and start connecting with the African community</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Join ConnectAfrik
+          </h1>
+          <p className="text-gray-600">
+            Create your account and start connecting with the African community
+          </p>
         </div>
 
         {/* Form */}
@@ -74,7 +78,10 @@ const Signup: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email Address
               </label>
               <div className="relative">
@@ -86,7 +93,7 @@ const Signup: React.FC = () => {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="input-field pl-10"
+                  className="input-field !pl-10"
                   placeholder="Enter your email"
                 />
               </div>
@@ -94,7 +101,10 @@ const Signup: React.FC = () => {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Password
               </label>
               <div className="relative">
@@ -102,11 +112,11 @@ const Signup: React.FC = () => {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="input-field pl-10 pr-10"
+                  className="input-field !px-10"
                   placeholder="Create a password"
                   minLength={6}
                 />
@@ -115,15 +125,24 @@ const Signup: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
+              <p className="mt-1 text-xs text-gray-500">
+                Must be at least 6 characters
+              </p>
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Confirm Password
               </label>
               <div className="relative">
@@ -131,11 +150,11 @@ const Signup: React.FC = () => {
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   required
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
-                  className="input-field pl-10 pr-10"
+                  className="input-field !px-10"
                   placeholder="Confirm your password"
                   minLength={6}
                 />
@@ -144,7 +163,11 @@ const Signup: React.FC = () => {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -158,13 +181,22 @@ const Signup: React.FC = () => {
                 required
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-1"
               />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-                I agree to the{' '}
-                <Link href="/terms-of-service" className="text-primary-600 hover:text-primary-500">
+              <label
+                htmlFor="terms"
+                className="ml-2 block text-sm text-gray-700"
+              >
+                I agree to the{" "}
+                <Link
+                  href="/terms-of-service"
+                  className="text-primary-600 hover:text-primary-500"
+                >
                   Terms of Service
-                </Link>
-                {' '}and{' '}
-                <Link href="/privacy-policy" className="text-primary-600 hover:text-primary-500">
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy-policy"
+                  className="text-primary-600 hover:text-primary-500"
+                >
                   Privacy Policy
                 </Link>
               </label>
@@ -176,7 +208,7 @@ const Signup: React.FC = () => {
               disabled={isLoading}
               className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
+              {isLoading ? "Creating Account..." : "Create Account"}
             </button>
           </form>
 
@@ -187,7 +219,9 @@ const Signup: React.FC = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Already have an account?</span>
+                <span className="px-2 bg-white text-gray-500">
+                  Already have an account?
+                </span>
               </div>
             </div>
           </div>
@@ -205,13 +239,14 @@ const Signup: React.FC = () => {
           {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
-              Join thousands of Africans sharing their stories, culture, and political insights
+              Join thousands of Africans sharing their stories, culture, and
+              political insights
             </p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default Signup

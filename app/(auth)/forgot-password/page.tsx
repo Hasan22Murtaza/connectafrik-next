@@ -68,7 +68,7 @@ const ForgotPassword: React.FC = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="input-field pl-10"
+                    className="input-field !pl-10"
                     placeholder="Enter your email"
                   />
                 </div>

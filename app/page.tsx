@@ -1,61 +1,71 @@
-'use client'
+"use client";
 
-import React from 'react'
-import Link from 'next/link'
-import { Globe, Users, MessageCircle, TrendingUp, Heart, Share2 } from 'lucide-react'
+import React from "react";
+import Link from "next/link";
+import {
+  Globe,
+  Users,
+  MessageCircle,
+  TrendingUp,
+  Heart,
+  Share2,
+} from "lucide-react";
 
 const Home: React.FC = () => {
   const features = [
     {
       icon: TrendingUp,
-      title: 'Political Discourse',
-      description: 'Engage in meaningful discussions about African politics, governance, and democratic progress across the continent.',
+      title: "Political Discourse",
+      description:
+        "Engage in meaningful discussions about African politics, governance, and democratic progress across the continent.",
     },
     {
       icon: Users,
-      title: 'Cultural Exchange',
-      description: 'Share and discover the rich cultural heritage of Africa - from traditional foods to contemporary art.',
+      title: "Cultural Exchange",
+      description:
+        "Share and discover the rich cultural heritage of Africa - from traditional foods to contemporary art.",
     },
     {
       icon: MessageCircle,
-      title: 'Community Building',
-      description: 'Connect with fellow Africans and diaspora members to build lasting relationships and networks.',
+      title: "Community Building",
+      description:
+        "Connect with fellow Africans and diaspora members to build lasting relationships and networks.",
     },
     {
       icon: Globe,
-      title: 'Continental Unity',
-      description: 'Bridge geographical gaps and promote unity among the 54 African nations and global diaspora.',
+      title: "Continental Unity",
+      description:
+        "Bridge geographical gaps and promote unity among the 54 African nations and global diaspora.",
     },
-  ]
+  ];
 
   const stats = [
-    { number: '54', label: 'African Countries' },
-    { number: '10k+', label: 'Active Members' },
-    { number: '25k+', label: 'Discussions' },
-    { number: '50+', label: 'Cultural Groups' },
-  ]
+    { number: "54", label: "African Countries" },
+    { number: "10k+", label: "Active Members" },
+    { number: "25k+", label: "Discussions" },
+    { number: "50+", label: "Cultural Groups" },
+  ];
 
   return (
     <>
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-orange-50 via-white to-orange-50/50 pt-24 pb-20">
+      <section className="bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 pt-24 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex items-center justify-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-600 to-orange-500 rounded-full flex items-center justify-center">
-                <Globe className="w-10 h-10 text-white" />
-              </div>
+              <img src="/assets/images/logo_2.png" alt="" className="w-50" />
             </div>
-            
+
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-              Connect<span className="text-orange-500">Afrik</span>
+              Connect<span className="text-orange-500"> Afrik</span>
             </h1>
-            
+
             <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
-              The premier platform for Africans worldwide to share political insights, 
-              celebrate cultural diversity, and build meaningful connections across the continent.
+              The premier platform for Africans worldwide to share political
+              insights, celebrate cultural diversity, and build meaningful
+              connections across the continent.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup" className="btn-primary text-lg px-8 py-3">
                 Join the Community
@@ -92,18 +102,28 @@ const Home: React.FC = () => {
               What Makes ConnectAfrik Special
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our platform is designed specifically for the African community, 
-              fostering meaningful conversations about our shared heritage and future.
+              Our platform is designed specifically for the African community,
+              fostering meaningful conversations about our shared heritage and
+              future.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => {
-              const IconComponent = feature.icon
+              const IconComponent = feature.icon;
               return (
-                <div key={index} className="text-center group">
-                  <div className="flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mx-auto mb-6 group-hover:bg-orange-200 transition-colors duration-200">
-                    <IconComponent className="w-8 h-8 text-orange-500" />
+                <div
+                  key={index}
+                  className="text-center group bg-transparent
+                    hover:bg-orange-200
+                    hover:shadow-sm
+                     p-3
+                     rounded-[14px]
+                    transition-all ease-in-out duration-400
+                  "
+                >
+                  <div className="flex items-center justify-center w-16 h-16 bg-orange-100 rounded-full mx-auto mb-6 group-hover:bg-orange-200 transition-colors ease-in-out duration-400">
+                    <IconComponent className="w-8 h-8 text-orange-400" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-3">
                     {feature.title}
@@ -112,7 +132,7 @@ const Home: React.FC = () => {
                     {feature.description}
                   </p>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
@@ -144,15 +164,16 @@ const Home: React.FC = () => {
                   <div className="text-sm text-gray-500 mt-1">2 hours ago</div>
                 </div>
               </div>
-              
+
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 The Role of Youth in African Democracy
               </h3>
               <p className="text-gray-700 mb-4">
-                Young Africans are driving democratic change across the continent. 
-                From protests to political participation, the youth voice is stronger than ever...
+                Young Africans are driving democratic change across the
+                continent. From protests to political participation, the youth
+                voice is stronger than ever...
               </p>
-              
+
               <div className="flex items-center space-x-6 text-sm text-gray-500">
                 <div className="flex items-center space-x-1">
                   <Heart className="w-4 h-4" />
@@ -182,15 +203,16 @@ const Home: React.FC = () => {
                   <div className="text-sm text-gray-500 mt-1">4 hours ago</div>
                 </div>
               </div>
-              
+
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Celebrating Kente: The Art of Ghanaian Weaving
               </h3>
               <p className="text-gray-700 mb-4">
-                Each pattern tells a story, each color has meaning. Discover the rich history 
-                and cultural significance of Kente cloth in West African tradition...
+                Each pattern tells a story, each color has meaning. Discover the
+                rich history and cultural significance of Kente cloth in West
+                African tradition...
               </p>
-              
+
               <div className="flex items-center space-x-6 text-sm text-gray-500">
                 <div className="flex items-center space-x-1">
                   <Heart className="w-4 h-4" />
@@ -217,8 +239,8 @@ const Home: React.FC = () => {
             Ready to Join the Conversation?
           </h2>
           <p className="text-xl text-orange-100 mb-8 max-w-3xl mx-auto">
-            Connect with thousands of Africans sharing their stories, insights, and culture. 
-            Your voice matters in shaping our continent's future.
+            Connect with thousands of Africans sharing their stories, insights,
+            and culture. Your voice matters in shaping our continent's future.
           </p>
           <Link
             href="/signup"
@@ -229,8 +251,7 @@ const Home: React.FC = () => {
         </div>
       </section>
     </>
-  )
-}
+  );
+};
 
-export default Home
-
+export default Home;

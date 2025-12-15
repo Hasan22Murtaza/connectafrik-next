@@ -94,12 +94,12 @@ const ResetPassword: React.FC = () => {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {isSuccess ? 'Password Updated!' : 'Set New Password'}
+            {isSuccess ? "Password Updated!" : "Set New Password"}
           </h1>
           <p className="text-gray-600">
-            {isSuccess 
-              ? 'Your password has been successfully updated' 
-              : 'Enter your new password below'}
+            {isSuccess
+              ? "Your password has been successfully updated"
+              : "Enter your new password below"}
           </p>
         </div>
 
@@ -109,7 +109,10 @@ const ResetPassword: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Password */}
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   New Password
                 </label>
                 <div className="relative">
@@ -117,11 +120,11 @@ const ResetPassword: React.FC = () => {
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     required
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="input-field pl-10 pr-10"
+                    className="input-field !px-10"
                     placeholder="Enter your new password"
                     minLength={6}
                   />
@@ -130,15 +133,24 @@ const ResetPassword: React.FC = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Must be at least 6 characters
+                </p>
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Confirm New Password
                 </label>
                 <div className="relative">
@@ -146,11 +158,11 @@ const ResetPassword: React.FC = () => {
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
-                    type={showConfirmPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? "text" : "password"}
                     required
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className="input-field pl-10 pr-10"
+                    className="input-field !px-10"
                     placeholder="Confirm your new password"
                     minLength={6}
                   />
@@ -159,7 +171,11 @@ const ResetPassword: React.FC = () => {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -170,7 +186,7 @@ const ResetPassword: React.FC = () => {
                 disabled={isLoading}
                 className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Updating Password...' : 'Update Password'}
+                {isLoading ? "Updating Password..." : "Update Password"}
               </button>
             </form>
           ) : (
@@ -213,7 +229,7 @@ const ResetPassword: React.FC = () => {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default ResetPassword

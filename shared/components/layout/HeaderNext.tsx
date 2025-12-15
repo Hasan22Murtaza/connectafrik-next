@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useNotifications } from '@/shared/hooks/useNotifications'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import LogoNext from '../ui/LogoNext'
 import ChatDropdown from '@/features/chat/components/ChatDropdown'
 import NotificationDropdown from '@/shared/components/ui/NotificationDropdown'
 
@@ -46,8 +45,9 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
       <div className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
-          <Link href="/" className="flex-shrink-0 mr-4">
-            <LogoNext size="lg" />
+          <Link href="/" className="flex-shrink-0 ">
+            {/* <LogoNext size="lg" /> */}
+            <img src="/assets/images/logo_2.png" alt="" className="w-20" />
           </Link>
 
           {/* Search Bar - Hidden on mobile, visible on tablet+ */}
@@ -57,9 +57,11 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
               <input
                 type="text"
                 placeholder="Search discussions, culture, politics..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316]  focus:border-transparent"
                 value={searchTerm}
-                onChange={e => onSearchTermChange && onSearchTermChange(e.target.value)}
+                onChange={(e) =>
+                  onSearchTermChange && onSearchTermChange(e.target.value)
+                }
               />
             </div>
           </div>
@@ -70,22 +72,40 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
               <>
                 {/* Navigation Links - Hidden on mobile, visible on desktop */}
                 <nav className="hidden lg:flex items-center space-x-6">
-                  <Link href="/feed" className="text-gray-700 hover:text-primary-600 font-medium">
+                  <Link
+                    href="/feed"
+                    className="text-gray-700 hover:text-primary-600 font-medium"
+                  >
                     Feed
                   </Link>
-                  <Link href="/memories" className="text-gray-700 hover:text-primary-600 font-medium">
+                  <Link
+                    href="/memories"
+                    className="text-gray-700 hover:text-primary-600 font-medium"
+                  >
                     Reels
                   </Link>
-                  <Link href="/politics" className="text-gray-700 hover:text-primary-600 font-medium">
+                  <Link
+                    href="/politics"
+                    className="text-gray-700 hover:text-primary-600 font-medium"
+                  >
                     Politics
                   </Link>
-                  <Link href="/culture" className="text-gray-700 hover:text-primary-600 font-medium">
+                  <Link
+                    href="/culture"
+                    className="text-gray-700 hover:text-primary-600 font-medium"
+                  >
                     Culture
                   </Link>
-                  <Link href="/groups" className="text-gray-700 hover:text-primary-600 font-medium">
+                  <Link
+                    href="/groups"
+                    className="text-gray-700 hover:text-primary-600 font-medium"
+                  >
                     Groups
                   </Link>
-                  <Link href="/profile" className="text-gray-700 hover:text-primary-600 font-medium">
+                  <Link
+                    href="/profile"
+                    className="text-gray-700 hover:text-primary-600 font-medium"
+                  >
                     Profile
                   </Link>
                 </nav>
@@ -95,16 +115,16 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                   <div className="relative">
                     <button
                       onClick={() => {
-                        setShowNotifications(!showNotifications)
-                        setShowInbox(false)
-                        setShowCalls(false)
+                        setShowNotifications(!showNotifications);
+                        setShowInbox(false);
+                        setShowCalls(false);
                       }}
                       className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadMessages > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                          {unreadMessages > 99 ? '99+' : unreadMessages}
+                          {unreadMessages > 99 ? "99+" : unreadMessages}
                         </span>
                       )}
                     </button>
@@ -117,16 +137,16 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                   <div className="relative">
                     <button
                       onClick={() => {
-                        setShowInbox(!showInbox)
-                        setShowNotifications(false)
-                        setShowCalls(false)
+                        setShowInbox(!showInbox);
+                        setShowNotifications(false);
+                        setShowCalls(false);
                       }}
                       className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
                       <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadMessages > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                          {unreadMessages > 99 ? '99+' : unreadMessages}
+                          {unreadMessages > 99 ? "99+" : unreadMessages}
                         </span>
                       )}
                     </button>
@@ -141,9 +161,9 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                   <div className="relative">
                     <button
                       onClick={() => {
-                        setShowCalls(!showCalls)
-                        setShowNotifications(false)
-                        setShowInbox(false)
+                        setShowCalls(!showCalls);
+                        setShowNotifications(false);
+                        setShowInbox(false);
                       }}
                       className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
@@ -173,7 +193,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                       </div>
                     )}
                     <span className="hidden md:block text-sm font-medium text-gray-700">
-                      {profile?.username || 'User'}
+                      {profile?.username || "User"}
                     </span>
                   </button>
 
@@ -222,26 +242,41 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
       {user && (
         <div className="md:hidden bg-white border-t border-gray-200">
           <nav className="flex justify-around py-2">
-            <Link href="/feed" className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600">
+            <Link
+              href="/feed"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+            >
               <span className="text-xs">Feed</span>
             </Link>
-            <Link href="/memories" className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600">
+            <Link
+              href="/memories"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+            >
               <span className="text-xs">Reels</span>
             </Link>
-            <Link href="/culture" className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600">
+            <Link
+              href="/culture"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+            >
               <span className="text-xs">Culture</span>
             </Link>
-            <Link href="/groups" className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600">
+            <Link
+              href="/groups"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+            >
               <span className="text-xs">Groups</span>
             </Link>
-            <Link href="/profile" className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600">
+            <Link
+              href="/profile"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+            >
               <span className="text-xs">Profile</span>
             </Link>
           </nav>
         </div>
       )}
     </header>
-  )
+  );
 }
 
 export default Header

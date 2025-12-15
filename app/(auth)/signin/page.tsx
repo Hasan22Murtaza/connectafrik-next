@@ -73,7 +73,7 @@ const Signin: React.FC = () => {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="input-field pl-10"
+                  className="input-field !pl-10"
                   placeholder="Enter your email"
                 />
               </div>
@@ -93,7 +93,7 @@ const Signin: React.FC = () => {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="input-field pl-10 pr-10"
+                  className="input-field !px-10"
                   placeholder="Enter your password"
                 />
                 <button
