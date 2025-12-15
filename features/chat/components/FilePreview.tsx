@@ -1,5 +1,5 @@
 import React from 'react'
-import type { FileUploadResult } from '@/services/fileUploadService'
+import type { FileUploadResult } from '@/shared/services/fileUploadService'
 
 interface FilePreviewProps {
   files: FileUploadResult[]

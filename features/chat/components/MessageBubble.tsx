@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { FaReply, FaTrash, FaUserCircle } from 'react-icons/fa'
+import { Reply, Trash2, UserCircle } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import type { ChatMessage } from '@/features/chat/services/supabaseMessagingService'
 import MessageStatusIndicator from '@/features/chat/components/MessageStatusIndicator'
@@ -154,7 +154,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               onClick={handleReply}
               className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm"
             >
-              <FaReply className="text-blue-500" />
+              <Reply className="w-4 h-4 text-blue-500" />
               <span>Reply</span>
             </button>
           )}
@@ -166,7 +166,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 onClick={() => handleDelete(false)}
                 className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm"
               >
-                <FaTrash className="text-gray-500" />
+                <Trash2 className="w-4 h-4 text-gray-500" />
                 <span>Delete for Me</span>
               </button>
 
@@ -175,7 +175,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   onClick={() => handleDelete(true)}
                   className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
                 >
-                  <FaTrash className="text-red-600" />
+                  <Trash2 className="w-4 h-4 text-red-600" />
                   <span>Delete for Everyone</span>
                 </button>
               )}
@@ -196,7 +196,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 className="w-5 h-5 rounded-full"
               />
             ) : (
-              <FaUserCircle className="w-5 h-5 text-gray-400" />
+              <UserCircle className="w-5 h-5 text-gray-400" />
             )}
             <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
               {message.sender.name}

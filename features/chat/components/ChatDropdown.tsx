@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { MessageCircle, Phone, Video, Circle } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import { PresenceStatus } from '@/shared/types/chat'
+import { PresenceStatus, ChatParticipant } from '@/shared/types/chat'
 import { useMembers } from '@/shared/hooks/useMembers'
+import { supabaseMessagingService, ChatThread } from '@/features/chat/services/supabaseMessagingService'
 
 interface ChatDropdownProps {
   onClose: () => void
@@ -18,8 +19,22 @@ const statusColor: Record<PresenceStatus, string> = {
 }
 
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) => {
-  const { threads, openThread, startCall, startChatWithMembers, presence, currentUser } = useProductionChat()
+  const { openThread, startCall, startChatWithMembers, presence, currentUser } = useProductionChat()
   const { members } = useMembers()
+  const [threads, setThreads] = useState<ChatThread[]>([])
+
+  useEffect(() => {
+    const loadThreads = async () => {
+      if (currentUser) {
+        const userThreads = await supabaseMessagingService.getUserThreads({
+          id: currentUser.id,
+          name: currentUser.name || '',
+        })
+        setThreads(userThreads)
+      }
+    }
+    loadThreads()
+  }, [currentUser])
 
   const sortedThreads = useMemo(() => {
     return [...threads].sort((a, b) => {
@@ -148,7 +163,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
           <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto pr-1 custom-scrollbar">
             {sortedThreads.map((thread) => {
               const otherParticipants = thread.participants.filter(
-                (participant) => participant.id !== currentUser?.id
+                (participant: ChatParticipant) => participant.id !== currentUser?.id
               )
               const primary = otherParticipants[0] ?? thread.participants[0]
               const status = presence[primary?.id ?? ''] || 'offline'

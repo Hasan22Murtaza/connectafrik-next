@@ -71,7 +71,7 @@ export const useFileUpload = () => {
       })
 
       const uploadResponse = await fetch(
-        `${import.meta.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/upload-to-b2`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/upload-to-b2`,
         {
           method: 'POST',
           headers: {
@@ -149,7 +149,7 @@ export const useFileUpload = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-b2-object`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-b2-object`,
         {
           method: 'POST',
           headers: {

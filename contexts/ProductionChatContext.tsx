@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { ChatMessage, ChatThread } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 
 interface ChatParticipant {
@@ -37,6 +38,11 @@ interface ProductionChatContextType {
   clearCallRequest: (threadId: string) => void
   openThreads: string[]
   closeThread: (threadId: string) => void
+  getThreadById: (threadId: string) => ChatThread | undefined
+  getMessagesForThread: (threadId: string) => ChatMessage[]
+  sendMessage: (threadId: string, text: string, payload?: any) => Promise<void>
+  minimizedThreadIds: string[]
+  markThreadRead: (threadId: string) => void
 }
 
 const ProductionChatContext = createContext<ProductionChatContextType | undefined>(undefined)
@@ -54,6 +60,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [presence, setPresence] = useState<Record<string, 'online' | 'away' | 'busy' | 'offline'>>({})
   const [callRequests, setCallRequests] = useState<Record<string, CallRequest>>({})
   const [openThreads, setOpenThreads] = useState<string[]>([])
+  const [threads, setThreads] = useState<ChatThread[]>([])
+  const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
 
   const currentUser = user ? { id: user.id, name: user.user_metadata?.full_name || user.email } : null
 
@@ -79,6 +87,36 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     setOpenThreads(prev => prev.filter(id => id !== threadId))
     window.dispatchEvent(new CustomEvent('closeChatThread', { detail: { threadId } }))
   }, [])
+
+  const getThreadById = useCallback((threadId: string) => {
+    return threads.find(t => t.id === threadId)
+  }, [threads])
+
+  const getMessagesForThread = useCallback((threadId: string) => {
+    return messages[threadId] || []
+  }, [messages])
+
+  const sendMessage = useCallback(async (threadId: string, text: string, payload?: any) => {
+    // In a fuller implementation this would persist via supabaseMessagingService
+    const message: ChatMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      thread_id: threadId,
+      sender_id: currentUser?.id || '',
+      content: text,
+      created_at: new Date().toISOString(),
+      ...payload,
+    }
+    setMessages(prev => {
+      const current = prev[threadId] || []
+      return { ...prev, [threadId]: [...current, message] }
+    })
+  }, [currentUser?.id])
+
+  const markThreadRead = useCallback((threadId: string) => {
+    // Placeholder: in production, update unread counts in storage
+  }, [])
+
+  const minimizedThreadIds: string[] = []
 
   const startChatWithMembers = useCallback(async (
     participants: ChatParticipant[],
@@ -201,7 +239,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     currentUser,
     clearCallRequest,
     openThreads,
-    closeThread
+    closeThread,
+    getThreadById,
+    getMessagesForThread,
+    sendMessage,
+    minimizedThreadIds,
+    markThreadRead
   }
 
   return (

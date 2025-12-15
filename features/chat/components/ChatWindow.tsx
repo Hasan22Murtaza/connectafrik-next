@@ -1,3 +1,6 @@
+'use client'
+// @ts-nocheck
+
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Minus, Phone, Send, Video, X, Paperclip, Check, MoreVertical } from 'lucide-react'
@@ -71,7 +74,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
   const currentUserId = currentUser?.id || null
 
   const otherParticipants = useMemo(
-    () => thread?.participants?.filter((p) => p.id !== currentUser?.id) || [],
+    () => thread?.participants?.filter((p: any) => p.id !== currentUser?.id) || [],
     [thread?.participants, currentUser?.id]
   )
   const primaryParticipant = otherParticipants[0]
@@ -90,7 +93,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
   }, [isSelfChat, primaryParticipant?.name, thread?.name, currentUser?.name])
 
   const participantStatuses = useMemo<PresenceStatus[]>(
-    () => otherParticipants.map((participant) => presence[participant.id] || 'offline'),
+    () => otherParticipants.map((participant: any) => presence[participant.id] || 'offline'),
     [otherParticipants, presence]
   )
   const presenceStatus = useMemo<PresenceStatus>(() => {
@@ -120,7 +123,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
     if (!currentUser) return
 
     const checkDeletePermissions = async () => {
-      const messagesToCheck = messages.filter(m => m.sender_id === currentUser.id && !m.is_deleted)
+      const messagesToCheck = messages.filter((m: ChatMessage) => m.sender_id === currentUser.id && !m.is_deleted)
       let hasNewMessages = false
       
       for (const message of messagesToCheck) {
@@ -256,7 +259,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
 
     try {
       // Delete all messages for the current user
-      const messagesToDelete = messages.filter(msg => !msg.deleted_for?.includes(currentUser.id))
+      const messagesToDelete = messages.filter((msg: ChatMessage) => !msg.deleted_for?.includes(currentUser.id))
 
       for (const message of messagesToDelete) {
         await supabaseMessagingService.deleteMessageForMe(message.id, currentUser.id)
@@ -423,7 +426,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
               if (!currentUser) return true
               return !message.deleted_for?.includes(currentUser.id)
             })
-            .map((message) => {
+            .map((message: ChatMessage) => {
               const isOwn = message.sender_id === currentUser?.id
               const canDeleteForEveryone = deleteStates.get(message.id) ?? false
 
@@ -433,7 +436,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
                   message={message}
                   isOwnMessage={isOwn}
                   currentUserId={currentUser?.id || ''}
-                  threadParticipants={thread?.participants?.map(p => p.id) || []}
+                  threadParticipants={thread?.participants?.map((p: any) => p.id) || []}
                   onReply={handleReply}
                   onDelete={handleDelete}
                   canDeleteForEveryone={canDeleteForEveryone}

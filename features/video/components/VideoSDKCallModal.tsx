@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { supabase } from '@/lib/supabase';
-import { VideoSDK } from '@videosdk.live/js-sdk';
+import { VideoSDK } from '@/lib/videosdk-js-sdk';
 
 export interface VideoSDKCallModalProps {
   isOpen: boolean;

@@ -1,6 +1,13 @@
-import type { ChatAttachment } from "@/messagingService"
+import type { ChatAttachment } from "@/features/chat/services/supabaseMessagingService"
 
-export interface FileUploadResult extends ChatAttachment {}
+export interface FileUploadResult extends ChatAttachment {
+  id: string
+  name: string
+  url: string
+  type: 'image' | 'video' | 'file'
+  size: number
+  mimeType: string
+}
 
 const createId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
