@@ -250,7 +250,6 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
         boxShadow: isHovered 
           ? '0 25px 50px -12px rgba(147, 51, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
           : '0 10px 25px -5px rgba(147, 51, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-        borderImage: 'linear-gradient(45deg, #e5e7eb, #f3f4f6, #e5e7eb) 1'
       }}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}

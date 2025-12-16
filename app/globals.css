@@ -17,7 +17,7 @@
   --african-green-light: #22c55e;
   --african-green-dark: #15803d;
   /* Orange - Primary brand color */
-  --african-orange: #f97316;
+  --african-orange: #FF6900;
   --african-orange-light: #fb923c;
   --african-orange-dark: #ea580c;
 }
@@ -48,7 +48,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.5rem;
-  background-color: #f97316;
+  background-color: var(--african-orange);
   color: white;
   font-weight: 600;
   border-radius: 0.5rem;
@@ -132,7 +132,7 @@ body {
   border-radius: 0.5rem;
   font-size: 1rem;
   transition: all 0.2s;
-  background-color: white;
+  background-color: #F9FAFB;
   color: #111827;
 }
 
@@ -149,3 +149,16 @@ body {
 .to-african-green\/10 {
   --tw-gradient-to: rgba(22, 163, 74, 0.1);
 }
+
+
+
+.scrollbar-hover {
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+
+.scrollbar-hover:hover {
+  scrollbar-color: #D1D5DC transparent;
+}
+
+

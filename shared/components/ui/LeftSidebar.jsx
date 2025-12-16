@@ -2,13 +2,14 @@ import React from 'react';
 import Link from 'next/link';
 
 const shortcuts = [
-  { name: 'Friends', to: '/friends', icon: '👥' },
-  { name: 'Groups', to: '/groups', icon: '👨‍👩‍👧‍👦' },
-  { name: 'Marketplace', to: '/marketplace', icon: '🛒' },
-  { name: 'Memories', to: '/memories', icon: '🕑' },
-  { name: 'Saved', to: '/saved', icon: '💾' },
-  { name: 'Video', to: '/video', icon: '🎥' },
+  { name: 'Friends', to: '/friends', path: '/assets/icons/friend.png' },
+  { name: 'Groups', to: '/groups', path: '/assets/icons/groups.png' },
+  { name: 'Marketplace', to: '/marketplace', path: '/assets/icons/market.png' },
+  { name: 'Memories', to: '/memories', path: '/assets/icons/memories.png' },
+  { name: 'Saved', to: '/saved', path: '/assets/icons/bookmark.png' },
+  { name: 'Video', to: '/video', path: '/assets/icons/video.png' },
 ];
+
 
 const getStatusColor = (status) => {
   switch (status) {
@@ -24,7 +25,7 @@ const getStatusColor = (status) => {
 };
 
 const LeftSidebar = ({ onlineContacts = [] }) => (
-  <aside className="w-80 flex-shrink-0 hidden lg:block bg-white border-r border-gray-200 h-full overflow-y-auto py-6 px-4">
+  <aside className="w-80 flex-shrink-0 hidden lg:block bg-white border-r border-gray-200 h-full overflow-y-auto py-6 px-4 scrollbar-hover">
     <div className="mb-8">
       <h2 className="text-lg font-semibold mb-4">Online Contacts</h2>
       <ul className="space-y-2">
@@ -60,11 +61,11 @@ const LeftSidebar = ({ onlineContacts = [] }) => (
     </div>
     <div>
       <h2 className="text-lg font-semibold mb-4">Shortcuts</h2>
-      <ul className="space-y-2">
+      <ul className="space-y-4">
         {shortcuts.map((item) => (
           <li key={item.name}>
-            <Link href={item.to} className="flex items-center space-x-2 text-gray-700 hover:bg-gray-100 rounded px-2 py-1">
-              <span>{item.icon}</span>
+            <Link href={item.to} className="flex items-center space-x-3 text-gray-700 hover:bg-gray-100 rounded px-2 py-1">
+              <img src={item.path} alt="" className='w-8' />
               <span>{item.name}</span>
             </Link>
           </li>

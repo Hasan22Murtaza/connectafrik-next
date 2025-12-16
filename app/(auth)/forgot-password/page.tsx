@@ -33,20 +33,20 @@ const ForgotPassword: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-african-green/10 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-r from-african-green to-african-gold rounded-full">
-              <Globe className="w-8 h-8 text-white" />
-            </div>
+            <img src="/assets/images/logo_2.png" alt="" className="w-30" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reset Password</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Reset Password
+          </h1>
           <p className="text-gray-600">
-            {isSubmitted 
-              ? 'Check your email for password reset instructions' 
-              : 'Enter your email address and we\'ll send you a link to reset your password'}
+            {isSubmitted
+              ? "Check your email for password reset instructions"
+              : "Enter your email address and we'll send you a link to reset your password"}
           </p>
         </div>
 
@@ -56,7 +56,10 @@ const ForgotPassword: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Email Address
                 </label>
                 <div className="relative">
@@ -80,7 +83,7 @@ const ForgotPassword: React.FC = () => {
                 disabled={isLoading}
                 className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Sending...' : 'Send Reset Link'}
+                {isLoading ? "Sending..." : "Send Reset Link"}
               </button>
             </form>
           ) : (
@@ -102,8 +105,8 @@ const ForgotPassword: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setIsSubmitted(false)
-                  setEmail('')
+                  setIsSubmitted(false);
+                  setEmail("");
                 }}
                 className="w-full btn-secondary py-3 text-base"
               >
@@ -112,22 +115,14 @@ const ForgotPassword: React.FC = () => {
             </div>
           )}
 
-          {/* Back to Sign In */}
-          <div className="mt-6">
-            <Link
-              href="/signin"
-              className="flex items-center justify-center text-sm text-primary-600 hover:text-primary-500 font-medium"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Sign In
-            </Link>
-          </div>
-
           {/* Footer */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
-              Remember your password?{' '}
-              <Link href="/signin" className="text-primary-600 hover:text-primary-500 font-medium">
+              Remember your password?{" "}
+              <Link
+                href="/signin"
+                className="text-primary-600 hover:text-primary-500 font-medium"
+              >
                 Sign in
               </Link>
             </p>
@@ -135,7 +130,7 @@ const ForgotPassword: React.FC = () => {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default ForgotPassword

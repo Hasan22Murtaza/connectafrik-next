@@ -296,9 +296,9 @@ const FeedPage: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => setActiveCategory(id)}
-                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 ${
                       isActive
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        ? 'border-orange-400 bg-primary-200 text-orange-900'
                         : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-primary-600'
                     }`}
                   >

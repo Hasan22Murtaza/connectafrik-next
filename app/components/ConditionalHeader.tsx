@@ -7,7 +7,12 @@ export default function ConditionalHeader() {
   const pathname = usePathname()
   
   // Hide header on these auth pages
-  const hideHeaderPaths = ['/signin', '/signup', '/forgot-password', '/reset-password']
+  const hideHeaderPaths = [
+    "/signin",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+  ];
   
   if (hideHeaderPaths.includes(pathname)) {
     return null

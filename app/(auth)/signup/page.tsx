@@ -253,23 +253,24 @@ const Signup: React.FC = () => {
   ].sort()
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
       <div className="flex-1 flex items-center justify-center p-4 py-8">
         <div className="max-w-md w-full">
           {/* Header */}
           <div className="text-center mb-6">
             <div className="flex items-center justify-center mb-3">
-              <Logo size="lg" />
+              <img src="/assets/images/logo_2.png" alt="" className="w-30" />
             </div>
-            <h1 className="text-3xl font-bold text-primary-600 mb-1">ConnectAfrik</h1>
-            <p className="text-gray-600 text-sm">Connect with the African community worldwide</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Create a new account
+            </h1>
+            <p className="text-gray-600">
+              Connect with the African community worldwide
+            </p>
           </div>
 
           {/* Form Card */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">Create a new account</h2>
-            <p className="text-gray-500 text-sm mb-4">It's quick and easy.</p>
-
+          <div className="card">
             <form onSubmit={handleSubmit} className="space-y-3">
               {/* First Name and Last Name */}
               <div className="grid grid-cols-2 gap-3">
@@ -280,7 +281,7 @@ const Signup: React.FC = () => {
                     value={formData.firstName}
                     onChange={handleInputChange}
                     placeholder="First name"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   />
                 </div>
@@ -291,7 +292,7 @@ const Signup: React.FC = () => {
                     value={formData.lastName}
                     onChange={handleInputChange}
                     placeholder="Last name"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   />
                 </div>
@@ -305,7 +306,7 @@ const Signup: React.FC = () => {
                   value={formData.username}
                   onChange={handleInputChange}
                   placeholder="Username"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   required
                 />
               </div>
@@ -318,23 +319,24 @@ const Signup: React.FC = () => {
                   value={formData.emailOrPhone}
                   onChange={handleInputChange}
                   placeholder="Mobile number or email"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Enter your email (user@example.com) or phone number (+1234567890)
+                  Enter your email (user@example.com) or phone number
+                  (+1234567890)
                 </p>
               </div>
 
               {/* Password */}
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="New password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50 pr-10"
+                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)] pr-10"
                   required
                 />
                 <button
@@ -342,7 +344,11 @@ const Signup: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
 
@@ -350,7 +356,10 @@ const Signup: React.FC = () => {
               <div>
                 <label className="flex items-center text-xs text-gray-600 mb-1">
                   Birthday
-                  <span className="ml-1 text-gray-400 cursor-help" title="Provide your date of birth">
+                  <span
+                    className="ml-1 text-gray-400 cursor-help"
+                    title="Provide your date of birth"
+                  >
                     ⓘ
                   </span>
                 </label>
@@ -359,36 +368,42 @@ const Signup: React.FC = () => {
                     name="birthMonth"
                     value={formData.birthMonth}
                     onChange={handleInputChange}
-                    className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    className=" w-full p-2  border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   >
                     <option value="">Month</option>
-                    {months.map(month => (
-                      <option key={month.value} value={month.value}>{month.label}</option>
+                    {months.map((month) => (
+                      <option key={month.value} value={month.value}>
+                        {month.label}
+                      </option>
                     ))}
                   </select>
                   <select
                     name="birthDay"
                     value={formData.birthDay}
                     onChange={handleInputChange}
-                    className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   >
                     <option value="">Day</option>
-                    {days.map(day => (
-                      <option key={day} value={day}>{day}</option>
+                    {days.map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
                     ))}
                   </select>
                   <select
                     name="birthYear"
                     value={formData.birthYear}
                     onChange={handleInputChange}
-                    className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   >
                     <option value="">Year</option>
-                    {years.map(year => (
-                      <option key={year} value={year}>{year}</option>
+                    {years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -398,17 +413,20 @@ const Signup: React.FC = () => {
               <div>
                 <label className="flex items-center text-xs text-gray-600 mb-1">
                   Gender
-                  <span className="ml-1 text-gray-400 cursor-help" title="Select your gender">
+                  <span
+                    className="ml-1 text-gray-400 cursor-help"
+                    title="Select your gender"
+                  >
                     ⓘ
                   </span>
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 mb-3">
                   <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
                     <input
                       type="radio"
                       name="gender"
                       value="female"
-                      checked={formData.gender === 'female'}
+                      checked={formData.gender === "female"}
                       onChange={handleInputChange}
                       className="mr-2 text-primary-600 focus:ring-primary-500"
                       required
@@ -420,7 +438,7 @@ const Signup: React.FC = () => {
                       type="radio"
                       name="gender"
                       value="male"
-                      checked={formData.gender === 'male'}
+                      checked={formData.gender === "male"}
                       onChange={handleInputChange}
                       className="mr-2 text-primary-600 focus:ring-primary-500"
                       required
@@ -432,7 +450,7 @@ const Signup: React.FC = () => {
                       type="radio"
                       name="gender"
                       value="custom"
-                      checked={formData.gender === 'custom'}
+                      checked={formData.gender === "custom"}
                       onChange={handleInputChange}
                       className="mr-2 text-primary-600 focus:ring-primary-500"
                       required
@@ -440,14 +458,14 @@ const Signup: React.FC = () => {
                     Custom
                   </label>
                 </div>
-                {formData.gender === 'custom' && (
+                {formData.gender === "custom" && (
                   <input
                     type="text"
                     name="customGender"
                     value={formData.customGender}
                     onChange={handleInputChange}
                     placeholder="Enter your gender (optional)"
-                    className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   />
                 )}
               </div>
@@ -458,12 +476,14 @@ const Signup: React.FC = () => {
                   name="country"
                   value={formData.country}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   required
                 >
                   <option value="">Select your location</option>
-                  {locations.map(location => (
-                    <option key={location} value={location}>{location}</option>
+                  {locations.map((location) => (
+                    <option key={location} value={location}>
+                      {location}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -471,25 +491,39 @@ const Signup: React.FC = () => {
               {/* Policy Text */}
               <div className="space-y-2 pt-2">
                 <p className="text-xs text-gray-500">
-                  People who use our service may have uploaded your contact information to ConnectAfrik.{' '}
-                  <Link href="/support" className="text-primary-600 hover:underline">
+                  People who use our service may have uploaded your contact
+                  information to ConnectAfrik.{" "}
+                  <Link
+                    href="/support"
+                    className="text-primary-600 hover:underline"
+                  >
                     Learn more.
                   </Link>
                 </p>
                 <p className="text-xs text-gray-500">
-                  By clicking Sign Up, you agree to our{' '}
-                  <Link href="/terms-of-service" className="text-primary-600 hover:underline">
+                  By clicking Sign Up, you agree to our{" "}
+                  <Link
+                    href="/terms-of-service"
+                    className="text-primary-600 hover:underline"
+                  >
                     Terms
                   </Link>
-                  ,{' '}
-                  <Link href="/privacy-policy" className="text-primary-600 hover:underline">
+                  ,{" "}
+                  <Link
+                    href="/privacy-policy"
+                    className="text-primary-600 hover:underline"
+                  >
                     Privacy Policy
-                  </Link>{' '}
-                  and{' '}
-                  <Link href="/privacy-policy" className="text-primary-600 hover:underline">
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="/privacy-policy"
+                    className="text-primary-600 hover:underline"
+                  >
                     Cookies Policy
                   </Link>
-                  . You may receive SMS Notifications from us and can opt out any time.
+                  . You may receive SMS Notifications from us and can opt out
+                  any time.
                 </p>
               </div>
 
@@ -497,9 +531,9 @@ const Signup: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Creating account...' : 'Sign Up'}
+                {isLoading ? "Creating account..." : "Sign Up"}
               </button>
 
               {/* Sign In Link */}
@@ -515,11 +549,8 @@ const Signup: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <Footer />
     </div>
-  )
+  );
 }
 
 export default Signup

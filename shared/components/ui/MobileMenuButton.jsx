@@ -34,7 +34,7 @@ const MobileMenuButton = () => {
       {/* Floating Hamburger Button - Only visible on mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-20 right-4 z-40 bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-primary-700 transition-all duration-300 hover:scale-110"
+        className="lg:hidden fixed bottom-10 right-4 z-40 bg-orange-500/30 backdrop-blur-md text-white p-4 rounded-full shadow-lg hover:bg-orange-600/50 transition-all duration-300 hover:scale-110"
         aria-label="Toggle mobile menu"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

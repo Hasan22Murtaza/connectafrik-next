@@ -92,30 +92,41 @@ const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) =
   // Banner ad (top of page)
   if (type === 'banner') {
     return (
-      <div className={`bg-gradient-to-r from-african-green to-primary-600 text-white py-3 px-4 ${className}`}>
+      <div
+        className={`bg-gradient-to-br from-[#F97316]/40 via-[#149941]/40 to-[#0B7FB0]/30 text-white py-4 px-6 rounded-lg shadow-md ${className} group`}
+      >
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <span className="text-xs bg-white/20 px-2 py-1 rounded">Sponsored</span>
-            <span className="font-medium">{ad.title}</span>
-            <span className="text-green-100 hidden md:block">{ad.description}</span>
+            <span className="text-xs uppercase bg-white/25 backdrop-blur-sm px-3 py-1 rounded-full font-semibold tracking-wide  transition-colors">
+              Sponsored
+            </span>
+            <div className="max-w-[270px]">
+              <h3 className="font-semibold text-lg  transition-colors ">
+                {ad.title}
+              </h3>
+              <p className="hidden md:block text-white/80 text-sm mt-1  transition-colors ">
+                {ad.description}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 ">
             <button
               onClick={handleAdClick}
-              className="bg-white text-primary-600 px-4 py-1 rounded font-medium text-sm hover:bg-gray-100 transition-colors"
+              className="bg-white text-primary-600 px-5 py-2 rounded-md font-semibold text-sm hover:bg-gray-100 transition-colors shadow-sm cursor-pointer"
             >
               {ad.cta}
             </button>
             <button
               onClick={handleAdClose}
-              className="text-white/70 hover:text-white"
+              aria-label="Close ad"
+              className="text-white/70 hover:text-white transition-colors cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Native ad (in feed)

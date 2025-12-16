@@ -33,7 +33,7 @@ const Footer: React.FC = () => {
                 href="https://facebook.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-black transition-colors"
+                className="text-gray-600 hover:text-orange-500 transition-colors"
               >
                 <Facebook className="w-5 h-5" />
               </a>
@@ -41,7 +41,7 @@ const Footer: React.FC = () => {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-black transition-colors"
+                className="text-gray-600 hover:text-orange-500 transition-colors"
               >
                 <Twitter className="w-5 h-5" />
               </a>
@@ -49,7 +49,7 @@ const Footer: React.FC = () => {
                 href="https://instagram.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-black transition-colors"
+                className="text-gray-600 hover:text-orange-500 transition-colors"
               >
                 <Instagram className="w-5 h-5" />
               </a>
@@ -57,7 +57,7 @@ const Footer: React.FC = () => {
                 href="https://youtube.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-gray-600 hover:text-black transition-colors"
+                className="text-gray-600 hover:text-orange-500 transition-colors"
               >
                 <Youtube className="w-5 h-5" />
               </a>

@@ -89,9 +89,7 @@ const ResetPassword: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-r from-african-green to-african-gold rounded-full">
-              <Globe className="w-8 h-8 text-white" />
-            </div>
+            <img src="/assets/images/logo_2.png" alt="" className="w-30" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             {isSuccess ? "Password Updated!" : "Set New Password"}

@@ -42,12 +42,12 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
+      <div className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible py-1">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
           <Link href="/" className="flex-shrink-0 ">
             {/* <LogoNext size="lg" /> */}
-            <img src="/assets/images/logo_2.png" alt="" className="w-20" />
+            <img src="/assets/images/logo_2.png" alt="" className="w-16" />
           </Link>
 
           {/* Search Bar - Hidden on mobile, visible on tablet+ */}
@@ -111,7 +111,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                 </nav>
 
                 {/* Notifications & Messaging */}
-                <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 pr-1 sm:pr-2 lg:pr-4 border-r border-gray-200">
+                <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4  border-gray-200">
                   <div className="relative">
                     <button
                       onClick={() => {
@@ -240,7 +240,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
 
       {/* Mobile Navigation */}
       {user && (
-        <div className="md:hidden bg-white border-t border-gray-200">
+        <div className="md:hidden bg-white border-t border-gray-200 py-1 ">
           <nav className="flex justify-around py-2">
             <Link
               href="/feed"
