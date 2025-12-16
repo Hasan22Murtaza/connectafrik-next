@@ -1,11 +1,17 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { PaystackButton } from 'react-paystack'
+import dynamic from 'next/dynamic'
 import { X, ShoppingCart, MapPin, Phone, Mail, Info } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Product } from '@/shared/types'
+
+// Dynamically import PaystackButton to avoid SSR issues
+const PaystackButton = dynamic(
+  () => import('react-paystack').then((mod) => mod.PaystackButton),
+  { ssr: false }
+)
 // Email functions moved to API routes
 const sendOrderConfirmationEmail = async (buyerEmail: string, orderDetails: any) => {
   try {

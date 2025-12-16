@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useRef } from 'react'
 import { X, Upload, DollarSign, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'

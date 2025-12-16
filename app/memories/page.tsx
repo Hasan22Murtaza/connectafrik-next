@@ -27,7 +27,7 @@ const MemoriesPage: React.FC = () => {
   const shareUrl = useMemo(() => {
     if (!shareModalState.reelId) return ''
     if (typeof window === 'undefined') return `/memories/${shareModalState.reelId}`
-    return `${window.location.origin}/memories/${shareModalState.reelId}`
+    return `${process.env.NEXT_PUBLIC_APP_UR}/memories/${shareModalState.reelId}`
   }, [shareModalState.reelId])
 
   console.log('Memories page state:', { 

@@ -45,7 +45,7 @@ export const sharePost = async (postId: string): Promise<{ success: boolean; err
 
     // Also copy link to clipboard
     try {
-      const url = `${window.location.origin}/post/${postId}`
+      const url = `${process.env.NEXT_PUBLIC_APP_UR}/post/${postId}`
       await navigator.clipboard.writeText(url)
     } catch (clipboardError) {
       console.warn('Could not copy to clipboard:', clipboardError)

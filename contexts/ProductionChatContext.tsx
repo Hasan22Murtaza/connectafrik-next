@@ -81,12 +81,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       return prev
     })
     // Dispatch custom event to open chat dock
-    window.dispatchEvent(new CustomEvent('openChatThread', { detail: { threadId } }))
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('openChatThread', { detail: { threadId } }))
+    }
   }, [])
 
   const closeThread = useCallback((threadId: string) => {
     setOpenThreads(prev => prev.filter(id => id !== threadId))
-    window.dispatchEvent(new CustomEvent('closeChatThread', { detail: { threadId } }))
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('closeChatThread', { detail: { threadId } }))
+    }
   }, [])
 
   const getThreadById = useCallback((threadId: string) => {
@@ -141,7 +145,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       // Dispatch event for chat system to handle
-      window.dispatchEvent(new CustomEvent('chatThreadCreated', { detail: threadData }))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('chatThreadCreated', { detail: threadData }))
+      }
 
       return threadId
     } catch (error) {
@@ -172,16 +178,18 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }))
 
       // Dispatch event to start the call
-      window.dispatchEvent(new CustomEvent('startCall', {
-        detail: {
-          threadId,
-          type,
-          meetingId: roomId,
-          token,
-          participantId: currentUser?.id,
-          participantName: currentUser?.name
-        }
-      }))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('startCall', {
+          detail: {
+            threadId,
+            type,
+            meetingId: roomId,
+            token,
+            participantId: currentUser?.id,
+            participantName: currentUser?.name
+          }
+        }))
+      }
 
       // Also dispatch to the other participant(s) via WebSocket/Realtime
       // This would be handled by your realtime service
@@ -200,6 +208,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   // Listen for incoming call requests (from WebSocket/Realtime)
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
     const handleIncomingCall = (event: CustomEvent) => {
       const { threadId, type, callerId, callerName, roomId, token } = event.detail
       
