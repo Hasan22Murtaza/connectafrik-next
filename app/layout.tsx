@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
-import Header from "@/shared/components/layout/HeaderNext";
+import ConditionalHeader from "./components/ConditionalHeader";
 import Footer from "@/shared/components/layout/FooterNext";
 
 const geistSans = Geist({
@@ -32,7 +32,7 @@ export default function RootLayout({
       >
         <Providers>
           <div className="min-h-screen bg-white">
-            <Header />
+            <ConditionalHeader />
             {children}
             <Footer />
           </div>

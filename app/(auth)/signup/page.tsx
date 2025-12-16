@@ -3,250 +3,523 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Globe, Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
+import Logo from '@/shared/components/ui/Logo'
+import Footer from '@/shared/components/layout/FooterNext'
 import toast from 'react-hot-toast'
 
 const Signup: React.FC = () => {
   const { signUp } = useAuth()
   const router = useRouter()
   const [formData, setFormData] = useState({
-    email: '',
+    firstName: '',
+    lastName: '',
+    username: '',
+    emailOrPhone: '',
     password: '',
-    confirmPassword: ''
+    birthMonth: '',
+    birthDay: '',
+    birthYear: '',
+    gender: '',
+    customGender: '',
+    country: ''
   })
   const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  // Helper function to detect if input is email or phone
+  const isEmail = (input: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(input)
+  }
+
+  // Helper function to validate email format
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+    return emailRegex.test(email)
+  }
+
+  // Helper function to validate phone format
+  const isValidPhone = (phone: string): boolean => {
+    // Remove all non-digit characters
+    const cleanPhone = phone.replace(/\D/g, '')
+    // Check if it's a valid phone number (7-15 digits)
+    return cleanPhone.length >= 7 && cleanPhone.length <= 15
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     // Validation
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
+    if (!formData.firstName || !formData.lastName) {
+      toast.error('Please enter your first and last name')
       return
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters')
+    if (!formData.username || formData.username.trim().length < 3) {
+      toast.error('Please enter a username (at least 3 characters)')
       return
     }
+
+    // Check username format (alphanumeric, underscores, hyphens only)
+    if (!/^[a-zA-Z0-9_-]+$/.test(formData.username)) {
+      toast.error('Username can only contain letters, numbers, underscores, and hyphens')
+      return
+    }
+
+    if (!formData.emailOrPhone) {
+      toast.error('Please enter your mobile number or email')
+      return
+    }
+
+    // Smart email/phone validation
+    const input = formData.emailOrPhone.trim()
+    const isEmailInput = isEmail(input)
     
+    if (isEmailInput) {
+      // Validate email format
+      if (!isValidEmail(input)) {
+        toast.error('Please enter a valid email address (e.g., user@example.com)')
+        return
+      }
+    } else {
+      // Validate phone format
+      if (!isValidPhone(input)) {
+        toast.error('Please enter a valid phone number (e.g., +1234567890 or 1234567890)')
+        return
+      }
+    }
+
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long')
+      return
+    }
+
+    if (!formData.birthMonth || !formData.birthDay || !formData.birthYear) {
+      toast.error('Please enter your complete birthday')
+      return
+    }
+
+    if (!formData.gender) {
+      toast.error('Please select your gender')
+      return
+    }
+
+    if (!formData.country) {
+      toast.error('Please select your location')
+      return
+    }
+
     setIsLoading(true)
     try {
-      const { error } = await signUp(formData.email, formData.password)
+      // Construct birthday
+      const birthday = `${formData.birthYear}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`
 
-      if (error) {
-        toast.error(error.message)
+      // Profile data to pass to verification page
+      const profileData = {
+        username: formData.username,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        birthday: birthday,
+        gender: formData.gender === 'custom' ? formData.customGender : formData.gender,
+        country: formData.country
+      }
+
+      if (isEmailInput) {
+        // Email signup - use Supabase signUp with metadata
+        const { data, error } = await supabase.auth.signUp({
+          email: input,
+          password: formData.password,
+          options: {
+            data: {
+              ...profileData,
+              phone_number: null,
+              is_phone_registration: false
+            }
+          }
+        })
+
+        if (error) {
+          console.error('Email signup error:', error)
+          if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
+            toast.error('An account with this email already exists. Please sign in instead.')
+            router.push('/signin')
+          } else if (error.message?.includes('Invalid email') || error.message?.includes('invalid email')) {
+            toast.error('Please enter a valid email address (e.g., user@example.com)')
+          } else if (error.message?.includes('Password should be at least')) {
+            toast.error('Password must be at least 8 characters long.')
+          } else if (error.message?.includes('rate limit')) {
+            toast.error('Too many attempts. Please wait a moment and try again.')
+          } else if (error.message?.includes('network') || error.message?.includes('connection')) {
+            toast.error('Network error. Please check your connection and try again.')
+          } else {
+            const errorMsg = error.message || 'Failed to create account'
+            toast.error(errorMsg)
+          }
+        } else {
+          console.log('Email signup success:', data)
+          toast.success('Account created successfully! Please check your email to verify your account.')
+          router.push('/signin')
+        }
       } else {
-        toast.success('Account created successfully! Please check your email to verify your account.')
-        router.push('/signin')
+        // Phone signup - use Supabase Phone Auth with OTP
+        const cleanPhone = input.trim()
+
+        // Validate phone format (should start with + for international)
+        if (!cleanPhone.startsWith('+')) {
+          toast.error('Phone number must include country code (e.g., +1234567890)')
+          return
+        }
+
+        // Send OTP via Supabase Phone Auth
+        const { data, error } = await supabase.auth.signInWithOtp({
+          phone: cleanPhone,
+          options: {
+            data: {
+              ...profileData,
+              phone_number: cleanPhone,
+              is_phone_registration: true
+            }
+          }
+        })
+
+        if (error) {
+          console.error('Phone OTP error:', error)
+          if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
+            toast.error('An account with this phone number already exists. Please sign in instead.')
+            router.push('/signin')
+          } else if (error.message?.includes('Invalid phone') || error.message?.includes('invalid phone')) {
+            toast.error('Please enter a valid phone number with country code (e.g., +1234567890)')
+          } else if (error.message?.includes('rate limit')) {
+            toast.error('Too many attempts. Please wait a moment and try again.')
+          } else if (error.message?.includes('Phone Provider not enabled')) {
+            toast.error('Phone authentication is not enabled. Please use email signup or contact support.')
+          } else {
+            const errorMsg = error.message || 'Failed to send verification code'
+            toast.error(errorMsg)
+          }
+        } else {
+          console.log('Phone OTP sent:', data)
+          toast.success('Verification code sent to your phone!')
+
+          // Navigate to OTP verification page (if it exists)
+          // For now, redirect to signin - you may need to create a verify-otp page
+          router.push('/signin')
+        }
       }
     } catch (error: any) {
+      console.error('Signup exception:', error)
       toast.error('An unexpected error occurred')
     } finally {
       setIsLoading(false)
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-african-green/10 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-r from-african-green to-african-gold rounded-full">
-              <Globe className="w-8 h-8 text-white" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Join ConnectAfrik
-          </h1>
-          <p className="text-gray-600">
-            Create your account and start connecting with the African community
-          </p>
-        </div>
+  // Generate arrays for date dropdowns
+  const months = [
+    { value: '1', label: 'January' }, { value: '2', label: 'February' },
+    { value: '3', label: 'March' }, { value: '4', label: 'April' },
+    { value: '5', label: 'May' }, { value: '6', label: 'June' },
+    { value: '7', label: 'July' }, { value: '8', label: 'August' },
+    { value: '9', label: 'September' }, { value: '10', label: 'October' },
+    { value: '11', label: 'November' }, { value: '12', label: 'December' }
+  ]
 
-        {/* Form */}
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+  const days = Array.from({ length: 31 }, (_, i) => i + 1)
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: 120 }, (_, i) => currentYear - i)
+
+  const locations = [
+    // African Countries
+    'Ghana', 'Nigeria', 'Kenya', 'South Africa', 'Ethiopia', 'Egypt',
+    'Tanzania', 'Uganda', 'Algeria', 'Morocco', 'Angola', 'Sudan',
+    'Mozambique', 'Madagascar', 'Cameroon', 'Ivory Coast', 'Niger',
+    'Burkina Faso', 'Mali', 'Malawi', 'Zambia', 'Senegal', 'Somalia',
+    'Chad', 'Zimbabwe', 'Guinea', 'Rwanda', 'Benin', 'Tunisia',
+    'Burundi', 'Togo', 'Sierra Leone', 'Libya', 'Liberia', 'Mauritania',
+    'Congo', 'Namibia', 'Botswana', 'Gabon', 'Gambia', 'Guinea-Bissau',
+    'Equatorial Guinea', 'Mauritius', 'Eswatini', 'Djibouti', 'Comoros',
+    'Cape Verde', 'São Tomé and Príncipe', 'Seychelles',
+    // Other Regions & Countries
+    'United States of America', 'United Kingdom', 'France', 'Germany',
+    'Australia', 'India', 'China', 'Europe', 'Asia', 'Caribbean', 'Other'
+  ].sort()
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-4 py-8">
+        <div className="max-w-md w-full">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center mb-3">
+              <Logo size="lg" />
+            </div>
+            <h1 className="text-3xl font-bold text-primary-600 mb-1">ConnectAfrik</h1>
+            <p className="text-gray-600 text-sm">Connect with the African community worldwide</p>
+          </div>
+
+          {/* Form Card */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">Create a new account</h2>
+            <p className="text-gray-500 text-sm mb-4">It's quick and easy.</p>
+
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {/* First Name and Last Name */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    placeholder="First name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    required
+                  />
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    placeholder="Last name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Username */}
+              <div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
+                  type="text"
+                  name="username"
+                  value={formData.username}
                   onChange={handleInputChange}
-                  className="input-field !pl-10"
-                  placeholder="Enter your email"
+                  placeholder="Username"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                  required
                 />
               </div>
-            </div>
 
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              {/* Mobile number or email */}
+              <div>
                 <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
+                  type="text"
+                  name="emailOrPhone"
+                  value={formData.emailOrPhone}
+                  onChange={handleInputChange}
+                  placeholder="Mobile number or email"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
                   required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter your email (user@example.com) or phone number (+1234567890)
+                </p>
+              </div>
+
+              {/* Password */}
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="input-field !px-10"
-                  placeholder="Create a password"
-                  minLength={6}
+                  placeholder="New password"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50 pr-10"
+                  required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Must be at least 6 characters
-              </p>
-            </div>
 
-            {/* Confirm Password */}
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Confirm Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
-                  required
-                  value={formData.confirmPassword}
+              {/* Birthday */}
+              <div>
+                <label className="flex items-center text-xs text-gray-600 mb-1">
+                  Birthday
+                  <span className="ml-1 text-gray-400 cursor-help" title="Provide your date of birth">
+                    ⓘ
+                  </span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <select
+                    name="birthMonth"
+                    value={formData.birthMonth}
+                    onChange={handleInputChange}
+                    className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    required
+                  >
+                    <option value="">Month</option>
+                    {months.map(month => (
+                      <option key={month.value} value={month.value}>{month.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    name="birthDay"
+                    value={formData.birthDay}
+                    onChange={handleInputChange}
+                    className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    required
+                  >
+                    <option value="">Day</option>
+                    {days.map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                  <select
+                    name="birthYear"
+                    value={formData.birthYear}
+                    onChange={handleInputChange}
+                    className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                    required
+                  >
+                    <option value="">Year</option>
+                    {years.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className="flex items-center text-xs text-gray-600 mb-1">
+                  Gender
+                  <span className="ml-1 text-gray-400 cursor-help" title="Select your gender">
+                    ⓘ
+                  </span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="female"
+                      checked={formData.gender === 'female'}
+                      onChange={handleInputChange}
+                      className="mr-2 text-primary-600 focus:ring-primary-500"
+                      required
+                    />
+                    Female
+                  </label>
+                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="male"
+                      checked={formData.gender === 'male'}
+                      onChange={handleInputChange}
+                      className="mr-2 text-primary-600 focus:ring-primary-500"
+                      required
+                    />
+                    Male
+                  </label>
+                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="custom"
+                      checked={formData.gender === 'custom'}
+                      onChange={handleInputChange}
+                      className="mr-2 text-primary-600 focus:ring-primary-500"
+                      required
+                    />
+                    Custom
+                  </label>
+                </div>
+                {formData.gender === 'custom' && (
+                  <input
+                    type="text"
+                    name="customGender"
+                    value={formData.customGender}
+                    onChange={handleInputChange}
+                    placeholder="Enter your gender (optional)"
+                    className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                  />
+                )}
+              </div>
+
+              {/* Country */}
+              <div>
+                <select
+                  name="country"
+                  value={formData.country}
                   onChange={handleInputChange}
-                  className="input-field !px-10"
-                  placeholder="Confirm your password"
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-gray-50"
+                  required
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
+                  <option value="">Select your location</option>
+                  {locations.map(location => (
+                    <option key={location} value={location}>{location}</option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            {/* Terms and Conditions */}
-            <div className="flex items-start">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                required
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mt-1"
-              />
-              <label
-                htmlFor="terms"
-                className="ml-2 block text-sm text-gray-700"
+              {/* Policy Text */}
+              <div className="space-y-2 pt-2">
+                <p className="text-xs text-gray-500">
+                  People who use our service may have uploaded your contact information to ConnectAfrik.{' '}
+                  <Link href="/support" className="text-primary-600 hover:underline">
+                    Learn more.
+                  </Link>
+                </p>
+                <p className="text-xs text-gray-500">
+                  By clicking Sign Up, you agree to our{' '}
+                  <Link href="/terms-of-service" className="text-primary-600 hover:underline">
+                    Terms
+                  </Link>
+                  ,{' '}
+                  <Link href="/privacy-policy" className="text-primary-600 hover:underline">
+                    Privacy Policy
+                  </Link>{' '}
+                  and{' '}
+                  <Link href="/privacy-policy" className="text-primary-600 hover:underline">
+                    Cookies Policy
+                  </Link>
+                  . You may receive SMS Notifications from us and can opt out any time.
+                </p>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2.5 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                I agree to the{" "}
-                <Link
-                  href="/terms-of-service"
-                  className="text-primary-600 hover:text-primary-500"
-                >
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link
-                  href="/privacy-policy"
-                  className="text-primary-600 hover:text-primary-500"
-                >
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
+                {isLoading ? 'Creating account...' : 'Sign Up'}
+              </button>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Creating Account..." : "Create Account"}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+              {/* Sign In Link */}
+              <div className="text-center pt-2">
+                <Link
+                  href="/signin"
+                  className="text-primary-600 hover:underline text-sm font-medium"
+                >
                   Already have an account?
-                </span>
+                </Link>
               </div>
-            </div>
-          </div>
-
-          {/* Sign In Link */}
-          <div className="mt-6">
-            <Link
-              href="/signin"
-              className="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
-            >
-              Sign In Instead
-            </Link>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              Join thousands of Africans sharing their stories, culture, and
-              political insights
-            </p>
+            </form>
           </div>
         </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
-  );
+  )
 }
 
 export default Signup
