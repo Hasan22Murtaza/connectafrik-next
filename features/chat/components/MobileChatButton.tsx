@@ -16,8 +16,12 @@ const MobileChatButton: React.FC = () => {
 
     await startChatWithMembers([{
       id: member.id,
-      name: member.name || 'User'
-    }], { participant_ids: [member.id] })
+      name: member.name || 'User',
+      avatarUrl: member.avatar_url || undefined
+    }], { 
+      participant_ids: [member.id],
+      openInDock: true 
+    })
     
     setShowContacts(false)
   }

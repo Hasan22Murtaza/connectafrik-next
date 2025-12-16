@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { ChatMessage, ChatThread } from '@/features/chat/services/supabaseMessagingService'
+import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 
 interface ChatParticipant {
@@ -102,20 +102,49 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [messages])
 
   const sendMessage = useCallback(async (threadId: string, text: string, payload?: any) => {
-    // In a fuller implementation this would persist via supabaseMessagingService
-    const message: ChatMessage = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      thread_id: threadId,
-      sender_id: currentUser?.id || '',
-      content: text,
-      created_at: new Date().toISOString(),
-      ...payload,
+    if (!currentUser) {
+      console.error('Cannot send message: no current user')
+      return
     }
-    setMessages(prev => {
-      const current = prev[threadId] || []
-      return { ...prev, [threadId]: [...current, message] }
-    })
-  }, [currentUser?.id])
+
+    try {
+      // Persist message via supabaseMessagingService
+      const message = await supabaseMessagingService.sendMessage(threadId, {
+        content: text,
+        attachments: payload?.attachments,
+        reply_to_id: payload?.reply_to_id,
+        message_type: payload?.message_type,
+        metadata: payload?.metadata,
+      }, currentUser)
+
+      // Update local messages state
+      setMessages(prev => {
+        const current = prev[threadId] || []
+        // Check if message already exists (avoid duplicates)
+        if (current.some(m => m.id === message.id)) {
+          return prev
+        }
+        return { ...prev, [threadId]: [...current, message] }
+      })
+    } catch (error) {
+      console.error('Error sending message:', error)
+      // Fallback: add message to local state even if persistence fails
+      const fallbackMessage: ChatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        thread_id: threadId,
+        sender_id: currentUser.id,
+        content: text,
+        created_at: new Date().toISOString(),
+        read_by: [currentUser.id],
+        is_deleted: false,
+        ...payload,
+      }
+      setMessages(prev => {
+        const current = prev[threadId] || []
+        return { ...prev, [threadId]: [...current, fallbackMessage] }
+      })
+    }
+  }, [currentUser])
 
   const markThreadRead = useCallback((threadId: string) => {
     // Placeholder: in production, update unread counts in storage
@@ -127,26 +156,68 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     participants: ChatParticipant[],
     options?: ThreadOptions
   ): Promise<string | null> => {
+    if (!currentUser) {
+      console.error('Cannot start chat: no current user')
+      return null
+    }
+
     try {
-      // Generate a thread ID (in production, this would be created in the database)
-      const threadId = `thread_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      
-      // Store thread info (in production, this would be stored in database)
-      const threadData = {
-        id: threadId,
-        participants,
-        options,
-        createdAt: new Date().toISOString()
+      // Create thread in database using supabaseMessagingService
+      const threadId = await supabaseMessagingService.createThread(currentUser, {
+        participant_ids: options?.participant_ids || participants.map(p => p.id),
+        type: options?.type,
+        title: options?.name,
+        name: options?.name,
+        metadata: options?.metadata,
+      })
+
+      if (!threadId) {
+        console.error('Failed to create thread')
+        return null
       }
 
-      // Open the thread if requested
-      if (options?.openInDock) {
+      // Fetch the created thread to get full details
+      const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
+      const createdThread = userThreads.find(t => t.id === threadId)
+
+      if (createdThread) {
+        // Add thread to threads state
+        setThreads(prev => {
+          const exists = prev.find(t => t.id === threadId)
+          if (exists) return prev
+          return [...prev, createdThread]
+        })
+      } else {
+        // If thread not found, create a temporary thread object
+        const tempThread: ChatThread = {
+          id: threadId,
+          name: options?.name || participants.map(p => p.name).join(', ') || 'Chat',
+          type: options?.type || (participants.length > 1 ? 'group' : 'direct'),
+          participants: [currentUser, ...participants],
+          last_message_preview: null,
+          last_message_at: new Date().toISOString(),
+          unread_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+        setThreads(prev => {
+          const exists = prev.find(t => t.id === threadId)
+          if (exists) return prev
+          return [...prev, tempThread]
+        })
+      }
+
+      // Open the thread if requested (default to true if not specified)
+      const shouldOpen = options?.openInDock !== false
+      if (shouldOpen) {
         openThread(threadId)
       }
 
       // Dispatch event for chat system to handle
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('chatThreadCreated', { detail: threadData }))
+        window.dispatchEvent(new CustomEvent('chatThreadCreated', { 
+          detail: { threadId, participants, options } 
+        }))
       }
 
       return threadId
@@ -154,7 +225,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       console.error('Failed to start chat:', error)
       return null
     }
-  }, [openThread])
+  }, [currentUser, openThread])
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
     try {
@@ -232,6 +303,54 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       window.removeEventListener('incomingCall', handleIncomingCall as EventListener)
     }
   }, [])
+
+  // Load messages for open threads
+  useEffect(() => {
+    const loadMessagesForThreads = async () => {
+      if (!currentUser || openThreads.length === 0) return
+
+      for (const threadId of openThreads) {
+        try {
+          // Always fetch latest messages when thread opens
+          const threadMessages = await supabaseMessagingService.getThreadMessages(threadId)
+          setMessages(prev => ({
+            ...prev,
+            [threadId]: threadMessages
+          }))
+        } catch (error) {
+          console.error(`Error loading messages for thread ${threadId}:`, error)
+        }
+      }
+    }
+
+    loadMessagesForThreads()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, openThreads.join(',')])
+
+  // Subscribe to new messages for open threads
+  useEffect(() => {
+    if (!currentUser) return
+
+    const unsubscribeCallbacks: (() => void)[] = []
+
+    openThreads.forEach(threadId => {
+      const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
+        setMessages(prev => {
+          const current = prev[threadId] || []
+          // Avoid duplicates
+          if (current.some(m => m.id === message.id)) {
+            return prev
+          }
+          return { ...prev, [threadId]: [...current, message] }
+        })
+      })
+      unsubscribeCallbacks.push(unsubscribe)
+    })
+
+    return () => {
+      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
+    }
+  }, [currentUser, openThreads])
 
   // Update current user's presence to online when component mounts
   useEffect(() => {

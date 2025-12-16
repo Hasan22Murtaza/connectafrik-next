@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import ConditionalHeader from "./components/ConditionalHeader";
 import Footer from "@/shared/components/layout/FooterNext";
+import GlobalComponents from "./components/GlobalComponents";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
             {children}
             <Footer />
           </div>
+          <GlobalComponents />
         </Providers>
       </body>
     </html>

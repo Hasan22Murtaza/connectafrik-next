@@ -12,6 +12,8 @@ const ChatDock: React.FC = () => {
     closeThread,
     openThread,
     currentUser,
+    threads: contextThreads,
+    getThreadById,
   } = useProductionChat()
   
   const [mounted, setMounted] = useState(false)
@@ -25,21 +27,46 @@ const ChatDock: React.FC = () => {
   useEffect(() => {
     const loadThreads = async () => {
       if (currentUser && openThreads.length > 0) {
-        const userThreads = await supabaseMessagingService.getUserThreads({
-          id: currentUser.id,
-          name: currentUser.name || '',
-        })
         const threadMap = new Map<string, ChatThread>()
-        userThreads.forEach(thread => {
+        
+        // First, add threads from context (these are newly created or recently updated)
+        contextThreads.forEach(thread => {
           if (openThreads.includes(thread.id)) {
             threadMap.set(thread.id, thread)
           }
         })
+
+        // Then, load any missing threads from database
+        const missingThreadIds = openThreads.filter(id => !threadMap.has(id))
+        if (missingThreadIds.length > 0) {
+          const userThreads = await supabaseMessagingService.getUserThreads({
+            id: currentUser.id,
+            name: currentUser.name || '',
+          })
+          userThreads.forEach(thread => {
+            if (missingThreadIds.includes(thread.id)) {
+              threadMap.set(thread.id, thread)
+            }
+          })
+        }
+
+        // For any threads still missing, try to get from context's getThreadById
+        openThreads.forEach(threadId => {
+          if (!threadMap.has(threadId)) {
+            const thread = getThreadById(threadId)
+            if (thread) {
+              threadMap.set(threadId, thread)
+            }
+          }
+        })
+
         setThreads(threadMap)
+      } else {
+        setThreads(new Map())
       }
     }
     loadThreads()
-  }, [currentUser, openThreads])
+  }, [currentUser, openThreads, contextThreads, getThreadById])
 
   const minimizeThread = (threadId: string) => {
     setMinimizedThreadIds(prev => {
