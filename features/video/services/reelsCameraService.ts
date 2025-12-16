@@ -1,7 +1,3 @@
-import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from '@capacitor-community/camera-preview'
-import { Capacitor } from '@capacitor/core'
-import { Filesystem, Directory } from '@capacitor/filesystem'
-
 /**
  * Reels Camera Service - Native Camera for Video Recording
  *
@@ -16,7 +12,18 @@ import { Filesystem, Directory } from '@capacitor/filesystem'
  * - Native camera quality
  * - Flash control
  * - Zoom control
+ *
+ * Note: This service requires Capacitor packages:
+ * - @capacitor-community/camera-preview
+ * - @capacitor/core
+ * - @capacitor/filesystem
+ * For web environments, it will provide fallback behavior.
  */
+
+// Type declarations for optional Capacitor imports
+type CameraPreviewModule = typeof import('@capacitor-community/camera-preview')
+type CapacitorCore = typeof import('@capacitor/core')
+type FilesystemModule = typeof import('@capacitor/filesystem')
 
 export interface ReelsCameraOptions {
   position?: 'front' | 'rear'
@@ -34,12 +41,42 @@ export interface VideoRecordingResult {
 class ReelsCameraService {
   private isRecording = false
   private recordingStartTime: number | null = null
+  private cameraPreviewModule: CameraPreviewModule | null = null
+  private capacitorModule: CapacitorCore | null = null
+  private filesystemModule: FilesystemModule | null = null
+  private initialized = false
+
+  /**
+   * Initialize Capacitor modules (only if available)
+   */
+  private async initialize(): Promise<void> {
+    if (this.initialized) return
+
+    try {
+      // Try to dynamically import Capacitor modules
+      const [cameraPreview, capacitor, filesystem] = await Promise.all([
+        import('@capacitor-community/camera-preview').catch(() => null),
+        import('@capacitor/core').catch(() => null),
+        import('@capacitor/filesystem').catch(() => null)
+      ])
+
+      this.cameraPreviewModule = cameraPreview
+      this.capacitorModule = capacitor
+      this.filesystemModule = filesystem
+    } catch (error) {
+      // Capacitor not available - this is fine for web environments
+      console.log('Capacitor modules not available, using web fallbacks')
+    }
+
+    this.initialized = true
+  }
 
   /**
    * Check if running on native platform
    */
   isNative(): boolean {
-    return Capacitor.isNativePlatform()
+    if (typeof window === 'undefined') return false
+    return this.capacitorModule?.Capacitor?.isNativePlatform() ?? false
   }
 
   /**
@@ -47,13 +84,16 @@ class ReelsCameraService {
    * This shows the camera in a specified HTML element or fullscreen
    */
   async startCamera(options: ReelsCameraOptions = {}): Promise<void> {
-    if (!this.isNative()) {
-      console.warn('Camera preview only available on native platforms')
+    await this.initialize()
+
+    if (!this.isNative() || !this.cameraPreviewModule) {
+      console.warn('Camera preview only available on native platforms with Capacitor')
       return
     }
 
     try {
-      const cameraOptions: CameraPreviewOptions = {
+      const { CameraPreview } = this.cameraPreviewModule
+      const cameraOptions = {
         position: options.position || 'front',
         parent: options.parent || 'cameraPreview',
         className: 'camera-preview',
@@ -64,7 +104,7 @@ class ReelsCameraService {
         disableAudio: false
       }
 
-      await CameraPreview.start(cameraOptions)
+      await CameraPreview.start(cameraOptions as any)
       console.log('✅ Camera started successfully')
     } catch (error: any) {
       console.error('Error starting camera:', error)
@@ -76,7 +116,15 @@ class ReelsCameraService {
    * Stop camera preview
    */
   async stopCamera(): Promise<void> {
+    await this.initialize()
+
+    if (!this.cameraPreviewModule) {
+      console.warn('Camera preview not available')
+      return
+    }
+
     try {
+      const { CameraPreview } = this.cameraPreviewModule
       await CameraPreview.stop()
       console.log('✅ Camera stopped successfully')
     } catch (error: any) {
@@ -89,8 +137,10 @@ class ReelsCameraService {
    * Start recording video
    */
   async startRecording(): Promise<void> {
-    if (!this.isNative()) {
-      throw new Error('Video recording only available on native platforms')
+    await this.initialize()
+
+    if (!this.isNative() || !this.cameraPreviewModule) {
+      throw new Error('Video recording only available on native platforms with Capacitor')
     }
 
     if (this.isRecording) {
@@ -98,6 +148,7 @@ class ReelsCameraService {
     }
 
     try {
+      const { CameraPreview } = this.cameraPreviewModule
       await CameraPreview.startRecordVideo({
         // Video options can be configured here
       })
@@ -115,11 +166,18 @@ class ReelsCameraService {
    * Stop recording and get video file
    */
   async stopRecording(): Promise<VideoRecordingResult> {
+    await this.initialize()
+
     if (!this.isRecording) {
       throw new Error('Not currently recording')
     }
 
+    if (!this.cameraPreviewModule) {
+      throw new Error('Camera preview not available')
+    }
+
     try {
+      const { CameraPreview } = this.cameraPreviewModule
       const result = await CameraPreview.stopRecordVideo()
 
       this.isRecording = false
@@ -147,7 +205,14 @@ class ReelsCameraService {
    * Flip camera between front and back
    */
   async flipCamera(): Promise<void> {
+    await this.initialize()
+
+    if (!this.cameraPreviewModule) {
+      throw new Error('Camera preview not available')
+    }
+
     try {
+      const { CameraPreview } = this.cameraPreviewModule
       await CameraPreview.flip()
       console.log('✅ Camera flipped')
     } catch (error: any) {
@@ -160,12 +225,19 @@ class ReelsCameraService {
    * Capture a still image (for thumbnail)
    */
   async captureThumbnail(quality: number = 85): Promise<string> {
+    await this.initialize()
+
+    if (!this.cameraPreviewModule) {
+      throw new Error('Camera preview not available')
+    }
+
     try {
-      const options: CameraPreviewPictureOptions = {
+      const { CameraPreview } = this.cameraPreviewModule
+      const options = {
         quality
       }
 
-      const result = await CameraPreview.capture(options)
+      const result = await CameraPreview.capture(options as any)
       return result.value // Base64 string
     } catch (error: any) {
       console.error('Error capturing thumbnail:', error)
@@ -190,7 +262,14 @@ class ReelsCameraService {
    * Enable/disable flash
    */
   async setFlash(mode: 'on' | 'off' | 'auto'): Promise<void> {
+    await this.initialize()
+
+    if (!this.cameraPreviewModule) {
+      throw new Error('Camera preview not available')
+    }
+
     try {
+      const { CameraPreview } = this.cameraPreviewModule
       await CameraPreview.setFlashMode({ flashMode: mode })
       console.log(`✅ Flash set to ${mode}`)
     } catch (error: any) {
@@ -218,7 +297,14 @@ class ReelsCameraService {
    * Read video file as blob (for uploading)
    */
   async readVideoFile(filePath: string): Promise<Blob> {
+    await this.initialize()
+
+    if (!this.filesystemModule) {
+      throw new Error('Filesystem module not available')
+    }
+
     try {
+      const { Filesystem } = this.filesystemModule
       const contents = await Filesystem.readFile({
         path: filePath
       })
@@ -236,7 +322,15 @@ class ReelsCameraService {
    * Delete video file after upload
    */
   async deleteVideoFile(filePath: string): Promise<void> {
+    await this.initialize()
+
+    if (!this.filesystemModule) {
+      console.warn('Filesystem module not available, cannot delete file')
+      return
+    }
+
     try {
+      const { Filesystem } = this.filesystemModule
       await Filesystem.deleteFile({
         path: filePath
       })

@@ -22,8 +22,8 @@ const VideoSDKSimple: React.FC<VideoSDKSimpleProps> = ({
   const [currentMeetingId, setCurrentMeetingId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
-  const apiKey = import.meta.env.VITE_VIDEOSDK_API_KEY;
-  const secretKey = import.meta.env.VITE_VIDEOSDK_SECRET_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY;
+  const secretKey = process.env.NEXT_PUBLIC_VIDEOSDK_SECRET_KEY;
 
   useEffect(() => {
     if (isOpen) {
@@ -67,9 +67,9 @@ const VideoSDKSimple: React.FC<VideoSDKSimpleProps> = ({
               <p className="font-medium text-blue-800 mb-2">Quick Setup:</p>
               <ol className="space-y-1 text-blue-700">
                 <li>1. Get your API key from <a href="https://videosdk.live/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline font-medium">VideoSDK.live</a></li>
-                <li>2. Create a <code className="bg-blue-100 px-1 rounded">.env</code> file in your project root</li>
-                <li>3. Add: <code className="bg-blue-100 px-1 rounded">VITE_VIDEOSDK_API_KEY=your_api_key_here</code></li>
-                <li>4. Add: <code className="bg-blue-100 px-1 rounded">VITE_VIDEOSDK_SECRET_KEY=your_secret_key_here</code></li>
+                <li>2. Create a <code className="bg-blue-100 px-1 rounded">.env.local</code> file in your project root</li>
+                <li>3. Add: <code className="bg-blue-100 px-1 rounded">NEXT_PUBLIC_VIDEOSDK_API_KEY=your_api_key_here</code></li>
+                <li>4. Add: <code className="bg-blue-100 px-1 rounded">NEXT_PUBLIC_VIDEOSDK_SECRET_KEY=your_secret_key_here</code></li>
                 <li>5. Restart your development server</li>
               </ol>
             </div>

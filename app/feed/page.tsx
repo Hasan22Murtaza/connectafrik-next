@@ -165,7 +165,7 @@ const FeedPage: React.FC = () => {
   const shareUrl = useMemo(() => {
     if (!shareModalState.postId) return ''
     if (typeof window === 'undefined') return `/post/${shareModalState.postId}`
-    return `${window.location.origin}/post/${shareModalState.postId}`
+    return `${process.env.NEXT_PUBLIC_APP_UR}/post/${shareModalState.postId}`
   }, [shareModalState.postId])
 
   const renderPosts = () => {

@@ -100,6 +100,14 @@ const Footer: React.FC = () => {
                   Community Groups
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/our-story"
+                  className="text-gray-800 hover:text-black transition-colors"
+                >
+                  Our Story
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -115,6 +123,7 @@ const Footer: React.FC = () => {
                   Support Center
                 </Link>
               </li>
+              
               <li>
                 <Link
                   href="/guidelines"

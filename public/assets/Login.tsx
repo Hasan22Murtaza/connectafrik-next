@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
 interface LoginFormInputs {
@@ -78,7 +78,7 @@ const Login: React.FC = () => {
             <input type="checkbox" className="mr-2" /> Remember me
           </label>
           <Link
-            to="/forgot-password"
+            href="/forgot-password"
             className="text-sm text-purple-600 hover:underline"
           >
             Forgot password?
@@ -98,7 +98,7 @@ const Login: React.FC = () => {
       {/* Footer */}
       <p className="text-center text-sm text-gray-600 mt-6">
         Don&apos;t have an account?{" "}
-        <Link to="/signup" className="text-purple-600 hover:underline">
+        <Link href="/signup" className="text-purple-600 hover:underline">
           Sign up
         </Link>
       </p>

@@ -68,7 +68,7 @@ export const useImageUpload = () => {
       })
 
       const uploadResponse = await fetch(
-        `${import.meta.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/upload-to-b2`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/upload-to-b2`,
         {
           method: 'POST',
           headers: {
@@ -158,7 +158,7 @@ export const useImageUpload = () => {
       }
 
       const response = await fetch(
-        `${import.meta.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-b2-object`,
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-b2-object`,
         {
           method: 'POST',
           headers: {
@@ -226,6 +226,11 @@ const extractB2Key = (url: string): string | null => {
 
 // Helper function to compress images
 const compressImage = async (file: File): Promise<File> => {
+  // Return original file if not in browser environment
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return file
+  }
+
   return new Promise((resolve) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)

@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useMemo, useEffect } from 'react'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import type { Stripe, StripeElements } from '@stripe/stripe-js'
@@ -187,7 +189,7 @@ const CheckoutFormBase: React.FC<{
       const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: window.location.href, // Won't actually redirect
+          return_url: typeof window !== 'undefined' ? window.location.href : '/marketplace', // Won't actually redirect
         },
         redirect: 'if_required'
       })
