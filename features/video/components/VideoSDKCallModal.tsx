@@ -292,28 +292,50 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   };
 
   // Helper function to get VideoSDK JWT token
-  // Uses supabase.functions.invoke() to automatically add Authorization header
+  // Uses Next.js API route at /api/videosdk/token
   const getVideoSDKToken = async (meetingId?: string, userId?: string): Promise<string> => {
-    console.log('📞 Requesting VideoSDK token from Edge Function');
+    console.log('📞 Requesting VideoSDK token from API route');
 
-    const { data, error } = await supabase.functions.invoke('generate-videosdk-token', {
-      body: {
-        roomId: meetingId || roomIdHint || `room_${Date.now()}`,
-        userId: userId || user?.id || ''
-      }
+    const roomId = meetingId || roomIdHint || `room_${Date.now()}`;
+    const userIdValue = userId || user?.id || '';
+
+    // Get auth token if available
+    let authToken: string | undefined;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      authToken = sessionData.session?.access_token;
+    } catch (error) {
+      console.warn('⚠️ Could not get auth session:', error);
+    }
+
+    const response = await fetch('/api/videosdk/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken && { Authorization: `Bearer ${authToken}` }),
+      },
+      body: JSON.stringify({
+        roomId,
+        userId: userIdValue,
+      }),
     });
 
-    if (error) {
-      console.error('❌ Failed to get VideoSDK token:', error);
-      throw new Error(`Failed to get VideoSDK token: ${error.message}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+      console.error('❌ Failed to get VideoSDK token:', errorMessage);
+      throw new Error(`Failed to get VideoSDK token: ${errorMessage}`);
     }
+
+    const data = await response.json();
+    console.log('🔑 VideoSDK token data:', data);
 
     if (!data?.token || typeof data.token !== 'string') {
-      console.error('❌ Edge Function response missing token:', data);
-      throw new Error('Failed to get VideoSDK token from Edge Function: no token in response');
+      console.error('❌ API response missing token:', data);
+      throw new Error('Failed to get VideoSDK token from API: no token in response');
     }
 
-    console.log('✅ VideoSDK token received from Edge Function');
+    console.log('✅ VideoSDK token received from API route');
     return data.token as string;
   };
 
@@ -331,12 +353,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       console.log('📞 Starting meeting join:', meetingId);
       console.log('🔑 Using JWT token for authentication');
 
-      // ✅ Configure VideoSDK with JWT token (VideoSDK.config expects a string token)
-      VideoSDK.config(token);
-      console.log('🔑 VideoSDK configured with JWT token');
-
-      // ✅ Initialize VideoSDK meeting
+      // ✅ Initialize VideoSDK meeting with token
       const meeting = VideoSDK.initMeeting({
+        token,
         meetingId,
         name: user?.user_metadata?.full_name || user?.email || 'User',
         micEnabled: true,
@@ -531,13 +550,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       setRoomId(roomIdHint);
 
       console.log('📞 Accepting call with meetingId:', roomIdHint);
-      console.log('🔑 Using JWT token (NOT API KEY)');
+      console.log('🔑 Using JWT token for authentication');
 
-      // ✅ Configure VideoSDK with token BEFORE initMeeting (VideoSDK.config expects a string token)
-      VideoSDK.config(token);
-
-      // ✅ Initialize VideoSDK meeting for accepted call
+      // ✅ Initialize VideoSDK meeting for accepted call with token
       const meeting = VideoSDK.initMeeting({
+        token,
         meetingId: roomIdHint,
         name: user?.user_metadata?.full_name || user?.email || 'User',
         micEnabled: true,
