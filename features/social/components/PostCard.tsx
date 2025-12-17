@@ -464,15 +464,15 @@ export const PostCard: React.FC<PostCardProps> = ({
           <button
             onClick={handleFollow}
             disabled={followCheckLoading}
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors disabled:opacity-50  cursor-pointer ${
               isFollowing
-                ? 'bg-gray-600 text-white hover:bg-gray-700'
-                : 'bg-orange-500 text-white hover:bg-orange-600'
+                ? 'bg-gray-400 text-white hover:bg-gray-600'
+                : 'bg-[#FF6900] text-white hover:bg-[#ea580c]'
             }`}
           >
             {followCheckLoading ? (
               <>
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin " />
                 <span>Loading...</span>
               </>
             ) : isFollowing ? (
@@ -491,7 +491,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
               aria-label="Post options"
             >
               <MoreHorizontal className="w-5 h-5 text-gray-600" />
@@ -501,14 +501,14 @@ export const PostCard: React.FC<PostCardProps> = ({
               <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                 <button
                   onClick={handleEditClick}
-                  className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                  className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center space-x-2 cursor-pointer"
                 >
                   <Edit className="w-4 h-4" />
                   <span>Edit Post</span>
                 </button>
                 <button
                   onClick={handleDeleteClick}
-                  className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                  className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center space-x-2 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Delete Post</span>
@@ -632,7 +632,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           {/* Like button */}
           <button
             onClick={() => onLike(post.id)}
-            className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors duration-200 ${
+            className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors duration-200 cursor-pointer ${
               isPostLiked
                 ? 'text-red-600 bg-red-50 hover:bg-red-100'
                 : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
@@ -644,7 +644,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           </button>
 
           {/* View count */}
-          <div className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600">
+          <div className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-500  cursor-pointer">
             <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="text-xs sm:text-sm font-medium">{post.views_count || 0}</span>
           </div>
@@ -654,7 +654,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             <button
               onMouseEnter={handleReactHover}
               onMouseLeave={handleReactLeave}
-              className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200"
+              className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
               aria-label="React to post"
             >
               <Smile className="w-4 h-4 sm:w-5 sm:h-5" />

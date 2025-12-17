@@ -10,6 +10,8 @@ import { useGroupChat } from '@/shared/hooks/useGroupChat'
 import GroupCard from '@/features/groups/components/GroupCard'
 import CreateGroupModal from '@/features/groups/components/CreateGroupModal'
 import { Group } from '@/shared/types'
+import { FaGlobe, FaUsers, FaLandmark, FaTheaterMasks, FaBook, FaBriefcase, FaFistRaised, FaBuilding } from 'react-icons/fa';
+
 import toast from 'react-hot-toast'
 
 const GroupsPage: React.FC = () => {
@@ -23,16 +25,17 @@ const GroupsPage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [filteredGroups, setFilteredGroups] = useState<Group[]>([])
 
-  const categories = [
-    { value: '', label: 'All Categories', icon: '🌍' },
-    { value: 'community', label: 'Community', icon: '👥' },
-    { value: 'politics', label: 'Politics', icon: '🏛️' },
-    { value: 'culture', label: 'Culture', icon: '🎭' },
-    { value: 'education', label: 'Education', icon: '📚' },
-    { value: 'business', label: 'Business', icon: '💼' },
-    { value: 'activism', label: 'Activism', icon: '✊' },
-    { value: 'development', label: 'Development', icon: '🏗️' },
-  ]
+const categories = [
+  { value: '', label: 'All Categories', icon: <FaGlobe /> },
+  { value: 'community', label: 'Community', icon: <FaUsers /> },
+  { value: 'politics', label: 'Politics', icon: <FaLandmark /> },
+  { value: 'culture', label: 'Culture', icon: <FaTheaterMasks /> },
+  { value: 'education', label: 'Education', icon: <FaBook /> },
+  { value: 'business', label: 'Business', icon: <FaBriefcase /> },
+  { value: 'activism', label: 'Activism', icon: <FaFistRaised /> },
+  { value: 'development', label: 'Development', icon: <FaBuilding /> },
+];
+
 
   // Filter groups based on search and category
   useEffect(() => {
@@ -111,19 +114,11 @@ const GroupsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
+      <div className='max-w-7xl mx-auto px-4'>
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-6 mt-16">
-          {/* Back to Feed Button */}
-          <Link
-            href="/feed"
-            className="flex items-center space-x-2 text-orange-600 hover:text-orange-700 transition-colors mb-4 group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <Home className="w-4 h-4" />
-            <span className="font-medium">Back to Feed</span>
-          </Link>
-
-          <div className="flex items-center justify-between mb-6">
+        <div className=" py-6 ">
+         
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between mb-6 flex-wrap gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">African Community Groups</h1>
               <p className="text-gray-600 mt-1">
@@ -134,7 +129,7 @@ const GroupsPage: React.FC = () => {
             {user && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="btn-primary flex items-center space-x-2"
+                className="btn-primary flex items-center space-x-2 max-w-1/2 sm:max-w-full ms-auto"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Group</span>
@@ -172,7 +167,7 @@ const GroupsPage: React.FC = () => {
           </div>
 
           {/* Search and Filters */}
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col md:flex-row gap-2">
             {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -186,25 +181,9 @@ const GroupsPage: React.FC = () => {
               />
             </div>
 
-            {/* Category Filter */}
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white min-w-[180px]"
-              >
-                {categories.map(category => (
-                  <option key={category.value} value={category.value}>
-                    {category.icon} {category.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <button
               onClick={handleSearch}
-              className="btn-primary px-6"
+              className="btn-sm-primary"
             >
               Search
             </button>
@@ -213,7 +192,7 @@ const GroupsPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="  py-8">
         {view === 'discover' && !searchTerm && !selectedCategory && (
           <>
             {/* Featured Groups */}
@@ -243,12 +222,12 @@ const GroupsPage: React.FC = () => {
                   <button
                     key={category.value}
                     onClick={() => setSelectedCategory(category.value)}
-                    className="flex flex-col items-center p-4 bg-white rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all duration-200 group overflow-hidden"
+                    className="flex flex-col items-center p-4 bg-orange-100 rounded-lg cursor-pointer hover:shadow-md transition-all duration-200"
                   >
-                    <span className="text-2xl mb-2 group-hover:scale-105 transition-transform overflow-hidden">
+                    <span className="text-2xl mb-2">
                       {category.icon}
                     </span>
-                    <span className="text-sm font-medium text-gray-700 group-hover:text-primary-600">
+                    <span>
                       {category.label}
                     </span>
                   </button>
@@ -264,7 +243,7 @@ const GroupsPage: React.FC = () => {
             <h2 className="text-xl font-semibold text-gray-900">
               {view === 'my-groups' ? 'Your Groups' : 'All Groups'}
               {filteredGroups.length > 0 && (
-                <span className="text-gray-500 font-normal ml-2">
+                <span className="text-gray-500 text-[12px] ml-2">
                   ({filteredGroups.length} group{filteredGroups.length !== 1 ? 's' : ''})
                 </span>
               )}
@@ -275,7 +254,7 @@ const GroupsPage: React.FC = () => {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
             </div>
-          ) : filteredGroups.length > 0 ? (
+          ) : filteredGroups.length > 1 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredGroups.map(group => (
                 <GroupCard
@@ -312,6 +291,7 @@ const GroupsPage: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
       </div>
       {/* Create Group Modal */}
       <CreateGroupModal

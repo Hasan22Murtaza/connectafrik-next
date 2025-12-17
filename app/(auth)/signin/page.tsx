@@ -107,7 +107,7 @@ const Signin: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600  cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="w-5 h-5" />
@@ -149,7 +149,7 @@ const Signin: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary py-3 text-base disabled:opacity-50"
             >
               {isLoading ? "Signing In..." : "Sign In"}
             </button>

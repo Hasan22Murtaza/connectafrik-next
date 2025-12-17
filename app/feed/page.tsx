@@ -278,7 +278,7 @@ const FeedPage: React.FC = () => {
                   setExplorationBoost(!explorationBoost)
                   toast.success(explorationBoost ? 'Back to balanced feed' : 'Discovering new voices!')
                 }}
-                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                   explorationBoost
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
                     : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-primary-600'
@@ -296,10 +296,10 @@ const FeedPage: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => setActiveCategory(id)}
-                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 ${
+                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
                       isActive
                         ? 'border-orange-400 bg-primary-200 text-orange-900'
-                        : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-primary-600'
+                        : 'border-gray-200 bg-[#F3F4F6] text-gray-600 hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
                     }`}
                   >
                     <Icon className="h-4 w-4" />

@@ -273,26 +273,27 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-75">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 min-h-screen">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-primary-600 text-white p-4 flex items-center justify-between">
+        <div className="bg-[#f97316] text-white p-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Create Story</h2>
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+       <button
+  onClick={onClose}
+  className="  transition-colors text-white hover:text-gray-300 cursor-pointer "
+>
+  <X className="w-5 h-5 " />
+</button>
+
         </div>
 
         {/* Progress Steps */}
-        <div className="px-4 py-2 bg-gray-50">
+        <div className="px-4 py-3 bg-gray-50">
           <div className="flex items-center space-x-2">
             {['media', 'music', 'caption', 'preview'].map((stepName, index) => (
               <div key={stepName} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step === stepName ? 'bg-primary-600 text-white' :
+                  step === stepName ? 'bg-[#f97316] text-white' :
                   ['media', 'music', 'caption', 'preview'].indexOf(step) > index ? 'bg-green-500 text-white' :
                   'bg-gray-300 text-gray-600'
                 }`}>
@@ -380,7 +381,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                 <button
                   onClick={() => setStep('music')}
                   disabled={mediaFiles.length === 0}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  className="btn-sm-primary"
                 >
                   Next: Add Music
                 </button>
@@ -409,7 +410,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                   <button
                     onClick={() => searchMusic(musicSearchQuery)}
                     disabled={!musicSearchQuery.trim() || isSearchingMusic}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="btn-sm-secondary"
                   >
                     {isSearchingMusic ? 'Searching...' : 'Search'}
                   </button>
@@ -426,9 +427,9 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                           setSelectedMusicCategory(category)
                           getMusicByCategory(category)
                         }}
-                        className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                        className={`px-3 py-1 rounded-full text-sm transition-colors  capitalize ${
                           selectedMusicCategory === category
-                            ? 'bg-primary-600 text-white'
+                            ? 'bg-[#f97316] text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >
@@ -449,9 +450,9 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                           setSelectedMood(mood)
                           getMusicByMood(mood)
                         }}
-                        className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                        className={`px-3 py-1 rounded-full text-sm transition-colors capitalize ${
                           selectedMood === mood
-                            ? 'bg-primary-600 text-white'
+                            ? 'bg-[#f97316] text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >
@@ -530,13 +531,13 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
               <div className="flex justify-between">
                 <button
                   onClick={() => setStep('media')}
-                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="btn-sm-secondary"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => setStep('caption')}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="btn-sm-primary"
                 >
                   Next: Add Caption
                 </button>
@@ -566,13 +567,13 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
               <div className="flex justify-between">
                 <button
                   onClick={() => setStep('music')}
-                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="btn-sm-secondary"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => setStep('preview')}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                  className="btn-sm-primary"
                 >
                   Next: Preview
                 </button>
@@ -642,14 +643,14 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
               <div className="flex justify-between">
                 <button
                   onClick={() => setStep('caption')}
-                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="btn-sm-secondary"
                 >
                   Back
                 </button>
                 <button
                   onClick={uploadStory}
                   disabled={isUploading}
-                  className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  className="btn-sm-primary"
                 >
                   {isUploading ? 'Creating Story...' : 'Create Story'}
                 </button>

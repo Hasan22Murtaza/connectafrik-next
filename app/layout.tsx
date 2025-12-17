@@ -5,6 +5,26 @@ import { Providers } from "./providers";
 import ConditionalHeader from "./components/ConditionalHeader";
 import Footer from "@/shared/components/layout/FooterNext";
 import GlobalComponents from "./components/GlobalComponents";
+import { Poppins } from "next/font/google";
+
+
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: [
+    "100",
+    "200",
+    "300",
+    "400",
+    "500",
+    "600",
+    "700",
+    "800",
+    "900"
+  ],
+  style: ["normal", "italic"],
+  display: "swap",
+});
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased `}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased `}
       >
         <Providers>
           <div className="min-h-screen bg-white">

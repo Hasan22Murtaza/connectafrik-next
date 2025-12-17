@@ -138,7 +138,7 @@ const StoriesBar: React.FC = () => {
               // Show user's own stories as a story card
             <button
                 onClick={handleViewOwnStories}
-                className="relative w-40 h-64 rounded-2xl overflow-hidden group cursor-pointer transition-transform hover:scale-105"
+                className="relative w-40 h-64 rounded-2xl group cursor-pointer "
               >
                 {/* Story Background */}
                 <div className="absolute inset-0">
@@ -197,7 +197,7 @@ const StoriesBar: React.FC = () => {
               // Show create story button when no stories exist
             <button
                 onClick={handleCreateStory}
-                className="relative w-40 h-64 rounded-2xl overflow-hidden group cursor-pointer transition-transform hover:scale-105"
+                className="relative w-40 h-64 rounded-2xl overflow-hidden group cursor-pointer "
               >
                 {/* Background Image for Create Story - Use user's profile picture as background */}
                 <div className="absolute inset-0">
@@ -208,7 +208,7 @@ const StoriesBar: React.FC = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center">
+                    <div className="w-full h-full bg-gradient-to-br from-cyan-200 via-blue-300 to-blue-400 flex items-center justify-center">
                       <span className="text-white text-6xl font-bold">
                         {profile?.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
                       </span>
