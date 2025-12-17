@@ -409,7 +409,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <button
             onClick={handleUserProfileClick}
-            className="flex items-center space-x-3 flex-1 min-w-0 hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors"
+            className="flex items-center space-x-3 flex-1 min-w-0 "
           >
             {post.author.avatar_url ? (
               <img
@@ -710,7 +710,7 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Post</h3>
             <p className="text-gray-600 mb-6">

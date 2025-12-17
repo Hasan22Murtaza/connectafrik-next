@@ -218,8 +218,8 @@ const StoriesBar: React.FC = () => {
                 </div>
 
                 {/* Plus Icon - Centered */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-                  <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center border-3 border-white shadow-lg hover:bg-primary-700 transition-colors">
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-4">
+                  <div className="w-16 h-16 bg-primary-600 rounded-full flex items-center justify-center  shadow-lg hover:bg-primary-700 transition-colors">
                     <Plus className="w-8 h-8 text-white" />
                   </div>
                 </div>

@@ -276,7 +276,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 min-h-screen">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-[#f97316] text-white p-4 flex items-center justify-between">
+        <div className="bg-primary-600 text-white p-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Create Story</h2>
        <button
   onClick={onClose}
@@ -293,7 +293,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
             {['media', 'music', 'caption', 'preview'].map((stepName, index) => (
               <div key={stepName} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step === stepName ? 'bg-[#f97316] text-white' :
+                  step === stepName ? 'bg-primary-600 text-white' :
                   ['media', 'music', 'caption', 'preview'].indexOf(step) > index ? 'bg-green-500 text-white' :
                   'bg-gray-300 text-gray-600'
                 }`}>
@@ -367,7 +367,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                           <X className="w-4 h-4" />
                         </button>
                         {mediaFile.type === 'video' && mediaFile.duration && (
-                          <div className="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
                             {Math.round(mediaFile.duration)}s
                           </div>
                         )}
@@ -429,7 +429,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                         }}
                         className={`px-3 py-1 rounded-full text-sm transition-colors  capitalize ${
                           selectedMusicCategory === category
-                            ? 'bg-[#f97316] text-white'
+                            ? 'bg-primary-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >
@@ -452,7 +452,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                         }}
                         className={`px-3 py-1 rounded-full text-sm transition-colors capitalize ${
                           selectedMood === mood
-                            ? 'bg-[#f97316] text-white'
+                            ? 'bg-primary-600 text-white'
                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                         }`}
                       >

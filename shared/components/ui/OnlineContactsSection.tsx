@@ -142,7 +142,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
                   )}
                 </div>
                 <div
-                  className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${getStatusColor(
+                  className={`absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${getStatusColor(
                     contact.status
                   )}`}
                 ></div>
