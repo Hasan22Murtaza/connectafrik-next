@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
+import { supabase } from '@/lib/supabase'
 
 interface ChatParticipant {
   id: string
@@ -229,10 +230,23 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
     try {
-      // In production, this would generate a VideoSDK token and room ID
-      // For now, we'll create a mock call request
+      // ✅ FIXED: Generate real VideoSDK token from Supabase Edge Function
       const roomId = `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      const token = `token_${Date.now()}` // In production, fetch from VideoSDK
+      
+      // Get real token from Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('generate-videosdk-token', {
+        body: {
+          roomId,
+          userId: currentUser?.id || ''
+        }
+      })
+
+      if (error || !data?.token) {
+        console.error('Failed to generate VideoSDK token:', error)
+        throw new Error('Failed to generate call token. Please try again.')
+      }
+
+      const token = data.token as string
 
       const callRequest: CallRequest = {
         threadId,
@@ -262,10 +276,32 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }))
       }
 
-      // Also dispatch to the other participant(s) via WebSocket/Realtime
-      // This would be handled by your realtime service
+      // ✅ Send call notification to recipient via Supabase Realtime
+      // This should be handled by your messaging service to notify the other participant
+      try {
+        await supabaseMessagingService.sendMessage(
+          threadId,
+          {
+            content: `📞 Incoming ${type === 'video' ? 'video' : 'audio'} call`,
+            message_type: 'call_request',
+            metadata: {
+              callType: type,
+              roomId,
+              token,
+              callerId: currentUser?.id,
+              callerName: currentUser?.name,
+              timestamp: new Date().toISOString()
+            }
+          },
+          { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
+        )
+      } catch (msgError) {
+        console.warn('⚠️ Failed to send call notification:', msgError)
+        // Don't fail the call if message sending fails
+      }
     } catch (error) {
       console.error('Failed to start call:', error)
+      throw error // Re-throw so caller can handle it
     }
   }, [currentUser])
 

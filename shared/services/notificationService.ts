@@ -25,16 +25,22 @@ class NotificationService {
    */
   async sendNotification(notificationData: NotificationData): Promise<boolean> {
     try {
-      const { data, error } = await supabase.functions.invoke('send-push-notification', {
-        body: notificationData
+      const response = await fetch('/api/push-notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationData)
       })
 
-      if (error) {
-        console.error('Error sending push notification:', error)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Error sending push notification:', errorData)
         return false
       }
 
-      return data?.success || false
+      const result = await response.json()
+      return result.success || false
     } catch (error) {
       console.error('Error in sendNotification:', error)
       return false
