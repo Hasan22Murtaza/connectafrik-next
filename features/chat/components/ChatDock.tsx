@@ -138,7 +138,7 @@ const ChatDock: React.FC = () => {
                           event.stopPropagation()
                           handleOpen()
                         }}
-                        className="text-xs text-gray-400 hover:text-primary-600"
+                        className="text-xs text-gray-400 hover:text-[#f97316]"
                       >
                         Open
                       </button>

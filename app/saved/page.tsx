@@ -106,19 +106,10 @@ const SavedPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <div className='max-w-7xl mx-auto px-4'>
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-6 mt-16">
-          {/* Back to Feed Button */}
-          <button
-            onClick={() => router.push('/feed')}
-            className="flex items-center space-x-2 text-orange-600 hover:text-orange-700 transition-colors mb-4 group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <Home className="w-4 h-4" />
-            <span className="font-medium">Back to Feed</span>
-          </button>
-
+      <div className="border-b border-gray-200">
+        <div className="  py-6 ">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
@@ -132,7 +123,7 @@ const SavedPage: React.FC = () => {
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-2">
             <button
               onClick={() => setActiveTab('products')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
@@ -161,7 +152,7 @@ const SavedPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className=" py-8">
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -207,7 +198,7 @@ const SavedPage: React.FC = () => {
           </div>
         )}
       </div>
-
+</div>
       {/* Footer */}
       <Footer />
     </div>

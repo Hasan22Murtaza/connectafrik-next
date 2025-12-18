@@ -170,21 +170,21 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden ">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
-          <h2 className="text-2xl font-bold text-gray-900">List a Product</h2>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-primary-600 ">
+          <h2 className="text-2xl font-bold text-white">Add a Product</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-white hover:text-gray-300"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 " />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto h-[76vh]">
           {/* Image Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -261,7 +261,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="e.g., Handwoven Kente Cloth"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field"
             />
           </div>
 
@@ -276,7 +276,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Describe your product in detail..."
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field"
             />
           </div>
 
@@ -296,7 +296,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   placeholder="0.00"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field !pl-8"
                 />
               </div>
             </div>
@@ -309,7 +309,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
                 required
                 value={formData.currency}
                 onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-field"
               >
                 {currencies.map(curr => (
                   <option key={curr.value} value={curr.value}>{curr.label}</option>
@@ -328,7 +328,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
                 required
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-field"
               >
                 {categories.map(cat => (
                   <option key={cat.value} value={cat.value}>
@@ -346,7 +346,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
                 required
                 value={formData.condition}
                 onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-field"
               >
                 {conditions.map(cond => (
                   <option key={cond.value} value={cond.value}>{cond.label}</option>
@@ -366,7 +366,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 placeholder="e.g., Accra"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-field"
               />
             </div>
 
@@ -379,7 +379,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                 placeholder="e.g., Ghana"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-field"
               />
             </div>
           </div>
@@ -394,7 +394,7 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
               value={formData.tags}
               onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
               placeholder="e.g., handmade, traditional, kente"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field"
             />
           </div>
 
@@ -409,12 +409,12 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
               min="0"
               value={formData.stock_quantity}
               onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field"
             />
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-end space-x-4 pt-4 border-t sticky bottom-0 bg-white">
+          <div className="flex items-center justify-end space-x-4 pt-4 ">
             <button
               type="button"
               onClick={onClose}

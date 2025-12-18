@@ -138,7 +138,7 @@ body {
 
 /* Utility Classes */
 .text-primary-600 {
-  color: #f97316;
+  color: #f97316 ;
 }
 
 .bg-primary-50 {
@@ -155,9 +155,7 @@ body {
 .bg-primary-600 {
   background: #f97316 ;
 }
-.text-primary-600 {
-  color: #f97316;
-}
+
 
 .hover\:bg-primary-200:hover {
   background-color: #fed7aa;

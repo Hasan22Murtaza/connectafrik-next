@@ -74,37 +74,37 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                 <nav className="hidden lg:flex items-center space-x-6">
                   <Link
                     href="/feed"
-                    className="text-gray-700 hover:text-primary-600 font-medium"
+                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
                   >
                     Feed
                   </Link>
                   <Link
                     href="/memories"
-                    className="text-gray-700 hover:text-primary-600 font-medium"
+                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
                   >
                     Reels
                   </Link>
                   <Link
                     href="/politics"
-                    className="text-gray-700 hover:text-primary-600 font-medium"
+                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
                   >
                     Politics
                   </Link>
                   <Link
                     href="/culture"
-                    className="text-gray-700 hover:text-primary-600 font-medium"
+                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
                   >
                     Culture
                   </Link>
                   <Link
                     href="/groups"
-                    className="text-gray-700 hover:text-primary-600 font-medium"
+                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
                   >
                     Groups
                   </Link>
                   <Link
                     href="/profile"
-                    className="text-gray-700 hover:text-primary-600 font-medium"
+                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
                   >
                     Profile
                   </Link>
@@ -244,31 +244,31 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
           <nav className="flex justify-around py-2">
             <Link
               href="/feed"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
             >
               <span className="text-xs">Feed</span>
             </Link>
             <Link
               href="/memories"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
             >
               <span className="text-xs">Reels</span>
             </Link>
             <Link
               href="/culture"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
             >
               <span className="text-xs">Culture</span>
             </Link>
             <Link
               href="/groups"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
             >
               <span className="text-xs">Groups</span>
             </Link>
             <Link
               href="/profile"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-primary-600"
+              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
             >
               <span className="text-xs">Profile</span>
             </Link>

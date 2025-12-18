@@ -369,7 +369,7 @@ const formatFileSize = (bytes: number): string => {
               className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg cursor-pointer transition-colors duration-200 ${
                 mediaFiles.length >= 4
                   ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-600 hover:text-primary-600 hover:bg-primary-50'
+                  : 'text-gray-600 hover:text-[#f97316] hover:bg-primary-50'
               }`}
               title="Upload images (Max 4 images, 10MB each)"
             >
@@ -394,7 +394,7 @@ const formatFileSize = (bytes: number): string => {
               className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg transition-colors duration-200 ${
                 videoUrl !== '' || uploading || isSubmitting
                   ? 'text-gray-400 cursor-not-allowed'
-                  : 'text-gray-600 hover:text-primary-600 hover:bg-primary-50'
+                  : 'text-gray-600 hover:text-[#f97316] hover:bg-primary-50'
               }`}
               title="Upload video (Max 500MB - 5-10 min HD video)"
             >
@@ -412,7 +412,7 @@ const formatFileSize = (bytes: number): string => {
             {/* Location (Future feature) */}
             <button
               type="button"
-              className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors duration-200"
+              className="flex items-center space-x-2 px-3 py-2 text-gray-600 hover:text-[#f97316] hover:bg-primary-50 rounded-lg transition-colors duration-200"
               disabled
             >
               <MapPin className="w-5 h-5" />

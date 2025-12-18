@@ -362,14 +362,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
             <>
               <button
                 onClick={() => handleStartCall('audio')}
-                className="text-gray-500 hover:text-primary-600"
+                className="text-gray-500 hover:text-[#f97316]"
                 title="Start voice call"
               >
                 <Phone className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleStartCall('video')}
-                className="text-gray-500 hover:text-primary-600"
+                className="text-gray-500 hover:text-[#f97316]"
                 title="Start video call"
               >
                 <Video className="h-4 w-4" />
