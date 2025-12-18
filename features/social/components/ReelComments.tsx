@@ -222,7 +222,7 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                       <div className="flex items-center space-x-4 mt-2">
                         <button
                           onClick={() => startReply(comment.id)}
-                          className="text-xs text-gray-500 hover:text-primary-600 transition-colors flex items-center space-x-1"
+                          className="text-xs text-gray-500 hover:text-[#f97316] transition-colors flex items-center space-x-1"
                         >
                           <Reply className="w-3 h-3" />
                           <span>Reply</span>

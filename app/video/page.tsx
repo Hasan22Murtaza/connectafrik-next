@@ -10,9 +10,10 @@ const VideoPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4 py-6 mt-16">
+      <div className=" border-b border-gray-200">
+        <div className="py-6">
           {/* Back to Feed Button */}
           <button
             onClick={() => router.push('/feed')}
@@ -38,7 +39,7 @@ const VideoPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className=" py-8">
         <div className="text-center py-12">
           <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <VideoIcon className="w-10 h-10 text-primary-600" />
@@ -96,7 +97,7 @@ const VideoPage: React.FC = () => {
           </div>
         </div>
       </div>
-
+</div>
       {/* Footer */}
       <Footer />
     </div>

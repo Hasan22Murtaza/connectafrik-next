@@ -470,7 +470,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               </div>
 
               {/* Review Text */}
-              <p className="text-gray-700 whitespace-pre-wrap">{review.review_text}</p>
+              <p className="text-gray-700 whitespace-pre-wrap wrap-break-word">{review.review_text}</p>
 
               {/* Helpful Button */}
               <div className="mt-4 flex items-center gap-4">

@@ -214,23 +214,15 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
 
       {/* Product Details */}
       <div className="p-4">
-        {/* Category */}
-        <div className="flex items-center space-x-2 mb-2">
-          <span className="text-lg">{getCategoryEmoji(product.category)}</span>
-          <span className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
-            {product.category}
-          </span>
-        </div>
-
         {/* Title */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#f97316] transition-colors h-15">
           {product.title}
         </h3>
 
         {/* Description */}
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+        {/* <p className="text-sm text-gray-600 mb-3 line-clamp-2 h-11">
           {product.description}
-        </p>
+        </p> */}
 
         {/* Price */}
         <div className="flex items-center justify-between mb-3">
@@ -249,7 +241,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
         </div>
 
         {/* Location & Stats */}
-        <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
           {product.location && (
             <div className="flex items-center space-x-1">
               <MapPin className="w-3 h-3" />
@@ -270,25 +262,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
           </div>
         </div>
 
-        {/* Tags */}
-        {product.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {product.tags.slice(0, 3).map((tag, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center space-x-1 px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
-              >
-                <Tag className="w-3 h-3" />
-                <span>{tag}</span>
-              </span>
-            ))}
-            {product.tags.length > 3 && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                +{product.tags.length - 3} more
-              </span>
-            )}
-          </div>
-        )}
+     
 
         {/* Seller Info */}
         {product.seller && (
@@ -317,21 +291,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
 
         {/* Action Buttons */}
         <div className="flex gap-2 mt-3">
-          {/* Contact Seller Button - Only show if not own product */}
-          {!isOwnProduct && product.seller && (
-            <button
-              onClick={handleContactSeller}
-              disabled={isContactingseller}
-              className="flex-1 py-2 px-3 rounded-lg font-medium flex items-center justify-center space-x-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
-              aria-label="Contact seller"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                {isContactingseller ? 'Opening...' : 'Contact'}
-              </span>
-            </button>
-          )}
-
           {/* Buy Button */}
           <button
             onClick={(e) => {

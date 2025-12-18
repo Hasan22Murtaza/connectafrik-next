@@ -161,7 +161,7 @@ const FriendsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50"> 
       {/* Header */}
       <div className="max-w-7xl mx-auto px-4">
-        <div className="bg-white border-b border-gray-200 py-6  ">
+        <div className=" border-b border-gray-200 py-6  ">
             <div>
               <div className="flex items-center justify-between space-x-6 h-[50px] ">
                 <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
@@ -190,7 +190,7 @@ const FriendsPage: React.FC = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex items-center space-x-1 ">
+            <div className="flex items-center space-x-2 ">
               <button
                 onClick={() => setActiveTab("all")}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${

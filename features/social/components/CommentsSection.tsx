@@ -685,7 +685,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
               {replyAllowed && (
                 <button
                   onClick={handleReply}
-                  className="flex items-center space-x-1 transition hover:text-primary-600"
+                  className="flex items-center space-x-1 transition hover:text-[#f97316]"
                 >
                   <Reply className="h-4 w-4" />
                   <span>Reply</span>

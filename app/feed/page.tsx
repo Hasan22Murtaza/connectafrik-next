@@ -281,7 +281,7 @@ const FeedPage: React.FC = () => {
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                   explorationBoost
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-primary-600'
+                    : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-[#f97316]'
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
