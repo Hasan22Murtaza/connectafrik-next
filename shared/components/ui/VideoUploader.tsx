@@ -242,7 +242,7 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
             {!uploading && (
               <button
                 onClick={handleCancel}
-                className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full text-white transition-colors"
+                className="absolute top-2 right-2 p-2 bg-black/50 hover:bg-opacity-70 rounded-full text-white transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>

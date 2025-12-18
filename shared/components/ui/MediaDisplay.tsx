@@ -90,7 +90,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaUrls, className = '' }
                   const video = e.currentTarget.parentElement?.parentElement?.querySelector('video') as HTMLVideoElement
                   if (video) await handleVideoToggle(video)
                 }}
-                className="w-16 h-16 bg-black bg-opacity-50 rounded-full flex items-center justify-center text-white hover:bg-opacity-70 transition-all duration-200"
+                className="w-16 h-16 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-opacity-70 transition-all duration-200"
               >
                 {isVideoPlaying ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8 ml-1" />}
               </button>
@@ -102,7 +102,7 @@ const MediaDisplay: React.FC<MediaDisplayProps> = ({ mediaUrls, className = '' }
                   const video = e.currentTarget.parentElement?.parentElement?.querySelector('video') as HTMLVideoElement
                   if (video) toggleMute(video)
                 }}
-                className="w-8 h-8 bg-black bg-opacity-50 rounded-full flex items-center justify-center text-white hover:bg-opacity-70"
+                className="w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-opacity-70"
               >
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>

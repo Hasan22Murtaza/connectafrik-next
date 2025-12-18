@@ -153,15 +153,15 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 min-h-screen">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden relative z-[99]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">Search Users</h2>
+        <div className="flex items-center justify-between p-4 border-b bg-primary-600">
+          <h2 className="text-lg font-semibold text-white">Search Users</h2>
           {onClose && (
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-white hover:text-gray-400"
             >
               <X className="w-5 h-5" />
             </button>
@@ -169,7 +169,7 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
         </div>
 
         {/* Search Input */}
-        <div className="p-4 border-b">
+        <div className="p-4 border-b border-gray-300">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 text-gray-400 w-4 h-4" style={{ transform: 'translateY(-50%)' }} />
             <input
@@ -178,13 +178,13 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
               placeholder="Search by username or name..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="input-field !pl-10"
             />
           </div>
         </div>
 
         {/* Results */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 ">
           {loading && (
             <div className="p-4 text-center text-gray-500">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto mb-2"></div>
