@@ -21,7 +21,8 @@ class PixabayMusicService {
 
   constructor() {
     this.apiKey = process.env.NEXT_PUBLIC_PIXABAY_API_KEY || ''
-    if (!this.apiKey) {
+    // Only warn in development, not during build
+    if (!this.apiKey && process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       console.warn('NEXT_PUBLIC_PIXABAY_API_KEY not found. Music features will be limited.')
     }
   }

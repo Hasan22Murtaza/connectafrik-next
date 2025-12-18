@@ -30,10 +30,11 @@ class PushNotificationService {
       : '')
     
     // If no VAPID key is provided, we'll use a fallback approach
-    if (!this.vapidPublicKey) {
+    // Only warn in development, not during build
+    if (!this.vapidPublicKey && process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
       console.warn('NEXT_PUBLIC_VAPID_PUBLIC_KEY not found. Push notifications may not work properly.')
-    } else {
-      // Debug: Validate VAPID key format
+    } else if (this.vapidPublicKey && process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      // Debug: Validate VAPID key format (only in development)
       this.debugVapidKey()
     }
   }

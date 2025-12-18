@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-
-// Dynamic import for web-push to handle missing package gracefully
-let webpush: any
-try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  webpush = require('web-push')
-} catch (error) {
-  console.error('web-push package not installed. Run: npm install web-push @types/web-push')
-}
+import webpush from 'web-push'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,7 +23,7 @@ const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || ''
 const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:support@connectafrik.com'
 
-if (vapidPublicKey && vapidPrivateKey && webpush) {
+if (vapidPublicKey && vapidPrivateKey) {
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
 }
 
@@ -76,16 +68,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if web-push is available
-    if (!webpush) {
-      return NextResponse.json(
-        { error: 'Push notifications not available. Please install web-push package.' },
-        { 
-          status: 500,
-          headers: corsHeaders
-        }
-      )
-    }
 
     // Check if VAPID keys are configured
     if (!vapidPublicKey || !vapidPrivateKey) {
@@ -161,15 +143,12 @@ export async function POST(request: NextRequest) {
     // Send push notification to all subscriptions
     const sendPromises = subscriptions.map(async (subscription) => {
       try {
-        // Convert base64 keys back to Buffer
-        const p256dhKey = Buffer.from(subscription.p256dh_key, 'base64')
-        const authKey = Buffer.from(subscription.auth_key, 'base64')
-
+        // web-push expects keys as base64 strings, not Buffers
         const pushSubscription = {
           endpoint: subscription.endpoint,
           keys: {
-            p256dh: p256dhKey,
-            auth: authKey
+            p256dh: subscription.p256dh_key,
+            auth: subscription.auth_key
           }
         }
 
