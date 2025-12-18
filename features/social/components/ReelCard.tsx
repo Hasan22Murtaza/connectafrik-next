@@ -72,6 +72,17 @@ const ReelCard: React.FC<ReelCardProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Format number helper
+  const formatNumber = (num: number) => {
+    if (num >= 1000000) {
+      return `${(num / 1000000).toFixed(1)}M`
+    }
+    if (num >= 1000) {
+      return `${(num / 1000).toFixed(1)}K`
+    }
+    return num.toString()
+  }
+
   // Handle video play/pause
   const handlePlayPause = useCallback(async () => {
     if (videoRef.current) {
@@ -332,301 +343,309 @@ const ReelCard: React.FC<ReelCardProps> = ({
   }, [])
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      {/* Video Container */}
+    <div className="relative w-full bg-black overflow-hidden rounded-lg">
+      {/* Video Container - TikTok Style */}
       <div
-        className="relative bg-black w-full"
+        className="relative w-full aspect-[9/16] max-h-[90vh] mx-auto bg-black"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onTouchStart={handleMouseEnter}
         onTouchEnd={handleMouseLeave}
+        onClick={handlePlayPause}
       >
-        <div className="relative aspect-[9/16] w-full">
-          <video
-            ref={videoRef}
-            src={reel.video_url}
-            poster={reel.thumbnail_url}
-            className="absolute inset-0 h-full w-full object-cover cursor-pointer"
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onEnded={handleVideoEnded}
-            onClick={handlePlayPause}
-            muted={isMuted}
-            playsInline
-            webkit-playsinline="true"
-            preload="metadata"
-            onError={(e) => {
-              console.error('Video load error:', e);
-              // Show fallback content
-              const target = e.target as HTMLVideoElement;
-              if (target.parentElement) {
-                target.parentElement.innerHTML = `
-                  <div class="w-full h-64 sm:h-96 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                    <div class="text-center text-white max-w-xs px-4">
-                      <div class="text-lg font-semibold mb-2">⚠️ Video Unavailable</div>
-                      <p class="text-sm text-gray-300 mb-2">${reel.title || 'Untitled'}</p>
-                      <p class="text-xs text-gray-400">The video file could not be loaded. Please try again later.</p>
-                    </div>
+        <video
+          ref={videoRef}
+          src={reel.video_url}
+          poster={reel.thumbnail_url}
+          className="absolute inset-0 h-full w-full object-cover"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={handleVideoEnded}
+          muted={isMuted}
+          playsInline
+          webkit-playsinline="true"
+          preload="metadata"
+          loop
+          onError={(e) => {
+            console.error('Video load error:', e);
+            const target = e.target as HTMLVideoElement;
+            if (target.parentElement) {
+              target.parentElement.innerHTML = `
+                <div class="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                  <div class="text-center text-white max-w-xs px-4">
+                    <div class="text-lg font-semibold mb-2">⚠️ Video Unavailable</div>
+                    <p class="text-sm text-gray-300 mb-2">${reel.title || 'Untitled'}</p>
+                    <p class="text-xs text-gray-400">The video file could not be loaded. Please try again later.</p>
                   </div>
-                `;
-              }
-            }}
-          />
+                </div>
+              `;
+            }
+          }}
+        />
 
-          {/* Persistent Mobile Mute/Unmute Button - Always visible on mobile */}
+        {/* Gradient Overlay for better text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-10" />
+
+        {/* Top Left Controls - Play/Pause and Mute */}
+        <div className="absolute top-3 left-3 z-30 flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handlePlayPause()
+            }}
+            className="p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all duration-200 shadow-lg border border-white/10"
+            aria-label={isPlaying ? "Pause video" : "Play video"}
+          >
+            {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation()
               handleMuteToggle()
             }}
-            className="sm:hidden absolute top-4 right-4 z-20 p-3 bg-black/50 backdrop-blur-sm rounded-full text-white hover:bg-black/70 transition-colors shadow-lg"
+            className="p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all duration-200 shadow-lg border border-white/10"
             aria-label={isMuted ? "Unmute video" : "Mute video"}
           >
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
         </div>
-        {/* Video Controls Overlay */}
-        {showControls && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent">
-            {/* Top Controls */}
-            <div className="absolute top-2 sm:top-4 left-2 sm:left-4 right-2 sm:right-4 flex items-center justify-between">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="flex items-center space-x-1 sm:space-x-2">
-                  {reel.profiles?.avatar_url ? (
-                    <img
-                  src={reel.profiles.avatar_url}
-                  alt={reel.profiles.full_name}
-                      className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                      <span className="text-gray-600 font-medium text-xs sm:text-sm">
-                        {(reel.profiles?.full_name || 'U').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-white text-xs sm:text-sm font-medium">
-                  {reel.profiles?.full_name || 'Anonymous User'}
-                    </p>
-                    <p className="text-gray-300 text-xs">{formatDistanceToNow(new Date(reel.created_at), { addSuffix: true })}</p>
-                  </div>
-                </div>
-              </div>
-              
-              {(!user || user.id !== reel.author_id) && (
-                <button
-                  onClick={handleFollow}
-                  className={`flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${
-                    isFollowing
-                      ? 'bg-gray-600 text-white hover:bg-gray-700'
-                      : 'bg-orange-500 text-white hover:bg-orange-600'
-                  }`}
-                >
-                  {isFollowing ? (
-                    <>
-                      <UserCheck className="w-3 h-3" />
-                      <span className="hidden sm:inline">UnTap In</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-3 h-3" />
-                      <span className="hidden sm:inline">Tap In</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
 
-            {/* Center Play Button */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <button
-                onClick={handlePlayPause}
-                className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-              >
-                {isPlaying ? <Pause className="w-6 h-6 sm:w-8 sm:h-8" /> : <Play className="w-6 h-6 sm:w-8 sm:h-8 ml-1" />}
-              </button>
-            </div>
-
-            {/* Bottom Controls */}
-            <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
-              {/* Progress Bar */}
-              <div className="mb-2 sm:mb-4">
-                <input
-                  type="range"
-                  min="0"
-                  max={duration}
-                  value={currentTime}
-                  onChange={handleSeek}
-                  className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                />
-                <div className="flex justify-between text-xs text-white mt-1">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-              </div>
-
-              {/* Volume Control - Hidden on mobile */}
-              <div className="hidden sm:flex items-center space-x-2 mb-4">
-                <button
-                  onClick={handleMuteToggle}
-                  className="text-white hover:text-gray-300 transition-colors"
-                >
-                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={volume}
-                  onChange={handleVolumeChange}
-                  className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 sm:space-x-4">
-                  <button
-                    onClick={handleLike}
-                    disabled={loading}
-                    className={`flex items-center space-x-1 text-white hover:text-red-400 transition-colors ${
-                      isLiked ? 'text-red-400' : ''
-                    }`}
-                  >
-                    <Heart className={`w-5 h-5 sm:w-6 sm:h-6 ${isLiked ? 'fill-current' : ''}`} />
-                    <span className="text-xs sm:text-sm font-medium">{likesCount}</span>
-                  </button>
-
-                  <button
-                    onClick={handleComment}
-                    className="flex items-center space-x-1 text-white hover:text-blue-400 transition-colors"
-                  >
-                    <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                    <span className="text-xs sm:text-sm font-medium">{reel.comments_count}</span>
-                  </button>
-
-                  <button
-                    onClick={handleShare}
-                    disabled={loading}
-                    className="flex items-center space-x-1 text-white hover:text-green-400 transition-colors"
-                  >
-                    <Share2 className="w-5 h-5 sm:w-6 sm:h-6" />
-                    <span className="text-xs sm:text-sm font-medium">{reel.shares_count}</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={handleSave}
-                    disabled={loading}
-                    className={`text-white hover:text-yellow-400 transition-colors ${
-                      isSaved ? 'text-yellow-400' : ''
-                    }`}
-                  >
-                    <Bookmark className={`w-5 h-5 sm:w-6 sm:h-6 ${isSaved ? 'fill-current' : ''}`} />
-                  </button>
-
-                  {/* Menu Button */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowMenu(!showMenu)}
-                      className="text-white hover:text-gray-300 transition-colors"
-                    >
-                      <MoreHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </button>
-
-                    {/* Dropdown Menu */}
-                    {showMenu && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
-                        {/* Show delete option only for the reel owner */}
-                        {user && user.id === reel.author_id && (
-                          <button
-                            onClick={handleDelete}
-                            disabled={isDeleting}
-                            className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 disabled:opacity-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span>{isDeleting ? 'Deleting...' : 'Delete Reel'}</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Play Button Overlay (when not playing) */}
-        {!isPlaying && !showControls && (
-          <div className="absolute inset-0 flex items-center justify-center">
+        {/* Right Side Engagement Metrics - TikTok Style */}
+        <div className="absolute right-2 sm:right-4 bottom-24 z-30 flex flex-col items-center gap-5">
+          {/* Profile Picture */}
+          <div className="relative group">
             <button
-              onClick={handlePlayPause}
-              className="w-12 h-12 sm:w-16 sm:h-16 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!isFollowing && user) {
+                  handleFollow()
+                }
+              }}
+              className="relative transition-transform duration-200 hover:scale-110"
             >
-              <Play className="w-6 h-6 sm:w-8 sm:h-8 ml-1" />
+              <div className="relative">
+                {reel.profiles?.avatar_url ? (
+                  <img
+                    src={reel.profiles.avatar_url}
+                    alt={reel.profiles.full_name}
+                    className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-lg"
+                  />
+                ) : (
+                  <div className="w-14 h-14 bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 rounded-full flex items-center justify-center border-2 border-white shadow-lg">
+                    <span className="text-white font-bold text-xl">
+                      {(reel.profiles?.full_name || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                {!isFollowing && user && user.id !== reel.author_id && (
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white rounded-full p-0.5 shadow-md">
+                    <UserPlus className="w-4 h-4 text-orange-500" />
+                  </div>
+                )}
+              </div>
             </button>
           </div>
-        )}
-      </div>
 
-      {/* Reel Info */}
-      <div className="p-3 sm:p-4">
-        <div className="flex items-start space-x-2 sm:space-x-3">
-          <div className="flex-shrink-0">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-300 rounded-full flex items-center justify-center">
-              <span className="text-gray-600 font-medium text-xs sm:text-sm">
-                U
-              </span>
-            </div>
+          {/* Like Button */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleLike()
+              }}
+              disabled={loading}
+              className={`p-3.5 rounded-full transition-all duration-200 transform hover:scale-110 active:scale-95 ${
+                isLiked 
+                  ? 'bg-red-500/30 shadow-lg shadow-red-500/30' 
+                  : 'bg-black/40 backdrop-blur-md hover:bg-black/60'
+              }`}
+            >
+              <Heart 
+                className={`w-8 h-8 transition-all duration-200 ${
+                  isLiked 
+                    ? 'text-red-500 fill-red-500 scale-110' 
+                    : 'text-white'
+                }`} 
+              />
+            </button>
+            <span className="text-white text-xs font-bold drop-shadow-lg">
+              {formatNumber(likesCount)}
+            </span>
           </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2 mb-1">
-              <h3 className="text-xs sm:text-sm font-semibold text-gray-900 truncate">
-                {reel.profiles?.full_name || 'Anonymous User'}
-              </h3>
-              <span className="text-xs text-gray-500">
-                {formatDistanceToNow(new Date(reel.created_at), { addSuffix: true })}
-              </span>
-            </div>
-            
-            <h4 className="text-sm sm:text-base font-medium text-gray-900 mb-2">{reel.title}</h4>
-            
-            {reel.description && (
-              <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2">{reel.description}</p>
-            )}
 
-            {/* Tags */}
-            {reel.tags && reel.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-3">
-                {reel.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full"
+          {/* Comment Button */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleComment()
+              }}
+              className="p-3.5 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-200 transform hover:scale-110 active:scale-95"
+            >
+              <MessageCircle className="w-8 h-8 text-white" />
+            </button>
+            <span className="text-white text-xs font-bold drop-shadow-lg">
+              {formatNumber(reel.comments_count)}
+            </span>
+          </div>
+
+          {/* Share Button */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleShare()
+              }}
+              disabled={loading}
+              className="p-3.5 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-200 transform hover:scale-110 active:scale-95"
+            >
+              <Share2 className="w-8 h-8 text-white" />
+            </button>
+            <span className="text-white text-xs font-bold drop-shadow-lg">
+              {formatNumber(reel.shares_count)}
+            </span>
+          </div>
+
+          {/* Bookmark Button */}
+          <div className="flex flex-col items-center gap-1.5">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleSave()
+              }}
+              disabled={loading}
+              className={`p-3.5 rounded-full transition-all duration-200 transform hover:scale-110 active:scale-95 ${
+                isSaved 
+                  ? 'bg-yellow-500/30 shadow-lg shadow-yellow-500/30' 
+                  : 'bg-black/40 backdrop-blur-md hover:bg-black/60'
+              }`}
+            >
+              <Bookmark 
+                className={`w-8 h-8 transition-all duration-200 ${
+                  isSaved 
+                    ? 'text-yellow-400 fill-yellow-400 scale-110' 
+                    : 'text-white'
+                }`} 
+              />
+            </button>
+          </div>
+
+          {/* More Options */}
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setShowMenu(!showMenu)
+              }}
+              className="p-3.5 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 transition-all duration-200 transform hover:scale-110 active:scale-95"
+            >
+              <MoreHorizontal className="w-8 h-8 text-white" />
+            </button>
+
+            {/* Dropdown Menu */}
+            {showMenu && (
+              <div className="absolute right-0 bottom-full mb-3 w-52 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl py-2 z-50 border border-gray-200/50">
+                {user && user.id === reel.author_id && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDelete()
+                      setShowMenu(false)
+                    }}
+                    disabled={isDeleting}
+                    className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2 disabled:opacity-50 font-medium"
                   >
-                    #{tag}
-                  </span>
-                ))}
-                {reel.tags.length > 3 && (
-                  <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                    +{reel.tags.length - 3} more
-                  </span>
+                    <Trash2 className="w-4 h-4" />
+                    <span>{isDeleting ? 'Deleting...' : 'Delete Reel'}</span>
+                  </button>
                 )}
               </div>
             )}
-
-            {/* Stats */}
-            <div className="flex items-center space-x-3 sm:space-x-4 text-xs text-gray-500">
-              <span>{reel.views_count} views</span>
-              <span>{formatTime(reel.duration)}</span>
-              <span className="capitalize">{reel.category}</span>
-            </div>
           </div>
         </div>
+
+        {/* Bottom Left User Info - TikTok Style */}
+        <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 right-24 z-30 text-white">
+          <div className="flex items-center gap-2.5 mb-2.5">
+            <h3 className="text-base sm:text-lg font-bold drop-shadow-lg">
+              @{reel.profiles?.full_name?.toLowerCase().replace(/\s+/g, '') || 'anonymous'}
+            </h3>
+            {(!user || user.id !== reel.author_id) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleFollow()
+                }}
+                className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg ${
+                  isFollowing
+                    ? 'bg-white/20 text-white hover:bg-white/30 backdrop-blur-md'
+                    : 'bg-orange-500 text-white hover:bg-orange-600'
+                }`}
+              >
+                {isFollowing ? (
+                  <span className="flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Following
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Follow
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* Description */}
+          {reel.description && (
+            <p className="text-sm sm:text-base mb-2 line-clamp-2 pr-2 font-medium drop-shadow-md">
+              {reel.description}
+            </p>
+          )}
+
+          {/* Music/Audio Info */}
+          <div className="flex items-center gap-2 text-sm sm:text-base mb-2">
+            <div className="flex items-center gap-1.5 bg-black/30 backdrop-blur-sm px-2 py-1 rounded-full">
+              <span className="text-lg">🎵</span>
+              <span className="font-semibold text-white/95">{reel.title || 'Original audio'}</span>
+            </div>
+          </div>
+
+          {/* Tags */}
+          {reel.tags && reel.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {reel.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-sm font-semibold text-white/95 drop-shadow-md hover:text-white transition-colors cursor-pointer"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Views and Time */}
+          <div className="text-xs sm:text-sm text-white/80 font-medium drop-shadow-md">
+            {formatNumber(reel.views_count)} views • {formatDistanceToNow(new Date(reel.created_at), { addSuffix: true })}
+          </div>
+        </div>
+
+        {/* Center Play Button Overlay (when paused) */}
+        {!isPlaying && (
+          <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePlayPause()
+              }}
+              className="w-20 h-20 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/80 transition-all duration-200 transform hover:scale-110 active:scale-95 shadow-2xl border border-white/20 pointer-events-auto"
+            >
+              <Play className="w-10 h-10 ml-1" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Comments Modal */}
