@@ -626,11 +626,6 @@ const ReelCard: React.FC<ReelCardProps> = ({
                       </span>
                     </div>
                   )}
-                  {!isFollowing && user && user.id !== reel.author_id && (
-                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-white rounded-full p-0.5 shadow-md">
-                      <UserPlus className="w-4 h-4 text-orange-500" />
-                    </div>
-                  )}
                 </div>
               </button>
             </div>
