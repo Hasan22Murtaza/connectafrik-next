@@ -500,21 +500,19 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Create New Reel</h2>
+        <div className="flex items-center justify-between px-6 py-5 bg-primary-600 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-white">Create New Reel</h2>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-white hover:text-gray-300"
           >
             <X className="w-6 h-6" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto ">
           {/* Video Upload/Recording Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Create Your Reel</h3>
-            
+          <div className="space-y-4">            
             {!videoFile && recordingMode === 'upload' ? (
               <div className="space-y-4">
                 {/* Mode Selection */}
@@ -524,7 +522,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                     onClick={() => setRecordingMode('upload')}
                     className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
                       recordingMode === 'upload'
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        ? 'border-orange-400 bg-primary-50 text-primary-700'
                         : 'border-gray-300 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -761,7 +759,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Give your reel a catchy title..."
-                  className="w-full px-0 py-2 text-lg font-medium text-gray-900 placeholder-gray-400 border-0 border-b border-transparent hover:border-gray-200 focus:border-primary-500 focus:outline-none focus:ring-0 transition-colors bg-transparent"
+                  className="input-field"
                   maxLength={MAX_REEL_TITLE_LENGTH}
                   required
                 />
@@ -780,7 +778,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Tell people what your reel is about..."
                   rows={3}
-                  className="w-full px-0 py-2 text-base text-gray-900 placeholder-gray-400 border-0 focus:outline-none focus:ring-0 resize-none bg-transparent"
+                  className="w-full px-0 py-2 text-base text-gray-900 placeholder-gray-400 border-0 border-b border-gray-300 focus:outline-none focus:ring-0 resize-none bg-transparent"
                   maxLength={MAX_REEL_DESCRIPTION_LENGTH}
                 />
                 <div className="text-right text-xs text-gray-500 mt-1">
@@ -819,7 +817,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                       onClick={() => setAspectRatio(ratio.value as '9:16' | '16:9' | '1:1' | '4:3')}
                       className={`p-3 border rounded-lg text-sm font-medium transition-colors ${
                         aspectRatio === ratio.value
-                          ? 'border-primary-500 bg-primary-50 text-primary-700'
+                          ? 'border-orange-500 bg-primary-50 text-primary-700'
                           : 'border-gray-300 text-gray-700 hover:border-gray-400'
                       }`}
                     >
@@ -942,7 +940,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              className="btn-secondary"
             >
               Cancel
             </button>

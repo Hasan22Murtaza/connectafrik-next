@@ -123,13 +123,13 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Comments</h2>
+        <div className="flex items-center bg-primary-600 justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-white">Comments</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-white hover:text-gray-300"
           >
             <X className="w-6 h-6" />
           </button>
@@ -324,7 +324,7 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder="Write a comment..."
-                  className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  className="input-field"
                   rows={2}
                   maxLength={500}
                 />
