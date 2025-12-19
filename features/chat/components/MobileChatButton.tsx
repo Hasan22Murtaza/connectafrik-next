@@ -31,7 +31,7 @@ const MobileChatButton: React.FC = () => {
       {/* Floating Chat Button - Always Visible on LEFT side (hamburger is on right) */}
       <button
         onClick={() => setShowContacts(!showContacts)}
-        className="fixed bottom-20 left-4 z-[150] w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all md:hidden"
+        className="fixed bottom-[12%] right-4 z-[50] w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all md:hidden"
         aria-label="Open chat"
       >
         {showContacts ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
