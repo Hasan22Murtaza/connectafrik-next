@@ -116,8 +116,8 @@ const StoriesBar: React.FC = () => {
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex space-x-4">
-          {[...Array(5)].map((_, index) => (
+        <div className="flex space-x-4  justify-around sm:justify-start">
+          {[...Array(4)].map((_, index) => (
             <div key={index} className="flex-shrink-0">
               <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse" />
               <div className="w-16 h-4 bg-gray-200 rounded mt-2 animate-pulse" />

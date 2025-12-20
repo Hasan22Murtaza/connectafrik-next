@@ -258,7 +258,7 @@ const FeedPage: React.FC = () => {
                 onClick={() => setIsComposerOpen(true)}
                 className="flex w-full items-center space-x-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-left transition-colors hover:border-primary-200 hover:bg-primary-50"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-gray-600">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-gray-600 shrink-0">
                   <Plus className="h-6 w-6" />
                 </span>
                 <div>
@@ -296,7 +296,7 @@ const FeedPage: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => setActiveCategory(id)}
-                    className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
+                    className={`flex items-center gap-2 rounded-full border sm:px-4 px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
                       isActive
                         ? 'border-orange-400 bg-primary-200 text-orange-900'
                         : 'border-gray-200 bg-[#F3F4F6] text-gray-600 hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
