@@ -1322,19 +1322,22 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   if (!isOpen && callStatus === 'connecting') return null;
   if (!isOpen) return null;
 
+  console.log('🔴 callType:', callType);
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden animate-slideIn">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-5 flex items-center justify-between shadow-lg">
+        <div className="bg-orange-500 text-white p-5 flex items-center justify-between shadow-lg rounded-t-2xl">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center ring-2 ring-white/30">
-              <span className="text-xl font-bold">
-                {callType === 'video' ? '📹' : '📞'}
-              </span>
+            <div className="w-12 h-12 bg-orange-400/50 rounded-full flex items-center justify-center shadow-lg">
+              {callType === 'video' ? (
+                <Video className="w-6 h-6 text-white" />
+              ) : (
+                <PhoneOff className="w-6 h-6 text-white" />
+              )}
             </div>
             <div>
-              <h3 className="font-semibold text-lg leading-tight">
+              <h3 className="font-bold text-lg leading-tight">
                 {isIncoming ? callerName : recipientName}
               </h3>
               <p className="text-sm opacity-90 font-medium">
