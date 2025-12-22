@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, MoreVertical, Share2, Hand, MessageSquare } from 'lucide-react';
 import { ringtoneService } from '@/features/video/services/ringtoneService';
-import { videoSDKService } from '@/features/video/services/videoSDKService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
