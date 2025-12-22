@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, MoreVertical, Share2, Hand, MessageSquare } from 'lucide-react';
+import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, MoreVertical, Share2, Hand, MessageSquare, Smile } from 'lucide-react';
 import { ringtoneService } from '@/features/video/services/ringtoneService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
@@ -49,6 +49,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const [error, setError] = useState<string>('');
   const [participants, setParticipants] = useState<any[]>([]);
   const [showMenu, setShowMenu] = useState(false);
+  const [showEmojiDropdown, setShowEmojiDropdown] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showMessageInput, setShowMessageInput] = useState(false);
@@ -1205,6 +1206,21 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     }
   }, [callStatus, isOpen, onClose]);
 
+  // Close emoji dropdown when clicking outside
+  useEffect(() => {
+    if (!showEmojiDropdown) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.emoji-dropdown-container')) {
+        setShowEmojiDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiDropdown]);
+
   // Monitor connection quality during call
   useEffect(() => {
     if (callStatus !== 'connected') return;
@@ -1308,7 +1324,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-slideIn">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden animate-slideIn">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-5 flex items-center justify-between shadow-lg">
           <div className="flex items-center space-x-3">
@@ -1406,7 +1422,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           <audio ref={remoteAudioRef} autoPlay playsInline muted={!isSpeakerEnabled} className="hidden" />
 
           {/* Call Status Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-white">
               <div className="mb-4">
                 {callStatus === 'connecting' && (
@@ -1423,9 +1439,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                   </div>
                 )}
                 {callStatus === 'connected' && (
-                  <div className="space-y-2">
-                    <div className="text-2xl font-bold tracking-wider">{formatDuration(callDuration)}</div>
-                    <div className="text-sm opacity-80 font-medium">Connected</div>
+                  <div className="space-y-2 flex ">
+                    <div className="absolute bottom-0 left-2 text-1xl font-bold tracking-wider text-gray-700">{formatDuration(callDuration)}</div>
                   </div>
                 )}
                 {callStatus === 'ended' && (
@@ -1437,6 +1452,181 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Floating reaction animation */}
+          {callStatus === 'connected' && reactionAnimation && lastReactionEmoji && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+              <div
+                className="text-5xl animate-ping"
+                style={{
+                  animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) 1'
+                }}
+              >
+                {lastReactionEmoji}
+              </div>
+            </div>
+          )}
+
+          {/* Emoji Icon Button - Right side bottom */}
+          {callStatus === 'connected' && (
+            <div className="absolute bottom-6 right-6 z-30 emoji-dropdown-container pointer-events-auto">
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEmojiDropdown(!showEmojiDropdown);
+                  }}
+                  className="rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm cursor-pointer"
+                  title="Reactions"
+                  aria-label="Show reactions"
+                  type="button"
+                  style={{ pointerEvents: 'auto' }}
+                >
+                  <Smile className="w-6 h-6" />
+                </button>
+                
+                {/* Emoji Dropdown - Shows above the button */}
+                {showEmojiDropdown && (
+                  <div className="absolute bottom-full right-0 mb-2 bg-transparent rounded-lg p-2 flex flex-col gap-2 animate-slideIn z-40 pointer-events-auto">
+                    {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEmojiReaction(emoji);
+                          setShowEmojiDropdown(false);
+                        }}
+                        className="text-2xl hover:scale-125 active:scale-150 transition-transform duration-200 hover:drop-shadow-lg rounded-full p-2 hover:bg-white/20 bg-white/10 backdrop-blur-sm cursor-pointer"
+                        title={
+                          {
+                            '👍': 'Thumbs up',
+                            '❤️': 'Love',
+                            '😂': 'Laughing',
+                            '😮': 'Surprised',
+                            '😢': 'Sad',
+                            '🙏': 'Praying'
+                          }[emoji]
+                        }
+                        type="button"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Controls Overlay - Positioned at bottom center of video */}
+          {callStatus === 'connected' && (
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-6 px-4 z-10">
+              <div className="space-y-4 w-full max-w-2xl">
+                {/* Main controls - Mute, Video, Speaker, End */}
+                <div className="flex justify-center items-center gap-3 flex-wrap">
+                  {/* Three-dot menu for connected call */}
+                <div className="relative flex justify-center">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="rounded-full p-3.5 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm"
+                    title="More options"
+                  >
+                    <MoreVertical className="w-6 h-6" />
+                  </button>
+                  {showMenu && (
+                    <div className="absolute bottom-12 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-max overflow-hidden animate-slideIn">
+                      <button
+                        onClick={handleShareScreen}
+                        className={`w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 font-medium ${
+                          isScreenSharing 
+                            ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' 
+                            : 'text-gray-700'
+                        }`}
+                      >
+                        <Share2 className="w-4 h-4" />
+                        <span>{isScreenSharing ? 'Stop Screen' : 'Share Screen'}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowMessageInput(true);
+                          setShowMenu(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium border-t border-gray-200"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Send Message</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+                  <button
+                    onClick={toggleMute}
+                    className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      isMuted 
+                        ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300' 
+                        : 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm'
+                    }`}
+                    title={isMuted ? 'Unmute' : 'Mute'}
+                    aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                  >
+                    {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                  </button>
+
+                  {callType === 'video' && (
+                    <button
+                      onClick={toggleVideo}
+                      className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                        isVideoEnabled 
+                          ? 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm' 
+                          : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
+                      }`}
+                      title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+                      aria-label={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+                    >
+                      {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={toggleSpeaker}
+                    className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      isSpeakerEnabled 
+                        ? 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm' 
+                        : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
+                    }`}
+                    title={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
+                    aria-label={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
+                  >
+                    {isSpeakerEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+                  </button>
+
+                  {/* Raise Hand Button - Highlight when raised */}
+                  <button
+                    onClick={handleRaiseHand}
+                    className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      isHandRaised 
+                        ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white focus:ring-orange-300' 
+                        : 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm'
+                    }`}
+                    title={isHandRaised ? 'Lower hand' : 'Raise hand'}
+                    aria-label={isHandRaised ? 'Lower hand' : 'Raise hand'}
+                  >
+                    <Hand className="w-6 h-6" />
+                  </button>
+
+                  <button
+                    onClick={handleEndCall}
+                    className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                    title="End call"
+                    aria-label="End call"
+                  >
+                    <PhoneOff className="w-6 h-6" />
+                  </button>
+                </div>
+                
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -1510,170 +1700,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {callStatus === 'connected' && (
             <div className="space-y-4">
-              {/* Connection Quality Indicator */}
-              <div className="text-center bg-gray-50 rounded-lg py-2 px-4 border border-gray-200">
-                <div className="flex justify-center items-center gap-3 text-sm font-medium text-gray-700">
-                  <span className="text-xs">{getConnectionQualityIcon()}</span>
-                  <div className="flex gap-1 items-end h-4">
-                    {[...Array(4)].map((_, i) => (
-                      <div
-                        key={i}
-                        className={`w-1.5 rounded-full transition-all duration-300 ${
-                          i < getConnectionQualityBars()
-                            ? 'bg-green-500 shadow-sm'
-                            : 'bg-gray-300'
-                        }`}
-                        style={{ height: `${(i + 1) * 25}%` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
 
-              {/* Emoji reactions with animation - only show during connected call */}
-              <div className="relative">
-                {/* Floating reaction animation */}
-                {reactionAnimation && lastReactionEmoji && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div
-                      className="text-5xl animate-ping"
-                      style={{
-                        animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) 1'
-                      }}
-                    >
-                      {lastReactionEmoji}
-                    </div>
-                  </div>
-                )}
-
-                {/* Emoji buttons */}
-                <div className="flex justify-center gap-2 flex-wrap">
-                  {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
-                    <button
-                      key={emoji}
-                      onClick={() => handleEmojiReaction(emoji)}
-                      className="text-2xl hover:scale-125 active:scale-150 transition-transform duration-200 hover:drop-shadow-lg"
-                      title={
-                        {
-                          '👍': 'Thumbs up',
-                          '❤️': 'Love',
-                          '😂': 'Laughing',
-                          '😮': 'Surprised',
-                          '😢': 'Sad',
-                          '🙏': 'Praying'
-                        }[emoji]
-                      }
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Main controls - Mute, Video, Speaker, End */}
-              <div className="flex justify-center items-center gap-3 flex-wrap">
-                <button
-                  onClick={toggleMute}
-                  className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    isMuted 
-                      ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300' 
-                      : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400'
-                  }`}
-                  title={isMuted ? 'Unmute' : 'Mute'}
-                  aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-                >
-                  {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                </button>
-
-                {callType === 'video' && (
-                  <button
-                    onClick={toggleVideo}
-                    className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                      isVideoEnabled 
-                        ? 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400' 
-                        : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
-                    }`}
-                    title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
-                    aria-label={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
-                  >
-                    {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-                  </button>
-                )}
-
-                <button
-                  onClick={toggleSpeaker}
-                  className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    isSpeakerEnabled 
-                      ? 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400' 
-                      : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
-                  }`}
-                  title={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
-                  aria-label={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
-                >
-                  {isSpeakerEnabled ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
-                </button>
-
-                {/* Raise Hand Button - Highlight when raised */}
-                <button
-                  onClick={handleRaiseHand}
-                  className={`rounded-full p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    isHandRaised 
-                      ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white focus:ring-orange-300' 
-                      : 'bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 focus:ring-gray-400'
-                  }`}
-                  title={isHandRaised ? 'Lower hand' : 'Raise hand'}
-                  aria-label={isHandRaised ? 'Lower hand' : 'Raise hand'}
-                >
-                  <Hand className="w-6 h-6" />
-                </button>
-
-                <button
-                  onClick={handleEndCall}
-                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
-                  title="End call"
-                  aria-label="End call"
-                >
-                  <PhoneOff className="w-6 h-6" />
-                </button>
-              </div>
-
-              {/* Three-dot menu for connected call */}
-              <div className="relative flex justify-center">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="text-gray-600 hover:text-gray-900 p-2 transition-colors"
-                  title="More options"
-                >
-                  <MoreVertical className="w-6 h-6" />
-                </button>
-                {showMenu && (
-                  <div className="absolute bottom-12 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-max overflow-hidden animate-slideIn">
-                    <button
-                      onClick={handleShareScreen}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 font-medium ${
-                        isScreenSharing 
-                          ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' 
-                          : 'text-gray-700'
-                      }`}
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>{isScreenSharing ? 'Stop Screen' : 'Share Screen'}</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMessageInput(true);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium border-t border-gray-200"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Send Message</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Message Input - Show when user clicks Send Message */}
               {showMessageInput && (
                 <div className="flex gap-2 animate-slideIn">
                   <input
