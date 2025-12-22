@@ -384,6 +384,33 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
         console.log('New message:', payload)
         const message = payload.new as any
 
+        // ✅ CRITICAL: Check if current user is a participant in this thread
+        // Use .maybeSingle() or check array length instead of .single() to avoid 406 errors
+        const { data: participants, error: participantError } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('thread_id', message.thread_id)
+          .eq('user_id', currentUser.id)
+          .limit(1)
+
+        // Only process messages from threads the user is part of
+        if (participantError) {
+          console.warn('⚠️ Error checking participant status:', participantError)
+          // If it's a 406 or RLS error, we might still want to process call requests
+          // as it could be a false negative. Log and continue for call requests.
+          if (message.message_type === 'call_request' || message.message_type === 'call_accepted') {
+            console.log('⚠️ Participant check failed but processing call message anyway:', message.thread_id)
+            // Continue processing for call messages even if participant check fails
+          } else {
+            console.log('⚠️ Message from thread user is not part of, skipping:', message.thread_id)
+            return
+          }
+        } else if (!participants || participants.length === 0) {
+          // User is not a participant - skip this message
+          console.log('⚠️ Message from thread user is not part of, skipping:', message.thread_id)
+          return
+        }
+
         // Fetch full message with sender info
         const { data: fullMessage } = await supabase
           .from('chat_messages')

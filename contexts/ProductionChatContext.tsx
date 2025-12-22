@@ -230,20 +230,42 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
     try {
-      // ✅ FIXED: Generate real VideoSDK token from Supabase Edge Function
+      // ✅ FIXED: Generate real VideoSDK token from Next.js API route
       const roomId = `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
-      // Get real token from Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('generate-videosdk-token', {
-        body: {
+      // Get auth token if available
+      let authToken: string | undefined
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        authToken = sessionData.session?.access_token
+      } catch (error) {
+        console.warn('⚠️ Could not get auth session:', error)
+      }
+
+      // Get real token from Next.js API route (not Supabase Edge Function)
+      const response = await fetch('/api/videosdk/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authToken && { Authorization: `Bearer ${authToken}` }),
+        },
+        body: JSON.stringify({
           roomId,
           userId: currentUser?.id || ''
-        }
+        }),
       })
 
-      if (error || !data?.token) {
-        console.error('Failed to generate VideoSDK token:', error)
-        throw new Error('Failed to generate call token. Please try again.')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        console.error('❌ Failed to get VideoSDK token:', errorMessage)
+        throw new Error(`Failed to generate call token: ${errorMessage}`)
+      }
+
+      const data = await response.json()
+      if (!data?.token) {
+        console.error('❌ API response missing token:', data)
+        throw new Error('Failed to get VideoSDK token from API: no token in response')
       }
 
       const token = data.token as string
@@ -387,6 +409,204 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
     }
   }, [currentUser, openThreads])
+
+  // ✅ CRITICAL: Subscribe to call_request messages from all threads user is part of
+  // This is needed because call requests can come from any thread the user is part of
+  useEffect(() => {
+    if (!currentUser) return
+
+    console.log('📞 Setting up call request listener for user:', currentUser.id)
+    
+    const unsubscribeCallbacks: (() => void)[] = []
+    const subscribedThreadIds = new Set<string>()
+
+    // Function to subscribe to a thread for call requests
+    const subscribeToThreadForCalls = (threadId: string) => {
+      if (subscribedThreadIds.has(threadId)) {
+        return // Already subscribed
+      }
+      subscribedThreadIds.add(threadId)
+      
+      const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message: ChatMessage) => {
+        // Handle call_request messages - update callRequests state
+        if (message.message_type === 'call_request' && message.metadata) {
+          const metadata = message.metadata as any
+          const callerId = metadata.callerId || message.sender_id
+          
+          // Only process if this is not from the current user
+          if (callerId !== currentUser.id) {
+            console.log('📞 Incoming call request received:', {
+              threadId: message.thread_id,
+              callerId,
+              callerName: metadata.callerName || message.sender?.name || 'Unknown',
+              callType: metadata.callType || 'video',
+              roomId: metadata.roomId
+            })
+            
+            const callRequest: CallRequest = {
+              threadId: message.thread_id,
+              type: metadata.callType || 'video',
+              callerId: callerId,
+              callerName: metadata.callerName || message.sender?.name || 'Unknown',
+              roomId: metadata.roomId,
+              token: metadata.token // This will be ignored - receiver generates their own
+            }
+
+            setCallRequests(prev => ({
+              ...prev,
+              [message.thread_id]: callRequest
+            }))
+
+            // Also dispatch incomingCall event for backward compatibility
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('incomingCall', {
+                detail: callRequest
+              }))
+            }
+          }
+        }
+
+        // Also update messages state if thread is open
+        if (openThreads.includes(message.thread_id)) {
+          setMessages(prev => {
+            const current = prev[message.thread_id] || []
+            // Avoid duplicates
+            if (current.some(m => m.id === message.id)) {
+              return prev
+            }
+            return { ...prev, [message.thread_id]: [...current, message] }
+          })
+        }
+      })
+      unsubscribeCallbacks.push(unsubscribe)
+    }
+
+    // Subscribe to all existing threads
+    const setupCallRequestListener = async () => {
+      try {
+        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
+        console.log('📞 Found', userThreads.length, 'threads for call request listening')
+        
+        // Subscribe to each thread to catch call_request messages
+        userThreads.forEach(thread => {
+          subscribeToThreadForCalls(thread.id)
+        })
+        
+        // Also update threads state so UI can show them
+        setThreads(userThreads)
+      } catch (error) {
+        console.error('❌ Error setting up call request listener:', error)
+      }
+    }
+
+    setupCallRequestListener()
+
+    // Also subscribe to threads as they're added to the threads state
+    threads.forEach(thread => {
+      subscribeToThreadForCalls(thread.id)
+    })
+
+    return () => {
+      console.log('📞 Cleaning up call request listeners')
+      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
+      subscribedThreadIds.clear()
+    }
+  }, [currentUser, openThreads, threads])
+
+  // ✅ FALLBACK: Also listen directly to Supabase realtime for call_request messages
+  // This ensures we catch call requests even if thread subscription hasn't been set up yet
+  useEffect(() => {
+    if (!currentUser) return
+
+    console.log('📞 Setting up direct Supabase realtime listener for call requests')
+    
+    // Subscribe to Supabase realtime channel for messages
+    const channel = supabase
+      .channel('call-requests-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `message_type=eq.call_request`
+        },
+        async (payload) => {
+          const message = payload.new as any
+          console.log('📞 Direct realtime call_request received:', message.thread_id)
+          
+          // Check if user is a participant
+          const { data: participant } = await supabase
+            .from('chat_participants')
+            .select('user_id')
+            .eq('thread_id', message.thread_id)
+            .eq('user_id', currentUser.id)
+            .maybeSingle()
+          
+          if (!participant) {
+            console.log('📞 User is not a participant in this thread, ignoring call request')
+            return
+          }
+          
+          // Check if this is not from current user
+          const metadata = message.metadata || {}
+          const callerId = metadata.callerId || message.sender_id
+          if (callerId === currentUser.id) {
+            console.log('📞 Call request is from current user, ignoring')
+            return
+          }
+          
+          // Fetch full message with sender info
+          const { data: fullMessage } = await supabase
+            .from('chat_messages')
+            .select(`
+              *,
+              sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
+            `)
+            .eq('id', message.id)
+            .single()
+          
+          if (fullMessage) {
+            const fullMetadata = fullMessage.metadata as any || {}
+            console.log('📞 Processing call request from direct realtime listener:', {
+              threadId: fullMessage.thread_id,
+              callerId: fullMetadata.callerId || fullMessage.sender_id,
+              roomId: fullMetadata.roomId
+            })
+            
+            const callRequest: CallRequest = {
+              threadId: fullMessage.thread_id,
+              type: fullMetadata.callType || 'video',
+              callerId: fullMetadata.callerId || fullMessage.sender_id,
+              callerName: fullMetadata.callerName || 'Unknown',
+              roomId: fullMetadata.roomId,
+              token: fullMetadata.token // This will be ignored - receiver generates their own
+            }
+
+            setCallRequests(prev => {
+              // Avoid duplicates
+              if (prev[fullMessage.thread_id]) {
+                console.log('📞 Call request already exists for this thread, skipping')
+                return prev
+              }
+              console.log('📞 Adding call request to state:', callRequest)
+              return {
+                ...prev,
+                [fullMessage.thread_id]: callRequest
+              }
+            })
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('📞 Supabase realtime subscription status:', status)
+      })
+
+    return () => {
+      console.log('📞 Cleaning up direct Supabase realtime listener')
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser])
 
   // Update current user's presence to online when component mounts
   useEffect(() => {
