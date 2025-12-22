@@ -56,7 +56,31 @@ class VideoSDKService {
     if (roomId) {
       return roomId
     }
-    return `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    
+    // Create room via VideoSDK API
+    try {
+      const response = await fetch('/api/videosdk/room', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create room')
+      }
+
+      const data = await response.json()
+      if (!data.roomId) {
+        throw new Error('Room ID not found in response')
+      }
+
+      return data.roomId
+    } catch (error) {
+      console.error('Error creating VideoSDK room:', error)
+      throw error
+    }
   }
 
   async joinRoom(roomId: string, userId: string, tokenHint?: string): Promise<JoinVideoSDKRoomResult> {

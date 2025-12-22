@@ -230,8 +230,30 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
     try {
-      // ✅ FIXED: Generate real VideoSDK token from our API
-      const roomId = `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      // ✅ FIXED: Create room first via VideoSDK API, then get token
+      console.log('📞 Creating VideoSDK room...')
+      const roomResponse = await fetch('/api/videosdk/room', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!roomResponse.ok) {
+        const errorData = await roomResponse.json().catch(() => ({}))
+        console.error('Failed to create VideoSDK room:', errorData)
+        throw new Error(errorData.error || 'Failed to create call room. Please try again.')
+      }
+
+      const roomData = await roomResponse.json()
+      const roomId = roomData.roomId
+      
+      if (!roomId) {
+        console.error('Invalid response from room API:', roomData)
+        throw new Error('Failed to create call room. Please try again.')
+      }
+
+      console.log('✅ VideoSDK room created:', roomId)
       
       // Get real token from our API endpoint
       const response = await fetch('/api/videosdk/token', {

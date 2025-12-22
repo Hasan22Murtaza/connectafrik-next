@@ -295,7 +295,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const getVideoSDKToken = async (meetingId?: string, userId?: string): Promise<string> => {
     console.log('📞 Requesting VideoSDK token from API route');
 
-    const roomId = meetingId || roomIdHint || `room_${Date.now()}`;
+    // Use provided meetingId or roomIdHint (room should already be created)
+    const roomId = meetingId || roomIdHint;
+    if (!roomId) {
+      throw new Error('Room ID is required. Please create a room first.');
+    }
     const userIdValue = userId || user?.id || '';
 
     // Get auth token if available
@@ -343,7 +347,33 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       setCallStatus('connecting');
       setError('');
 
-      const meetingId = roomIdHint || `room_${Date.now()}`;
+      let meetingId = roomIdHint;
+      
+      // ✅ Create room if it doesn't exist
+      if (!meetingId) {
+        console.log('📞 Creating new VideoSDK room...');
+        const roomResponse = await fetch('/api/videosdk/room', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!roomResponse.ok) {
+          const errorData = await roomResponse.json().catch(() => ({}));
+          console.error('Failed to create VideoSDK room:', errorData);
+          throw new Error(errorData.error || 'Failed to create call room. Please try again.');
+        }
+
+        const roomData = await roomResponse.json();
+        meetingId = roomData.roomId;
+        
+        if (!meetingId) {
+          throw new Error('Failed to create call room. Please try again.');
+        }
+        
+        console.log('✅ VideoSDK room created:', meetingId);
+      }
 
       // ✅ Get secure JWT token from Supabase edge function
       const token = await getVideoSDKToken(meetingId, user?.id);
@@ -568,6 +598,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       setCallStatus('connecting');
 
+      // ✅ Room should already exist (created by caller), but verify it exists
+      // If room doesn't exist, VideoSDK will handle it during join
       // ✅ Get secure JWT token from Supabase edge function
       const token = await getVideoSDKToken(roomIdHint, user?.id);
       setRoomId(roomIdHint);
