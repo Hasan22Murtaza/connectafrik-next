@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { supabase } from '@/lib/supabase';
-import { VideoSDK } from '@/lib/videosdk-js-sdk';
 
 export interface VideoSDKCallModalProps {
   isOpen: boolean;
@@ -352,15 +351,39 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       console.log('📞 Starting meeting join:', meetingId);
       console.log('🔑 Using JWT token for authentication');
+      console.log('🔑 Token length:', token?.length, 'Token preview:', token?.substring(0, 50) + '...');
 
-      // ✅ Initialize VideoSDK meeting with token
-      const meeting = VideoSDK.initMeeting({
-        token,
-        meetingId,
-        name: user?.user_metadata?.full_name || user?.email || 'User',
-        micEnabled: true,
-        webcamEnabled: callType === 'video' && isVideoEnabled,
-      });
+      // ✅ Dynamically import VideoSDK to avoid SSR issues
+      const { VideoSDK } = await import('@videosdk.live/js-sdk');
+      
+      // ✅ Validate token format (should be a JWT with 3 parts)
+      if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+        throw new Error('Invalid VideoSDK token format. Token must be a valid JWT.');
+      }
+      
+      // ✅ Configure VideoSDK with token (must be called before initMeeting)
+      try {
+        VideoSDK.config(token);
+        console.log('✅ VideoSDK configured successfully');
+      } catch (configError: any) {
+        console.error('❌ VideoSDK config error:', configError);
+        throw new Error(`Failed to configure VideoSDK: ${configError.message || 'Unknown error'}`);
+      }
+
+      // ✅ Initialize VideoSDK meeting
+      let meeting;
+      try {
+        meeting = VideoSDK.initMeeting({
+          meetingId,
+          name: user?.user_metadata?.full_name || user?.email || 'User',
+          micEnabled: true,
+          webcamEnabled: callType === 'video' && isVideoEnabled,
+        });
+        console.log('✅ VideoSDK meeting initialized successfully');
+      } catch (initError: any) {
+        console.error('❌ VideoSDK initMeeting error:', initError);
+        throw new Error(`Failed to initialize meeting: ${initError.message || 'Unknown error'}`);
+      }
 
       // Store meeting reference for cleanup
       currentMeetingRef.current = meeting;
@@ -508,7 +531,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         if (callType === 'video' && isVideoEnabled) {
           meeting.enableWebcam();
         }
-        meeting.enableMic();
+        meeting.unmuteMic();
       } catch (mediaError: any) {
         console.warn('⚠️ Local media access failed, VideoSDK will handle it:', mediaError);
         // VideoSDK will request permissions itself, so this is not critical
@@ -551,15 +574,39 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       console.log('📞 Accepting call with meetingId:', roomIdHint);
       console.log('🔑 Using JWT token for authentication');
+      console.log('🔑 Token length:', token?.length, 'Token preview:', token?.substring(0, 50) + '...');
 
-      // ✅ Initialize VideoSDK meeting for accepted call with token
-      const meeting = VideoSDK.initMeeting({
-        token,
-        meetingId: roomIdHint,
-        name: user?.user_metadata?.full_name || user?.email || 'User',
-        micEnabled: true,
-        webcamEnabled: callType === 'video' && isVideoEnabled,
-      });
+      // ✅ Dynamically import VideoSDK to avoid SSR issues
+      const { VideoSDK } = await import('@videosdk.live/js-sdk');
+      
+      // ✅ Validate token format (should be a JWT with 3 parts)
+      if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+        throw new Error('Invalid VideoSDK token format. Token must be a valid JWT.');
+      }
+      
+      // ✅ Configure VideoSDK with token (must be called before initMeeting)
+      try {
+        VideoSDK.config(token);
+        console.log('✅ VideoSDK configured successfully');
+      } catch (configError: any) {
+        console.error('❌ VideoSDK config error:', configError);
+        throw new Error(`Failed to configure VideoSDK: ${configError.message || 'Unknown error'}`);
+      }
+
+      // ✅ Initialize VideoSDK meeting for accepted call
+      let meeting;
+      try {
+        meeting = VideoSDK.initMeeting({
+          meetingId: roomIdHint,
+          name: user?.user_metadata?.full_name || user?.email || 'User',
+          micEnabled: true,
+          webcamEnabled: callType === 'video' && isVideoEnabled,
+        });
+        console.log('✅ VideoSDK meeting initialized successfully');
+      } catch (initError: any) {
+        console.error('❌ VideoSDK initMeeting error:', initError);
+        throw new Error(`Failed to initialize meeting: ${initError.message || 'Unknown error'}`);
+      }
 
       // Store meeting reference for cleanup
       currentMeetingRef.current = meeting;
@@ -665,7 +712,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         if (callType === 'video' && isVideoEnabled) {
           meeting.enableWebcam();
         }
-        meeting.enableMic();
+        meeting.unmuteMic();
       } catch (mediaError: any) {
         console.warn('⚠️ Local media access failed, VideoSDK will handle it:', mediaError);
         // VideoSDK will request permissions itself, so this is not critical

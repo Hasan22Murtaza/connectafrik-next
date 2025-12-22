@@ -230,19 +230,31 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
     try {
-      // ✅ FIXED: Generate real VideoSDK token from Supabase Edge Function
+      // ✅ FIXED: Generate real VideoSDK token from our API
       const roomId = `room_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       
-      // Get real token from Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('generate-videosdk-token', {
-        body: {
+      // Get real token from our API endpoint
+      const response = await fetch('/api/videosdk/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           roomId,
           userId: currentUser?.id || ''
-        }
+        })
       })
 
-      if (error || !data?.token) {
-        console.error('Failed to generate VideoSDK token:', error)
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Failed to generate VideoSDK token:', errorData)
+        throw new Error(errorData.error || 'Failed to generate call token. Please try again.')
+      }
+
+      const data = await response.json()
+      console.log('VideoSDK token data:255', data)
+      if (!data?.token) {
+        console.error('Invalid response from token API:', data)
         throw new Error('Failed to generate call token. Please try again.')
       }
 

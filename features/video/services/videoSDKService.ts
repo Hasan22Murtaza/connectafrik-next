@@ -1,9 +1,44 @@
-import { fetchVideoSDKToken, isVideoSDKTokenCompatible } from '@/lib/videosdk'
-
 export interface JoinVideoSDKRoomResult {
   token: string
   roomId: string
   userId: string
+}
+
+/**
+ * Basic compatibility check – ensures both values exist and share a prefix.
+ */
+const isVideoSDKTokenCompatible = (
+  token?: string | null,
+  apiKey?: string | null,
+): boolean => {
+  if (!token || !apiKey) return false
+  return token.slice(0, 6) === apiKey.slice(0, 6)
+}
+
+/**
+ * Fetch a VideoSDK JWT token from the API endpoint.
+ */
+const fetchVideoSDKToken = async ({
+  roomId,
+  userId,
+}: { roomId: string; userId: string }): Promise<string> => {
+  const response = await fetch('/api/videosdk/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ roomId, userId }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to get VideoSDK token')
+  }
+
+  const data = await response.json()
+  console.log('VideoSDK token data:36', data)
+  if (!data?.token || typeof data.token !== 'string') {
+    throw new Error('No VideoSDK token returned from API')
+  }
+
+  return data.token
 }
 
 class VideoSDKService {

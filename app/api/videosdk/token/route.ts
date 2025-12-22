@@ -10,6 +10,69 @@ export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders })
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    console.log('?? generate-videosdk-token GET called')
+    
+    const { searchParams } = new URL(request.url)
+    const roomId = searchParams.get('roomId')
+    const userId = searchParams.get('userId')
+    
+    console.log('Request params:', { roomId, userId })
+
+    if (!roomId || !userId) {
+      console.error('Missing roomId or userId:', { roomId, userId })
+      return NextResponse.json(
+        { error: 'Missing roomId or userId. Provide them as query parameters: ?roomId=xxx&userId=xxx' },
+        { 
+          status: 400,
+          headers: corsHeaders
+        }
+      )
+    }
+
+    const apiKey =
+      process.env.VIDEOSDK_API_KEY ??
+      process.env.VITE_VIDEOSDK_API_KEY ??
+      process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY
+    const apiSecret =
+      process.env.VIDEOSDK_SECRET_KEY ??
+      process.env.VIDEOSDK_SECRET ??
+      process.env.VITE_VIDEOSDK_SECRET_KEY ??
+      process.env.NEXT_PUBLIC_VIDEOSDK_SECRET_KEY
+
+    if (!apiKey || !apiSecret) {
+      throw new Error('Missing VideoSDK credentials')
+    }
+
+    // Generate JWT token using Web Crypto API (available in Node.js 18+)
+    const token = await generateJWTToken(apiKey, apiSecret, roomId, userId)
+
+    console.log('? VideoSDK token generated successfully')
+    return NextResponse.json(
+      {
+        token,
+        roomId,
+        userId,
+        expiresIn: '10m',
+      },
+      {
+        headers: corsHeaders,
+      }
+    )
+  } catch (err) {
+    console.error('? Error generating VideoSDK token:', err)
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    return NextResponse.json(
+      { error: errorMessage },
+      {
+        status: 500,
+        headers: corsHeaders,
+      }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     console.log('?? generate-videosdk-token called')
@@ -49,7 +112,7 @@ export async function POST(request: NextRequest) {
     // Generate JWT token using Web Crypto API (available in Node.js 18+)
     const token = await generateJWTToken(apiKey, apiSecret, roomId, userId)
 
-    console.log('? VideoSDK token generated successfully')
+    console.log('? VideoSDK token generated successfully', token)
     return NextResponse.json(
       {
         token,
@@ -119,7 +182,7 @@ async function generateJWTToken(
   const encodedSignature = base64UrlEncodeFromBuffer(signature)
 
   // Return complete JWT
-  return `${encodedHeader}.${encodedPayload}`
+  return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
 }
 
 /**
