@@ -51,12 +51,24 @@ const GlobalCallNotification: React.FC = () => {
 
   // Find the first active call request
   useEffect(() => {
+    console.log('📞 GlobalCallNotification: callRequests changed:', Object.keys(callRequests).length, 'requests')
+    console.log('📞 GlobalCallNotification: callRequests details:', callRequests)
+    console.log('📞 GlobalCallNotification: currentUser:', currentUser?.id)
+    
     const callRequestEntries = Object.entries(callRequests)
     if (callRequestEntries.length > 0) {
       const [threadId, callRequest] = callRequestEntries[0]
       
+      console.log('📞 GlobalCallNotification: Processing call request:', {
+        threadId,
+        callerId: callRequest.callerId,
+        currentUserId: currentUser?.id,
+        isIncoming: callRequest.callerId !== currentUser?.id
+      })
+      
       // Only show if it's an incoming call (not from current user)
       if (callRequest.callerId !== currentUser?.id) {
+        console.log('📞 GlobalCallNotification: Setting up incoming call modal')
         setActiveCall({
           threadId,
           type: callRequest.type,
@@ -68,11 +80,18 @@ const GlobalCallNotification: React.FC = () => {
         setIsCallModalOpen(true)
         
         // Start ringtone for incoming call
+        console.log('📞 GlobalCallNotification: Starting ringtone')
         ringtoneService.playRingtone().then(ringtone => {
           setRingtoneRef(ringtone)
+          console.log('📞 GlobalCallNotification: Ringtone started')
+        }).catch(err => {
+          console.error('📞 GlobalCallNotification: Failed to start ringtone:', err)
         })
+      } else {
+        console.log('📞 GlobalCallNotification: Call request is from current user, ignoring')
       }
     } else {
+      console.log('📞 GlobalCallNotification: No call requests, clearing active call')
       setActiveCall(null)
       setIsCallModalOpen(false)
       

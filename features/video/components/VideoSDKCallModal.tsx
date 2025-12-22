@@ -598,9 +598,16 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       setCallStatus('connecting');
 
-      // ✅ Room should already exist (created by caller), but verify it exists
-      // If room doesn't exist, VideoSDK will handle it during join
-      // ✅ Get secure JWT token from Supabase edge function
+      // ✅ CRITICAL: Always generate a NEW token for the receiver with their own userId
+      // NEVER use tokenHint - tokens contain participantId in JWT payload
+      // Using caller's token causes 401 Unauthorized because participantId won't match
+      if (tokenHint) {
+        console.warn('⚠️ tokenHint provided but IGNORED - generating new token for receiver');
+        console.warn('⚠️ Reason: Tokens are user-specific (participantId in JWT), must match current user');
+      }
+      
+      console.log('🔑 Generating new token for receiver:', { roomId: roomIdHint, userId: user?.id });
+
       const token = await getVideoSDKToken(roomIdHint, user?.id);
       setRoomId(roomIdHint);
 
