@@ -170,7 +170,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     try {
       videoSDKWebRTCManager.leaveMeeting();
       videoSDKWebRTCManager.setLocalStream(null);
-      videoSDKService.leaveRoom();
+      // videoSDKService.leaveRoom();
     } catch (error) {
       console.warn('⚠️ Error in backward compatibility cleanup:', error);
     }

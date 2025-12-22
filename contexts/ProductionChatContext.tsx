@@ -407,12 +407,30 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
         setMessages(prev => {
           const current = prev[threadId] || []
-          // Avoid duplicates
           if (current.some(m => m.id === message.id)) {
             return prev
           }
           return { ...prev, [threadId]: [...current, message] }
         })
+
+        if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
+          const metadata = message.metadata as any
+          if (metadata?.roomId && metadata?.callType) {
+            console.log('📞 Incoming call request detected in open thread:', threadId)
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('incomingCall', {
+                detail: {
+                  threadId: threadId,
+                  type: metadata.callType,
+                  callerId: message.sender_id,
+                  callerName: message.sender?.name || metadata?.callerName || 'Unknown',
+                  roomId: metadata.roomId,
+                  token: metadata.token
+                }
+              }))
+            }
+          }
+        }
       })
       unsubscribeCallbacks.push(unsubscribe)
     })
@@ -421,6 +439,73 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
     }
   }, [currentUser, openThreads])
+
+  useEffect(() => {
+    if (!currentUser) return
+
+    const unsubscribeCallbacks: (() => void)[] = []
+    const subscribedThreadIds = new Set<string>()
+
+    const subscribeToThreadForCalls = (threadId: string) => {
+      if (subscribedThreadIds.has(threadId)) {
+        return
+      }
+
+      subscribedThreadIds.add(threadId)
+      const messageUnsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
+        if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
+          const metadata = message.metadata as any
+          if (metadata?.roomId && metadata?.callType) {
+            console.log('📞 Incoming call request detected (global subscription):', {
+              threadId: threadId,
+              callerId: message.sender_id,
+              callerName: message.sender?.name || metadata?.callerName || 'Unknown',
+              type: metadata.callType,
+              roomId: metadata.roomId,
+              token: metadata.token
+            })
+
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('incomingCall', {
+                detail: {
+                  threadId: threadId,
+                  type: metadata.callType,
+                  callerId: message.sender_id,
+                  callerName: message.sender?.name || metadata?.callerName || 'Unknown',
+                  roomId: metadata.roomId,
+                  token: metadata.token
+                }
+              }))
+            }
+          }
+        }
+      })
+      unsubscribeCallbacks.push(messageUnsubscribe)
+    }
+
+    const setupGlobalCallListener = async () => {
+      try {
+        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
+        userThreads.forEach(thread => {
+          subscribeToThreadForCalls(thread.id)
+        })
+      } catch (error) {
+        console.error('Error setting up global call listener:', error)
+      }
+    }
+
+    const threadUnsubscribe = supabaseMessagingService.subscribeToUserThreads(currentUser, (thread) => {
+      subscribeToThreadForCalls(thread.id)
+    })
+    unsubscribeCallbacks.push(threadUnsubscribe)
+
+    setupGlobalCallListener()
+
+    return () => {
+      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
+      subscribedThreadIds.clear()
+    }
+  }, [currentUser])
 
   // Update current user's presence to online when component mounts
   useEffect(() => {
