@@ -225,11 +225,11 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                 </div>
               </>
             ) : (
-              <div className="flex items-center space-x-4 pr-4 border-r border-gray-200">
-                <Link href="/signin" className="btn-secondary">
+              <div className="flex items-center space-x-2 sm:space-x-4 pr-0  sm:pr-4 border-r border-gray-200">
+                <Link href="/signin" className="btn-secondary !px-3 sm:px-5">
                   Sign In
                 </Link>
-                <Link href="/signup" className="btn-primary">
+                <Link href="/signup" className="btn-primary !px-3 sm:px-5">
                   Join Community
                 </Link>
               </div>
