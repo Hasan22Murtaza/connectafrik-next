@@ -1357,30 +1357,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getConnectionQualityIcon = () => {
-    switch (connectionQuality) {
-      case 'excellent':
-        return '🟢 Excellent';
-      case 'good':
-        return '🟢 Good connection';
-      case 'fair':
-        return '🟡 Fair connection';
-      case 'poor':
-        return '🔴 Poor connection';
-      default:
-        return '🟢 Good connection';
-    }
-  };
-
-  const getConnectionQualityBars = () => {
-    const barCount = {
-      excellent: 4,
-      good: 3,
-      fair: 2,
-      poor: 1
-    };
-    return barCount[connectionQuality] || 3;
-  };
 
   const handleEmojiReaction = (emoji: string) => {
     // Send emoji reaction
@@ -1412,7 +1388,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn md:bg-black/75">
       <div className="bg-secondary-800 rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-5xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-4 md:p-5 flex items-center justify-between shadow-lg">
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 md:p-5 flex items-center justify-between shadow-lg">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-orange-400/50 rounded-full flex items-center justify-center shadow-lg">
               {callType === 'video' ? (
