@@ -68,6 +68,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const hasInitializedRef = useRef(false);
   const isMountedRef = useRef(false);
   const currentMeetingRef = useRef<any>(null);
+  const callStatusRef = useRef<'connecting' | 'ringing' | 'connected' | 'ended'>('connecting');
+
+  // Keep ref in sync with state for use in callbacks
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -231,13 +237,19 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isIncoming, roomIdHint, callStatus, cleanupResources]);
 
-  // Listen for call_accepted messages (for caller's side) - Only during ringing
+  // Listen for call_accepted messages (for caller's side) - Set up early for outgoing calls
   useEffect(() => {
-    if (!isOpen || isIncoming || !threadId || callStatus !== 'ringing') {
+    // Only set up for outgoing calls (not incoming)
+    if (!isOpen || isIncoming || !threadId) {
       return;
     }
 
-    console.log('📞 Setting up call_accepted listener for caller (ringing state only)');
+    // Set up listener when status is 'connecting' or 'ringing' (for outgoing calls)
+    if (callStatus !== 'connecting' && callStatus !== 'ringing') {
+      return;
+    }
+
+    console.log('📞 Setting up call_accepted listener for caller (status:', callStatus, ')');
 
     let hasAccepted = false; // Guard to prevent multiple triggers
 
@@ -273,6 +285,85 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       unsubscribe();
     };
   }, [isOpen, isIncoming, threadId, callStatus]); // Added callStatus dependency
+
+  // Listen for call_rejected messages (for both caller and receiver)
+  // Set up as soon as modal opens and keep it active until modal closes
+  useEffect(() => {
+    if (!isOpen || !threadId || !currentUserId) {
+      return;
+    }
+
+    console.log('📞 Setting up call_rejected listener (status:', callStatusRef.current, ')');
+
+    let hasRejected = false; // Guard to prevent multiple triggers
+
+    const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
+      // Log all call-related messages for debugging
+      if (message.message_type === 'call_rejected' || message.message_type === 'call_accepted' || message.message_type === 'call_request') {
+        console.log('📞 Received call-related message:', {
+          message_type: message.message_type,
+          sender_id: message.sender_id,
+          currentUserId: currentUserId,
+          metadata: message.metadata,
+          callStatus: callStatusRef.current
+        });
+      }
+
+      // Only process if message is from the other participant (not from current user)
+      // Check current status to avoid processing if call is already ended
+      if (callStatusRef.current === 'ended') {
+        return;
+      }
+
+      // Check if this is a rejection message from the other participant
+      const isRejectionMessage = message.message_type === 'call_rejected';
+      const isFromOtherUser = message.sender_id && message.sender_id !== currentUserId;
+      const hasRejectionMetadata = message.metadata?.rejectedBy;
+
+      if (!hasRejected && isRejectionMessage && hasRejectionMetadata && isFromOtherUser) {
+        console.log('📞 Call rejected by other participant - closing call modal', {
+          rejectedBy: message.metadata?.rejectedBy,
+          currentUserId: currentUserId,
+          senderId: message.sender_id,
+          message: message
+        });
+        hasRejected = true; // Prevent re-triggering
+
+        // Stop ringtone immediately
+        if (ringtoneRef.current) {
+          ringtoneRef.current.stop();
+          ringtoneRef.current = null;
+        }
+        ringtoneService.stopRingtone();
+
+        // Clear timeout
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current);
+          callTimeoutRef.current = null;
+        }
+
+        // End the call and close modal
+        if (isMountedRef.current) {
+          setCallStatus('ended');
+          cleanupResources();
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              onClose();
+            }
+          }, 1000);
+        }
+      } else if (isRejectionMessage && !isFromOtherUser) {
+        console.log('📞 Ignoring call_rejected message from self');
+      } else if (isRejectionMessage && !hasRejectionMetadata) {
+        console.warn('⚠️ Received call_rejected message without metadata:', message);
+      }
+    });
+
+    return () => {
+      console.log('📞 Cleaning up call_rejected listener');
+      unsubscribe();
+    };
+  }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
 
   const addRemoteStream = (stream: MediaStream) => {
     updateRemoteStreams((prev) => {
@@ -351,7 +442,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       
       // ✅ Create room if it doesn't exist
       if (!meetingId) {
-        console.log('📞 Creating new VideoSDK room...');
         const roomResponse = await fetch('/api/videosdk/room', {
           method: 'POST',
           headers: {
@@ -371,21 +461,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         if (!meetingId) {
           throw new Error('Failed to create call room. Please try again.');
         }
-        
-        console.log('✅ VideoSDK room created:', meetingId);
       }
-
       // ✅ Get secure JWT token from Supabase edge function
       const token = await getVideoSDKToken(meetingId, user?.id);
       setRoomId(meetingId);
-
-      console.log('📞 Starting meeting join:', meetingId);
-      console.log('🔑 Using JWT token for authentication');
-      console.log('🔑 Token length:', token?.length, 'Token preview:', token?.substring(0, 50) + '...');
-
       // ✅ Dynamically import VideoSDK to avoid SSR issues
       const { VideoSDK } = await import('@videosdk.live/js-sdk');
-      
       // ✅ Validate token format (should be a JWT with 3 parts)
       if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
         throw new Error('Invalid VideoSDK token format. Token must be a valid JWT.');
@@ -394,7 +475,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       // ✅ Configure VideoSDK with token (must be called before initMeeting)
       try {
         VideoSDK.config(token);
-        console.log('✅ VideoSDK configured successfully');
       } catch (configError: any) {
         console.error('❌ VideoSDK config error:', configError);
         throw new Error(`Failed to configure VideoSDK: ${configError.message || 'Unknown error'}`);
@@ -409,7 +489,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           micEnabled: true,
           webcamEnabled: callType === 'video' && isVideoEnabled,
         });
-        console.log('✅ VideoSDK meeting initialized successfully');
       } catch (initError: any) {
         console.error('❌ VideoSDK initMeeting error:', initError);
         throw new Error(`Failed to initialize meeting: ${initError.message || 'Unknown error'}`);
@@ -420,7 +499,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       // ✅ Set WebRTC callbacks BEFORE joining (CRITICAL FIX)
       meeting.on("meeting-joined", () => {
-        console.log("🎥 Meeting joined");
         if (isMountedRef.current) {
           setCallStatus(isIncoming ? 'connected' : 'ringing');
 
@@ -435,13 +513,23 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       });
 
       meeting.on("participant-joined", (participant: any) => {
-        console.log("👤 Participant joined:", participant.id);
         if (isMountedRef.current) {
+          // ✅ FIXED: Update status to 'connected' when participant joins (for outgoing calls)
+          if (!isIncoming && (callStatusRef.current === 'ringing' || callStatusRef.current === 'connecting')) {
+            console.log('📞 Participant joined - updating status to connected (current status:', callStatusRef.current, ')');
+            setCallStatus('connected');
+            // Stop ringtone when participant joins
+            if (ringtoneRef.current) {
+              ringtoneRef.current.stop();
+              ringtoneRef.current = null;
+            }
+            ringtoneService.stopRingtone();
+          }
+
           setParticipants(prev => {
             const exists = prev.find(x => x.id === participant.id);
             if (exists) return prev;
             const updated = [...prev, participant];
-            console.log("📊 Total participants:", updated.length);
             
             // ✅ FIXED: Subscribe to participant's streams using VideoSDK API
             try {
@@ -503,7 +591,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       });
 
       meeting.on("participant-left", (p: any) => {
-        console.log("👤 Participant left:", p.id);
         if (isMountedRef.current) {
           setParticipants(prev => prev.filter((x: any) => x.id !== p.id));
         }
@@ -511,15 +598,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       // ✅ Add handler for when meeting ends unexpectedly
       meeting.on("meeting-left", () => {
-        console.log("👋 Meeting left");
         if (isMountedRef.current) {
           setCallStatus('ended');
         }
         cleanupResources();
       });
-
-      // ✅ Join meeting AFTER all handlers are set up (token already configured)
-      console.log('📞 Joining meeting...');
       
       // Add connection timeout (30 seconds)
       const joinTimeout = setTimeout(() => {
@@ -536,7 +619,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       try {
         await meeting.join();
         clearTimeout(joinTimeout);
-        console.log('✅ Meeting join initiated');
       } catch (joinError: any) {
         clearTimeout(joinTimeout);
         throw joinError;
@@ -582,7 +664,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
   const handleAcceptCall = async () => {
     try {
-      console.log('📞 Accepting call - stopping ringtone');
       // Stop ringtone immediately
       if (ringtoneRef.current) {
         ringtoneRef.current.stop();
@@ -605,15 +686,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         console.warn('⚠️ tokenHint provided but IGNORED - generating new token for receiver');
         console.warn('⚠️ Reason: Tokens are user-specific (participantId in JWT), must match current user');
       }
-      
-      console.log('🔑 Generating new token for receiver:', { roomId: roomIdHint, userId: user?.id });
 
       const token = await getVideoSDKToken(roomIdHint, user?.id);
       setRoomId(roomIdHint);
-
-      console.log('📞 Accepting call with meetingId:', roomIdHint);
-      console.log('🔑 Using JWT token for authentication');
-      console.log('🔑 Token length:', token?.length, 'Token preview:', token?.substring(0, 50) + '...');
 
       // ✅ Dynamically import VideoSDK to avoid SSR issues
       const { VideoSDK } = await import('@videosdk.live/js-sdk');
@@ -626,7 +701,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       // ✅ Configure VideoSDK with token (must be called before initMeeting)
       try {
         VideoSDK.config(token);
-        console.log('✅ VideoSDK configured successfully');
       } catch (configError: any) {
         console.error('❌ VideoSDK config error:', configError);
         throw new Error(`Failed to configure VideoSDK: ${configError.message || 'Unknown error'}`);
@@ -641,7 +715,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           micEnabled: true,
           webcamEnabled: callType === 'video' && isVideoEnabled,
         });
-        console.log('✅ VideoSDK meeting initialized successfully');
       } catch (initError: any) {
         console.error('❌ VideoSDK initMeeting error:', initError);
         throw new Error(`Failed to initialize meeting: ${initError.message || 'Unknown error'}`);
@@ -652,7 +725,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       // ✅ Set WebRTC callbacks BEFORE joining (CRITICAL FIX)
       meeting.on("meeting-joined", () => {
-        console.log("🎥 Meeting joined on accept");
         if (isMountedRef.current) {
           setCallStatus('connected');
         }
@@ -665,7 +737,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             const exists = prev.find(x => x.id === participant.id);
             if (exists) return prev;
             const updated = [...prev, participant];
-            console.log("📊 Total participants:", updated.length);
             
             // ✅ FIXED: Subscribe to participant's streams using VideoSDK API
             try {
@@ -690,7 +761,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 });
 
                 participant.on("stream-disabled", (stream: any) => {
-                  console.log("📹 Stream disabled for participant:", participant.id, stream.kind);
                   if (stream.track) {
                     removeRemoteStream(stream.track.id);
                   }
@@ -761,12 +831,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       if (!currentMeetingRef.current) {
         throw new Error('Meeting initialization failed');
       }
-
-      // ✅ NOW join the meeting (after all handlers are set up)
-      console.log('📞 Joining meeting...');
       await meeting.join();
-      console.log('✅ Meeting join initiated');
-
       // Send call_accepted notification to caller
       if (threadId && currentUserId) {
         try {
@@ -798,20 +863,56 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     }
   };
 
-  const handleRejectCall = () => {
-    console.log('📞 Rejecting call - stopping ringtone');
+  const handleRejectCall = async () => {
+    console.log('📞 handleRejectCall called', {
+      threadId,
+      currentUserId,
+      isIncoming,
+      callType
+    });
+
+    // Stop ringtone immediately
     if (ringtoneRef.current) {
       ringtoneRef.current.stop();
       ringtoneRef.current = null;
     }
     ringtoneService.stopRingtone();
+    
+    // Send call_rejected notification to the other participant
+    if (threadId && currentUserId) {
+      try {
+        console.log('📞 Sending call_rejected message to thread:', threadId);
+        const messageResult = await supabaseMessagingService.sendMessage(
+          threadId,
+          {
+            content: `❌ Call rejected`,
+            message_type: 'call_rejected',
+            metadata: {
+              callType: callType,
+              rejectedBy: currentUserId,
+              rejectedAt: new Date().toISOString()
+            }
+          },
+          { id: currentUserId, name: isIncoming ? recipientName : callerName }
+        );
+        console.log('✅ call_rejected message sent successfully:', messageResult);
+      } catch (msgError) {
+        console.error('❌ Failed to send call_rejected message:', msgError);
+        // Don't fail the rejection if message sending fails, but log it
+      }
+    } else {
+      console.warn('⚠️ Cannot send call_rejected message - missing threadId or currentUserId', {
+        threadId,
+        currentUserId
+      });
+    }
+    
     setCallStatus('ended');
     onReject?.();
     setTimeout(() => onClose(), 1000);
   };
 
   const handleEndCall = () => {
-    console.log('📞 Ending call - stopping all media and ringtone');
     cleanupResources();
     onCallEnd?.();
     setTimeout(() => onClose(), 1000);
@@ -826,10 +927,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       try {
         if (newMutedState) {
           currentMeetingRef.current.muteMic();
-          console.log('🎤 VideoSDK mic muted');
         } else {
           currentMeetingRef.current.unmuteMic();
-          console.log('🎤 VideoSDK mic unmuted');
         }
       } catch (error) {
         console.warn('⚠️ VideoSDK mute/unmute failed:', error);
@@ -841,7 +940,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       const audioTrack = localStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !newMutedState;
-        console.log('🎤 Local audio track enabled:', audioTrack.enabled);
       }
     }
   };
@@ -856,10 +954,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         try {
           if (newVideoState) {
             currentMeetingRef.current.enableWebcam();
-            console.log('📹 VideoSDK webcam enabled');
           } else {
             currentMeetingRef.current.disableWebcam();
-            console.log('📹 VideoSDK webcam disabled');
           }
         } catch (error) {
           console.warn('⚠️ VideoSDK webcam enable/disable failed:', error);
@@ -871,7 +967,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         const videoTrack = localStream.getVideoTracks()[0];
         if (videoTrack) {
           videoTrack.enabled = newVideoState;
-          console.log('📹 Local video track enabled:', newVideoState);
         }
       }
     }
@@ -897,7 +992,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const handleRaiseHand = () => {
     const newHandRaised = !isHandRaised;
     setIsHandRaised(newHandRaised);
-    console.log('✋ Hand raised:', newHandRaised);
 
     // Send notification to other participant
     if (threadId && currentUserId) {
@@ -919,7 +1013,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
   const handleShareScreen = async () => {
     try {
-      console.log('📺 Starting screen share...');
       setIsScreenSharing(true);
       setShowMenu(false);
 
@@ -928,8 +1021,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         video: { cursor: 'always' } as any,
         audio: false
       });
-
-      console.log('📺 Screen stream obtained, switching to screen share');
       // In a full implementation, you would switch the video track in VideoSDK
       // For now, we'll show a notification
       if (threadId && currentUserId) {
@@ -951,7 +1042,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       screenStream.getTracks().forEach(track => {
         track.onended = () => {
           setIsScreenSharing(false);
-          console.log('📺 Screen share ended');
           if (threadId && currentUserId) {
             supabaseMessagingService.sendMessage(
               threadId,
@@ -980,7 +1070,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     if (!messageText.trim()) return;
 
     try {
-      console.log('💬 Sending message during call:', messageText);
       if (threadId && currentUserId) {
         await supabaseMessagingService.sendMessage(
           threadId,
@@ -992,7 +1081,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         );
         setMessageText('');
         setShowMessageInput(false);
-        console.log('💬 Message sent successfully');
       }
     } catch (error) {
       console.error('❌ Failed to send message:', error);
@@ -1007,24 +1095,19 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         const combinedStream = new MediaStream();
         const addedTrackIds = new Set<string>();
 
-        console.log('🎤 Processing', remoteStreams.length, 'remote stream(s)');
-
         remoteStreams.forEach((stream, index) => {
           const audioTracks = stream.getAudioTracks();
           const videoTracks = stream.getVideoTracks();
-          console.log(`📊 Stream ${index}: ${audioTracks.length} audio track(s), ${videoTracks.length} video track(s)`);
 
           audioTracks.forEach(track => {
             // Only add each track once
             if (!addedTrackIds.has(track.id)) {
-              console.log(`🎤 Adding audio track: ${track.id}, enabled: ${track.enabled}, readyState: ${track.readyState}`);
               combinedStream.addTrack(track);
               addedTrackIds.add(track.id);
 
               // Ensure audio track is enabled
               if (!track.enabled) {
                 track.enabled = true;
-                console.log(`🎤 Audio track was disabled, enabling now`);
               }
             }
           });
@@ -1032,21 +1115,17 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
         // Attach combined stream to audio element
         const audioTrackCount = combinedStream.getAudioTracks().length;
-        console.log(`🔊 Combined stream has ${audioTrackCount} audio track(s)`);
 
         if (audioTrackCount > 0) {
           if (audioElement.srcObject !== combinedStream) {
             audioElement.srcObject = combinedStream;
-            console.log('🔊 Audio stream attached with', audioTrackCount, 'track(s)');
           }
 
           // Control mute state
           audioElement.muted = !isSpeakerEnabled;
-          console.log(`🔊 Audio element muted: ${audioElement.muted}, speaker enabled: ${isSpeakerEnabled}`);
 
           // Ensure audio is playing
           if (isSpeakerEnabled && audioElement.paused) {
-            console.log('🎵 Audio is paused, attempting to play...');
             const playPromise = audioElement.play();
             if (playPromise) {
               playPromise
@@ -1063,7 +1142,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       }
     } else if (audioElement) {
       audioElement.srcObject = null;
-      console.log('📊 No remote streams available');
     }
 
     const videoElement = remoteVideoRef.current;
@@ -1106,7 +1184,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   useEffect(() => {
     const handleCallAccepted = (event: any) => {
       if (event.detail?.threadId === threadId && !isIncoming) {
-        console.log('📞 Call accepted event received - stopping ringtone and connecting');
         if (ringtoneRef.current) {
           ringtoneRef.current.stop();
           ringtoneRef.current = null;
@@ -1122,12 +1199,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
   // Auto-connect for incoming calls (simulate)
   useEffect(() => {
-    console.log('📞 Call status changed:', callStatus, 'isIncoming:', isIncoming, 'isOpen:', isOpen);
 
     // Only transition to ringing once for incoming calls
     if (isIncoming && isOpen && callStatus === 'connecting') {
       const timer = setTimeout(() => {
-        console.log('📞 Setting status to ringing for incoming call');
         setCallStatus('ringing');
         ringtoneService.playRingtone().then(ringtone => {
           ringtoneRef.current = ringtone;
@@ -1135,7 +1210,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
         // Start 45-second timeout for incoming calls
         callTimeoutRef.current = setTimeout(() => {
-          console.log('📞 Call timeout - no answer after 45 seconds');
           handleRejectCall(); // Auto-reject if not answered
         }, 45000); // 45 seconds
       }, 500);
@@ -1146,9 +1220,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   // Auto-disconnect timeout for outgoing calls
   useEffect(() => {
     if (!isIncoming && callStatus === 'ringing') {
-      console.log('📞 Starting 45-second timeout for outgoing call');
       callTimeoutRef.current = setTimeout(() => {
-        console.log('📞 Call timeout - no answer after 45 seconds');
         handleEndCall(); // Auto-end if not answered
       }, 45000); // 45 seconds
     }
@@ -1156,7 +1228,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     // Clear timeout if call is answered or ended
     if (callStatus === 'connected' || callStatus === 'ended') {
       if (callTimeoutRef.current) {
-        console.log('📞 Clearing call timeout - call status:', callStatus);
         clearTimeout(callTimeoutRef.current);
         callTimeoutRef.current = null;
       }
@@ -1174,7 +1245,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   useEffect(() => {
     // Stop ringtone if call status changes from ringing to connected
     if (callStatus === 'connected') {
-      console.log('📞 Stopping ringtone - call connected');
       if (ringtoneRef.current) {
         ringtoneRef.current.stop();
         ringtoneRef.current = null;
@@ -1184,7 +1254,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
     // Stop ringtone if call ends
     if (callStatus === 'ended') {
-      console.log('📞 Stopping ringtone - call ended');
       if (ringtoneRef.current) {
         ringtoneRef.current.stop();
         ringtoneRef.current = null;
@@ -1196,9 +1265,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   // Auto-close modal when call ends
   useEffect(() => {
     if (callStatus === 'ended' && isOpen) {
-      console.log('📞 Call ended - closing modal after 2 seconds');
       const closeTimer = setTimeout(() => {
-        console.log('📞 Closing modal');
         onClose();
       }, 2000); // Wait 2 seconds to show "Call Ended" message before closing
 
@@ -1253,7 +1320,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       }
 
       setConnectionQuality(quality);
-      console.log('📡 Connection quality:', quality);
     };
 
     // Check connection quality every 3 seconds
@@ -1324,7 +1390,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden animate-slideIn">
+      <div className="bg-secondary-500 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 overflow-hidden animate-slideIn">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white p-5 flex items-center justify-between shadow-lg">
           <div className="flex items-center space-x-3">
