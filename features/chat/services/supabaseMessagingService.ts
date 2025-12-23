@@ -396,19 +396,24 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
         // Only process messages from threads the user is part of
         if (participantError) {
           console.warn('⚠️ Error checking participant status:', participantError)
-          // If it's a 406 or RLS error, we might still want to process call requests
-          // as it could be a false negative. Log and continue for call requests.
-          if (message.message_type === 'call_request' || message.message_type === 'call_accepted') {
-            console.log('⚠️ Participant check failed but processing call message anyway:', message.thread_id)
+          // If it's a 406 or RLS error, we might still want to process call messages
+          // as it could be a false negative. Log and continue for call messages.
+          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected') {
+            console.log('⚠️ Participant check failed but processing call message anyway:', message.thread_id, message.message_type)
             // Continue processing for call messages even if participant check fails
           } else {
             console.log('⚠️ Message from thread user is not part of, skipping:', message.thread_id)
             return
           }
         } else if (!participants || participants.length === 0) {
-          // User is not a participant - skip this message
-          console.log('⚠️ Message from thread user is not part of, skipping:', message.thread_id)
-          return
+          // User is not a participant - but still process call messages as they're critical
+          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected') {
+            console.log('⚠️ User not a participant but processing call message:', message.thread_id, message.message_type)
+            // Continue processing for call messages
+          } else {
+            console.log('⚠️ Message from thread user is not part of, skipping:', message.thread_id)
+            return
+          }
         }
 
         // Fetch full message with sender info
@@ -424,10 +429,10 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
         if (fullMessage) {
           const formattedMessage = await formatMessage(fullMessage)
 
-          // For call requests, notify only the specific thread subscribers
+          // For call messages, notify only the specific thread subscribers
           // This prevents call flooding to all users
-          if (formattedMessage.message_type === 'call_request' || formattedMessage.message_type === 'call_accepted') {
-            console.log('📞 Call notification detected for thread:', formattedMessage.thread_id, formattedMessage.content)
+          if (formattedMessage.message_type === 'call_request' || formattedMessage.message_type === 'call_accepted' || formattedMessage.message_type === 'call_rejected') {
+            console.log('📞 Call message detected for thread:', formattedMessage.thread_id, formattedMessage.message_type, formattedMessage.content)
             // Notify only the specific thread subscribers (not all users)
             notifyMessageSubscribers(formattedMessage)
           } else {
