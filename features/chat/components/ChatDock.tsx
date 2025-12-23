@@ -24,14 +24,33 @@ const ChatDock: React.FC = () => {
     setMounted(true)
   }, [])
 
+  // Listen for openChatThread events to ensure chat dock opens
+  useEffect(() => {
+    const handleOpenChatThread = (event: CustomEvent) => {
+      const { threadId } = event.detail
+      if (threadId && !openThreads.includes(threadId)) {
+        console.log('📬 ChatDock: Received openChatThread event for thread:', threadId)
+        openThread(threadId)
+      }
+    }
+
+    window.addEventListener('openChatThread', handleOpenChatThread as EventListener)
+    
+    return () => {
+      window.removeEventListener('openChatThread', handleOpenChatThread as EventListener)
+    }
+  }, [openThreads, openThread])
+
   useEffect(() => {
     const loadThreads = async () => {
       if (currentUser && openThreads.length > 0) {
+        console.log('📬 ChatDock: Loading threads for openThreads:', openThreads)
         const threadMap = new Map<string, ChatThread>()
         
         // First, add threads from context (these are newly created or recently updated)
         contextThreads.forEach(thread => {
           if (openThreads.includes(thread.id)) {
+            console.log('📬 ChatDock: Found thread in contextThreads:', thread.id, thread.name)
             threadMap.set(thread.id, thread)
           }
         })
@@ -39,12 +58,14 @@ const ChatDock: React.FC = () => {
         // Then, load any missing threads from database
         const missingThreadIds = openThreads.filter(id => !threadMap.has(id))
         if (missingThreadIds.length > 0) {
+          console.log('📬 ChatDock: Loading missing threads from database:', missingThreadIds)
           const userThreads = await supabaseMessagingService.getUserThreads({
             id: currentUser.id,
             name: currentUser.name || '',
           })
           userThreads.forEach(thread => {
             if (missingThreadIds.includes(thread.id)) {
+              console.log('📬 ChatDock: Found thread in database:', thread.id, thread.name)
               threadMap.set(thread.id, thread)
             }
           })
@@ -55,11 +76,15 @@ const ChatDock: React.FC = () => {
           if (!threadMap.has(threadId)) {
             const thread = getThreadById(threadId)
             if (thread) {
+              console.log('📬 ChatDock: Found thread via getThreadById:', threadId, thread.name)
               threadMap.set(threadId, thread)
+            } else {
+              console.warn('📬 ChatDock: Thread not found:', threadId)
             }
           }
         })
 
+        console.log('📬 ChatDock: Final threadMap size:', threadMap.size, 'threads:', Array.from(threadMap.keys()))
         setThreads(threadMap)
       } else {
         setThreads(new Map())

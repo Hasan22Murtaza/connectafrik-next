@@ -1497,7 +1497,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn md:bg-black/75">
-      <div className="bg-secondary-800 rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-5xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
+      <div className="bg-amber-700 rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-3xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 md:p-5 flex items-center justify-between shadow-lg">
           <div className="flex items-center space-x-3">
