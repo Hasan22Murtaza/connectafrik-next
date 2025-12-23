@@ -49,6 +49,31 @@ export interface Profile {
   login_alerts?: boolean
 }
 
+export interface UserProfile {
+  id: string
+  username: string
+  full_name: string
+  avatar_url: string | null
+  bio: string | null
+  country: string | null
+  location: string | null
+  website: string | null
+  birthday: string | null
+  gender: string | null
+  is_verified: boolean
+  followers_count: number
+  following_count: number
+  posts_count: number
+  created_at: string
+}
+
+export interface MutualFriend {
+  user_id: string
+  username: string
+  full_name: string
+  avatar_url: string | null
+}
+
 export interface Friend {
   id: string
   username: string
