@@ -116,8 +116,8 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                     <button
                       onClick={() => {
                         setShowNotifications(!showNotifications);
-                        setShowInbox(false);
-                        setShowCalls(false);
+                        setShowInbox(true);
+                        setShowCalls(true);
                       }}
                       className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 transition-colors"
                     >

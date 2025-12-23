@@ -74,9 +74,34 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }))
   }, [])
 
-  const openThread = useCallback((threadId: string) => {
+  const openThread = useCallback(async (threadId: string) => {
+    // Check if thread is already in context threads
+    const existingThread = threads.find(t => t.id === threadId)
+    
+    // If thread not in context, load it from database
+    if (!existingThread && currentUser) {
+      console.log('📬 ProductionChatContext: Thread not in context, loading from database:', threadId)
+      try {
+        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
+        const thread = userThreads.find(t => t.id === threadId)
+        if (thread) {
+          console.log('📬 ProductionChatContext: Thread loaded from database:', thread.name)
+          setThreads(prev => {
+            const exists = prev.find(t => t.id === threadId)
+            if (exists) return prev
+            return [...prev, thread]
+          })
+        } else {
+          console.warn('📬 ProductionChatContext: Thread not found in database:', threadId)
+        }
+      } catch (error) {
+        console.error('📬 ProductionChatContext: Error loading thread:', error)
+      }
+    }
+    
     setOpenThreads(prev => {
       if (!prev.includes(threadId)) {
+        console.log('📬 ProductionChatContext: Adding thread to openThreads:', threadId)
         return [...prev, threadId]
       }
       return prev
@@ -85,7 +110,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('openChatThread', { detail: { threadId } }))
     }
-  }, [])
+  }, [threads, currentUser])
 
   const closeThread = useCallback((threadId: string) => {
     setOpenThreads(prev => prev.filter(id => id !== threadId))
@@ -181,7 +206,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
       const createdThread = userThreads.find(t => t.id === threadId)
 
+      let threadToAdd: ChatThread | null = null
+
       if (createdThread) {
+        threadToAdd = createdThread
         // Add thread to threads state
         setThreads(prev => {
           const exists = prev.find(t => t.id === threadId)
@@ -201,6 +229,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
+        threadToAdd = tempThread
         setThreads(prev => {
           const exists = prev.find(t => t.id === threadId)
           if (exists) return prev
@@ -210,7 +239,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       // Open the thread if requested (default to true if not specified)
       const shouldOpen = options?.openInDock !== false
-      if (shouldOpen) {
+      if (shouldOpen && threadToAdd) {
+        console.log('📬 Opening thread in dock:', threadId, 'thread:', threadToAdd.name)
+        // Open thread immediately - openThread will add it to openThreads
         openThread(threadId)
       }
 

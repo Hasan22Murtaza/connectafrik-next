@@ -529,6 +529,51 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               }
             });
           }
+
+          // ✅ Get local stream from VideoSDK meeting after joining
+          try {
+            const localParticipant = meeting.localParticipant;
+            if (localParticipant) {
+              // Listen for local stream enabled event
+              if (localParticipant.on) {
+                localParticipant.on("stream-enabled", (stream: any) => {
+                  if (stream.kind === 'video' && callType === 'video' && stream.track) {
+                    const localVideoStream = new MediaStream([stream.track]);
+                    updateLocalStream(localVideoStream);
+                    console.log('📹 Local video stream enabled from VideoSDK');
+                  }
+                });
+
+                localParticipant.on("stream-disabled", (stream: any) => {
+                  if (stream.kind === 'video') {
+                    console.log('📹 Local video stream disabled');
+                  }
+                });
+              }
+
+              // Try to get existing video track if available
+              // Note: VideoSDK manages streams internally, we'll rely on stream-enabled events
+              // But also check if we can access the track directly
+              setTimeout(() => {
+                try {
+                  // VideoSDK may expose tracks differently, try accessing via mediaStream
+                  if ((localParticipant as any).mediaStream) {
+                    const ms = (localParticipant as any).mediaStream;
+                    if (ms && ms.getVideoTracks && ms.getVideoTracks().length > 0) {
+                      const track = ms.getVideoTracks()[0];
+                      const localVideoStream = new MediaStream([track]);
+                      updateLocalStream(localVideoStream);
+                      console.log('📹 Local video stream obtained from VideoSDK mediaStream');
+                    }
+                  }
+                } catch (err) {
+                  console.log('📹 Could not get local stream directly, will wait for stream-enabled event');
+                }
+              }, 500);
+            }
+          } catch (error) {
+            console.warn('⚠️ Error setting up local stream listener from VideoSDK:', error);
+          }
         }
       });
 
@@ -747,6 +792,48 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       meeting.on("meeting-joined", () => {
         if (isMountedRef.current) {
           setCallStatus('connected');
+
+          // ✅ Get local stream from VideoSDK meeting after joining
+          try {
+            const localParticipant = meeting.localParticipant;
+            if (localParticipant) {
+              // Listen for local stream enabled event
+              if (localParticipant.on) {
+                localParticipant.on("stream-enabled", (stream: any) => {
+                  if (stream.kind === 'video' && callType === 'video' && stream.track) {
+                    const localVideoStream = new MediaStream([stream.track]);
+                    updateLocalStream(localVideoStream);
+                    console.log('📹 Local video stream enabled from VideoSDK (accepted call)');
+                  }
+                });
+
+                localParticipant.on("stream-disabled", (stream: any) => {
+                  if (stream.kind === 'video') {
+                    console.log('📹 Local video stream disabled (accepted call)');
+                  }
+                });
+              }
+
+              // Try to get existing video track if available
+              setTimeout(() => {
+                try {
+                  if ((localParticipant as any).mediaStream) {
+                    const ms = (localParticipant as any).mediaStream;
+                    if (ms && ms.getVideoTracks && ms.getVideoTracks().length > 0) {
+                      const track = ms.getVideoTracks()[0];
+                      const localVideoStream = new MediaStream([track]);
+                      updateLocalStream(localVideoStream);
+                      console.log('📹 Local video stream obtained from VideoSDK mediaStream (accepted call)');
+                    }
+                  }
+                } catch (err) {
+                  console.log('📹 Could not get local stream directly (accepted call), will wait for stream-enabled event');
+                }
+              }, 500);
+            }
+          } catch (error) {
+            console.warn('⚠️ Error setting up local stream listener from VideoSDK (accepted call):', error);
+          }
         }
       });
 
@@ -1107,6 +1194,30 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     }
   };
 
+  // Update local video element when localStream changes
+  useEffect(() => {
+    const videoElement = localVideoRef.current;
+    if (videoElement && localStream) {
+      try {
+        if (videoElement.srcObject !== localStream) {
+          videoElement.srcObject = localStream;
+          console.log('📹 Local video stream attached to video element');
+        }
+        // Ensure video plays
+        if (videoElement.paused) {
+          videoElement.play().catch(err => 
+            console.warn('⚠️ Local video playback error:', err)
+          );
+        }
+      } catch (error) {
+        console.error('❌ Error setting local video stream:', error);
+      }
+    } else if (videoElement && !localStream) {
+      // Clear video element if stream is removed
+      videoElement.srcObject = null;
+    }
+  }, [localStream]);
+
   useEffect(() => {
     const audioElement = remoteAudioRef.current;
     if (audioElement && remoteStreams.length > 0) {
@@ -1386,7 +1497,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn md:bg-black/75">
-      <div className="bg-secondary-800 rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-5xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
+      <div className="bg-amber-700 rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-3xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 md:p-5 flex items-center justify-between shadow-lg">
           <div className="flex items-center space-x-3">
@@ -1450,7 +1561,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           )}
 
           {/* Local Video */}
-          {localStream && callType === 'video' && isVideoEnabled && (
+          {localStream && callType === 'video' && localStream.getVideoTracks().length > 0 && (
             <div className="absolute top-2 right-2 md:top-4 md:right-4 w-20 h-28 md:w-28 md:h-36 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border-2 border-white shadow-2xl ring-2 ring-white/20 hover:scale-105 transition-transform duration-200">
               <video
                 ref={localVideoRef}
@@ -1527,6 +1638,46 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 }}
               >
                 {lastReactionEmoji}
+              </div>
+            </div>
+          )}
+
+          {/* Accept/Reject Buttons Overlay - Inside video section for incoming calls */}
+          {callStatus === 'ringing' && isIncoming && (
+            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
+              <div className="flex justify-center gap-4 md:gap-6">
+                <button
+                  onClick={handleAcceptCall}
+                  className="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300"
+                  title="Answer Call"
+                  aria-label="Answer call"
+                >
+                  <PhoneOff className="w-6 h-6 md:w-7 md:h-7 rotate-180" />
+                </button>
+                <button
+                  onClick={handleRejectCall}
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                  title="Decline Call"
+                  aria-label="Decline call"
+                >
+                  <PhoneOff className="w-6 h-6 md:w-7 md:h-7" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* End Call Button Overlay - Inside video section for outgoing calls */}
+          {callStatus === 'ringing' && !isIncoming && (
+            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
+              <div className="flex flex-col items-center gap-3">
+                <button
+                  onClick={handleEndCall}
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                  title="Drop Call"
+                  aria-label="Drop call"
+                >
+                  <PhoneOff className="w-6 h-6 md:w-7 md:h-7" />
+                </button>
               </div>
             </div>
           )}
@@ -1687,80 +1838,18 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     <PhoneOff className="w-5 h-5 md:w-6 md:h-6" />
                   </button>
                 </div>
+                    
+
                 
               </div>
             </div>
           )}
+
         </div>
 
         {/* Controls */}
         <div className="p-4 md:p-6">
-          {callStatus === 'ringing' && isIncoming && (
-            <div className="flex justify-center space-x-6 mb-4">
-              <button
-                onClick={handleAcceptCall}
-                className="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white rounded-full p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300"
-                title="Answer Call"
-                aria-label="Answer call"
-              >
-                <PhoneOff className="w-7 h-7 rotate-180" />
-              </button>
-              <button
-                onClick={handleRejectCall}
-                className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
-                title="Decline Call"
-                aria-label="Decline call"
-              >
-                <PhoneOff className="w-7 h-7" />
-              </button>
-            </div>
-          )}
-
-          {callStatus === 'ringing' && !isIncoming && (
-            <div className="space-y-4">
-              <div className="flex justify-center space-x-4 mb-4">
-                <button
-                  onClick={handleEndCall}
-                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
-                  title="Drop Call"
-                  aria-label="Drop call"
-                >
-                  <PhoneOff className="w-7 h-7" />
-                </button>
-              </div>
-              {/* Three-dot menu for ringing */}
-              <div className="relative flex justify-center">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="text-gray-600 hover:text-gray-900 p-2 transition-colors"
-                  title="More options"
-                >
-                  <MoreVertical className="w-6 h-6" />
-                </button>
-                {showMenu && (
-                  <div className="absolute top-12 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-max overflow-hidden animate-slideIn">
-                    <button
-                      onClick={handleShareScreen}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      <span>Share Screen</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowMessageInput(true);
-                        setShowMenu(false);
-                      }}
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium border-t border-gray-200"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Send Message</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+         
 
           {callStatus === 'connected' && (
             <div className="space-y-4">
