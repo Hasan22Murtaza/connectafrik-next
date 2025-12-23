@@ -7,7 +7,7 @@ import { Minus, Phone, Send, Video, X, Paperclip, Check, MoreVertical } from 'lu
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useMembers } from '@/shared/hooks/useMembers'
 import type { PresenceStatus } from '@/shared/types/chat'
-import VideoSDKCallModal, { VideoSDKCallModalProps } from '@/features/video/components/VideoSDKCallModal'
+import { VideoSDKCallModal, VideoSDKCallModalProps } from '@/features/video/components/VideoSDKCallModal'
 import FileAttachment from './FileAttachment'
 import FilePreview from './FilePreview'
 import { fileUploadService, FileUploadResult } from '@/shared/services/fileUploadService'
