@@ -95,7 +95,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
   const subtitle = mode === 'chat' ? 'Recent messages and active contacts' : 'Start an audio or video call'
 
   return (
-            <div className="absolute right-0 mt-3 w-72 sm:w-80 max-w-[90vw] sm:max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-2xl p-3 sm:p-4 z-[120] transform -translate-x-0 sm:translate-x-0">
+            <div className="absolute right-0 mt-3 w-72 sm:w-80 max-w-full sm:max-w-full bg-white border border-gray-200 rounded-xl shadow-2xl p-3 sm:p-4 z-[120] transform -translate-x-0 sm:translate-x-0">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h4 className="font-semibold text-gray-900">{title}</h4>

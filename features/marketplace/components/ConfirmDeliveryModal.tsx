@@ -65,7 +65,7 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleClose}>
-      <div className="bg-white rounded-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-xl max-w-full mx-auto px-4 w-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">

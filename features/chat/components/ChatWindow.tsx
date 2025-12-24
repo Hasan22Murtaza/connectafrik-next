@@ -330,7 +330,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ threadId, onClose, onMinimize }
   }
 
   return (
-    <div className="pointer-events-auto flex w-72 sm:w-80 max-w-[90vw] sm:max-w-[90vw] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+    <div className="pointer-events-auto flex w-72 sm:w-80 max-w-full sm:max-w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
         <div className="flex items-center space-x-3">
           <div className="relative h-10 w-10">

@@ -82,7 +82,7 @@ export const MobilePeopleYouMayKnow: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 z-50">
         <h3 className="font-semibold text-gray-900 mb-3 flex items-center" style={{ gap: '8px' }}>
           <Users className="w-5 h-5 text-primary-600" />
           People You May Know
