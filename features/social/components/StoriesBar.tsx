@@ -197,7 +197,7 @@ const StoriesBar: React.FC = () => {
               // Show create story button when no stories exist
             <button
                 onClick={handleCreateStory}
-                className="relative w-40 h-64 rounded-2xl overflow-hidden group cursor-pointer "
+                className="relative w-40 h-64 !rounded-2xl !overflow-hidden group cursor-pointer "
               >
                 {/* Background Image for Create Story - Use user's profile picture as background */}
                 <div className="absolute inset-0">
@@ -225,7 +225,7 @@ const StoriesBar: React.FC = () => {
                 </div>
 
                 {/* Create Story Text */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 w-full">
                   <span className="text-white text-sm font-bold drop-shadow-lg">Create story</span>
                 </div>
               </button>

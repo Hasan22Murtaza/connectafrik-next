@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible py-1">
+      <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible py-1 ">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
           <Link href="/" className="flex-shrink-0 ">
@@ -67,11 +67,11 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
           </div>
 
           {/* Navigation and User Menu - Pinned to right */}
-          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 ml-auto">
+          <div className=" flex items-center space-x-1 sm:space-x-2 lg:space-x-4 ml-auto">
             {user ? (
               <>
                 {/* Navigation Links - Hidden on mobile, visible on desktop */}
-                <nav className="hidden lg:flex items-center space-x-6">
+                <nav className="sm:!block !hidden lg:flex items-center space-x-6">
                   <Link
                     href="/feed"
                     className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
@@ -240,39 +240,51 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
 
       {/* Mobile Navigation */}
       {user && (
-        <div className="md:hidden bg-white border-t border-gray-200 py-1 ">
-          <nav className="flex justify-around py-2">
-            <Link
-              href="/feed"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
-            >
-              <span className="text-xs">Feed</span>
-            </Link>
-            <Link
-              href="/memories"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
-            >
-              <span className="text-xs">Reels</span>
-            </Link>
-            <Link
-              href="/culture"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
-            >
-              <span className="text-xs">Culture</span>
-            </Link>
-            <Link
-              href="/groups"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
-            >
-              <span className="text-xs">Groups</span>
-            </Link>
-            <Link
-              href="/profile"
-              className="flex flex-col items-center py-2 text-gray-600 hover:text-[#f97316]"
-            >
-              <span className="text-xs">Profile</span>
-            </Link>
-          </nav>
+        <div className="md:hidden block bg-white border-t border-gray-200 py-1 ">
+          <nav className="flex !justify-between w-full py-2 gap-2">
+  <ul className="flex justify-between w-full gap-2">
+    <li>
+      <Link
+        href="/feed"
+        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+      >
+        <span className="text-xs">Feed</span>
+      </Link>
+    </li>
+    <li>
+      <Link
+        href="/memories"
+        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+      >
+        <span className="text-xs">Reels</span>
+      </Link>
+    </li>
+    <li>
+      <Link
+        href="/culture"
+        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+      >
+        <span className="text-xs">Culture</span>
+      </Link>
+    </li>
+    <li>
+      <Link
+        href="/groups"
+        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+      >
+        <span className="text-xs">Groups</span>
+      </Link>
+    </li>
+    <li>
+      <Link
+        href="/profile"
+        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+      >
+        <span className="text-xs">Profile</span>
+      </Link>
+    </li>
+  </ul>
+</nav>
         </div>
       )}
     </header>

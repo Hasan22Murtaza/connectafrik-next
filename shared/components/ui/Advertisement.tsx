@@ -60,15 +60,15 @@ const mockAds: AdData[] = [
 const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) => {
   const [isVisible, setIsVisible] = useState(true)
   const [currentAdIndex] = useState(Math.floor(Math.random() * mockAds.length))
-  
+
   if (!isVisible) return null
-  
+
   const ad = mockAds[currentAdIndex]
-  
+
   const handleAdClick = () => {
     // Track ad click analytics
     console.log(`Ad clicked: ${ad.id} at ${placement}`)
-    
+
     // Handle different URL types
     if (ad.clickUrl && ad.clickUrl !== '#') {
       if (ad.clickUrl.startsWith('tel:')) {
@@ -79,10 +79,10 @@ const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) =
         window.open(ad.clickUrl, '_blank', 'noopener,noreferrer')
       }
     }
-    
+
     // In production, this would track clicks and handle attribution
   }
-  
+
   const handleAdClose = () => {
     setIsVisible(false)
     // Track ad dismissal
@@ -96,11 +96,20 @@ const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) =
         className={`bg-gradient-to-br from-[#F97316]/40 via-[#149941]/40 to-[#0B7FB0]/30 text-white py-4 px-3 sm:px-6 rounded-lg shadow-md ${className} group`}
       >
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <span className="text-xs uppercase bg-white/25 backdrop-blur-sm px-3 py-1 rounded-full font-semibold tracking-wide  transition-colors">
-              Sponsored
-            </span>
-            <div className="max-w-[270px]">
+          <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap gap-2 justify-between">
+            <div className="flex items-center justify-between w-full gap-2">
+              <span className="text-xs uppercase bg-white/25 backdrop-blur-sm px-3 py-1 rounded-full font-semibold tracking-wide  transition-colors">
+                Sponsored
+              </span>
+              <button
+                onClick={handleAdClose}
+                aria-label="Close ad"
+                className="text-white/70 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="max-w-[270px] w-full">
               <h3 className="font-semibold text-lg  transition-colors ">
                 {ad.title}
               </h3>
@@ -108,22 +117,15 @@ const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) =
                 {ad.description}
               </p>
             </div>
-          </div>
-          <div className="flex items-center space-x-2 ">
             <button
               onClick={handleAdClick}
               className="bg-white text-primary-600 px-5 py-2 rounded-md font-semibold text-sm hover:bg-gray-100 transition-colors shadow-sm cursor-pointer"
             >
               {ad.cta}
             </button>
-            <button
-              onClick={handleAdClose}
-              aria-label="Close ad"
-              className="text-white/70 hover:text-white transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
           </div>
+
         </div>
       </div>
     );
@@ -203,7 +205,7 @@ const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) =
 
         <h3 className="font-semibold text-gray-900 mb-2">{ad.title}</h3>
         <p className="text-gray-600 text-sm mb-3">{ad.description}</p>
-        
+
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-500">{ad.advertiser}</span>
           <button

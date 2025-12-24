@@ -295,12 +295,12 @@ const FriendsPage: React.FC = () => {
                   onClick={() => setActiveSection("home")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
                     activeSection === "home"
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Users className={`w-5 h-5 ${activeSection === "home" ? "text-blue-600" : "text-gray-500"}`} />
+                    <Users className={`w-5 h-5 ${activeSection === "home" ? "text-orange-600" : "text-gray-500"}`} />
                     <span className="font-medium">Home</span>
                   </div>
                 </button>
@@ -309,16 +309,16 @@ const FriendsPage: React.FC = () => {
                   onClick={() => setActiveSection("requests")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
                     activeSection === "requests"
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <UserPlus className={`w-5 h-5 ${activeSection === "requests" ? "text-blue-600" : "text-gray-500"}`} />
+                    <UserPlus className={`w-5 h-5 ${activeSection === "requests" ? "text-orange-600" : "text-gray-500"}`} />
                     <span className="font-medium">Friend Requests</span>
                   </div>
                   {requests.length > 0 && (
-                    <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+                    <span className="bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
                       {requests.length}
                     </span>
                   )}
@@ -329,12 +329,12 @@ const FriendsPage: React.FC = () => {
                   onClick={() => setActiveSection("suggestions")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
                     activeSection === "suggestions"
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <UserPlus className={`w-5 h-5 ${activeSection === "suggestions" ? "text-blue-600" : "text-gray-500"}`} />
+                    <UserPlus className={`w-5 h-5 ${activeSection === "suggestions" ? "text-orange-600" : "text-gray-500"}`} />
                     <span className="font-medium">Suggestions</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -344,12 +344,12 @@ const FriendsPage: React.FC = () => {
                   onClick={() => setActiveSection("all")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
                     activeSection === "all"
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Users className={`w-5 h-5 ${activeSection === "all" ? "text-blue-600" : "text-gray-500"}`} />
+                    <Users className={`w-5 h-5 ${activeSection === "all" ? "text-orange-600" : "text-gray-500"}`} />
                     <span className="font-medium">All friends</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -359,12 +359,12 @@ const FriendsPage: React.FC = () => {
                   onClick={() => setActiveSection("birthdays")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
                     activeSection === "birthdays"
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center space-x-3">
-                    <Gift className={`w-5 h-5 ${activeSection === "birthdays" ? "text-blue-600" : "text-gray-500"}`} />
+                    <Gift className={`w-5 h-5 ${activeSection === "birthdays" ? "text-orange-600" : "text-gray-500"}`} />
                     <span className="font-medium">Birthdays</span>
                   </div>
                 </button>
@@ -382,7 +382,7 @@ const FriendsPage: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-900">Friend Requests</h2>
                     <button 
                       onClick={() => setActiveSection("requests")}
-                      className="text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-orange-600 hover:text-orange-700 font-medium"
                     >
                       See all
                     </button>
@@ -441,13 +441,13 @@ const FriendsPage: React.FC = () => {
                             <div className="space-y-2">
                               <button
                                 onClick={() => handleAcceptRequest(request.id)}
-                                className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                                className="w-full btn-sm-primary text-sm"
                               >
                                 Confirm
                               </button>
                               <button
                                 onClick={() => handleDeclineRequest(request.id)}
-                                className="w-full px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
+                                className="w-full btn-secondary text-sm"
                               >
                                 Delete
                               </button>
@@ -460,7 +460,7 @@ const FriendsPage: React.FC = () => {
                         <div className="flex justify-center mt-6">
                           <button
                             onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
-                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 font-medium"
+                              className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 font-medium"
                           >
                             <span>See more</span>
                             <ChevronDown className="w-4 h-4" />
@@ -485,7 +485,7 @@ const FriendsPage: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-900">People You May Know</h2>
                     <button 
                       onClick={() => setActiveSection("suggestions")}
-                      className="text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-orange-600 hover:text-orange-700 font-medium"
                     >
                       See all
                     </button>
@@ -544,7 +544,7 @@ const FriendsPage: React.FC = () => {
                             <button
                               onClick={() => handleSendFriendRequest(suggestion.user_id)}
                               disabled={sendingRequests.has(suggestion.user_id)}
-                              className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                              className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
                             </button>
@@ -556,7 +556,7 @@ const FriendsPage: React.FC = () => {
                         <div className="flex justify-center mt-6">
                           <button
                             onClick={() => setSuggestionsDisplayLimit(prev => prev + 20)}
-                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 font-medium"
+                              className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 font-medium"
                           >
                             <span>See more</span>
                             <ChevronDown className="w-4 h-4" />
@@ -639,13 +639,13 @@ const FriendsPage: React.FC = () => {
                           <div className="space-y-2">
                             <button
                               onClick={() => handleAcceptRequest(request.id)}
-                              className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                              className="w-full btn-sm-primary text-sm"
                             >
                               Confirm
                             </button>
                             <button
                               onClick={() => handleDeclineRequest(request.id)}
-                              className="w-full px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
+                              className="w-full btn-secondary text-sm"
                             >
                               Delete
                             </button>
@@ -676,7 +676,7 @@ const FriendsPage: React.FC = () => {
                       placeholder="Search friends..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
                 </div>
@@ -721,7 +721,7 @@ const FriendsPage: React.FC = () => {
                           {/* Action Button */}
                           <button
                             onClick={() => router.push(`/user/${friend.username}`)}
-                            className="w-full px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium text-sm"
+                            className="w-full btn-sm-primary text-sm"
                           >
                             View Profile
                           </button>
@@ -755,7 +755,7 @@ const FriendsPage: React.FC = () => {
                       placeholder="Search suggestions..."
                       value={suggestionsSearchTerm}
                       onChange={(e) => setSuggestionsSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     />
                   </div>
                 </div>
@@ -812,7 +812,7 @@ const FriendsPage: React.FC = () => {
                           <button
                             onClick={() => handleSendFriendRequest(suggestion.user_id)}
                             disabled={sendingRequests.has(suggestion.user_id)}
-                            className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                            className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
                           </button>

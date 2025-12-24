@@ -8,9 +8,9 @@ const DynamicChatDock = dynamic(() => import('@/features/chat/components/ChatDoc
   ssr: false,
 })
 
-const DynamicMobileChatButton = dynamic(() => import('@/features/chat/components/MobileChatButton'), {
-  ssr: false,
-})
+// const DynamicMobileChatButton = dynamic(() => import('@/features/chat/components/MobileChatButton'), {
+//   ssr: false,
+// })
 
 const DynamicFriendRequestNotifications = dynamic(() => import('@/features/social/components/FriendRequestNotifications'), {
   ssr: false,
@@ -26,7 +26,7 @@ export default function GlobalComponents() {
   return (
     <>
       {user && <DynamicChatDock />}
-      {user && <DynamicMobileChatButton />}
+      {/* {user && <DynamicMobileChatButton />} */}
       {user && <DynamicFriendRequestNotifications />}
       {user && <DynamicGlobalCallNotification />}
     </>
