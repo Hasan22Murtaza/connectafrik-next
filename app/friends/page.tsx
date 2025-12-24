@@ -13,6 +13,7 @@ import {
   Settings,
   Gift,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -26,16 +27,36 @@ const FriendsPage: React.FC = () => {
   const router = useRouter();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<(FriendRequest & { mutualFriendsCount?: number })[]>([]);
+  const [suggestions, setSuggestions] = useState<Array<{
+    user_id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+    mutual_friends_count: number;
+  }>>([]);
   const [loading, setLoading] = useState(true);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [sendingRequests, setSendingRequests] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
+  const [suggestionsSearchTerm, setSuggestionsSearchTerm] = useState("");
+  const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
+  const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
   const [activeSection, setActiveSection] = useState<"home" | "requests" | "suggestions" | "all" | "birthdays" | "custom">("home");
 
   useEffect(() => {
     if (user) {
       fetchFriends();
       fetchFriendRequests();
+      if (activeSection === "suggestions" || activeSection === "home") {
+        fetchSuggestions();
+      }
+      // Reset display limits when switching sections
+      if (activeSection === "home") {
+        setRequestsDisplayLimit(20);
+        setSuggestionsDisplayLimit(20);
+      }
     }
-  }, [user]);
+  }, [user, activeSection]);
 
   const fetchFriends = async () => {
     try {
@@ -171,10 +192,86 @@ const FriendsPage: React.FC = () => {
     }
   };
 
+  const fetchSuggestions = async () => {
+    if (!user?.id) return;
+
+    try {
+      setSuggestionsLoading(true);
+      
+      // First try to get mutual friend recommendations
+      const { data: mutualData, error: mutualError } = await supabase.rpc('get_friend_recommendations', {
+        p_user_id: user.id,
+        p_limit: 50
+      });
+
+      if (mutualError) {
+        console.error('Error fetching mutual recommendations:', mutualError);
+      }
+
+      // If no mutual recommendations, get general user recommendations
+      if (!mutualData || mutualData.length === 0) {
+        const { data: generalData, error: generalError } = await supabase.rpc('get_general_user_recommendations', {
+          p_user_id: user.id,
+          p_limit: 50
+        });
+
+        if (generalError) {
+          console.error('Error fetching general recommendations:', generalError);
+          return;
+        }
+
+        setSuggestions(generalData || []);
+      } else {
+        setSuggestions(mutualData || []);
+      }
+    } catch (error) {
+      console.error('Error in fetchSuggestions:', error);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  const handleSendFriendRequest = async (userId: string) => {
+    if (!user) return;
+
+    setSendingRequests(prev => new Set(prev).add(userId));
+
+    try {
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: userId,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      // Remove from suggestions after sending request
+      setSuggestions(prev => prev.filter(rec => rec.user_id !== userId));
+      toast.success('Friend request sent!');
+    } catch (error: any) {
+      console.error('Error sending friend request:', error);
+      toast.error(error.message || 'Failed to send friend request');
+    } finally {
+      setSendingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(userId);
+        return newSet;
+      });
+    }
+  };
+
   const filteredFriends = friends.filter(
     (friend) =>
       friend.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       friend.username?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredSuggestions = suggestions.filter(
+    (suggestion) =>
+      suggestion.full_name?.toLowerCase().includes(suggestionsSearchTerm.toLowerCase()) ||
+      suggestion.username?.toLowerCase().includes(suggestionsSearchTerm.toLowerCase())
   );
 
   return (
@@ -277,7 +374,210 @@ const FriendsPage: React.FC = () => {
 
           {/* Main Content */}
           <div className="flex-1">
-            {(activeSection === "requests" || activeSection === "home") ? (
+            {activeSection === "home" ? (
+              <div className="space-y-8">
+                {/* Friend Requests Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Friend Requests</h2>
+                    <button 
+                      onClick={() => setActiveSection("requests")}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      See all
+                    </button>
+                  </div>
+
+                  {/* Friend Requests Grid */}
+                  {loading ? (
+                    <div className="flex justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                    </div>
+                  ) : requests.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                        {requests.slice(0, requestsDisplayLimit).map((request) => (
+                        <div
+                          key={request.id}
+                          className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                        >
+                          {/* Profile Image */}
+                          <div className="w-full aspect-square bg-gray-100 relative">
+                            {request.requester?.avatar_url ? (
+                              <img
+                                src={request.requester.avatar_url}
+                                alt={request.requester.full_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {request.requester?.full_name?.charAt(0) || "U"}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-4">
+                            <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1">
+                              {request.requester?.full_name || "Unknown User"}
+                            </h3>
+                            
+                            {/* Mutual Friends */}
+                            {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
+                              <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                                <div className="flex -space-x-1">
+                                  {Array.from({ length: Math.min(request.mutualFriendsCount, 2) }).map((_, i) => (
+                                    <div
+                                      key={i}
+                                      className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                    />
+                                  ))}
+                                </div>
+                                <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                              </div>
+                            )}
+
+                            {/* Action Buttons */}
+                            <div className="space-y-2">
+                              <button
+                                onClick={() => handleAcceptRequest(request.id)}
+                                className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                onClick={() => handleDeclineRequest(request.id)}
+                                className="w-full px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        ))}
+                      </div>
+                      {requests.length > requestsDisplayLimit && (
+                        <div className="flex justify-center mt-6">
+                          <button
+                            onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
+                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            <span>See more</span>
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 bg-white rounded-lg">
+                      <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No pending requests
+                      </h3>
+                      <p className="text-gray-500">You're all caught up!</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* People You May Know Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">People You May Know</h2>
+                    <button 
+                      onClick={() => setActiveSection("suggestions")}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      See all
+                    </button>
+                  </div>
+
+                  {/* Suggestions Grid */}
+                  {suggestionsLoading ? (
+                    <div className="flex justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                    </div>
+                  ) : suggestions.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                        {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
+                        <div
+                          key={suggestion.user_id}
+                          className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                        >
+                          {/* Profile Image */}
+                          <div className="w-full aspect-square bg-gray-100 relative">
+                            {suggestion.avatar_url ? (
+                              <img
+                                src={suggestion.avatar_url}
+                                alt={suggestion.full_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {suggestion.full_name?.charAt(0) || "U"}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="p-4">
+                            <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1">
+                              {suggestion.full_name || "Unknown User"}
+                            </h3>
+                            
+                            {/* Mutual Friends */}
+                            {suggestion.mutual_friends_count > 0 && (
+                              <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                                <div className="flex -space-x-1">
+                                  {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
+                                    <div
+                                      key={i}
+                                      className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                    />
+                                  ))}
+                                </div>
+                                <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
+                              </div>
+                            )}
+
+                            {/* Action Button */}
+                            <button
+                              onClick={() => handleSendFriendRequest(suggestion.user_id)}
+                              disabled={sendingRequests.has(suggestion.user_id)}
+                              className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                            >
+                              {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
+                            </button>
+                          </div>
+                        </div>
+                        ))}
+                      </div>
+                      {suggestions.length > suggestionsDisplayLimit && (
+                        <div className="flex justify-center mt-6">
+                          <button
+                            onClick={() => setSuggestionsDisplayLimit(prev => prev + 20)}
+                            className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            <span>See more</span>
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 bg-white rounded-lg">
+                      <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No suggestions available
+                      </h3>
+                      <p className="text-gray-500">
+                        We couldn't find any friend suggestions at the moment.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : activeSection === "requests" ? (
               <div>
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -443,10 +743,100 @@ const FriendsPage: React.FC = () => {
                   </div>
                 )}
               </div>
+            ) : activeSection === "suggestions" ? (
+              <div>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Suggestions</h2>
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search suggestions..."
+                      value={suggestionsSearchTerm}
+                      onChange={(e) => setSuggestionsSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Suggestions Grid */}
+                {suggestionsLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  </div>
+                ) : filteredSuggestions.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                    {filteredSuggestions.map((suggestion) => (
+                      <div
+                        key={suggestion.user_id}
+                        className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                      >
+                        {/* Profile Image */}
+                        <div className="w-full aspect-square bg-gray-100 relative">
+                          {suggestion.avatar_url ? (
+                            <img
+                              src={suggestion.avatar_url}
+                              alt={suggestion.full_name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                              {suggestion.full_name?.charAt(0) || "U"}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-4">
+                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1">
+                            {suggestion.full_name || "Unknown User"}
+                          </h3>
+                          
+                          {/* Mutual Friends */}
+                          {suggestion.mutual_friends_count > 0 && (
+                            <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                              <div className="flex -space-x-1">
+                                {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                  />
+                                ))}
+                              </div>
+                              <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
+                            </div>
+                          )}
+
+                          {/* Action Button */}
+                          <button
+                            onClick={() => handleSendFriendRequest(suggestion.user_id)}
+                            disabled={sendingRequests.has(suggestion.user_id)}
+                            className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium text-sm"
+                          >
+                            {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-white rounded-lg">
+                    <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {suggestionsSearchTerm ? "No suggestions found" : "No suggestions available"}
+                    </h3>
+                    <p className="text-gray-500">
+                      {suggestionsSearchTerm
+                        ? "Try a different search term"
+                        : "We couldn't find any friend suggestions at the moment."}
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  {activeSection === "suggestions" && "Suggestions"}
                   {activeSection === "birthdays" && "Birthdays"}
                   {activeSection === "custom" && "Custom Lists"}
                 </h2>
