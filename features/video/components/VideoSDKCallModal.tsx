@@ -57,6 +57,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('good');
   const [lastReactionEmoji, setLastReactionEmoji] = useState<string | null>(null);
   const [reactionAnimation, setReactionAnimation] = useState(false);
+  const [isAcceptingCall, setIsAcceptingCall] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -197,6 +198,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       if (hasInitializedRef.current || currentMeetingRef.current) {
         cleanupResources();
       }
+      // Reset accepting state when modal closes
+      setIsAcceptingCall(false);
       return;
     }
 
@@ -728,6 +731,14 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   };
 
   const handleAcceptCall = async () => {
+    // Prevent multiple clicks - disable button if already accepting
+    if (isAcceptingCall) {
+      console.log('📞 Call already being accepted, ignoring duplicate click');
+      return;
+    }
+
+    setIsAcceptingCall(true);
+
     try {
       // Stop ringtone immediately
       if (ringtoneRef.current) {
@@ -739,6 +750,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       if (!roomIdHint) {
         console.error('❌ Cannot accept call - no roomIdHint provided');
         setError('Cannot accept call - missing room information.');
+        setIsAcceptingCall(false); // Reset on error
         return;
       }
 
@@ -792,6 +804,96 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       meeting.on("meeting-joined", () => {
         if (isMountedRef.current) {
           setCallStatus('connected');
+
+          // ✅ Get existing participants when joining (for accepted calls)
+          // Use setTimeout to ensure meeting.participants is populated
+          setTimeout(() => {
+            try {
+              // Get participants from meeting object (exclude local participant)
+              const localParticipantId = meeting.localParticipant?.id;
+              const allParticipants = meeting.participants 
+                ? Object.values(meeting.participants) 
+                : [];
+              
+              // Filter out local participant
+              const existingParticipants = allParticipants.filter(
+                (p: any) => p.id !== localParticipantId
+              );
+              
+              console.log('📞 Checking for existing participants when joining:', {
+                allParticipantsCount: allParticipants.length,
+                localParticipantId: localParticipantId,
+                remoteParticipantsCount: existingParticipants.length,
+                participants: existingParticipants.map((p: any) => ({ id: p.id, displayName: p.displayName }))
+              });
+
+              if (existingParticipants.length > 0) {
+                console.log('📞 Found existing participants when joining:', existingParticipants.length);
+                setParticipants(prev => {
+                  const updated = [...prev];
+                  existingParticipants.forEach((participant: any) => {
+                    const exists = updated.find(x => x.id === participant.id);
+                    if (!exists) {
+                      console.log('📞 Adding existing participant:', participant.id);
+                      updated.push(participant);
+                      // Set up stream listeners for existing participants
+                      if (participant.on) {
+                        participant.on("stream-enabled", (stream: any) => {
+                          console.log("📹 Stream enabled for existing participant:", participant.id, stream.kind);
+                          if (stream.kind === 'video') {
+                            const videoStream = new MediaStream([stream.track]);
+                            addRemoteStream(videoStream);
+                            if (remoteVideoRef.current && callType === 'video') {
+                              remoteVideoRef.current.srcObject = videoStream;
+                              remoteVideoRef.current.play().catch(err => 
+                                console.warn('⚠️ Video playback error:', err)
+                              );
+                            }
+                          } else if (stream.kind === 'audio') {
+                            const audioStream = new MediaStream([stream.track]);
+                            addRemoteStream(audioStream);
+                          }
+                        });
+
+                        participant.on("stream-disabled", (stream: any) => {
+                          if (stream.track) {
+                            removeRemoteStream(stream.track.id);
+                          }
+                        });
+                      }
+
+                      // Check for existing streams
+                      const videoStreams = participant.getVideoStreams?.() || [];
+                      const audioStreams = participant.getAudioStreams?.() || [];
+                      
+                      videoStreams.forEach((vs: any) => {
+                        if (vs.track) {
+                          const stream = new MediaStream([vs.track]);
+                          addRemoteStream(stream);
+                          if (remoteVideoRef.current && callType === 'video') {
+                            remoteVideoRef.current.srcObject = stream;
+                          }
+                        }
+                      });
+                      
+                      audioStreams.forEach((as: any) => {
+                        if (as.track) {
+                          const stream = new MediaStream([as.track]);
+                          addRemoteStream(stream);
+                        }
+                      });
+                    }
+                  });
+                  console.log('📞 Updated participants array:', updated.length);
+                  return updated;
+                });
+              } else {
+                console.log('📞 No existing participants found when joining');
+              }
+            } catch (error) {
+              console.warn('⚠️ Error getting existing participants:', error);
+            }
+          }, 500);
 
           // ✅ Get local stream from VideoSDK meeting after joining
           try {
@@ -966,6 +1068,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       console.error('❌ Error accepting call:', error);
       setError(`Failed to accept call: ${error.message || 'Please check your camera and microphone permissions.'}`);
       setCallStatus('ended');
+      setIsAcceptingCall(false); // Reset on error
       cleanupResources();
     }
   };
@@ -1381,6 +1484,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         ringtoneRef.current = null;
       }
       ringtoneService.stopRingtone();
+      // Reset accepting state when connected
+      setIsAcceptingCall(false);
     }
 
     // Stop ringtone if call ends
@@ -1390,6 +1495,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         ringtoneRef.current = null;
       }
       ringtoneService.stopRingtone();
+      // Reset accepting state when call ends
+      setIsAcceptingCall(false);
     }
   }, [callStatus]);
 
@@ -1497,7 +1604,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn md:bg-black/75">
-      <div className="bg-amber-700 rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-3xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
+      <div className="bg-white rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-3xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 md:p-5 flex items-center justify-between shadow-lg">
           <div className="flex items-center space-x-3">
@@ -1585,14 +1692,39 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           )}
 
           {/* Participants Count */}
-          {participants.length > 0 && (
-            <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium shadow-lg border border-white/20">
-              <span className="flex items-center gap-2">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                {participants.length} participant{participants.length > 1 ? 's' : ''}
-              </span>
-            </div>
-          )}
+          {callStatus === 'connected' && (() => {
+            // Get count from meeting object (most accurate)
+            let displayCount = participants.length + 1; // Default: remote participants + local
+            
+            if (currentMeetingRef.current) {
+              try {
+                const meeting = currentMeetingRef.current;
+                const localParticipantId = meeting.localParticipant?.id;
+                const allParticipants = meeting.participants 
+                  ? Object.values(meeting.participants) 
+                  : [];
+                
+                // Count only remote participants, then add 1 for local
+                const remoteParticipants = allParticipants.filter(
+                  (p: any) => p.id !== localParticipantId
+                );
+                displayCount = remoteParticipants.length + 1;
+              } catch (error) {
+                console.warn('⚠️ Error calculating participant count:', error);
+                // Fallback to participants.length + 1
+                displayCount = participants.length + 1;
+              }
+            }
+            
+            return (
+              <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium shadow-lg border border-white/20">
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  {displayCount} participant{displayCount > 1 ? 's' : ''}
+                </span>
+              </div>
+            );
+          })()}
 
           <audio ref={remoteAudioRef} autoPlay playsInline muted={!isSpeakerEnabled} className="hidden" />
 
@@ -1648,9 +1780,14 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               <div className="flex justify-center gap-4 md:gap-6">
                 <button
                   onClick={handleAcceptCall}
-                  className="bg-green-500 hover:bg-green-600 active:bg-green-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-300"
-                  title="Answer Call"
-                  aria-label="Answer call"
+                  disabled={isAcceptingCall}
+                  className={`rounded-full p-4 md:p-5 shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${
+                    isAcceptingCall
+                      ? 'bg-gray-400 cursor-not-allowed opacity-60 text-white'
+                      : 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white hover:shadow-xl hover:scale-110 active:scale-95 focus:ring-green-300'
+                  }`}
+                  title={isAcceptingCall ? 'Connecting...' : 'Answer Call'}
+                  aria-label={isAcceptingCall ? 'Connecting...' : 'Answer call'}
                 >
                   <PhoneOff className="w-6 h-6 md:w-7 md:h-7 rotate-180" />
                 </button>
