@@ -120,19 +120,33 @@ class PushNotificationService {
         console.error('Service worker not registered')
         return null
       }
+      console.log('Registration:123', this.registration);
 
       // Check if VAPID key is available
       if (!this.vapidPublicKey) {
         console.error('VAPID public key not configured. Please set NEXT_PUBLIC_VAPID_PUBLIC_KEY in your .env.local file.')
         return null
       }
-
+      console.log('VAPID public key:130', this.vapidPublicKey);
       // Check if already subscribed
-      const existingSubscription = await this.registration.pushManager.getSubscription()
+      console.log('Checking for existing subscription...');
+      let existingSubscription: PushSubscription | null = null;
+      try {
+        existingSubscription = await this.registration.pushManager.getSubscription()
+        console.log('Existing subscription result:', existingSubscription);
+      } catch (error) {
+        console.error('Error getting existing subscription:', error);
+      }
+      
       if (existingSubscription) {
+        console.log('Found existing subscription, saving to database');
         this.subscription = existingSubscription
+        // Save existing subscription to database to ensure sync
+        await this.saveSubscription(existingSubscription)
+        console.log('Existing subscription saved to database');
         return existingSubscription
       }
+      console.log('No existing subscription found, creating new one');
 
       // Validate VAPID key format
       try {
@@ -147,12 +161,13 @@ class PushNotificationService {
         userVisibleOnly: true,
         applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey) as BufferSource
       })
+      console.log('Subscription:151', subscription);
 
       this.subscription = subscription
 
       // Save subscription to database
       await this.saveSubscription(subscription)
-
+      console.log('Subscription:158', subscription);
       console.log('Push subscription created:', subscription)
       return subscription
     } catch (error) {
@@ -244,34 +259,61 @@ class PushNotificationService {
    */
   private async saveSubscription(subscription: PushSubscription): Promise<void> {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      console.log('🔄 Attempting to save subscription to database...')
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      if (userError) {
+        console.error('Error getting user:', userError)
+        return
+      }
+      
+      console.log('User found:', user ? { id: user.id, email: user.email } : 'null')
+      
       if (!user) {
-        console.error('No user logged in, cannot save subscription')
+        console.error('❌ No user logged in, cannot save subscription')
         return
       }
 
-      const { error } = await supabase
+      const subscriptionData = {
+        user_id: user.id,
+        endpoint: subscription.endpoint,
+        p256dh_key: this.arrayBufferToBase64(subscription.getKey('p256dh')!),
+        auth_key: this.arrayBufferToBase64(subscription.getKey('auth')!),
+        created_at: new Date().toISOString()
+      }
+      
+      console.log('📤 Saving subscription data:', {
+        user_id: subscriptionData.user_id,
+        endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
+        has_p256dh: !!subscriptionData.p256dh_key,
+        has_auth: !!subscriptionData.auth_key
+      })
+
+      const { data, error } = await supabase
         .from('push_subscriptions')
-        .upsert({
-          user_id: user.id,
-          endpoint: subscription.endpoint,
-          p256dh_key: this.arrayBufferToBase64(subscription.getKey('p256dh')!),
-          auth_key: this.arrayBufferToBase64(subscription.getKey('auth')!),
-          created_at: new Date().toISOString()
-        }, {
+        .upsert(subscriptionData, {
           onConflict: 'user_id,endpoint' // Handle duplicate gracefully
         })
 
       if (error) {
         // Ignore duplicate key errors (409 conflict) - subscription already exists
         if (error.code === '23505' || error.message?.includes('duplicate')) {
-          console.log('Push subscription already exists for this user and endpoint')
+          console.log('✅ Push subscription already exists for this user and endpoint')
           return
         }
-        console.error('Error saving subscription:', error)
+        console.error('❌ Error saving subscription:', error)
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+      } else {
+        console.log('✅ Push subscription saved successfully to database:', data)
       }
     } catch (error) {
-      console.error('Error saving push subscription:', error)
+      console.error('❌ Error saving push subscription:', error)
+      console.error('Error stack:', (error as Error).stack)
     }
   }
 
