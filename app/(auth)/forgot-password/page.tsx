@@ -34,6 +34,7 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
+      <div className="max-w-md w-full px-4">
       <div className="max-w-full mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-8">
@@ -129,6 +130,7 @@ const ForgotPassword: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
