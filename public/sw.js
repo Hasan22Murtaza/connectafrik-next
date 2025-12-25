@@ -1,6 +1,7 @@
 // Service Worker for ConnectAfrik Push Notifications
 const CACHE_NAME = 'connectafrik-v1';
-const NOTIFICATION_ICON = '/logo.png'; // Your app logo
+const NOTIFICATION_ICON = '/assets/images/logo_2.png'; // Your app logo
+const NOTIFICATION_BADGE = '/assets/icons/icon-96x96.png'; // Your app logo
 
 // Install event
 self.addEventListener('install', (event) => {

@@ -11,7 +11,7 @@ const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo.png',
+  '/assets/images/logo_2.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png'
 ];
