@@ -402,25 +402,29 @@ const FriendsPage: React.FC = () => {
                           className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
-                          <div className="w-full aspect-square bg-gray-100 relative">
-                            {request.requester?.avatar_url ? (
-                              <img
-                                src={request.requester.avatar_url}
-                                alt={request.requester.full_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {request.requester?.full_name?.charAt(0) || "U"}
-                              </div>
-                            )}
-                          </div>
+                          <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                            <div className="w-full aspect-square bg-gray-100 relative">
+                              {request.requester?.avatar_url ? (
+                                <img
+                                  src={request.requester.avatar_url}
+                                  alt={request.requester.full_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                  {request.requester?.full_name?.charAt(0) || "U"}
+                                </div>
+                              )}
+                            </div>
+                          </Link>
 
                           {/* Content */}
                           <div className="p-4">
-                            <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1">
-                              {request.requester?.full_name || "Unknown User"}
-                            </h3>
+                            <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
+                                {request.requester?.full_name || "Unknown User"}
+                              </h3>
+                            </Link>
                             
                             {/* Mutual Friends */}
                             {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
@@ -505,25 +509,29 @@ const FriendsPage: React.FC = () => {
                           className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
-                          <div className="w-full aspect-square bg-gray-100 relative">
-                            {suggestion.avatar_url ? (
-                              <img
-                                src={suggestion.avatar_url}
-                                alt={suggestion.full_name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                {suggestion.full_name?.charAt(0) || "U"}
-                              </div>
-                            )}
-                          </div>
+                          <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                            <div className="w-full aspect-square bg-gray-100 relative">
+                              {suggestion.avatar_url ? (
+                                <img
+                                  src={suggestion.avatar_url}
+                                  alt={suggestion.full_name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                  {suggestion.full_name?.charAt(0) || "U"}
+                                </div>
+                              )}
+                            </div>
+                          </Link>
 
                           {/* Content */}
                           <div className="p-4">
-                            <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1">
-                              {suggestion.full_name || "Unknown User"}
-                            </h3>
+                            <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
+                                {suggestion.full_name || "Unknown User"}
+                              </h3>
+                            </Link>
                             
                             {/* Mutual Friends */}
                             {suggestion.mutual_friends_count > 0 && (
@@ -600,25 +608,29 @@ const FriendsPage: React.FC = () => {
                         className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                       >
                         {/* Profile Image */}
-                        <div className="w-full aspect-square bg-gray-100 relative">
-                          {request.requester?.avatar_url ? (
-                            <img
-                              src={request.requester.avatar_url}
-                              alt={request.requester.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {request.requester?.full_name?.charAt(0) || "U"}
-                            </div>
-                          )}
-                        </div>
+                        <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                          <div className="w-full aspect-square bg-gray-100 relative">
+                            {request.requester?.avatar_url ? (
+                              <img
+                                src={request.requester.avatar_url}
+                                alt={request.requester.full_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {request.requester?.full_name?.charAt(0) || "U"}
+                              </div>
+                            )}
+                          </div>
+                        </Link>
 
                         {/* Content */}
                         <div className="p-4">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1">
-                            {request.requester?.full_name || "Unknown User"}
-                          </h3>
+                          <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                            <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
+                              {request.requester?.full_name || "Unknown User"}
+                            </h3>
+                          </Link>
                           
                           {/* Mutual Friends */}
                           {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
@@ -690,25 +702,29 @@ const FriendsPage: React.FC = () => {
                         className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                       >
                         {/* Profile Image */}
-                        <div className="w-full aspect-square bg-gray-100 relative">
-                          {friend.avatar_url ? (
-                            <img
-                              src={friend.avatar_url}
-                              alt={friend.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {friend.full_name?.charAt(0) || "U"}
-                            </div>
-                          )}
-                        </div>
+                        <Link href={`/user/${friend.username || ''}`} className="block cursor-pointer">
+                          <div className="w-full aspect-square bg-gray-100 relative">
+                            {friend.avatar_url ? (
+                              <img
+                                src={friend.avatar_url}
+                                alt={friend.full_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {friend.full_name?.charAt(0) || "U"}
+                              </div>
+                            )}
+                          </div>
+                        </Link>
 
                         {/* Content */}
                         <div className="p-4">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-1">
-                            {friend.full_name || "Unknown User"}
-                          </h3>
+                          <Link href={`/user/${friend.username || ''}`} className="block cursor-pointer">
+                            <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-1 hover:text-orange-600 transition-colors">
+                              {friend.full_name || "Unknown User"}
+                            </h3>
+                          </Link>
                           <p className="text-xs text-gray-500 mb-1 line-clamp-1">
                             @{friend.username}
                           </p>
@@ -773,25 +789,29 @@ const FriendsPage: React.FC = () => {
                         className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                       >
                         {/* Profile Image */}
-                        <div className="w-full aspect-square bg-gray-100 relative">
-                          {suggestion.avatar_url ? (
-                            <img
-                              src={suggestion.avatar_url}
-                              alt={suggestion.full_name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                              {suggestion.full_name?.charAt(0) || "U"}
-                            </div>
-                          )}
-                        </div>
+                        <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                          <div className="w-full aspect-square bg-gray-100 relative">
+                            {suggestion.avatar_url ? (
+                              <img
+                                src={suggestion.avatar_url}
+                                alt={suggestion.full_name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                {suggestion.full_name?.charAt(0) || "U"}
+                              </div>
+                            )}
+                          </div>
+                        </Link>
 
                         {/* Content */}
                         <div className="p-4">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1">
-                            {suggestion.full_name || "Unknown User"}
-                          </h3>
+                          <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                            <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
+                              {suggestion.full_name || "Unknown User"}
+                            </h3>
+                          </Link>
                           
                           {/* Mutual Friends */}
                           {suggestion.mutual_friends_count > 0 && (
