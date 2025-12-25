@@ -197,7 +197,7 @@ const FriendsPage: React.FC = () => {
 
     try {
       setSuggestionsLoading(true);
-      
+
       // First try to get mutual friend recommendations
       const { data: mutualData, error: mutualError } = await supabase.rpc('get_friend_recommendations', {
         p_user_id: user.id,
@@ -276,28 +276,23 @@ const FriendsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full mx-auto px-4 py-6">
+      <div className="max-w-full mx-auto ">
         <div className="flex gap-6">
           {/* Left Sidebar */}
-          <div className="w-64 shrink-0">
-            <div className="sticky top-6 h-[calc(100vh-3rem)] bg-white rounded-lg shadow-sm p-4 overflow-y-auto">
+          <div className="hidden md:block w-64 shrink-0">
+            <div className="sticky top-0 h-[calc(100vh-3rem)] bg-white rounded-lg shadow-sm p-4 overflow-y-auto">
               {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Friends</h2>
-                <button className="text-gray-500 hover:text-gray-700">
-                  <Settings className="w-5 h-5" />
-                </button>
-              </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Friends</h2>
+                
 
               {/* Navigation */}
               <nav className="space-y-1">
                 <button
                   onClick={() => setActiveSection("home")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
-                    activeSection === "home"
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "home"
                       ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-3">
                     <Users className={`w-5 h-5 ${activeSection === "home" ? "text-orange-600" : "text-gray-500"}`} />
@@ -307,11 +302,10 @@ const FriendsPage: React.FC = () => {
 
                 <button
                   onClick={() => setActiveSection("requests")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
-                    activeSection === "requests"
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "requests"
                       ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-3">
                     <UserPlus className={`w-5 h-5 ${activeSection === "requests" ? "text-orange-600" : "text-gray-500"}`} />
@@ -327,11 +321,10 @@ const FriendsPage: React.FC = () => {
 
                 <button
                   onClick={() => setActiveSection("suggestions")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
-                    activeSection === "suggestions"
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "suggestions"
                       ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-3">
                     <UserPlus className={`w-5 h-5 ${activeSection === "suggestions" ? "text-orange-600" : "text-gray-500"}`} />
@@ -342,11 +335,10 @@ const FriendsPage: React.FC = () => {
 
                 <button
                   onClick={() => setActiveSection("all")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
-                    activeSection === "all"
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "all"
                       ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-3">
                     <Users className={`w-5 h-5 ${activeSection === "all" ? "text-orange-600" : "text-gray-500"}`} />
@@ -357,11 +349,10 @@ const FriendsPage: React.FC = () => {
 
                 <button
                   onClick={() => setActiveSection("birthdays")}
-                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${
-                    activeSection === "birthdays"
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "birthdays"
                       ? "bg-orange-50 text-orange-700"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-3">
                     <Gift className={`w-5 h-5 ${activeSection === "birthdays" ? "text-orange-600" : "text-gray-500"}`} />
@@ -373,14 +364,53 @@ const FriendsPage: React.FC = () => {
           </div>
 
           {/* Main Content */}
-          <div className="flex-1">
+          <div className="flex-1 max-w-full py-3 sm:py-6 px-4 ">
+          <div className="flex gap-2 sm:hidden overflow-x-auto w-full pb-5  scrollbar-hide">
+              {/* We use inline-flex + min-w-fit to prevent shrinking */}
+              <button
+                onClick={() => setActiveSection("suggestions")}
+                className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "suggestions" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+                  }`}
+              >
+                Friend suggestions
+              </button>
+
+              <button
+                onClick={() => setActiveSection("requests")}
+                className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+                  }`}
+              >
+                Friend requests
+                {requests.length > 0 && (
+                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
+                    {requests.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setActiveSection("all")}
+                className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "all" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+                  }`}
+              >
+                All friends
+              </button>
+
+              <button
+                onClick={() => setActiveSection("birthdays")}
+                className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+                  }`}
+              >
+                Birthdays
+              </button>
+            </div>
             {activeSection === "home" ? (
               <div className="space-y-8">
                 {/* Friend Requests Section */}
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">Friend Requests</h2>
-                    <button 
+                    <button
                       onClick={() => setActiveSection("requests")}
                       className="text-orange-600 hover:text-orange-700 font-medium"
                     >
@@ -395,76 +425,76 @@ const FriendsPage: React.FC = () => {
                     </div>
                   ) : requests.length > 0 ? (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                         {requests.slice(0, requestsDisplayLimit).map((request) => (
-                        <div
-                          key={request.id}
-                          className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          {/* Profile Image */}
-                          <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-gray-100 relative">
-                              {request.requester?.avatar_url ? (
-                                <img
-                                  src={request.requester.avatar_url}
-                                  alt={request.requester.full_name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                  {request.requester?.full_name?.charAt(0) || "U"}
+                          <div
+                            key={request.id}
+                            className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                          >
+                            {/* Profile Image */}
+                            <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                              <div className="w-full aspect-square bg-gray-100 relative">
+                                {request.requester?.avatar_url ? (
+                                  <img
+                                    src={request.requester.avatar_url}
+                                    alt={request.requester.full_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                    {request.requester?.full_name?.charAt(0) || "U"}
+                                  </div>
+                                )}
+                              </div>
+                            </Link>
+
+                            {/* Content */}
+                            <div className="p-4">
+                              <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                                <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
+                                  {request.requester?.full_name || "Unknown User"}
+                                </h3>
+                              </Link>
+
+                              {/* Mutual Friends */}
+                              {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
+                                <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                                  <div className="flex -space-x-1">
+                                    {Array.from({ length: Math.min(request.mutualFriendsCount, 2) }).map((_, i) => (
+                                      <div
+                                        key={i}
+                                        className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                      />
+                                    ))}
+                                  </div>
+                                  <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                                 </div>
                               )}
-                            </div>
-                          </Link>
 
-                          {/* Content */}
-                          <div className="p-4">
-                            <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
-                                {request.requester?.full_name || "Unknown User"}
-                              </h3>
-                            </Link>
-                            
-                            {/* Mutual Friends */}
-                            {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
-                                <div className="flex -space-x-1">
-                                  {Array.from({ length: Math.min(request.mutualFriendsCount, 2) }).map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
-                                    />
-                                  ))}
-                                </div>
-                                <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                              {/* Action Buttons */}
+                              <div className="space-y-2">
+                                <button
+                                  onClick={() => handleAcceptRequest(request.id)}
+                                  className="w-full btn-sm-primary text-sm"
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => handleDeclineRequest(request.id)}
+                                  className="w-full btn-secondary text-sm"
+                                >
+                                  Delete
+                                </button>
                               </div>
-                            )}
-
-                            {/* Action Buttons */}
-                            <div className="space-y-2">
-                              <button
-                                onClick={() => handleAcceptRequest(request.id)}
-                                className="w-full btn-sm-primary text-sm"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                onClick={() => handleDeclineRequest(request.id)}
-                                className="w-full btn-secondary text-sm"
-                              >
-                                Delete
-                              </button>
                             </div>
                           </div>
-                        </div>
                         ))}
                       </div>
                       {requests.length > requestsDisplayLimit && (
                         <div className="flex justify-center mt-6">
                           <button
                             onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
-                              className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 font-medium"
+                            className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 font-medium"
                           >
                             <span>See more</span>
                             <ChevronDown className="w-4 h-4" />
@@ -487,7 +517,7 @@ const FriendsPage: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">People You May Know</h2>
-                    <button 
+                    <button
                       onClick={() => setActiveSection("suggestions")}
                       className="text-orange-600 hover:text-orange-700 font-medium"
                     >
@@ -502,69 +532,69 @@ const FriendsPage: React.FC = () => {
                     </div>
                   ) : suggestions.length > 0 ? (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                         {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
-                        <div
-                          key={suggestion.user_id}
-                          className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-                        >
-                          {/* Profile Image */}
-                          <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-gray-100 relative">
-                              {suggestion.avatar_url ? (
-                                <img
-                                  src={suggestion.avatar_url}
-                                  alt={suggestion.full_name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
-                                  {suggestion.full_name?.charAt(0) || "U"}
+                          <div
+                            key={suggestion.user_id}
+                            className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                          >
+                            {/* Profile Image */}
+                            <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                              <div className="w-full aspect-square bg-gray-100 relative">
+                                {suggestion.avatar_url ? (
+                                  <img
+                                    src={suggestion.avatar_url}
+                                    alt={suggestion.full_name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+                                    {suggestion.full_name?.charAt(0) || "U"}
+                                  </div>
+                                )}
+                              </div>
+                            </Link>
+
+                            {/* Content */}
+                            <div className="p-4">
+                              <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                                <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
+                                  {suggestion.full_name || "Unknown User"}
+                                </h3>
+                              </Link>
+
+                              {/* Mutual Friends */}
+                              {suggestion.mutual_friends_count > 0 && (
+                                <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                                  <div className="flex -space-x-1">
+                                    {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
+                                      <div
+                                        key={i}
+                                        className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                      />
+                                    ))}
+                                  </div>
+                                  <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
                                 </div>
                               )}
+
+                              {/* Action Button */}
+                              <button
+                                onClick={() => handleSendFriendRequest(suggestion.user_id)}
+                                disabled={sendingRequests.has(suggestion.user_id)}
+                                className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
+                              </button>
                             </div>
-                          </Link>
-
-                          {/* Content */}
-                          <div className="p-4">
-                            <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-orange-600 transition-colors">
-                                {suggestion.full_name || "Unknown User"}
-                              </h3>
-                            </Link>
-                            
-                            {/* Mutual Friends */}
-                            {suggestion.mutual_friends_count > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
-                                <div className="flex -space-x-1">
-                                  {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
-                                    />
-                                  ))}
-                                </div>
-                                <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
-                              </div>
-                            )}
-
-                            {/* Action Button */}
-                            <button
-                              onClick={() => handleSendFriendRequest(suggestion.user_id)}
-                              disabled={sendingRequests.has(suggestion.user_id)}
-                              className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
-                            </button>
                           </div>
-                        </div>
                         ))}
                       </div>
                       {suggestions.length > suggestionsDisplayLimit && (
                         <div className="flex justify-center mt-6">
                           <button
                             onClick={() => setSuggestionsDisplayLimit(prev => prev + 20)}
-                              className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 font-medium"
+                            className="flex items-center space-x-1 text-orange-600 hover:text-orange-700 font-medium"
                           >
                             <span>See more</span>
                             <ChevronDown className="w-4 h-4" />
@@ -601,7 +631,7 @@ const FriendsPage: React.FC = () => {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                   </div>
                 ) : requests.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {requests.map((request) => (
                       <div
                         key={request.id}
@@ -631,7 +661,7 @@ const FriendsPage: React.FC = () => {
                               {request.requester?.full_name || "Unknown User"}
                             </h3>
                           </Link>
-                          
+
                           {/* Mutual Friends */}
                           {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
                             <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
@@ -695,7 +725,7 @@ const FriendsPage: React.FC = () => {
 
                 {/* Friends Grid */}
                 {filteredFriends.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {filteredFriends.map((friend) => (
                       <div
                         key={friend.id}
@@ -762,7 +792,7 @@ const FriendsPage: React.FC = () => {
             ) : activeSection === "suggestions" ? (
               <div>
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-2 ">
                   <h2 className="text-2xl font-bold text-gray-900">Suggestions</h2>
                   <div className="relative w-64">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -782,7 +812,7 @@ const FriendsPage: React.FC = () => {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                   </div>
                 ) : filteredSuggestions.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {filteredSuggestions.map((suggestion) => (
                       <div
                         key={suggestion.user_id}
@@ -812,7 +842,7 @@ const FriendsPage: React.FC = () => {
                               {suggestion.full_name || "Unknown User"}
                             </h3>
                           </Link>
-                          
+
                           {/* Mutual Friends */}
                           {suggestion.mutual_friends_count > 0 && (
                             <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">

@@ -130,8 +130,8 @@ const StoriesBar: React.FC = () => {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-        <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 ">
+        <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide sm:max-w-full max-w-[320px]">
           {/* User's Own Stories or Create Story Button */}
           <div className="flex-shrink-0">
             {userOwnStories.length > 0 ? (
@@ -302,11 +302,28 @@ const StoriesBar: React.FC = () => {
 
           {/* Empty State */}
           {stories.length === 0 && (
+            <>
             <div className="flex-shrink-0">
               <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
                 <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
               </div>
             </div>
+            <div className="flex-shrink-0">
+            <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
+              <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
+              <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
+              <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
+            </div>
+          </div>
+          </>
           )}
         </div>
       </div>

@@ -217,6 +217,12 @@ a,
 button{
   cursor: pointer;
 }
-
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
 
 
