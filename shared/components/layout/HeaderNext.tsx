@@ -1,44 +1,49 @@
-'use client'
+"use client";
 
-import React, { useMemo, useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { User, LogOut, Search, Bell, MessageCircle, Phone } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { useProfile } from '@/shared/hooks/useProfile'
-import { useNotifications } from '@/shared/hooks/useNotifications'
-import { useProductionChat } from '@/contexts/ProductionChatContext'
-import ChatDropdown from '@/features/chat/components/ChatDropdown'
-import NotificationDropdown from '@/shared/components/ui/NotificationDropdown'
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { User, LogOut, Search, Bell, MessageCircle, Phone } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/shared/hooks/useProfile";
+import { useNotifications } from "@/shared/hooks/useNotifications";
+import { useProductionChat } from "@/contexts/ProductionChatContext";
+import ChatDropdown from "@/features/chat/components/ChatDropdown";
+import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
 
 interface HeaderProps {
-  searchTerm?: string
-  onSearchTermChange?: (term: string) => void
+  searchTerm?: string;
+  onSearchTermChange?: (term: string) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) => {
-  const router = useRouter()
-  const { user, signOut } = useAuth()
-  const { profile } = useProfile()
-  const { } = useProductionChat()
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [showInbox, setShowInbox] = useState(false)
-  const [showCalls, setShowCalls] = useState(false)
+const Header: React.FC<HeaderProps> = ({
+  searchTerm = "",
+  onSearchTermChange,
+}) => {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+  const { profile } = useProfile();
+  const {} = useProductionChat();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showInbox, setShowInbox] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  const [showCalls, setShowCalls] = useState(false);
   // TODO: Get threads from messaging service or realtime hook
-  const unreadMessages = 0 // useMemo(() => threads.reduce((total: number, thread: any) => total + (thread.unread_count || 0), 0), [threads])
+  const unreadMessages = 0; // useMemo(() => threads.reduce((total: number, thread: any) => total + (thread.unread_count || 0), 0), [threads])
 
   const handleSignOut = async () => {
     try {
-      console.log('Starting sign out process...')
-      await signOut()
-      console.log('Sign out successful, navigating to signin...')
+      console.log("Starting sign out process...");
+      await signOut();
+      console.log("Sign out successful, navigating to signin...");
       // Force a hard navigation to ensure clean state
-      window.location.href = '/signin'
+      window.location.href = "/signin";
     } catch (error) {
-      console.error('Sign out error:', error)
-      alert('An error occurred during sign out. Please try again.')
+      console.error("Sign out error:", error);
+      alert("An error occurred during sign out. Please try again.");
     }
-  }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -180,7 +185,15 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
 
                 {/* User Menu */}
                 <div className="relative group ml-1 sm:ml-2 lg:ml-4 pl-1 sm:pl-2 lg:pl-4 border-l border-gray-200">
-                  <button className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-gray-50">
+                  <button
+                    onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) {
+                        setIsUserMenuOpen(false);
+                      }
+                    }}
+                    className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-gray-50"
+                  >
                     {profile?.avatar_url ? (
                       <img
                         src={profile.avatar_url}
@@ -197,8 +210,15 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                     </span>
                   </button>
 
-                  {/* Dropdown Menu */}
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div
+                    className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200
+                          ${
+                            isUserMenuOpen
+                              ? "opacity-100 visible"
+                              : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
+                          }
+                        `}
+                  >
                     <div className="py-2">
                       <Link
                         href="/profile"
@@ -212,7 +232,7 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
                       >
                         Settings
                       </Link>
-                      <hr className="my-1" />
+                      <hr className="my-1 border-gray-300" />
                       <button
                         onClick={handleSignOut}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center space-x-2"
@@ -226,10 +246,16 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
               </>
             ) : (
               <div className="flex items-center space-x-2 sm:space-x-4 pr-1  sm:pr-4 sm:border-r border-0 border-gray-200 ">
-                <Link href="/signin" className="btn-secondary !px-3 sm:px-5 sm:text-base text-sm">
+                <Link
+                  href="/signin"
+                  className="btn-secondary !px-3 sm:px-5 sm:text-base text-sm"
+                >
                   Sign In
                 </Link>
-                <Link href="/signup" className="btn-primary !px-3 sm:px-5 sm:text-base text-sm">
+                <Link
+                  href="/signup"
+                  className="btn-primary !px-3 sm:px-5 sm:text-base text-sm"
+                >
                   Join Community
                 </Link>
               </div>
@@ -242,54 +268,53 @@ const Header: React.FC<HeaderProps> = ({ searchTerm = '', onSearchTermChange }) 
       {user && (
         <div className="md:hidden block bg-white border-t border-gray-200 py-1 ">
           <nav className="flex !justify-between w-full py-2 gap-2">
-  <ul className="flex justify-between w-full gap-2">
-    <li>
-      <Link
-        href="/feed"
-        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
-      >
-        <span className="text-xs">Feed</span>
-      </Link>
-    </li>
-    <li>
-      <Link
-        href="/memories"
-        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
-      >
-        <span className="text-xs">Reels</span>
-      </Link>
-    </li>
-    <li>
-      <Link
-        href="/culture"
-        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
-      >
-        <span className="text-xs">Culture</span>
-      </Link>
-    </li>
-    <li>
-      <Link
-        href="/groups"
-        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
-      >
-        <span className="text-xs">Groups</span>
-      </Link>
-    </li>
-    <li>
-      <Link
-        href="/profile"
-        className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
-      >
-        <span className="text-xs">Profile</span>
-      </Link>
-    </li>
-  </ul>
-</nav>
+            <ul className="flex justify-between w-full gap-2">
+              <li>
+                <Link
+                  href="/feed"
+                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                >
+                  <span className="text-xs">Feed</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/memories"
+                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                >
+                  <span className="text-xs">Reels</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/culture"
+                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                >
+                  <span className="text-xs">Culture</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/groups"
+                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                >
+                  <span className="text-xs">Groups</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/profile"
+                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                >
+                  <span className="text-xs">Profile</span>
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
       )}
     </header>
   );
-}
+};
 
-export default Header
-
+export default Header;

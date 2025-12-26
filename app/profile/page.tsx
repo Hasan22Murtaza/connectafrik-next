@@ -280,27 +280,27 @@ const ProfileSettings: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
           <p className="text-gray-600">Manage your account settings and preferences</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 sm:gap-6 gap-4">
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="card p-4">
-              <nav className="space-y-2">
+            <div className="card">
+              <nav className=" md:flex-col flex gap-2  items-center overflow-x-auto  scrollbar-hide ">
                 {tabs.map(tab => {
                   const IconComponent = tab.icon
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors duration-200 ${
+                      className={`w-full rounded-full border flex items-center sm:space-x-3 space-x-1 px-3 py-2 rounded-lg text-left transition-colors duration-200 ${
                         activeTab === tab.id
-                          ? 'bg-primary-50 text-primary-700 border border-primary-200'
-                          : 'text-gray-700 hover:bg-gray-50'
+                          ? 'border-orange-400 bg-primary-200 text-orange-900'
+                          : ' hover:bg-gray-50 border-gray-200 bg-[#F3F4F6] text-gray-600 hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
                       }`}
                     >
                       <IconComponent className="w-5 h-5" />
@@ -317,12 +317,12 @@ const ProfileSettings: React.FC = () => {
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="card">
-                <div className="p-6 border-b border-gray-200">
+                <div className="sm:p-6 p-4  border-b border-gray-200">
                   <h2 className="text-xl font-semibold text-gray-900">Profile Information</h2>
                   <p className="text-gray-600">Update your profile details and avatar</p>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="sm:p-6 py-6 space-y-6">
                   {/* Avatar Section */}
                   <div className="flex items-center space-x-6">
                     <div className="relative">
@@ -438,12 +438,12 @@ const ProfileSettings: React.FC = () => {
             {/* Privacy Tab */}
             {activeTab === 'privacy' && (
               <div className="card">
-                <div className="p-6 border-b border-gray-200">
+                <div className="sm:p-6 p-4 border-b border-gray-200">
                   <h2 className="text-xl font-semibold text-gray-900">Privacy Settings</h2>
                   <p className="text-gray-600">Control who can see your content and interact with you</p>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="sm:p-6 py-6 space-y-6">
                   {/* Profile Visibility */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Visibility</h3>
@@ -553,15 +553,15 @@ const ProfileSettings: React.FC = () => {
             {/* Notifications Tab */}
             {activeTab === 'notifications' && (
               <div className="card">
-                <div className="p-6 border-b border-gray-200">
+                <div className="sm:p-6 p-4 border-b border-gray-200">
                   <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
                   <p className="text-gray-600">Choose what notifications you want to receive</p>
                 </div>
 
-                <div className="p-6 space-y-6">
+                <div className="sm:p-6 py-6 space-y-6">
                   {/* Push Notification Settings */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex sm:items-center items-start justify-between">
                       <div>
                         <h3 className="font-medium text-blue-900">Mobile Push Notifications</h3>
                         <p className="text-sm text-blue-700">Get notifications on your phone for friend requests, messages, and calls</p>
@@ -624,15 +624,15 @@ const ProfileSettings: React.FC = () => {
               <div className="space-y-6">
                 {/* Account Security */}
                 <div className="card">
-                  <div className="p-6 border-b border-gray-200">
+                  <div className="sm:p-6 p-4 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-900">Account Security</h2>
                     <p className="text-gray-600">Manage your account security settings</p>
                   </div>
 
-                  <div className="p-6 space-y-6">
+                  <div className="sm:p-6 py-6 space-y-6">
                     <div className="space-y-4">
                       <label className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div>
+                        <div className='max-w-[320px]'>
                           <div className="font-medium text-gray-900">Two-Factor Authentication</div>
                           <div className="text-sm text-gray-500">Add an extra layer of security to your account</div>
                         </div>
@@ -647,8 +647,8 @@ const ProfileSettings: React.FC = () => {
                         />
                       </label>
 
-                      <label className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div>
+                      <label className=" flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                        <div className='sm:max-w-full max-w-[240px]'>
                           <div className="font-medium text-gray-900">Login Alerts</div>
                           <div className="text-sm text-gray-500">Get notified when someone logs into your account</div>
                         </div>
@@ -664,8 +664,8 @@ const ProfileSettings: React.FC = () => {
                       </label>
                     </div>
 
-                    <div className="flex justify-between items-center">
-                      <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex justify-between items-center flex-wrap gap-4">
+                      <div className="flex  gap-4">
                         <button className="btn-secondary w-full sm:w-auto">Change Password</button>
                         <button
                           onClick={signOut}
@@ -677,7 +677,7 @@ const ProfileSettings: React.FC = () => {
                       <button
                         onClick={handleSecurityUpdate}
                         disabled={isSaving}
-                        className="btn-primary flex items-center justify-center space-x-2 disabled:opacity-50 w-auto px-8 py-2.5 min-w-[180px] max-w-[280px]"
+                        className="btn-primary flex-1  flex items-center justify-center space-x-2 disabled:opacity-50 w-auto px-8 py-2.5  sm:max-w-[280px] max-w-full "
                       >
                         <Save className="w-4 h-4" />
                         <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
@@ -688,12 +688,13 @@ const ProfileSettings: React.FC = () => {
 
                 {/* Data & Privacy */}
                 <div className="card">
-                  <div className="p-6 border-b border-gray-200">
+                  <div className="sm:p-6 p-4 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-900">Data & Privacy</h2>
                     <p className="text-gray-600">Download your data or delete your account</p>
                   </div>
 
-                  <div className="p-6 space-y-4">
+                  <div className="sm:p-6 pt-6 space-y-4">
+                    <div className="sm:flex-row flex gap-4  flex-col">
                     <button
                       onClick={handleDataDownload}
                       className="w-full flex items-center justify-center space-x-2 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
@@ -709,6 +710,7 @@ const ProfileSettings: React.FC = () => {
                       <Trash2 className="w-5 h-5" />
                       <span>Delete Account</span>
                     </button>
+                    </div>
 
                     <div className="text-sm text-gray-500 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-start space-x-2">
