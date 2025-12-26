@@ -47,7 +47,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1.5rem;
+  padding:9px 16px;
   background-color: var(--african-orange);
   color: white;
   font-weight: 600;
@@ -66,7 +66,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1.5rem;
+    padding:9px 16px;
   background-color: #D1D5DC;
   color: #374151;
   font-weight: 600;
@@ -219,6 +219,7 @@ button{
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none !important;
+  -webkit-overflow-scrolling: touch;
 }
 .scrollbar-hide {
   -ms-overflow-style: none !important;  /* IE and Edge */

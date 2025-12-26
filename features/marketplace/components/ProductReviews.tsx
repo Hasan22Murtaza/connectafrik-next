@@ -329,7 +329,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         {user && user.id !== sellerId && !userReview && (
           <button
             onClick={() => setShowWriteReview(!showWriteReview)}
-            className="mt-6 w-full btn-primary py-3 flex items-center justify-center gap-2"
+            className="mt-6 w-full btn-primary  flex items-center justify-center gap-2"
           >
             <MessageSquare className="w-5 h-5" />
             Write a Review
@@ -410,7 +410,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
             <button
               onClick={handleSubmitReview}
               disabled={isSubmitting || !isValid}
-              className="flex-1 btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 btn-primary  disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Posting...' : (userReview ? 'Update Review' : 'Post Review')}
             </button>

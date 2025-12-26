@@ -51,7 +51,7 @@ const VideoPage: React.FC = () => {
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={() => router.push('/feed')}
-              className="btn-primary px-6 py-3"
+              className="btn-primary px-6 "
             >
               Watch Feed Instead
             </button>

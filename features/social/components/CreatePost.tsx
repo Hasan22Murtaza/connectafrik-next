@@ -182,10 +182,10 @@ const formatFileSize = (bytes: number): string => {
           <img
             src={profile.avatar_url}
             alt={profile.full_name}
-            className="w-10 h-10 rounded-full object-cover"
+            className="w-10 h-10 rounded-full object-cover shrink-0"
           />
         ) : (
-          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center shrink-0">
             <span className="text-gray-600 font-medium">
               {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
             </span>
@@ -201,7 +201,7 @@ const formatFileSize = (bytes: number): string => {
         {/* Category Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-          <div className="flex space-x-3">
+          <div className="flex gap-2">
             {[
               { value: 'general', label: 'General', icon: '💬' },
               { value: 'politics', label: 'Politics', icon: '🏛️' },
@@ -211,9 +211,9 @@ const formatFileSize = (bytes: number): string => {
                 key={value}
                 type="button"
                 onClick={() => setCategory(value as any)}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                className={`flex items-center text-sm space-x-1 sm:px-4 px-2 sm:py-1 py-2 rounded-lg border transition-colors duration-200 ${
                   category === value
-                    ? 'bg-primary-50 border-primary-300 text-primary-700'
+                    ? 'border-orange-400 bg-primary-200 text-orange-900'
                     : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
@@ -420,7 +420,7 @@ const formatFileSize = (bytes: number): string => {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             {onCancel && (
               <button
                 type="button"

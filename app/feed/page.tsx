@@ -242,7 +242,7 @@ const FeedPage: React.FC = () => {
           <StoriesBar />
 
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+          <section className="rounded-2xl border border-gray-200 bg-white p-2 sm:p-6">
             {!user ? (
               <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
                 Sign in to share your thoughts with the community.
@@ -296,13 +296,13 @@ const FeedPage: React.FC = () => {
                     key={id}
                     type="button"
                     onClick={() => setActiveCategory(id)}
-                    className={`flex items-center gap-2 rounded-full border sm:px-4 px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
+                    className={`flex items-center gap-1 rounded-full border sm:px-4 px-3 sm:py-1 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
                       isActive
                         ? 'border-orange-400 bg-primary-200 text-orange-900'
                         : 'border-gray-200 bg-[#F3F4F6] text-gray-600 hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3 w-3" />
                     {label}
                   </button>
                 )

@@ -84,17 +84,17 @@ const ResetPassword: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-african-green/10 flex items-center justify-center p-4">
-      <div className="max-w-md w-full px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-african-green/10 flex items-center justify-center">
+      <div className="max-w-md w-full ">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <img src="/assets/images/logo_2.png" alt="" className="w-30" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="sm:text-3xl text-2xl  font-bold text-gray-900 mb-2">
             {isSuccess ? "Password Updated!" : "Set New Password"}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 sm:text-base text-sm">
             {isSuccess
               ? "Your password has been successfully updated"
               : "Enter your new password below"}
@@ -104,7 +104,7 @@ const ResetPassword: React.FC = () => {
         {/* Form */}
         <div className="card">
           {!isSuccess ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-2">
               {/* Password */}
               <div>
                 <label
@@ -182,7 +182,7 @@ const ResetPassword: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full btn-primary  text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Updating Password..." : "Update Password"}
               </button>
@@ -206,7 +206,7 @@ const ResetPassword: React.FC = () => {
 
               <Link
                 href="/signin"
-                className="w-full flex justify-center btn-primary py-3 text-base"
+                className="w-full flex justify-center btn-primary text-base"
               >
                 Go to Sign In
               </Link>
