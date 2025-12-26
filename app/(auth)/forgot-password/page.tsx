@@ -34,17 +34,16 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
-      <div className="max-w-md w-full px-4">
-      <div className="max-w-full mx-auto px-4">
+      <div className="max-w-full mx-auto ">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <img src="/assets/images/logo_2.png" alt="" className="w-30" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
             Reset Password
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 sm:text-base text-sm">
             {isSubmitted
               ? "Check your email for password reset instructions"
               : "Enter your email address and we'll send you a link to reset your password"}
@@ -82,7 +81,7 @@ const ForgotPassword: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full btn-primary  text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Sending..." : "Send Reset Link"}
               </button>
@@ -109,7 +108,7 @@ const ForgotPassword: React.FC = () => {
                   setIsSubmitted(false);
                   setEmail("");
                 }}
-                className="w-full btn-secondary py-3 text-base"
+                className="w-full btn-secondary  text-base"
               >
                 Send Another Email
               </button>
@@ -130,7 +129,6 @@ const ForgotPassword: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

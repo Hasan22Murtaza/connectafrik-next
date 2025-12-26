@@ -55,22 +55,17 @@ const Home: React.FC = () => {
             <div className="flex items-center justify-center mb-8">
               <img src="/assets/images/logo_2.png" alt="" className="w-50" />
             </div>
-
-            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-              Connect<span className="text-orange-500"> Afrik</span>
-            </h1>
-
             <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
               The premier platform for Africans worldwide to share political
               insights, celebrate cultural diversity, and build meaningful
               connections across the continent.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/signup" className="btn-primary text-lg px-8 py-3">
+            <div className="flex  gap-4 justify-center">
+              <Link href="/signup" className="btn-primary text-sm px-8 sm:text-lg ">
                 Join the Community
               </Link>
-              <Link href="/signin" className="btn-secondary text-lg px-8 py-3">
+              <Link href="/signin" className="btn-secondary text-sm px-8 sm:text-lg">
                 Sign In
               </Link>
             </div>
@@ -244,7 +239,7 @@ const Home: React.FC = () => {
           </p>
           <Link
             href="/signup"
-            className="inline-flex items-center px-8 py-3 bg-white text-orange-500 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            className="inline-flex items-center px-8 sm:py-[9px] py-[7px] bg-white text-orange-500 font-semibold rounded-lg hover:bg-gray-100 transition-colors duration-200"
           >
             Get Started Today
           </Link>

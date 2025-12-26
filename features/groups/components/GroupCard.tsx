@@ -197,7 +197,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
             {group.membership && getRoleIcon(group.membership.role)}
             <button
               onClick={handleViewGroup}
-              className="btn-secondary text-xs px-3 py-1"
+              className="btn-secondary text-xs  py-1"
             >
               View
             </button>

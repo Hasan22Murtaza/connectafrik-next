@@ -254,17 +254,17 @@ const Signup: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
-      <div className="flex-1 flex items-center justify-center p-4 py-8">
-        <div className="max-w-md w-full px-4">
+      <div className="flex-1 flex items-center justify-center py-8">
+        <div className="max-w-md w-full">
           {/* Header */}
           <div className="text-center mb-6">
             <div className="flex items-center justify-center mb-3">
               <img src="/assets/images/logo_2.png" alt="" className="w-30" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
               Create a new account
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 sm:text-base text-sm">
               Connect with the African community worldwide
             </p>
           </div>
@@ -531,7 +531,7 @@ const Signup: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full btn-primary py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full btn-primary text-base disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Creating account..." : "Sign Up"}
               </button>

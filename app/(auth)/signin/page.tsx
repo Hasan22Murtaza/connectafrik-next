@@ -44,23 +44,23 @@ const Signin: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
-      <div className="max-w-md w-full px-4">
+      <div className="max-w-md w-full ">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <img src="/assets/images/logo_2.png" alt="" className="w-30" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
             Welcome Back
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 sm:text-base text-sm">
             Sign in to continue your journey with ConnectAfrik
           </p>
         </div>
 
         {/* Form */}
         <div className="card ">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-2">
             {/* Email */}
             <div>
               <label
@@ -119,7 +119,6 @@ const Signin: React.FC = () => {
             </div>
 
             {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <input
                   id="remember-me"
@@ -135,7 +134,8 @@ const Signin: React.FC = () => {
                 </label>
               </div>
 
-              <div className="text-sm">
+              
+            <div className="text-sm text-end">
                 <Link
                   href="/forgot-password"
                   className="font-medium text-primary-600 hover:text-primary-500"
@@ -143,20 +143,19 @@ const Signin: React.FC = () => {
                   Forgot your password?
                 </Link>
               </div>
-            </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full btn-primary py-3 text-base disabled:opacity-50"
+              className="w-full btn-primary  text-base disabled:opacity-50"
             >
               {isLoading ? "Signing In..." : "Sign In"}
             </button>
           </form>
 
           {/* Divider */}
-          <div className="mt-6">
+          <div className="my-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300" />
@@ -170,7 +169,7 @@ const Signin: React.FC = () => {
           </div>
 
           {/* Sign Up Link */}
-          <div className="mt-6">
+          <div>
             <Link href="/signup" className="btn-secondary w-full">
               Create New Account
             </Link>
