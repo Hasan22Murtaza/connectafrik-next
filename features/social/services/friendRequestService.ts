@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { notificationService } from '@/shared/services/notificationService'
 
 export interface FriendRequest {
   id: string
@@ -70,6 +71,15 @@ class FriendRequestService {
       if (error) {
         console.error('Error sending friend request:', error)
         return { success: false, error: error.message }
+      }
+
+      // Send push notification to the recipient
+      try {
+        const senderName = user.user_metadata?.full_name || user.email || 'Someone'
+        await notificationService.sendFriendRequestNotification(receiverId, senderName)
+      } catch (notificationError) {
+        console.error('Error sending push notification:', notificationError)
+        // Don't fail the friend request if notification fails
       }
 
       return { success: true }

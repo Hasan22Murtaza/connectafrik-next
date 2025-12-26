@@ -21,6 +21,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Friend, FriendRequest } from "@/shared/types";
 import toast from "react-hot-toast";
+import { notificationService } from '@/shared/services/notificationService';
 
 const FriendsPage: React.FC = () => {
   const { user } = useAuth();
@@ -246,6 +247,15 @@ const FriendsPage: React.FC = () => {
         });
 
       if (error) throw error;
+
+      // Send push notification to the recipient
+      try {
+        const senderName = user.user_metadata?.full_name || user.email || 'Someone'
+        await notificationService.sendFriendRequestNotification(userId, senderName)
+      } catch (notificationError) {
+        console.error('Error sending push notification:', notificationError)
+        // Don't fail the friend request if notification fails
+      }
 
       // Remove from suggestions after sending request
       setSuggestions(prev => prev.filter(rec => rec.user_id !== userId));

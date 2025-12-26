@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserPlus, Users, Search, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { UserSearch } from '@/shared/components/ui/UserSearch';
+import { notificationService } from '@/shared/services/notificationService';
 
 interface Recommendation {
   user_id: string;
@@ -64,6 +65,15 @@ export const MobilePeopleYouMayKnow: React.FC = () => {
         });
 
       if (error) throw error;
+
+      // Send push notification to the recipient
+      try {
+        const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
+        await notificationService.sendFriendRequestNotification(userId, senderName)
+      } catch (notificationError) {
+        console.error('Error sending push notification:', notificationError)
+        // Don't fail the friend request if notification fails
+      }
 
       // Remove from recommendations after sending request
       setRecommendations(prev => prev.filter(rec => rec.user_id !== userId));
