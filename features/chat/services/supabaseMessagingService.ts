@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { ChatParticipant as BaseParticipant } from "@/shared/types/chat"
+import { notificationService } from '@/shared/services/notificationService'
 
 export interface ChatParticipant extends BaseParticipant {}
 
@@ -96,14 +97,26 @@ const notifyMessageSubscribers = async (message: ChatMessage) => {
         .neq('user_id', message.sender_id) // Don't notify the sender
 
       if (participants && participants.length > 0) {
+        // Get sender name from message or fetch from profile
+        const senderName = message.sender?.name || 
+                          (message as any).sender?.full_name || 
+                          (message as any).sender?.username || 
+                          (message as any).sender_name || 
+                          'Someone'
+        
+        // Prepare message preview
+        const messagePreview = message.content || 
+                              (message.attachments && message.attachments.length > 0 
+                                ? 'Shared an attachment' 
+                                : 'Sent a message')
+
         // Send push notification to each participant
         for (const participant of participants) {
           try {
-            const { notificationService } = await import('@/shared/services/notificationService')
             await notificationService.sendMessageNotification(
               participant.user_id,
-              (message as any).sender_name || 'Someone',
-              message.content,
+              senderName,
+              messagePreview,
               message.thread_id
             )
           } catch (notificationError) {
