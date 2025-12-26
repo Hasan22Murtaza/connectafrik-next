@@ -271,13 +271,13 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
   if (!isOpen) return null
 
   return (
-    <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:bg-black lg:bg-opacity-50 lg:p-4">
-      <div className="flex max-h-[80vh] w-full lg:max-w-2xl flex-col lg:rounded-lg bg-white border-t lg:border border-gray-200">
-        <div className="flex items-center justify-between border-b border-gray-200 p-4">
-          <h3 className="text-lg font-semibold text-gray-900">Comments</h3>
+    <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:bg-black/50 lg:p-4">
+      <div className="flex max-h-[80vh] w-full lg:max-w-2xl flex-col lg:rounded-lg bg-white  border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 p-4 bg-primary-600">
+          <h3 className="text-lg font-semibold text-white">Comments</h3>
           <button
             onClick={handleClose}
-            className="hidden lg:flex h-8 w-8 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+            className="hidden lg:flex text-white transition  hover:text-gray-400"
             aria-label="Close comments"
           >
             <X className="h-4 w-4" />
@@ -325,8 +325,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
                     <textarea
                       value={newComment}
                       onChange={(event) => setNewComment(event.target.value)}
-                      placeholder={`Comment as ${commenterName}`}
-                      className="h-24 w-full resize-none bg-transparent text-sm text-gray-700 outline-none"
+                      placeholder={`Comment..`}
+                      className="h-12 w-full resize-none bg-transparent text-sm text-gray-700 outline-none"
                       maxLength={1000}
                     />
                   </div>

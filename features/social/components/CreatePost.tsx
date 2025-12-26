@@ -420,12 +420,12 @@ const formatFileSize = (bytes: number): string => {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="flex items-stretch sm:items-center gap-2">
             {onCancel && (
               <button
                 type="button"
                 onClick={onCancel}
-                className="btn-secondary order-2 sm:order-1"
+                className="btn-secondary order-2 sm:order-1 flex-1"
                 disabled={isSubmitting}
               >
                 Cancel
@@ -434,7 +434,7 @@ const formatFileSize = (bytes: number): string => {
             <button
               type="submit"
               disabled={!title.trim() || !content.trim() || isSubmitting || uploading}
-              className="btn-primary flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
+              className="btn-primary flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 flex-1"
             >
               <Send className="w-4 h-4" />
               <span>
