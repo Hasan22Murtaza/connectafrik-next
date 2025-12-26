@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { notificationService } from '@/shared/services/notificationService'
 
 export interface Share {
   id: string
@@ -41,6 +42,29 @@ export const sharePost = async (postId: string): Promise<{ success: boolean; err
 
     if (shareError) {
       throw shareError
+    }
+
+    // Send push notification to post author (if not the current user)
+    try {
+      // Fetch post to get author_id and title
+      const { data: postData } = await supabase
+        .from('posts')
+        .select('author_id, title, content')
+        .eq('id', postId)
+        .single()
+
+      if (postData && postData.author_id !== user.id) {
+        const actorName = user.user_metadata?.full_name || user.email || 'Someone'
+        const postTitle = postData.title || postData.content?.substring(0, 50) || 'your post'
+        await notificationService.sendPostInteractionNotification(
+          postData.author_id,
+          actorName,
+          'share',
+          postTitle
+        )
+      }
+    } catch (notificationError) {
+      // Don't fail the share if notification fails
     }
 
     // Also copy link to clipboard

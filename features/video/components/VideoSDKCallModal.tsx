@@ -1075,13 +1075,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   };
 
   const handleRejectCall = async () => {
-    console.log('📞 handleRejectCall called', {
-      threadId,
-      currentUserId,
-      isIncoming,
-      callType
-    });
-
     // Stop ringtone immediately
     if (ringtoneRef.current) {
       ringtoneRef.current.stop();
@@ -1092,8 +1085,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     // Send call_rejected notification to the other participant
     if (threadId && currentUserId) {
       try {
-        console.log('📞 Sending call_rejected message to thread:', threadId);
-        const messageResult = await supabaseMessagingService.sendMessage(
+        await supabaseMessagingService.sendMessage(
           threadId,
           {
             content: `❌ Call rejected`,
@@ -1106,41 +1098,39 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           },
           { id: currentUserId, name: isIncoming ? recipientName : callerName }
         );
-        console.log('✅ call_rejected message sent successfully:', messageResult);
-
-        // Send missed call notification to the caller
-        try {
-          // Get thread participants to find the caller
-          const { data: participants } = await supabase
-            .from('chat_participants')
-            .select('user_id')
-            .eq('thread_id', threadId)
-            .neq('user_id', currentUserId) // Get the other participant (caller)
-
-          if (participants && participants.length > 0) {
-            const callerId = participants[0].user_id
-            const callerNameForNotification = isIncoming ? callerName : recipientName
-            
-            await notificationService.sendMissedCallNotification(
-              callerId,
-              callerNameForNotification,
-              callType
-            )
-            console.log('✅ Missed call notification sent to caller:', callerId)
-          }
-        } catch (notificationError) {
-          console.error('Error sending missed call notification:', notificationError)
-          // Don't fail the rejection if notification fails
-        }
       } catch (msgError) {
-        console.error('❌ Failed to send call_rejected message:', msgError);
-        // Don't fail the rejection if message sending fails, but log it
+        // Don't fail the rejection if message sending fails
       }
-    } else {
-      console.warn('⚠️ Cannot send call_rejected message - missing threadId or currentUserId', {
-        threadId,
-        currentUserId
-      });
+
+      // Send missed call notification to the caller (separate try-catch to ensure it runs)
+      try {
+        // Get thread participants to find the other participant
+        const { data: participants, error: participantsError } = await supabase
+          .from('chat_participants')
+          .select('user_id')
+          .eq('thread_id', threadId)
+          .neq('user_id', currentUserId) // Get the other participant
+
+        if (participantsError || !participants || participants.length === 0) {
+          return;
+        }
+
+        // Only send notification for incoming call rejections (when recipient rejects)
+        if (!isIncoming) {
+          return;
+        }
+
+        const callerId = participants[0].user_id; // The caller (other participant)
+        const recipientWhoRejected = recipientName; // The recipient who rejected
+
+        await notificationService.sendMissedCallNotification(
+          callerId,
+          recipientWhoRejected,
+          callType
+        );
+      } catch (notificationError) {
+        // Don't fail the rejection if notification fails
+      }
     }
     
     setCallStatus('ended');

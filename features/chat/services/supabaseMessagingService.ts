@@ -120,13 +120,11 @@ const notifyMessageSubscribers = async (message: ChatMessage) => {
               message.thread_id
             )
           } catch (notificationError) {
-            console.error('Error sending push notification:', notificationError)
             // Don't fail the message if notification fails
           }
         }
       }
     } catch (error) {
-      console.error('Error getting thread participants for push notification:', error)
       // Don't fail the message if notification fails
     }
   }

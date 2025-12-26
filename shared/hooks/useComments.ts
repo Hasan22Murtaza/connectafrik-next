@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { notificationService } from '@/shared/services/notificationService'
 
 
 export type CommentAttachmentType = 'image' | 'gif' | 'sticker'
@@ -407,6 +408,29 @@ export const useComments = (postId: string) => {
         setComments(prev => addReplyToComments(prev, parentId, newComment))
       } else {
         setComments(prev => [...prev, newComment])
+      }
+
+      // Send push notification to post author (if not the current user)
+      try {
+        // Fetch post to get author_id
+        const { data: postData } = await supabase
+          .from('posts')
+          .select('author_id, title, content')
+          .eq('id', postId)
+          .single()
+
+        if (postData && postData.author_id !== user.id) {
+          const actorName = user.user_metadata?.full_name || user.email || 'Someone'
+          const postTitle = postData.title || postData.content?.substring(0, 50) || 'your post'
+          await notificationService.sendPostInteractionNotification(
+            postData.author_id,
+            actorName,
+            'comment',
+            postTitle
+          )
+        }
+      } catch (notificationError) {
+        // Don't fail the comment if notification fails
       }
 
       return { error: null }

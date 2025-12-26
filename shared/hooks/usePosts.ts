@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { notificationService } from '@/shared/services/notificationService'
 
 export interface Post {
   id: string
@@ -164,6 +165,22 @@ export const usePosts = (category?: string) => {
             ? { ...p, isLiked: true, likes_count: p.likes_count + 1 }
             : p
         ))
+
+        // Send push notification to post author (if not the current user)
+        if (post.author_id !== user.id) {
+          try {
+            const actorName = user.user_metadata?.full_name || user.email || 'Someone'
+            const postTitle = post.title || post.content?.substring(0, 50) || 'your post'
+            await notificationService.sendPostInteractionNotification(
+              post.author_id,
+              actorName,
+              'like',
+              postTitle
+            )
+          } catch (notificationError) {
+            // Don't fail the like if notification fails
+          }
+        }
       }
     } catch (error: any) {
       console.error('Error toggling like:', error.message)
