@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { supabase } from '@/lib/supabase';
+import { notificationService } from '@/shared/services/notificationService';
 
 export interface VideoSDKCallModalProps {
   isOpen: boolean;
@@ -1106,6 +1107,31 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           { id: currentUserId, name: isIncoming ? recipientName : callerName }
         );
         console.log('✅ call_rejected message sent successfully:', messageResult);
+
+        // Send missed call notification to the caller
+        try {
+          // Get thread participants to find the caller
+          const { data: participants } = await supabase
+            .from('chat_participants')
+            .select('user_id')
+            .eq('thread_id', threadId)
+            .neq('user_id', currentUserId) // Get the other participant (caller)
+
+          if (participants && participants.length > 0) {
+            const callerId = participants[0].user_id
+            const callerNameForNotification = isIncoming ? callerName : recipientName
+            
+            await notificationService.sendMissedCallNotification(
+              callerId,
+              callerNameForNotification,
+              callType
+            )
+            console.log('✅ Missed call notification sent to caller:', callerId)
+          }
+        } catch (notificationError) {
+          console.error('Error sending missed call notification:', notificationError)
+          // Don't fail the rejection if notification fails
+        }
       } catch (msgError) {
         console.error('❌ Failed to send call_rejected message:', msgError);
         // Don't fail the rejection if message sending fails, but log it
