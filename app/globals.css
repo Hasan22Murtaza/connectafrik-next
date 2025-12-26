@@ -219,6 +219,7 @@ button{
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none !important;
+  -webkit-overflow-scrolling: touch;
 }
 .scrollbar-hide {
   -ms-overflow-style: none !important;  /* IE and Edge */

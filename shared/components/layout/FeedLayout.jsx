@@ -161,7 +161,7 @@ const FeedLayout = ({ children }) => {
       </div>
 
       {/* Main Content - Full width on mobile, centered on desktop */}
-      <main className="flex-1 lg:max-w-2xl lg:mx-auto py-2 sm:py-4 lg:py-8 px-2 sm:px-2 lg:px-4">
+      <main className="flex-1 md:max-w-lg lg:max-w-2xl overflow-x-auto lg:mx-auto py-2 sm:py-4 lg:py-8 px-2 sm:px-2 lg:px-4">
         {children}
       </main>
 

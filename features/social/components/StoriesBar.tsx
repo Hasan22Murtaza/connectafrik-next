@@ -118,7 +118,7 @@ const StoriesBar: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
         <div className="flex space-x-4  justify-around sm:justify-start">
           {[...Array(4)].map((_, index) => (
-            <div key={index} className="flex-shrink-0">
+            <div key={index} className="shrink-0">
               <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse" />
               <div className="w-16 h-4 bg-gray-200 rounded mt-2 animate-pulse" />
             </div>
@@ -131,14 +131,14 @@ const StoriesBar: React.FC = () => {
   return (
     <>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 ">
-        <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide sm:max-w-full max-w-[320px]">
+        <div className="flex flex-nowrap space-x-3 overflow-x-scroll touch-pan-x scrollbar-hide ">
           {/* User's Own Stories or Create Story Button */}
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             {userOwnStories.length > 0 ? (
               // Show user's own stories as a story card
             <button
                 onClick={handleViewOwnStories}
-                className="relative w-40 h-64 rounded-2xl group cursor-pointer "
+                className="relative sm:w-40 sm:h-64 w-34 h-55 rounded-2xl group cursor-pointer "
               >
                 {/* Story Background */}
                 <div className="absolute inset-0">
@@ -197,7 +197,7 @@ const StoriesBar: React.FC = () => {
               // Show create story button when no stories exist
             <button
                 onClick={handleCreateStory}
-                className="relative w-40 h-64 !rounded-2xl !overflow-hidden group cursor-pointer "
+                className="relative sm:w-40 sm:h-64 w-34 h-55 !rounded-2xl !overflow-hidden group cursor-pointer "
               >
                 {/* Background Image for Create Story - Use user's profile picture as background */}
                 <div className="absolute inset-0">
@@ -234,10 +234,10 @@ const StoriesBar: React.FC = () => {
 
           {/* Story Items - Facebook Style */}
           {stories.map((story, index) => (
-            <div key={story.id} className="flex-shrink-0">
+            <div key={story.id} className="shrink-0">
             <button
                 onClick={() => handleViewStory(index)}
-                className="relative w-40 h-64 rounded-2xl overflow-hidden group cursor-pointer transition-transform hover:scale-105"
+                className="relative sm:w-40 sm:h-64 w-34 h-55 rounded-2xl overflow-hidden group cursor-pointer transition-transform hover:scale-105"
               >
                 {/* Story Background */}
                 <div className="absolute inset-0">
@@ -303,26 +303,11 @@ const StoriesBar: React.FC = () => {
           {/* Empty State */}
           {stories.length === 0 && (
             <>
-            <div className="flex-shrink-0">
-              <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
+            <div className="shrink-0">
+              <div className="sm:w-40 sm:h-64 w-34 h-55 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
                 <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
               </div>
             </div>
-            <div className="flex-shrink-0">
-            <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
-              <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
-            </div>
-          </div>
-          <div className="flex-shrink-0">
-            <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
-              <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
-            </div>
-          </div>
-          <div className="flex-shrink-0">
-            <div className="w-40 h-64 bg-gray-100 rounded-2xl flex items-center justify-center shadow-sm border border-gray-200">
-              <span className="text-gray-400 text-sm text-center px-4">No stories yet</span>
-            </div>
-          </div>
           </>
           )}
         </div>

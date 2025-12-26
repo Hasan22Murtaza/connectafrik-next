@@ -6,7 +6,7 @@ import ArtOfInksAd from '@/shared/components/ui/ArtOfInksAd';
 const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts = [] }) => {
 
   return (
-  <aside className="w-96 flex-shrink-0 hidden xl:block bg-white
+  <aside className="w-96 flex-shrink-0  bg-white
    border-l border-gray-200 h-full overflow-y-auto py-6 px-4
    scrollbar-hover">
     {/* DataAfrik Promotion */}
