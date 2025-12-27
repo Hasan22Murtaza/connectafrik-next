@@ -1,16 +1,15 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Search, Filter, Plus, Users, Compass, BookOpen, ArrowLeft, Home } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useGroups } from '@/shared/hooks/useGroups'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useGroupChat } from '@/shared/hooks/useGroupChat'
-import GroupCard from '@/features/groups/components/GroupCard'
 import CreateGroupModal from '@/features/groups/components/CreateGroupModal'
+import GroupCard from '@/features/groups/components/GroupCard'
+import { useGroupChat } from '@/shared/hooks/useGroupChat'
+import { useGroups } from '@/shared/hooks/useGroups'
 import { Group } from '@/shared/types'
-import { FaGlobe, FaUsers, FaLandmark, FaTheaterMasks, FaBook, FaBriefcase, FaFistRaised, FaBuilding } from 'react-icons/fa';
+import { BookOpen, Compass, Plus, Search, Users } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import React, { useEffect, useState } from 'react'
+import { FaBook, FaBriefcase, FaBuilding, FaFistRaised, FaGlobe, FaLandmark, FaTheaterMasks, FaUsers } from 'react-icons/fa'
 
 import toast from 'react-hot-toast'
 
@@ -299,6 +298,7 @@ const categories = [
         onClose={() => setShowCreateModal(false)}
         onSuccess={handleCreateGroupSuccess}
       />
+      
     </div>
   )
 }

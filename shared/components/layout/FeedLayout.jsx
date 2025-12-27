@@ -176,7 +176,7 @@ const FeedLayout = ({ children }) => {
       </div>
 
       {/* Mobile Menu Button - Floating button on mobile only */}
-      <MobileMenuButton />
+      {/* <MobileMenuButton /> */}
     </div>
   )
 }

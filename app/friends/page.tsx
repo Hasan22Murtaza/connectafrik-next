@@ -1,25 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  ArrowLeft,
-  Home,
-  UserPlus,
-  Users,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Search,
-  Settings,
-  Gift,
-  ChevronRight,
-  ChevronDown,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Friend, FriendRequest } from "@/shared/types";
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Gift,
+  Search,
+  UserPlus,
+  Users
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 const FriendsPage: React.FC = () => {
@@ -898,6 +893,7 @@ const FriendsPage: React.FC = () => {
           </div>
         </div>
       </div>
+    
     </div>
   );
 };

@@ -1,20 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import {
-  Search,
-  Filter,
-  Plus,
-  ShoppingBag,
-  TrendingUp,
-  ArrowLeft,
-} from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import CreateProductModal from "@/features/marketplace/components/CreateProductModal-v2";
+import ProductCard from "@/features/marketplace/components/ProductCard";
 import { supabase } from "@/lib/supabase";
 import { Product } from "@/shared/types";
-import ProductCard from "@/features/marketplace/components/ProductCard";
-import CreateProductModal from "@/features/marketplace/components/CreateProductModal-v2";
+import {
+  ArrowLeft,
+  Filter,
+  Plus,
+  Search,
+  ShoppingBag,
+  TrendingUp,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 const MarketplacePage: React.FC = () => {

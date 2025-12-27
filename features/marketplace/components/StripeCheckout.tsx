@@ -425,24 +425,24 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2" onClick={onClose}>
+      <div className=" rounded-xl max-w-2xl w-full  overflow-hidden " onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-primary-600 px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <ShoppingCart className="w-5 h-5 text-primary-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Checkout</h2>
+            <ShoppingCart className="w-5 h-5 text-white" />
+            <h2 className="text-xl font-semibold text-white">Checkout</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-white hover:text-gray-400 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="sm:p-6 p-4 space-y-6 bg-white overflow-y-auto max-h-[70vh]">
           {/* Product Summary */}
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex items-start space-x-4">
