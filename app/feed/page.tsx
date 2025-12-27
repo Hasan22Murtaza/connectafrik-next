@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus, Globe, TrendingUp, Users, Sparkles } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePosts } from '@/shared/hooks/usePosts'
@@ -15,6 +15,7 @@ import ShareModal from '@/features/social/components/ShareModal'
 import { rankContentWithFairness, RANKING_PRESETS, updateEngagementReward } from '@/features/social/services/fairnessRankingService'
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import toast from 'react-hot-toast'
+import { supabase } from '@/lib/supabase'
 
 const FEED_CATEGORIES = [
   { id: 'all' as const, label: 'All Posts', icon: Globe },
@@ -118,6 +119,24 @@ const FeedPage: React.FC = () => {
     }
   }, [posts, user])
 
+  function getEmojiUnicodeCodes(emoji: string): string {
+  // Convert the emoji into array of code points, then convert each to hex string
+  const codePoints = Array.from(emoji).map(char =>
+    char.codePointAt(0)?.toString(16).toUpperCase()
+  );
+
+  return codePoints?.join(" ");
+}
+
+const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
+   const unicodeCodes = getEmojiUnicodeCodes(emoji);
+  console.log(`Reacted emoji unicode codes: ${unicodeCodes}`);
+  console.log('Emoji reacted:', postId, emoji);
+  // Your reaction handling code here...
+}, []);
+
+
+
   const handleShare = useCallback((postId: string) => {
     const post = posts.find(p => p.id === postId)
     if (post?.author_id) {
@@ -156,6 +175,9 @@ const FeedPage: React.FC = () => {
     }
     toast.success(`Shared with ${memberIds.length} member${memberIds.length === 1 ? '' : 's'}`)
   }, [])
+
+
+
 
 
   const activeSharePost = useMemo(() => (
@@ -212,6 +234,7 @@ const FeedPage: React.FC = () => {
               onDelete={handleDelete}
               onEdit={handleEdit}
               onView={recordView}
+              onEmojiReaction={handleEmojiReaction}
               isPostLiked={post.isLiked}
             />
             {/* Mobile inline comments */}
