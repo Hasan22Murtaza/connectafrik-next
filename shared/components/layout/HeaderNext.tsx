@@ -2,15 +2,28 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { User, LogOut, Search, Bell, MessageCircle, Phone } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  User,
+  LogOut,
+  Search,
+  Bell,
+  MessageCircle,
+  Phone,
+  Home,
+  Video,
+  Landmark,
+  Palette,
+  Users,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import ChatDropdown from "@/features/chat/components/ChatDropdown";
 import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
-
+import { FaBars } from "react-icons/fa";
+import MobileSideDrawer from "../ui/MobileSideDrawer";
 interface HeaderProps {
   searchTerm?: string;
   onSearchTermChange?: (term: string) => void;
@@ -27,10 +40,12 @@ const Header: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [showCalls, setShowCalls] = useState(false);
   // TODO: Get threads from messaging service or realtime hook
   const unreadMessages = 0; // useMemo(() => threads.reduce((total: number, thread: any) => total + (thread.unread_count || 0), 0), [threads])
+  const pathname = usePathname();
 
   const handleSignOut = async () => {
     try {
@@ -47,11 +62,10 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible py-1 ">
+      <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible ">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
           <Link href="/" className="flex-shrink-0 ">
-            {/* <LogoNext size="lg" /> */}
             <img src="/assets/images/logo_2.png" alt="" className="w-16" />
           </Link>
 
@@ -76,55 +90,110 @@ const Header: React.FC<HeaderProps> = ({
             {user ? (
               <>
                 {/* Navigation Links - Hidden on mobile, visible on desktop */}
-                <nav className="sm:!block !hidden lg:flex items-center space-x-6">
-                  <Link
-                    href="/feed"
-                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
-                  >
-                    Feed
-                  </Link>
-                  <Link
-                    href="/memories"
-                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
-                  >
-                    Reels
-                  </Link>
-                  <Link
-                    href="/politics"
-                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
-                  >
-                    Politics
-                  </Link>
-                  <Link
-                    href="/culture"
-                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
-                  >
-                    Culture
-                  </Link>
-                  <Link
-                    href="/groups"
-                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
-                  >
-                    Groups
-                  </Link>
-                  <Link
-                    href="/profile"
-                    className="text-gray-700 hover:text-[#f97316] font-medium duration-300"
-                  >
-                    Profile
-                  </Link>
+                <nav className="sm:!block !hidden lg:flex items-center ">
+                  <ul className="flex items-center space-x-8 pr-10 pt-3">
+                    {/* Feed */}
+                    <li className="relative">
+                      <Link
+                        href="/feed"
+                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
+                          pathname === "/feed"
+                            ? "text-[#FF6900]"
+                            : "text-gray-600 hover:text-[#FF6900]"
+                        }`}
+                      >
+                        <Home className="w-12" />
+                        <span className="text-sm font-medium">Feed</span>
+                        {pathname === "/feed" && (
+                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
+                        )}
+                      </Link>
+                    </li>
+
+                    {/* Reels */}
+                    <li className="relative">
+                      <Link
+                        href="/memories"
+                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
+                          pathname === "/memories"
+                            ? "text-[#FF6900]"
+                            : "text-gray-600 hover:text-[#FF6900]"
+                        }`}
+                      >
+                        <Video className="w-12" />
+                        <span className="text-sm font-medium">Reels</span>
+                        {pathname === "/memories" && (
+                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
+                        )}
+                      </Link>
+                    </li>
+
+                    {/* Politics */}
+                    <li className="relative">
+                      <Link
+                        href="/politics"
+                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
+                          pathname === "/politics"
+                            ? "text-[#FF6900]"
+                            : "text-gray-600 hover:text-[#FF6900]"
+                        }`}
+                      >
+                        <Landmark className="w-12" />
+                        <span className="text-sm font-medium">Politics</span>
+                        {pathname === "/politics" && (
+                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
+                        )}
+                      </Link>
+                    </li>
+
+                    {/* Culture */}
+                    <li className="relative">
+                      <Link
+                        href="/culture"
+                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
+                          pathname === "/culture"
+                            ? "text-[#FF6900]"
+                            : "text-gray-600 hover:text-[#FF6900]"
+                        }`}
+                      >
+                        <Palette className="w-12" />
+                        <span className="text-sm font-medium">Culture</span>
+                        {pathname === "/culture" && (
+                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
+                        )}
+                      </Link>
+                    </li>
+
+                    {/* Groups */}
+                    <li className="relative">
+                      <Link
+                        href="/groups"
+                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
+                          pathname === "/groups"
+                            ? "text-[#FF6900]"
+                            : "text-gray-600 hover:text-[#FF6900]"
+                        }`}
+                      >
+                        <Users className="w-12" />
+                        <span className="text-sm font-medium">Groups</span>
+                        {pathname === "/groups" && (
+                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
+                        )}
+                      </Link>
+                    </li>
+                  </ul>
                 </nav>
 
                 {/* Notifications & Messaging */}
-                <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4  border-gray-200">
+                <div className="flex items-center space-x-2 sm:space-x-2  border-gray-200">
                   <div className="relative">
                     <button
                       onClick={() => {
                         setShowNotifications(!showNotifications);
-                        setShowInbox(true);
-                        setShowCalls(true);
+                        setShowInbox(false);
+                        setShowCalls(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
                     >
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadMessages > 0 && (
@@ -146,7 +215,7 @@ const Header: React.FC<HeaderProps> = ({
                         setShowNotifications(false);
                         setShowCalls(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
                     >
                       <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadMessages > 0 && (
@@ -170,7 +239,7 @@ const Header: React.FC<HeaderProps> = ({
                         setShowNotifications(false);
                         setShowInbox(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
                     >
                       <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -184,7 +253,7 @@ const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 {/* User Menu */}
-                <div className="relative group ml-1 sm:ml-2 lg:ml-4 pl-1 sm:pl-2 lg:pl-4 border-l border-gray-200">
+                <div className="relative group ml-1 sm:ml-2  pl-1 sm:pl-2 lg:pl-4 sm:border-l border-0 border-gray-200">
                   <button
                     onClick={() => setIsUserMenuOpen((prev) => !prev)}
                     onBlur={(e) => {
@@ -201,7 +270,7 @@ const Header: React.FC<HeaderProps> = ({
                         className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 sm:w-6 sm:h-6 lg:w-8 lg:h-8 bg-gray-300 rounded-full flex items-center justify-center">
                         <User className="w-3 h-3 sm:w-3 sm:h-3 lg:w-4 lg:h-4 text-gray-600" />
                       </div>
                     )}
@@ -243,6 +312,13 @@ const Header: React.FC<HeaderProps> = ({
                     </div>
                   </div>
                 </div>
+
+               <button
+  onClick={() => setMobileMenuOpen(true)}
+  className="sm:hidden text-gray-700 text-xl"
+>
+  <FaBars />
+</button>
               </>
             ) : (
               <div className="flex items-center space-x-2 sm:space-x-4 pr-1  sm:pr-4 sm:border-r border-0 border-gray-200 ">
@@ -266,53 +342,88 @@ const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile Navigation */}
       {user && (
-        <div className="md:hidden block bg-white border-t border-gray-200 py-1 ">
-          <nav className="flex !justify-between w-full py-2 gap-2">
-            <ul className="flex justify-between w-full gap-2">
+        <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1">
+          <nav className="w-full">
+            <ul className="flex justify-between w-full px-2">
+              {/* Feed */}
               <li>
                 <Link
                   href="/feed"
-                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
+                    usePathname() === "/feed"
+                      ? "text-[#FF6900]"
+                      : "text-gray-500 hover:text-[#FF6900]"
+                  }`}
                 >
-                  <span className="text-xs">Feed</span>
+                  <Home className="w-6 h-6" />
                 </Link>
               </li>
+
+              {/* Reels */}
               <li>
                 <Link
                   href="/memories"
-                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
+                    usePathname() === "/memories"
+                      ? "text-[#FF6900]"
+                      : "text-gray-500 hover:text-[#FF6900]"
+                  }`}
                 >
-                  <span className="text-xs">Reels</span>
+                  <Video className="w-6 h-6" />
                 </Link>
               </li>
+
+              {/* Politics */}
+              <li>
+                <Link
+                  href="/politics"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
+                    usePathname() === "/politics"
+                      ? "text-[#FF6900]"
+                      : "text-gray-500 hover:text-[#FF6900]"
+                  }`}
+                >
+                  <Landmark className="w-6 h-6" />
+                </Link>
+              </li>
+
+              {/* Culture */}
               <li>
                 <Link
                   href="/culture"
-                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
+                    usePathname() === "/culture"
+                      ? "text-[#FF6900]"
+                      : "text-gray-500 hover:text-[#FF6900]"
+                  }`}
                 >
-                  <span className="text-xs">Culture</span>
+                  <Palette className="w-6 h-6" />
                 </Link>
               </li>
+
+              {/* Groups */}
               <li>
                 <Link
                   href="/groups"
-                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
+                    usePathname() === "/groups"
+                      ? "text-[#FF6900]"
+                      : "text-gray-500 hover:text-[#FF6900]"
+                  }`}
                 >
-                  <span className="text-xs">Groups</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/profile"
-                  className="flex items-center py-2 px-3 text-gray-600 hover:text-[#f97316] transition-colors"
-                >
-                  <span className="text-xs">Profile</span>
+                  <Users className="w-6 h-6" />
                 </Link>
               </li>
             </ul>
           </nav>
         </div>
       )}
+
+      {/* Side Drawer */}
+      <MobileSideDrawer
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+      />
     </header>
   );
 };

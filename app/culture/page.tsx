@@ -1,12 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Users, Heart, Globe, Plus, Camera } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePosts } from '@/shared/hooks/usePosts'
-import { PostCard } from '@/features/social/components/PostCard'
 import CreatePost from '@/features/social/components/CreatePost'
+import { PostCard } from '@/features/social/components/PostCard'
 import Footer from '@/shared/components/layout/FooterNext'
+import { usePosts } from '@/shared/hooks/usePosts'
+import { Camera, Globe, Heart, Plus, Users } from 'lucide-react'
+import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 
 const CulturePage: React.FC = () => {
@@ -64,12 +64,12 @@ const CulturePage: React.FC = () => {
       <div className="max-w-full mx-auto px-4 py-6">
         {/* Header Section */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+          <div className="flex sm:items-center items-start space-x-3 mb-4">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
               <Users className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">African Culture</h1>
+              <h1 className="sm:text-3xl text-2xl font-bold text-gray-900">African Culture</h1>
               <p className="text-gray-600">Celebrating the rich cultural heritage and diversity of the African continent</p>
             </div>
           </div>
@@ -260,6 +260,7 @@ const CulturePage: React.FC = () => {
 
       {/* Footer */}
       <Footer />
+      
     </div>
   )
 }

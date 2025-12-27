@@ -153,10 +153,10 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 min-h-screen">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 min-h-screen px-2">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden relative z-[99]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-primary-600">
+        <div className="flex items-center justify-between p-4 bg-primary-600">
           <h2 className="text-lg font-semibold text-white">Search Users</h2>
           {onClose && (
             <button

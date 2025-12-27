@@ -1,14 +1,13 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { ArrowLeft, Home, Bookmark, ShoppingBag, FileText } from 'lucide-react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
-import { Product } from '@/shared/types'
 import ProductCard from '@/features/marketplace/components/ProductCard'
-import { PostCard } from '@/features/social/components/PostCard'
+import { supabase } from '@/lib/supabase'
 import Footer from '@/shared/components/layout/FooterNext'
+import { Product } from '@/shared/types'
+import { Bookmark, FileText, ShoppingBag } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import React, { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 
 const SavedPage: React.FC = () => {
@@ -201,6 +200,7 @@ const SavedPage: React.FC = () => {
 </div>
       {/* Footer */}
       <Footer />
+      
     </div>
   )
 }

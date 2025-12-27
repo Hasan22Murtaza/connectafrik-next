@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
-import { TrendingUp, Users, Globe, Plus } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePosts } from '@/shared/hooks/usePosts'
-import { PostCard } from '@/features/social/components/PostCard'
 import CreatePost from '@/features/social/components/CreatePost'
+import { PostCard } from '@/features/social/components/PostCard'
+import { usePosts } from '@/shared/hooks/usePosts'
+import { Globe, Plus, TrendingUp, Users } from 'lucide-react'
+import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 
 const PoliticsPage: React.FC = () => {
@@ -59,12 +59,12 @@ const PoliticsPage: React.FC = () => {
       <div className="max-w-full mx-auto px-4 py-6">
         {/* Header Section */}
         <div className="mb-8">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+          <div className="flex sm:items-center items-start space-x-3 mb-4">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shrink-0">
               <TrendingUp className="w-6 h-6 text-red-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">African Politics</h1>
+              <h1 className=" sm:text-3xl text-2xl font-bold text-gray-900">African Politics</h1>
               <p className="text-gray-600">
                 Engaging discussions on governance, democracy, and political development across Africa
               </p>
@@ -149,9 +149,9 @@ const PoliticsPage: React.FC = () => {
               <div className="card mb-6">
                 <button
                   onClick={() => setShowCreatePost(true)}
-                  className="w-full flex items-center space-x-3 p-4 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                  className="w-full flex items-center space-x-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
                 >
-                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                     <Plus className="w-5 h-5 text-red-600" />
                   </div>
                   <div>
@@ -224,6 +224,7 @@ const PoliticsPage: React.FC = () => {
           </div>
         </div>
       </div>
+     
     </div>
   )
 }
