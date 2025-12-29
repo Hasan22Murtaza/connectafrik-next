@@ -34,11 +34,13 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
-      <div className="max-w-full mx-auto ">
+      <div className="max-w-md mx-auto ">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
+            <Link href={"/"}>
             <img src="/assets/images/logo_2.png" alt="" className="w-30" />
+            </Link>
           </div>
           <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
             Reset Password
