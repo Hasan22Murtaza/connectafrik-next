@@ -1,147 +1,424 @@
 import { supabase } from '@/lib/supabase'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+
+export type PresenceStatusType = 'online' | 'away' | 'busy' | 'offline'
 
 export interface PresenceStatus {
   id: string
-  status: 'online' | 'away' | 'busy' | 'offline'
+  status: PresenceStatusType
   lastSeen: string
   isTyping?: boolean
 }
 
-class PresenceService {
-  private presenceChannel: any = null
-  private statusUpdateInterval: NodeJS.Timeout | null = null
+interface PresenceData {
+  user_id: string
+  status: PresenceStatusType
+  last_seen: string
+  last_activity: string
+}
 
-  // Initialize presence tracking
-  async initializePresence(userId: string) {
-    try {
-      // Create a presence channel
-      this.presenceChannel = supabase.channel('presence', {
-        config: {
-          presence: {
-            key: userId,
-          },
-        },
-      })
+type PresenceChangeCallback = (userId: string, status: PresenceStatusType, lastSeen: string) => void
 
-      // Track online status
-      await this.presenceChannel
-        .on('presence', { event: 'sync' }, () => {
-          const state = this.presenceChannel.presenceState()
-          console.log('Presence state:', state)
-        })
-        .on('presence', { event: 'join' }, ({ key, newPresences }: { key: string, newPresences: any[] }) => {
-          console.log('User joined:', key, newPresences)
-        })
-        .on('presence', { event: 'leave' }, ({ key, leftPresences }: { key: string, leftPresences: any[] }) => {
-          console.log('User left:', key, leftPresences)
-        })
-        .subscribe(async (status: string) => {
-          if (status === 'SUBSCRIBED') {
-            const timestamp = new Date().toISOString()
+// Constants
+const IDLE_THRESHOLD = 5 * 60 * 1000 // 5 minutes
+const HEARTBEAT_INTERVAL = 30 * 1000 // 30 seconds
 
-            // Track in Realtime
-            await this.presenceChannel.track({
-              user_id: userId,
-              status: 'online',
-              last_seen: timestamp,
-            })
+// State management
+let presenceChannel: RealtimeChannel | null = null
+let statusUpdateInterval: ReturnType<typeof setInterval> | null = null
+let idleTimeout: ReturnType<typeof setTimeout> | null = null
+let lastActivityTime = Date.now()
+const activityListeners: Array<() => void> = []
+const presenceCallbacks = new Set<PresenceChangeCallback>()
 
-            // Sync to database
-            await this.updateDatabasePresence(userId, 'online')
-          }
-        })
+/**
+ * Calculate presence status from last_seen timestamp
+ */
+export const calculateStatusFromLastSeen = (
+  lastSeen: string | null | undefined
+): PresenceStatusType => {
+  if (!lastSeen) return 'offline'
 
-      // Set up periodic status updates
-      this.statusUpdateInterval = setInterval(() => {
-        this.updatePresence(userId, 'online')
-      }, 30000) // Update every 30 seconds
+  const lastSeenTime = new Date(lastSeen).getTime()
+  const now = Date.now()
+  const diffMinutes = (now - lastSeenTime) / (1000 * 60)
 
-    } catch (error) {
-      console.error('Failed to initialize presence:', error)
-    }
-  }
+  if (diffMinutes <= 5) return 'online'
+  if (diffMinutes <= 15) return 'away'
+  return 'offline'
+}
 
-  // Update database presence (sync Realtime with database)
-  private async updateDatabasePresence(userId: string, status: 'online' | 'away' | 'busy' | 'offline') {
-    try {
-      await supabase
-        .from('profiles')
-        .update({
-          status,
-          last_seen: new Date().toISOString()
-        })
-        .eq('id', userId)
-    } catch (error) {
-      console.error('Failed to update database presence:', error)
-    }
-  }
+/**
+ * Get current user's presence status from Realtime
+ */
+const getCurrentStatus = async (userId: string): Promise<PresenceStatusType> => {
+  if (!presenceChannel) return 'offline'
 
-  // Update user presence status (both Realtime and database)
-  async updatePresence(userId: string, status: 'online' | 'away' | 'busy' | 'offline') {
-    if (!this.presenceChannel) return
+  try {
+    const state = presenceChannel.presenceState()
+    if (!state || typeof state !== 'object') return 'offline'
 
-    try {
-      const timestamp = new Date().toISOString()
+    // Supabase presence state structure: { [key: string]: PresenceData[] }
+    const allPresences = Object.values(state).flat() as unknown[]
+    const userPresence = allPresences.find(
+      (p: unknown): p is PresenceData =>
+        typeof p === 'object' && p !== null && 'user_id' in p && (p as PresenceData).user_id === userId
+    )
 
-      // Update Realtime presence
-      await this.presenceChannel.track({
-        user_id: userId,
-        status,
-        last_seen: timestamp,
-      })
-
-      // Sync to database for persistent storage
-      await this.updateDatabasePresence(userId, status)
-    } catch (error) {
-      console.error('Failed to update presence:', error)
-    }
-  }
-
-  // Get online users
-  async getOnlineUsers(): Promise<PresenceStatus[]> {
-    if (!this.presenceChannel) return []
-
-    try {
-      const state = this.presenceChannel.presenceState()
-      return Object.values(state).flat().map((presence: any) => ({
-        id: presence.user_id,
-        status: presence.status || 'online',
-        lastSeen: presence.last_seen || new Date().toISOString(),
-      }))
-    } catch (error) {
-      console.error('Failed to get online users:', error)
-      return []
-    }
-  }
-
-  // Set user as away (when tab becomes inactive)
-  setAway(userId: string) {
-    this.updatePresence(userId, 'away')
-  }
-
-  // Set user as busy
-  setBusy(userId: string) {
-    this.updatePresence(userId, 'busy')
-  }
-
-  // Clean up presence tracking
-  async cleanup(userId?: string) {
-    if (this.statusUpdateInterval) {
-      clearInterval(this.statusUpdateInterval)
-      this.statusUpdateInterval = null
-    }
-
-    // Mark user as offline in database before leaving
-    if (userId) {
-      await this.updateDatabasePresence(userId, 'offline')
-    }
-
-    if (this.presenceChannel) {
-      await this.presenceChannel.unsubscribe()
-      this.presenceChannel = null
-    }
+    return userPresence?.status ?? 'offline'
+  } catch {
+    return 'offline'
   }
 }
 
-export const presenceService = new PresenceService()
+/**
+ * Update presence in database
+ */
+const updateDatabasePresence = async (
+  userId: string,
+  status: PresenceStatusType
+): Promise<void> => {
+  try {
+    await supabase
+      .from('profiles')
+      .update({
+        status,
+        last_seen: new Date().toISOString(),
+      })
+      .eq('id', userId)
+  } catch (error) {
+    console.error('Failed to update database presence:', error)
+  }
+}
 
+/**
+ * Start tracking user activity (mouse, keyboard, scroll, etc.)
+ */
+const startActivityTracking = (userId: string): void => {
+  lastActivityTime = Date.now()
+
+  const handleActivity = (): void => {
+    lastActivityTime = Date.now()
+
+    // Check if user was away and set back to online
+    if (presenceChannel) {
+      try {
+        const state = presenceChannel.presenceState()
+        if (state && typeof state === 'object') {
+          const allPresences = Object.values(state).flat() as unknown[]
+          const currentPresence = allPresences.find(
+            (p: unknown): p is PresenceData =>
+              typeof p === 'object' && p !== null && 'user_id' in p && (p as PresenceData).user_id === userId
+          )
+
+          if (currentPresence?.status === 'away') {
+            updatePresence(userId, 'online')
+          }
+        }
+      } catch {
+        // Ignore errors when checking presence state
+      }
+    }
+
+    // Reset idle timeout
+    if (idleTimeout) {
+      clearTimeout(idleTimeout)
+      idleTimeout = null
+    }
+
+    // Set away after idle threshold
+    idleTimeout = setTimeout(() => {
+      updatePresence(userId, 'away')
+    }, IDLE_THRESHOLD)
+  }
+
+  // Activity events to track
+  const activityEvents = [
+    'mousedown',
+    'mousemove',
+    'keypress',
+    'scroll',
+    'touchstart',
+    'click',
+  ] as const
+
+  // Add event listeners
+  activityEvents.forEach((event) => {
+    document.addEventListener(event, handleActivity, { passive: true })
+    activityListeners.push(() => {
+      document.removeEventListener(event, handleActivity)
+    })
+  })
+
+  // Initial idle timeout
+  idleTimeout = setTimeout(() => {
+    updatePresence(userId, 'away')
+  }, IDLE_THRESHOLD)
+}
+
+/**
+ * Initialize presence tracking for a user
+ */
+export const initializePresence = async (userId: string): Promise<void> => {
+  try {
+    presenceChannel = supabase.channel('presence', {
+      config: {
+        presence: {
+          key: userId,
+        },
+      },
+    })
+
+    await presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel?.presenceState()
+        console.log('Presence state:', state)
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('User joined:', key, newPresences)
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('User left:', key, leftPresences)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED' && presenceChannel) {
+          const timestamp = new Date().toISOString()
+
+          await presenceChannel.track({
+            user_id: userId,
+            status: 'online',
+            last_seen: timestamp,
+            last_activity: timestamp,
+          })
+
+          await updateDatabasePresence(userId, 'online')
+          startActivityTracking(userId)
+        }
+      })
+
+    // Set up periodic heartbeat
+    statusUpdateInterval = setInterval(async () => {
+      const currentStatus = await getCurrentStatus(userId)
+      if (currentStatus === 'online' && presenceChannel) {
+        const timestamp = new Date().toISOString()
+        await presenceChannel.track({
+          user_id: userId,
+          status: 'online',
+          last_seen: timestamp,
+          last_activity: new Date(lastActivityTime).toISOString(),
+        })
+      }
+    }, HEARTBEAT_INTERVAL)
+  } catch (error) {
+    console.error('Failed to initialize presence:', error)
+  }
+}
+
+/**
+ * Update user presence status (both Realtime and database)
+ */
+export const updatePresence = async (
+  userId: string,
+  status: PresenceStatusType
+): Promise<void> => {
+  if (!presenceChannel) return
+
+  try {
+    const timestamp = new Date().toISOString()
+    const activityTime =
+      status === 'online' ? new Date(lastActivityTime).toISOString() : timestamp
+
+    await presenceChannel.track({
+      user_id: userId,
+      status,
+      last_seen: timestamp,
+      last_activity: activityTime,
+    })
+
+    await updateDatabasePresence(userId, status)
+  } catch (error) {
+    console.error('Failed to update presence:', error)
+  }
+}
+
+/**
+ * Get online users from Realtime
+ */
+export const getOnlineUsers = async (): Promise<PresenceStatus[]> => {
+  if (!presenceChannel) return []
+
+  try {
+    const state = presenceChannel.presenceState()
+    return Object.values(state)
+      .flat()
+      .map((presence: unknown): PresenceStatus => {
+        const p = presence as PresenceData
+        return {
+          id: p.user_id,
+          status: p.status ?? 'offline',
+          lastSeen: p.last_seen ?? new Date().toISOString(),
+        }
+      })
+  } catch (error) {
+    console.error('Failed to get online users:', error)
+    return []
+  }
+}
+
+/**
+ * Get presence status for a user
+ * Checks Realtime first, then calculates from last_seen
+ */
+export const getUserPresenceStatus = async (
+  userId: string,
+  lastSeen?: string | null
+): Promise<PresenceStatusType> => {
+  // Check Realtime presence first
+  if (presenceChannel) {
+    try {
+      const state = presenceChannel.presenceState()
+      if (state && typeof state === 'object') {
+        const allPresences = Object.values(state).flat() as unknown[]
+        const userPresence = allPresences.find(
+          (p: unknown): p is PresenceData =>
+            typeof p === 'object' && p !== null && 'user_id' in p && (p as PresenceData).user_id === userId
+        )
+
+        if (userPresence?.status) {
+          return userPresence.status
+        }
+      }
+    } catch {
+      // Fall through to calculate from last_seen
+    }
+  }
+
+  // Calculate from last_seen if not in Realtime
+  if (lastSeen) {
+    return calculateStatusFromLastSeen(lastSeen)
+  }
+
+  return 'offline'
+}
+
+/**
+ * Internal handler for presence changes that notifies all callbacks
+ */
+const handlePresenceChange = (): void => {
+  if (presenceCallbacks.size === 0) return
+
+  try {
+    const state = presenceChannel?.presenceState()
+    if (!state || typeof state !== 'object') return
+
+    Object.values(state)
+      .flat()
+      .forEach((presence: unknown) => {
+        const p = presence as PresenceData
+        if (p?.user_id) {
+          const status =
+            p.status ?? (p.last_seen ? calculateStatusFromLastSeen(p.last_seen) : 'offline')
+          const lastSeen = p.last_seen ?? new Date().toISOString()
+
+          // Notify all registered callbacks
+          presenceCallbacks.forEach((callback) => {
+            callback(p.user_id, status, lastSeen)
+          })
+        }
+      })
+  } catch (error) {
+    console.error('Error handling presence change:', error)
+  }
+}
+
+/**
+ * Subscribe to presence changes for other users
+ */
+export const subscribeToPresenceChanges = (
+  callback: PresenceChangeCallback
+): (() => void) => {
+  if (!presenceChannel) return () => {}
+
+  // Add callback to set
+  presenceCallbacks.add(callback)
+
+  // If this is the first callback, set up event listeners
+  if (presenceCallbacks.size === 1) {
+    presenceChannel.on('presence', { event: 'sync' }, handlePresenceChange)
+    presenceChannel.on('presence', { event: 'join' }, handlePresenceChange)
+    presenceChannel.on('presence', { event: 'leave' }, handlePresenceChange)
+
+    // Trigger initial sync
+    setTimeout(handlePresenceChange, 1000)
+  } else {
+    // If listeners already set up, just trigger immediate sync
+    setTimeout(handlePresenceChange, 100)
+  }
+
+  // Return unsubscribe function
+  return () => {
+    presenceCallbacks.delete(callback)
+  }
+}
+
+/**
+ * Set user as away (when tab becomes inactive)
+ */
+export const setAway = (userId: string): Promise<void> => {
+  return updatePresence(userId, 'away')
+}
+
+/**
+ * Set user as busy
+ */
+export const setBusy = (userId: string): Promise<void> => {
+  return updatePresence(userId, 'busy')
+}
+
+/**
+ * Clean up presence tracking
+ */
+export const cleanup = async (userId?: string): Promise<void> => {
+  // Clear activity listeners
+  activityListeners.forEach((removeListener) => removeListener())
+  activityListeners.length = 0
+
+  // Clear presence callbacks
+  presenceCallbacks.clear()
+
+  if (idleTimeout) {
+    clearTimeout(idleTimeout)
+    idleTimeout = null
+  }
+
+  if (statusUpdateInterval) {
+    clearInterval(statusUpdateInterval)
+    statusUpdateInterval = null
+  }
+
+  // Mark user as offline in database
+  if (userId) {
+    await updateDatabasePresence(userId, 'offline')
+  }
+
+  if (presenceChannel) {
+    await presenceChannel.unsubscribe()
+    presenceChannel = null
+  }
+}
+
+/**
+ * Presence service object for backward compatibility
+ * Exports all methods as a single object
+ */
+export const presenceService = {
+  initializePresence,
+  updatePresence,
+  getOnlineUsers,
+  getUserPresenceStatus,
+  subscribeToPresenceChanges,
+  setAway,
+  setBusy,
+  cleanup,
+  calculateStatusFromLastSeen,
+} as const

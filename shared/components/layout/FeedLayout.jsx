@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { checkUpcomingBirthdays } from '@/shared/services/birthdayNotificationService'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
+import { calculateStatusFromLastSeen } from '@/shared/services/presenceService'
 
 const placeholderAds = [
   { id: 'ad1', title: 'Build your own AI Agent!', url: 'https://getodin.ai', image: '/assets/images/odin.png' },
@@ -34,10 +35,10 @@ const FeedLayout = ({ children }) => {
 
         if (!isMounted) return
 
-        // Update presence for all friends
+        // Update presence for all friends - calculate from last_seen
         friendsList.forEach((friend) => {
-          const fallbackStatus = friend.status || (friend.last_seen ? 'away' : 'offline')
-          updatePresence(friend.id, fallbackStatus)
+          const calculatedStatus = calculateStatusFromLastSeen(friend.last_seen) || friend.status || 'offline'
+          updatePresence(friend.id, calculatedStatus)
         })
 
         setFriends(friendsList)
@@ -109,7 +110,11 @@ const FeedLayout = ({ children }) => {
   // Format friends for display (with presence status)
   const friendsWithPresence = useMemo(() => {
     return friends.map((friend) => {
-      const status = presence[friend.id] || friend.status || (friend.last_seen ? 'away' : 'offline')
+      // Use presence from context if available, otherwise calculate from last_seen
+      const status = presence[friend.id] || 
+                     calculateStatusFromLastSeen(friend.last_seen) || 
+                     friend.status || 
+                     'offline'
       return {
         id: friend.id,
         name: friend.full_name,

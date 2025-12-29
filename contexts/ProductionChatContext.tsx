@@ -4,6 +4,12 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
+import {
+  initializePresence,
+  updatePresence as updatePresenceStatus,
+  subscribeToPresenceChanges,
+  calculateStatusFromLastSeen,
+} from '@/shared/services/presenceService'
 
 interface ChatParticipant {
   id: string
@@ -538,10 +544,70 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [currentUser])
 
-  // Update current user's presence to online when component mounts
+  // Load initial presence status from database for friends and update periodically
+  useEffect(() => {
+    if (!user?.id) return
+
+    const loadAndUpdatePresence = async () => {
+      try {
+        // Get friends list to load their presence
+        const { data: friendsData } = await supabase
+          .from('friend_requests')
+          .select(`
+            sender_id,
+            receiver_id,
+            sender:profiles!friend_requests_sender_id_profiles_fkey(id, status, last_seen),
+            receiver:profiles!friend_requests_receiver_id_profiles_fkey(id, status, last_seen)
+          `)
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+          .eq('status', 'accepted')
+
+        if (friendsData) {
+          friendsData.forEach((req: any) => {
+            const friend = req.sender_id === user.id ? req.receiver : req.sender
+            const friendData = Array.isArray(friend) ? friend[0] : friend
+            if (friendData?.id) {
+              // Always calculate status from last_seen (ignore database status as it might be stale)
+              const calculatedStatus = calculateStatusFromLastSeen(friendData.last_seen)
+              updatePresence(friendData.id, calculatedStatus)
+            }
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load initial presence:', error)
+      }
+    }
+
+    // Load initially
+    loadAndUpdatePresence()
+
+    // Update every 30 seconds to recalculate status from last_seen
+    const interval = setInterval(loadAndUpdatePresence, 30000)
+
+    return () => clearInterval(interval)
+  }, [user?.id, updatePresence])
+
+  // Subscribe to presence updates from Realtime
+  useEffect(() => {
+    if (!user?.id) return
+
+    const unsubscribe = subscribeToPresenceChanges((userId, status, lastSeen) => {
+      // Update presence in context
+      updatePresence(userId, status)
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [user?.id, updatePresence])
+
+  // Initialize presence service and update current user's presence to online when component mounts
   useEffect(() => {
     if (user?.id) {
-      updatePresence(user.id, 'online')
+      // Initialize presence service
+      initializePresence(user.id).then(() => {
+        updatePresence(user.id, 'online')
+      })
     }
   }, [user?.id, updatePresence])
 

@@ -1,6 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { presenceService, PresenceStatus } from '@/shared/services/presenceService'
+import {
+  initializePresence as initPresence,
+  updatePresence as updatePresenceStatus,
+  getOnlineUsers,
+  subscribeToPresenceChanges,
+  setAway as setAwayStatus,
+  setBusy as setBusyStatus,
+  cleanup as cleanupPresence,
+  type PresenceStatus,
+} from '@/shared/services/presenceService'
 
 export const usePresence = () => {
   const { user } = useAuth()
@@ -12,16 +21,36 @@ export const usePresence = () => {
     if (!user?.id || isInitialized) return
 
     try {
-      await presenceService.initializePresence(user.id)
+      await initPresence(user.id)
       setIsInitialized(true)
       
+      // Subscribe to presence changes
+      const unsubscribe = subscribeToPresenceChanges((userId, status, lastSeen) => {
+        setOnlineUsers(prev => {
+          const existing = prev.find(u => u.id === userId)
+          if (existing) {
+            return prev.map(u => 
+              u.id === userId 
+                ? { ...u, status, lastSeen }
+                : u
+            )
+          } else if (status !== 'offline') {
+            return [...prev, { id: userId, status, lastSeen }]
+          }
+          return prev
+        })
+      })
+
       // Set up periodic updates
       const interval = setInterval(async () => {
-        const users = await presenceService.getOnlineUsers()
+        const users = await getOnlineUsers()
         setOnlineUsers(users)
       }, 5000) // Update every 5 seconds
 
-      return () => clearInterval(interval)
+      return () => {
+        unsubscribe()
+        clearInterval(interval)
+      }
     } catch (error) {
       console.error('Failed to initialize presence:', error)
     }
@@ -30,16 +59,16 @@ export const usePresence = () => {
   // Update presence status
   const updateStatus = useCallback(async (status: 'online' | 'away' | 'busy' | 'offline') => {
     if (!user?.id) return
-    await presenceService.updatePresence(user.id, status)
+    await updatePresenceStatus(user.id, status)
   }, [user?.id])
 
   // Set away when tab becomes inactive
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        presenceService.setAway(user?.id || '')
+        setAwayStatus(user?.id || '')
       } else {
-        presenceService.updatePresence(user?.id || '', 'online')
+        updatePresenceStatus(user?.id || '', 'online')
       }
     }
 
@@ -55,16 +84,18 @@ export const usePresence = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      presenceService.cleanup()
+      if (user?.id) {
+        cleanupPresence(user.id)
+      }
     }
-  }, [])
+  }, [user?.id])
 
   return {
     onlineUsers,
     isInitialized,
     updateStatus,
-    setAway: () => presenceService.setAway(user?.id || ''),
-    setBusy: () => presenceService.setBusy(user?.id || ''),
+    setAway: () => setAwayStatus(user?.id || ''),
+    setBusy: () => setBusyStatus(user?.id || ''),
   }
 }
 
