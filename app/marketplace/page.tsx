@@ -163,9 +163,9 @@ const MarketplacePage: React.FC = () => {
           className={`fixed md:relative inset-y-0 left-0 z-40
           w-[280px] shrink-0 bg-white
           px-4 py-6
-          top-30
+          top-12
           md:top-0
-          h-[88vh]
+          h-[90vh]
           md:h-screen
           scrollbar-hover
           overflow-y-auto

@@ -313,12 +313,12 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
-               <button
-  onClick={() => setMobileMenuOpen(true)}
-  className="sm:hidden text-gray-700 text-xl"
->
-  <FaBars />
-</button>
+                <button
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="sm:hidden text-gray-700 text-xl"
+                >
+                  <FaBars />
+                </button>
               </>
             ) : (
               <div className="flex items-center space-x-2 sm:space-x-4 pr-1  sm:pr-4 sm:border-r border-0 border-gray-200 ">
