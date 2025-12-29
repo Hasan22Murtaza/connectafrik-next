@@ -273,7 +273,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
   return (
     <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:bg-black/50 lg:p-4">
       <div className="flex max-h-[80vh] w-full lg:max-w-2xl flex-col lg:rounded-lg bg-white  border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-200 p-4 bg-primary-600">
+        <div className="flex items-center justify-between border-b border-gray-200 sm:p-4 p-2 bg-primary-600 ">
           <h3 className="text-lg font-semibold text-white">Comments</h3>
           <button
             onClick={handleClose}

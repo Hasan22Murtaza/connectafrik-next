@@ -48,7 +48,9 @@ const Signin: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
+            <Link href={"/"}>
             <img src="/assets/images/logo_2.png" alt="" className="w-30" />
+            </Link>
           </div>
           <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
             Welcome Back

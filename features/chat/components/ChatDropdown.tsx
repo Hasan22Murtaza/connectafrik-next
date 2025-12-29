@@ -95,7 +95,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
   const subtitle = mode === 'chat' ? 'Recent messages and active contacts' : 'Start an audio or video call'
 
   return (
-            <div className="absolute sm:right-0 -right-4 mt-3 w-70 sm:w-80 max-w-[90vw] sm:max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-2xl p-3 sm:p-4 z-[120] transform -translate-x-0 sm:translate-x-0">
+            <div className="absolute sm:right-0 -right-6 mt-3 w-65 sm:w-80 max-w-[90vw] sm:max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-2xl p-3 sm:p-4 z-[120] transform -translate-x-0 sm:translate-x-0">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h4 className="font-semibold text-gray-900">{title}</h4>
@@ -120,7 +120,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
             {availableContacts.map((contact) => (
               <div
                 key={contact.id}
-                className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 px-2 sm:px-3 py-2 transition-colors"
+                className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200  py-2 transition-colors"
               >
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <div className="relative w-8 h-8 sm:w-10 sm:h-10">
@@ -173,7 +173,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
             No conversations yet. Start a chat from the feed or contacts.
           </div>
         ) : (
-          <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto  custom-scrollbar scrollbar-hide">
             {sortedThreads.map((thread) => {
               const otherParticipants = thread.participants.filter(
                 (participant: ChatParticipant) => participant.id !== currentUser?.id
@@ -185,7 +185,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               return (
                 <div
                   key={thread.id}
-                  className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 px-2 sm:px-3 py-2 transition-colors"
+                  className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200  py-2 transition-colors"
                 >
                   <button
                     onClick={() => handleOpenThread(thread.id)}

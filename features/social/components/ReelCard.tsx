@@ -56,7 +56,7 @@ const ReelCard: React.FC<ReelCardProps> = ({
 
   // Video player state
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.5);
@@ -68,6 +68,9 @@ const ReelCard: React.FC<ReelCardProps> = ({
   const [savesCount, setSavesCount] = useState(reel.saves_count);
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [shouldAutoPlay, setShouldAutoPlay] = useState(true);
+
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
@@ -105,22 +108,40 @@ const ReelCard: React.FC<ReelCardProps> = ({
   };
 
   // Handle video play/pause
+  // const handlePlayPause = useCallback(async () => {
+  //   if (videoRef.current) {
+  //     try {
+  //       if (isPlaying) {
+  //         videoRef.current.pause();
+  //         setIsPlaying(false);
+  //       } else {
+  //         await videoRef.current.play();
+  //         setIsPlaying(true);
+  //       }
+  //     } catch (error) {
+  //       console.error("Video play/pause error:", error);
+  //       // Don't update state if play failed
+  //     }
+  //   }
+  // }, [isPlaying]);
   const handlePlayPause = useCallback(async () => {
-    if (videoRef.current) {
-      try {
-        if (isPlaying) {
-          videoRef.current.pause();
-          setIsPlaying(false);
-        } else {
-          await videoRef.current.play();
-          setIsPlaying(true);
-        }
-      } catch (error) {
-        console.error("Video play/pause error:", error);
-        // Don't update state if play failed
-      }
+  const video = videoRef.current;
+  if (!video) return;
+
+  try {
+    if (video.paused) {
+      video.muted = false; 
+      await video.play();
+      setIsPlaying(true);
+    } else {
+      video.pause();
+      setIsPlaying(false);
     }
-  }, [isPlaying]);
+  } catch (error) {
+    console.error("Play error:", error);
+  }
+}, []);
+
 
   // Handle video time update
   const handleTimeUpdate = useCallback(() => {
@@ -395,6 +416,69 @@ const ReelCard: React.FC<ReelCardProps> = ({
     setShowMenu(false);
   }, [handleSave]);
 
+
+useEffect(() => {
+  const checkMobile = () => {
+    setIsMobile(window.innerWidth < 600);
+  };
+
+  checkMobile();
+  window.addEventListener("resize", checkMobile);
+  return () => window.removeEventListener("resize", checkMobile);
+}, []);
+
+
+useEffect(() => {
+  if (!isMobile) return;
+
+  const video = videoRef.current;
+  if (!video) return;
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      setShouldAutoPlay(entry.intersectionRatio >= 0.7);
+    },
+    {
+      threshold: [0, 0.7, 1],
+    }
+  );
+
+  observer.observe(video.parentElement || video);
+
+  return () => observer.disconnect();
+}, [isMobile]);
+
+
+useEffect(() => {
+  if (!isMobile) return; // Only run on mobile
+
+  const video = videoRef.current;
+  if (!video) return;
+
+  if (shouldAutoPlay) {
+    if (video.paused) {
+      video.muted = false;
+      video.play()
+        .then(() => setIsPlaying(true))
+        .catch((e) => {
+          console.log("Auto-play failed:", e);
+          setIsPlaying(false);
+        });
+    }
+  } else {
+    if (!video.paused) {
+      video.pause();
+      setIsPlaying(false);
+    }
+  }
+}, [shouldAutoPlay, isMobile]);
+
+
+
+
+
+
+
   return (
     <div className="group relative w-full bg-black overflow-hidden rounded-[18px] ">
       {/* Video Container - TikTok Style */}
@@ -640,19 +724,19 @@ const ReelCard: React.FC<ReelCardProps> = ({
                   e.stopPropagation();
                   handleFollow();
                 }}
-                className={`  text-xs sm:text-sm  shadow-lg hover:underline duration-300 ${
+                className={`  text-xs sm:text-sm  shadow-lg hover:underline duration-300 shrink-0 ${
                   isFollowing ? " text-white" : " text-orange-400"
                 }`}
               >
                 {isFollowing ? (
                   <span className="flex items-center gap-1.5">
                     <UserCheck className="w-3.5 h-3.5" />
-                    Following
+                    Tapped In
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <UserPlus className="w-3.5 h-3.5" />
-                    Follow
+                    Tap
                   </span>
                 )}
               </button>

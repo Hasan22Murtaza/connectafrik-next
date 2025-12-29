@@ -808,6 +808,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             <button
               onMouseEnter={handleReactHover}
               onMouseLeave={handleReactLeave}
+              onClick={()=>setShowReactionPicker(true)}
               className="flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
               aria-label="React to post"
             >
