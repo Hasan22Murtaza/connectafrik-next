@@ -865,10 +865,10 @@ export const PostCard: React.FC<PostCardProps> = ({
           </div>
 
           {/* View count */}
-          <div className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-500  cursor-pointer">
+          {/* <div className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-500  cursor-pointer">
             <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="text-xs sm:text-sm font-medium">Watch</span>
-          </div>
+          </div> */}
 
           <button
             onClick={() => onComment(post.id)}
