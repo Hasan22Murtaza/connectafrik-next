@@ -16,6 +16,7 @@
     "@capacitor/filesystem": "^8.0.0",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.5.3",
+    "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.39.0",
     "@videosdk.live/js-sdk": "^0.5.3",
     "@videosdk.live/react-sdk": "^0.6.4",

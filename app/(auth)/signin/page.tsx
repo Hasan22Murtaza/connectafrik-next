@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Globe, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 const Signin: React.FC = () => {
   const { signIn } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -31,13 +32,19 @@ const Signin: React.FC = () => {
 
       if (error) {
         toast.error(error.message)
+        setIsLoading(false)
       } else {
         toast.success('Welcome back!')
-        router.push('/feed')
+        // Wait for session to be set in cookies before redirecting
+        // Use a small delay to ensure cookies are properly set
+        const redirectTo = searchParams.get('redirect') || '/feed'
+        setTimeout(() => {
+          // Use window.location for full page reload to ensure middleware can read cookies
+          window.location.href = redirectTo
+        }, 200)
       }
     } catch (error: any) {
       toast.error('An unexpected error occurred')
-    } finally {
       setIsLoading(false)
     }
   }
