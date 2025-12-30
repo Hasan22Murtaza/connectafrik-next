@@ -255,7 +255,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {/* Delete menu - show when menu open */}
           {showMenu && (
             <div
-              className="absolute top-full right-0 z-50 mt-1 w-50 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg text-gray-800"
+              className="absolute top-full right-0 z-50 mt-1 w-38 rounded-md border border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 shadow-lg text-gray-800"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -263,10 +263,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   handleDelete(false); // delete for me
                   setShowMenu(false);
                 }}
-                className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm"
+                className="w-full px-2 py-1 text-left hover:bg-gray-100 dark:hover:bg-gray-700  text-[12px]"
                 type="button"
               >
-                <Trash2 className="w-4 h-4 text-gray-500" />
                 Delete for Me
               </button>
               {canDeleteForEveryone && (
@@ -275,10 +274,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     handleDelete(true); // delete for everyone
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600 "
+                  className="w-full px-2 py-1 text-left hover:bg-gray-100 dark:hover:bg-gray-700  text-[12px] text-red-600 "
                   type="button"
                 >
-                  <Trash2 className="w-4 h-4 text-red-600" />
                   Delete for Everyone
                 </button>
               )}
