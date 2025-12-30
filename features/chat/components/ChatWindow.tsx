@@ -132,6 +132,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return primaryParticipant?.name || thread?.name || "Chat";
   }, [isSelfChat, primaryParticipant?.name, thread?.name, currentUser?.name]);
 
+  // Header avatar handling: show profile image when available, otherwise initial
+  const [headerImageFailed, setHeaderImageFailed] = useState(false);
+
+  const headerAvatarUrl = useMemo(() => {
+    if (isSelfChat) {
+      const self = thread?.participants?.find((p: any) => p.id === currentUser?.id);
+      return (self?.avatarUrl ?? (self as any)?.avatar_url) || undefined;
+    }
+    const p = primaryParticipant;
+    return (p?.avatarUrl ?? (p as any)?.avatar_url) || undefined;
+  }, [isSelfChat, thread?.participants, primaryParticipant]);
+
+  useEffect(() => {
+    // Reset image error state when avatar url changes
+    setHeaderImageFailed(false);
+  }, [headerAvatarUrl]);
+
+  const headerAvatarAvailable = Boolean(headerAvatarUrl) && !headerImageFailed;
+
+  const headerInitial = useMemo(() => {
+    const name = isSelfChat ? currentUser?.name || "You" : primaryParticipant?.name || thread?.name || "U";
+    return name.charAt(0).toUpperCase();
+  }, [isSelfChat, currentUser?.name, primaryParticipant?.name, thread?.name]);
+
   const participantStatuses = useMemo<PresenceStatus[]>(
     () =>
       otherParticipants.map(
@@ -434,13 +458,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-2 py-3">
         <div className="flex items-center space-x-3">
           <div className="relative h-10 w-10">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
-              {isSelfChat
-                ? (currentUser?.name || "Y").charAt(0).toUpperCase()
-                : (primaryParticipant?.name || thread.name || "U")
-                    .charAt(0)
-                    .toUpperCase()}
-            </div>
+            {headerAvatarAvailable ? (
+              <img
+                src={headerAvatarUrl}
+                alt={displayThreadName}
+                className="h-10 w-10 rounded-full object-cover"
+                onError={() => setHeaderImageFailed(true)}
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
+                {headerInitial}
+              </div>
+            )}
           </div>
           <div>
             <div className="text-sm font-semibold text-gray-900 line-clamp-1">
