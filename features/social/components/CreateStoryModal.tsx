@@ -315,7 +315,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
           {step === 'media' && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Add Photos & Videos</h3>
+                <h3 className="text-lg font-semibold mb-2 text-gray-800">Add Photos & Videos</h3>
                 <p className="text-gray-600 mb-4">Select up to 10 images or videos for your story</p>
               </div>
 
@@ -341,7 +341,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
               {/* Selected Media Preview */}
               {mediaFiles.length > 0 && (
                 <div className="space-y-4">
-                  <h4 className="font-semibold">Selected Media ({mediaFiles.length}/10)</h4>
+                  <h4 className="font-semibold text-gray-800">Selected Media ({mediaFiles.length}/10)</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {mediaFiles.map((mediaFile) => (
                       <div key={mediaFile.id} className="relative group">
@@ -393,7 +393,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
           {step === 'music' && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Add Background Music</h3>
+                <h3 className="text-lg font-semibold mb-2 text-gray-800">Add Background Music</h3>
                 <p className="text-gray-600 mb-4">Choose a track to accompany your story (optional)</p>
               </div>
 
@@ -405,7 +405,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                     placeholder="Search for music..."
                     value={musicSearchQuery}
                     onChange={(e) => setMusicSearchQuery(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 placeholder:text-gray-500"
                   />
                   <button
                     onClick={() => searchMusic(musicSearchQuery)}
@@ -418,7 +418,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
 
                 {/* Music Categories */}
                 <div className="space-y-2">
-                  <h4 className="font-semibold">Browse by Category</h4>
+                  <h4 className="font-semibold text-gray-800">Browse by Category</h4>
                   <div className="flex flex-wrap gap-2">
                     {pixabayMusicService.getMusicCategories().slice(0, 8).map((category) => (
                       <button
@@ -441,7 +441,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
 
                 {/* Mood Categories */}
                 <div className="space-y-2">
-                  <h4 className="font-semibold">Browse by Mood</h4>
+                  <h4 className="font-semibold text-gray-800">Browse by Mood</h4>
                   <div className="flex flex-wrap gap-2">
                     {pixabayMusicService.getMoodCategories().map((mood) => (
                       <button
@@ -466,7 +466,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
               {/* Music Results */}
               {musicResults.length > 0 && (
                 <div className="space-y-2">
-                  <h4 className="font-semibold">Available Tracks</h4>
+                  <h4 className="font-semibold text-gray-800">Available Tracks</h4>
                   <div className="max-h-48 overflow-y-auto space-y-2">
                     {musicResults.map((track) => (
                       <div
@@ -549,7 +549,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
           {step === 'caption' && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Add Caption</h3>
+                <h3 className="text-lg font-semibold mb-2 text-gray-800">Add Caption</h3>
                 <p className="text-gray-600 mb-4">Write a caption for your story (optional)</p>
               </div>
 
@@ -557,7 +557,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder="What's happening?"
-                className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none placeholder:text-gray-500"
                 maxLength={200}
               />
               <div className="text-right text-sm text-gray-500">
@@ -585,7 +585,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
           {step === 'preview' && (
             <div className="space-y-4">
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-2">Preview Your Story</h3>
+                <h3 className="text-lg font-semibold mb-2 text-gray-800">Preview Your Story</h3>
                 <p className="text-gray-600 mb-4">Review your story before publishing</p>
               </div>
 
@@ -598,7 +598,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
                     </span>
                   </div>
                   <div>
-                    <p className="font-semibold">{user?.user_metadata?.full_name || 'User'}</p>
+                    <p className="font-semibold text-gray-800">{user?.user_metadata?.full_name || 'User'}</p>
                     <p className="text-xs text-gray-300">now</p>
                   </div>
                 </div>

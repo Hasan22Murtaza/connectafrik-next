@@ -290,7 +290,7 @@ const ProfileSettings: React.FC = () => {
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="card">
-              <nav className=" md:flex-col flex gap-2  items-center overflow-x-auto  scrollbar-hide ">
+              <nav className=" md:flex-col flex gap-2 sm:gap-3  items-center overflow-x-auto  scrollbar-hide ">
                 {tabs.map(tab => {
                   const IconComponent = tab.icon
                   return (

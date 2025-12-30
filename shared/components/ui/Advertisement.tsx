@@ -96,7 +96,7 @@ const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) =
         className={`bg-gradient-to-br from-[#F97316]/40 via-[#149941]/40 to-[#0B7FB0]/30 text-white py-4 px-3 sm:px-6 rounded-lg shadow-md ${className} group`}
       >
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap gap-2 justify-between">
+          <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap gap-2 justify-between w-full">
             <div className="flex items-center justify-between w-full gap-2">
               <span className="text-xs uppercase bg-white/25 backdrop-blur-sm px-3 py-1 rounded-full font-semibold tracking-wide  transition-colors">
                 Sponsored

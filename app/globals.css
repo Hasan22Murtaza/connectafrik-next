@@ -20,6 +20,7 @@
   --african-orange: #FF6900;
   --african-orange-light: #fb923c;
   --african-orange-dark: #ea580c;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -37,9 +38,9 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: var(--font-poppins), sans-serif;
+  color: #111827;    
+  background-color: #ffffff;
 }
 
 /* Button Styles */
@@ -139,6 +140,9 @@ body {
 /* Utility Classes */
 .text-primary-600 {
   color: #f97316 ;
+}
+.text-primary-700{
+  color: var(--primary-700);
 }
 
 .bg-primary-50 {
