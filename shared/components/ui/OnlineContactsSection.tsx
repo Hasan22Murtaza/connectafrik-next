@@ -42,7 +42,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
       })
       onStartChat?.(contact)
     } catch (error) {
-      console.error('Failed to start chat:', error)
+      // Failed to start chat
     }
   }
 
@@ -62,7 +62,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
         onStartCall?.(contact, type)
       }
     } catch (error) {
-      console.error('Failed to start call:', error)
+      // Failed to start call
     }
   }
 
@@ -71,14 +71,10 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
 
     try {
       const result = await friendRequestService.sendFriendRequest(contact.id)
-      if (result.success) {
-        console.log('Friend request sent to', contact.name)
-      } else {
-        console.error('Failed to send friend request:', result.error)
+      if (!result.success) {
         alert(result.error || 'Failed to send friend request')
       }
     } catch (error) {
-      console.error('Error sending friend request:', error)
       alert('Failed to send friend request')
     } finally {
       setSendingRequest(prev => ({ ...prev, [contact.id]: false }))
