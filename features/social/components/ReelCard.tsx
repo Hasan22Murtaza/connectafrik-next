@@ -731,12 +731,12 @@ useEffect(() => {
                 {isFollowing ? (
                   <span className="flex items-center gap-1.5">
                     <UserCheck className="w-3.5 h-3.5" />
-                    Tapped In
+                    UnTap In
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <UserPlus className="w-3.5 h-3.5" />
-                    Tap
+                    Tap in
                   </span>
                 )}
               </button>

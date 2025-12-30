@@ -45,6 +45,8 @@ interface ProductionChatContextType {
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
+  clearMessagesForUser: (threadId: string, userId: string) => void
+  setMessagesForThread: (threadId: string, messages: ChatMessage[]) => void
 }
 
 const ProductionChatContext = createContext<ProductionChatContextType | undefined>(undefined)
@@ -177,6 +179,22 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [])
 
   const minimizedThreadIds: string[] = []
+
+  const setMessagesForThread = useCallback((threadId: string, nextMessages: ChatMessage[]) => {
+    setMessages(prev => ({ ...prev, [threadId]: nextMessages }))
+  }, [])
+
+  const clearMessagesForUser = useCallback((threadId: string, userId: string) => {
+    setMessages(prev => {
+      const current = prev[threadId] || []
+      const next = current.map(m => {
+        const deletedSet = new Set(Array.isArray(m.deleted_for) ? m.deleted_for : [])
+        deletedSet.add(userId)
+        return { ...m, deleted_for: Array.from(deletedSet) }
+      })
+      return { ...prev, [threadId]: next }
+    })
+  }, [])
 
   const startChatWithMembers = useCallback(async (
     participants: ChatParticipant[],
@@ -561,7 +579,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     sendMessage,
     minimizedThreadIds,
     markThreadRead,
-    threads
+    threads,
+    clearMessagesForUser,
+    setMessagesForThread
   }
 
   return (
