@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react'
-import { Phone, Video, PhoneOff, X } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import VideoSDKCallModal from '@/features/video/components/VideoSDKCallModal'
 import { ringtoneService } from '@/features/video/services/ringtoneService'
+import React, { useEffect, useState } from 'react'
 
 const GlobalCallNotification: React.FC = () => {
   const { callRequests, currentUser, clearCallRequest } = useProductionChat()
@@ -21,27 +20,17 @@ const GlobalCallNotification: React.FC = () => {
   // NOTE: This component only handles INCOMING calls (calls from other users)
   // Outgoing calls (calls initiated by current user) are handled by ChatWindow
   useEffect(() => {
-    console.log('📞 GlobalCallNotification: callRequests changed:', Object.keys(callRequests).length, 'requests')
-    console.log('📞 GlobalCallNotification: callRequests details:', callRequests)
-    console.log('📞 GlobalCallNotification: currentUser:', currentUser?.id)
-    console.log('📞 GlobalCallNotification: activeCall:', activeCall?.threadId)
+    
     
     const callRequestEntries = Object.entries(callRequests)
     if (callRequestEntries.length > 0) {
       const [threadId, callRequest] = callRequestEntries[0]
-      
-      console.log('📞 GlobalCallNotification: Processing call request:', {
-        threadId,
-        callerId: callRequest.callerId,
-        currentUserId: currentUser?.id,
-        isIncoming: callRequest.callerId !== currentUser?.id
-      })
+    
       
       // Only show if it's an incoming call (not from current user)
       if (callRequest.callerId !== currentUser?.id) {
         // Only set up new call if we don't already have an active call for this thread
         if (!activeCall || activeCall.threadId !== threadId) {
-          console.log('📞 GlobalCallNotification: Setting up incoming call modal')
           setActiveCall({
             threadId,
             type: callRequest.type,
@@ -67,17 +56,9 @@ const GlobalCallNotification: React.FC = () => {
         console.log('📞 GlobalCallNotification: Call request is from current user, ignoring')
       }
     } else {
-      // ✅ FIXED: Don't automatically close modal when callRequests becomes empty
-      // Once activeCall is set, keep the modal open until user explicitly accepts/rejects
-      // or the call ends. This prevents premature closing.
+     
       if (activeCall) {
-        console.log('📞 GlobalCallNotification: callRequests is empty but activeCall exists - keeping modal open')
-        // Keep modal open - don't close automatically
-        // The modal will close when:
-        // 1. User accepts (VideoSDKCallModal handles it)
-        // 2. User rejects (handleRejectCall)
-        // 3. Call ends (handleCallEnd)
-        // 4. Other side rejects (VideoSDKCallModal listener)
+       
       } else {
         console.log('📞 GlobalCallNotification: No call requests and no active call - clearing')
         // Only clear if there's truly no active call

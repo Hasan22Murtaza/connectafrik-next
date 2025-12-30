@@ -1,7 +1,6 @@
-import React from 'react';
-import OnlineContactsSection from '@/shared/components/ui/OnlineContactsSection';
 import { PeopleYouMayKnow } from '@/features/social/components/PeopleYouMayKnow';
 import ArtOfInksAd from '@/shared/components/ui/ArtOfInksAd';
+import OnlineContactsSection from '@/shared/components/ui/OnlineContactsSection';
 
 const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts = [] }) => {
 
