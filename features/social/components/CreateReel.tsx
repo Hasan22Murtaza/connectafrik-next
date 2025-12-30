@@ -500,7 +500,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 bg-primary-600 border-b border-gray-200">
+        <div className="flex items-center justify-between sm:px-6 px-3 py-4 bg-primary-600 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-white">Create New Reel</h2>
           <button
             onClick={onCancel}
@@ -510,7 +510,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto ">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-6 space-y-6 max-h-[80vh] overflow-y-auto ">
           {/* Video Upload/Recording Section */}
           <div className="space-y-4">            
             {!videoFile && recordingMode === 'upload' ? (
@@ -815,13 +815,13 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                       key={ratio.value}
                       type="button"
                       onClick={() => setAspectRatio(ratio.value as '9:16' | '16:9' | '1:1' | '4:3')}
-                      className={`p-3 border rounded-lg text-sm font-medium transition-colors ${
+                      className={` sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-colors ${
                         aspectRatio === ratio.value
                           ? 'border-orange-500 bg-primary-50 text-primary-700'
                           : 'border-gray-300 text-gray-700 hover:border-gray-400'
                       }`}
                     >
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1">
                         <span>{ratio.icon}</span>
                         <span>{ratio.label}</span>
                       </div>
