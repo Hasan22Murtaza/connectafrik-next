@@ -75,6 +75,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     openThread,
     startCall,
     markThreadRead,
+    clearMessagesForUser,
+    setMessagesForThread,
   } = useProductionChat();
 
   const { members } = useMembers();
@@ -93,6 +95,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const thread = getThreadById(threadId);
   const messages = getMessagesForThread(threadId);
+  const visibleMessages = useMemo(() => {
+    if (!currentUser) return messages;
+    return messages.filter((message: ChatMessage) =>
+      !message.deleted_for?.includes(currentUser.id)
+    );
+  }, [messages, currentUser?.id]);
   const pendingCall = callRequests[threadId];
   const pendingCallType = pendingCall?.type;
   const pendingRoomId = pendingCall?.roomId;
@@ -154,7 +162,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ); // Track which messages can be deleted for everyone
   const [showOptionsMenu, setShowOptionsMenu] = useState(false); // Track options menu visibility
   console.log(showOptionsMenu, "showOptionsMenu");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const userInitiatedCall = useRef(false); // Track if user started the call
   const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map()); // Cache for delete permissions
   const processedMessageIdsRef = useRef<Set<string>>(new Set()); // Track already processed message IDs
@@ -251,9 +258,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     currentUserId,
   ]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, threadId]);
 
   // Mark thread as read when messages are viewed or when thread opens
   useEffect(() => {
@@ -340,11 +344,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     if (!confirmed) return;
 
+    let prevMessagesForThread: ChatMessage[] | null = null
     try {
-      // Delete all messages for the current user
-      const messagesToDelete = messages.filter(
-        (msg: ChatMessage) => !msg.deleted_for?.includes(currentUser.id)
-      );
+      // Take a snapshot to allow revert on error
+      prevMessagesForThread = getMessagesForThread(threadId);
+      // Only delete visible (not already deleted) messages
+      const messagesToDelete = visibleMessages;
+
+      // Optimistically update local state so messages disappear immediately
+      clearMessagesForUser(threadId, currentUser.id);
 
       for (const message of messagesToDelete) {
         await supabaseMessagingService.deleteMessageForMe(
@@ -357,6 +365,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setShowOptionsMenu(false);
     } catch (error) {
       console.error("Error clearing messages:", error);
+      // Revert optimistic update by restoring previous messages
+      if (prevMessagesForThread) {
+        setMessagesForThread(threadId, prevMessagesForThread);
+      }
       toast.error("Failed to clear messages");
     }
   };
@@ -431,7 +443,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           </div>
           <div>
-            <div className="text-sm font-semibold text-gray-900">
+            <div className="text-sm font-semibold text-gray-900 line-clamp-1">
               {displayThreadName}
             </div>
             <div className="text-xs text-gray-500">
@@ -486,32 +498,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <X className="h-4 w-4" />
           </button>
 
-          <div className="relative">
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowOptionsMenu(true);
-              }}
-              className="text-gray-400 hover:text-gray-600"
-              title="Options"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </button>
-            {showOptionsMenu && (
-              <div
-                ref={menuRef}
-                className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[180px]"
+          {visibleMessages.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setShowOptionsMenu(true);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+                title="Options"
               >
-                <button
-                  onClick={handleClearAllMessages}
-                  className="w-full px-4 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showOptionsMenu && (
+                <div
+                  ref={menuRef}
+                  className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[180px]"
                 >
-                  <X className="h-4 w-4" />
-                  <span>Clear All Chat</span>
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    onClick={handleClearAllMessages}
+                    className="w-full px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                    <span>Clear All Chat</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -531,19 +545,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      <div className="flex max-h-64 sm:max-h-72 flex-1 flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3">
-        {messages.length === 0 ? (
+      <div className="flex h-[250px] sm:h-[290px]  flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3">
+        {visibleMessages.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-500">
             Send a message to kick off the conversation.
           </div>
         ) : (
-          messages
-            .filter((message) => {
-              // Filter out messages deleted for current user
-              if (!currentUser) return true;
-              return !message.deleted_for?.includes(currentUser.id);
-            })
-            .map((message: ChatMessage) => {
+          visibleMessages.map((message: ChatMessage) => {
               const isOwn = message.sender_id === currentUser?.id;
               const canDeleteForEveryone =
                 deleteStates.get(message.id) ?? false;
@@ -564,7 +572,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               );
             })
         )}
-        <div ref={messagesEndRef} />
+        <div/>
       </div>
 
       {pendingFiles.length > 0 && (
