@@ -257,10 +257,6 @@ const CulturePage: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <Footer />
-      
     </div>
   )
 }
