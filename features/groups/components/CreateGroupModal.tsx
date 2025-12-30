@@ -145,10 +145,10 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
       <div className="bg-white rounded-xl max-w-3xl w-full  overflow-hidden ">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200  sticky bg-[#FF6900]">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-4 border-b border-gray-200  sticky bg-[#FF6900]">
           <h2 className="text-xl font-semibold text-white">Create New Group</h2>
           <button
             onClick={onClose}
@@ -159,7 +159,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="px-3 sm:px-6 py-4 space-y-6 max-h-[80vh] overflow-y-auto">
           {/* Basic Info */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
@@ -212,10 +212,10 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
                     key={value}
                     type="button"
                     onClick={() => handleInputChange('category', value)}
-                    className={`flex items-center space-x-2 p-3 rounded-lg border-2 transition-all duration-200 ${
+                    className={`flex items-center space-x-2 p-2 rounded-lg border-2 transition-all duration-200 ${
                       formData.category === value
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-orange-400 bg-primary-200 text-orange-900'
+                        : 'border-gray-200 bg-[#F3F4F6] text-gray-600 hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
                     }`}
                   >
                     <span className="text-lg">{icon}</span>
