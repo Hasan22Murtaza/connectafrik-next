@@ -128,7 +128,7 @@ const categories = [
             {user && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="btn-primary flex items-center space-x-2 max-w-1/2 sm:max-w-full ms-auto"
+                className="btn-primary flex items-center space-x-2 sm:text-base text-sm  ms-auto"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Group</span>
@@ -136,34 +136,7 @@ const categories = [
             )}
           </div>
 
-          {/* View Toggle */}
-          <div className="flex items-center space-x-2 mb-6">
-            <button
-              onClick={() => handleViewChange('discover')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                view === 'discover'
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Compass className="w-4 h-4" />
-              <span>Discover Groups</span>
-            </button>
-            
-            {user && (
-              <button
-                onClick={() => handleViewChange('my-groups')}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  view === 'my-groups'
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                <span>My Groups</span>
-              </button>
-            )}
-          </div>
+         
 
           {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-2">
@@ -192,6 +165,34 @@ const categories = [
 
       {/* Content */}
       <div className="  py-8">
+           {/* View Toggle */}
+          <div className="flex items-center space-x-2 mb-6">
+            <button
+              onClick={() => handleViewChange('discover')}
+              className={`flex items-center space-x-2 px-2 py-2 rounded-lg transition-colors ${
+                view === 'discover'
+                  ? 'bg-primary-100 text-primary-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              <Compass className="w-4 h-4" />
+              <span>Discover Groups</span>
+            </button>
+            
+            {user && (
+              <button
+                onClick={() => handleViewChange('my-groups')}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  view === 'my-groups'
+                    ? 'bg-primary-100 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>My Groups</span>
+              </button>
+            )}
+          </div>
         {view === 'discover' && !searchTerm && !selectedCategory && (
           <>
             {/* Featured Groups */}
