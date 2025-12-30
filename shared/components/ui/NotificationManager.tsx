@@ -24,21 +24,37 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
     try {
       setIsLoading(true)
       
-      // Check if notifications are supported
       const supported = await pushNotificationService.initialize()
       setIsSupported(supported)
       
       if (supported) {
-        // Check current permission
         const currentPermission = await pushNotificationService.requestPermission()
         setPermission(currentPermission)
         
-        // Check if already subscribed
         const subscribed = await pushNotificationService.isSubscribed()
         setIsSubscribed(subscribed)
+        
+        if (currentPermission === 'granted' && !subscribed && user) {
+          const autoSubscribedKey = `push_notifications_auto_subscribed_${user.id}`
+          const hasAttemptedAutoSubscribe = typeof window !== 'undefined' 
+            ? localStorage.getItem(autoSubscribedKey) === 'true'
+            : false
+          
+          if (!hasAttemptedAutoSubscribe) {
+            try {
+              const subscription = await pushNotificationService.subscribe()
+              if (subscription) {
+                setIsSubscribed(true)
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem(autoSubscribedKey, 'true')
+                }
+              }
+            } catch (error) {
+            }
+          }
+        }
       }
     } catch (error) {
-      console.error('Error initializing notifications:', error)
     } finally {
       setIsLoading(false)
     }
@@ -48,7 +64,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
     try {
       setIsLoading(true)
       
-      // Request permission first
       const newPermission = await pushNotificationService.requestPermission()
       setPermission(newPermission)
       
@@ -64,7 +79,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
         toast.error('Notification permission denied. Please enable notifications in your browser settings.')
       }
     } catch (error) {
-      console.error('Error subscribing to notifications:', error)
       toast.error('Failed to enable push notifications. Please try again.')
     } finally {
       setIsLoading(false)
@@ -83,7 +97,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
         toast.error('Failed to disable push notifications. Please try again.')
       }
     } catch (error) {
-      console.error('Error unsubscribing from notifications:', error)
       toast.error('Failed to disable push notifications. Please try again.')
     } finally {
       setIsLoading(false)
@@ -103,7 +116,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
       await pushNotificationService.sendLocalNotification(testPayload)
       toast.success('Test notification sent!')
     } catch (error) {
-      console.error('Error sending test notification:', error)
       toast.error('Failed to send test notification.')
     }
   }
@@ -113,7 +125,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
     onClose?.()
   }
 
-  // Always render if onClose prop is provided (controlled modal)
   if (onClose) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -130,7 +141,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
             </div>
 
             <div className="space-y-4">
-              {/* Permission Status */}
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <Bell className="w-5 h-5 text-gray-600" />
@@ -148,7 +158,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                 }`} />
               </div>
 
-              {/* Subscription Status */}
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <Settings className="w-5 h-5 text-gray-600" />
@@ -164,7 +173,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                 }`} />
               </div>
 
-              {/* Action Buttons */}
               <div className="space-y-3">
                 {!isSubscribed ? (
                     <button
@@ -197,7 +205,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                 )}
               </div>
 
-              {/* Information */}
               <div className="text-sm text-gray-500 space-y-2">
                 <p>You'll receive notifications for:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
@@ -214,7 +221,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
     )
   }
 
-  // Don't render if not open and no onClose prop (for global usage)
   if (!isOpen && !onClose) return null
 
   if (!isSupported) {
@@ -261,7 +267,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
           </div>
 
           <div className="space-y-4">
-            {/* Permission Status */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <Bell className="w-5 h-5 text-gray-600" />
@@ -279,7 +284,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
               }`} />
             </div>
 
-            {/* Subscription Status */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <Settings className="w-5 h-5 text-gray-600" />
@@ -295,7 +299,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
               }`} />
             </div>
 
-            {/* Action Buttons */}
             <div className="space-y-3">
               {!isSubscribed ? (
                   <button
@@ -328,7 +331,6 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
               )}
             </div>
 
-            {/* Information */}
             <div className="text-sm text-gray-500 space-y-2">
               <p>You'll receive notifications for:</p>
               <ul className="list-disc list-inside space-y-1 ml-4">
