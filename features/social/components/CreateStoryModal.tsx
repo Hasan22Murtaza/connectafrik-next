@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { X, Camera, Video, Music, Type, Upload, Play, Pause, Volume2, VolumeX } from 'lucide-react'
-import { storiesService, CreateStoryData } from '@/features/social/services/storiesService'
+import { createStory, CreateStoryData } from '@/features/social/services/storiesService'
 import { pixabayMusicService, PixabayTrack } from '@/features/video/services/pixabayMusicService'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { useAuth } from '@/contexts/AuthContext'
@@ -236,7 +236,7 @@ const CreateStoryModal: React.FC<CreateStoryModalProps> = ({
       // Create stories
       const createPromises = storyDataArray.map((storyData, index) => {
         console.log(`Creating story ${index + 1}/${storyDataArray.length}:`, storyData.media_type)
-        return storiesService.createStory(storyData)
+        return createStory(storyData)
       })
 
       const createdStories = await Promise.all(createPromises)
