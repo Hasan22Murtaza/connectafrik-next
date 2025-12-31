@@ -159,7 +159,7 @@ const FeedLayout = ({ children }) => {
   }, [suggestedUsers])
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 ">
       {/* Left Sidebar - Hidden on mobile, visible on desktop */}
       <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[93vh]">
         <LeftSidebar onlineContacts={onlineFriends} />

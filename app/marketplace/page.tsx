@@ -156,7 +156,7 @@ const MarketplacePage: React.FC = () => {
     }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto">
       <div className="flex gap-4">
         {/* Sidebar */}
         <aside

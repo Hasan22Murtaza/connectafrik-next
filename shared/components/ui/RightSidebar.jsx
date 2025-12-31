@@ -5,8 +5,7 @@ import OnlineContactsSection from '@/shared/components/ui/OnlineContactsSection'
 const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts = [] }) => {
 
   return (
-  <aside className="w-96 flex-shrink-0  bg-white
-   border-l border-gray-200 h-full overflow-y-auto py-6 px-4
+  <aside className="w-96 flex-shrink-0   h-full overflow-y-auto py-6 px-4
    scrollbar-hover">
     {/* DataAfrik Promotion */}
     <div className="mb-8">

@@ -17,9 +17,10 @@ const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="bg-gray-100 text-black">
+    <footer className="bg-gray-100 text-black ">
+      <div className='max-w-full 2xl:max-w-screen-2xl mx-auto'>
       {/* Main Footer Content */}
-      <div className="max-w-full mx-auto px-4 py-12">
+      <div className=" px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
@@ -195,7 +196,6 @@ const Footer: React.FC = () => {
 
       {/* Bottom Bar */}
       <div className="border-t border-gray-300">
-        <div className="max-w-full mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
             <div className="flex items-center space-x-1 text-sm text-gray-800">
               <span>© {currentYear} ConnectAfrik. Made with</span>
@@ -223,7 +223,7 @@ const Footer: React.FC = () => {
               </Link>
             </div>
           </div>
-        </div>
+      </div>
       </div>
     </footer>
   );

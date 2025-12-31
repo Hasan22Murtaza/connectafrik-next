@@ -64,6 +64,7 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-screen bg-white">
             <ConditionalHeader />
+            
             {children}
             <Footer />
           </div>

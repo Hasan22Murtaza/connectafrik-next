@@ -61,11 +61,11 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-full mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible ">
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm ">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
-          <Link href="/" className="flex-shrink-0 ">
+          <Link href="/" className="flex-shrink-0 ">  
             <img src="/assets/images/logo_2.png" alt="" className="w-16" />
           </Link>
 
