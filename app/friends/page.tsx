@@ -281,11 +281,11 @@ const FriendsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full mx-auto ">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto ">
         <div className="flex gap-6">
           {/* Left Sidebar */}
           <div className="hidden md:block w-64 shrink-0">
-            <div className="sticky top-0 h-[calc(100vh-3rem)] bg-white rounded-lg shadow-sm p-4 overflow-y-auto">
+            <div className="sticky top-0 h-[calc(100vh-3rem)] px-4 py-6 overflow-y-auto">
               {/* Header */}
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Friends</h2>
                 

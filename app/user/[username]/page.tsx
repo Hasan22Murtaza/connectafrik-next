@@ -260,29 +260,18 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Back</span>
-        </button>
-
         {/* Profile Header - Mobile Optimized */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-          {/* Top Section: Avatar + Basic Info + Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6" style={{ gap: '16px' }}>
-            {/* Avatar */}
+          <div className="flex flex-col sm:flex-row items-start mb-6" style={{ gap: '16px' }}>
             <div className="relative">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
                   alt={`${profile.full_name}'s avatar`}
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover"
+                  className="w-20 h-20  rounded-full object-cover"
                 />
               ) : (
-                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-300 rounded-full flex items-center justify-center">
+                <div className="w-20 h-20  bg-gray-300 rounded-full flex items-center justify-center">
                   <span className="text-gray-600 font-bold text-xl sm:text-2xl">
                     {profile.full_name.charAt(0).toUpperCase()}
                   </span>
@@ -295,7 +284,6 @@ const UserProfilePage: React.FC = () => {
               )}
             </div>
 
-            {/* Basic Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center mb-1" style={{ gap: '8px' }}>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
@@ -304,7 +292,6 @@ const UserProfilePage: React.FC = () => {
                 <span className="text-gray-500 text-sm sm:text-lg">@{profile.username}</span>
               </div>
               
-              {/* Stats - Compact for mobile */}
               <div className="flex items-center text-xs sm:text-sm" style={{ gap: '16px' }}>
                 <div className="flex items-center" style={{ gap: '4px' }}>
                   <Users className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
@@ -324,7 +311,6 @@ const UserProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Action Buttons - Prominent on mobile */}
             {!isOwnProfile && (
               <div className="flex flex-col sm:flex-row w-full sm:w-auto" style={{ gap: '8px' }}>
                 <button
@@ -406,7 +392,6 @@ const UserProfilePage: React.FC = () => {
             )}
           </div>
 
-          {/* Bottom Section: Bio + Location + Mutual Friends */}
           <div className="space-y-4">
             {profile.bio && (
               <p className="text-gray-700 text-sm sm:text-base">{profile.bio}</p>
@@ -425,7 +410,6 @@ const UserProfilePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Mutual Friends */}
             {user && user.id !== profile.id && mutualFriendsCount > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">

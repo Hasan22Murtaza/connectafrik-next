@@ -56,7 +56,7 @@ const PoliticsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      <div className="max-w-full mx-auto px-4 py-6">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex sm:items-center items-start space-x-3 mb-4">

@@ -24,7 +24,7 @@ const getStatusColor = (status) => {
 };
 
 const LeftSidebar = ({ onlineContacts = [] }) => (
-  <aside className="w-80 flex-shrink-0 hidden lg:block bg-white border-r border-gray-200 h-full overflow-y-auto py-6 px-4 scrollbar-hover">
+  <aside className="w-80 flex-shrink-0 hidden lg:block h-full overflow-y-auto py-6 px-4 scrollbar-hover">
     <div className="mb-8">
       <h2 className="text-lg font-semibold mb-4">Online Contacts</h2>
       <ul className="space-y-2">

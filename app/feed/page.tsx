@@ -254,7 +254,7 @@ const handleEmojiReaction = useCallback(async (postId: string, emoji: string) =>
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto ">
 
       <FeedLayout>
         <div className="w-full space-y-6 sm:space-y-8">

@@ -113,7 +113,7 @@ const categories = [
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className='max-w-full mx-auto px-4'>
+      <div className='max-w-full 2xl:max-w-screen-2xl mx-auto px-4'>
       <div className=" border-b border-gray-200">
         <div className=" py-6 ">
          

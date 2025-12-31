@@ -10,19 +10,10 @@ const VideoPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full mx-auto px-4">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4">
       {/* Header */}
       <div className=" border-b border-gray-200">
         <div className="py-6">
-          {/* Back to Feed Button */}
-          <button
-            onClick={() => router.push('/feed')}
-            className="flex items-center space-x-2 text-orange-600 hover:text-orange-700 transition-colors mb-4 group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <Home className="w-4 h-4" />
-            <span className="font-medium">Back to Feed</span>
-          </button>
 
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -98,8 +89,7 @@ const VideoPage: React.FC = () => {
         </div>
       </div>
 </div>
-      {/* Footer */}
-      <Footer />
+
     </div>
   )
 }
