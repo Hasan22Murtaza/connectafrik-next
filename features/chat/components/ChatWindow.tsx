@@ -185,7 +185,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     new Map()
   ); // Track which messages can be deleted for everyone
   const [showOptionsMenu, setShowOptionsMenu] = useState(false); // Track options menu visibility
-  console.log(showOptionsMenu, "showOptionsMenu");
   const userInitiatedCall = useRef(false); // Track if user started the call
   const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map()); // Cache for delete permissions
   const processedMessageIdsRef = useRef<Set<string>>(new Set()); // Track already processed message IDs
@@ -244,21 +243,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (pendingCallType) {
       const initiatedByCurrentUser = Boolean(
         pendingCallerId && currentUserId && pendingCallerId === currentUserId
-      );
-
-      console.log(
-        "ChatWindow received pending call:",
-        pendingCallType,
-        "roomId:",
-        pendingRoomId,
-        "thread:",
-        threadId,
-        "currentUser:",
-        currentUser?.id,
-        "initiatedByCurrentUser:",
-        initiatedByCurrentUser,
-        "userInitiatedFlag:",
-        userInitiatedCall.current
       );
 
       setCurrentCallType(pendingCallType);
@@ -350,7 +334,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         toast.success("Message deleted for you");
       }
     } catch (error) {
-      console.error("Error deleting message:", error);
       toast.error(
         deleteForEveryone
           ? "Failed to delete message for everyone"
@@ -388,7 +371,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       toast.success("All messages cleared");
       setShowOptionsMenu(false);
     } catch (error) {
-      console.error("Error clearing messages:", error);
       // Revert optimistic update by restoring previous messages
       if (prevMessagesForThread) {
         setMessagesForThread(threadId, prevMessagesForThread);
@@ -399,19 +381,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleStartCall = async (type: "audio" | "video") => {
     try {
-      console.log("User initiated call:", type, "threadId:", threadId);
       userInitiatedCall.current = true; // Mark that user started this call
-      setCurrentCallType(type);
-      setIsIncomingCall(false); // Mark as outgoing call
-      setIsCallOpen(true);
 
-      // The startCall function now handles token fetching and room creation
+      // The startCall function handles token fetching and room creation
+      // State will be set via the pendingCall state from context (handled by useEffect)
       await startCall(threadId, type);
-
-      // The roomId will be set via the pendingCall state from context
-      console.log("✅ Call request sent successfully");
     } catch (error) {
-      console.error("Error starting call:", error);
+      // Reset state on error
       setIsCallOpen(false);
       setIsIncomingCall(false);
       setActiveRoomId(null);
@@ -420,7 +396,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const handleEndCall = () => {
-    console.log("handleEndCall called");
     setIsCallOpen(false);
     setIsIncomingCall(false);
     setCurrentCallType("video");

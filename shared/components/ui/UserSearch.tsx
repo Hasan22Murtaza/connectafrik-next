@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Search, UserPlus, Users, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { notificationService } from '@/shared/services/notificationService'
+import { Search, UserPlus, Users, X } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
 
 interface SearchResult {

@@ -34,23 +34,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
     return symbols[currency] || currency
   }
 
-  const getCategoryEmoji = (category: string) => {
-    const emojis: Record<string, string> = {
-      fashion: '👗',
-      crafts: '🎨',
-      electronics: '📱',
-      food: '🍽️',
-      beauty: '💄',
-      home: '🏠',
-      books: '📚',
-      art: '🖼️',
-      jewelry: '💎',
-      services: '🔧',
-      other: '📦'
-    }
-    return emojis[category] || '📦'
-  }
-
   const getConditionColor = (condition: string) => {
     const colors: Record<string, string> = {
       'new': 'bg-green-100 text-green-700',
@@ -59,45 +42,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
       'fair': 'bg-orange-100 text-orange-700'
     }
     return colors[condition] || 'bg-gray-100 text-gray-700'
-  }
-
-  const handleContactSeller = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-
-    if (!user) {
-      toast.error('Please sign in to contact the seller')
-      return
-    }
-
-    if (!product.seller?.id) {
-      toast.error('Seller information not available')
-      return
-    }
-
-    if (user.id === product.seller.id) {
-      toast.error('This is your own product')
-      return
-    }
-
-    setIsContactingeller(true)
-    try {
-      const sellerParticipant: ChatParticipant = {
-        id: product.seller.id,
-        name: product.seller.full_name,
-        avatarUrl: product.seller.avatar_url
-      }
-
-      await startChatWithMembers([sellerParticipant], {
-        participant_ids: [product.seller.id],
-        openInDock: true
-      })
-      toast.success(`Chat opened with ${product.seller.full_name}`)
-    } catch (error) {
-      console.error('Error opening chat:', error)
-      toast.error('Failed to open chat with seller')
-    } finally {
-      setIsContactingeller(false)
-    }
   }
 
   const handleShareProduct = async (e: React.MouseEvent) => {
@@ -218,11 +162,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
         <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#f97316] transition-colors h-15">
           {product.title}
         </h3>
-
-        {/* Description */}
-        {/* <p className="text-sm text-gray-600 mb-3 line-clamp-2 h-11">
-          {product.description}
-        </p> */}
 
         {/* Price */}
         <div className="flex items-center justify-between mb-3">

@@ -389,6 +389,66 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     };
   }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
 
+  // Listen for call_ended messages (for both caller and receiver)
+  // Set up as soon as modal opens and keep it active until modal closes
+  useEffect(() => {
+    if (!isOpen || !threadId || !currentUserId) {
+      return;
+    }
+
+    let hasEnded = false; // Guard to prevent multiple triggers
+
+    const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
+      // Verify message belongs to this thread
+      if (message.thread_id !== threadId) {
+        return;
+      }
+
+      // Only process if message is from the other participant (not from current user)
+      // Check current status to avoid processing if call is already ended
+      if (callStatusRef.current === 'ended') {
+        return;
+      }
+
+      // Check if this is an end message from the other participant
+      const isEndMessage = message.message_type === 'call_ended';
+      const isFromOtherUser = message.sender_id && message.sender_id !== currentUserId;
+      const hasEndMetadata = message.metadata?.endedBy;
+
+      if (!hasEnded && isEndMessage && hasEndMetadata && isFromOtherUser) {
+        hasEnded = true; // Prevent re-triggering
+
+        // Stop ringtone immediately
+        if (ringtoneRef.current) {
+          ringtoneRef.current.stop();
+          ringtoneRef.current = null;
+        }
+        ringtoneService.stopRingtone();
+
+        // Clear timeout
+        if (callTimeoutRef.current) {
+          clearTimeout(callTimeoutRef.current);
+          callTimeoutRef.current = null;
+        }
+
+        // End the call and close modal
+        if (isMountedRef.current) {
+          setCallStatus('ended');
+          cleanupResources();
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              onClose();
+            }
+          }, 1000);
+        }
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
+
   const addRemoteStream = (stream: MediaStream) => {
     updateRemoteStreams((prev) => {
       const existingIndex = prev.findIndex((existing) => existing.id === stream.id);
@@ -666,7 +726,28 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       });
 
       // ✅ Add handler for when meeting ends unexpectedly
-      meeting.on("meeting-left", () => {
+      meeting.on("meeting-left", async () => {
+        // Send call_ended notification if meeting ends unexpectedly
+        if (threadId && currentUserId && callStatusRef.current !== 'ended') {
+          try {
+            await supabaseMessagingService.sendMessage(
+              threadId,
+              {
+                content: `📞 Call ended`,
+                message_type: 'call_ended',
+                metadata: {
+                  callType: callType,
+                  endedBy: currentUserId,
+                  endedAt: new Date().toISOString()
+                }
+              },
+              { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+            );
+          } catch (msgError) {
+            console.warn('⚠️ Failed to send call_ended message on meeting-left:', msgError);
+          }
+        }
+        
         if (isMountedRef.current) {
           setCallStatus('ended');
         }
@@ -1013,6 +1094,35 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         }
       });
 
+      // ✅ Add handler for when meeting ends unexpectedly (for accepted calls)
+      meeting.on("meeting-left", async () => {
+        // Send call_ended notification if meeting ends unexpectedly
+        if (threadId && currentUserId && callStatusRef.current !== 'ended') {
+          try {
+            await supabaseMessagingService.sendMessage(
+              threadId,
+              {
+                content: `📞 Call ended`,
+                message_type: 'call_ended',
+                metadata: {
+                  callType: callType,
+                  endedBy: currentUserId,
+                  endedAt: new Date().toISOString()
+                }
+              },
+              { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+            );
+          } catch (msgError) {
+            // Failed to send call_ended message
+          }
+        }
+        
+        if (isMountedRef.current) {
+          setCallStatus('ended');
+        }
+        cleanupResources();
+      });
+
       // Get local stream for accepted call BEFORE joining
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -1138,7 +1248,29 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     setTimeout(() => onClose(), 1000);
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
+    // Send call_ended notification to the other participant
+    if (threadId && currentUserId && callStatusRef.current !== 'ended') {
+      try {
+        await supabaseMessagingService.sendMessage(
+          threadId,
+          {
+            content: `📞 Call ended`,
+            message_type: 'call_ended',
+            metadata: {
+              callType: callType,
+              endedBy: currentUserId,
+              endedAt: new Date().toISOString()
+            }
+          },
+          { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+        );
+      } catch (msgError) {
+        console.warn('⚠️ Failed to send call_ended message:', msgError);
+        // Don't fail the call end if message sending fails
+      }
+    }
+    
     cleanupResources();
     onCallEnd?.();
     setTimeout(() => onClose(), 1000);

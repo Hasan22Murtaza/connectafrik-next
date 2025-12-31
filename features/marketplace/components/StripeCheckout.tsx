@@ -45,10 +45,8 @@ interface StripeCheckoutProps {
   onSuccess: () => void
 }
 
-type CheckoutFormMode = 'mock' | 'real'
-
 // Payment form component (must be inside Elements provider)
-const CheckoutFormBase: React.FC<{
+const CheckoutForm: React.FC<{
   product: Product
   quantity: number
   totalAmount: number
@@ -58,9 +56,6 @@ const CheckoutFormBase: React.FC<{
   clientSecret: string
   onSuccess: () => void
   onClose: () => void
-  mode: CheckoutFormMode
-  stripe?: Stripe | null
-  elements?: StripeElements | null
 }> = ({
   product,
   quantity,
@@ -70,14 +65,12 @@ const CheckoutFormBase: React.FC<{
   notes,
   clientSecret: _clientSecret,
   onSuccess,
-  onClose,
-  mode,
-  stripe,
-  elements
+  onClose
 }) => {
   const { user } = useAuth()
+  const stripe = useStripe()
+  const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
-  const isMockPayment = mode === 'mock'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,96 +82,6 @@ const CheckoutFormBase: React.FC<{
     setIsProcessing(true)
 
     try {
-      if (isMockPayment) {
-        // Handle mock payment - simulate success
-        toast.success('Mock payment successful! (Testing mode)')
-
-        const buyerEmail = user?.user_metadata?.email || user?.id || 'customer@connectafrik.com'
-
-        // Create order in database with mock payment reference
-        const orderData = {
-          buyer_id: user!.id,
-          buyer_email: buyerEmail,
-          buyer_phone: buyerPhone || null,
-          seller_id: product.seller_id,
-          product_id: product.id,
-          product_title: product.title,
-          product_image: product.images?.[0] || null,
-          quantity,
-          unit_price: product.price,
-          total_amount: totalAmount,
-          currency: product.currency || 'USD',
-          payment_status: 'completed',
-          payment_method: 'stripe_mock',
-          payment_reference: `mock_${Date.now()}`,
-          paid_at: new Date().toISOString(),
-          shipping_address: shippingAddress.street ? shippingAddress : null,
-          notes: notes || null,
-          status: 'confirmed'
-        }
-
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .insert(orderData)
-          .select()
-          .single()
-
-        if (orderError) throw orderError
-
-        // Create payment transaction record
-        await supabase
-          .from('payment_transactions')
-          .insert({
-            order_id: order.id,
-            transaction_reference: `mock_${Date.now()}`,
-            amount: totalAmount,
-            currency: product.currency || 'USD',
-            status: 'success',
-            stripe_response: { mock: true, message: 'Mock payment for testing' },
-            verified_at: new Date().toISOString()
-          })
-
-        // Update product stock if available
-        if (product.stock_quantity !== null && product.stock_quantity !== undefined) {
-          await supabase
-            .from('products')
-            .update({ stock_quantity: Math.max(0, product.stock_quantity - quantity) })
-            .eq('id', product.id)
-        }
-
-        // Send confirmation emails (non-blocking)
-        const buyerName = user?.user_metadata?.full_name || user?.id || 'Customer'
-        const sellerName = product.seller?.full_name || product.seller?.id || 'Seller'
-        const buyerEmailConfirm = (buyerEmail || 'support@connectafrik.com') as string
-
-        sendOrderConfirmationEmail(buyerEmailConfirm, {
-          orderNumber: order.order_number,
-          productTitle: product.title,
-          quantity,
-          totalAmount,
-          currency: product.currency || 'USD',
-          buyerName,
-        }).catch(err => console.error('Failed to send buyer confirmation:', err))
-
-        if (product.seller_id) {
-          const sellerEmail = 'support@connectafrik.com' // Default seller email
-          sendNewOrderNotificationEmail(sellerEmail || 'support@connectafrik.com', {
-            orderNumber: order.order_number,
-            productTitle: product.title,
-            quantity,
-            totalAmount,
-            currency: product.currency || 'USD',
-            buyerName,
-            sellerName,
-          }).catch(err => console.error('Failed to send seller notification:', err))
-        }
-
-        toast.success('Mock payment successful! Order created.')
-        onSuccess()
-        onClose()
-        return
-      }
-
       // Confirm payment for real Stripe payments
       if (!stripe || !elements) {
         toast.error('Payment form is still initializing. Please wait a moment.')
@@ -229,8 +132,7 @@ const CheckoutFormBase: React.FC<{
           .insert(orderData)
           .select()
           .single()
-
-        if (orderError) throw orderError
+        // if (orderError) throw orderError
 
         // Create payment transaction record
         await supabase
@@ -241,7 +143,6 @@ const CheckoutFormBase: React.FC<{
             amount: totalAmount,
             currency: product.currency || 'USD',
             status: 'success',
-            stripe_response: paymentIntent,
             verified_at: new Date().toISOString()
           })
 
@@ -296,19 +197,7 @@ const CheckoutFormBase: React.FC<{
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {isMockPayment ? (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-            <span className="text-sm font-medium text-yellow-800">Testing Mode</span>
-          </div>
-          <p className="text-sm text-yellow-700">
-            Payment system is in testing mode. Click "Complete Mock Payment" to simulate a successful transaction.
-          </p>
-        </div>
-      ) : (
-        <PaymentElement />
-      )}
+      <PaymentElement />
 
       <div className="flex space-x-3">
         <button
@@ -321,33 +210,19 @@ const CheckoutFormBase: React.FC<{
         </button>
         <button
           type="submit"
-          disabled={isProcessing || (!isMockPayment && (!stripe || !elements))}
+          disabled={isProcessing || (!stripe || !elements)}
           className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isProcessing ? 'Processing...' : (isMockPayment ? 'Complete Mock Payment' : 'Pay Now')}
+          {isProcessing ? 'Processing...' : 'Pay Now'}
         </button>
       </div>
 
       <p className="text-xs text-center text-gray-500">
-        {isMockPayment ? (
-          '🧪 Mock payment for testing purposes only'
-        ) : (
-          '🔒 Secure payment powered by Stripe. Your payment information is encrypted and secure.'
-        )}
+        🔒 Secure payment powered by Stripe. Your payment information is encrypted and secure.
       </p>
     </form>
   )
 }
-
-const CheckoutForm: React.FC<Omit<React.ComponentProps<typeof CheckoutFormBase>, 'mode' | 'stripe' | 'elements'>> = (props) => {
-  const stripe = useStripe()
-  const elements = useElements()
-  return <CheckoutFormBase {...props} mode="real" stripe={stripe} elements={elements} />
-}
-
-const MockCheckoutForm: React.FC<Omit<React.ComponentProps<typeof CheckoutFormBase>, 'mode' | 'stripe' | 'elements'>> = (props) => (
-  <CheckoutFormBase {...props} mode="mock" />
-)
 
 const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   product,
@@ -367,12 +242,10 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   const [buyerPhone, setBuyerPhone] = useState('')
   const [notes, setNotes] = useState('')
   const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [isMockClientSecret, setIsMockClientSecret] = useState(false)
   const [isLoadingPayment, setIsLoadingPayment] = useState(false)
 
   const totalAmount = product.price * quantity
   const stripePromise = getStripe()
-  const isMockPayment = Boolean(clientSecret?.toLowerCase().includes('mock'))
 
   // Calculate commission breakdown
   const commissionBreakdown = useMemo(() => {
@@ -677,36 +550,20 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
             </div>
           )}
 
-          {clientSecret && !isLoadingPayment && (
-            isMockPayment ? (
-              <MockCheckoutForm
+          {clientSecret && !isLoadingPayment && stripePromise && (
+            <Elements stripe={stripePromise} options={{ clientSecret: clientSecret! }}>
+              <CheckoutForm
                 product={product}
                 quantity={quantity}
                 totalAmount={totalAmount}
                 shippingAddress={shippingAddress}
                 buyerPhone={buyerPhone}
                 notes={notes}
-                clientSecret={clientSecret}
+                clientSecret={clientSecret!}
                 onSuccess={onSuccess}
                 onClose={onClose}
               />
-            ) : (
-              stripePromise && (
-                <Elements stripe={stripePromise} options={{ clientSecret: clientSecret! }}>
-                  <CheckoutForm
-                    product={product}
-                    quantity={quantity}
-                    totalAmount={totalAmount}
-                    shippingAddress={shippingAddress}
-                    buyerPhone={buyerPhone}
-                    notes={notes}
-                    clientSecret={clientSecret!}
-                    onSuccess={onSuccess}
-                    onClose={onClose}
-                  />
-                </Elements>
-              )
-            )
+            </Elements>
           )}
 
           {!isFormValid() && !isLoadingPayment && (

@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Globe, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
-const Signin: React.FC = () => {
+const SigninForm: React.FC = () => {
   const { signIn } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -195,6 +195,20 @@ const Signin: React.FC = () => {
       </div>
     </div>
   );
+}
+
+const Signin: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SigninForm />
+    </Suspense>
+  )
 }
 
 export default Signin

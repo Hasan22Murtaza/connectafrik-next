@@ -1,6 +1,6 @@
-import React, { useState, useRef, useCallback } from 'react'
-import { Upload, X, Film, AlertCircle, CheckCircle, Loader } from 'lucide-react'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
+import { AlertCircle, CheckCircle, Film, Loader, Upload, X } from 'lucide-react'
+import React, { useCallback, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 
 interface VideoUploaderProps {
