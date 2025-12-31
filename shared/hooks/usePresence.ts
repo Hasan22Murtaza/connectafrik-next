@@ -45,7 +45,7 @@ export const usePresence = () => {
       const interval = setInterval(async () => {
         const users = await getOnlineUsers()
         setOnlineUsers(users)
-      }, 5000) // Update every 5 seconds
+      }, 8000) // Update every 8 seconds
 
       return () => {
         unsubscribe()

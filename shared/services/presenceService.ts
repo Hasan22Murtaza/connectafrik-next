@@ -21,7 +21,7 @@ type PresenceChangeCallback = (userId: string, status: PresenceStatusType, lastS
 
 // Constants
 const IDLE_THRESHOLD = 5 * 60 * 1000 // 5 minutes
-const HEARTBEAT_INTERVAL = 30 * 1000 // 30 seconds
+const HEARTBEAT_INTERVAL = 45 * 1000 // 45 seconds
 
 // State management
 let presenceChannel: RealtimeChannel | null = null
@@ -171,14 +171,13 @@ export const initializePresence = async (userId: string): Promise<void> => {
 
     await presenceChannel
       .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel?.presenceState()
-        console.log('Presence state:', state)
+        // Presence state synced
       })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('User joined:', key, newPresences)
+      .on('presence', { event: 'join' }, () => {
+        // User joined
       })
-      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('User left:', key, leftPresences)
+      .on('presence', { event: 'leave' }, () => {
+        // User left
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED' && presenceChannel) {

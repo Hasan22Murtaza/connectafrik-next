@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Play, Pause, Volume2, VolumeX, Heart, MessageCircle, Share, ChevronLeft, ChevronRight, Music, Trash2, MoreHorizontal } from 'lucide-react'
 import { Story } from '@/features/social/services/storiesService'
-import { storiesService } from '@/features/social/services/storiesService'
+import { recordStoryView } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 
@@ -38,7 +38,7 @@ const StoriesViewer: React.FC<StoriesViewerProps> = ({
   // Record story view when component mounts or story changes
   useEffect(() => {
     if (currentStory && user && !hasViewed) {
-      storiesService.recordStoryView(currentStory.id, user.id)
+      recordStoryView(currentStory.id, user.id)
         .then(() => setHasViewed(true))
         .catch(error => console.error('Error recording story view:', error))
     }
