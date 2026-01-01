@@ -119,8 +119,55 @@ export const usePosts = (category?: string) => {
 
       if (error) throw error
 
-      // Add the new post to the top of the list
       setPosts(prev => [{ ...data, isLiked: false }, ...prev])
+
+      try {
+        const authorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone'
+        const postTitle = postData.title || postData.content.substring(0, 50) || 'a new post'
+
+        const { data: followersData } = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('following_id', user.id)
+
+        const { data: friendsData } = await supabase
+          .from('friend_requests')
+          .select('sender_id, receiver_id')
+          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+          .eq('status', 'accepted')
+
+        const recipientIds = new Set<string>()
+
+        if (followersData) {
+          followersData.forEach(follow => {
+            if (follow.follower_id !== user.id) {
+              recipientIds.add(follow.follower_id)
+            }
+          })
+        }
+
+        if (friendsData) {
+          friendsData.forEach(friend => {
+            const friendId = friend.sender_id === user.id ? friend.receiver_id : friend.sender_id
+            if (friendId && friendId !== user.id) {
+              recipientIds.add(friendId)
+            }
+          })
+        }
+
+        const notificationPromises = Array.from(recipientIds).map(recipientId =>
+          notificationService.sendNewPostNotification(
+            recipientId,
+            authorName,
+            postTitle,
+            data.id
+          ).catch(() => false)
+        )
+
+        await Promise.allSettled(notificationPromises)
+      } catch (notificationError) {
+      }
+
       return { error: null }
     } catch (error: any) {
       return { error: error.message }

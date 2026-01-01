@@ -334,6 +334,50 @@ export async function sendPostInteractionNotification(
   })
 }
 
+export async function sendNewPostNotification(
+  recipientId: string, 
+  authorName: string, 
+  postTitle: string,
+  postId: string
+): Promise<boolean> {
+  if (!recipientId || !authorName || !postTitle || !postId) {
+    return false
+  }
+
+  const truncatedTitle = postTitle.length > 50 
+    ? `${postTitle.substring(0, 50)}...` 
+    : postTitle
+
+  return sendNotification({
+    user_id: recipientId,
+    title: 'New Post',
+    body: `${authorName} shared a new post: "${truncatedTitle}"`,
+    icon: '/assets/images/logo.png',
+    badge: '/assets/images/logo.png',
+    tag: `new-post-${postId}`,
+    data: {
+      type: 'new_post',
+      post_id: postId,
+      author_name: authorName,
+      url: '/feed'
+    },
+    actions: [
+      {
+        action: 'view',
+        title: 'View Post',
+        icon: '/icons/view.png'
+      },
+      {
+        action: 'dismiss',
+        title: 'Dismiss',
+        icon: '/icons/dismiss.png'
+      }
+    ],
+    requireInteraction: false,
+    vibrate: [100, 50, 100]
+  })
+}
+
 /**
  * Send system notification
  * @param recipientId - The user ID who will receive the notification
@@ -392,5 +436,6 @@ export const notificationService = {
   sendMessageNotification,
   sendMissedCallNotification,
   sendPostInteractionNotification,
+  sendNewPostNotification,
   sendSystemNotification
 }
