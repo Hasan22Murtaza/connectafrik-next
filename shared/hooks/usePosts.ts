@@ -328,6 +328,14 @@ export const usePosts = (category?: string) => {
     ))
   }
 
+  const updatePostLikesCount = (postId: string, delta: number) => {
+    setPosts(prev => prev.map(p => 
+      p.id === postId 
+        ? { ...p, likes_count: Math.max(0, (p.likes_count || 0) + delta) }
+        : p
+    ))
+  }
+
   return {
     posts,
     loading,
@@ -338,6 +346,7 @@ export const usePosts = (category?: string) => {
     deletePost,
     updatePost,
     recordView,
+    updatePostLikesCount,
     refetch: fetchPosts
   }
 }

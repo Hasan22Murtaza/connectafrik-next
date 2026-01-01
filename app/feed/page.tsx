@@ -34,7 +34,7 @@ const FeedPage: React.FC = () => {
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [explorationBoost, setExplorationBoost] = useState(false)
 
-  const { posts, loading, createPost, toggleLike, deletePost, updatePost, recordView } = usePosts(activeCategory)
+  const { posts, loading, createPost, toggleLike, deletePost, updatePost, recordView, updatePostLikesCount } = usePosts(activeCategory)
   const { members } = useMembers()
 
   // Apply fairness ranking to posts (always balanced, with optional exploration boost)
@@ -128,12 +128,173 @@ const FeedPage: React.FC = () => {
   return codePoints?.join(" ");
 }
 
-const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
-   const unicodeCodes = getEmojiUnicodeCodes(emoji);
-  console.log(`Reacted emoji unicode codes: ${unicodeCodes}`);
-  console.log('Emoji reacted:', postId, emoji);
-  // Your reaction handling code here...
-}, []);
+  // Map emoji to reaction type
+  const getReactionTypeFromEmoji = (emoji: string): 'like' | 'love' | 'laugh' | 'angry' | 'sad' | 'wow' | 'care' => {
+    // Common emoji mappings
+    const emojiMap: { [key: string]: 'like' | 'love' | 'laugh' | 'angry' | 'sad' | 'wow' | 'care' } = {
+      '\u{1F44D}': 'like',      // 👍 thumbs up
+      '\u2764\uFE0F': 'love',   // ❤️ heart
+      '\u{1F602}': 'laugh',     // 😂 laughing
+      '\u{1F62E}': 'wow',       // 😮 surprised
+      '\u{1F622}': 'sad',       // 😢 crying
+      '\u{1F621}': 'angry',     // 😡 angry
+      '\u{1F525}': 'love',      // 🔥 fire (love)
+      '\u{1F44F}': 'like',      // 👏 clapping (like)
+      '\u{1F64C}': 'like',      // 🙌 raising hands (like)
+      '\u{1F389}': 'wow',       // 🎉 party (wow)
+      '\u{1F4AF}': 'wow',       // 💯 100 (wow)
+      '\u{1F60E}': 'wow',       // 😎 cool (wow)
+      '\u{1F973}': 'laugh',     // 🥳 party face (laugh)
+      '\u{1F929}': 'wow',       // 🤩 star-struck (wow)
+      '\u{1F606}': 'laugh',     // 😆 laughing (laugh)
+      '\u{1F60F}': 'wow',       // 😏 smirking (wow)
+      '\u{1F607}': 'wow',       // 😇 halo (wow)
+      '\u{1F61C}': 'laugh',     // 😜 winking (laugh)
+      '\u{1F914}': 'wow',       // 🤔 thinking (wow)
+      '\u{1F631}': 'wow',       // 😱 screaming (wow)
+      '\u{1F624}': 'angry',     // 😤 huffing (angry)
+      '\u{1F605}': 'laugh',     // 😅 nervous laugh (laugh)
+      '\u{1F60B}': 'laugh',     // 😋 yummy (laugh)
+      '\u{1F62C}': 'laugh',     // 😬 grimacing (laugh)
+      '\u{1F603}': 'laugh',     // 😃 grinning (laugh)
+    };
+    
+    return emojiMap[emoji] || 'like';
+  };
+
+  const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
+    try {
+      if (!user) {
+        toast.error('Please sign in to react');
+        return;
+      }
+
+      const reactionType = getReactionTypeFromEmoji(emoji);
+
+      // Check if user already has a reaction for this post
+      const { data: existingReaction, error: checkError } = await supabase
+        .from('post_reactions')
+        .select('id, reaction_type')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error checking existing reaction:', checkError);
+        toast.error('Failed to check reaction');
+        return;
+      }
+
+      // If user already reacted with the same type, remove it (toggle off)
+      if (existingReaction && existingReaction.reaction_type === reactionType) {
+        const { error: deleteError } = await supabase
+          .from('post_reactions')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .eq('reaction_type', reactionType);
+
+        if (deleteError) {
+          console.error('Error removing reaction:', deleteError);
+          toast.error('Failed to remove reaction');
+          return;
+        }
+
+        // Decrement likes_count in posts table
+        const { data: currentPost, error: fetchError } = await supabase
+          .from('posts')
+          .select('likes_count')
+          .eq('id', postId)
+          .single();
+
+        if (!fetchError && currentPost) {
+          const newLikesCount = Math.max(0, (currentPost.likes_count || 0) - 1);
+          const { error: updateError } = await supabase
+            .from('posts')
+            .update({ likes_count: newLikesCount })
+            .eq('id', postId);
+
+          if (updateError) {
+            console.error('Error updating likes count:', updateError);
+          } else {
+            // Update local state for real-time UI update
+            updatePostLikesCount(postId, -1);
+          }
+        }
+
+        toast.success('Reaction removed');
+        return;
+      }
+
+      // If user has a different reaction, update it
+      if (existingReaction) {
+        const { error: updateError } = await supabase
+          .from('post_reactions')
+          .update({ reaction_type: reactionType })
+          .eq('post_id', postId)
+          .eq('user_id', user.id);
+
+        if (updateError) {
+          console.error('Error updating reaction:', updateError);
+          toast.error('Failed to update reaction');
+          return;
+        }
+
+        toast.success('Reaction updated');
+        return;
+      }
+
+      // Insert new reaction
+      const { error: insertError } = await supabase
+        .from('post_reactions')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          reaction_type: reactionType
+        });
+
+      if (insertError) {
+        console.error('Error inserting reaction:', insertError);
+        toast.error('Failed to save reaction');
+        return;
+      }
+
+      // Increment likes_count in posts table
+      const { data: currentPost, error: fetchError } = await supabase
+        .from('posts')
+        .select('likes_count, author_id')
+        .eq('id', postId)
+        .single();
+
+      if (!fetchError && currentPost) {
+        const newLikesCount = (currentPost.likes_count || 0) + 1;
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ likes_count: newLikesCount })
+          .eq('id', postId);
+
+        if (updateError) {
+          console.error('Error updating likes count:', updateError);
+        } else {
+          // Update local state for real-time UI update
+          updatePostLikesCount(postId, 1);
+        }
+
+        // Update engagement reward for post author
+        if (currentPost.author_id) {
+          updateEngagementReward(currentPost.author_id, 'like');
+        }
+      }
+
+      // Track engagement event
+      trackEvent.like(user.id, postId);
+
+      toast.success('Reaction saved!');
+    } catch (error: any) {
+      console.error('Error handling emoji reaction:', error);
+      toast.error('Something went wrong');
+    }
+  }, [user, posts, updatePostLikesCount]);
 
 
 
