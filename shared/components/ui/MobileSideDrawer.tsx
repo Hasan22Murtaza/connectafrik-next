@@ -11,6 +11,7 @@ import {
   Video,
   Search,
   Users2,
+  Package,
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { UserSearch } from './UserSearch'
@@ -35,6 +36,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
     { icon: UserPlus, label: 'Find Friends', path: '/mobile-friends' },
     { icon: Users2, label: 'Groups', path: '/groups' },
     { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
+    { icon: Package, label: 'My Orders', path: '/my-orders' },
     { icon: Clock, label: 'Memories', path: '/memories' },
     { icon: Bookmark, label: 'Saved', path: '/saved' },
     { icon: Video, label: 'Video', path: '/video' },

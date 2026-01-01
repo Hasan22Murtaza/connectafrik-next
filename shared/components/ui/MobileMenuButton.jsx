@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Menu, X, Users, UserPlus, ShoppingBag, Clock, Bookmark, Video, Search, Users2 } from 'lucide-react'
+import { Menu, X, Users, UserPlus, ShoppingBag, Clock, Bookmark, Video, Search, Users2, Package } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { UserSearch } from './UserSearch'
 
@@ -14,6 +14,7 @@ const MobileMenuButton = () => {
     { icon: UserPlus, label: 'Find Friends', path: '/mobile-friends', color: 'text-blue-600' },
     { icon: Users2, label: 'Groups', path: '/groups', color: 'text-indigo-600' },
     { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace', color: 'text-orange-600' },
+    { icon: Package, label: 'My Orders', path: '/my-orders', color: 'text-orange-600' },
     { icon: Clock, label: 'Memories', path: '/memories', color: 'text-pink-600' },
     { icon: Bookmark, label: 'Saved', path: '/saved', color: 'text-yellow-600' },
     { icon: Video, label: 'Video', path: '/video', color: 'text-red-600' },

@@ -5,6 +5,7 @@ const shortcuts = [
   { name: "Friends", to: "/friends", path: "/assets/icons/friend.png" },
   { name: "Groups", to: "/groups", path: "/assets/icons/groups.png" },
   { name: "Marketplace", to: "/marketplace", path: "/assets/icons/market.png" },
+  { name: "My Orders", to: "/my-orders", path: "/assets/icons/market.png" },
   { name: "Memories", to: "/memories", path: "/assets/icons/memories.png" },
   { name: "Saved", to: "/saved", path: "/assets/icons/bookmark.png" },
   { name: "Video", to: "/video", path: "/assets/icons/video.png" },

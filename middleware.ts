@@ -73,6 +73,7 @@ export async function middleware(request: NextRequest) {
     '/saved',
     '/memories',
     '/video',
+    '/my-orders',
   ]
   const publicRoutes = [
     '/',
