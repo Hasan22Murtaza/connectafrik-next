@@ -95,7 +95,6 @@ export const PostCard: React.FC<PostCardProps> = ({
   postReactions = {},
   isPostLiked = false,
 }) => {
-  console.log("onEmojiReaction inside PostCard:", onEmojiReaction);
 
   const { user } = useAuth();
   const router = useRouter();
@@ -734,11 +733,14 @@ export const PostCard: React.FC<PostCardProps> = ({
           <div className="space-x-2">
             {post.views_count > 0 && (
               <span className=" hover:underline cursor-pointer text-gray-600 text-sm ">
-                watch {post.views_count || 0}
+                Watch {post.views_count || 0}
               </span>
             )}
             {post.comments_count > 0 && (
-              <span className=" hover:underline cursor-pointer text-gray-600 text-sm ">
+              <span className=" hover:underline cursor-pointer text-gray-600 text-sm "  onClick={(e) => {
+                e.stopPropagation();
+                onComment(post.id);
+              }}>
                 Comment {post.comments_count}
               </span>
             )}
@@ -751,22 +753,10 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
         {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          {/* Like button */}
-          {/* <button
-            onClick={() => onLike(post.id)}
-            className={`flex items-center space-x-1 justify-center sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg transition-colors duration-200 cursor-pointer flex-1 ${
-              isPostLiked
-                ? 'text-red-600 bg-red-50 hover:bg-red-100'
-                : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
-            }`}
-            aria-label={isPostLiked ? 'Unlike post' : 'Like post'}
-          >
-            <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isPostLiked ? 'fill-current' : ''}`} />
-            <span className="text-xs sm:text-sm font-medium">{post.likes_count}</span>
-          </button> */}
+        
 
           {/* React button with hover emoji picker */}
-          {/* <div className="relative flex-1">
+          <div className="relative flex-1">
             <button
               onMouseEnter={handleReactHover}
               onMouseLeave={handleReactLeave}
@@ -802,73 +792,8 @@ export const PostCard: React.FC<PostCardProps> = ({
                 </div>
               </div>
             )}
-          </div> */}
-
-          <div className="relative flex-1">
-            <button
-              onMouseEnter={handleReactHover}
-              onMouseLeave={handleReactLeave}
-              onClick={()=>setShowReactionPicker(true)}
-              className="flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
-              aria-label="React to post"
-            >
-              <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm font-medium">React</span>
-            </button>
-
-            {showReactionPicker && (
-              <div
-                className="absolute bottom-full left-0 mb-2 z-50"
-                onMouseEnter={handleReactHover}
-                onMouseLeave={handleReactLeave}
-              >
-                <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-1 sm:p-2">
-                  <div className="flex space-x-1 overflow-x-auto scrollbar-hide max-w-xs px-1">
-                    {/* Quick Emojis */}
-                    {quickReactions.slice(0, 4).map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => {
-                          onEmojiReaction?.(post.id, emoji);
-                        }}
-                        className="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg hover:scale-125 transition-transform cursor-pointer flex-shrink-0"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-
-                    {/* ➕ Button */}
-                    <button
-                      onClick={() => setShowEmojiPicker(true)}
-                      className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
-                    >
-                      <Plus className="w-4 h-4 text-gray-500" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Full Emoji Picker */}
-            {showEmojiPicker && (
-              <div className="absolute bottom-full left-0 mb-16 z-50">
-                <EmojiPicker
-                  height={350}
-                  onEmojiClick={(emojiData) => {
-                    onEmojiReaction?.(post.id, emojiData.emoji);
-                    setShowEmojiPicker(false);
-                    setShowReactionPicker(false);
-                  }}
-                />
-              </div>
-            )}
           </div>
 
-          {/* View count */}
-          {/* <div className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:bg-gray-200 hover:text-gray-500  cursor-pointer">
-            <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-xs sm:text-sm font-medium">Watch</span>
-          </div> */}
 
           <button
             onClick={() => onComment(post.id)}
