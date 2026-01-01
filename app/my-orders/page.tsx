@@ -229,7 +229,7 @@ const MyOrders: React.FC = () => {
                   </span>
                 </div>
                 <button
-                  onClick={() => toast('Order details page coming soon!', { icon: 'ℹ️' })}
+                  onClick={() => router.push(`/my-orders/${order.id}`)}
                   className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
                 >
                   View Details
