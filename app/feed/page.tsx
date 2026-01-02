@@ -223,6 +223,8 @@ const FeedPage: React.FC = () => {
         }
 
         toast.success('Reaction removed');
+        // Trigger a custom event to refetch reactions in PostCard
+        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }));
         return;
       }
 
@@ -241,6 +243,8 @@ const FeedPage: React.FC = () => {
         }
 
         toast.success('Reaction updated');
+        // Trigger a custom event to refetch reactions in PostCard
+        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }));
         return;
       }
 
@@ -290,6 +294,8 @@ const FeedPage: React.FC = () => {
       trackEvent.like(user.id, postId);
 
       toast.success('Reaction saved!');
+      // Trigger a custom event to refetch reactions in PostCard
+      window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }));
     } catch (error: any) {
       console.error('Error handling emoji reaction:', error);
       toast.error('Something went wrong');

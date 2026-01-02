@@ -30,6 +30,7 @@ import { DwellTimeTracker } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import { PiShareFatLight } from "react-icons/pi";
 import dynamic from "next/dynamic";
+import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
 interface Post {
   id: string;
   title: string;
@@ -107,10 +108,31 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [followCheckLoading, setFollowCheckLoading] = useState(true);
   const [hasViewed, setHasViewed] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showReactionsModal, setShowReactionsModal] = useState(false);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
   const dwellTrackerRef = useRef<DwellTimeTracker | null>(null);
+  
+  // Fetch reactions with user data
+  const { reactions, loading: reactionsLoading, refetch: refetchReactions } = usePostReactionsWithUsers(post.id);
+  
+  // Listen for reaction updates and refetch
+  useEffect(() => {
+    const handleReactionUpdate = (event: CustomEvent) => {
+      if (event.detail?.postId === post.id) {
+        // Small delay to ensure DB has updated
+        setTimeout(() => {
+          refetchReactions();
+        }, 300);
+      }
+    };
+
+    window.addEventListener('reaction-updated', handleReactionUpdate as EventListener);
+    return () => {
+      window.removeEventListener('reaction-updated', handleReactionUpdate as EventListener);
+    };
+  }, [post.id, refetchReactions]);
 
   // Determine if this is a short text-only post (Facebook-style large text)
   const isShortTextPost = () => {
@@ -414,6 +436,71 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   const isVideoFile = (url: string): boolean => {
     return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)$/i.test(url);
+  };
+
+  // Get reaction emoji/icon based on type
+  const getReactionEmoji = (type: string): string => {
+    const emojiMap: { [key: string]: string } = {
+      like: '👍',
+      love: '❤️',
+      laugh: '😂',
+      wow: '😮',
+      sad: '😢',
+      angry: '😡',
+      care: '🤗'
+    };
+    return emojiMap[type] || '👍';
+  };
+
+  // Get reaction display name
+  const getReactionName = (type: string): string => {
+    const nameMap: { [key: string]: string } = {
+      like: 'Like',
+      love: 'Love',
+      laugh: 'Haha',
+      wow: 'Wow',
+      sad: 'Sad',
+      angry: 'Angry',
+      care: 'Care'
+    };
+    return nameMap[type] || 'Like';
+  };
+
+  // Format reaction summary (Facebook style: "John, Mary and 5 others")
+  const formatReactionSummary = (reactionGroup: any): string => {
+    if (!reactionGroup || reactionGroup.count === 0) return '';
+    
+    const users = reactionGroup.users || [];
+    const count = reactionGroup.count;
+    
+    if (count === 0) return '';
+    if (count === 1 && users.length > 0) {
+      return users[0].full_name || users[0].username;
+    }
+    if (count === 2 && users.length >= 2) {
+      return `${users[0].full_name || users[0].username} and ${users[1].full_name || users[1].username}`;
+    }
+    if (users.length > 0) {
+      const remaining = count - users.length;
+      if (remaining > 0) {
+        return `${users[0].full_name || users[0].username} and ${remaining} other${remaining !== 1 ? 's' : ''}`;
+      } else {
+        const names = users.slice(0, 2).map((u: any) => u.full_name || u.username).join(', ');
+        return `${names} and ${count - 2} other${count - 2 !== 1 ? 's' : ''}`;
+      }
+    }
+    return `${count} reaction${count !== 1 ? 's' : ''}`;
+  };
+
+  // Get all reaction groups sorted by count
+  const getReactionGroups = () => {
+    const groups: any[] = [];
+    Object.keys(reactions).forEach(key => {
+      if (key !== 'totalCount' && reactions[key] && reactions[key].count > 0) {
+        groups.push(reactions[key]);
+      }
+    });
+    return groups.sort((a, b) => b.count - a.count);
   };
 
   const renderMedia = (url: string, index: number) => {
@@ -723,10 +810,44 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       <div>
         <div className="flex justify-between items-center pb-2">
-          <div>
-            {post.likes_count && (
-              <span className=" hover:underline cursor-pointer text-gray-600 text-sm">
-                likes {post.likes_count}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Facebook-style reactions display */}
+            {reactions.totalCount > 0 && (
+              <div 
+                className="flex items-center gap-1 hover:underline cursor-pointer"
+                onClick={() => setShowReactionsModal(true)}
+              >
+                {/* Show reaction emojis */}
+                <div className="flex items-center -space-x-1">
+                  {getReactionGroups().slice(0, 3).map((group, idx) => (
+                    <span 
+                      key={group.type} 
+                      className="text-sm bg-white rounded-full p-0.5 border border-gray-200"
+                      title={`${getReactionName(group.type)}: ${group.count}`}
+                    >
+                      {getReactionEmoji(group.type)}
+                    </span>
+                  ))}
+                </div>
+                {/* Show summary text */}
+                <span className="text-gray-600 text-sm font-medium">
+                  {(() => {
+                    const topReaction = getReactionGroups()[0];
+                    if (topReaction) {
+                      const summary = formatReactionSummary(topReaction);
+                      if (summary) {
+                        return summary;
+                      }
+                    }
+                    return `${reactions.totalCount} reaction${reactions.totalCount !== 1 ? 's' : ''}`;
+                  })()}
+                </span>
+              </div>
+            )}
+            {/* Fallback to likes_count if no reactions */}
+            {reactions.totalCount === 0 && post.likes_count > 0 && (
+              <span className="text-gray-600 text-sm">
+                {post.likes_count} like{post.likes_count !== 1 ? 's' : ''}
               </span>
             )}
           </div>
@@ -839,6 +960,94 @@ export const PostCard: React.FC<PostCardProps> = ({
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reactions Modal - Facebook style */}
+      {showReactionsModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowReactionsModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Reactions
+              </h3>
+              <button
+                onClick={() => setShowReactionsModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <MoreHorizontal className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[60vh]">
+              {getReactionGroups().map((group) => (
+                <div key={group.type} className="border-b border-gray-100 last:border-b-0">
+                  <div className="p-4 flex items-center gap-3">
+                    <span className="text-2xl">{getReactionEmoji(group.type)}</span>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">
+                        {getReactionName(group.type)}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {group.count} {group.count === 1 ? 'reaction' : 'reactions'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="px-4 pb-4 space-y-2">
+                    {group.users.slice(0, 10).map((reactedUser: any) => (
+                      <div 
+                        key={reactedUser.id}
+                        className="flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg cursor-pointer transition-colors"
+                        onClick={() => {
+                          router.push(`/user/${reactedUser.username}`);
+                          setShowReactionsModal(false);
+                        }}
+                      >
+                        {reactedUser.avatar_url ? (
+                          <img
+                            src={reactedUser.avatar_url}
+                            alt={reactedUser.full_name || reactedUser.username}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                            <span className="text-gray-600 font-medium text-sm">
+                              {(reactedUser.full_name || reactedUser.username).charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">
+                            {reactedUser.full_name || reactedUser.username}
+                          </div>
+                          {reactedUser.full_name && (
+                            <div className="text-sm text-gray-500">
+                              @{reactedUser.username}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {group.users.length > 10 && (
+                      <div className="text-sm text-gray-500 text-center py-2">
+                        and {group.users.length - 10} more...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {getReactionGroups().length === 0 && (
+                <div className="p-8 text-center text-gray-500">
+                  No reactions yet
+                </div>
+              )}
             </div>
           </div>
         </div>
