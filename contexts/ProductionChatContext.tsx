@@ -83,38 +83,31 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [])
 
   const openThread = useCallback(async (threadId: string) => {
-    // Check if thread is already in context threads
     const existingThread = threads.find(t => t.id === threadId)
     
-    // If thread not in context, load it from database
     if (!existingThread && currentUser) {
-      console.log('📬 ProductionChatContext: Thread not in context, loading from database:', threadId)
       try {
         const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
         const thread = userThreads.find(t => t.id === threadId)
         if (thread) {
-          console.log('📬 ProductionChatContext: Thread loaded from database:', thread.name)
           setThreads(prev => {
             const exists = prev.find(t => t.id === threadId)
             if (exists) return prev
             return [...prev, thread]
           })
-        } else {
-          console.warn('📬 ProductionChatContext: Thread not found in database:', threadId)
         }
       } catch (error) {
-        console.error('📬 ProductionChatContext: Error loading thread:', error)
+        console.error('Error loading thread:', error)
       }
     }
     
     setOpenThreads(prev => {
       if (!prev.includes(threadId)) {
-        console.log('📬 ProductionChatContext: Adding thread to openThreads:', threadId)
         return [...prev, threadId]
       }
       return prev
     })
-    // Dispatch custom event to open chat dock
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('openChatThread', { detail: { threadId } }))
     }
@@ -142,7 +135,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
 
     try {
-      // Persist message via supabaseMessagingService
       const message = await supabaseMessagingService.sendMessage(threadId, {
         content: text,
         attachments: payload?.attachments,
@@ -151,10 +143,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         metadata: payload?.metadata,
       }, currentUser)
 
-      // Update local messages state
       setMessages(prev => {
         const current = prev[threadId] || []
-        // Check if message already exists (avoid duplicates)
         if (current.some(m => m.id === message.id)) {
           return prev
         }
@@ -162,7 +152,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       })
     } catch (error) {
       console.error('Error sending message:', error)
-      // Fallback: add message to local state even if persistence fails
       const fallbackMessage: ChatMessage = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         thread_id: threadId,
@@ -180,9 +169,44 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [currentUser])
 
-  const markThreadRead = useCallback((threadId: string) => {
-    // Placeholder: in production, update unread counts in storage
-  }, [])
+  const markThreadRead = useCallback(async (threadId: string) => {
+    if (!currentUser) return
+    
+    try {
+      const threadMessages = messages[threadId] || []
+      const unreadMessageIds = threadMessages
+        .filter((msg: ChatMessage) => {
+          return msg.sender_id !== currentUser.id && 
+                 (!msg.read_by || !msg.read_by.includes(currentUser.id))
+        })
+        .map((msg: ChatMessage) => msg.id)
+      
+      if (unreadMessageIds.length > 0) {
+        await supabaseMessagingService.markMessagesAsRead(threadId, unreadMessageIds, currentUser.id)
+        
+        setMessages(prev => {
+          const current = prev[threadId] || []
+          return {
+            ...prev,
+            [threadId]: current.map((msg: ChatMessage) => {
+              if (unreadMessageIds.includes(msg.id)) {
+                const updatedReadBy = msg.read_by || []
+                if (!updatedReadBy.includes(currentUser.id)) {
+                  return {
+                    ...msg,
+                    read_by: [...updatedReadBy, currentUser.id]
+                  }
+                }
+              }
+              return msg
+            })
+          }
+        })
+      }
+    } catch (error) {
+      console.error('Error marking thread as read:', error)
+    }
+  }, [currentUser, messages])
 
   const minimizedThreadIds: string[] = []
 
@@ -212,7 +236,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
 
     try {
-      // Create thread in database using supabaseMessagingService
       const threadId = await supabaseMessagingService.createThread(currentUser, {
         participant_ids: options?.participant_ids || participants.map(p => p.id),
         type: options?.type,
@@ -226,7 +249,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         return null
       }
 
-      // Fetch the created thread to get full details
       const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
       const createdThread = userThreads.find(t => t.id === threadId)
 
@@ -234,14 +256,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (createdThread) {
         threadToAdd = createdThread
-        // Add thread to threads state
         setThreads(prev => {
           const exists = prev.find(t => t.id === threadId)
           if (exists) return prev
           return [...prev, createdThread]
         })
       } else {
-        // If thread not found, create a temporary thread object
         const tempThread: ChatThread = {
           id: threadId,
           name: options?.name || participants.map(p => p.name).join(', ') || 'Chat',
@@ -261,15 +281,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         })
       }
 
-      // Open the thread if requested (default to true if not specified)
       const shouldOpen = options?.openInDock !== false
       if (shouldOpen && threadToAdd) {
-        console.log('📬 Opening thread in dock:', threadId, 'thread:', threadToAdd.name)
-        // Open thread immediately - openThread will add it to openThreads
         openThread(threadId)
       }
 
-      // Dispatch event for chat system to handle
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('chatThreadCreated', { 
           detail: { threadId, participants, options } 
@@ -285,8 +301,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
     try {
-      // ✅ FIXED: Create room first via VideoSDK API, then get token
-      console.log('📞 Creating VideoSDK room...')
       const roomResponse = await fetch('/api/videosdk/room', {
         method: 'POST',
         headers: {
@@ -296,7 +310,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (!roomResponse.ok) {
         const errorData = await roomResponse.json().catch(() => ({}))
-        console.error('Failed to create VideoSDK room:', errorData)
         throw new Error(errorData.error || 'Failed to create call room. Please try again.')
       }
 
@@ -304,13 +317,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const roomId = roomData.roomId
       
       if (!roomId) {
-        console.error('Invalid response from room API:', roomData)
         throw new Error('Failed to create call room. Please try again.')
       }
-
-      console.log('✅ VideoSDK room created:', roomId)
       
-      // Get real token from our API endpoint
       const response = await fetch('/api/videosdk/token', {
         method: 'POST',
         headers: {
@@ -324,14 +333,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        console.error('Failed to generate VideoSDK token:', errorData)
         throw new Error(errorData.error || 'Failed to generate call token. Please try again.')
       }
 
       const data = await response.json()
-      console.log('VideoSDK token data:255', data)
       if (!data?.token) {
-        console.error('Invalid response from token API:', data)
         throw new Error('Failed to generate call token. Please try again.')
       }
 
@@ -351,7 +357,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         [threadId]: callRequest
       }))
 
-      // Dispatch event to start the call
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('startCall', {
           detail: {
@@ -365,8 +370,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }))
       }
 
-      // ✅ Send call notification to recipient via Supabase Realtime
-      // This should be handled by your messaging service to notify the other participant
       try {
         await supabaseMessagingService.sendMessage(
           threadId,
@@ -429,14 +432,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [])
 
-  // Load messages for open threads
   useEffect(() => {
     const loadMessagesForThreads = async () => {
       if (!currentUser || openThreads.length === 0) return
 
       for (const threadId of openThreads) {
         try {
-          // Always fetch latest messages when thread opens
           const threadMessages = await supabaseMessagingService.getThreadMessages(threadId)
           setMessages(prev => ({
             ...prev,
@@ -452,7 +453,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, openThreads.join(',')])
 
-  // Subscribe to new messages for open threads
   useEffect(() => {
     if (!currentUser) return
 
@@ -471,7 +471,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
           const metadata = message.metadata as any
           if (metadata?.roomId && metadata?.callType) {
-            console.log('📞 Incoming call request detected in open thread:', threadId)
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('incomingCall', {
                 detail: {
@@ -498,6 +497,61 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     if (!currentUser) return
 
+    const channel = supabase
+      .channel('message_reads_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_reads'
+        },
+        async (payload) => {
+          const readReceipt = payload.new as { message_id: string; user_id: string }
+          
+          setMessages(prev => {
+            const updated: Record<string, ChatMessage[]> = {}
+            let hasChanges = false
+
+            Object.entries(prev).forEach(([threadId, threadMessages]) => {
+              const messageIndex = threadMessages.findIndex(m => m.id === readReceipt.message_id)
+              if (messageIndex !== -1) {
+                const message = threadMessages[messageIndex]
+                const updatedReadBy = message.read_by || []
+                
+                if (!updatedReadBy.includes(readReceipt.user_id)) {
+                  const updatedMessage = {
+                    ...message,
+                    read_by: [...updatedReadBy, readReceipt.user_id]
+                  }
+                  updated[threadId] = [
+                    ...threadMessages.slice(0, messageIndex),
+                    updatedMessage,
+                    ...threadMessages.slice(messageIndex + 1)
+                  ]
+                  hasChanges = true
+                } else {
+                  updated[threadId] = threadMessages
+                }
+              } else {
+                updated[threadId] = threadMessages
+              }
+            })
+
+            return hasChanges ? updated : prev
+          })
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser])
+
+  useEffect(() => {
+    if (!currentUser) return
+
     const unsubscribeCallbacks: (() => void)[] = []
     const subscribedThreadIds = new Set<string>()
 
@@ -511,15 +565,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
           const metadata = message.metadata as any
           if (metadata?.roomId && metadata?.callType) {
-            console.log('📞 Incoming call request detected (global subscription):', {
-              threadId: threadId,
-              callerId: message.sender_id,
-              callerName: message.sender?.name || metadata?.callerName || 'Unknown',
-              type: metadata.callType,
-              roomId: metadata.roomId,
-              token: metadata.token
-            })
-
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('incomingCall', {
                 detail: {
@@ -562,13 +607,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [currentUser])
 
-  // Load initial presence status from database for friends and update periodically
   useEffect(() => {
     if (!user?.id) return
 
     const loadAndUpdatePresence = async () => {
       try {
-        // Get friends list to load their presence
         const { data: friendsData } = await supabase
           .from('friend_requests')
           .select(`
@@ -585,7 +628,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             const friend = req.sender_id === user.id ? req.receiver : req.sender
             const friendData = Array.isArray(friend) ? friend[0] : friend
             if (friendData?.id) {
-              // Always calculate status from last_seen (ignore database status as it might be stale)
               const calculatedStatus = calculateStatusFromLastSeen(friendData.last_seen)
               updatePresence(friendData.id, calculatedStatus)
             }
@@ -596,21 +638,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
     }
 
-    // Load initially
     loadAndUpdatePresence()
 
-    // Update every 30 seconds to recalculate status from last_seen
     const interval = setInterval(loadAndUpdatePresence, 30000)
 
     return () => clearInterval(interval)
   }, [user?.id, updatePresence])
 
-  // Subscribe to presence updates from Realtime
   useEffect(() => {
     if (!user?.id) return
 
     const unsubscribe = subscribeToPresenceChanges((userId, status, lastSeen) => {
-      // Update presence in context
       updatePresence(userId, status)
     })
 
@@ -619,10 +657,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [user?.id, updatePresence])
 
-  // Initialize presence service and update current user's presence to online when component mounts
   useEffect(() => {
     if (user?.id) {
-      // Initialize presence service
       initializePresence(user.id).then(() => {
         updatePresence(user.id, 'online')
       })

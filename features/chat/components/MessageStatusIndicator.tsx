@@ -9,7 +9,6 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
   status, 
   isOwnMessage 
 }) => {
-  // Only show status indicators for own messages
   if (!isOwnMessage) return null
 
   const getStatusIcon = () => {
@@ -67,7 +66,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
         return (
           <div className="flex items-center">
             <svg 
-              className="w-3 h-3 text-blue-500" 
+              className="w-3 h-3 text-blue-700" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
@@ -78,7 +77,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
               />
             </svg>
             <svg 
-              className="w-3 h-3 text-blue-500 -ml-1" 
+              className="w-3 h-3 text-blue-700 -ml-1" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >

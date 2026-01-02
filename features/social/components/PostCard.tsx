@@ -95,7 +95,6 @@ export const PostCard: React.FC<PostCardProps> = ({
   postReactions = {},
   isPostLiked = false,
 }) => {
-  console.log("post", post);
   const { user } = useAuth();
   const router = useRouter();
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null);

@@ -1,43 +1,39 @@
 "use client";
 // @ts-nocheck
 
-import React, {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
-import { formatDistanceToNow } from "date-fns";
-import {
-  Minus,
-  Phone,
-  Send,
-  Video,
-  X,
-  Paperclip,
-  Check,
-  MoreVertical,
-} from "lucide-react";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
-import { useMembers } from "@/shared/hooks/useMembers";
-import type { PresenceStatus } from "@/shared/types/chat";
-import {
-  VideoSDKCallModal,
-  VideoSDKCallModalProps,
-} from "@/features/video/components/VideoSDKCallModal";
-import FileAttachment from "./FileAttachment";
-import FilePreview from "./FilePreview";
-import {
-  fileUploadService,
-  FileUploadResult,
-} from "@/shared/services/fileUploadService";
-import { MessageBubble } from "./MessageBubble";
 import {
   supabaseMessagingService,
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
+import {
+  VideoSDKCallModal
+} from "@/features/video/components/VideoSDKCallModal";
+import { useMembers } from "@/shared/hooks/useMembers";
+import {
+  FileUploadResult,
+  fileUploadService,
+} from "@/shared/services/fileUploadService";
+import type { PresenceStatus } from "@/shared/types/chat";
+import {
+  Minus,
+  MoreVertical,
+  Paperclip,
+  Phone,
+  Send,
+  Video,
+  X
+} from "lucide-react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import { toast } from "react-hot-toast";
+import FileAttachment from "./FileAttachment";
+import FilePreview from "./FilePreview";
+import { MessageBubble } from "./MessageBubble";
 
 interface ChatWindowProps {
   threadId: string;
@@ -266,6 +262,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     currentUserId,
   ]);
 
+
+  // Subscribe to real-time messages for this thread
+  useEffect(() => {
+    if (!threadId || !currentUser) return
+
+    const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
+      const currentMessages = getMessagesForThread(threadId)
+      // Check if message already exists to avoid duplicates
+      if (currentMessages.some((m: ChatMessage) => m.id === message.id)) {
+        return
+      }
+      // Add new message to the list
+      setMessagesForThread(threadId, [...currentMessages, message])
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [threadId, currentUser, getMessagesForThread, setMessagesForThread])
 
   // Mark thread as read when messages are viewed or when thread opens
   useEffect(() => {
@@ -560,6 +575,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               const canDeleteForEveryone =
                 deleteStates.get(message.id) ?? false;
 
+              // Create presence map for participants
+              const participantPresenceMap: Record<string, 'online' | 'away' | 'busy' | 'offline'> = {};
+              thread?.participants?.forEach((p: any) => {
+                participantPresenceMap[p.id] = presence[p.id] || 'offline';
+              });
+
               return (
                 <MessageBubble
                   key={message.id}
@@ -569,6 +590,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   threadParticipants={
                     thread?.participants?.map((p: any) => p.id) || []
                   }
+                  participantPresence={participantPresenceMap}
                   onReply={handleReply}
                   onDelete={handleDelete}
                   canDeleteForEveryone={canDeleteForEveryone}

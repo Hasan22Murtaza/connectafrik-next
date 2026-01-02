@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { Reply, Trash2, UserCircle, MoreVertical } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import type { ChatMessage } from "@/features/chat/services/supabaseMessagingService";
 import MessageStatusIndicator from "@/features/chat/components/MessageStatusIndicator";
+import type { ChatMessage } from "@/features/chat/services/supabaseMessagingService";
+import { formatDistanceToNow } from "date-fns";
+import { MoreVertical, UserCircle } from "lucide-react";
+import React, { useState } from "react";
 import { BsReply } from "react-icons/bs";
 
 interface MessageBubbleProps {
@@ -10,6 +10,7 @@ interface MessageBubbleProps {
   isOwnMessage: boolean;
   currentUserId: string;
   threadParticipants?: string[]; // Array of participant user IDs in this thread
+  participantPresence?: Record<string, 'online' | 'away' | 'busy' | 'offline'>; // Presence status of participants
   onReply?: (message: ChatMessage) => void;
   onDelete?: (messageId: string, deleteForEveryone: boolean) => void;
   canDeleteForEveryone?: boolean;
@@ -20,6 +21,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isOwnMessage,
   currentUserId,
   threadParticipants = [],
+  participantPresence = {},
   onReply,
   onDelete,
   canDeleteForEveryone = false,
@@ -27,9 +29,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [showMenu, setShowMenu] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [isHovered, setIsHovered] = useState(false); // track hover
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Minimum swipe distance (in px) to trigger reply
   const minSwipeDistance = 50;
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -48,7 +49,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     const isLeftSwipe = distance > minSwipeDistance;
     const isRightSwipe = distance < -minSwipeDistance;
 
-    // Swipe right to reply (from left edge)
     if (isRightSwipe && onReply) {
       onReply(message);
     }
@@ -73,7 +73,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     setShowMenu(false);
   };
 
-  // Hide menu when clicking outside
   React.useEffect(() => {
     const handleClickOutside = () => setShowMenu(false);
     if (showMenu) {
@@ -82,15 +81,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   }, [showMenu]);
 
-  // Check if message is deleted
   const isDeleted = message.is_deleted;
   const isDeletedForMe = message.deleted_for?.includes(currentUserId) ?? false;
 
-  // Don't render if deleted for current user
   if (isDeletedForMe) return null;
 
-  // Don't render system messages (call notifications, reactions, hand raised, screen share, etc.)
-  // These are call/meeting management messages, not chat messages
   const systemMessageTypes = [
     "call_accepted",
     "call_request",
@@ -105,32 +100,39 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     return null;
   }
 
-  // Determine message status for own messages
   const getMessageStatus = (): "sending" | "sent" | "delivered" | "read" => {
-    if (!isOwnMessage) return "sent"; // Status only matters for own messages
+    if (!isOwnMessage) return "sent";
 
-    // If message has read_by data, determine status based on who has read it
-    if (message.read_by && message.read_by.length > 0) {
-      // Get other participants (excluding sender)
-      const otherParticipants = threadParticipants.filter(
-        (id) => id !== currentUserId
+    const otherParticipants = threadParticipants.filter(
+      (id) => id !== currentUserId
+    );
+
+    if (otherParticipants.length === 0) {
+      return "sent";
+    }
+
+    if (message.read_by && Array.isArray(message.read_by)) {
+      const otherParticipantsWhoRead = otherParticipants.filter((id) =>
+        message.read_by!.includes(id)
       );
 
-      // If all other participants have read the message, it's "read"
-      if (
-        otherParticipants.length > 0 &&
-        otherParticipants.every((id) => message.read_by!.includes(id))
-      ) {
+      if (otherParticipantsWhoRead.length > 0) {
         return "read";
-      }
-
-      // If at least one other participant has read it, it's "delivered"
-      if (otherParticipants.some((id) => message.read_by!.includes(id))) {
-        return "delivered";
       }
     }
 
-    // Default to "sent" if no read receipts or not all participants have read
+    // Check if any recipient is online - if all are offline, show "sent"
+    // If at least one is online, show "delivered" (message delivered but not read)
+    const hasOnlineRecipient = otherParticipants.some((id) => {
+      const status = participantPresence[id];
+      return status === 'online' || status === 'away' || status === 'busy';
+    });
+
+    if (hasOnlineRecipient) {
+      return "delivered";
+    }
+
+    // All recipients are offline - message is sent but not delivered
     return "sent";
   };
 
@@ -260,7 +262,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             >
               <button
                 onClick={() => {
-                  handleDelete(false); // delete for me
+                  handleDelete(false);
                   setShowMenu(false);
                 }}
                 className="w-full px-2 py-1 text-left hover:bg-gray-100 dark:hover:bg-gray-700  text-[12px]"
@@ -271,7 +273,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               {canDeleteForEveryone && (
                 <button
                   onClick={() => {
-                    handleDelete(true); // delete for everyone
+                    handleDelete(true);
                     setShowMenu(false);
                   }}
                   className="w-full px-2 py-1 text-left hover:bg-gray-100 dark:hover:bg-gray-700  text-[12px] text-red-600 "

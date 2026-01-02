@@ -56,20 +56,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
   }, [members, currentUser, presence])
 
   const handleOpenThread = async (threadId: string) => {
-    console.log('📬 ChatDropdown: Opening thread:', threadId)
-    
     // Find the thread in local threads or context threads
     const thread = threads.find(t => t.id === threadId) || contextThreads.find(t => t.id === threadId)
     
-    if (thread) {
-      console.log('📬 ChatDropdown: Thread found:', thread.name)
-    } else {
-      console.warn('📬 ChatDropdown: Thread not found in local or context threads, will be loaded by ChatDock')
-    }
-    
     // Open the thread - this will add it to openThreads and trigger ChatDock to load it
     openThread(threadId)
-    console.log('📬 ChatDropdown: Thread opened, closing dropdown')
     onClose()
   }
 
