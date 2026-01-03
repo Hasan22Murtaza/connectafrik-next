@@ -286,10 +286,10 @@ const statusColor = deliveryStatus
                   <img
                     src={order.product_image}
                     alt={order.product_title}
-                    className="w-24 h-24 object-cover rounded-lg"
+                    className="w-24 h-24 object-cover rounded-lg border border-gray-200"
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="w-24 h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
                     <ShoppingBag className="w-8 h-8 text-gray-400" />
                   </div>
                 )}
@@ -302,7 +302,7 @@ const statusColor = deliveryStatus
                   </div>
                   <Link
                     href={`/marketplace/${order.product_id}`}
-                    className="text-primary-600 hover:text-primary-700 text-sm font-medium mt-2 inline-block"
+                    className="btn-primary hover:text-primary-700 text-sm font-medium mt-2 inline-block float-end"
                   >
                     View Product →
                   </Link>
