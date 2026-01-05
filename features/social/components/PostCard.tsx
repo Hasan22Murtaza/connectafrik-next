@@ -515,8 +515,12 @@ export const PostCard: React.FC<PostCardProps> = ({
   const getReactionGroups = () => {
     const groups: any[] = [];
     Object.keys(reactions).forEach((key) => {
-      if (key !== "totalCount" && reactions[key] && reactions[key].count > 0) {
-        groups.push(reactions[key]);
+      if (key !== "totalCount") {
+        const reaction = reactions[key];
+        // Type guard: check if it's a ReactionGroup (has count property) and not a number
+        if (reaction && typeof reaction === "object" && "count" in reaction && reaction.count > 0) {
+          groups.push(reaction);
+        }
       }
     });
     return groups.sort((a, b) => b.count - a.count);
