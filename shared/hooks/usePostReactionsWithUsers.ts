@@ -26,7 +26,7 @@ export interface ReactionGroup {
 }
 
 export interface PostReactionsData {
-  [reactionType: string]: ReactionGroup
+  [reactionType: string]: ReactionGroup | number
   totalCount: number
 }
 
