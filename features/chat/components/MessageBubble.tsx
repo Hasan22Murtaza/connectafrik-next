@@ -4,6 +4,7 @@ import { formatDistanceToNow } from "date-fns";
 import { MoreVertical, UserCircle } from "lucide-react";
 import React, { useState } from "react";
 import { BsReply } from "react-icons/bs";
+import { RiShareForwardLine } from "react-icons/ri";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -231,11 +232,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {isHovered && onReply && !isDeleted && (
             <button
               onClick={handleReply}
-              className="absolute top-0 -left-6 text-gray-500 hover:text-gray-700 transition"
+              className={`absolute top-0 ${isOwnMessage ? "-left-6" : "-right-6"}  text-gray-500 hover:text-gray-700 transition`}
               aria-label="Reply"
               type="button"
             >
+              {isOwnMessage ? 
               <BsReply className="w-5 h-5" />
+              : <RiShareForwardLine className="w-5 h-5" />
+
+              }
             </button>
           )}
 

@@ -207,6 +207,24 @@ const OrderDetailPage: React.FC = () => {
     return method.charAt(0).toUpperCase() + method.slice(1)
   }
 
+
+  const statusColorMap: Record<string, string> = {
+  pending: "text-yellow-600",
+  processing: "text-blue-600",
+  shipped: "text-indigo-600",
+  delivered: "text-green-600",
+  cancelled: "text-red-600",
+};
+
+const deliveryStatus = order?.delivery_status
+  ? order.delivery_status.toLowerCase()
+  : null;
+
+const statusColor = deliveryStatus
+  ? statusColorMap[deliveryStatus] ?? "text-gray-500"
+  : "text-gray-400";
+
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -237,15 +255,7 @@ const OrderDetailPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <button
-            onClick={() => router.push('/my-orders')}
-            className="flex items-center space-x-2 text-primary-600 hover:text-primary-700 transition-colors mb-4 group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-medium">Back to Orders</span>
-          </button>
-
+        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Details</h1>
@@ -260,7 +270,7 @@ const OrderDetailPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
         <div className="grid md:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
@@ -276,10 +286,10 @@ const OrderDetailPage: React.FC = () => {
                   <img
                     src={order.product_image}
                     alt={order.product_title}
-                    className="w-24 h-24 object-cover rounded-lg"
+                    className="w-24 h-24 object-cover rounded-lg border border-gray-200"
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="w-24 h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
                     <ShoppingBag className="w-8 h-8 text-gray-400" />
                   </div>
                 )}
@@ -292,7 +302,7 @@ const OrderDetailPage: React.FC = () => {
                   </div>
                   <Link
                     href={`/marketplace/${order.product_id}`}
-                    className="text-primary-600 hover:text-primary-700 text-sm font-medium mt-2 inline-block"
+                    className="btn-primary hover:text-primary-700 text-sm font-medium mt-2 inline-block float-end"
                   >
                     View Product →
                   </Link>
@@ -343,7 +353,10 @@ const OrderDetailPage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-600">Delivery Status</span>
-                  <span className="font-medium text-gray-900 capitalize">{order.delivery_status || 'Not specified'}</span>
+                  <span className={`font-medium capitalize ${statusColor}`}>
+    {order.delivery_status || "Not specified"}
+  </span>
+
                 </div>
                 {order.shipping_address ? (
                   <div className="pt-2">

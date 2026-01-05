@@ -31,6 +31,7 @@ import toast from "react-hot-toast";
 import { PiShareFatLight } from "react-icons/pi";
 import dynamic from "next/dynamic";
 import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
+import ReactionTooltip from "./ReactionTooltip";
 interface Post {
   id: string;
   title: string;
@@ -113,10 +114,15 @@ export const PostCard: React.FC<PostCardProps> = ({
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
   const dwellTrackerRef = useRef<DwellTimeTracker | null>(null);
-  
+  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
+
   // Fetch reactions with user data
-  const { reactions, loading: reactionsLoading, refetch: refetchReactions } = usePostReactionsWithUsers(post.id);
-  
+  const {
+    reactions,
+    loading: reactionsLoading,
+    refetch: refetchReactions,
+  } = usePostReactionsWithUsers(post.id);
+
   // Listen for reaction updates and refetch
   useEffect(() => {
     const handleReactionUpdate = (event: CustomEvent) => {
@@ -128,9 +134,15 @@ export const PostCard: React.FC<PostCardProps> = ({
       }
     };
 
-    window.addEventListener('reaction-updated', handleReactionUpdate as EventListener);
+    window.addEventListener(
+      "reaction-updated",
+      handleReactionUpdate as EventListener
+    );
     return () => {
-      window.removeEventListener('reaction-updated', handleReactionUpdate as EventListener);
+      window.removeEventListener(
+        "reaction-updated",
+        handleReactionUpdate as EventListener
+      );
     };
   }, [post.id, refetchReactions]);
 
@@ -441,62 +453,69 @@ export const PostCard: React.FC<PostCardProps> = ({
   // Get reaction emoji/icon based on type
   const getReactionEmoji = (type: string): string => {
     const emojiMap: { [key: string]: string } = {
-      like: '👍',
-      love: '❤️',
-      laugh: '😂',
-      wow: '😮',
-      sad: '😢',
-      angry: '😡',
-      care: '🤗'
+      like: "👍",
+      love: "❤️",
+      laugh: "😂",
+      wow: "😮",
+      sad: "😢",
+      angry: "😡",
+      care: "🤗",
     };
-    return emojiMap[type] || '👍';
+    return emojiMap[type] || "👍";
   };
 
   // Get reaction display name
   const getReactionName = (type: string): string => {
     const nameMap: { [key: string]: string } = {
-      like: 'Like',
-      love: 'Love',
-      laugh: 'Haha',
-      wow: 'Wow',
-      sad: 'Sad',
-      angry: 'Angry',
-      care: 'Care'
+      like: "Like",
+      love: "Love",
+      laugh: "Haha",
+      wow: "Wow",
+      sad: "Sad",
+      angry: "Angry",
+      care: "Care",
     };
-    return nameMap[type] || 'Like';
+    return nameMap[type] || "Like";
   };
 
   // Format reaction summary (Facebook style: "John, Mary and 5 others")
   const formatReactionSummary = (reactionGroup: any): string => {
-    if (!reactionGroup || reactionGroup.count === 0) return '';
-    
+    if (!reactionGroup || reactionGroup.count === 0) return "";
+
     const users = reactionGroup.users || [];
     const count = reactionGroup.count;
-    
-    if (count === 0) return '';
+
+    if (count === 0) return "";
     if (count === 1 && users.length > 0) {
       return users[0].full_name || users[0].username;
     }
     if (count === 2 && users.length >= 2) {
-      return `${users[0].full_name || users[0].username} and ${users[1].full_name || users[1].username}`;
+      return `${users[0].full_name || users[0].username} and ${
+        users[1].full_name || users[1].username
+      }`;
     }
     if (users.length > 0) {
       const remaining = count - users.length;
       if (remaining > 0) {
-        return `${users[0].full_name || users[0].username} and ${remaining} other${remaining !== 1 ? 's' : ''}`;
+        return `${
+          users[0].full_name || users[0].username
+        } and ${remaining} other${remaining !== 1 ? "s" : ""}`;
       } else {
-        const names = users.slice(0, 2).map((u: any) => u.full_name || u.username).join(', ');
-        return `${names} and ${count - 2} other${count - 2 !== 1 ? 's' : ''}`;
+        const names = users
+          .slice(0, 2)
+          .map((u: any) => u.full_name || u.username)
+          .join(", ");
+        return `${names} and ${count - 2} other${count - 2 !== 1 ? "s" : ""}`;
       }
     }
-    return `${count} reaction${count !== 1 ? 's' : ''}`;
+    return `${count} reaction${count !== 1 ? "s" : ""}`;
   };
 
   // Get all reaction groups sorted by count
   const getReactionGroups = () => {
     const groups: any[] = [];
-    Object.keys(reactions).forEach(key => {
-      if (key !== 'totalCount' && reactions[key] && reactions[key].count > 0) {
+    Object.keys(reactions).forEach((key) => {
+      if (key !== "totalCount" && reactions[key] && reactions[key].count > 0) {
         groups.push(reactions[key]);
       }
     });
@@ -810,14 +829,46 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       <div>
         <div className="flex justify-between items-center pb-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Facebook-style reactions display */}
-            {reactions.totalCount > 0 && (
+          <div className="flex gap-2 items-center">
+          <div className="flex items-center -space-x-1 ">
+            {getReactionGroups()
+              .slice(0, 3)
+              .map((group) => (
+                <div
+                  key={group.type}
+                  className="relative"
+                  onMouseEnter={() => setHoveredReaction(group.type)}
+                  onMouseLeave={() => setHoveredReaction(null)}
+                >
+                  <span className="text-sm bg-white rounded-full p-0.5 border border-gray-200 cursor-pointer">
+                    {getReactionEmoji(group.type)}
+                  </span>
+
+                
+
+                  {/* Custom Tooltip */}
+                  <ReactionTooltip
+                    users={group.users || []}
+                    isVisible={hoveredReaction === group.type}
+                  />
+                </div>
+                 
+              ))}
+              
+          </div>
+          {reactions.totalCount > 0 && (
+             <span className="text-sm  cursor-pointer hover:underline duration-300">
+                {reactions.totalCount} 
+          </span>
+          )}
+         
+          </div>
+          {/* Facebook-style reactions display */}
+          {/* {reactions.totalCount > 0 && (
               <div 
                 className="flex items-center gap-1 hover:underline cursor-pointer"
                 onClick={() => setShowReactionsModal(true)}
               >
-                {/* Show reaction emojis */}
                 <div className="flex items-center -space-x-1">
                   {getReactionGroups().slice(0, 3).map((group, idx) => (
                     <span 
@@ -829,7 +880,6 @@ export const PostCard: React.FC<PostCardProps> = ({
                     </span>
                   ))}
                 </div>
-                {/* Show summary text */}
                 <span className="text-gray-600 text-sm font-medium">
                   {(() => {
                     const topReaction = getReactionGroups()[0];
@@ -843,14 +893,14 @@ export const PostCard: React.FC<PostCardProps> = ({
                   })()}
                 </span>
               </div>
-            )}
-            {/* Fallback to likes_count if no reactions */}
-            {reactions.totalCount === 0 && post.likes_count > 0 && (
+            )} */}
+
+          {/* Fallback to likes_count if no reactions */}
+          {/* {reactions.totalCount === 0 && post.likes_count > 0 && (
               <span className="text-gray-600 text-sm">
                 {post.likes_count} like{post.likes_count !== 1 ? 's' : ''}
               </span>
-            )}
-          </div>
+            )} */}
           <div className="space-x-2">
             {post.views_count > 0 && (
               <span className=" hover:underline cursor-pointer text-gray-600 text-sm ">
@@ -858,10 +908,13 @@ export const PostCard: React.FC<PostCardProps> = ({
               </span>
             )}
             {post.comments_count > 0 && (
-              <span className=" hover:underline cursor-pointer text-gray-600 text-sm "  onClick={(e) => {
-                e.stopPropagation();
-                onComment(post.id);
-              }}>
+              <span
+                className=" hover:underline cursor-pointer text-gray-600 text-sm "
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onComment(post.id);
+                }}
+              >
                 Comment {post.comments_count}
               </span>
             )}
@@ -874,8 +927,6 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
         {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-        
-
           {/* React button with hover emoji picker */}
           <div className="relative flex-1">
             <button
@@ -888,21 +939,20 @@ export const PostCard: React.FC<PostCardProps> = ({
               <span className="text-xs sm:text-sm font-medium">React</span>
             </button>
 
-           
             {showReactionPicker && (
-              <div 
+              <div
                 className="absolute bottom-full left-0 mb-2 z-50"
                 onMouseEnter={handleReactHover}
                 onMouseLeave={handleReactLeave}
               >
                 <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-1 sm:p-2">
                   <div className="flex space-x-1 overflow-x-auto scrollbar-hide max-w-xs px-1">
-                    {quickReactions.slice(0,6).map((emoji) => (
+                    {quickReactions.slice(0, 6).map((emoji) => (
                       <button
                         key={emoji}
                         onClick={() => {
-                          onEmojiReaction?.(post.id, emoji)
-                          setShowReactionPicker(false)
+                          onEmojiReaction?.(post.id, emoji);
+                          setShowReactionPicker(false);
                         }}
                         className="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg hover:scale-125 transition-transform cursor-pointer flex-shrink-0"
                       >
@@ -914,7 +964,6 @@ export const PostCard: React.FC<PostCardProps> = ({
               </div>
             )}
           </div>
-
 
           <button
             onClick={() => onComment(post.id)}
@@ -967,18 +1016,16 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Reactions Modal - Facebook style */}
       {showReactionsModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
           onClick={() => setShowReactionsModal(false)}
         >
-          <div 
+          <div
             className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Reactions
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900">Reactions</h3>
               <button
                 onClick={() => setShowReactionsModal(false)}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -988,21 +1035,27 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
             <div className="overflow-y-auto max-h-[60vh]">
               {getReactionGroups().map((group) => (
-                <div key={group.type} className="border-b border-gray-100 last:border-b-0">
+                <div
+                  key={group.type}
+                  className="border-b border-gray-100 last:border-b-0"
+                >
                   <div className="p-4 flex items-center gap-3">
-                    <span className="text-2xl">{getReactionEmoji(group.type)}</span>
+                    <span className="text-2xl">
+                      {getReactionEmoji(group.type)}
+                    </span>
                     <div className="flex-1">
                       <div className="font-semibold text-gray-900">
                         {getReactionName(group.type)}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {group.count} {group.count === 1 ? 'reaction' : 'reactions'}
+                        {group.count}{" "}
+                        {group.count === 1 ? "reaction" : "reactions"}
                       </div>
                     </div>
                   </div>
                   <div className="px-4 pb-4 space-y-2">
                     {group.users.slice(0, 10).map((reactedUser: any) => (
-                      <div 
+                      <div
                         key={reactedUser.id}
                         className="flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg cursor-pointer transition-colors"
                         onClick={() => {
@@ -1019,7 +1072,9 @@ export const PostCard: React.FC<PostCardProps> = ({
                         ) : (
                           <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
                             <span className="text-gray-600 font-medium text-sm">
-                              {(reactedUser.full_name || reactedUser.username).charAt(0).toUpperCase()}
+                              {(reactedUser.full_name || reactedUser.username)
+                                .charAt(0)
+                                .toUpperCase()}
                             </span>
                           </div>
                         )}
