@@ -10,6 +10,7 @@ import {
   CheckCircle,
   XCircle,
   TrendingUp,
+  ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -161,52 +162,55 @@ const MyOrders: React.FC = () => {
 
   const renderOrderCard = (order: Order, isSale: boolean = false) => {
     const otherParty = isSale ? order.buyer : order.seller;
-
     return (
       <div
         key={order.id}
-        className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md hover:border-primary-200 transition-all"
+        className="bg-white rounded-lg border border-gray-200  hover:shadow-md hover:border-primary-200 transition-all"
       >
-        <div className="flex items-start space-x-4 pb-4">
-          {/* Product Image */}
-          <div className="flex-shrink-0 border border-gray-200 rounded-lg overflow-hidden">
-            {order.product_image ? (
-              <img
-                src={order.product_image}
-                alt={order.product_title}
-                className="w-20 h-20 object-cover rounded-lg scale-3d hover:scale-125 transition-transform duration-300 "
-              />
-            ) : (
-              <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center">
-                <ShoppingBag className="w-8 h-8 text-gray-400" />
-              </div>
-            )}
-          </div>
-          {/* Header */}
-          <div className="flex items-start justify-between mb-2 gap-2">
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-1 sm:text-lg text-sm line-clamp-2">
-                {order.product_title}
-              </h3>
-              <p className="text-sm text-gray-500">
-                Order #{order.order_number}
-              </p>
-            </div>
-            <div
-              className={`px-3 py-1 rounded-full text-xs font-medium border flex items-center space-x-1 ${getStatusColor(
-                order.status
-              )}`}
-            >
-              {getStatusIcon(order.status)}
-              <span className="capitalize">{order.status}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex">
+        <div className="relative">
+  {/* Image + Status */}
+  <div className="relative w-full h-48 mb-3 overflow-hidden rounded-t-lg bg-gray-50 flex items-center justify-center">
+    {order.product_image ? (
+      <img
+        src={order.product_image}
+        alt={order.product_title}
+        className="w-full h-full object-cover rounded-t-lg transition-transform duration-300 hover:scale-105"
+      />
+    ) : (
+      <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
+        <ShoppingBag className="w-8 h-8 text-gray-400" />
+      </div>
+    )}
+
+    {/* Status badge on image top-right */}
+    <div
+      className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium border flex items-center gap-1 ${getStatusColor(
+        order.status
+      )}`}
+    >
+      {getStatusIcon(order.status)}
+      <span className="capitalize">{order.status}</span>
+    </div>
+  </div>
+
+  {/* Title + Order Number */}
+  <div className="px-4">
+    <h3 className="font-semibold text-gray-900 mb-1 sm:text-lg text-sm truncate max-w-[300px] hover:text-orange-500 cursor-pointer" title={order.product_title}>
+      {order.product_title}
+    </h3>
+    <p className="text-sm text-gray-500">
+      <span className="font-bold text-black">Order # : </span>
+      {order.order_number}
+    </p>
+  </div>
+</div>
+
+
+        <div className="flex p-4">
           {/* Order Details */}
           <div className="flex-1 ">
             {/* Order Info */}
-            <div className="grid grid-cols-2 gap-4 mb-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3">
               <div>
                 <p className="text-xs text-gray-500">Quantity</p>
                 <p className="text-sm font-medium text-gray-900">
@@ -234,33 +238,37 @@ const MyOrders: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Order Date</p>
-                <p className="text-sm font-medium text-gray-900">
+                <p className=" text-[12px] font-medium text-gray-900">
                   {formatDate(order.created_at)}
                 </p>
               </div>
             </div>
 
             {/* Other Party Info */}
-            {otherParty && (
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+            
+              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                 <div className="flex items-center space-x-2">
-                  {otherParty.avatar_url ? (
+                  {otherParty?.avatar_url ? (
                     <img
-                      src={otherParty.avatar_url}
-                      alt={otherParty.full_name}
+                      src={otherParty?.avatar_url}
+                      alt={otherParty?.full_name}
                       className="w-6 h-6 rounded-full"
                     />
                   ) : (
                     <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
                       <span className="text-xs font-medium text-primary-600">
-                        {otherParty.full_name?.charAt(0) || "?"}
+                        {otherParty?.full_name?.charAt(0) || "U"}
                       </span>
                     </div>
                   )}
-                  <span className="text-xs text-gray-600">
-                    {isSale ? "Buyer" : "Seller"}:{" "}
-                    {otherParty.full_name || otherParty.username}
-                  </span>
+                  <div>
+                    <span className="text-xs text-gray-800 font-medium">
+                      {isSale ? "Buyer" : "Seller"}:
+                    </span>
+                    <span className="text-xs text-gray-800 ">
+                      {otherParty?.full_name || otherParty?.username || "Unknown"}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={() => router.push(`/my-orders/${order.id}`)}
@@ -269,7 +277,7 @@ const MyOrders: React.FC = () => {
                   View Details
                 </button>
               </div>
-            )}
+            
           </div>
         </div>
       </div>
@@ -308,45 +316,61 @@ const MyOrders: React.FC = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-primary-50 rounded-lg p-4">
-              <p className="text-sm text-primary-600 font-medium">
-                Total Purchases
-              </p>
-              <p className="text-2xl font-bold text-primary-700">
-                {stats.purchases.total}
-              </p>
-            </div>
-            <div className="bg-green-50 rounded-lg p-4">
-              <p className="text-sm text-green-600 font-medium">Completed</p>
-              <p className="text-2xl font-bold text-green-700">
-                {stats.purchases.completed}
-              </p>
-            </div>
-            <div className="bg-primary-100 rounded-lg p-4">
-              <p className="text-sm text-primary-600 font-medium">
-                Total Sales
-              </p>
-              <p className="text-2xl font-bold text-primary-700">
-                {stats.sales.total}
-              </p>
-            </div>
-            <div className="bg-primary-200 rounded-lg p-4">
-              <div className="flex items-center space-x-1 mb-1">
-                <TrendingUp className="w-4 h-4 text-primary-700" />
-                <p className="text-sm text-primary-700 font-medium">Earnings</p>
-              </div>
-              <p className="text-2xl font-bold text-primary-700">
-                ${stats.sales.totalEarned.toLocaleString()}
-              </p>
-            </div>
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-6">
+  {/* Total Purchases */}
+  <div className="bg-primary-50 rounded-lg p-2 sm:p-4">
+    <div className="flex items-center space-x-1 mb-1">
+      <ShoppingCart className="w-6 h-6 text-primary-600" />
+      <p className="text-sm text-primary-600 font-medium">
+        Total Purchases
+      </p>
+    </div>
+    <p className="text-2xl font-bold text-primary-700">
+      {stats.purchases.total}
+    </p>
+  </div>
+
+  {/* Completed */}
+  <div className="bg-green-50 rounded-lg p-2 sm:p-4">
+    <div className="flex items-center space-x-1 mb-1">
+      <CheckCircle className="w-6 h-6 text-green-600" />
+      <p className="text-sm text-green-600 font-medium">Completed</p>
+    </div>
+    <p className="text-2xl font-bold text-green-700">
+      {stats.purchases.completed}
+    </p>
+  </div>
+
+  {/* Total Sales */}
+  <div className="bg-primary-100 rounded-lg p-2 sm:p-4">
+    <div className="flex items-center space-x-1 mb-1">
+      <Package className="w-6 h-6 text-primary-600" />
+      <p className="text-sm text-primary-600 font-medium">
+        Total Sales
+      </p>
+    </div>
+    <p className="text-2xl font-bold text-primary-700">
+      {stats.sales.total}
+    </p>
+  </div>
+
+  {/* Earnings */}
+  <div className="bg-primary-200 rounded-lg p-2 sm:p-4">
+    <div className="flex items-center space-x-1 mb-1">
+      <TrendingUp className="w-6 h-6 text-primary-700" />
+      <p className="text-sm text-primary-700 font-medium">Earnings</p>
+    </div>
+    <p className="text-2xl font-bold text-primary-700">
+      ${stats.sales.totalEarned.toLocaleString()}
+    </p>
+  </div>
+</div>
 
           {/* Tabs */}
           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setActiveTab("purchases")}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              className={`flex-1 py-2 sm:px-4 px-2 rounded-md font-medium transition-colors ${
                 activeTab === "purchases"
                   ? "bg-white text-primary-600 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -356,7 +380,7 @@ const MyOrders: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab("sales")}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+              className={`flex-1 py-2 sm:px-4 px-2 rounded-md font-medium transition-colors ${
                 activeTab === "sales"
                   ? "bg-white text-primary-600 shadow-sm"
                   : "text-gray-600 hover:text-gray-900"
@@ -375,7 +399,7 @@ const MyOrders: React.FC = () => {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           </div>
         ) : currentOrders.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {currentOrders.map((order) =>
               renderOrderCard(order, activeTab === "sales")
             )}
