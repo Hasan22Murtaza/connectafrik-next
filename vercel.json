@@ -1,4 +1,10 @@
 {
-  "installCommand": "npm install --legacy-peer-deps"
+  "installCommand": "npm install --legacy-peer-deps",
+  "git": {
+    "deploymentEnabled": {
+      "production": false,
+      "preview": false
+    }
+  }
 }
 
