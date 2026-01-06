@@ -6,12 +6,10 @@ import { X, ShoppingCart, MapPin, Phone, Mail, Info } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Product } from '@/shared/types'
+import { initializePaystackTransaction } from '@/features/marketplace/services/paystackService'
 
-// Dynamically import PaystackButton to avoid SSR issues
-const PaystackButton = dynamic(
-  () => import('react-paystack').then((mod) => mod.PaystackButton),
-  { ssr: false }
-)
+// Note: we use server-side initialization and redirect to Paystack hosted checkout
+// to avoid iframe/X-Frame-Options issues. Do not expose secret keys in client.
 // Email functions moved to API routes
 const sendOrderConfirmationEmail = async (buyerEmail: string, orderDetails: any) => {
   try {
@@ -158,6 +156,47 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
       if (!isProcessing) {
         toast('Payment cancelled', { icon: 'ℹ️' })
       }
+    }
+  }
+
+  const handleInitializePayment = async () => {
+    setIsProcessing(true)
+    try {
+      const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/api/paystack/verify`
+      
+      const result = await initializePaystackTransaction(
+        totalAmount,
+        user?.user_metadata?.email || user?.email || '',
+        product.currency || 'USD',
+        {
+          product_id: product.id,
+          product_title: product.title,
+          quantity,
+          buyer_id: user?.id,
+          buyer_email: user?.email,
+          buyer_name: user?.user_metadata?.full_name || user?.email,
+          buyer_phone: buyerPhone,
+          shipping_address: shippingAddress,
+          notes,
+          seller_id: product.seller_id,
+          unit_price: product.price,
+          total_amount: totalAmount,
+          currency: product.currency || 'USD'
+        },
+        callbackUrl
+      )
+
+      if (result && result.authorization_url) {
+        // Redirect the browser to Paystack hosted checkout
+        window.location.href = result.authorization_url
+      } else {
+        toast.error('Unable to start payment')
+      }
+    } catch (err) {
+      console.error('Init Paystack failed', err)
+      toast.error('Payment initialization failed')
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -535,13 +574,14 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
             >
               Cancel
             </button>
-            <PaystackButton
-              {...componentProps as any}
-              className={`flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                !isFormValid() ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+            <button
+              onClick={handleInitializePayment}
+              className={`flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
               disabled={isProcessing || !isFormValid()}
-            />
+            >
+              Pay Now
+            </button>
           </div>
 
           {/* Security Note */}

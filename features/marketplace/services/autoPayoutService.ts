@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { createTransferRecipient, createMobileMoneyRecipient, initiateTransfer } from './paystackService'
 
 interface AutoPayoutData {
   payout_id: string
@@ -45,26 +46,18 @@ export async function processAutoPayout(data: AutoPayoutData) {
       recipientCode = seller.paystack_recipient_code || ''
 
       if (!recipientCode) {
-        const response = await fetch('/api/paystack/transfer/recipient', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            type: 'nuban',
-            name: seller.account_name,
-            account_number: seller.account_number,
-            bank_code: seller.bank_code,
-            currency: 'NGN'
-          })
+        const recipient = await createTransferRecipient({
+          type: 'nuban',
+          name: seller.account_name,
+          account_number: seller.account_number,
+          bank_code: seller.bank_code,
+          currency: 'NGN'
         })
 
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Failed to create recipient')
+        if (!recipient) {
+          throw new Error('Failed to create recipient')
         }
 
-        const recipient = await response.json()
         recipientCode = recipient.recipient_code
 
         // Save recipient code for future use
@@ -87,27 +80,19 @@ export async function processAutoPayout(data: AutoPayoutData) {
       recipientCode = seller.paystack_momo_recipient_code || ''
 
       if (!recipientCode) {
-        const response = await fetch('/api/paystack/mobile-money/recipient', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            type: 'mobile_money',
-            name: seller.mobile_money_account_name,
-            phone: seller.mobile_money_phone,
-            currency: seller.mobile_money_country === 'GH' ? 'GHS' :
-                      seller.mobile_money_country === 'KE' ? 'KES' : 'NGN',
-            provider_code: seller.mobile_money_provider_code
-          })
+        const recipient = await createMobileMoneyRecipient({
+          type: 'mobile_money',
+          name: seller.mobile_money_account_name,
+          phone: seller.mobile_money_phone,
+          currency: seller.mobile_money_country === 'GH' ? 'GHS' :
+                    seller.mobile_money_country === 'KE' ? 'KES' : 'NGN',
+          provider: seller.mobile_money_provider_code
         })
 
-        if (!response.ok) {
-          const error = await response.json()
-          throw new Error(error.error || 'Failed to create mobile money recipient')
+        if (!recipient) {
+          throw new Error('Failed to create mobile money recipient')
         }
 
-        const recipient = await response.json()
         recipientCode = recipient.recipient_code
 
         // Save recipient code for future use
@@ -123,26 +108,17 @@ export async function processAutoPayout(data: AutoPayoutData) {
     // 4. Initiate transfer (works for both bank and mobile money)
     const reference = `PAYOUT-${payout_id.slice(0, 8)}-${Date.now()}`
 
-    const transferResponse = await fetch('/api/paystack/transfer/initiate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        source: 'balance',
-        amount: Math.round(amount * 100), // Convert to kobo/pesewas/cents
-        recipient: recipientCode,
-        reason: `Seller payout for order ${order_id.slice(0, 8)}`,
-        reference
-      })
+    const transfer = await initiateTransfer({
+      source: 'balance',
+      amount: amount,
+      recipient: recipientCode,
+      reason: `Seller payout for order ${order_id.slice(0, 8)}`,
+      reference
     })
 
-    if (!transferResponse.ok) {
-      const error = await transferResponse.json()
-      throw new Error(error.error || 'Transfer failed')
+    if (!transfer) {
+      throw new Error('Transfer failed')
     }
-
-    const transfer = await transferResponse.json()
 
     // 5. Update payout record
     await supabase

@@ -13,13 +13,14 @@ import {
   ShoppingBag,
   TrendingUp,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 
 const MarketplacePage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -65,6 +66,22 @@ const MarketplacePage: React.FC = () => {
   useEffect(() => {
     filterProducts();
   }, [products, searchTerm, selectedCategory, selectedCurrency]);
+
+  // Handle payment success/error messages from query params
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    const message = searchParams.get('message');
+
+    if (paymentStatus === 'success') {
+      toast.success('Payment successful! Your order has been created.');
+      // Clean up URL by removing query params
+      router.replace('/marketplace');
+    } else if (paymentStatus === 'error') {
+      toast.error(message ? decodeURIComponent(message) : 'Payment failed. Please try again.');
+      // Clean up URL by removing query params
+      router.replace('/marketplace');
+    }
+  }, [searchParams, router]);
 
   const fetchProducts = async () => {
     try {
@@ -348,4 +365,16 @@ const MarketplacePage: React.FC = () => {
   );
 };
 
-export default MarketplacePage;
+const MarketplacePageWrapper: React.FC = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-b-2 border-primary-600 rounded-full" />
+      </div>
+    }>
+      <MarketplacePage />
+    </Suspense>
+  );
+};
+
+export default MarketplacePageWrapper;
