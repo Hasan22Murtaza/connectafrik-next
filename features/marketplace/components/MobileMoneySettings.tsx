@@ -10,6 +10,7 @@ import {
   MobileMoneyProvider
 } from '@/features/marketplace/utils/mobileMoneyUtils'
 import toast from 'react-hot-toast'
+import { verifyMobileMoneyAccount } from '@/features/marketplace/services/paystackService'
 
 interface MobileMoneyDetails {
   phone: string
@@ -138,18 +139,16 @@ const MobileMoneySettings: React.FC = () => {
     try {
       const formattedPhone = formatPhoneForPaystack(mobileMoneyDetails.phone, selectedCountry)
 
-      const response = await fetch(
-        `/api/paystack/mobile-money/verify?phone=${encodeURIComponent(formattedPhone)}&provider=${encodeURIComponent(mobileMoneyDetails.provider_code)}`
+      const result = await verifyMobileMoneyAccount(
+        formattedPhone,
+        mobileMoneyDetails.provider_code
       )
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to verify mobile money account')
+      if (!result) {
+        throw new Error('Failed to verify mobile money account')
       }
 
-      const result = await response.json()
-
-      if (result.success && result.is_registered) {
+      if (result.is_registered) {
         setMobileMoneyDetails({
           ...mobileMoneyDetails,
           phone: formattedPhone,

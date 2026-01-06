@@ -6,6 +6,7 @@ import { X, ShoppingCart, MapPin, Phone, Mail, Info } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Product } from '@/shared/types'
+import { initializePaystackTransaction } from '@/features/marketplace/services/paystackService'
 
 // Note: we use server-side initialization and redirect to Paystack hosted checkout
 // to avoid iframe/X-Frame-Options issues. Do not expose secret keys in client.
@@ -158,41 +159,38 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
     }
   }
 
-  const initializePaystackTransaction = async () => {
+  const handleInitializePayment = async () => {
     setIsProcessing(true)
     try {
-      const res = await fetch('/api/paystack/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: Math.round(totalAmount * 100),
-          email: user?.user_metadata?.email || user?.email,
-          currency: product.currency || 'USD',
-          metadata: {
-            product_id: product.id,
-            product_title: product.title,
-            quantity,
-            buyer_id: user?.id,
-            buyer_email: user?.email,
-            buyer_name: user?.user_metadata?.full_name || user?.email,
-            buyer_phone: buyerPhone,
-            shipping_address: shippingAddress,
-            notes,
-            seller_id: product.seller_id,
-            unit_price: product.price,
-            total_amount: totalAmount,
-            currency: product.currency || 'USD'
-          }
-        })
-      })
+      const callbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/api/paystack/verify`
+      
+      const result = await initializePaystackTransaction(
+        totalAmount,
+        user?.user_metadata?.email || user?.email || '',
+        product.currency || 'USD',
+        {
+          product_id: product.id,
+          product_title: product.title,
+          quantity,
+          buyer_id: user?.id,
+          buyer_email: user?.email,
+          buyer_name: user?.user_metadata?.full_name || user?.email,
+          buyer_phone: buyerPhone,
+          shipping_address: shippingAddress,
+          notes,
+          seller_id: product.seller_id,
+          unit_price: product.price,
+          total_amount: totalAmount,
+          currency: product.currency || 'USD'
+        },
+        callbackUrl
+      )
 
-      const json = await res.json()
-      if (res.ok && json.data?.authorization_url) {
+      if (result && result.authorization_url) {
         // Redirect the browser to Paystack hosted checkout
-        window.location.href = json.data.authorization_url
+        window.location.href = result.authorization_url
       } else {
-        console.error('Paystack initialize error', json)
-        toast.error(json.message || 'Unable to start payment')
+        toast.error('Unable to start payment')
       }
     } catch (err) {
       console.error('Init Paystack failed', err)
@@ -577,7 +575,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
               Cancel
             </button>
             <button
-              onClick={initializePaystackTransaction}
+              onClick={handleInitializePayment}
               className={`flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               disabled={isProcessing || !isFormValid()}
