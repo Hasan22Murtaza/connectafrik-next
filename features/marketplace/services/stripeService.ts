@@ -1,7 +1,6 @@
 import { loadStripe, Stripe, StripeElements } from '@stripe/stripe-js'
 import { supabase } from '@/lib/supabase'
 
-// Initialize Stripe
 let stripePromise: Promise<Stripe | null>
 
 export const getStripe = () => {
