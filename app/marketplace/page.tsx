@@ -288,10 +288,10 @@ const MarketplacePage: React.FC = () => {
             <div className="max-w-3xl">
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <ShoppingBag className="text-primary-600" />
-                African Marketplace
+                Marketplace
               </h1>
               <p className="text-gray-600 mt-1">
-                Discover authentic products from African entrepreneurs and
+                Discover authentic products from entrepreneurs and
                 businesses
               </p>
             </div>
