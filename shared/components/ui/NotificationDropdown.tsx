@@ -271,7 +271,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       case 'post_comment':
       case 'reel_comment':
       case 'comment_reply':
-        return <MessageCircle className="w-4 h-4 text-blue-500" />
+        return <MessageCircle className="w-4 h-4 text-orange-500" />
       case 'post_share':
       case 'reel_share':
         return <Share2 className="w-4 h-4 text-green-500" />
@@ -295,7 +295,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       case 'post_comment':
       case 'reel_comment':
       case 'comment_reply':
-        return 'bg-blue-50 border-blue-200'
+        return 'bg-orange-50 border-orange-200'
       case 'post_share':
       case 'reel_share':
         return 'bg-green-50 border-green-200'
@@ -321,7 +321,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             {stats.unread > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                className="text-sm text-[#FF6900] hover:text-orange-700 font-medium"
               >
                 Mark all as read
               </button>
@@ -353,7 +353,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
                   className={`p-3 sm:p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    !notification.is_read ? 'bg-blue-50' : ''
+                    !notification.is_read ? 'bg-orange-50' : ''
                   }`}
                 >
                   <div className="flex items-start space-x-2 sm:space-x-3">
@@ -366,7 +366,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                           {notification.title}
                         </p>
                         {!notification.is_read && (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <div className="w-2 h-2 bg-[#FF6900] rounded-full"></div>
                         )}
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
@@ -388,7 +388,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             <Link
               href="/notifications"
               onClick={onClose}
-              className="block w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+              className="block w-full text-center text-sm text-[#FF6900] hover:text-orange-700 font-medium"
             >
               View all notifications
             </Link>
