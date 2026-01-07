@@ -4,16 +4,16 @@ import { Notification } from '@/shared/types/notifications'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { socialService } from '@/features/social/services/socialService'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 interface NotificationDropdownProps {
   isOpen: boolean
   onClose: () => void
+  onUnreadCountChange?: (count: number) => void
 }
 
-const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose }) => {
+const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose, onUnreadCountChange }) => {
   const { user } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
@@ -58,6 +58,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         
         const unreadCount = transformedNotifications.filter(n => !n.is_read).length
         setStats({ unread: unreadCount })
+        onUnreadCountChange?.(unreadCount)
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
@@ -111,8 +112,15 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   }
 
   const markAsRead = async (id: string) => {
+    if (!user) return
+
     try {
-      const { error } = await socialService.markNotificationRead(id)
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+        .eq('user_id', user.id)
+
       if (error) {
         console.error('Error marking notification as read:', error)
         toast.error('Failed to mark notification as read')
@@ -123,7 +131,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
       )
       
-      setStats(prev => ({ unread: Math.max(0, prev.unread - 1) }))
+      const newUnreadCount = Math.max(0, stats.unread - 1)
+      setStats({ unread: newUnreadCount })
+      onUnreadCountChange?.(newUnreadCount)
     } catch (error) {
       console.error('Error marking notification as read:', error)
       toast.error('Failed to mark notification as read')
@@ -154,12 +164,38 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       )
       
       setStats({ unread: 0 })
+      onUnreadCountChange?.(0)
       toast.success('All notifications marked as read')
     } catch (error) {
       console.error('Error marking all notifications as read:', error)
       toast.error('Failed to mark all notifications as read')
     }
   }
+
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!user) return
+
+      try {
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('id, is_read')
+          .eq('user_id', user.id)
+          .eq('is_read', false)
+
+        if (!error && data) {
+          const unreadCount = data.length
+          onUnreadCountChange?.(unreadCount)
+        }
+      } catch (error) {
+        console.error('Error fetching unread count:', error)
+      }
+    }
+
+    if (user) {
+      fetchUnreadCount()
+    }
+  }, [user?.id, onUnreadCountChange])
 
   useEffect(() => {
     if (isOpen && user) {
@@ -177,6 +213,18 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           },
           () => {
             fetchNotifications()
+            if (user) {
+              supabase
+                .from('notifications')
+                .select('id, is_read')
+                .eq('user_id', user.id)
+                .eq('is_read', false)
+                .then(({ data, error }) => {
+                  if (!error && data) {
+                    onUnreadCountChange?.(data.length)
+                  }
+                })
+            }
           }
         )
         .subscribe()

@@ -43,6 +43,7 @@ const Header: React.FC<HeaderProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [showCalls, setShowCalls] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   // TODO: Get threads from messaging service or realtime hook
   const unreadMessages = 0; // useMemo(() => threads.reduce((total: number, thread: any) => total + (thread.unread_count || 0), 0), [threads])
   const pathname = usePathname();
@@ -196,15 +197,16 @@ const Header: React.FC<HeaderProps> = ({
                       className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
                     >
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                      {unreadMessages > 0 && (
+                      {unreadNotificationCount > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                          {unreadMessages > 99 ? "99+" : unreadMessages}
+                          {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
                         </span>
                       )}
                     </button>
                     <NotificationDropdown
                       isOpen={showNotifications}
                       onClose={() => setShowNotifications(false)}
+                      onUnreadCountChange={setUnreadNotificationCount}
                     />
                   </div>
 

@@ -6,7 +6,6 @@ import { Notification, NotificationType } from '@/shared/types/notifications'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { socialService } from '@/features/social/services/socialService'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -115,22 +114,26 @@ const NotificationsPage: React.FC = () => {
     return messageMap[type] || 'You have a new notification'
   }
 
-  // Mark notification as read
   const markAsRead = async (id: string) => {
+    if (!user) return
+
     try {
-      const { error } = await socialService.markNotificationRead(id)
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+        .eq('user_id', user.id)
+
       if (error) {
         console.error('Error marking notification as read:', error)
         toast.error('Failed to mark notification as read')
         return
       }
 
-      // Update local state
       setNotifications(prev =>
         prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
       )
       
-      // Update stats
       setStats(prev => ({ ...prev, unread: Math.max(0, prev.unread - 1) }))
     } catch (error) {
       console.error('Error marking notification as read:', error)
@@ -145,7 +148,7 @@ const NotificationsPage: React.FC = () => {
     try {
       const unreadNotifications = notifications.filter(n => !n.is_read)
       if (unreadNotifications.length === 0) {
-        toast.info('All notifications are already read')
+        toast.success('All notifications are already read')
         return
       }
 
@@ -176,28 +179,26 @@ const NotificationsPage: React.FC = () => {
     }
   }
 
-  // Get notification icon
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'post_like':
       case 'reel_like':
       case 'comment_like':
-        return <Heart className="w-5 h-5 text-red-500" />
+        return <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
       case 'post_comment':
       case 'reel_comment':
       case 'comment_reply':
-        return <MessageCircle className="w-5 h-5 text-blue-500" />
+        return <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
       case 'post_share':
       case 'reel_share':
-        return <Share2 className="w-5 h-5 text-green-500" />
+        return <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
       case 'follow':
-        return <UserPlus className="w-5 h-5 text-purple-500" />
+        return <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
       case 'mention':
-        return <AtSign className="w-5 h-5 text-orange-500" />
+        return <AtSign className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
       case 'birthday':
-        return <span className="text-xl">🎂</span>
+        return <span className="text-lg sm:text-xl">🎂</span>
       default:
-        return <Bell className="w-5 h-5 text-gray-500" />
     }
   }
 
@@ -248,15 +249,14 @@ const NotificationsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <Bell className="w-8 h-8 text-primary-600" />
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <Bell className="w-6 h-6 sm:w-8 sm:h-8 text-[#FF6900]" />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-                <p className="text-sm text-gray-500">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Notifications</h1>
+                <p className="text-xs sm:text-sm text-gray-500">
                   {stats.total} total • {stats.unread} unread
                 </p>
               </div>
@@ -264,7 +264,7 @@ const NotificationsPage: React.FC = () => {
             {stats.unread > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 bg-[#FF6900] text-white text-sm sm:text-base rounded-lg hover:bg-orange-600 transition-colors w-full sm:w-auto"
               >
                 <CheckCheck className="w-4 h-4" />
                 <span>Mark all as read</span>
@@ -272,74 +272,70 @@ const NotificationsPage: React.FC = () => {
             )}
           </div>
 
-          {/* Filters */}
-          <div className="flex items-center space-x-2 overflow-x-auto pb-2">
-            <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === 'all'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setFilter('unread')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === 'unread'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Unread ({stats.unread})
-            </button>
-            <button
-              onClick={() => setFilter('post_like')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === 'post_like'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Likes
-            </button>
-            <button
-              onClick={() => setFilter('post_comment')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === 'post_comment'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Comments
-            </button>
-            <button
-              onClick={() => setFilter('follow')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                filter === 'follow'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Follows
-            </button>
-          </div>
+            <div className="flex items-center space-x-3 sm:space-x-4 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                  filter === 'all'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter('unread')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                  filter === 'unread'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Unread ({stats.unread})
+              </button>
+              <button
+                onClick={() => setFilter('post_like')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                  filter === 'post_like'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Likes
+              </button>
+              <button
+                onClick={() => setFilter('post_comment')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors ${
+                  filter === 'post_comment'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Comments
+              </button>
+              <button
+                onClick={() => setFilter('follow')}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ml-2 ${
+                  filter === 'follow'
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Follows
+              </button>
+            </div>
         </div>
 
-        {/* Notifications List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {loading ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading notifications...</p>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6900] mx-auto mb-4"></div>
+              <p className="text-sm sm:text-base text-gray-500">Loading notifications...</p>
             </div>
           ) : filteredNotifications.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-              <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium text-lg mb-2">No notifications</p>
-              <p className="text-sm text-gray-400">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+              <p className="text-gray-500 font-medium text-base sm:text-lg mb-2">No notifications</p>
+              <p className="text-xs sm:text-sm text-gray-400">
                 {filter === 'unread'
                   ? "You're all caught up! No unread notifications."
                   : filter !== 'all'
@@ -352,36 +348,36 @@ const NotificationsPage: React.FC = () => {
               <div
                 key={notification.id}
                 className={`bg-white rounded-lg shadow-sm border ${
-                  !notification.is_read ? 'border-blue-200 bg-blue-50' : 'border-gray-200'
-                } p-4 hover:shadow-md transition-shadow`}
+                  !notification.is_read ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
+                } p-3 sm:p-4 hover:shadow-md transition-shadow`}
               >
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 mt-1">
+                <div className="flex items-start space-x-3 sm:space-x-4">
+                  <div className="flex-shrink-0 mt-0.5 sm:mt-1">
                     {getNotificationIcon(notification.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="text-base font-semibold text-gray-900">
+                          <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
                             {notification.title}
                           </h3>
                           {!notification.is_read && (
-                            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                            <span className="w-2 h-2 bg-[#FF6900] rounded-full flex-shrink-0"></span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 mb-2">
+                        <p className="text-xs sm:text-sm text-gray-600 mb-1 sm:mb-2 line-clamp-2">
                           {notification.message}
                         </p>
                         <p className="text-xs text-gray-400">
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                         </p>
                       </div>
-                      <div className="flex items-center space-x-2 ml-4">
+                      <div className="flex items-center space-x-2 ml-2 sm:ml-4 flex-shrink-0">
                         {!notification.is_read && (
                           <button
                             onClick={() => markAsRead(notification.id)}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 sm:p-2 text-gray-400 hover:text-[#FF6900] hover:bg-orange-50 rounded-lg transition-colors"
                             title="Mark as read"
                           >
                             <Check className="w-4 h-4" />
