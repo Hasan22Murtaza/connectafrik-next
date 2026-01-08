@@ -12,7 +12,7 @@ import CreatePost from '@/features/social/components/CreatePost'
 import { PostCard } from '@/features/social/components/PostCard'
 import CommentsSection from '@/features/social/components/CommentsSection'
 import ShareModal from '@/features/social/components/ShareModal'
-import { rankContentWithFairness, RANKING_PRESETS, updateEngagementReward } from '@/features/social/services/fairnessRankingService'
+import { updateEngagementReward } from '@/features/social/services/fairnessRankingService'
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -37,33 +37,17 @@ const FeedPage: React.FC = () => {
   const { posts, loading, createPost, toggleLike, deletePost, updatePost, recordView, updatePostLikesCount } = usePosts(activeCategory)
   const { members } = useMembers()
 
-  // Apply fairness ranking to posts (always balanced, with optional exploration boost)
+  // Sort posts by creation date (newest first)
   const rankedPosts = useMemo(() => {
     if (!posts.length) return []
 
-    // Use balanced ranking by default, or explore mode when boost is active
-    const rankingConfig = explorationBoost ? RANKING_PRESETS.EXPLORE_NEW : RANKING_PRESETS.BALANCED
-
-    // Convert posts to content items with required fields
-    const contentItems = posts.map(post => ({
-      ...post,
-      creator_id: post.author_id,
-      creator_type: (post.author?.creator_type as 'underrepresented' | 'verified' | 'regular') || 'regular',
-      creator_region: post.author?.country || post.author?.location,
-      language: post.language || 'English',
-      engagement_score: (post.likes_count || 0) * 0.3 + (post.comments_count || 0) * 0.5 + (post.shares_count || 0) * 0.8,
-      created_at: post.created_at,
-      topic_category: post.category
-    }))
-
-    const rankedContentItems = rankContentWithFairness(contentItems, rankingConfig)
-    
-    // Convert back to Post objects
-    return rankedContentItems.map(rankedItem => {
-      const originalPost = posts.find(post => post.id === rankedItem.id)
-      return originalPost!
+    // Sort posts by created_at in descending order (newest first)
+    return [...posts].sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime()
+      const dateB = new Date(b.created_at).getTime()
+      return dateB - dateA // Descending order (newest first)
     })
-  }, [posts, explorationBoost])
+  }, [posts])
 
   const filteredPosts = useMemo(() => {
     if (!searchTerm.trim()) return rankedPosts
