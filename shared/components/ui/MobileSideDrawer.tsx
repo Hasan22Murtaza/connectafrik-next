@@ -32,8 +32,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
 
   const shortcuts = [
     { icon: Search, label: 'Search Users', action: 'search' },
-    { icon: Users, label: 'Friends List', path: '/friends' },
-    { icon: UserPlus, label: 'Find Friends', path: '/mobile-friends' },
+    { icon: Users, label: 'Friends', path: '/friends' },
     { icon: Users2, label: 'Groups', path: '/groups' },
     { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
     { icon: Package, label: 'My Orders', path: '/my-orders' },
