@@ -123,41 +123,6 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
 
   if (!isOpen || !user) return null
 
-  // Paystack configuration
-  const componentProps = {
-    email: user?.user_metadata?.email || user?.id || 'customer@connectafrik.com',
-    amount: Math.round(totalAmount * 100), // Paystack expects amount in kobo/cents
-    currency: product.currency || 'USD',
-    publicKey,
-    text: 'Pay Now',
-    metadata: {
-      custom_fields: [
-        {
-          display_name: 'Product',
-          variable_name: 'product_title',
-          value: product.title
-        },
-        {
-          display_name: 'Quantity',
-          variable_name: 'quantity',
-          value: quantity.toString()
-        },
-        {
-          display_name: 'Buyer',
-          variable_name: 'buyer_name',
-          value: user?.user_metadata?.full_name || user?.email || 'Unknown'
-        }
-      ]
-    },
-    onSuccess: async (reference: any) => {
-      await handlePaymentSuccess(reference)
-    },
-    onClose: () => {
-      if (!isProcessing) {
-        toast('Payment cancelled', { icon: 'ℹ️' })
-      }
-    }
-  }
 
   const handleInitializePayment = async () => {
     setIsProcessing(true)
@@ -185,6 +150,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
         },
         callbackUrl
       )
+      console.log('Paystack initialization returned:', JSON.stringify(result))
 
       if (result && result.authorization_url) {
         // Redirect the browser to Paystack hosted checkout
@@ -200,99 +166,6 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
     }
   }
 
-  const handlePaymentSuccess = async (reference: any) => {
-    setIsProcessing(true)
-    try {
-      // Create order in database
-      const orderData = {
-        buyer_id: user!.id,
-        buyer_email: user?.email || 'support@connectafrik.com',
-        buyer_phone: buyerPhone || null,
-        seller_id: product.seller_id,
-        product_id: product.id,
-        product_title: product.title,
-        product_image: product.images?.[0] || null,
-        quantity,
-        unit_price: product.price,
-        total_amount: totalAmount,
-        currency: product.currency || 'USD',
-        payment_status: 'completed',
-        payment_method: 'paystack',
-        payment_reference: reference.reference,
-        paid_at: new Date().toISOString(),
-        shipping_address: shippingAddress.street ? shippingAddress : null,
-        notes: notes || null,
-        status: 'confirmed'
-      }
-
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single()
-
-      if (orderError) throw orderError
-
-      // Create payment transaction record
-      await supabase
-        .from('payment_transactions')
-        .insert({
-          order_id: order.id,
-          transaction_reference: reference.reference,
-          amount: totalAmount,
-          currency: product.currency || 'USD',
-          status: 'success',
-          paystack_response: reference,
-          verified_at: new Date().toISOString()
-        })
-
-      // Update product stock if available
-      if (product.stock_quantity !== null && product.stock_quantity !== undefined) {
-        await supabase
-          .from('products')
-          .update({ stock_quantity: Math.max(0, product.stock_quantity - quantity) })
-          .eq('id', product.id)
-      }
-
-      // Send confirmation emails (non-blocking)
-      const buyerName = user?.user_metadata?.full_name || user?.email || 'Customer'
-      const sellerName = product.seller?.full_name || product.seller?.username || 'Seller'
-      const buyerEmail = user?.email || 'support@connectafrik.com'
-
-      // Send buyer confirmation email
-      sendOrderConfirmationEmail(buyerEmail || 'support@connectafrik.com', {
-        orderNumber: order.order_number,
-        productTitle: product.title,
-        quantity,
-        totalAmount,
-        currency: product.currency || 'USD',
-        buyerName,
-      }).catch(err => console.error('Failed to send buyer confirmation:', err))
-
-      // Send seller notification email
-      if (product.seller_id) {
-        const sellerEmail = 'support@connectafrik.com' // Default seller email
-        sendNewOrderNotificationEmail(sellerEmail || 'support@connectafrik.com', {
-          orderNumber: order.order_number,
-          productTitle: product.title,
-          quantity,
-          totalAmount,
-          currency: product.currency || 'USD',
-          buyerName,
-          sellerName,
-        }).catch(err => console.error('Failed to send seller notification:', err))
-      }
-
-      toast.success('Payment successful! Order created.')
-      onSuccess()
-      onClose()
-    } catch (error: any) {
-      console.error('Error creating order:', error)
-      toast.error('Payment succeeded but order creation failed. Please contact support.')
-    } finally {
-      setIsProcessing(false)
-    }
-  }
 
   const isFormValid = () => {
     return (
