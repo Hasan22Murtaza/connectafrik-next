@@ -1,6 +1,6 @@
 "use client";
 
-import { MobilePeopleYouMayKnow } from "@/features/social/components/MobilePeopleYouMayKnow";
+import { PeopleYouMayKnow } from "@/features/social/components/PeopleYouMayKnow";
 import { ArrowLeft, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -35,7 +35,7 @@ export default function MobileFriendsPage() {
 
         {/* People You May Know Section */}
         <div className="mb-8">
-          <MobilePeopleYouMayKnow />
+          <PeopleYouMayKnow />
         </div>
 
         {/* Additional sections can be added here */}
