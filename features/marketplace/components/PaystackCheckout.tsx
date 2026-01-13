@@ -243,7 +243,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
               value={quantity}
               onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
               disabled={isProcessing}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field"
             />
           </div>
 
@@ -253,6 +253,28 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
               <Phone className="w-4 h-4 inline mr-1" />
               Phone Number *
             </label>
+                            <div
+                      className="
+                        [&_.PhoneInput]:flex
+                        [&_.PhoneInput]:items-center
+                        [&_.PhoneInput]:border
+                        [&_.PhoneInput]:border-gray-300
+                        [&_.PhoneInput]:rounded-md
+                        [&_.PhoneInput]:bg-[#F9FAFB]
+                        [&_.PhoneInput]:px-2
+                        [&_.PhoneInput]:py-3
+
+                        [&_.PhoneInputInput]:w-full
+                        [&_.PhoneInputInput]:bg-transparent
+                        [&_.PhoneInputInput]:focus:outline-none
+                        [&_.PhoneInputInput]:focus:ring-0
+
+                        [&_.PhoneInputCountry]:mr-2
+
+                        [&_.PhoneInput]:focus-within:border-orange-500
+                        [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]
+                      "
+                    >
             <PhoneInput
               international
               defaultCountry="US"
@@ -261,10 +283,11 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
               placeholder="Enter your phone number"
               disabled={isProcessing}
               className="w-full"
-              numberInputProps={{
-                className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              }}
+              // numberInputProps={{
+              //   className: "input-field disabled:opacity-50 disabled:cursor-not-allowed"
+              // }}
             />
+            </div>
             <p className="text-xs text-gray-500 mt-1">
               Seller will contact you on this number
             </p>
@@ -283,7 +306,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
                 value={shippingAddress.street}
                 onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
                 disabled={isProcessing}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-field"
               />
               <div className="grid grid-cols-2 gap-3">
                 <input
@@ -292,7 +315,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
                   value={shippingAddress.city}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
                   disabled={isProcessing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
                 <input
                   type="text"
@@ -300,7 +323,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
                   value={shippingAddress.state}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
                   disabled={isProcessing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -310,7 +333,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
                   value={shippingAddress.country}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
                   disabled={isProcessing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
                 <input
                   type="text"
@@ -318,7 +341,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
                   value={shippingAddress.postal_code}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, postal_code: e.target.value })}
                   disabled={isProcessing}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                 />
               </div>
             </div>
@@ -335,7 +358,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
               placeholder="Any special requests or delivery instructions..."
               rows={3}
               disabled={isProcessing}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              className="input-field resize-none"
             />
           </div>
 

@@ -1,98 +1,121 @@
-'use client'
+"use client";
 
-import React, { useState, useEffect, Suspense } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Globe, Eye, EyeOff, Mail, Lock, Phone } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
-import toast from 'react-hot-toast'
-import PhoneInput from 'react-phone-number-input'
-import 'react-phone-number-input/style.css'
+import React, { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Globe, Eye, EyeOff, Mail, Lock, Phone } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import toast from "react-hot-toast";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 const SigninForm: React.FC = () => {
-  const { signIn } = useAuth()
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email')
+  const { signIn } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    phone: ''
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+    email: "",
+    password: "",
+    phone: "",
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    setIsLoading(true)
+    e.preventDefault();
+
+    setIsLoading(true);
     try {
-      if (loginMethod === 'email') {
+      if (loginMethod === "email") {
         // Email/Password login
-        const { error } = await signIn(formData.email, formData.password)
+        const { error } = await signIn(formData.email, formData.password);
 
         if (error) {
-          toast.error(error.message)
-          setIsLoading(false)
+          toast.error(error.message);
+          setIsLoading(false);
         } else {
-          toast.success('Welcome back!')
+          toast.success("Welcome back!");
           // Wait for session to be set in cookies before redirecting
           // Use a small delay to ensure cookies are properly set
-          const redirectTo = searchParams.get('redirect') || '/feed'
+          const redirectTo = searchParams.get("redirect") || "/feed";
           setTimeout(() => {
             // Use window.location for full page reload to ensure middleware can read cookies
-            window.location.href = redirectTo
-          }, 200)
+            window.location.href = redirectTo;
+          }, 200);
         }
       } else {
         // Phone/OTP login
-        const cleanPhone = formData.phone.trim()
+        const cleanPhone = formData.phone.trim();
 
         // Validate phone format (should start with + for international)
-        if (!cleanPhone || !cleanPhone.startsWith('+')) {
-          toast.error('Phone number must include country code (e.g., +1234567890)')
-          setIsLoading(false)
-          return
+        if (!cleanPhone || !cleanPhone.startsWith("+")) {
+          toast.error(
+            "Phone number must include country code (e.g., +1234567890)"
+          );
+          setIsLoading(false);
+          return;
         }
 
         // Send OTP via Supabase Phone Auth
         const { data, error } = await supabase.auth.signInWithOtp({
-          phone: cleanPhone
-        })
+          phone: cleanPhone,
+        });
 
         if (error) {
-          console.error('Phone OTP error:', error)
-          if (error.message?.includes('Invalid phone') || error.message?.includes('invalid phone')) {
-            toast.error('Please enter a valid phone number with country code (e.g., +1234567890)')
-          } else if (error.message?.includes('rate limit')) {
-            toast.error('Too many attempts. Please wait a moment and try again.')
-          } else if (error.message?.includes('Phone Provider not enabled')) {
-            toast.error('Phone authentication is not enabled. Please use email signin or contact support.')
-          } else if (error.message?.includes('not found') || error.message?.includes('does not exist')) {
-            toast.error('No account found with this phone number. Please sign up first.')
+          console.error("Phone OTP error:", error);
+          if (
+            error.message?.includes("Invalid phone") ||
+            error.message?.includes("invalid phone")
+          ) {
+            toast.error(
+              "Please enter a valid phone number with country code (e.g., +1234567890)"
+            );
+          } else if (error.message?.includes("rate limit")) {
+            toast.error(
+              "Too many attempts. Please wait a moment and try again."
+            );
+          } else if (error.message?.includes("Phone Provider not enabled")) {
+            toast.error(
+              "Phone authentication is not enabled. Please use email signin or contact support."
+            );
+          } else if (
+            error.message?.includes("not found") ||
+            error.message?.includes("does not exist")
+          ) {
+            toast.error(
+              "No account found with this phone number. Please sign up first."
+            );
           } else {
-            const errorMsg = error.message || 'Failed to send verification code'
-            toast.error(errorMsg)
+            const errorMsg =
+              error.message || "Failed to send verification code";
+            toast.error(errorMsg);
           }
-          setIsLoading(false)
+          setIsLoading(false);
         } else {
-          console.log('Phone OTP sent:', data)
-          toast.success('Verification code sent to your phone!')
+          console.log("Phone OTP sent:", data);
+          toast.success("Verification code sent to your phone!");
           // Navigate to OTP verification page with phone number
-          router.push(`/verify-otp?phone=${encodeURIComponent(cleanPhone)}&redirect=${encodeURIComponent(searchParams.get('redirect') || '/feed')}`)
+          router.push(
+            `/verify-otp?phone=${encodeURIComponent(
+              cleanPhone
+            )}&redirect=${encodeURIComponent(
+              searchParams.get("redirect") || "/feed"
+            )}`
+          );
         }
       }
     } catch (error: any) {
-      toast.error('An unexpected error occurred')
-      setIsLoading(false)
+      toast.error("An unexpected error occurred");
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
@@ -101,7 +124,7 @@ const SigninForm: React.FC = () => {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Link href={"/"}>
-            <img src="/assets/images/logo_2.png" alt="" className="w-30" />
+              <img src="/assets/images/logo_2.png" alt="" className="w-30" />
             </Link>
           </div>
           <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
@@ -118,22 +141,22 @@ const SigninForm: React.FC = () => {
           <div className="flex gap-2 mb-4 p-1 bg-gray-100 rounded-lg">
             <button
               type="button"
-              onClick={() => setLoginMethod('email')}
+              onClick={() => setLoginMethod("email")}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                loginMethod === 'email'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                loginMethod === "email"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Email
             </button>
             <button
               type="button"
-              onClick={() => setLoginMethod('phone')}
+              onClick={() => setLoginMethod("phone")}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                loginMethod === 'phone'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                loginMethod === "phone"
+                  ? "bg-white text-primary-600 shadow-sm"
+                  : "text-gray-600 hover:text-gray-900"
               }`}
             >
               Phone
@@ -141,7 +164,7 @@ const SigninForm: React.FC = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-2">
-            {loginMethod === 'email' ? (
+            {loginMethod === "email" ? (
               <>
                 {/* Email */}
                 <div>
@@ -236,18 +259,40 @@ const SigninForm: React.FC = () => {
                   >
                     Phone Number
                   </label>
-                  <div className="[&_.PhoneInputInput]:input-field [&_.PhoneInputInput]:w-full">
+                <div
+  className="
+    [&_.PhoneInput]:flex
+    [&_.PhoneInput]:items-center
+    [&_.PhoneInput]:border
+    [&_.PhoneInput]:border-gray-300
+    [&_.PhoneInput]:rounded-md
+    [&_.PhoneInput]:bg-[#F9FAFB]
+    [&_.PhoneInput]:px-2
+    [&_.PhoneInput]:py-3
+
+    [&_.PhoneInputInput]:w-full
+    [&_.PhoneInputInput]:bg-transparent
+    [&_.PhoneInputInput]:focus:outline-none
+    [&_.PhoneInputInput]:focus:ring-0
+
+    [&_.PhoneInputCountry]:mr-2
+
+    [&_.PhoneInput]:focus-within:border-orange-500
+    [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]
+  "
+>
                     <PhoneInput
                       international
                       defaultCountry="GH"
                       value={formData.phone}
-                      onChange={(value) => setFormData(prev => ({ ...prev, phone: value || '' }))}
+                      onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, phone: value || "" }))
+                      }
                       placeholder="Enter your phone number"
-                      numberInputProps={{
-                        required: true
-                      }}
+                      numberInputProps={{ required: true }}
                     />
                   </div>
+
                   <p className="text-xs text-gray-500 mt-1">
                     We'll send you a verification code via SMS
                   </p>
@@ -297,21 +342,22 @@ const SigninForm: React.FC = () => {
       </div>
     </div>
   );
-}
+};
 
 const Signin: React.FC = () => {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Loading...</p>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-600">Loading...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <SigninForm />
     </Suspense>
-  )
-}
+  );
+};
 
-export default Signin
-
+export default Signin;
