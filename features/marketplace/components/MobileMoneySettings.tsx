@@ -11,6 +11,8 @@ import {
 } from '@/features/marketplace/utils/mobileMoneyUtils'
 import toast from 'react-hot-toast'
 import { verifyMobileMoneyAccount } from '@/features/marketplace/services/paystackService'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 
 interface MobileMoneyDetails {
   phone: string
@@ -271,17 +273,23 @@ const MobileMoneySettings: React.FC = () => {
             Mobile Money Phone Number *
           </label>
           <div className="flex gap-3">
-            <input
-              type="tel"
-              value={mobileMoneyDetails.phone}
-              onChange={(e) => handlePhoneChange(e.target.value)}
-              className="input-field flex-1"
-              placeholder={
-                selectedCountry === 'GH' ? '0244123456' :
-                selectedCountry === 'KE' ? '0712345678' :
-                '0XXXXXXXXX'
-              }
-            />
+            <div className="flex-1">
+              <PhoneInput
+                international
+                defaultCountry={selectedCountry as any}
+                value={mobileMoneyDetails.phone}
+                onChange={(value) => handlePhoneChange(value || '')}
+                placeholder={
+                  selectedCountry === 'GH' ? '0244123456' :
+                  selectedCountry === 'KE' ? '0712345678' :
+                  '0XXXXXXXXX'
+                }
+                className="w-full"
+                numberInputProps={{
+                  className: "input-field w-full"
+                }}
+              />
+            </div>
             <button
               onClick={handleVerifyAccount}
               disabled={isVerifying || !mobileMoneyDetails.phone || !mobileMoneyDetails.provider_code}

@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Product } from '@/shared/types'
 import { getStripe, createStripePaymentIntent, calculateStripeFees } from '@/features/marketplace/services/stripeService'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 // Email functions moved to API routes
 const sendOrderConfirmationEmail = async (buyerEmail: string, orderDetails: any) => {
   try {
@@ -369,14 +371,19 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
               <Phone className="w-4 h-4 inline mr-1" />
               Phone Number *
             </label>
-            <input
-              type="tel"
-              value={buyerPhone}
-              onChange={(e) => setBuyerPhone(e.target.value)}
-              placeholder="Enter your phone number"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <PhoneInput
+                international
+                defaultCountry="US"
+                value={buyerPhone}
+                onChange={(value) => setBuyerPhone(value || '')}
+                placeholder="Enter your phone number"
+                className="w-full"
+                numberInputProps={{
+                  className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                }}
+              />
+            </div>
             <p className="text-xs text-gray-500 mt-1">
               Seller will contact you on this number
             </p>

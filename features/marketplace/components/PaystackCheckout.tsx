@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Product } from '@/shared/types'
 import { initializePaystackTransaction } from '@/features/marketplace/services/paystackService'
+import PhoneInput from 'react-phone-number-input'
+import 'react-phone-number-input/style.css'
 
 // Note: we use server-side initialization and redirect to Paystack hosted checkout
 // to avoid iframe/X-Frame-Options issues. Do not expose secret keys in client.
@@ -251,13 +253,17 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
               <Phone className="w-4 h-4 inline mr-1" />
               Phone Number *
             </label>
-            <input
-              type="tel"
+            <PhoneInput
+              international
+              defaultCountry="US"
               value={buyerPhone}
-              onChange={(e) => setBuyerPhone(e.target.value)}
+              onChange={(value) => setBuyerPhone(value || '')}
               placeholder="Enter your phone number"
               disabled={isProcessing}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full"
+              numberInputProps={{
+                className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              }}
             />
             <p className="text-xs text-gray-500 mt-1">
               Seller will contact you on this number
