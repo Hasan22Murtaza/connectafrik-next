@@ -16,7 +16,8 @@ import {
   Calendar,
   FileText,
   Truck,
-  ShoppingBag
+  ShoppingBag,
+  ChevronDown
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -74,6 +75,8 @@ const OrderDetailPage: React.FC = () => {
   const [order, setOrder] = useState<OrderDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [isBuyer, setIsBuyer] = useState(false)
+  const [isSeller, setIsSeller] = useState(false)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
   useEffect(() => {
     if (user && orderId) {
@@ -110,6 +113,7 @@ const OrderDetailPage: React.FC = () => {
       }
 
       setIsBuyer(orderData.buyer_id === user.id)
+      setIsSeller(orderData.seller_id === user.id)
 
       // Fetch seller profile
       const { data: sellerProfile } = await supabase
@@ -205,6 +209,57 @@ const OrderDetailPage: React.FC = () => {
   const formatPaymentMethod = (method: string | null) => {
     if (!method) return 'N/A'
     return method.charAt(0).toUpperCase() + method.slice(1)
+  }
+
+  const updateOrderStatus = async (newStatus: string) => {
+    if (!order || !user || !isSeller) return
+
+    try {
+      setIsUpdatingStatus(true)
+
+      // Determine the next delivery status based on order status
+      let deliveryStatus = order.delivery_status
+      if (newStatus === 'processing') {
+        deliveryStatus = 'processing'
+      } else if (newStatus === 'shipped') {
+        deliveryStatus = 'shipped'
+      } else if (newStatus === 'completed') {
+        deliveryStatus = 'delivered'
+      }
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: newStatus,
+          delivery_status: deliveryStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', order.id)
+
+      if (error) throw error
+
+      // Refresh order data
+      await fetchOrderDetails()
+      toast.success(`Order status updated to ${newStatus}`)
+    } catch (error: any) {
+      console.error('Error updating order status:', error)
+      toast.error('Failed to update order status')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
+  const getNextStatusOptions = (currentStatus: string) => {
+    const statusFlow: Record<string, string[]> = {
+      pending: ['confirmed', 'cancelled'],
+      confirmed: ['processing', 'cancelled'],
+      processing: ['shipped', 'cancelled'],
+      shipped: ['completed'],
+      completed: [],
+      cancelled: [],
+      refunded: []
+    }
+    return statusFlow[currentStatus] || []
   }
 
 
@@ -354,10 +409,34 @@ const statusColor = deliveryStatus
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-600">Delivery Status</span>
                   <span className={`font-medium capitalize ${statusColor}`}>
-    {order.delivery_status || "Not specified"}
-  </span>
-
+                    {order.delivery_status || "Not specified"}
+                  </span>
                 </div>
+                {isSeller && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Order Status</span>
+                    <div className="relative group">
+                      <select
+                        value={order.status}
+                        onChange={(e) => {
+                          if (e.target.value !== order.status) {
+                            updateOrderStatus(e.target.value);
+                          }
+                        }}
+                        disabled={isUpdatingStatus}
+                        className="text-sm px-3 py-1.5 rounded border border-gray-300 bg-white text-gray-700 hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-8 min-w-[140px]"
+                      >
+                        <option value={order.status}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</option>
+                        {getNextStatusOptions(order.status).map((status) => (
+                          <option key={status} value={status}>
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
                 {order.shipping_address ? (
                   <div className="pt-2">
                     <p className="text-gray-600 mb-2">Shipping Address</p>
@@ -494,6 +573,46 @@ const statusColor = deliveryStatus
                 <p className="text-gray-500 text-sm">Information not available</p>
               )}
             </div>
+
+            {/* Seller Status Update Section */}
+            {isSeller && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                  <Package className="w-5 h-5 text-primary-600" />
+                  <span>Update Order Status</span>
+                </h2>
+                
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 mb-4">
+                    Current status: <span className="font-medium capitalize">{order.status}</span>
+                  </p>
+                  
+                  <div className="flex flex-wrap gap-2">
+                    {getNextStatusOptions(order.status).map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => updateOrderStatus(status)}
+                        disabled={isUpdatingStatus}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          status === 'cancelled'
+                            ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+                            : 'bg-primary-50 text-primary-700 hover:bg-primary-100 border border-primary-200'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {isUpdatingStatus ? 'Updating...' : `Mark as ${status.charAt(0).toUpperCase() + status.slice(1)}`}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 mt-3">
+                    {order.status === 'pending' && 'Confirm the order to proceed with processing.'}
+                    {order.status === 'confirmed' && 'Start processing the order or cancel if needed.'}
+                    {order.status === 'processing' && 'Mark as shipped when the item is dispatched.'}
+                    {order.status === 'shipped' && 'Mark as completed when the buyer receives the item.'}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

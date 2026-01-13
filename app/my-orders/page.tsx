@@ -11,6 +11,7 @@ import {
   XCircle,
   TrendingUp,
   ShoppingCart,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -49,6 +50,7 @@ const MyOrders: React.FC = () => {
   const [purchases, setPurchases] = useState<Order[]>([]);
   const [sales, setSales] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -160,6 +162,57 @@ const MyOrders: React.FC = () => {
     }).format(date);
   };
 
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    if (!user) return;
+
+    try {
+      setUpdatingOrderId(orderId);
+
+      // Determine the next delivery status based on order status
+      let deliveryStatus = 'pending';
+      if (newStatus === 'processing') {
+        deliveryStatus = 'processing';
+      } else if (newStatus === 'shipped') {
+        deliveryStatus = 'shipped';
+      } else if (newStatus === 'completed') {
+        deliveryStatus = 'delivered';
+      }
+
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          status: newStatus,
+          delivery_status: deliveryStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      // Refresh orders
+      await fetchOrders();
+      toast.success(`Order status updated to ${newStatus}`);
+    } catch (error: any) {
+      console.error('Error updating order status:', error);
+      toast.error('Failed to update order status');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const getNextStatusOptions = (currentStatus: string) => {
+    const statusFlow: Record<string, string[]> = {
+      pending: ['confirmed', 'cancelled'],
+      confirmed: ['processing', 'cancelled'],
+      processing: ['shipped', 'cancelled'],
+      shipped: ['completed'],
+      completed: [],
+      cancelled: [],
+      refunded: []
+    };
+    return statusFlow[currentStatus] || [];
+  };
+
   const renderOrderCard = (order: Order, isSale: boolean = false) => {
     const otherParty = isSale ? order.buyer : order.seller;
     return (
@@ -242,6 +295,31 @@ const MyOrders: React.FC = () => {
                   {formatDate(order.created_at)}
                 </p>
               </div>
+              {isSale && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Order Status</p>
+                  <div className="relative group">
+                    <select
+                      value={order.status}
+                      onChange={(e) => {
+                        if (e.target.value !== order.status) {
+                          updateOrderStatus(order.id, e.target.value);
+                        }
+                      }}
+                      disabled={updatingOrderId === order.id}
+                      className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 w-full"
+                    >
+                      <option value={order.status}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</option>
+                      {getNextStatusOptions(order.status).map((status) => (
+                        <option key={status} value={status}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Other Party Info */}
@@ -270,12 +348,15 @@ const MyOrders: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => router.push(`/my-orders/${order.id}`)}
-                  className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                >
-                  View Details
-                </button>
+                <div className="flex items-center gap-2">
+                
+                  <button
+                    onClick={() => router.push(`/my-orders/${order.id}`)}
+                    className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                  >
+                    View Details
+                  </button>
+                </div>
               </div>
             
           </div>
