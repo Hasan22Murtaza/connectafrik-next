@@ -18,26 +18,24 @@ const ProfileSettings: React.FC = () => {
   const { profile, updateProfile } = useProfile()
   const { uploadFile } = useFileUpload()
   
-  // Profile Form State
   const [profileForm, setProfileForm] = useState({
     username: '',
     full_name: '',
     bio: '',
-    country: ''
+    country: '',
+    birthday: ''
   })
 
-  // Privacy Settings State
   const [privacySettings, setPrivacySettings] = useState({
-    profile_visibility: 'public', // public, friends, private
+    profile_visibility: 'public',
     post_visibility: 'public',
-    allow_comments: 'everyone', // everyone, friends, none
+    allow_comments: 'everyone',
     allow_follows: 'everyone',
     show_online_status: true,
     show_country: true,
     show_followers_count: true
   })
 
-  // Notification Settings State
   const [notificationSettings, setNotificationSettings] = useState({
     email_notifications: true,
     push_notifications: true,
@@ -49,7 +47,6 @@ const ProfileSettings: React.FC = () => {
     weekly_digest: true
   })
 
-  // Security Settings State
   const [securitySettings, setSecuritySettings] = useState({
     two_factor_enabled: false,
     login_alerts: true,
@@ -76,14 +73,15 @@ const ProfileSettings: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
+      const birthdayValue = (profile as any).birthday || ''
       setProfileForm({
         username: profile.username || '',
         full_name: profile.full_name || '',
         bio: profile.bio || '',
-        country: (profile as any).country || ''
+        country: (profile as any).country || '',
+        birthday: birthdayValue
       })
 
-      // Load privacy settings from database
       setPrivacySettings({
         profile_visibility: (profile as any).profile_visibility || 'public',
         post_visibility: (profile as any).post_visibility || 'public',
@@ -94,7 +92,6 @@ const ProfileSettings: React.FC = () => {
         show_followers_count: (profile as any).show_followers_count ?? true
       })
 
-      // Load notification settings from database
       setNotificationSettings({
         email_notifications: (profile as any).email_notifications ?? true,
         push_notifications: (profile as any).push_notifications ?? true,
@@ -106,7 +103,6 @@ const ProfileSettings: React.FC = () => {
         weekly_digest: (profile as any).weekly_digest ?? true
       })
 
-      // Load security settings from database
       setSecuritySettings({
         two_factor_enabled: (profile as any).two_factor_enabled ?? false,
         login_alerts: (profile as any).login_alerts ?? true,
@@ -218,8 +214,6 @@ const ProfileSettings: React.FC = () => {
     }
 
     try {
-      // Note: In production, this would need to be handled by a server function
-      // as deleting auth users requires admin privileges
       toast.error('Account deletion not implemented yet. Please contact support.')
     } catch (error) {
       toast.error('Failed to delete account')
@@ -228,7 +222,6 @@ const ProfileSettings: React.FC = () => {
 
   const handleDataDownload = async () => {
     try {
-      // Export user data
       const { data: posts } = await supabase
         .from('posts')
         .select('*')
@@ -287,7 +280,6 @@ const ProfileSettings: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 sm:gap-6 gap-4">
-          {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="card">
               <nav className=" md:flex-col flex gap-2 sm:gap-3  items-center overflow-x-auto  scrollbar-hide ">
@@ -312,9 +304,7 @@ const ProfileSettings: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Content */}
           <div className="lg:col-span-3">
-            {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="card">
                 <div className="sm:p-6 p-4  border-b border-gray-200">
@@ -323,7 +313,6 @@ const ProfileSettings: React.FC = () => {
                 </div>
 
                 <div className="sm:p-6 py-6 space-y-6">
-                  {/* Avatar Section */}
                   <div className="flex items-center space-x-6">
                     <div className="relative">
                       {profile?.avatar_url ? (
@@ -359,7 +348,6 @@ const ProfileSettings: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Profile Form */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -403,6 +391,19 @@ const ProfileSettings: React.FC = () => {
                       </select>
                     </div>
 
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Date of Birth
+                      </label>
+                      <input
+                        type="date"
+                        value={profileForm.birthday}
+                        onChange={(e) => setProfileForm({ ...profileForm, birthday: e.target.value })}
+                        className="input-field"
+                        max={new Date().toISOString().split('T')[0]}
+                      />
+                    </div>
+
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Bio
@@ -435,7 +436,6 @@ const ProfileSettings: React.FC = () => {
               </div>
             )}
 
-            {/* Privacy Tab */}
             {activeTab === 'privacy' && (
               <div className="card">
                 <div className="sm:p-6 p-4 border-b border-gray-200">
@@ -444,7 +444,6 @@ const ProfileSettings: React.FC = () => {
                 </div>
 
                 <div className="sm:p-6 py-6 space-y-6">
-                  {/* Profile Visibility */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Visibility</h3>
                     <div className="space-y-4">
@@ -475,7 +474,6 @@ const ProfileSettings: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Post Settings */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Post Settings</h3>
                     <div className="space-y-4">
@@ -511,7 +509,6 @@ const ProfileSettings: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Other Privacy Options */}
                   <div>
                     <h3 className="text-lg font-medium text-gray-900 mb-4">Other Privacy Options</h3>
                     <div className="space-y-4">
@@ -550,7 +547,6 @@ const ProfileSettings: React.FC = () => {
               </div>
             )}
 
-            {/* Notifications Tab */}
             {activeTab === 'notifications' && (
               <div className="card">
                 <div className="sm:p-6 p-4 border-b border-gray-200">
@@ -559,7 +555,6 @@ const ProfileSettings: React.FC = () => {
                 </div>
 
                 <div className="sm:p-6 py-6 space-y-6">
-                  {/* Push Notification Settings */}
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex sm:items-center items-start justify-between">
                       <div>
@@ -619,10 +614,8 @@ const ProfileSettings: React.FC = () => {
               </div>
             )}
 
-            {/* Security Tab */}
             {activeTab === 'security' && (
               <div className="space-y-6">
-                {/* Account Security */}
                 <div className="card">
                   <div className="sm:p-6 p-4 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-900">Account Security</h2>
@@ -686,7 +679,6 @@ const ProfileSettings: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Data & Privacy */}
                 <div className="card">
                   <div className="sm:p-6 p-4 border-b border-gray-200">
                     <h2 className="text-xl font-semibold text-gray-900">Data & Privacy</h2>
@@ -728,7 +720,6 @@ const ProfileSettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Notification Manager Modal */}
       {showNotificationManager && (
         <NotificationManager onClose={() => setShowNotificationManager(false)} />
       )}
