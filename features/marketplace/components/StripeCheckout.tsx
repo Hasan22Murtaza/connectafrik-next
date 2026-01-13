@@ -361,7 +361,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
               max={product.stock_quantity || undefined}
               value={quantity}
               onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="input-field"
             />
           </div>
 
@@ -371,7 +371,27 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
               <Phone className="w-4 h-4 inline mr-1" />
               Phone Number *
             </label>
-            <div onClick={(e) => e.stopPropagation()}>
+            <div onClick={(e) => e.stopPropagation()}
+              className="
+                        [&_.PhoneInput]:flex
+                        [&_.PhoneInput]:items-center
+                        [&_.PhoneInput]:border
+                        [&_.PhoneInput]:border-gray-300
+                        [&_.PhoneInput]:rounded-md
+                        [&_.PhoneInput]:bg-[#F9FAFB]
+                        [&_.PhoneInput]:px-2
+                        [&_.PhoneInput]:py-3
+
+                        [&_.PhoneInputInput]:w-full
+                        [&_.PhoneInputInput]:bg-transparent
+                        [&_.PhoneInputInput]:focus:outline-none
+                        [&_.PhoneInputInput]:focus:ring-0
+
+                        [&_.PhoneInputCountry]:mr-2
+
+                        [&_.PhoneInput]:focus-within:border-orange-500
+                        [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]
+                      ">
               <PhoneInput
                 international
                 defaultCountry="US"
@@ -379,9 +399,9 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
                 onChange={(value) => setBuyerPhone(value || '')}
                 placeholder="Enter your phone number"
                 className="w-full"
-                numberInputProps={{
-                  className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                }}
+                // numberInputProps={{
+                //   className: "input-field"
+                // }}
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
@@ -401,7 +421,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
                 placeholder="Street Address"
                 value={shippingAddress.street}
                 onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-field"
                 onClick={(e) => e.stopPropagation()}
               />
               <div className="grid grid-cols-2 gap-3">
@@ -410,7 +430,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
                   placeholder="City"
                   value={shippingAddress.city}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   onClick={(e) => e.stopPropagation()}
                 />
                 <input
@@ -418,7 +438,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
                   placeholder="State/Region"
                   value={shippingAddress.state}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
@@ -428,7 +448,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
                   placeholder="Country"
                   value={shippingAddress.country}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   onClick={(e) => e.stopPropagation()}
                 />
                 <input
@@ -436,7 +456,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
                   placeholder="Postal Code"
                   value={shippingAddress.postal_code}
                   onChange={(e) => setShippingAddress({ ...shippingAddress, postal_code: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-field"
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
@@ -453,7 +473,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any special requests or delivery instructions..."
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              className="input-field resize-none"
               onClick={(e) => e.stopPropagation()}
             />
           </div>
