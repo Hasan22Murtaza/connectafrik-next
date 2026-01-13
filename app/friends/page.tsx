@@ -292,6 +292,7 @@ const FriendsPage: React.FC = () => {
 
               {/* Navigation */}
               <nav className="space-y-1">
+                
                 <button
                   onClick={() => setActiveSection("home")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "home"
@@ -373,6 +374,14 @@ const FriendsPage: React.FC = () => {
           <div className="flex gap-2 sm:hidden overflow-x-auto w-full pb-5  scrollbar-hide">
               {/* We use inline-flex + min-w-fit to prevent shrinking */}
               <button
+                onClick={() => setActiveSection("all")}
+                className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "home" || activeSection === "all" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+                  }`}
+              >
+                All friends
+              </button>
+
+              <button
                 onClick={() => setActiveSection("suggestions")}
                 className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "suggestions" ? "bg-orange-100 text-orange-700" : "text-gray-700"
                   }`}
@@ -391,14 +400,6 @@ const FriendsPage: React.FC = () => {
                     {requests.length}
                   </span>
                 )}
-              </button>
-
-              <button
-                onClick={() => setActiveSection("all")}
-                className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "all" ? "bg-orange-100 text-orange-700" : "text-gray-700"
-                  }`}
-              >
-                All friends
               </button>
 
               <button
@@ -714,9 +715,9 @@ const FriendsPage: React.FC = () => {
             ) : activeSection === "all" ? (
               <div>
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                   <h2 className="text-2xl font-bold text-gray-900">All Friends</h2>
-                  <div className="relative w-64">
+                  <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                       type="text"
