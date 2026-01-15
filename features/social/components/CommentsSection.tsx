@@ -272,12 +272,12 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
 
   return (
     <div className="lg:fixed lg:inset-0 lg:z-50 lg:flex lg:items-center lg:justify-center lg:bg-black/50 lg:p-4">
-      <div className="flex max-h-[80vh] w-full lg:max-w-2xl flex-col lg:rounded-lg bg-white  border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-200 sm:p-4 p-2 bg-primary-600 ">
+      <div className="relative flex max-h-[80vh] w-full lg:max-w-2xl flex-col rounded-lg  bg-white  border-gray-200 overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-200 sm:p-4 p-2 bg-primary-600  ">
           <h3 className="text-lg font-semibold text-white">Comments</h3>
           <button
             onClick={handleClose}
-            className="hidden lg:flex text-white transition  hover:text-gray-400"
+            className=" lg:flex text-white transition  hover:text-gray-400"
             aria-label="Close comments"
           >
             <X className="h-4 w-4" />
@@ -461,7 +461,6 @@ const CommentItem: React.FC<CommentItemProps> = ({
   const [isEditing, setIsEditing] = useState(false)
   const [editContent, setEditContent] = useState(comment.content)
   const [isUpdating, setIsUpdating] = useState(false)
-
   useEffect(() => {
     if (!isEditing) {
       setEditContent(comment.content)
@@ -530,8 +529,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
   }
 
   return (
-    <div className={depth > 0 ? 'ml-8 border-l-2 border-gray-100 pl-4' : ''}>
-      <div className="flex space-x-3">
+    <div className={depth > 0 ? 'ml-8 border-l-2 border-gray-100 pl-4 ' : ''}>
+      <div className=" flex space-x-3">
         <div className="flex-shrink-0">
           {comment.author.avatar_url ? (
             <img
@@ -542,7 +541,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-300 text-sm font-semibold text-gray-600">
               {comment.author.full_name.charAt(0).toUpperCase()}
-            </div>
+            </div>  
           )}
         </div>
 
@@ -560,7 +559,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
             )}
             <span className="text-gray-400">· {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
 
-            <div className="relative ml-auto">
+            <div className=" ml-auto">
               {!comment.is_deleted && (
                 <button
                   onClick={() => setShowMenu(prev => !prev)}
@@ -571,10 +570,10 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 </button>
               )}
               {showMenu && (
-                <div className="absolute right-0 mt-2 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                <div className="absolute right-4 z-10 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                   {isOwnComment ? (
                     <>
-                      <button
+                      <button 
                         onClick={() => {
                           setIsEditing(true)
                           setShowMenu(false)
@@ -607,12 +606,12 @@ const CommentItem: React.FC<CommentItemProps> = ({
           </div>
 
           {isEditing ? (
-            <div className="mb-2">
+            <div className="mb-4">
               <textarea
                 value={editContent}
                 onChange={(event) => setEditContent(event.target.value)}
-                className="w-full resize-none rounded border border-gray-300 p-2 text-sm text-gray-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                rows={3}
+                className="input-field"
+                rows={2}
                 maxLength={1000}
               />
               <div className="mt-2 flex items-center space-x-2 text-xs">
@@ -703,7 +702,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
               <textarea
                 value={replyContent}
                 onChange={(event) => setReplyContent(event.target.value)}
-                className="w-full resize-none rounded border border-gray-300 p-2 text-sm text-gray-800 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                className="input-field"
                 rows={2}
                 maxLength={500}
                 placeholder={`Reply to ${comment.author.full_name}…`}
