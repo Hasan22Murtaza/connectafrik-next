@@ -159,7 +159,8 @@ export const useGroups = () => {
     if (!user) throw new Error('Must be logged in to create a group')
 
     try {
-      const { data, error } = await supabase
+      // Create the group
+      const { data: group, error: groupError } = await supabase
         .from('groups')
         .insert([
           {
@@ -173,13 +174,64 @@ export const useGroups = () => {
         `)
         .single()
 
-      if (error) throw error
+      if (groupError) throw groupError
 
-      // Add to local state
-      setGroups(prev => [data, ...prev])
+      // Automatically add creator as admin
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('group_memberships')
+        .insert([
+          {
+            group_id: group.id,
+            user_id: user.id,
+            role: 'admin',
+            status: 'active'
+          }
+        ])
+        .select()
+        .single()
+
+      if (membershipError) {
+        console.error('Failed to add creator as admin:', membershipError)
+        // Continue anyway, but log the error
+      }
+
+      // Update member count
+      const { error: updateError } = await supabase
+        .from('groups')
+        .update({ member_count: 1 })
+        .eq('id', group.id)
+
+      if (updateError) {
+        console.error('Failed to update member count:', updateError)
+      }
+
+      // Add to local state with membership
+      const groupWithMembership = {
+        ...group,
+        member_count: 1,
+        membership: membershipData ? {
+          id: membershipData.id,
+          group_id: group.id,
+          user_id: user.id,
+          role: 'admin',
+          status: 'active',
+          joined_at: membershipData.joined_at || new Date().toISOString(),
+          updated_at: membershipData.updated_at || new Date().toISOString()
+        } : {
+          id: 'temp',
+          group_id: group.id,
+          user_id: user.id,
+          role: 'admin',
+          status: 'active',
+          joined_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      }
+
+      setGroups(prev => [groupWithMembership, ...prev])
       toast.success('Group created successfully!')
       
-      return data
+      return groupWithMembership
     } catch (err: any) {
       toast.error(err.message || 'Failed to create group')
       throw err
@@ -204,20 +256,49 @@ export const useGroups = () => {
           return
         } else if (existingMembership.status === 'left') {
           // Rejoin by updating status
-          const { error } = await supabase
+          const { data: updatedMembership, error } = await supabase
             .from('group_memberships')
             .update({ status: 'active' })
             .eq('id', existingMembership.id)
+            .select()
+            .single()
 
           if (error) throw error
+
+          // Get current member count and increment it
+          const { data: currentGroup } = await supabase
+            .from('groups')
+            .select('member_count')
+            .eq('id', groupId)
+            .single()
+
+          const newMemberCount = (currentGroup?.member_count || 0) + 1
+
+          // Update member count in database
+          const { error: updateError } = await supabase
+            .from('groups')
+            .update({ member_count: newMemberCount })
+            .eq('id', groupId)
+
+          if (updateError) {
+            console.error('Failed to update member count:', updateError)
+          }
 
           // Update local state
           setGroups(prev => prev.map(group =>
             group.id === groupId
               ? {
                   ...group,
-                  member_count: group.member_count + 1,
-                  membership: {
+                  member_count: newMemberCount,
+                  membership: updatedMembership ? {
+                    id: updatedMembership.id,
+                    group_id: groupId,
+                    user_id: user.id,
+                    role: updatedMembership.role || 'member',
+                    status: updatedMembership.status || 'active',
+                    joined_at: updatedMembership.joined_at || new Date().toISOString(),
+                    updated_at: updatedMembership.updated_at || new Date().toISOString()
+                  } : {
                     id: existingMembership.id,
                     group_id: groupId,
                     user_id: user.id,
@@ -236,7 +317,7 @@ export const useGroups = () => {
       }
 
       // Create new membership
-      const { error } = await supabase
+      const { data: membershipData, error } = await supabase
         .from('group_memberships')
         .insert([
           {
@@ -246,16 +327,45 @@ export const useGroups = () => {
             status: 'active'
           }
         ])
+        .select()
+        .single()
 
       if (error) throw error
+
+      // Get current member count and increment it
+      const { data: currentGroup } = await supabase
+        .from('groups')
+        .select('member_count')
+        .eq('id', groupId)
+        .single()
+
+      const newMemberCount = (currentGroup?.member_count || 0) + 1
+
+      // Update member count in database
+      const { error: updateError } = await supabase
+        .from('groups')
+        .update({ member_count: newMemberCount })
+        .eq('id', groupId)
+
+      if (updateError) {
+        console.error('Failed to update member count:', updateError)
+      }
 
       // Update local state
       setGroups(prev => prev.map(group =>
         group.id === groupId
           ? {
               ...group,
-              member_count: group.member_count + 1,
-              membership: {
+              member_count: newMemberCount,
+              membership: membershipData ? {
+                id: membershipData.id,
+                group_id: groupId,
+                user_id: user.id,
+                role: membershipData.role || 'member',
+                status: membershipData.status || 'active',
+                joined_at: membershipData.joined_at || new Date().toISOString(),
+                updated_at: membershipData.updated_at || new Date().toISOString()
+              } : {
                 id: 'temp',
                 group_id: groupId,
                 user_id: user.id,
@@ -292,12 +402,31 @@ export const useGroups = () => {
 
       if (error) throw error
 
+      // Get current member count and decrement it
+      const { data: currentGroup } = await supabase
+        .from('groups')
+        .select('member_count')
+        .eq('id', groupId)
+        .single()
+
+      const newMemberCount = Math.max(0, (currentGroup?.member_count || 1) - 1)
+
+      // Update member count in database
+      const { error: updateError } = await supabase
+        .from('groups')
+        .update({ member_count: newMemberCount })
+        .eq('id', groupId)
+
+      if (updateError) {
+        console.error('Failed to update member count:', updateError)
+      }
+
       // Update local state
       setGroups(prev => prev.map(group => 
         group.id === groupId 
           ? { 
               ...group, 
-              member_count: Math.max(0, group.member_count - 1),
+              member_count: newMemberCount,
               membership: undefined
             }
           : group
@@ -360,6 +489,47 @@ export const useGroups = () => {
     }
   }
 
+  const fetchGroupById = async (groupId: string): Promise<Group | null> => {
+    if (!user) return null
+
+    try {
+      const { data, error } = await supabase
+        .from('groups')
+        .select(`
+          *,
+          creator:profiles!creator_id(id, username, full_name, avatar_url),
+          memberships:group_memberships(id, user_id, role, status, joined_at, updated_at)
+        `)
+        .eq('id', groupId)
+        .eq('is_active', true)
+        .single()
+
+      if (error) throw error
+
+      // Find current user's membership
+      const userMembership = data.memberships?.find(
+        (m: any) => m.user_id === user.id && m.status === 'active'
+      )
+
+      return {
+        ...data,
+        membership: userMembership ? {
+          id: userMembership.id,
+          group_id: groupId,
+          user_id: userMembership.user_id,
+          role: userMembership.role,
+          status: userMembership.status,
+          joined_at: userMembership.joined_at,
+          updated_at: userMembership.updated_at
+        } : undefined,
+        memberships: undefined
+      }
+    } catch (err: any) {
+      console.error('Error fetching group:', err)
+      return null
+    }
+  }
+
   useEffect(() => {
     if (user) {
       fetchGroups()
@@ -372,6 +542,7 @@ export const useGroups = () => {
     error,
     fetchGroups,
     fetchMyGroups,
+    fetchGroupById,
     createGroup,
     joinGroup,
     leaveGroup,

@@ -3,7 +3,6 @@
 import { useAuth } from '@/contexts/AuthContext'
 import CreateGroupModal from '@/features/groups/components/CreateGroupModal'
 import GroupCard from '@/features/groups/components/GroupCard'
-import { useGroupChat } from '@/shared/hooks/useGroupChat'
 import { useGroups } from '@/shared/hooks/useGroups'
 import { Group } from '@/shared/types'
 import { BookOpen, Compass, Plus, Search, Users } from 'lucide-react'
@@ -17,7 +16,6 @@ const GroupsPage: React.FC = () => {
   const { user } = useAuth()
   const router = useRouter()
   const { groups, loading, fetchGroups, fetchMyGroups } = useGroups()
-  const { openGroupChat } = useGroupChat()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [view, setView] = useState<'discover' | 'my-groups'>('discover')
@@ -83,29 +81,22 @@ const categories = [
     }
   }
 
-  const handleViewGroup = (groupId: string) => {
-    // Find the group from the current list
-    const group = groups.find(g => g.id === groupId)
-
-    if (!group) {
-      toast.error('Group not found')
-      return
-    }
-
-    // Check if user is a member
-    const isMember = group.membership?.status === 'active'
-
-    if (isMember) {
-      // If member, open group chat
-      openGroupChat(groupId, group.name)
-      toast.success(`Opening ${group.name} chat`)
+  const handleJoinGroup = (groupId: string) => {
+    // Refresh groups to update membership status
+    if (view === 'my-groups') {
+      fetchMyGroups()
     } else {
-      // If not a member, show a message to join first
-      toast('Join this group to access group chat and features', {
-        icon: 'ℹ️',
-        duration: 4000
+      fetchGroups({
+        search: searchTerm,
+        category: selectedCategory,
+        limit: 50
       })
     }
+  }
+
+  const handleViewGroup = (groupId: string) => {
+    // Navigate to group detail page
+    router.push(`/groups/${groupId}`)
   }
 
   const featuredGroups = groups.filter(group => group.is_verified || group.member_count > 100).slice(0, 3)
@@ -208,6 +199,7 @@ const categories = [
                       key={group.id}
                       group={group}
                       onViewGroup={handleViewGroup}
+                      onJoinGroup={handleJoinGroup}
                     />
                   ))}
                 </div>
@@ -261,6 +253,7 @@ const categories = [
                   key={group.id}
                   group={group}
                   onViewGroup={handleViewGroup}
+                  onJoinGroup={handleJoinGroup}
                 />
               ))}
             </div>

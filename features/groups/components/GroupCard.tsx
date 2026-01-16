@@ -2,19 +2,10 @@ import React, { useState } from "react";
 import {
   Users,
   MapPin,
-  Landmark,
-  Theater,
-  BookOpen,
-  Briefcase,
-  Megaphone,
-  Building2,
   Globe,
   Lock,
   Calendar,
   Target,
-  Crown,
-  Shield,
-  UserCheck,
   MessageCircle,
   MoreVertical,
   Eye,
@@ -25,6 +16,7 @@ import { Group } from "@/shared/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGroups } from "@/shared/hooks/useGroups";
 import { useGroupChat } from "@/shared/hooks/useGroupChat";
+import { getCategoryInfo, getRoleIcon } from "@/shared/utils/groupUtils";
 
 interface GroupCardProps {
   group: Group;
@@ -44,71 +36,6 @@ const GroupCard: React.FC<GroupCardProps> = ({
   const { openGroupChat } = useGroupChat();
   const [isJoining, setIsJoining] = useState(false);
   const [openMenu, setOpenMenu] = useState(false);
-
-  const getCategoryInfo = (category: string) => {
-    switch (category) {
-      case "politics":
-        return {
-          icon: <Landmark className="w-4 h-4" />,
-          color: "bg-red-50 text-red-700",
-        };
-
-      case "culture":
-        return {
-          icon: <Theater className="w-4 h-4" />,
-          color: "bg-emerald-50 text-emerald-700",
-        };
-
-      case "education":
-        return {
-          icon: <BookOpen className="w-4 h-4" />,
-          color: "bg-blue-50 text-blue-700",
-        };
-
-      case "business":
-        return {
-          icon: <Briefcase className="w-4 h-4" />,
-          color: "bg-purple-50 text-purple-700",
-        };
-
-      case "community":
-        return {
-          icon: <Users className="w-4 h-4" />,
-          color: "bg-orange-50 text-orange-700",
-        };
-
-      case "activism":
-        return {
-          icon: <Megaphone className="w-4 h-4" />,
-          color: "bg-yellow-50 text-yellow-700",
-        };
-
-      case "development":
-        return {
-          icon: <Building2 className="w-4 h-4" />,
-          color: "bg-slate-100 text-slate-700",
-        };
-
-      default:
-        return {
-          icon: <Users className="w-4 h-4" />,
-          color: "bg-gray-100 text-gray-700",
-        };
-    }
-  };
-
-  const getRoleIcon = (role?: string) => {
-    switch (role) {
-      case "admin":
-        return <Crown className="w-4 h-4 text-yellow-500" />;
-      case "moderator":
-        return <Shield className="w-4 h-4 text-blue-500" />;
-      case "member":
-        return <UserCheck className="w-4 h-4 text-green-500" />;
-      default:
-        return null;
-    }
-  };
 
   const handleJoinGroup = async () => {
     if (!user || !group) return;
@@ -180,7 +107,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <Users className="w-3 h-3" />
-                {membershipCount}
+                {/* {membershipCount} */}
               </div>
 
               {group.location && (
@@ -351,7 +278,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
 
         {/* Actions */}
         <div className="space-y-3">
-          {isMember && (
+          {isMember ? (
             <button
               onClick={() => openGroupChat(group.id, group.name)}
               className="btn-primary w-full flex items-center justify-center gap-2"
@@ -359,7 +286,25 @@ const GroupCard: React.FC<GroupCardProps> = ({
               <MessageCircle className="w-4 h-4" />
               Open Group Chat
             </button>
-          )}
+          ) : user ? (
+            <button
+              onClick={handleJoinGroup}
+              disabled={isJoining}
+              className="btn-primary w-full flex items-center justify-center gap-2"
+            >
+              {isJoining ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Joining...
+                </>
+              ) : (
+                <>
+                  <Users className="w-4 h-4" />
+                  Join Group
+                </>
+              )}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
