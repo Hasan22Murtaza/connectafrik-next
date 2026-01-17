@@ -23,6 +23,9 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, currentUse
   const [members, setMembers] = useState<MemberWithProfile[]>([])
   const [loading, setLoading] = useState(true)
 
+console.log('Group ID:', groupId)
+console.log('members:', members)
+
   useEffect(() => {
     fetchMembers()
   }, [groupId])
@@ -40,7 +43,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, currentUse
         .eq('status', 'active')
         .order('role', { ascending: false })
         .order('joined_at', { ascending: true })
-    console.log(data)
+      console.log('Supabase response data:', data)
       if (error) throw error
 
       setMembers(data || [])

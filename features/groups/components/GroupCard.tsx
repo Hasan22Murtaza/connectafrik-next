@@ -250,7 +250,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
         </div>
 
         {/* Description */}
-        <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+        <p className="text-sm text-gray-600 mb-4 line-clamp-3 h-15">
           {group.description}
         </p>
 

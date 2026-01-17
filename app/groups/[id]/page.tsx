@@ -125,18 +125,6 @@ const GroupDetailPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <button
-            onClick={() => router.push('/groups')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Groups</span>
-          </button>
-        </div>
-      </div>
 
       {/* Banner */}
       <div className="relative">
@@ -219,7 +207,7 @@ const GroupDetailPage: React.FC = () => {
                       <MessageCircle className="w-4 h-4" />
                       Open Group Chat
                     </button>
-                    {isAdmin && (
+                    {/* {isAdmin && (
                       <button
                         onClick={() => router.push(`/groups/${group.id}/settings`)}
                         className="btn-secondary flex items-center gap-2"
@@ -227,7 +215,7 @@ const GroupDetailPage: React.FC = () => {
                         <Settings className="w-4 h-4" />
                         Settings
                       </button>
-                    )}
+                    )} */}
                     <button
                       onClick={handleLeaveGroup}
                       disabled={isJoining}
@@ -371,9 +359,9 @@ const GroupDetailPage: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-6 ">
             {/* Stats Card */}
-            <div className="card">
+            <div className="card sticky top-20">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Group Stats</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -387,7 +375,7 @@ const GroupDetailPage: React.FC = () => {
                   </span>
                 </div>
                 {group.creator && (
-                  <div>
+                  <div className='flex justify-between gap-2'>
                     <span className="text-gray-600 block mb-2">Created by</span>
                     <div className="flex items-center gap-2">
                       {group.creator.avatar_url ? (
