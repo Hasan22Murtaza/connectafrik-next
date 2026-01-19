@@ -297,8 +297,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       return;
     }
 
-    console.log('📞 Setting up call_rejected listener (status:', callStatusRef.current, ')');
-
     let hasRejected = false; // Guard to prevent multiple triggers
 
     const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
@@ -313,20 +311,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       // Log all call-related messages for debugging
       if (message.message_type === 'call_rejected' || message.message_type === 'call_accepted' || message.message_type === 'call_request') {
-        console.log('📞 Received call-related message:', {
-          message_type: message.message_type,
-          thread_id: message.thread_id,
-          sender_id: message.sender_id,
-          currentUserId: currentUserId,
-          metadata: message.metadata,
-          callStatus: callStatusRef.current
-        });
       }
 
       // Only process if message is from the other participant (not from current user)
       // Check current status to avoid processing if call is already ended
       if (callStatusRef.current === 'ended') {
-        console.log('📞 Call already ended, ignoring message');
         return;
       }
 
@@ -335,22 +324,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       const isFromOtherUser = message.sender_id && message.sender_id !== currentUserId;
       const hasRejectionMetadata = message.metadata?.rejectedBy;
 
-      console.log('📞 Checking rejection message:', {
-        isRejectionMessage,
-        isFromOtherUser,
-        hasRejectionMetadata,
-        hasRejected,
-        senderId: message.sender_id,
-        currentUserId
-      });
-
       if (!hasRejected && isRejectionMessage && hasRejectionMetadata && isFromOtherUser) {
-        console.log('📞 Call rejected by other participant - closing call modal', {
-          rejectedBy: message.metadata?.rejectedBy,
-          currentUserId: currentUserId,
-          senderId: message.sender_id,
-          message: message
-        });
+ 
         hasRejected = true; // Prevent re-triggering
 
         // Stop ringtone immediately
@@ -377,14 +352,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           }, 1000);
         }
       } else if (isRejectionMessage && !isFromOtherUser) {
-        console.log('📞 Ignoring call_rejected message from self');
       } else if (isRejectionMessage && !hasRejectionMetadata) {
         console.warn('⚠️ Received call_rejected message without metadata:', message);
       }
     });
 
     return () => {
-      console.log('📞 Cleaning up call_rejected listener');
       unsubscribe();
     };
   }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
@@ -1751,33 +1724,16 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   if (!isOpen) return null;
 
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn md:bg-black/75">
-      <div className="bg-white rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-3xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 md:p-5 flex items-center justify-between shadow-lg">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-orange-400/50 rounded-full flex items-center justify-center shadow-lg">
-              {callType === 'video' ? (
-                <Video className="w-6 h-6 text-white" />
-              ) : (
-                <PhoneOff className="w-6 h-6 text-white" />
-              )}
-            </div>
-            <div>
-              <h3 className="font-bold text-lg leading-tight">
-                {isIncoming ? callerName : recipientName}
-              </h3>
-              <p className="text-sm opacity-90 font-medium">
-                {callType === 'video' ? 'Video Call' : 'Voice Call'}
-              </p>
-            </div>
-          </div>
+      <div className="fixed inset-0 z-[9999] bg-black animate-fadeIn">
+      <div className="bg-black w-full h-full overflow-hidden">
+        {/* Minimal Header - Only close button (like Facebook) */}
+        <div className="absolute top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-sm p-4 flex items-center justify-end">
           <button
             onClick={onClose}
             className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50"
             aria-label="Close call"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
 
@@ -1797,8 +1753,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           </div>
         )}
 
-        {/* Video/Audio Content */}
-        <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-[calc(100vh-200px)] md:h-auto md:aspect-video overflow-hidden">
+        {/* Video/Audio Content - Fullscreen */}
+        <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-screen overflow-hidden">
           {/* Remote Videos - Show all participants */}
           {remoteStreams.length > 0 && callType === 'video' && (
             <div className="w-full h-full">

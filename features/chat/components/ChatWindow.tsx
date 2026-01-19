@@ -6,9 +6,6 @@ import {
   supabaseMessagingService,
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
-import {
-  VideoSDKCallModal
-} from "@/features/video/components/VideoSDKCallModal";
 import { useMembers } from "@/shared/hooks/useMembers";
 import {
   FileUploadResult,
@@ -666,33 +663,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onFilesSelected={handleFilesSelected}
       />
 
-      <VideoSDKCallModal
-        isOpen={isCallOpen}
-        onClose={handleEndCall}
-        callType={currentCallType}
-        callerName={
-          isIncomingCall
-            ? primaryParticipant?.name ||
-              pendingCallerName ||
-              thread.name ||
-              "Unknown caller"
-            : currentUser?.name || "You"
-        }
-        recipientName={
-          isIncomingCall
-            ? currentUser?.name || "You"
-            : primaryParticipant?.name ||
-              pendingCallerName ||
-              thread.name ||
-              "Unknown"
-        }
-        isIncoming={isIncomingCall}
-        onCallEnd={handleEndCall}
-        threadId={threadId}
-        currentUserId={currentUser?.id}
-        roomIdHint={activeRoomId ?? pendingRoomId ?? undefined}
-        tokenHint={pendingToken}
-      />
+      {/* Call modal removed - calls now open in new windows (like Facebook) */}
     </div>
   );
 };
