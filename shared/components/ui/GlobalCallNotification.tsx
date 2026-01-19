@@ -1,5 +1,4 @@
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import { ringtoneService } from '@/features/video/services/ringtoneService'
 import React, { useEffect, useState, useRef } from 'react'
 
 const GlobalCallNotification: React.FC = () => {
@@ -12,7 +11,6 @@ const GlobalCallNotification: React.FC = () => {
     token: string
     callerId: string
   } | null>(null)
-  const [ringtoneRef, setRingtoneRef] = useState<{ stop: () => void } | null>(null)
   const callWindowRef = useRef<Window | null>(null)
   const processedCallRef = useRef<string | null>(null)
 
@@ -66,14 +64,8 @@ const GlobalCallNotification: React.FC = () => {
             console.error('Failed to open call window - popup may be blocked');
           }
           
-          // Start ringtone for incoming call
-          console.log('📞 GlobalCallNotification: Starting ringtone')
-          ringtoneService.playRingtone().then(ringtone => {
-            setRingtoneRef(ringtone)
-            console.log('📞 GlobalCallNotification: Ringtone started')
-          }).catch(err => {
-            console.error('📞 GlobalCallNotification: Failed to start ringtone:', err)
-          })
+          // Note: Ringtone will be played in the call window itself, not here
+          // This prevents duplicate ringtones
         }
       } else {
         console.log('📞 GlobalCallNotification: Call request is from current user, ignoring')
@@ -85,26 +77,11 @@ const GlobalCallNotification: React.FC = () => {
       } else {
         console.log('📞 GlobalCallNotification: No call requests and no active call - clearing')
         setActiveCall(null)
-        
-        // Stop ringtone if no active calls
-        if (ringtoneRef) {
-          ringtoneRef.stop()
-          setRingtoneRef(null)
-        }
-        ringtoneService.stopRingtone()
       }
     }
   }, [callRequests, currentUser?.id, activeCall, getThreadById])
 
-  // Cleanup ringtone on unmount
-  useEffect(() => {
-    return () => {
-      if (ringtoneRef) {
-        ringtoneRef.stop()
-      }
-      ringtoneService.stopRingtone()
-    }
-  }, [ringtoneRef])
+  // Note: Ringtone cleanup is handled in the call window
 
   // Monitor call window and clean up when it closes
   useEffect(() => {
@@ -116,11 +93,6 @@ const GlobalCallNotification: React.FC = () => {
         if (activeCall) {
           clearCallRequest(activeCall.threadId);
         }
-        if (ringtoneRef) {
-          ringtoneRef.stop();
-          setRingtoneRef(null);
-        }
-        ringtoneService.stopRingtone();
         setActiveCall(null);
         processedCallRef.current = null;
         callWindowRef.current = null;
@@ -129,7 +101,7 @@ const GlobalCallNotification: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(checkWindow);
-  }, [activeCall, ringtoneRef, clearCallRequest]);
+  }, [activeCall, clearCallRequest]);
 
   // Don't render anything - calls are handled in new window
   return null;

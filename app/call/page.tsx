@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import VideoSDKCallModal from '@/features/video/components/VideoSDKCallModal';
+import VideoSDKCallInterface from '@/features/video/components/VideoSDKCallInterface';
 import { useProductionChat } from '@/contexts/ProductionChatContext';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -86,9 +86,7 @@ export default function CallPage() {
   }
 
   return (
-    <VideoSDKCallModal
-      isOpen={true}
-      onClose={handleClose}
+    <VideoSDKCallInterface
       callType={callData.callType}
       callerName={callData.callerName}
       recipientName={callData.recipientName}
