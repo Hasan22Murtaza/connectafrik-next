@@ -1,10 +1,9 @@
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import VideoSDKCallModal from '@/features/video/components/VideoSDKCallModal'
 import { ringtoneService } from '@/features/video/services/ringtoneService'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 
 const GlobalCallNotification: React.FC = () => {
-  const { callRequests, currentUser, clearCallRequest } = useProductionChat()
+  const { callRequests, currentUser, clearCallRequest, getThreadById } = useProductionChat()
   const [activeCall, setActiveCall] = useState<{
     threadId: string
     type: 'audio' | 'video'
@@ -13,24 +12,24 @@ const GlobalCallNotification: React.FC = () => {
     token: string
     callerId: string
   } | null>(null)
-  const [isCallModalOpen, setIsCallModalOpen] = useState(false)
   const [ringtoneRef, setRingtoneRef] = useState<{ stop: () => void } | null>(null)
+  const callWindowRef = useRef<Window | null>(null)
+  const processedCallRef = useRef<string | null>(null)
 
   // Find the first active call request
   // NOTE: This component only handles INCOMING calls (calls from other users)
   // Outgoing calls (calls initiated by current user) are handled by ChatWindow
   useEffect(() => {
-    
-    
     const callRequestEntries = Object.entries(callRequests)
     if (callRequestEntries.length > 0) {
       const [threadId, callRequest] = callRequestEntries[0]
     
-      
       // Only show if it's an incoming call (not from current user)
       if (callRequest.callerId !== currentUser?.id) {
-        // Only set up new call if we don't already have an active call for this thread
-        if (!activeCall || activeCall.threadId !== threadId) {
+        // Only open new window if we haven't already processed this call
+        if (processedCallRef.current !== threadId) {
+          processedCallRef.current = threadId;
+          
           setActiveCall({
             threadId,
             type: callRequest.type,
@@ -39,7 +38,33 @@ const GlobalCallNotification: React.FC = () => {
             token: callRequest.token || '',
             callerId: callRequest.callerId || ''
           })
-          setIsCallModalOpen(true)
+          
+          // Get thread to get better participant names
+          const thread = getThreadById(threadId);
+          const otherParticipants = thread?.participants?.filter(
+            (p: any) => p.id !== currentUser?.id
+          ) || [];
+          const primaryParticipant = otherParticipants[0];
+          
+          // Open new window for incoming call
+          const callUrl = new URL('/call', window.location.origin);
+          callUrl.searchParams.set('threadId', threadId);
+          callUrl.searchParams.set('type', callRequest.type);
+          callUrl.searchParams.set('callerName', primaryParticipant?.name || callRequest.callerName || 'Unknown');
+          callUrl.searchParams.set('recipientName', currentUser?.name || 'You');
+          callUrl.searchParams.set('isIncoming', 'true');
+          callUrl.searchParams.set('roomId', callRequest.roomId);
+          callUrl.searchParams.set('token', callRequest.token);
+          
+          callWindowRef.current = window.open(
+            callUrl.toString(),
+            'call',
+            'width=1200,height=800,resizable=yes,scrollbars=no'
+          );
+          
+          if (!callWindowRef.current) {
+            console.error('Failed to open call window - popup may be blocked');
+          }
           
           // Start ringtone for incoming call
           console.log('📞 GlobalCallNotification: Starting ringtone')
@@ -49,21 +74,17 @@ const GlobalCallNotification: React.FC = () => {
           }).catch(err => {
             console.error('📞 GlobalCallNotification: Failed to start ringtone:', err)
           })
-        } else {
-          console.log('📞 GlobalCallNotification: Call already active for this thread, keeping modal open')
         }
       } else {
         console.log('📞 GlobalCallNotification: Call request is from current user, ignoring')
       }
     } else {
-     
+      // No call requests - clear state
       if (activeCall) {
-       
+        processedCallRef.current = null;
       } else {
         console.log('📞 GlobalCallNotification: No call requests and no active call - clearing')
-        // Only clear if there's truly no active call
         setActiveCall(null)
-        setIsCallModalOpen(false)
         
         // Stop ringtone if no active calls
         if (ringtoneRef) {
@@ -73,7 +94,7 @@ const GlobalCallNotification: React.FC = () => {
         ringtoneService.stopRingtone()
       }
     }
-  }, [callRequests, currentUser?.id, activeCall])
+  }, [callRequests, currentUser?.id, activeCall, getThreadById])
 
   // Cleanup ringtone on unmount
   useEffect(() => {
@@ -85,61 +106,33 @@ const GlobalCallNotification: React.FC = () => {
     }
   }, [ringtoneRef])
 
-  const handleAcceptCall = () => {
-    if (ringtoneRef) {
-      ringtoneRef.stop()
-      setRingtoneRef(null)
-    }
-    ringtoneService.stopRingtone()
-    // The call modal will handle the rest
-  }
+  // Monitor call window and clean up when it closes
+  useEffect(() => {
+    if (!callWindowRef.current) return;
 
-  const handleRejectCall = () => {
-    if (activeCall) {
-      clearCallRequest(activeCall.threadId)
-    }
-    if (ringtoneRef) {
-      ringtoneRef.stop()
-      setRingtoneRef(null)
-    }
-    ringtoneService.stopRingtone()
-    setActiveCall(null)
-    setIsCallModalOpen(false)
-  }
+    const checkWindow = setInterval(() => {
+      if (callWindowRef.current?.closed) {
+        // Window was closed, clean up
+        if (activeCall) {
+          clearCallRequest(activeCall.threadId);
+        }
+        if (ringtoneRef) {
+          ringtoneRef.stop();
+          setRingtoneRef(null);
+        }
+        ringtoneService.stopRingtone();
+        setActiveCall(null);
+        processedCallRef.current = null;
+        callWindowRef.current = null;
+        clearInterval(checkWindow);
+      }
+    }, 1000);
 
-  const handleCallEnd = () => {
-    if (activeCall) {
-      clearCallRequest(activeCall.threadId)
-    }
-    if (ringtoneRef) {
-      ringtoneRef.stop()
-      setRingtoneRef(null)
-    }
-    ringtoneService.stopRingtone()
-    setActiveCall(null)
-    setIsCallModalOpen(false)
-  }
+    return () => clearInterval(checkWindow);
+  }, [activeCall, ringtoneRef, clearCallRequest]);
 
-  // Don't render if no active call
-  if (!activeCall) return null
-
-  return (
-    <VideoSDKCallModal
-      isOpen={isCallModalOpen}
-      onClose={handleCallEnd}
-      callType={activeCall.type}
-      callerName={activeCall.callerName}
-      recipientName={currentUser?.name || 'You'}
-      isIncoming={true} // This is for incoming calls from other users
-      onAccept={handleAcceptCall}
-      onReject={handleRejectCall}
-      onCallEnd={handleCallEnd}
-      threadId={activeCall.threadId}
-      currentUserId={currentUser?.id}
-      roomIdHint={activeCall.roomId}
-      tokenHint={activeCall.token}
-    />
-  )
+  // Don't render anything - calls are handled in new window
+  return null;
 }
 
 export default GlobalCallNotification

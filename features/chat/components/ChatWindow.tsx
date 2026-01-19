@@ -6,9 +6,7 @@ import {
   supabaseMessagingService,
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
-import {
-  VideoSDKCallModal
-} from "@/features/video/components/VideoSDKCallModal";
+// VideoSDKCallModal removed - calls now open in new window
 import { useMembers } from "@/shared/hooks/useMembers";
 import {
   FileUploadResult,
@@ -168,7 +166,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [participantStatuses]);
 
   const [draft, setDraft] = useState("");
-  const [isCallOpen, setIsCallOpen] = useState(false);
+  // Call state removed - calls now open in new window
   const [currentCallType, setCurrentCallType] = useState<"audio" | "video">(
     "video"
   );
@@ -235,6 +233,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
   }, [showOptionsMenu]);
 
+  // Note: We no longer open modal in ChatWindow for calls
+  // Calls are now handled in a separate window via /call page
+  // This effect is kept for backward compatibility but doesn't open modal
   useEffect(() => {
     if (pendingCallType) {
       const initiatedByCurrentUser = Boolean(
@@ -242,7 +243,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       );
 
       setCurrentCallType(pendingCallType);
-      setIsCallOpen(true);
+      // Don't set isCallOpen to true anymore - calls open in new window
       if (pendingRoomId) {
         setActiveRoomId(pendingRoomId);
       }
@@ -399,24 +400,50 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       userInitiatedCall.current = true; // Mark that user started this call
 
       // The startCall function handles token fetching and room creation
-      // State will be set via the pendingCall state from context (handled by useEffect)
       await startCall(threadId, type);
+      
+      // Wait a moment for the call request to be set
+      setTimeout(() => {
+        const pendingCall = callRequests[threadId];
+        if (pendingCall) {
+          // Open new window for call
+          const callUrl = new URL('/call', window.location.origin);
+          callUrl.searchParams.set('threadId', threadId);
+          callUrl.searchParams.set('type', type);
+          callUrl.searchParams.set('callerName', currentUser?.name || 'You');
+          callUrl.searchParams.set('recipientName', primaryParticipant?.name || thread?.name || 'Unknown');
+          callUrl.searchParams.set('isIncoming', 'false');
+          callUrl.searchParams.set('roomId', pendingCall.roomId);
+          callUrl.searchParams.set('token', pendingCall.token);
+          
+          const callWindow = window.open(
+            callUrl.toString(),
+            'call',
+            'width=1200,height=800,resizable=yes,scrollbars=no'
+          );
+          
+          if (!callWindow) {
+            toast.error('Please allow popups to open call window');
+          }
+        }
+      }, 100);
     } catch (error) {
       // Reset state on error
       setIsCallOpen(false);
       setIsIncomingCall(false);
       setActiveRoomId(null);
       userInitiatedCall.current = false;
+      toast.error('Failed to start call');
     }
   };
 
   const handleEndCall = () => {
-    setIsCallOpen(false);
+    // Note: Call ending is handled in the call window
+    // This function is kept for backward compatibility
     setIsIncomingCall(false);
     setCurrentCallType("video");
     setActiveRoomId(null);
-    userInitiatedCall.current = false; // Reset the flag
-    // Clear the call request when call actually ends
+    userInitiatedCall.current = false;
     clearCallRequest(threadId);
   };
 
@@ -475,32 +502,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {isCallOpen ? (
-            <button
-              onClick={handleEndCall}
-              className="text-red-600 hover:text-red-700"
-              title="End call"
-            >
-              <Phone className="h-4 w-4" />
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={() => handleStartCall("audio")}
-                className="text-gray-500 hover:text-[#f97316]"
-                title="Start voice call"
-              >
-                <Phone className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => handleStartCall("video")}
-                className="text-gray-500 hover:text-[#f97316]"
-                title="Start video call"
-              >
-                <Video className="h-4 w-4" />
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => handleStartCall("audio")}
+            className="text-gray-500 hover:text-[#f97316]"
+            title="Start voice call"
+          >
+            <Phone className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handleStartCall("video")}
+            className="text-gray-500 hover:text-[#f97316]"
+            title="Start video call"
+          >
+            <Video className="h-4 w-4" />
+          </button>
 
           <button
             onClick={handleToggleMinimize}
@@ -548,21 +563,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </div>
 
-      {isCallOpen && (
-        <div className="flex items-center justify-between bg-primary-50 px-4 py-2 text-xs text-primary-700">
-          <span>
-            {currentCallType === "video"
-              ? "Video call active"
-              : "Audio call active"}
-          </span>
-          <button
-            onClick={handleEndCall}
-            className="font-semibold hover:text-primary-800"
-          >
-            End call
-          </button>
-        </div>
-      )}
+      {/* Call status indicator - removed since calls open in new window */}
 
       <div className="flex h-[250px] sm:h-[290px]  flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3">
         {visibleMessages.length === 0 ? (
@@ -666,33 +667,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onFilesSelected={handleFilesSelected}
       />
 
-      <VideoSDKCallModal
-        isOpen={isCallOpen}
-        onClose={handleEndCall}
-        callType={currentCallType}
-        callerName={
-          isIncomingCall
-            ? primaryParticipant?.name ||
-              pendingCallerName ||
-              thread.name ||
-              "Unknown caller"
-            : currentUser?.name || "You"
-        }
-        recipientName={
-          isIncomingCall
-            ? currentUser?.name || "You"
-            : primaryParticipant?.name ||
-              pendingCallerName ||
-              thread.name ||
-              "Unknown"
-        }
-        isIncoming={isIncomingCall}
-        onCallEnd={handleEndCall}
-        threadId={threadId}
-        currentUserId={currentUser?.id}
-        roomIdHint={activeRoomId ?? pendingRoomId ?? undefined}
-        tokenHint={pendingToken}
-      />
+      {/* VideoSDKCallModal removed - calls now open in new window at /call page */}
     </div>
   );
 };
