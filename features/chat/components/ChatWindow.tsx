@@ -472,15 +472,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {isCallOpen ? (
-            <button
-              onClick={handleEndCall}
-              className="text-red-600 hover:text-red-700"
-              title="End call"
-            >
-              <Phone className="h-4 w-4" />
-            </button>
-          ) : (
             <>
               <button
                 onClick={() => handleStartCall("audio")}
@@ -497,7 +488,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <Video className="h-4 w-4" />
               </button>
             </>
-          )}
 
           <button
             onClick={handleToggleMinimize}
@@ -544,22 +534,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           )}
         </div>
       </div>
-
-      {isCallOpen && (
-        <div className="flex items-center justify-between bg-primary-50 px-4 py-2 text-xs text-primary-700">
-          <span>
-            {currentCallType === "video"
-              ? "Video call active"
-              : "Audio call active"}
-          </span>
-          <button
-            onClick={handleEndCall}
-            className="font-semibold hover:text-primary-800"
-          >
-            End call
-          </button>
-        </div>
-      )}
 
       <div className="flex h-[250px] sm:h-[290px]  flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3">
         {visibleMessages.length === 0 ? (

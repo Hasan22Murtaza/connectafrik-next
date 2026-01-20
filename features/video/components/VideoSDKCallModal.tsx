@@ -1726,32 +1726,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     return (
       <div className="fixed inset-0 z-[9999] bg-black animate-fadeIn">
       <div className="bg-black w-full h-full overflow-hidden">
-        {/* Minimal Header - Only close button (like Facebook) */}
-        <div className="absolute top-0 left-0 right-0 z-50 bg-black/50 backdrop-blur-sm p-4 flex items-center justify-end">
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50"
-            aria-label="Close call"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 animate-slideIn">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-red-800">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
+       
 
         {/* Video/Audio Content - Fullscreen */}
         <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-screen overflow-hidden">
