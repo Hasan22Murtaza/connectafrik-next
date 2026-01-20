@@ -155,6 +155,8 @@ export const useGroups = () => {
     country?: string
     tags: string[]
     rules: string[]
+    avatar_url?: string
+    banner_url?: string
   }) => {
     if (!user) throw new Error('Must be logged in to create a group')
 

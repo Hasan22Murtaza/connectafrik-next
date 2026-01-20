@@ -1,23 +1,26 @@
-import React, { useState } from 'react'
-import { X, Users, Globe, Lock, Plus, Minus, MapPin, Tag } from 'lucide-react'
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { ArrowLeft, Users, Globe, Lock, Plus, Minus, MapPin, Tag, Upload, X, Image as ImageIcon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGroups } from '@/shared/hooks/useGroups'
+import { useImageUpload } from '@/shared/hooks/useImageUpload'
+import { Group } from '@/shared/types'
 import toast from 'react-hot-toast'
 
-interface CreateGroupModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSuccess?: (groupId: string) => void
-}
-
-const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
-  isOpen,
-  onClose,
-  onSuccess
-}) => {
+const EditGroupPage: React.FC = () => {
+  const params = useParams()
+  const router = useRouter()
+  const groupId = params?.id as string
   const { user } = useAuth()
-  const { createGroup } = useGroups()
+  const { fetchGroupById, updateGroup } = useGroups()
+  const { uploadImage } = useImageUpload()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [group, setGroup] = useState<Group | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -28,11 +31,15 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     max_members: 100,
     location: '',
     country: '',
+    avatar_url: '',
+    banner_url: '',
   })
   
   const [goals, setGoals] = useState<string[]>([''])
   const [tags, setTags] = useState<string[]>([''])
   const [rules, setRules] = useState<string[]>(['Be respectful to all members'])
+  const [avatarPreview, setAvatarPreview] = useState<string>('')
+  const [bannerPreview, setBannerPreview] = useState<string>('')
 
   const categories = [
     { value: 'community', label: 'Community', icon: '👥', color: 'bg-blue-100 text-blue-800' },
@@ -52,6 +59,59 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     'SEN', 'SYC', 'SLE', 'SOM', 'ZAF', 'SSD', 'SDN', 'SWZ', 'TZA', 'TGO',
     'TUN', 'UGA', 'ZMB', 'ZWE'
   ]
+
+  useEffect(() => {
+    if (groupId) {
+      fetchGroup()
+    }
+  }, [groupId, user])
+
+  const fetchGroup = async () => {
+    try {
+      setLoading(true)
+      const groupData = await fetchGroupById(groupId)
+      if (!groupData) {
+        toast.error('Group not found')
+        router.push('/groups')
+        return
+      }
+
+      // Check if user is admin
+      if (groupData.creator_id !== user?.id && groupData.membership?.role !== 'admin') {
+        toast.error('You do not have permission to edit this group')
+        router.push(`/groups/${groupId}`)
+        return
+      }
+
+      setGroup(groupData)
+      setFormData({
+        name: groupData.name,
+        description: groupData.description,
+        category: groupData.category,
+        is_public: groupData.is_public,
+        max_members: groupData.max_members,
+        location: groupData.location || '',
+        country: groupData.country || '',
+        avatar_url: groupData.avatar_url || '',
+        banner_url: groupData.banner_url || '',
+      })
+      setGoals(groupData.goals && groupData.goals.length > 0 ? groupData.goals : [''])
+      setTags(groupData.tags && groupData.tags.length > 0 ? groupData.tags : [''])
+      setRules(groupData.rules && groupData.rules.length > 0 ? groupData.rules : ['Be respectful to all members'])
+      if (groupData.avatar_url) {
+        setAvatarPreview(groupData.avatar_url)
+      }
+      if (groupData.banner_url) {
+        setBannerPreview(groupData.banner_url)
+      }
+    } catch (error) {
+      console.error('Error fetching group:', error)
+      toast.error('Failed to load group')
+      router.push('/groups')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -85,9 +145,91 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     }
   }
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Avatar must be less than 5MB')
+      return
+    }
+
+    setUploadingAvatar(true)
+    try {
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setAvatarPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+
+      // Upload image
+      const url = await uploadImage(file, 'groups')
+      if (url) {
+        setFormData(prev => ({ ...prev, avatar_url: url }))
+        toast.success('Avatar uploaded successfully')
+      }
+    } catch (error) {
+      toast.error('Failed to upload avatar')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Banner must be less than 10MB')
+      return
+    }
+
+    setUploadingBanner(true)
+    try {
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setBannerPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+
+      // Upload image
+      const url = await uploadImage(file, 'groups')
+      if (url) {
+        setFormData(prev => ({ ...prev, banner_url: url }))
+        toast.success('Banner uploaded successfully')
+      }
+    } catch (error) {
+      toast.error('Failed to upload banner')
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
+
+  const removeAvatar = () => {
+    setFormData(prev => ({ ...prev, avatar_url: '' }))
+    setAvatarPreview('')
+  }
+
+  const removeBanner = () => {
+    setFormData(prev => ({ ...prev, banner_url: '' }))
+    setBannerPreview('')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user) return
+    if (!user || !group) return
 
     // Validation
     if (!formData.name.trim()) {
@@ -109,31 +251,17 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     setIsSubmitting(true)
 
     try {
-      const groupData = {
+      const updateData = {
         ...formData,
         goals: filteredGoals,
         tags: tags.filter(tag => tag.trim()),
         rules: rules.filter(rule => rule.trim()),
       }
 
-      const newGroup = await createGroup(groupData)
+      await updateGroup(groupId, updateData)
       
-      onSuccess?.(newGroup.id)
-      onClose()
-      
-      // Reset form
-      setFormData({
-        name: '',
-        description: '',
-        category: 'community',
-        is_public: true,
-        max_members: 100,
-        location: '',
-        country: '',
-      })
-      setGoals([''])
-      setTags([''])
-      setRules(['Be respectful to all members'])
+      toast.success('Group updated successfully!')
+      router.push(`/groups/${groupId}`)
       
     } catch (error) {
       // Error handling is done in the hook
@@ -142,26 +270,139 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
     }
   }
 
-  if (!isOpen) return null
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3">
-      <div className="bg-white rounded-xl max-w-3xl w-full  overflow-hidden ">
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 sm:px-6 py-4 border-b border-gray-200  sticky bg-[#FF6900]">
-          <h2 className="text-xl font-semibold text-white">Create New Group</h2>
-          <button
-            onClick={onClose}
-            className=" text-white hover:text-gray-60 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
+  if (!group || !user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Group not found or you don't have permission</p>
+          <button onClick={() => router.push('/groups')} className="btn-primary">
+            Back to Groups
           </button>
         </div>
+      </div>
+    )
+  }
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-3 sm:px-6 py-4 space-y-6 max-h-[80vh] overflow-y-auto">
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push(`/groups/${groupId}`)}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900">Edit Group</h1>
+          </div>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Avatar and Banner */}
+          <div className="card space-y-6">
+            <h3 className="text-lg font-medium text-gray-900">Group Images</h3>
+            
+            {/* Banner */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Banner Image (Optional)
+              </label>
+              <div className="relative">
+                {bannerPreview || formData.banner_url ? (
+                  <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-gray-200">
+                    <img
+                      src={bannerPreview || formData.banner_url}
+                      alt="Banner preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeBanner}
+                      className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-500 transition-colors">
+                    <ImageIcon className="w-12 h-12 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600">Click to upload banner</span>
+                    <span className="text-xs text-gray-500 mt-1">Recommended: 1200x400px</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBannerUpload}
+                      className="hidden"
+                      disabled={uploadingBanner}
+                    />
+                  </label>
+                )}
+                {uploadingBanner && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Avatar */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Avatar Image (Optional)
+              </label>
+              <div className="flex items-center gap-4">
+                {avatarPreview || formData.avatar_url ? (
+                  <div className="relative">
+                    <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
+                      <img
+                        src={avatarPreview || formData.avatar_url}
+                        alt="Avatar preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeAvatar}
+                      className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-gray-300 rounded-full cursor-pointer hover:border-primary-500 transition-colors">
+                    <Upload className="w-6 h-6 text-gray-400" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="hidden"
+                      disabled={uploadingAvatar}
+                    />
+                  </label>
+                )}
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600">Upload a group avatar</p>
+                  <p className="text-xs text-gray-500 mt-1">Recommended: 400x400px, square image</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Basic Info */}
-          <div className="space-y-4">
+          <div className="card space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Basic Information</h3>
             
             {/* Group Name */}
@@ -227,7 +468,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           </div>
 
           {/* Goals */}
-          <div className="space-y-4">
+          <div className="card space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Group Goals *</h3>
             <p className="text-sm text-gray-600">
               What does your group aim to achieve? List your main objectives.
@@ -266,7 +507,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           </div>
 
           {/* Settings */}
-          <div className="space-y-4">
+          <div className="card space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Group Settings</h3>
             
             {/* Privacy */}
@@ -358,7 +599,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           </div>
 
           {/* Tags */}
-          <div className="space-y-4">
+          <div className="card space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Tags (Optional)</h3>
             <p className="text-sm text-gray-600">
               Help people discover your group with relevant tags.
@@ -398,7 +639,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           </div>
 
           {/* Rules */}
-          <div className="space-y-4">
+          <div className="card space-y-4">
             <h3 className="text-lg font-medium text-gray-900">Group Rules</h3>
             <p className="text-sm text-gray-600">
               Set clear guidelines for group behavior and participation.
@@ -441,7 +682,7 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
           <div className="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => router.push(`/groups/${groupId}`)}
               className="btn-secondary"
               disabled={isSubmitting}
             >
@@ -450,10 +691,10 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
             <button
               type="submit"
               className="btn-primary flex items-center space-x-2"
-              disabled={isSubmitting}
+              disabled={isSubmitting || uploadingAvatar || uploadingBanner}
             >
               <Users className="w-4 h-4" />
-              <span>{isSubmitting ? 'Creating...' : 'Create Group'}</span>
+              <span>{isSubmitting ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </form>
@@ -462,4 +703,5 @@ const CreateGroupModal: React.FC<CreateGroupModalProps> = ({
   )
 }
 
-export default CreateGroupModal
+export default EditGroupPage
+

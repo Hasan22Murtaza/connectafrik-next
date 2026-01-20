@@ -1,7 +1,6 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import CreateGroupModal from '@/features/groups/components/CreateGroupModal'
 import GroupCard from '@/features/groups/components/GroupCard'
 import { useGroups } from '@/shared/hooks/useGroups'
 import { Group } from '@/shared/types'
@@ -19,7 +18,6 @@ const GroupsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [view, setView] = useState<'discover' | 'my-groups'>('discover')
-  const [showCreateModal, setShowCreateModal] = useState(false)
   const [filteredGroups, setFilteredGroups] = useState<Group[]>([])
 
 const categories = [
@@ -72,14 +70,6 @@ const categories = [
     })
   }
 
-  const handleCreateGroupSuccess = (groupId: string) => {
-    // Refresh groups after creating a new one
-    if (view === 'my-groups') {
-      fetchMyGroups()
-    } else {
-      fetchGroups()
-    }
-  }
 
   const handleJoinGroup = (groupId: string) => {
     // Refresh groups to update membership status
@@ -118,7 +108,7 @@ const categories = [
 
             {user && (
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => router.push('/groups/create')}
                 className="btn-primary flex items-center space-x-2 sm:text-base text-sm  ms-auto"
               >
                 <Plus className="w-4 h-4" />
@@ -275,7 +265,7 @@ const categories = [
               </p>
               {user && (
                 <button
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => router.push('/groups/create')}
                   className="btn-primary"
                 >
                   Create Your First Group
@@ -286,13 +276,6 @@ const categories = [
         </div>
       </div>
       </div>
-      {/* Create Group Modal */}
-      <CreateGroupModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={handleCreateGroupSuccess}
-      />
-      
     </div>
   )
 }
