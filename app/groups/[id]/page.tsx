@@ -22,6 +22,7 @@ import {
   Calendar,
   Images,
   Folder,
+  User,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGroups } from '@/shared/hooks/useGroups'
@@ -197,7 +198,7 @@ const GroupDetailPage: React.FC = () => {
   const categoryInfo = getCategoryInfoLarge(group.category)
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100  max-w-full 2xl:max-w-screen-2xl mx-auto">
       {/* Banner */}
       <div className="relative">
         {group.banner_url ? (
@@ -213,32 +214,17 @@ const GroupDetailPage: React.FC = () => {
             <span className="text-6xl">{categoryInfo.icon}</span>
           </div>
         )}
-
-        {/* Avatar */}
-        <div className="absolute -bottom-16 left-8">
-          <div className="w-32 h-32 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center">
-            {group.avatar_url ? (
-              <img
-                src={group.avatar_url}
-                alt={group.name}
-                className="w-full h-full rounded-full object-cover"
-              />
-            ) : (
-              <span className="text-5xl">{categoryInfo.icon}</span>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Sticky Header */}
       <div className={`bg-white border-b border-gray-200 transition-all duration-200 ${
         isSticky ? 'sticky top-0 z-40 shadow-sm' : ''
       }`}>
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="px-4">
           <div className="flex items-center justify-between py-3">
             {/* Group Name & Info */}
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+              {/* <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
                 {group.avatar_url ? (
                   <img
                     src={group.avatar_url}
@@ -248,13 +234,16 @@ const GroupDetailPage: React.FC = () => {
                 ) : (
                   <span className="text-xl">{categoryInfo.icon}</span>
                 )}
-              </div>
+              </div> */}
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{group.name}</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <span>{group.member_count} members</span>
                   <span>•</span>
-                  <span>{group.is_public ? 'Public' : 'Private'}</span>
+                 <span className="flex items-center gap-1">
+                  {group.is_public ? <Globe size={16} /> : <User size={16} />}
+                  {group.is_public ? "Public" : "Private"}
+                </span>
                 </div>
               </div>
             </div>
@@ -310,13 +299,13 @@ const GroupDetailPage: React.FC = () => {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex gap-8 border-t border-gray-200">
+          <div className="flex border-t border-gray-200">
             <button
               onClick={() => setActiveTab('posts')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'posts'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
               }`}
             >
               Posts
@@ -327,7 +316,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'about'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
               }`}
             >
               About
@@ -337,7 +326,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'members'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
               }`}
             >
               Members ({group.member_count})
@@ -347,7 +336,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'events'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -360,7 +349,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'media'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -373,7 +362,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 ${
                 activeTab === 'files'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-900'
+                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -386,7 +375,7 @@ const GroupDetailPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Sidebar */}
           <div className="lg:col-span-3 space-y-4">

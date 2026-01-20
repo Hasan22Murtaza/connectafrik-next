@@ -135,11 +135,11 @@ const GroupCard: React.FC<GroupCardProps> = ({
   }
 
   return (
-    <div className="card rounded-xl overflow-hidden hover:shadow-lg transition-shadow ">
+    <div className="rounded-xl overflow-hidden hover:shadow-lg transition-shadow bg-white">
       {/* Banner */}
       <div className="relative">
         {group.banner_url ? (
-          <div className="bg-gray-100 w-full h-32 sm:h-36">
+          <div className="bg-gray-100 w-full h-40 sm:h-50">
             <img
               src={group.banner_url}
               alt={group.name}
@@ -148,20 +148,20 @@ const GroupCard: React.FC<GroupCardProps> = ({
           </div>
         ) : (
           <div
-            className={`w-full h-32 sm:h-36  flex items-center justify-center ${categoryInfo.color} rounded-2xl`}
+            className={`w-full h-40 sm:h-50  flex items-center justify-center ${categoryInfo.color} `}
           >
             <span className="group_card_image">{categoryInfo.icon}</span>
           </div>
         )}
-        {group.membership && (  
+        {/* {group.membership && (  
           <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-400 text-white">
             {getRoleIcon(group.membership.role)}
             <span className="capitalize">{group.membership.role}</span>
           </div>
-        )}
+        )} */}
 
         {/* Privacy */}
-        <span
+        {/* <span
           className={`absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white ${
             group.is_public ? "bg-green-500" : "bg-gray-600"
           }`}
@@ -172,10 +172,10 @@ const GroupCard: React.FC<GroupCardProps> = ({
             <Lock className="w-3 h-3" />
           )}
           {group.is_public ? "Public" : "Private"}
-        </span>
+        </span> */}
 
         {/* Avatar */}
-        <div className="absolute -bottom-6 left-4">
+        {/* <div className="absolute -bottom-6 left-4">
           <div className="w-12 h-12 rounded-full bg-gray-100 border border-orange-400 shadow flex items-center justify-center">
             {group.avatar_url ? (
               <img
@@ -187,11 +187,11 @@ const GroupCard: React.FC<GroupCardProps> = ({
               <span className="text-lg">{categoryInfo.icon}</span>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Content */}
-      <div className="!pt-10  p-2">
+      <div className="p-4">
         {/* Title */}
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
@@ -199,15 +199,15 @@ const GroupCard: React.FC<GroupCardProps> = ({
               <h3 className="font-semibold text-gray-900 text-lg">
                 {group.name}
               </h3>
-              {group.is_verified && <span className="text-blue-500">✓</span>}
+              {group.is_verified && <span className="text-primary-600">✓</span>}
             </div>
 
-            <span
+            {/* <span
               className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium mt-1 ${categoryInfo.color}`}
             >
               <span> {categoryInfo.icon} </span>
               {group.category}
-            </span>
+            </span> */}
           </div>
 
           {/* Three dots */}

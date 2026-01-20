@@ -296,7 +296,7 @@ const FriendsPage: React.FC = () => {
                 <button
                   onClick={() => setActiveSection("home")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "home"
-                      ? "bg-orange-50 text-orange-700"
+                      ? "bg-orange-50 text-orange-600"
                       : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
@@ -309,7 +309,7 @@ const FriendsPage: React.FC = () => {
                 <button
                   onClick={() => setActiveSection("requests")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "requests"
-                      ? "bg-orange-50 text-orange-700"
+                      ? "bg-orange-50 text-orange-600"
                       : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
@@ -328,7 +328,7 @@ const FriendsPage: React.FC = () => {
                 <button
                   onClick={() => setActiveSection("suggestions")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "suggestions"
-                      ? "bg-orange-50 text-orange-700"
+                      ? "bg-orange-50 text-orange-600"
                       : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
@@ -342,7 +342,7 @@ const FriendsPage: React.FC = () => {
                 <button
                   onClick={() => setActiveSection("all")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "all"
-                      ? "bg-orange-50 text-orange-700"
+                      ? "bg-orange-50 text-orange-600"
                       : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
@@ -356,7 +356,7 @@ const FriendsPage: React.FC = () => {
                 <button
                   onClick={() => setActiveSection("birthdays")}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-colors ${activeSection === "birthdays"
-                      ? "bg-orange-50 text-orange-700"
+                      ? "bg-orange-50 text-orange-600"
                       : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
