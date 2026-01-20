@@ -532,6 +532,126 @@ export const useGroups = () => {
     }
   }
 
+  const fetchManagedGroups = async () => {
+    if (!user) return []
+
+    try {
+      const { data, error } = await supabase
+        .from('groups')
+        .select(`
+          *,
+          creator:profiles!creator_id(id, username, full_name, avatar_url),
+          memberships:group_memberships!inner(id, user_id, role, status, joined_at, updated_at)
+        `)
+        .eq('is_active', true)
+        .eq('memberships.user_id', user.id)
+        .eq('memberships.status', 'active')
+        .in('memberships.role', ['admin', 'moderator'])
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      const processedGroups = (data || []).map(group => {
+        const userMembership = group.memberships?.find(
+          (m: any) => m.user_id === user.id && m.status === 'active'
+        )
+
+        return {
+          ...group,
+          membership: userMembership ? {
+            id: userMembership.id,
+            group_id: group.id,
+            user_id: userMembership.user_id,
+            role: userMembership.role,
+            status: userMembership.status,
+            joined_at: userMembership.joined_at,
+            updated_at: userMembership.updated_at
+          } : undefined,
+          memberships: undefined
+        }
+      })
+
+      return processedGroups
+    } catch (err: any) {
+      console.error('Managed groups fetch error:', err)
+      return []
+    }
+  }
+
+  const fetchRecentActivity = async (limit: number = 20) => {
+    if (!user) return []
+
+    try {
+      // First, get all groups the user is a member of
+      const { data: memberships, error: membershipsError } = await supabase
+        .from('group_memberships')
+        .select('group_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+
+      if (membershipsError) throw membershipsError
+
+      if (!memberships || memberships.length === 0) return []
+
+      const groupIds = memberships.map(m => m.group_id)
+
+      // Fetch recent posts from these groups
+      const { data: postsData, error: postsError } = await supabase
+        .from('group_posts')
+        .select(`
+          *,
+          group:groups(id, name, avatar_url)
+        `)
+        .in('group_id', groupIds)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+      if (postsError) throw postsError
+
+      if (!postsData || postsData.length === 0) return []
+
+      // Fetch author profiles
+      const authorIds = [...new Set(postsData.map(p => p.author_id))]
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, country')
+        .in('id', authorIds)
+
+      const profilesMap = new Map(
+        (profilesData || []).map(profile => [profile.id, profile])
+      )
+
+      // Check which posts the current user has liked
+      let likesData: any[] = []
+      const { data: likes } = await supabase
+        .from('likes')
+        .select('post_id')
+        .eq('user_id', user.id)
+        .in('post_id', postsData.map(p => p.id))
+
+      if (likes) likesData = likes
+
+      // Combine posts with author profiles and group info
+      const postsWithDetails = postsData.map(post => ({
+        ...post,
+        author: profilesMap.get(post.author_id) || {
+          id: post.author_id,
+          username: 'Unknown',
+          full_name: 'Unknown User',
+          avatar_url: null,
+          country: null
+        },
+        isLiked: likesData.some(like => like.post_id === post.id)
+      }))
+
+      return postsWithDetails
+    } catch (err: any) {
+      console.error('Recent activity fetch error:', err)
+      return []
+    }
+  }
+
   useEffect(() => {
     if (user) {
       fetchGroups()
@@ -544,6 +664,8 @@ export const useGroups = () => {
     error,
     fetchGroups,
     fetchMyGroups,
+    fetchManagedGroups,
+    fetchRecentActivity,
     fetchGroupById,
     createGroup,
     joinGroup,

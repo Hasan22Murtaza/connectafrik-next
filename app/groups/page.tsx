@@ -2,37 +2,68 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import GroupCard from '@/features/groups/components/GroupCard'
+import GroupPostCard from '@/features/groups/components/GroupPostCard'
 import { useGroups } from '@/shared/hooks/useGroups'
 import { Group } from '@/shared/types'
-import { BookOpen, Compass, Plus, Search, Users } from 'lucide-react'
+import { BookOpen, Compass, Plus, Search, Users, Settings, FileText, ChevronRight, Menu, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
-import { FaBook, FaBriefcase, FaBuilding, FaFistRaised, FaGlobe, FaLandmark, FaTheaterMasks, FaUsers } from 'react-icons/fa'
-
+import { formatDistanceToNow } from 'date-fns'
+import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 const GroupsPage: React.FC = () => {
   const { user } = useAuth()
   const router = useRouter()
-  const { groups, loading, fetchGroups, fetchMyGroups } = useGroups()
+  const { groups, loading, fetchGroups, fetchMyGroups, fetchManagedGroups, fetchRecentActivity } = useGroups()
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState<string>('')
-  const [view, setView] = useState<'discover' | 'my-groups'>('discover')
+  const [view, setView] = useState<'feed' | 'discover' | 'my-groups'>('feed')
   const [filteredGroups, setFilteredGroups] = useState<Group[]>([])
+  const [managedGroups, setManagedGroups] = useState<Group[]>([])
+  const [joinedGroups, setJoinedGroups] = useState<Group[]>([])
+  const [recentActivity, setRecentActivity] = useState<any[]>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [showAllJoined, setShowAllJoined] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-const categories = [
-  { value: '', label: 'All Categories', icon: <FaGlobe /> },
-  { value: 'community', label: 'Community', icon: <FaUsers /> },
-  { value: 'politics', label: 'Politics', icon: <FaLandmark /> },
-  { value: 'culture', label: 'Culture', icon: <FaTheaterMasks /> },
-  { value: 'education', label: 'Education', icon: <FaBook /> },
-  { value: 'business', label: 'Business', icon: <FaBriefcase /> },
-  { value: 'activism', label: 'Activism', icon: <FaFistRaised /> },
-  { value: 'development', label: 'Development', icon: <FaBuilding /> },
-];
+  // Fetch managed and joined groups separately
+  useEffect(() => {
+    if (user) {
+      const loadGroups = async () => {
+        await fetchMyGroups()
+        const managed = await fetchManagedGroups()
+        setManagedGroups(managed)
+      }
+      loadGroups()
+    }
+  }, [user])
 
+  // Separate joined groups from managed groups
+  useEffect(() => {
+    if (groups.length > 0 && user) {
+      const joined = groups.filter((g: Group) => 
+        g.membership && 
+        g.membership.status === 'active' &&
+        !managedGroups.some(mg => mg.id === g.id)
+      )
+      setJoinedGroups(joined)
+    }
+  }, [groups, managedGroups, user])
 
-  // Filter groups based on search and category
+  // Fetch recent activity
+  useEffect(() => {
+    if (user && view === 'feed') {
+      const loadActivity = async () => {
+        setActivityLoading(true)
+        const activity = await fetchRecentActivity(20)
+        setRecentActivity(activity)
+        setActivityLoading(false)
+      }
+      loadActivity()
+    }
+  }, [user, view])
+
+  // Filter groups based on search
   useEffect(() => {
     let filtered = groups
 
@@ -46,18 +77,14 @@ const categories = [
       )
     }
 
-    if (selectedCategory) {
-      filtered = filtered.filter(group => group.category === selectedCategory)
-    }
-
     setFilteredGroups(filtered)
-  }, [groups, searchTerm, selectedCategory])
+  }, [groups, searchTerm])
 
-  const handleViewChange = (newView: 'discover' | 'my-groups') => {
+  const handleViewChange = (newView: 'feed' | 'discover' | 'my-groups') => {
     setView(newView)
     if (newView === 'my-groups') {
       fetchMyGroups()
-    } else {
+    } else if (newView === 'discover') {
       fetchGroups()
     }
   }
@@ -65,220 +92,540 @@ const categories = [
   const handleSearch = () => {
     fetchGroups({
       search: searchTerm,
-      category: selectedCategory,
       limit: 50
     })
   }
 
-
-  const handleJoinGroup = (groupId: string) => {
-    // Refresh groups to update membership status
+  const handleJoinGroup = async (groupId: string) => {
     if (view === 'my-groups') {
-      fetchMyGroups()
+      await fetchMyGroups()
     } else {
-      fetchGroups({
+      await fetchGroups({
         search: searchTerm,
-        category: selectedCategory,
         limit: 50
       })
+    }
+    // Reload managed groups
+    if (user) {
+      const managed = await fetchManagedGroups()
+      setManagedGroups(managed)
     }
   }
 
   const handleViewGroup = (groupId: string) => {
-    // Navigate to group detail page
     router.push(`/groups/${groupId}`)
   }
 
-  const featuredGroups = groups.filter(group => group.is_verified || group.member_count > 100).slice(0, 3)
+  const displayedJoinedGroups = showAllJoined ? joinedGroups : joinedGroups.slice(0, 5)
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className='max-w-full 2xl:max-w-screen-2xl mx-auto px-4'>
-      <div className=" border-b border-gray-200">
-        <div className=" py-6 ">
-         
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between mb-6 flex-wrap gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">African Community Groups</h1>
-              <p className="text-gray-600 mt-1">
-                Connect with like-minded people and achieve common goals together
-              </p>
-            </div>
+  const handlePostLike = async (postId: string) => {
+    if (!user) {
+      toast.error('You must be logged in to like posts')
+      return
+    }
 
-            {user && (
-              <button
-                onClick={() => router.push('/groups/create')}
-                className="btn-primary flex items-center space-x-2 sm:text-base text-sm  ms-auto"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create Group</span>
-              </button>
-            )}
-          </div>
+    try {
+      const post = recentActivity.find((p: any) => p.id === postId)
+      if (!post) return
 
-         
+      // Check if already liked
+      const { data: existingLike } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .single()
 
-          {/* Search and Filters */}
-          <div className="flex flex-col md:flex-row gap-2">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search groups by name, description, or tags..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
+      if (existingLike) {
+        // Unlike
+        await supabase
+          .from('likes')
+          .delete()
+          .eq('id', existingLike.id)
 
+        setRecentActivity((prev: any[]) =>
+          prev.map((p: any) =>
+            p.id === postId
+              ? { ...p, likes_count: Math.max(0, p.likes_count - 1), isLiked: false }
+              : p
+          )
+        )
+      } else {
+        // Like
+        await supabase
+          .from('likes')
+          .insert([{ post_id: postId, user_id: user.id }])
+
+        setRecentActivity((prev: any[]) =>
+          prev.map((p: any) =>
+            p.id === postId
+              ? { ...p, likes_count: p.likes_count + 1, isLiked: true }
+              : p
+          )
+        )
+      }
+    } catch (err: any) {
+      console.error('Error toggling like:', err)
+      toast.error('Failed to update like')
+    }
+  }
+
+  const handlePostComment = (postId: string) => {
+    // Navigate to group post detail or open comment modal
+    const post = recentActivity.find((p: any) => p.id === postId)
+    if (post) {
+      router.push(`/groups/${post.group_id}?post=${postId}`)
+    }
+  }
+
+  const handlePostShare = (postId: string) => {
+    // Implement share functionality
+    toast.success('Share functionality coming soon!')
+  }
+
+  // Sidebar content component
+  const SidebarContent = ({ onClose }: { onClose?: () => void }) => (
+    <div className="space-y-4">
+      {/* Groups Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-gray-900">Groups</h2>
+        <div className="flex items-center gap-2">
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Settings className="w-5 h-5 text-gray-600" />
+          </button>
+          {onClose && (
             <button
-              onClick={handleSearch}
-              className="btn-sm-primary"
+              onClick={onClose}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
-              Search
+              <X className="w-5 h-5 text-gray-600" />
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="  py-8">
-           {/* View Toggle */}
-          <div className="flex items-center space-x-2 mb-6">
-            <button
-              onClick={() => handleViewChange('discover')}
-              className={`flex items-center space-x-2 px-2 py-2 rounded-lg transition-colors ${
-                view === 'discover'
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <Compass className="w-4 h-4" />
-              <span>Discover Groups</span>
-            </button>
-            
-            {user && (
-              <button
-                onClick={() => handleViewChange('my-groups')}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  view === 'my-groups'
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                <span>My Groups</span>
-              </button>
-            )}
-          </div>
-        {view === 'discover' && !searchTerm && !selectedCategory && (
-          <>
-            {/* Featured Groups */}
-            {featuredGroups.length > 0 && (
-              <div className="mb-8">
-                <div className="flex items-center space-x-2 mb-4">
-                  <BookOpen className="w-5 h-5 text-primary-600" />
-                  <h2 className="text-xl font-semibold text-gray-900">Featured Groups</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {featuredGroups.map(group => (
-                    <GroupCard
-                      key={group.id}
-                      group={group}
-                      onViewGroup={handleViewGroup}
-                      onJoinGroup={handleJoinGroup}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Category Quick Access */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Browse by Category</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {categories.slice(1).map(category => (
-                  <button
-                    key={category.value}
-                    onClick={() => setSelectedCategory(category.value)}
-                    className="flex flex-col items-center p-4 bg-orange-100 rounded-lg cursor-pointer hover:shadow-md transition-all duration-200"
-                  >
-                    <span className="text-2xl mb-2">
-                      {category.icon}
-                    </span>
-                    <span>
-                      {category.label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Groups Grid */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {view === 'my-groups' ? 'Your Groups' : 'All Groups'}
-              {filteredGroups.length > 0 && (
-                <span className="text-gray-500 text-[12px] ml-2">
-                  ({filteredGroups.length} group{filteredGroups.length !== 1 ? 's' : ''})
-                </span>
-              )}
-            </h2>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            </div>
-          ) : filteredGroups.length > 1 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredGroups.map(group => (
-                <GroupCard
-                  key={group.id}
-                  group={group}
-                  onViewGroup={handleViewGroup}
-                  onJoinGroup={handleJoinGroup}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {view === 'my-groups' ? 'No groups joined yet' : 'No groups found'}
-              </h3>
-              <p className="text-gray-500 mb-4">
-                {view === 'my-groups'
-                  ? 'Join or create groups to connect with people who share your interests and goals.'
-                  : searchTerm || selectedCategory
-                    ? 'Try adjusting your search filters or browse all groups.'
-                    : 'Be the first to create a group in this community!'
-                }
-              </p>
-              {user && (
-                <button
-                  onClick={() => router.push('/groups/create')}
-                  className="btn-primary"
-                >
-                  Create Your First Group
-                </button>
-              )}
-            </div>
           )}
         </div>
       </div>
+
+      {/* Search Bar */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <input
+          type="text"
+          placeholder="Search groups"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          className="w-full pl-10 pr-4 py-2 bg-gray-100 border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-sm sm:text-base"
+        />
+      </div>
+
+      {/* Navigation */}
+      <div className="space-y-1 mb-4">
+        <button
+          onClick={() => {
+            handleViewChange('feed')
+            onClose?.()
+          }}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+            view === 'feed'
+              ? 'bg-blue-50 text-blue-600 font-semibold'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <FileText className="w-5 h-5" />
+          <span>Your feed</span>
+        </button>
+        <button
+          onClick={() => {
+            handleViewChange('discover')
+            onClose?.()
+          }}
+          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+            view === 'discover'
+              ? 'bg-blue-50 text-blue-600 font-semibold'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <Compass className="w-5 h-5" />
+          <span>Discover</span>
+        </button>
+        {user && (
+          <button
+            onClick={() => {
+              handleViewChange('my-groups')
+              onClose?.()
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+              view === 'my-groups'
+                ? 'bg-blue-50 text-blue-600 font-semibold'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            <span>Your groups</span>
+          </button>
+        )}
+      </div>
+
+      {/* Create Group Button */}
+      {user && (
+        <button
+          onClick={() => {
+            router.push('/groups/create')
+            onClose?.()
+          }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium mb-6 text-sm sm:text-base"
+        >
+          <Plus className="w-5 h-5" />
+          <span>Create new group</span>
+        </button>
+      )}
+
+      {/* Groups You Manage */}
+      {user && managedGroups.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-2 px-2">Groups you manage</h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {managedGroups.map(group => (
+              <button
+                key={group.id}
+                onClick={() => {
+                  handleViewGroup(group.id)
+                  onClose?.()
+                }}
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
+                  {group.avatar_url ? (
+                    <img
+                      src={group.avatar_url}
+                      alt={group.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-sm">
+                      {group.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate text-sm">{group.name}</p>
+                  <p className="text-xs text-gray-500">
+                    Last active {formatDistanceToNow(new Date(group.updated_at || group.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Groups You've Joined */}
+      {user && joinedGroups.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2 px-2">
+            <h3 className="text-sm font-semibold text-gray-700">Groups you've joined</h3>
+            {joinedGroups.length > 5 && (
+              <button
+                onClick={() => setShowAllJoined(!showAllJoined)}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                {showAllJoined ? 'See less' : 'See all'}
+              </button>
+            )}
+          </div>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {displayedJoinedGroups.map(group => (
+              <button
+                key={group.id}
+                onClick={() => {
+                  handleViewGroup(group.id)
+                  onClose?.()
+                }}
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
+                  {group.avatar_url ? (
+                    <img
+                      src={group.avatar_url}
+                      alt={group.name}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-sm">
+                      {group.name.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 truncate text-sm">{group.name}</p>
+                  <p className="text-xs text-gray-500">
+                    Last active {formatDistanceToNow(new Date(group.updated_at || group.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        {/* Mobile Header */}
+        <div className="lg:hidden mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Menu className="w-6 h-6 text-gray-700" />
+              </button>
+              <h1 className="text-xl font-bold text-gray-900">Groups</h1>
+            </div>
+            {user && (
+              <button
+                onClick={() => router.push('/groups/create')}
+                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Search Bar */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search groups"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+          </div>
+
+          {/* Mobile Navigation Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button
+              onClick={() => handleViewChange('feed')}
+              className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors text-sm font-medium ${
+                view === 'feed'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Your feed
+            </button>
+            <button
+              onClick={() => handleViewChange('discover')}
+              className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors text-sm font-medium ${
+                view === 'discover'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Discover
+            </button>
+            {user && (
+              <button
+                onClick={() => handleViewChange('my-groups')}
+                className={`px-4 py-2 rounded-lg whitespace-nowrap transition-colors text-sm font-medium ${
+                  view === 'my-groups'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Your groups
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-4 lg:gap-6">
+          {/* Left Sidebar - Desktop */}
+          <div className="hidden lg:block w-80 shrink-0">
+            <div className="sticky top-4 space-y-4">
+              <SidebarContent />
+            </div>
+          </div>
+
+          {/* Mobile Sidebar Overlay */}
+          {mobileMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <div className="fixed left-0 top-0 h-full w-80 bg-white z-50 lg:hidden overflow-y-auto shadow-xl p-4">
+                <SidebarContent onClose={() => setMobileMenuOpen(false)} />
+              </div>
+            </>
+          )}
+
+          {/* Main Content */}
+          <div className="flex-1 min-w-0 w-full lg:w-auto">
+            {view === 'feed' && (
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Recent activity</h2>
+                {activityLoading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  </div>
+                ) : recentActivity.length === 0 ? (
+                  <div className="bg-white rounded-lg shadow-sm p-6 sm:p-12 text-center">
+                    <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No recent activity</h3>
+                    <p className="text-sm sm:text-base text-gray-500 mb-4">
+                      Join groups to see posts and updates from your communities.
+                    </p>
+                    <button
+                      onClick={() => handleViewChange('discover')}
+                      className="btn-primary text-sm sm:text-base"
+                    >
+                      Discover Groups
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 sm:space-y-4">
+                    {recentActivity.map((post: any) => (
+                      <div key={post.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <div className="p-2 sm:p-3 border-b border-gray-200">
+                          <button
+                            onClick={() => handleViewGroup(post.group_id)}
+                            className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 hover:text-blue-600"
+                          >
+                            {post.group?.avatar_url ? (
+                              <img
+                                src={post.group.avatar_url}
+                                alt={post.group.name}
+                                className="w-4 h-4 sm:w-5 sm:h-5 rounded-full"
+                              />
+                            ) : (
+                              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">
+                                  {post.group?.name?.charAt(0).toUpperCase() || 'G'}
+                                </span>
+                              </div>
+                            )}
+                            <span className="font-medium truncate">{post.group?.name || 'Group'}</span>
+                            <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
+                          </button>
+                        </div>
+                        <GroupPostCard
+                          post={post}
+                          onLike={() => handlePostLike(post.id)}
+                          onComment={() => handlePostComment(post.id)}
+                          onShare={() => handlePostShare(post.id)}
+                          isPostLiked={post.isLiked}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === 'discover' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Discover Groups</h2>
+                  {user && (
+                    <button
+                      onClick={() => router.push('/groups/create')}
+                      className="btn-primary flex items-center justify-center space-x-2 text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Create Group</span>
+                    </button>
+                  )}
+                </div>
+
+                {loading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  </div>
+                ) : filteredGroups.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {filteredGroups.map(group => (
+                      <GroupCard
+                        key={group.id}
+                        group={group}
+                        onViewGroup={handleViewGroup}
+                        onJoinGroup={handleJoinGroup}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 sm:py-12">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No groups found</h3>
+                    <p className="text-sm sm:text-base text-gray-500 mb-4 px-4">
+                      {searchTerm
+                        ? 'Try adjusting your search filters or browse all groups.'
+                        : 'Be the first to create a group in this community!'}
+                    </p>
+                    {user && (
+                      <button
+                        onClick={() => router.push('/groups/create')}
+                        className="btn-primary text-sm sm:text-base"
+                      >
+                        Create Your First Group
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === 'my-groups' && (
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Your Groups</h2>
+                {loading ? (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  </div>
+                ) : filteredGroups.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {filteredGroups.map(group => (
+                      <GroupCard
+                        key={group.id}
+                        group={group}
+                        onViewGroup={handleViewGroup}
+                        onJoinGroup={handleJoinGroup}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 sm:py-12">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No groups joined yet</h3>
+                    <p className="text-sm sm:text-base text-gray-500 mb-4 px-4">
+                      Join or create groups to connect with people who share your interests and goals.
+                    </p>
+                    {user && (
+                      <button
+                        onClick={() => router.push('/groups/create')}
+                        className="btn-primary text-sm sm:text-base"
+                      >
+                        Create Your First Group
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 export default GroupsPage
-
