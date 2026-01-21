@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { GroupPost } from '@/shared/hooks/useGroupPosts'
 import GroupPostCommentsSection from '@/features/groups/components/GroupPostCommentsSection'
 import toast from 'react-hot-toast'
+import { PiShareFat } from 'react-icons/pi'
 
 interface GroupPostCardProps {
   post: GroupPost
@@ -207,8 +208,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
       )}
 
       {/* Actions */}
-      <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 justify-between pt-3 border-t border-gray-200">
           <button
             onClick={onLike}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
@@ -231,11 +231,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
             onClick={onShare}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
           >
-            <Share2 className="w-5 h-5" />
+            <PiShareFat className="w-5 h-5" />
             <span className="text-sm font-medium">Share</span>
           </button>
         </div>
-      </div>
 
       {/* Comments Section */}
       {showCommentsFor && (

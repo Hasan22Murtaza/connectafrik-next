@@ -118,7 +118,7 @@ const GroupEventsList: React.FC<GroupEventsListProps> = ({
       {/* Past Events */}
       {pastEvents.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Past Events</h3>
+          <h3 className="sm:text-lg text-sm font-semibold text-gray-900 mb-4">Past Events</h3>
           <div className="space-y-4">
             {pastEvents.map(event => (
               <EventCard
@@ -154,11 +154,11 @@ const EventCard: React.FC<EventCardProps> = ({
   const endDate = event.end_time ? new Date(event.end_time) : null
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 sm:p-6 p-4 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-xl font-semibold text-gray-900">{event.title}</h3>
+            <h3 className="sm:text-lg text-sm font-semibold text-gray-900">{event.title}</h3>
             <span className={`text-xs px-2 py-1 rounded-full ${EVENT_TYPE_COLORS[event.event_type]}`}>
               {EVENT_TYPE_LABELS[event.event_type]}
             </span>

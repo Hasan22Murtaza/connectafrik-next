@@ -329,9 +329,9 @@ const GroupsPage: React.FC = () => {
                       className="w-full h-full rounded-full object-cover"
                     />
                   ) : (
-                    <span className="text-white font-bold text-sm">
-                      {group.name.charAt(0).toUpperCase()}
-                    </span>
+                   <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
+                    {group.name.charAt(0).toUpperCase()}
+                  </span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -383,12 +383,13 @@ const GroupsPage: React.FC = () => {
                     <img
                       src={group.avatar_url}
                       alt={group.name}
-                      className="w-full h-full rounded-full object-cover"
+                      className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
-                    <span className="text-white font-bold text-sm">
-                      {group.name.charAt(0).toUpperCase()}
-                    </span>
+                  <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
+                    {group.name.charAt(0).toUpperCase()}
+                  </span>
+
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -503,7 +504,7 @@ const GroupsPage: React.FC = () => {
           {/* Main Content */}
           <div className="flex-1 min-w-0 w-full lg:w-auto">
             {view === "feed" && (
-              <div>
+              <div className="max-w-2xl mx-auto">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
                   Recent activity
                 </h2>
@@ -633,7 +634,7 @@ const GroupsPage: React.FC = () => {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                   </div>
                 ) : filteredGroups.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
                     {filteredGroups.map((group) => (
                       <GroupCard
                         key={group.id}

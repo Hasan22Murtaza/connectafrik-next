@@ -41,6 +41,8 @@ import GroupMediaGallery from '@/features/groups/components/GroupMediaGallery'
 import GroupFilesList from '@/features/groups/components/GroupFilesList'
 import { useGroupEvents } from '@/shared/hooks/useGroupEvents'
 import { getCategoryInfoLarge, getRoleIcon } from '@/shared/utils/groupUtils'
+import { CiViewTable } from "react-icons/ci";
+
 
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
@@ -202,7 +204,7 @@ const GroupDetailPage: React.FC = () => {
       {/* Banner */}
       <div className="relative">
         {group.banner_url ? (
-          <div className="w-full h-80 bg-gray-200">
+          <div className="w-full sm:h-80 h-50  bg-gray-200">
             <img
               src={group.banner_url}
               alt={group.name}
@@ -221,7 +223,7 @@ const GroupDetailPage: React.FC = () => {
         isSticky ? 'sticky top-0 z-40 shadow-sm' : ''
       }`}>
         <div className="px-4">
-          <div className="flex items-center justify-between py-3">
+          <div className="flex sm:items-center items-start justify-between py-3">
             {/* Group Name & Info */}
             <div className="flex items-center gap-4">
               <div>
@@ -238,7 +240,7 @@ const GroupDetailPage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center  gap-2">
               {isMember ? (
                 <>
                   <button
@@ -288,10 +290,10 @@ const GroupDetailPage: React.FC = () => {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex border-t border-gray-200">
+          <div className="flex border-t border-gray-200 overflow-x-auto  scrollbar-hide">
             <button
               onClick={() => setActiveTab('posts')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'posts'
                   ? 'text-primary-600 border-primary-600'
                   : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
@@ -302,7 +304,7 @@ const GroupDetailPage: React.FC = () => {
            
             <button
               onClick={() => setActiveTab('about')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'about'
                   ? 'text-primary-600 border-primary-600'
                   : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
@@ -310,9 +312,10 @@ const GroupDetailPage: React.FC = () => {
             >
               About
             </button>
+
             <button
               onClick={() => setActiveTab('members')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'members'
                   ? 'text-primary-600 border-primary-600'
                   : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
@@ -320,9 +323,10 @@ const GroupDetailPage: React.FC = () => {
             >
               Members ({group.member_count})
             </button>
+
             <button
               onClick={() => setActiveTab('events')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'events'
                   ? 'text-primary-600 border-primary-600'
                   : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
@@ -333,9 +337,10 @@ const GroupDetailPage: React.FC = () => {
                 Events
               </span>
             </button>
+
             <button
               onClick={() => setActiveTab('media')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'media'
                   ? 'text-primary-600 border-primary-600'
                   : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
@@ -346,9 +351,10 @@ const GroupDetailPage: React.FC = () => {
                 Media
               </span>
             </button>
+
             <button
               onClick={() => setActiveTab('files')}
-              className={`px-4 py-3 font-medium transition-colors border-b-2 ${
+              className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'files'
                   ? 'text-primary-600 border-primary-600'
                   : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
@@ -366,61 +372,9 @@ const GroupDetailPage: React.FC = () => {
       {/* Main Content */}
       <div className="px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Sidebar */}
-          <div className="lg:col-span-3 space-y-4">
-            {/* Group Info Card */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">About</h3>
-              <p className="text-sm text-gray-700 mb-4 line-clamp-3">{group.description}</p>
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  {group.is_public ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                  <span>{group.is_public ? 'Public' : 'Private'} Group</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Users className="w-4 h-4" />
-                  <span>{group.member_count} members</span>
-                </div>
-                {group.location && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <MapPin className="w-4 h-4" />
-                    <span>{group.location}</span>
-                  </div>
-                )}
-              </div>
-
-              {isMember && (
-                <button
-                  onClick={handleLeaveGroup}
-                  className="w-full mt-4 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  Leave Group
-                </button>
-              )}
-            </div>
-
-            {/* Rules Card */}
-            {group.rules && group.rules.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Rules
-                </h3>
-                <ul className="space-y-2 text-sm text-gray-700">
-                  {group.rules.slice(0, 5).map((rule, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <span className="text-primary-600 mt-1">•</span>
-                      <span>{rule}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
+       
           {/* Center Content */}
-          <div className="lg:col-span-6 space-y-4">
+          <div className="lg:col-span-7 space-y-4">
             {activeTab === 'posts' && (
               <>
                 {/* Create Post */}
@@ -468,15 +422,41 @@ const GroupDetailPage: React.FC = () => {
             )}
 
             {activeTab === 'about' && (
-              <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
-                  <p className="text-gray-700">{group.description}</p>
+              <>
+              <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="font-semibold text-gray-900 mb-3">Description</h3>
+              <p className="text-md text-gray-700 mb-4">{group.description}</p>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-gray-600">
+                  {group.is_public ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  <span>{group.is_public ? 'Public' : 'Private'} Group</span>
                 </div>
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Users className="w-4 h-4" />
+                  <span>{group.member_count} members</span>
+                </div>
+                {group.location && (
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <MapPin className="w-4 h-4" />
+                    <span>{group.location}</span>
+                  </div>
+                )}
+              </div>
 
+              {isMember && (
+                <button
+                  onClick={handleLeaveGroup}
+                  className="w-full mt-4 px-4 py-2 text-sm text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                >
+                  Leave Group
+                </button>
+              )}
+            </div>
+              <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
                 {group.goals && group.goals.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
                       <Target className="w-5 h-5" />
                       Goals
                     </h3>
@@ -537,6 +517,7 @@ const GroupDetailPage: React.FC = () => {
                   </div>
                 )}
               </div>
+              </>
             )}
 
             {activeTab === 'events' && (
@@ -544,18 +525,24 @@ const GroupDetailPage: React.FC = () => {
                 {/* Create Event Button */}
                 {(isMember || isAdmin) && (
                   <div className="bg-white rounded-lg shadow-sm p-4">
+                    <div className="flex items-start justify-between w-full">
+                    <h4 className=' font-semibold sm:text-lg text-sm'>UpComming Event</h4>
                     <button
                       onClick={() => setShowCreateEventModal(true)}
-                      className="w-full btn-primary flex items-center justify-center gap-2"
+                      className=" btn-primary flex items-center justify-center sm:gap-2 gap-[4px] text-sm"
                     >
                       <Calendar className="w-5 h-5" />
                       Create Event
                     </button>
+                    </div>
+                    <div className="flex justify-center py-6">
+                      <CiViewTable className='text-9xl text-gray-600'/>
+                    </div>
                   </div>
                 )}
 
                 {/* Events List */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="bg-white rounded-lg shadow-sm sm:p-6 p-4">
                   <GroupEventsList
                     events={events}
                     loading={eventsLoading}
@@ -593,9 +580,9 @@ const GroupDetailPage: React.FC = () => {
           </div>
 
           {/* Right Sidebar */}
-          <div className="lg:col-span-3 space-y-4">
+          <div className="lg:col-span-5 space-y-4">
             {/* Stats Card */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-20">
+            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-35">
               <h3 className="font-semibold text-gray-900 mb-4">Group Stats</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">

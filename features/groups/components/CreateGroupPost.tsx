@@ -137,7 +137,7 @@ const CreateGroupPost: React.FC<CreateGroupPostProps> = ({ onSubmit, onCancel })
       {/* Post Type Selection */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Post Type</label>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid sm:grid-cols-5 grid-cols-2 gap-2">
           {POST_TYPES.map((type) => {
             const Icon = type.icon
             return (
@@ -145,9 +145,9 @@ const CreateGroupPost: React.FC<CreateGroupPostProps> = ({ onSubmit, onCancel })
                 key={type.value}
                 type="button"
                 onClick={() => setPostType(type.value as any)}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg border-2 transition-all ${
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg border-1 transition-all ${
                   postType === type.value
-                    ? 'border-primary-500 bg-primary-50'
+                    ? 'border-orange-400 bg-primary-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
