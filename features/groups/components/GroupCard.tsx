@@ -196,7 +196,8 @@ const GroupCard: React.FC<GroupCardProps> = ({
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 text-lg">
+              <h3 className="font-semibold text-gray-900 text-lg hover:underline cursor-pointer"
+                onClick={() => handleViewGroup()}>
                 {group.name}
               </h3>
               {group.is_verified && <span className="text-primary-600">✓</span>}

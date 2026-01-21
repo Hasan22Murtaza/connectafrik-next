@@ -24,6 +24,7 @@ import {
   Folder,
   User,
 } from 'lucide-react'
+import { IoMdShareAlt } from "react-icons/io";
 import { useAuth } from '@/contexts/AuthContext'
 import { useGroups } from '@/shared/hooks/useGroups'
 import { useGroupChat } from '@/shared/hooks/useGroupChat'
@@ -176,6 +177,17 @@ const GroupDetailPage: React.FC = () => {
   }
 
   if (authLoading || loading) {
+    const handleShareGroup = (groupid: string) => {
+    const shareUrl = `${window.location.origin}/groups/${groupid}`
+    if (navigator.share) {
+      navigator.share({ url: shareUrl })
+    } else {
+      navigator.clipboard.writeText(shareUrl)
+      toast.success('Link copied to clipboard!')
+    }
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
@@ -213,7 +225,7 @@ const GroupDetailPage: React.FC = () => {
             />
           </div>
         ) : (
-          <div className={`w-full h-80 flex items-center justify-center ${categoryInfo.color}`}>
+          <div className={`w-full sm:h-80 h-50 flex items-center justify-center ${categoryInfo.color}`}>
             <span className="text-6xl">{categoryInfo.icon}</span>
           </div>
         )}
@@ -228,7 +240,7 @@ const GroupDetailPage: React.FC = () => {
             {/* Group Name & Info */}
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{group.name}</h1>
+                <h1 className="sm:text-xl text-md font-bold text-gray-900">{group.name}</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <span>{group.member_count} members</span>
                   <span>•</span>
@@ -241,15 +253,29 @@ const GroupDetailPage: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center  gap-2">
+            <div className="flex items-center  gap-2 ">
               {isMember ? (
                 <>
                   <button
                     onClick={() => setShowInviteModal(true)}
-                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                    className="btn-primary flex items-center gap-2"
                   >
                     <UserPlus className="w-4 h-4" />
-                    Invite
+                    <span className='hidden sm:block'>Invite</span>
+                  </button>
+                  <button
+                    onClick={() => openGroupChat(group.id, group.name)}
+                    className="btn-primary  flex items-center justify-center gap-2"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className='hidden sm:block'>Group Chat</span>
+                  </button>
+                   <button
+                    onClick={() => handleShareGroup(group.id)}
+                    className="btn-secondary  flex items-center justify-center gap-2"
+                  >
+                    <IoMdShareAlt className="w-4 h-4" />
+                    <span className='hidden sm:block'>share group</span>
                   </button>
                   {isAdmin && (
                     <button
@@ -597,7 +623,7 @@ const GroupDetailPage: React.FC = () => {
                   </span>
                 </div>
                 {group.creator && (
-                  <div>
+                  <div className='flex items-center justify-between'>
                     <span className="text-gray-600 block mb-2">Created by</span>
                     <div className="flex items-center gap-2">
                       {group.creator.avatar_url ? (

@@ -369,7 +369,7 @@ const EditGroupPage: React.FC = () => {
             </div>
 
             {/* Avatar */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Avatar Image (Optional)
               </label>
@@ -408,7 +408,7 @@ const EditGroupPage: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">Recommended: 400x400px, square image</p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Basic Info */}
