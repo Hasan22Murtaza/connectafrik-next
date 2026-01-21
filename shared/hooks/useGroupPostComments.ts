@@ -197,27 +197,44 @@ export const useGroupPostComments = (groupPostId: string) => {
       }
 
       // Update comments count on the post
-      await supabase.rpc('increment', {
-        table_name: 'group_posts',
-        column_name: 'comments_count',
-        row_id: groupPostId,
-        increment_value: 1
-      }).catch(() => {
+      try {
+        const { error: rpcError } = await supabase.rpc('increment', {
+          table_name: 'group_posts',
+          column_name: 'comments_count',
+          row_id: groupPostId,
+          increment_value: 1
+        })
+        
+        if (rpcError) {
+          // Fallback if RPC doesn't exist
+          const { data: postData } = await supabase
+            .from('group_posts')
+            .select('comments_count')
+            .eq('id', groupPostId)
+            .single()
+            
+          if (postData) {
+            await supabase
+              .from('group_posts')
+              .update({ comments_count: (postData.comments_count || 0) + 1 })
+              .eq('id', groupPostId)
+          }
+        }
+      } catch (rpcErr) {
         // Fallback if RPC doesn't exist
-        supabase
+        const { data: postData } = await supabase
           .from('group_posts')
           .select('comments_count')
           .eq('id', groupPostId)
           .single()
-          .then(({ data: postData }) => {
-            if (postData) {
-              supabase
-                .from('group_posts')
-                .update({ comments_count: (postData.comments_count || 0) + 1 })
-                .eq('id', groupPostId)
-            }
-          })
-      })
+          
+        if (postData) {
+          await supabase
+            .from('group_posts')
+            .update({ comments_count: (postData.comments_count || 0) + 1 })
+            .eq('id', groupPostId)
+        }
+      }
 
       if (parentId) {
         // Add as reply to parent comment
@@ -321,27 +338,44 @@ export const useGroupPostComments = (groupPostId: string) => {
       if (error) throw error
 
       // Update comments count on the post
-      await supabase.rpc('increment', {
-        table_name: 'group_posts',
-        column_name: 'comments_count',
-        row_id: groupPostId,
-        increment_value: -1
-      }).catch(() => {
-        // Fallback
-        supabase
+      try {
+        const { error: rpcError } = await supabase.rpc('increment', {
+          table_name: 'group_posts',
+          column_name: 'comments_count',
+          row_id: groupPostId,
+          increment_value: -1
+        })
+        
+        if (rpcError) {
+          // Fallback if RPC doesn't exist
+          const { data: postData } = await supabase
+            .from('group_posts')
+            .select('comments_count')
+            .eq('id', groupPostId)
+            .single()
+            
+          if (postData) {
+            await supabase
+              .from('group_posts')
+              .update({ comments_count: Math.max(0, (postData.comments_count || 0) - 1) })
+              .eq('id', groupPostId)
+          }
+        }
+      } catch (rpcErr) {
+        // Fallback if RPC doesn't exist
+        const { data: postData } = await supabase
           .from('group_posts')
           .select('comments_count')
           .eq('id', groupPostId)
           .single()
-          .then(({ data: postData }) => {
-            if (postData) {
-              supabase
-                .from('group_posts')
-                .update({ comments_count: Math.max(0, (postData.comments_count || 0) - 1) })
-                .eq('id', groupPostId)
-            }
-          })
-      })
+          
+        if (postData) {
+          await supabase
+            .from('group_posts')
+            .update({ comments_count: Math.max(0, (postData.comments_count || 0) - 1) })
+            .eq('id', groupPostId)
+        }
+      }
 
       setComments(prev => prev.filter(c => c.id !== commentId).map(comment => ({
         ...comment,

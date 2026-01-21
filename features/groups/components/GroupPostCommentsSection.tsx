@@ -129,6 +129,8 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
               onLike={() => toggleLike(comment.id)}
               onReply={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
               onDelete={() => handleDelete(comment.id)}
+              onDeleteComment={handleDelete}
+              onToggleLike={toggleLike}
               onSubmitReply={(content) => handleSubmitReply(comment.id)}
               replyingTo={replyingTo === comment.id}
               replyContent={replyContent}
@@ -147,6 +149,8 @@ interface CommentItemProps {
   onLike: () => void
   onReply: () => void
   onDelete: () => void
+  onDeleteComment: (commentId: string) => void
+  onToggleLike: (commentId: string) => void
   onSubmitReply: (content: string) => void
   replyingTo: boolean
   replyContent: string
@@ -159,6 +163,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
   onLike,
   onReply,
   onDelete,
+  onDeleteComment,
+  onToggleLike,
   onSubmitReply,
   replyingTo,
   replyContent,
@@ -288,7 +294,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                         </div>
                         {currentUserId === reply.author_id && (
                           <button
-                            onClick={() => handleDelete(reply.id)}
+                            onClick={() => onDeleteComment(reply.id)}
                             className="p-1 hover:bg-gray-200 rounded text-red-600"
                           >
                             <Trash2 className="w-3 h-3" />
@@ -298,7 +304,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                       <p className="text-xs text-gray-700">{reply.content}</p>
                     </div>
                     <button
-                      onClick={() => toggleLike(reply.id)}
+                      onClick={() => onToggleLike(reply.id)}
                       className={`flex items-center gap-1 text-xs mt-1 ml-2 ${
                         reply.isLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
                       }`}
