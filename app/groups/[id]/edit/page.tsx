@@ -23,10 +23,20 @@ const EditGroupPage: React.FC = () => {
   const [group, setGroup] = useState<Group | null>(null)
 
   // Form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    description: string
+    category: Group['category']
+    is_public: boolean
+    max_members: number
+    location: string
+    country: string
+    avatar_url: string
+    banner_url: string
+  }>({
     name: '',
     description: '',
-    category: 'community' as const,
+    category: 'community',
     is_public: true,
     max_members: 100,
     location: '',
