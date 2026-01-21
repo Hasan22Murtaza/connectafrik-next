@@ -15,6 +15,7 @@ export function openCallWindow(params: {
   // Build URL with query parameters
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const url = new URL(`${baseUrl}/call/${roomId}`)
+  url.searchParams.set('call', 'true')
   url.searchParams.set('type', callType)
   url.searchParams.set('threadId', threadId)
   url.searchParams.set('callerName', encodeURIComponent(callerName))

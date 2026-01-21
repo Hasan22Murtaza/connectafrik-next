@@ -192,6 +192,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     hasInitializedRef.current = false;
   }, [updateLocalStream, updateRemoteStreams]);
 
+  // Cleanup on unmount (e.g. when parent sets call=false in URL and unmounts this modal)
+  useEffect(() => {
+    return () => {
+      if (hasInitializedRef.current || currentMeetingRef.current) {
+        cleanupResources();
+      }
+    };
+  }, [cleanupResources]);
+
   // Initialize room and get media when call starts
   useEffect(() => {
     if (!isOpen) {

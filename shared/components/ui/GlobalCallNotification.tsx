@@ -100,6 +100,26 @@ const GlobalCallNotification: React.FC = () => {
     }
   }, [ringtoneRef])
 
+  // When call window closes (End call, Reject, or user closes with X), it posts CALL_ENDED.
+  // Clear callRequests and activeCall so the next call can ring on callee and caller does not get stuck ringing.
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type === 'CALL_ENDED' && event.data?.threadId) {
+        clearCallRequest(event.data.threadId)
+        setActiveCall(null)
+        setIsCallModalOpen(false)
+        if (ringtoneRef) {
+          ringtoneRef.stop()
+          setRingtoneRef(null)
+        }
+        ringtoneService.stopRingtone()
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [clearCallRequest, ringtoneRef])
+
   const handleAcceptCall = () => {
     if (ringtoneRef) {
       ringtoneRef.stop()
