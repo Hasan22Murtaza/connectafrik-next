@@ -48,7 +48,7 @@ const GroupDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
   const groupId = params?.id as string
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { fetchGroupById, joinGroup, leaveGroup } = useGroups()
   const { openGroupChat } = useGroupChat()
   const { 
@@ -79,10 +79,11 @@ const GroupDetailPage: React.FC = () => {
   } = useGroupEvents(groupId || '')
 
   useEffect(() => {
-    if (groupId) {
+    // Wait for auth to finish loading before fetching group
+    if (groupId && !authLoading) {
       fetchGroup()
     }
-  }, [groupId, user])
+  }, [groupId, user, authLoading])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -174,7 +175,7 @@ const GroupDetailPage: React.FC = () => {
     }
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>

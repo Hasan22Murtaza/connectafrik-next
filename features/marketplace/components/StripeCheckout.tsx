@@ -25,12 +25,12 @@ const sendOrderConfirmationEmail = async (buyerEmail: string, orderDetails: any)
   }
 }
 
-const sendNewOrderNotificationEmail = async (sellerEmail: string, orderDetails: any) => {
+const sendNewOrderNotificationEmail = async (sellerEmail: string, orderDetails: any, sellerId?: string) => {
   try {
     const response = await fetch('/api/email/order-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sellerEmail, orderDetails }),
+      body: JSON.stringify({ sellerId, sellerEmail, orderDetails }),
     })
     return response.ok
   } catch (error) {
@@ -170,9 +170,9 @@ const CheckoutForm: React.FC<{
           buyerName,
         }).catch(err => console.error('Failed to send buyer confirmation:', err))
 
+        // Send notification to seller (using seller_id to fetch email server-side)
         if (product.seller_id) {
-          const sellerEmail = 'support@connectafrik.com' // Default seller email
-          sendNewOrderNotificationEmail(sellerEmail || 'support@connectafrik.com', {
+          sendNewOrderNotificationEmail('', {
             orderNumber: order.order_number,
             productTitle: product.title,
             quantity,
@@ -180,7 +180,7 @@ const CheckoutForm: React.FC<{
             currency: product.currency || 'USD',
             buyerName,
             sellerName,
-          }).catch(err => console.error('Failed to send seller notification:', err))
+          }, product.seller_id).catch(err => console.error('Failed to send seller notification:', err))
         }
 
         toast.success('Payment successful! Order created.')

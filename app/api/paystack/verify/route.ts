@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { verifyPaystackTransaction } from '@/features/marketplace/services/paystackService'
+import { sendNewOrderNotificationEmail } from '@/shared/services/emailService'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -109,6 +110,71 @@ export async function GET(request: NextRequest) {
                         .from('products')
                         .update({ stock_quantity: Math.max(0, product.stock_quantity - orderPayload.quantity) })
                         .eq('id', orderPayload.product_id)
+                }
+            }
+
+            // Send email notifications (non-blocking)
+            if (orderPayload.seller_id) {
+                try {
+                    // Fetch seller email from auth.users
+                    let sellerEmail: string | null = null
+                    try {
+                        const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(orderPayload.seller_id)
+                        if (!authError && authUser?.user?.email) {
+                            sellerEmail = authUser.user.email
+                        }
+                    } catch (err) {
+                        console.error('Error fetching seller email:', err)
+                    }
+
+                    // Fetch seller name from profiles
+                    let sellerName = 'Seller'
+                    try {
+                        const { data: sellerProfile } = await supabase
+                            .from('profiles')
+                            .select('full_name')
+                            .eq('id', orderPayload.seller_id)
+                            .single()
+                        if (sellerProfile?.full_name) {
+                            sellerName = sellerProfile.full_name
+                        }
+                    } catch (err) {
+                        console.error('Error fetching seller profile:', err)
+                    }
+
+                    // Fetch buyer name from profiles
+                    let buyerName = 'Customer'
+                    if (orderPayload.buyer_id) {
+                        try {
+                            const { data: buyerProfile } = await supabase
+                                .from('profiles')
+                                .select('full_name')
+                                .eq('id', orderPayload.buyer_id)
+                                .single()
+                            if (buyerProfile?.full_name) {
+                                buyerName = buyerProfile.full_name
+                            }
+                        } catch (err) {
+                            console.error('Error fetching buyer profile:', err)
+                        }
+                    }
+
+                    if (sellerEmail) {
+                        sendNewOrderNotificationEmail(sellerEmail, {
+                            orderNumber: order.order_number,
+                            productTitle: orderPayload.product_title || 'Product',
+                            quantity: orderPayload.quantity,
+                            totalAmount: orderPayload.total_amount,
+                            currency: orderPayload.currency || 'USD',
+                            buyerName,
+                            sellerName,
+                        }).catch(err => console.error('Failed to send seller notification email:', err))
+                    } else {
+                        console.warn('Could not send seller notification: seller email not found')
+                    }
+                } catch (emailErr) {
+                    console.error('Error sending seller notification:', emailErr)
+                    // Don't fail the order creation if email fails
                 }
             }
 

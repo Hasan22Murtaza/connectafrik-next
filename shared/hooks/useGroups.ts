@@ -492,8 +492,6 @@ export const useGroups = () => {
   }
 
   const fetchGroupById = async (groupId: string): Promise<Group | null> => {
-    if (!user) return null
-
     try {
       const { data, error } = await supabase
         .from('groups')
@@ -508,10 +506,12 @@ export const useGroups = () => {
 
       if (error) throw error
 
-      // Find current user's membership
-      const userMembership = data.memberships?.find(
-        (m: any) => m.user_id === user.id && m.status === 'active'
-      )
+      // Find current user's membership if user is logged in
+      const userMembership = user 
+        ? data.memberships?.find(
+            (m: any) => m.user_id === user.id && m.status === 'active'
+          )
+        : undefined
 
       return {
         ...data,
