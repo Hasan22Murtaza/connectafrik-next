@@ -23,9 +23,6 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, currentUse
   const [members, setMembers] = useState<MemberWithProfile[]>([])
   const [loading, setLoading] = useState(true)
 
-console.log('Group ID:', groupId)
-console.log('members:', members)
-
   useEffect(() => {
     fetchMembers()
   }, [groupId])
@@ -33,7 +30,9 @@ console.log('members:', members)
   const fetchMembers = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
+      
+      // First, try with join query
+      let { data, error } = await supabase
         .from('group_memberships')
         .select(`
           *,
@@ -43,12 +42,54 @@ console.log('members:', members)
         .eq('status', 'active')
         .order('role', { ascending: false })
         .order('joined_at', { ascending: true })
-      console.log('Supabase response data:', data)
-      if (error) throw error
-
+      
+      // If join fails or user data is missing, fetch profiles separately
+      if (error || !data || data.some((member: any) => !member.user)) {
+        
+        // Fetch memberships
+        const { data: membershipsData, error: membershipsError } = await supabase
+          .from('group_memberships')
+          .select('*')
+          .eq('group_id', groupId)
+          .eq('status', 'active')
+          .order('role', { ascending: false })
+          .order('joined_at', { ascending: true })
+        
+        if (membershipsError) throw membershipsError
+        
+        if (!membershipsData || membershipsData.length === 0) {
+          setMembers([])
+          return
+        }
+        
+        // Fetch profiles for all user IDs
+        const userIds = membershipsData.map((m: any) => m.user_id).filter(Boolean)
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', userIds)
+        
+        // Create a map of profiles by user ID
+        const profileMap = new Map(
+          (profilesData || []).map((profile: any) => [profile.id, profile])
+        )
+        
+        // Combine memberships with profiles
+        data = membershipsData.map((membership: any) => ({
+          ...membership,
+          user: profileMap.get(membership.user_id) || {
+            id: membership.user_id,
+            username: 'Unknown',
+            full_name: 'Unknown User',
+            avatar_url: null
+          }
+        }))
+      }
+      
       setMembers(data || [])
     } catch (error) {
       console.error('Error fetching members:', error)
+      setMembers([])
     } finally {
       setLoading(false)
     }
