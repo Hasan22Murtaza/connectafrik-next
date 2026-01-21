@@ -322,11 +322,11 @@ const GroupsPage: React.FC = () => {
                 className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
-                  {group.avatar_url ? (
+                  {group.banner_url ? (
                     <img
-                      src={group.avatar_url}
+                      src={group.banner_url}
                       alt={group.name}
-                      className="w-full h-full rounded-full object-cover"
+                      className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
                    <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
@@ -379,9 +379,9 @@ const GroupsPage: React.FC = () => {
                 className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
-                  {group.avatar_url ? (
+                  {group.banner_url ? (
                     <img
-                      src={group.avatar_url}
+                      src={group.banner_url}
                       alt={group.name}
                       className="w-full h-full rounded-lg object-cover"
                     />
@@ -576,7 +576,7 @@ const GroupsPage: React.FC = () => {
             )}
 
             {view === "discover" && (
-              <div>
+              <div className="max-w-4xl mx-auto">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                     Discover Groups
@@ -625,7 +625,7 @@ const GroupsPage: React.FC = () => {
             )}
 
             {view === "my-groups" && (
-              <div>
+              <div className="max-w-4xl mx-auto">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
                   Your Groups
                 </h2>
