@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "dev-start": "next start -p 5005",
     "vercel:ignore-build": "exit 1"
   },
   "dependencies": {
