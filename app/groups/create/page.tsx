@@ -33,7 +33,7 @@ const CreateGroupPage: React.FC = () => {
   const [goals, setGoals] = useState<string[]>([''])
   const [tags, setTags] = useState<string[]>([''])
   const [rules, setRules] = useState<string[]>(['Be respectful to all members'])
-  const [avatarPreview, setAvatarPreview] = useState<string>('')
+  // const [avatarPreview, setAvatarPreview] = useState<string>('')
   const [bannerPreview, setBannerPreview] = useState<string>('')
 
   const categories = [
@@ -87,41 +87,41 @@ const CreateGroupPage: React.FC = () => {
     }
   }
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  // const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0]
+  //   if (!file) return
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file')
-      return
-    }
+  //   if (!file.type.startsWith('image/')) {
+  //     toast.error('Please select an image file')
+  //     return
+  //   }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Avatar must be less than 5MB')
-      return
-    }
+  //   if (file.size > 5 * 1024 * 1024) {
+  //     toast.error('Avatar must be less than 5MB')
+  //     return
+  //   }
 
-    setUploadingAvatar(true)
-    try {
-      // Create preview
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
+  //   setUploadingAvatar(true)
+  //   try {
+  //     // Create preview
+  //     const reader = new FileReader()
+  //     reader.onload = (e) => {
+  //       setAvatarPreview(e.target?.result as string)
+  //     }
+  //     reader.readAsDataURL(file)
 
-      // Upload image
-      const url = await uploadImage(file, 'groups')
-      if (url) {
-        setFormData(prev => ({ ...prev, avatar_url: url }))
-        toast.success('Avatar uploaded successfully')
-      }
-    } catch (error) {
-      toast.error('Failed to upload avatar')
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
+  //     // Upload image
+  //     const url = await uploadImage(file, 'groups')
+  //     if (url) {
+  //       setFormData(prev => ({ ...prev, avatar_url: url }))
+  //       toast.success('Avatar uploaded successfully')
+  //     }
+  //   } catch (error) {
+  //     toast.error('Failed to upload avatar')
+  //   } finally {
+  //     setUploadingAvatar(false)
+  //   }
+  // }
 
   const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -159,10 +159,10 @@ const CreateGroupPage: React.FC = () => {
     }
   }
 
-  const removeAvatar = () => {
-    setFormData(prev => ({ ...prev, avatar_url: '' }))
-    setAvatarPreview('')
-  }
+  // const removeAvatar = () => {
+  //   setFormData(prev => ({ ...prev, avatar_url: '' }))
+  //   setAvatarPreview('')
+  // }
 
   const removeBanner = () => {
     setFormData(prev => ({ ...prev, banner_url: '' }))
@@ -297,7 +297,7 @@ const CreateGroupPage: React.FC = () => {
             </div>
 
             {/* Avatar */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Avatar Image (Optional)
               </label>
@@ -336,7 +336,7 @@ const CreateGroupPage: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">Recommended: 400x400px, square image</p>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Basic Info */}

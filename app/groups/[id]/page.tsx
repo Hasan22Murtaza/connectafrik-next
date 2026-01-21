@@ -224,17 +224,6 @@ const GroupDetailPage: React.FC = () => {
           <div className="flex items-center justify-between py-3">
             {/* Group Name & Info */}
             <div className="flex items-center gap-4">
-              {/* <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                {group.avatar_url ? (
-                  <img
-                    src={group.avatar_url}
-                    alt={group.name}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xl">{categoryInfo.icon}</span>
-                )}
-              </div> */}
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{group.name}</h1>
                 <div className="flex items-center gap-2 text-sm text-gray-600">
