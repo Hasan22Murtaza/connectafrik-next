@@ -393,11 +393,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       }
 
       // Check if this is an end message from the other participant
-      const isEndMessage = message.message_type === 'call_ended';
+      const isEndMessage = message.message_type === 'CALL_ENDED';
       const isFromOtherUser = message.sender_id && message.sender_id !== currentUserId;
       const hasEndMetadata = message.metadata?.endedBy;
 
       if (!hasEnded && isEndMessage && hasEndMetadata && isFromOtherUser) {
+        console.log('📞 Received CALL_ENDED message from other participant - closing call');
         hasEnded = true; // Prevent re-triggering
 
         // Stop ringtone immediately
@@ -702,13 +703,67 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       });
 
       meeting.on("participant-left", (p: any) => {
+        console.log("👤 Participant left:", p.id);
         if (isMountedRef.current) {
-          setParticipants(prev => prev.filter((x: any) => x.id !== p.id));
+          setParticipants(prev => {
+            const updated = prev.filter((x: any) => x.id !== p.id);
+            
+            // Check if there are any remote participants left in the meeting
+            // This provides a more reliable check than just our state
+            let hasRemoteParticipants = false;
+            try {
+              const localParticipantId = meeting.localParticipant?.id;
+              const allParticipants = meeting.participants 
+                ? Object.values(meeting.participants) 
+                : [];
+              const remoteParticipants = allParticipants.filter(
+                (participant: any) => participant.id !== localParticipantId
+              );
+              hasRemoteParticipants = remoteParticipants.length > 0;
+            } catch (error) {
+              console.warn('⚠️ Error checking meeting participants:', error);
+              // Fallback to state-based check
+              hasRemoteParticipants = updated.length > 0;
+            }
+            
+            // If no more remote participants and call is connected, automatically close the call
+            if (!hasRemoteParticipants && callStatusRef.current === 'connected') {
+              console.log('📞 All participants left - closing call automatically');
+              // Send call_ended notification
+              if (threadId && currentUserId) {
+                supabaseMessagingService.sendMessage(
+                  threadId,
+                  {
+                    content: `📞 Call ended`,
+                    message_type: 'CALL_ENDED',
+                    metadata: {
+                      callType: callType,
+                      endedBy: currentUserId,
+                      endedAt: new Date().toISOString()
+                    }
+                  },
+                  { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+                ).catch(err => console.warn('⚠️ Failed to send call_ended on participant-left:', err));
+              }
+              
+              // Close the call
+              setCallStatus('ended');
+              cleanupResources();
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  onClose();
+                }
+              }, 1000);
+            }
+            
+            return updated;
+          });
         }
       });
 
       // ✅ Add handler for when meeting ends unexpectedly
       meeting.on("meeting-left", async () => {
+        console.log('📞 Meeting left event triggered');
         // Send call_ended notification if meeting ends unexpectedly
         if (threadId && currentUserId && callStatusRef.current !== 'ended') {
           try {
@@ -716,7 +771,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               threadId,
               {
                 content: `📞 Call ended`,
-                message_type: 'call_ended',
+                message_type: 'CALL_ENDED',
                 metadata: {
                   callType: callType,
                   endedBy: currentUserId,
@@ -732,8 +787,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         
         if (isMountedRef.current) {
           setCallStatus('ended');
+          cleanupResources();
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              onClose();
+            }
+          }, 1000);
+        } else {
+          cleanupResources();
         }
-        cleanupResources();
       });
       
       // Add connection timeout (30 seconds)
@@ -1072,12 +1134,65 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       meeting.on("participant-left", (p: any) => {
         console.log("👤 Participant left:", p.id);
         if (isMountedRef.current) {
-          setParticipants(prev => prev.filter((x: any) => x.id !== p.id));
+          setParticipants(prev => {
+            const updated = prev.filter((x: any) => x.id !== p.id);
+            
+            // Check if there are any remote participants left in the meeting
+            // This provides a more reliable check than just our state
+            let hasRemoteParticipants = false;
+            try {
+              const localParticipantId = meeting.localParticipant?.id;
+              const allParticipants = meeting.participants 
+                ? Object.values(meeting.participants) 
+                : [];
+              const remoteParticipants = allParticipants.filter(
+                (participant: any) => participant.id !== localParticipantId
+              );
+              hasRemoteParticipants = remoteParticipants.length > 0;
+            } catch (error) {
+              console.warn('⚠️ Error checking meeting participants:', error);
+              // Fallback to state-based check
+              hasRemoteParticipants = updated.length > 0;
+            }
+            
+            // If no more remote participants and call is connected, automatically close the call
+            if (!hasRemoteParticipants && callStatusRef.current === 'connected') {
+              console.log('📞 All participants left - closing call automatically');
+              // Send call_ended notification
+              if (threadId && currentUserId) {
+                supabaseMessagingService.sendMessage(
+                  threadId,
+                  {
+                    content: `📞 Call ended`,
+                    message_type: 'CALL_ENDED',
+                    metadata: {
+                      callType: callType,
+                      endedBy: currentUserId,
+                      endedAt: new Date().toISOString()
+                    }
+                  },
+                  { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+                ).catch(err => console.warn('⚠️ Failed to send call_ended on participant-left:', err));
+              }
+              
+              // Close the call
+              setCallStatus('ended');
+              cleanupResources();
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  onClose();
+                }
+              }, 1000);
+            }
+            
+            return updated;
+          });
         }
       });
 
       // ✅ Add handler for when meeting ends unexpectedly (for accepted calls)
       meeting.on("meeting-left", async () => {
+        console.log('📞 Meeting left event triggered (accepted call)');
         // Send call_ended notification if meeting ends unexpectedly
         if (threadId && currentUserId && callStatusRef.current !== 'ended') {
           try {
@@ -1085,7 +1200,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               threadId,
               {
                 content: `📞 Call ended`,
-                message_type: 'call_ended',
+                message_type: 'CALL_ENDED',
                 metadata: {
                   callType: callType,
                   endedBy: currentUserId,
@@ -1095,14 +1210,21 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
             );
           } catch (msgError) {
-            // Failed to send call_ended message
+            console.warn('⚠️ Failed to send call_ended message on meeting-left:', msgError);
           }
         }
         
         if (isMountedRef.current) {
           setCallStatus('ended');
+          cleanupResources();
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              onClose();
+            }
+          }, 1000);
+        } else {
+          cleanupResources();
         }
-        cleanupResources();
       });
 
       // Get local stream for accepted call BEFORE joining
@@ -1238,7 +1360,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           threadId,
           {
             content: `📞 Call ended`,
-            message_type: 'call_ended',
+            message_type: 'CALL_ENDED',
             metadata: {
               callType: callType,
               endedBy: currentUserId,
