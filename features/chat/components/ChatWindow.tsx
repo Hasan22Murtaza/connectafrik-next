@@ -181,6 +181,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const userInitiatedCall = useRef(false); // Track if user started the call
   const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map()); // Cache for delete permissions
   const processedMessageIdsRef = useRef<Set<string>>(new Set()); // Track already processed message IDs
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
 
   // Check delete permissions for each message (only when message list actually changes)
   useEffect(() => {
@@ -289,6 +290,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       markThreadRead(threadId);
     }
   }, [threadId, thread, minimizedThreadIds, messages.length, markThreadRead]);
+
+  // Scroll to bottom so latest messages show first; scroll up to see history
+  useEffect(() => {
+    const el = messagesScrollRef.current;
+    if (!el || visibleMessages.length === 0) return;
+    const scrollToBottom = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+    scrollToBottom();
+    requestAnimationFrame(scrollToBottom);
+  }, [threadId, visibleMessages.length]);
 
   if (!thread) return null;
 
@@ -535,7 +547,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </div>
 
-      <div className="flex h-[250px] sm:h-[290px]  flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3">
+      <div
+        ref={messagesScrollRef}
+        className="flex h-[250px] sm:h-[290px] flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3"
+      >
         {visibleMessages.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-500">
             Send a message to kick off the conversation.
@@ -569,7 +584,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               );
             })
         )}
-        <div/>
+        <div aria-hidden="true" />
       </div>
 
       {pendingFiles.length > 0 && (
