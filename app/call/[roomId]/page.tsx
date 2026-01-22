@@ -23,13 +23,24 @@ export default function CallWindowPage() {
   const { user } = useAuth()
   const { currentUser } = useProductionChat()
 
+  // Safe URL decoding function - handles already decoded strings gracefully
+  const safeDecode = (str: string | null): string => {
+    if (!str) return 'Unknown';
+    try {
+      return decodeURIComponent(str);
+    } catch (error) {
+      // If decoding fails, return the original string (might already be decoded)
+      return str;
+    }
+  };
+
   const roomId = params?.roomId as string
   const callParam = searchParams?.get('call') ?? 'true'
   const isOpen = callParam === 'true'
   const callType = (searchParams?.get('type') || 'video') as 'audio' | 'video'
   const threadId = searchParams?.get('threadId') || ''
-  const callerName = searchParams?.get('callerName') || 'Unknown'
-  const recipientName = searchParams?.get('recipientName') || 'Unknown'
+  const callerName = safeDecode(searchParams?.get('callerName'))
+  const recipientName = safeDecode(searchParams?.get('recipientName'))
   const isIncoming = searchParams?.get('isIncoming') === 'true'
   const callerId = searchParams?.get('callerId') || ''
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, MoreVertical, Share2, Hand, MessageSquare, Smile } from 'lucide-react';
+import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, Hand, MessageSquare, Smile } from 'lucide-react';
 import { ringtoneService } from '@/features/video/services/ringtoneService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
@@ -39,6 +39,20 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   tokenHint
 }) => {
   const { user } = useAuth();
+  
+  // Safe URL decoding function - handles already decoded strings gracefully
+  const safeDecode = (str: string): string => {
+    try {
+      return decodeURIComponent(str || 'Unknown');
+    } catch (error) {
+      // If decoding fails, return the original string (might already be decoded)
+      return str || 'Unknown';
+    }
+  };
+  
+  // Decode URL-encoded names (handle %20 for spaces, etc.)
+  const decodedCallerName = safeDecode(callerName);
+  const decodedRecipientName = safeDecode(recipientName);
   const [callStatus, setCallStatus] = useState<'connecting' | 'ringing' | 'connected' | 'ended'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(callType === 'video');
@@ -1270,7 +1284,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 acceptedAt: new Date().toISOString()
               }
             },
-            { id: currentUserId, name: recipientName }
+            { id: currentUserId, name: decodedRecipientName }
           );
         } catch (msgError) {
           console.warn('⚠️ Failed to send call_accepted message:', msgError);
@@ -1310,7 +1324,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               rejectedAt: new Date().toISOString()
             }
           },
-          { id: currentUserId, name: isIncoming ? recipientName : callerName }
+          { id: currentUserId, name: isIncoming ? decodedRecipientName : decodedCallerName }
         );
       } catch (msgError) {
         // Don't fail the rejection if message sending fails
@@ -1335,7 +1349,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         }
 
         const callerId = participants[0].user_id; // The caller (other participant)
-        const recipientWhoRejected = recipientName; // The recipient who rejected
+        const recipientWhoRejected = decodedRecipientName; // The recipient who rejected
 
         await notificationService.sendMissedCallNotification(
           callerId,
@@ -1894,9 +1908,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           {callType === 'audio' && (
             <div className="flex items-center justify-center h-full">
               <div className="w-36 h-36 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center shadow-2xl ring-4 ring-primary-200/50 animate-pulse-glow">
-                <span className="text-5xl font-bold text-white">
-                  {isIncoming ? callerName.charAt(0).toUpperCase() : recipientName.charAt(0).toUpperCase()}
-                </span>
+                {/* Name is shown at top of ringing section, not here during ringing */}
+                {callStatus !== 'ringing' && (
+                  <span className="text-lg md:text-xl font-bold text-white text-center px-2 break-words">
+                    {isIncoming ? decodedCallerName : decodedRecipientName}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -1950,6 +1967,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 )}
                 {callStatus === 'ringing' && (
                   <div className="animate-pulse">
+                    {/* Caller/Recipient Name - At top of ringing section */}
+                    <div className="mb-4">
+                      <div className="text-2xl md:text-3xl font-bold">
+                        {isIncoming ? decodedCallerName : decodedRecipientName}
+                      </div>
+                    </div>
                     <div className="text-5xl mb-3 animate-bounce">📞</div>
                     <div className="text-xl font-semibold">Ringing...</div>
                     <div className="text-sm opacity-75 mt-1">Waiting for answer</div>
@@ -2030,7 +2053,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           )}
 
           {/* Emoji Icon Button - Right side bottom */}
-          {callStatus === 'connected' && (
+          {/* {callStatus === 'connected' && (
             <div className="absolute bottom-20 md:bottom-6 right-2 md:right-6 z-30 emoji-dropdown-container pointer-events-auto">
               <div className="relative">
                 <button
@@ -2047,7 +2070,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                   <Smile className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 
-                {/* Emoji Dropdown - Shows above the button */}
                 {showEmojiDropdown && (
                   <div className="absolute bottom-full right-0 mb-1 bg-transparent rounded-lg p-2 flex flex-col gap-1 animate-slideIn z-40 pointer-events-auto">
                     {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
@@ -2078,49 +2100,14 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 )}
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Controls Overlay - Positioned at bottom center of video */}
           {callStatus === 'connected' && (
             <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-3 md:pb-6 px-2 md:px-4 z-10">
               <div className="space-y-2 md:space-y-4 w-full max-w-2xl">
-                {/* Main controls - Mute, Video, Speaker, End */}
+                {/* Main controls - Mute, Video, Speaker, Message, End */}
                 <div className="flex justify-center items-center gap-2 md:gap-3 flex-wrap">
-                  {/* Three-dot menu for connected call */}
-                <div className="relative flex justify-center">
-                  <button
-                    onClick={() => setShowMenu(!showMenu)}
-                    className="rounded-full p-2.5 md:p-3.5 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm"
-                    title="More options"
-                  >
-                    <MoreVertical className="w-5 h-5 md:w-6 md:h-6" />
-                  </button>
-                  {showMenu && (
-                    <div className="absolute bottom-12 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-max overflow-hidden animate-slideIn">
-                      <button
-                        onClick={handleShareScreen}
-                        className={`w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 font-medium ${
-                          isScreenSharing 
-                            ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' 
-                            : 'text-gray-700'
-                        }`}
-                      >
-                        <Share2 className="w-4 h-4" />
-                        <span>{isScreenSharing ? 'Stop Screen' : 'Share Screen'}</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowMessageInput(true);
-                          setShowMenu(false);
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium border-t border-gray-200"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Send Message</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
                   <button
                     onClick={toggleMute}
                     className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
@@ -2162,8 +2149,22 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     {isSpeakerEnabled ? <Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
                   </button>
 
-                  {/* Raise Hand Button - Highlight when raised */}
+                  {/* Send Message Button */}
                   <button
+                    onClick={() => setShowMessageInput(!showMessageInput)}
+                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                      showMessageInput 
+                        ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white' 
+                        : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                    }`}
+                    title="Send message"
+                    aria-label="Send message"
+                  >
+                    <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
+                  </button>
+
+                  {/* Raise Hand Button - Highlight when raised */}
+                  {/* <button
                     onClick={handleRaiseHand}
                     className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       isHandRaised 
@@ -2174,7 +2175,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     aria-label={isHandRaised ? 'Lower hand' : 'Raise hand'}
                   >
                     <Hand className="w-5 h-5 md:w-6 md:h-6" />
-                  </button>
+                  </button> */}
 
                   <button
                     onClick={handleEndCall}
@@ -2213,7 +2214,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       }
                     }}
                     placeholder="Type a message..."
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:border-transparent transition-all duration-200 text-sm"
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 outline-1 border-gray-300 transition-all duration-200 text-sm text-white"
                     autoFocus
                   />
                   <button
