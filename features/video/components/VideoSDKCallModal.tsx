@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, MoreVertical, Share2, Hand, MessageSquare, Smile } from 'lucide-react';
+import { X, Mic, MicOff, Video, VideoOff, PhoneOff, Volume2, VolumeX, Hand, MessageSquare, Smile } from 'lucide-react';
 import { ringtoneService } from '@/features/video/services/ringtoneService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
@@ -39,6 +39,20 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   tokenHint
 }) => {
   const { user } = useAuth();
+  
+  // Safe URL decoding function - handles already decoded strings gracefully
+  const safeDecode = (str: string): string => {
+    try {
+      return decodeURIComponent(str || 'Unknown');
+    } catch (error) {
+      // If decoding fails, return the original string (might already be decoded)
+      return str || 'Unknown';
+    }
+  };
+  
+  // Decode URL-encoded names (handle %20 for spaces, etc.)
+  const decodedCallerName = safeDecode(callerName);
+  const decodedRecipientName = safeDecode(recipientName);
   const [callStatus, setCallStatus] = useState<'connecting' | 'ringing' | 'connected' | 'ended'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(callType === 'video');
@@ -192,6 +206,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     hasInitializedRef.current = false;
   }, [updateLocalStream, updateRemoteStreams]);
 
+  // Cleanup on unmount (e.g. when parent sets call=false in URL and unmounts this modal)
+  useEffect(() => {
+    return () => {
+      if (hasInitializedRef.current || currentMeetingRef.current) {
+        cleanupResources();
+      }
+    };
+  }, [cleanupResources]);
+
   // Initialize room and get media when call starts
   useEffect(() => {
     if (!isOpen) {
@@ -297,8 +320,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       return;
     }
 
-    console.log('📞 Setting up call_rejected listener (status:', callStatusRef.current, ')');
-
     let hasRejected = false; // Guard to prevent multiple triggers
 
     const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
@@ -313,20 +334,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       // Log all call-related messages for debugging
       if (message.message_type === 'call_rejected' || message.message_type === 'call_accepted' || message.message_type === 'call_request') {
-        console.log('📞 Received call-related message:', {
-          message_type: message.message_type,
-          thread_id: message.thread_id,
-          sender_id: message.sender_id,
-          currentUserId: currentUserId,
-          metadata: message.metadata,
-          callStatus: callStatusRef.current
-        });
       }
 
       // Only process if message is from the other participant (not from current user)
       // Check current status to avoid processing if call is already ended
       if (callStatusRef.current === 'ended') {
-        console.log('📞 Call already ended, ignoring message');
         return;
       }
 
@@ -335,22 +347,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       const isFromOtherUser = message.sender_id && message.sender_id !== currentUserId;
       const hasRejectionMetadata = message.metadata?.rejectedBy;
 
-      console.log('📞 Checking rejection message:', {
-        isRejectionMessage,
-        isFromOtherUser,
-        hasRejectionMetadata,
-        hasRejected,
-        senderId: message.sender_id,
-        currentUserId
-      });
-
       if (!hasRejected && isRejectionMessage && hasRejectionMetadata && isFromOtherUser) {
-        console.log('📞 Call rejected by other participant - closing call modal', {
-          rejectedBy: message.metadata?.rejectedBy,
-          currentUserId: currentUserId,
-          senderId: message.sender_id,
-          message: message
-        });
+ 
         hasRejected = true; // Prevent re-triggering
 
         // Stop ringtone immediately
@@ -377,14 +375,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           }, 1000);
         }
       } else if (isRejectionMessage && !isFromOtherUser) {
-        console.log('📞 Ignoring call_rejected message from self');
       } else if (isRejectionMessage && !hasRejectionMetadata) {
         console.warn('⚠️ Received call_rejected message without metadata:', message);
       }
     });
 
     return () => {
-      console.log('📞 Cleaning up call_rejected listener');
       unsubscribe();
     };
   }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
@@ -411,11 +407,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       }
 
       // Check if this is an end message from the other participant
-      const isEndMessage = message.message_type === 'call_ended';
+      const isEndMessage = message.message_type === 'CALL_ENDED';
       const isFromOtherUser = message.sender_id && message.sender_id !== currentUserId;
       const hasEndMetadata = message.metadata?.endedBy;
 
       if (!hasEnded && isEndMessage && hasEndMetadata && isFromOtherUser) {
+        console.log('📞 Received CALL_ENDED message from other participant - closing call');
         hasEnded = true; // Prevent re-triggering
 
         // Stop ringtone immediately
@@ -720,13 +717,67 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       });
 
       meeting.on("participant-left", (p: any) => {
+        console.log("👤 Participant left:", p.id);
         if (isMountedRef.current) {
-          setParticipants(prev => prev.filter((x: any) => x.id !== p.id));
+          setParticipants(prev => {
+            const updated = prev.filter((x: any) => x.id !== p.id);
+            
+            // Check if there are any remote participants left in the meeting
+            // This provides a more reliable check than just our state
+            let hasRemoteParticipants = false;
+            try {
+              const localParticipantId = meeting.localParticipant?.id;
+              const allParticipants = meeting.participants 
+                ? Object.values(meeting.participants) 
+                : [];
+              const remoteParticipants = allParticipants.filter(
+                (participant: any) => participant.id !== localParticipantId
+              );
+              hasRemoteParticipants = remoteParticipants.length > 0;
+            } catch (error) {
+              console.warn('⚠️ Error checking meeting participants:', error);
+              // Fallback to state-based check
+              hasRemoteParticipants = updated.length > 0;
+            }
+            
+            // If no more remote participants and call is connected, automatically close the call
+            if (!hasRemoteParticipants && callStatusRef.current === 'connected') {
+              console.log('📞 All participants left - closing call automatically');
+              // Send call_ended notification
+              if (threadId && currentUserId) {
+                supabaseMessagingService.sendMessage(
+                  threadId,
+                  {
+                    content: `📞 Call ended`,
+                    message_type: 'CALL_ENDED',
+                    metadata: {
+                      callType: callType,
+                      endedBy: currentUserId,
+                      endedAt: new Date().toISOString()
+                    }
+                  },
+                  { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+                ).catch(err => console.warn('⚠️ Failed to send call_ended on participant-left:', err));
+              }
+              
+              // Close the call
+              setCallStatus('ended');
+              cleanupResources();
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  onClose();
+                }
+              }, 1000);
+            }
+            
+            return updated;
+          });
         }
       });
 
       // ✅ Add handler for when meeting ends unexpectedly
       meeting.on("meeting-left", async () => {
+        console.log('📞 Meeting left event triggered');
         // Send call_ended notification if meeting ends unexpectedly
         if (threadId && currentUserId && callStatusRef.current !== 'ended') {
           try {
@@ -734,7 +785,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               threadId,
               {
                 content: `📞 Call ended`,
-                message_type: 'call_ended',
+                message_type: 'CALL_ENDED',
                 metadata: {
                   callType: callType,
                   endedBy: currentUserId,
@@ -750,8 +801,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         
         if (isMountedRef.current) {
           setCallStatus('ended');
+          cleanupResources();
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              onClose();
+            }
+          }, 1000);
+        } else {
+          cleanupResources();
         }
-        cleanupResources();
       });
       
       // Add connection timeout (30 seconds)
@@ -1090,12 +1148,65 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       meeting.on("participant-left", (p: any) => {
         console.log("👤 Participant left:", p.id);
         if (isMountedRef.current) {
-          setParticipants(prev => prev.filter((x: any) => x.id !== p.id));
+          setParticipants(prev => {
+            const updated = prev.filter((x: any) => x.id !== p.id);
+            
+            // Check if there are any remote participants left in the meeting
+            // This provides a more reliable check than just our state
+            let hasRemoteParticipants = false;
+            try {
+              const localParticipantId = meeting.localParticipant?.id;
+              const allParticipants = meeting.participants 
+                ? Object.values(meeting.participants) 
+                : [];
+              const remoteParticipants = allParticipants.filter(
+                (participant: any) => participant.id !== localParticipantId
+              );
+              hasRemoteParticipants = remoteParticipants.length > 0;
+            } catch (error) {
+              console.warn('⚠️ Error checking meeting participants:', error);
+              // Fallback to state-based check
+              hasRemoteParticipants = updated.length > 0;
+            }
+            
+            // If no more remote participants and call is connected, automatically close the call
+            if (!hasRemoteParticipants && callStatusRef.current === 'connected') {
+              console.log('📞 All participants left - closing call automatically');
+              // Send call_ended notification
+              if (threadId && currentUserId) {
+                supabaseMessagingService.sendMessage(
+                  threadId,
+                  {
+                    content: `📞 Call ended`,
+                    message_type: 'CALL_ENDED',
+                    metadata: {
+                      callType: callType,
+                      endedBy: currentUserId,
+                      endedAt: new Date().toISOString()
+                    }
+                  },
+                  { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
+                ).catch(err => console.warn('⚠️ Failed to send call_ended on participant-left:', err));
+              }
+              
+              // Close the call
+              setCallStatus('ended');
+              cleanupResources();
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  onClose();
+                }
+              }, 1000);
+            }
+            
+            return updated;
+          });
         }
       });
 
       // ✅ Add handler for when meeting ends unexpectedly (for accepted calls)
       meeting.on("meeting-left", async () => {
+        console.log('📞 Meeting left event triggered (accepted call)');
         // Send call_ended notification if meeting ends unexpectedly
         if (threadId && currentUserId && callStatusRef.current !== 'ended') {
           try {
@@ -1103,7 +1214,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               threadId,
               {
                 content: `📞 Call ended`,
-                message_type: 'call_ended',
+                message_type: 'CALL_ENDED',
                 metadata: {
                   callType: callType,
                   endedBy: currentUserId,
@@ -1113,14 +1224,21 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }
             );
           } catch (msgError) {
-            // Failed to send call_ended message
+            console.warn('⚠️ Failed to send call_ended message on meeting-left:', msgError);
           }
         }
         
         if (isMountedRef.current) {
           setCallStatus('ended');
+          cleanupResources();
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              onClose();
+            }
+          }, 1000);
+        } else {
+          cleanupResources();
         }
-        cleanupResources();
       });
 
       // Get local stream for accepted call BEFORE joining
@@ -1166,7 +1284,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 acceptedAt: new Date().toISOString()
               }
             },
-            { id: currentUserId, name: recipientName }
+            { id: currentUserId, name: decodedRecipientName }
           );
         } catch (msgError) {
           console.warn('⚠️ Failed to send call_accepted message:', msgError);
@@ -1206,7 +1324,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               rejectedAt: new Date().toISOString()
             }
           },
-          { id: currentUserId, name: isIncoming ? recipientName : callerName }
+          { id: currentUserId, name: isIncoming ? decodedRecipientName : decodedCallerName }
         );
       } catch (msgError) {
         // Don't fail the rejection if message sending fails
@@ -1231,7 +1349,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         }
 
         const callerId = participants[0].user_id; // The caller (other participant)
-        const recipientWhoRejected = recipientName; // The recipient who rejected
+        const recipientWhoRejected = decodedRecipientName; // The recipient who rejected
 
         await notificationService.sendMissedCallNotification(
           callerId,
@@ -1256,7 +1374,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           threadId,
           {
             content: `📞 Call ended`,
-            message_type: 'call_ended',
+            message_type: 'CALL_ENDED',
             metadata: {
               callType: callType,
               endedBy: currentUserId,
@@ -1751,54 +1869,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   if (!isOpen) return null;
 
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fadeIn md:bg-black/75">
-      <div className="bg-white rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-w-3xl md:mx-4 overflow-hidden animate-slideIn md:rounded-2xl">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4 md:p-5 flex items-center justify-between shadow-lg">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-orange-400/50 rounded-full flex items-center justify-center shadow-lg">
-              {callType === 'video' ? (
-                <Video className="w-6 h-6 text-white" />
-              ) : (
-                <PhoneOff className="w-6 h-6 text-white" />
-              )}
-            </div>
-            <div>
-              <h3 className="font-bold text-lg leading-tight">
-                {isIncoming ? callerName : recipientName}
-              </h3>
-              <p className="text-sm opacity-90 font-medium">
-                {callType === 'video' ? 'Video Call' : 'Voice Call'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white/50"
-            aria-label="Close call"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      <div className="fixed inset-0 z-[9999] bg-black animate-fadeIn">
+      <div className="bg-black w-full h-full overflow-hidden">
+       
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 animate-slideIn">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-red-800">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Video/Audio Content */}
-        <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-[calc(100vh-200px)] md:h-auto md:aspect-video overflow-hidden">
+        {/* Video/Audio Content - Fullscreen */}
+        <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-screen overflow-hidden">
           {/* Remote Videos - Show all participants */}
           {remoteStreams.length > 0 && callType === 'video' && (
             <div className="w-full h-full">
@@ -1832,9 +1908,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           {callType === 'audio' && (
             <div className="flex items-center justify-center h-full">
               <div className="w-36 h-36 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center shadow-2xl ring-4 ring-primary-200/50 animate-pulse-glow">
-                <span className="text-5xl font-bold text-white">
-                  {isIncoming ? callerName.charAt(0).toUpperCase() : recipientName.charAt(0).toUpperCase()}
-                </span>
+                {/* Name is shown at top of ringing section, not here during ringing */}
+                {callStatus !== 'ringing' && (
+                  <span className="text-lg md:text-xl font-bold text-white text-center px-2 break-words">
+                    {isIncoming ? decodedCallerName : decodedRecipientName}
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -1888,6 +1967,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 )}
                 {callStatus === 'ringing' && (
                   <div className="animate-pulse">
+                    {/* Caller/Recipient Name - At top of ringing section */}
+                    <div className="mb-4">
+                      <div className="text-2xl md:text-3xl font-bold">
+                        {isIncoming ? decodedCallerName : decodedRecipientName}
+                      </div>
+                    </div>
                     <div className="text-5xl mb-3 animate-bounce">📞</div>
                     <div className="text-xl font-semibold">Ringing...</div>
                     <div className="text-sm opacity-75 mt-1">Waiting for answer</div>
@@ -1929,10 +2014,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 <button
                   onClick={handleAcceptCall}
                   disabled={isAcceptingCall}
-                  className={`rounded-full p-4 md:p-5 shadow-lg transition-all duration-200 focus:outline-none focus:ring-4 ${
+                  className={`rounded-full p-4 md:p-5 shadow-lg transition-all duration-200 focus:outline-none ${
                     isAcceptingCall
                       ? 'bg-gray-400 cursor-not-allowed opacity-60 text-white'
-                      : 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white hover:shadow-xl hover:scale-110 active:scale-95 focus:ring-green-300'
+                      : 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white hover:shadow-xl hover:scale-110 active:scale-95'
                   }`}
                   title={isAcceptingCall ? 'Connecting...' : 'Answer Call'}
                   aria-label={isAcceptingCall ? 'Connecting...' : 'Answer call'}
@@ -1941,7 +2026,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 </button>
                 <button
                   onClick={handleRejectCall}
-                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
                   title="Decline Call"
                   aria-label="Decline call"
                 >
@@ -1957,7 +2042,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               <div className="flex flex-col items-center gap-3">
                 <button
                   onClick={handleEndCall}
-                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
                   title="Drop Call"
                   aria-label="Drop call"
                 >
@@ -1968,7 +2053,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           )}
 
           {/* Emoji Icon Button - Right side bottom */}
-          {callStatus === 'connected' && (
+          {/* {callStatus === 'connected' && (
             <div className="absolute bottom-20 md:bottom-6 right-2 md:right-6 z-30 emoji-dropdown-container pointer-events-auto">
               <div className="relative">
                 <button
@@ -1976,7 +2061,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     e.stopPropagation();
                     setShowEmojiDropdown(!showEmojiDropdown);
                   }}
-                  className="rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm cursor-pointer"
+                  className="rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-white/90 hover:bg-white text-gray-700 cursor-pointer"
                   title="Reactions"
                   aria-label="Show reactions"
                   type="button"
@@ -1985,7 +2070,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                   <Smile className="w-5 h-5 md:w-6 md:h-6" />
                 </button>
                 
-                {/* Emoji Dropdown - Shows above the button */}
                 {showEmojiDropdown && (
                   <div className="absolute bottom-full right-0 mb-1 bg-transparent rounded-lg p-2 flex flex-col gap-1 animate-slideIn z-40 pointer-events-auto">
                     {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
@@ -2016,54 +2100,19 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 )}
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Controls Overlay - Positioned at bottom center of video */}
           {callStatus === 'connected' && (
             <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-3 md:pb-6 px-2 md:px-4 z-10">
               <div className="space-y-2 md:space-y-4 w-full max-w-2xl">
-                {/* Main controls - Mute, Video, Speaker, End */}
+                {/* Main controls - Mute, Video, Speaker, Message, End */}
                 <div className="flex justify-center items-center gap-2 md:gap-3 flex-wrap">
-                  {/* Three-dot menu for connected call */}
-                <div className="relative flex justify-center">
-                  <button
-                    onClick={() => setShowMenu(!showMenu)}
-                    className="rounded-full p-2.5 md:p-3.5 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm"
-                    title="More options"
-                  >
-                    <MoreVertical className="w-5 h-5 md:w-6 md:h-6" />
-                  </button>
-                  {showMenu && (
-                    <div className="absolute bottom-12 bg-white border border-gray-200 rounded-lg shadow-xl z-10 min-w-max overflow-hidden animate-slideIn">
-                      <button
-                        onClick={handleShareScreen}
-                        className={`w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 font-medium ${
-                          isScreenSharing 
-                            ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' 
-                            : 'text-gray-700'
-                        }`}
-                      >
-                        <Share2 className="w-4 h-4" />
-                        <span>{isScreenSharing ? 'Stop Screen' : 'Share Screen'}</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowMessageInput(true);
-                          setShowMenu(false);
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 active:bg-gray-100 flex items-center space-x-3 transition-colors duration-150 text-gray-700 font-medium border-t border-gray-200"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Send Message</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
                   <button
                     onClick={toggleMute}
-                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       isMuted 
-                        ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300' 
+                        ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white' 
                         : 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm'
                     }`}
                     title={isMuted ? 'Unmute' : 'Mute'}
@@ -2075,10 +2124,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                   {callType === 'video' && (
                     <button
                       onClick={toggleVideo}
-                      className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                         isVideoEnabled 
-                          ? 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm' 
-                          : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
+                          ? 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm' 
+                          : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
                       }`}
                       title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
                       aria-label={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
@@ -2089,10 +2138,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
                   <button
                     onClick={toggleSpeaker}
-                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       isSpeakerEnabled 
-                        ? 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm' 
-                        : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white focus:ring-red-300'
+                        ? 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm' 
+                        : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
                     }`}
                     title={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
                     aria-label={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
@@ -2100,23 +2149,37 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     {isSpeakerEnabled ? <Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
                   </button>
 
-                  {/* Raise Hand Button - Highlight when raised */}
+                  {/* Send Message Button */}
                   <button
+                    onClick={() => setShowMessageInput(!showMessageInput)}
+                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                      showMessageInput 
+                        ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white' 
+                        : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                    }`}
+                    title="Send message"
+                    aria-label="Send message"
+                  >
+                    <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
+                  </button>
+
+                  {/* Raise Hand Button - Highlight when raised */}
+                  {/* <button
                     onClick={handleRaiseHand}
-                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       isHandRaised 
-                        ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white focus:ring-orange-300' 
-                        : 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm'
+                        ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white' 
+                        : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
                     }`}
                     title={isHandRaised ? 'Lower hand' : 'Raise hand'}
                     aria-label={isHandRaised ? 'Lower hand' : 'Raise hand'}
                   >
                     <Hand className="w-5 h-5 md:w-6 md:h-6" />
-                  </button>
+                  </button> */}
 
                   <button
                     onClick={handleEndCall}
-                    className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-300"
+                    className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
                     title="End call"
                     aria-label="End call"
                   >
@@ -2151,12 +2214,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       }
                     }}
                     placeholder="Type a message..."
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 text-sm"
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 outline-1 border-gray-300 transition-all duration-200 text-sm text-white"
                     autoFocus
                   />
                   <button
                     onClick={handleSendMessage}
-                    className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white px-5 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                    className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white px-5 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-medium focus:outline-none focus:ring-offset-2"
                   >
                     Send
                   </button>
@@ -2165,7 +2228,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       setShowMessageInput(false);
                       setMessageText('');
                     }}
-                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 px-5 py-2.5 rounded-lg transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 px-5 py-2.5 rounded-lg transition-all duration-200 font-medium focus:outline-none"
                   >
                     Cancel
                   </button>

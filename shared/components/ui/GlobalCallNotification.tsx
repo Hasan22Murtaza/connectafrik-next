@@ -29,17 +29,32 @@ const GlobalCallNotification: React.FC = () => {
       
       // Only show if it's an incoming call (not from current user)
       if (callRequest.callerId !== currentUser?.id) {
-        // Only set up new call if we don't already have an active call for this thread
+        // Only open new window if we don't already have an active call for this thread
         if (!activeCall || activeCall.threadId !== threadId) {
-          setActiveCall({
+          const newActiveCall = {
             threadId,
             type: callRequest.type,
             callerName: callRequest.callerName || 'Unknown caller',
             roomId: callRequest.roomId || '',
             token: callRequest.token || '',
             callerId: callRequest.callerId || ''
-          })
-          setIsCallModalOpen(true)
+          }
+          setActiveCall(newActiveCall)
+          
+          // Open new call window for incoming call (like Facebook)
+          if (typeof window !== 'undefined' && callRequest.roomId) {
+            import('@/shared/utils/callWindow').then(({ openCallWindow }) => {
+              openCallWindow({
+                roomId: callRequest.roomId!,
+                callType: callRequest.type,
+                threadId,
+                callerName: callRequest.callerName || 'Unknown',
+                recipientName: currentUser?.name || 'You',
+                isIncoming: true,
+                callerId: callRequest.callerId
+              })
+            })
+          }
           
           // Start ringtone for incoming call
           console.log('📞 GlobalCallNotification: Starting ringtone')
@@ -50,7 +65,7 @@ const GlobalCallNotification: React.FC = () => {
             console.error('📞 GlobalCallNotification: Failed to start ringtone:', err)
           })
         } else {
-          console.log('📞 GlobalCallNotification: Call already active for this thread, keeping modal open')
+          console.log('📞 GlobalCallNotification: Call already active for this thread')
         }
       } else {
         console.log('📞 GlobalCallNotification: Call request is from current user, ignoring')
@@ -84,6 +99,26 @@ const GlobalCallNotification: React.FC = () => {
       ringtoneService.stopRingtone()
     }
   }, [ringtoneRef])
+
+  // When call window closes (End call, Reject, or user closes with X), it posts CALL_ENDED.
+  // Clear callRequests and activeCall so the next call can ring on callee and caller does not get stuck ringing.
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type === 'CALL_ENDED' && event.data?.threadId) {
+        clearCallRequest(event.data.threadId)
+        setActiveCall(null)
+        setIsCallModalOpen(false)
+        if (ringtoneRef) {
+          ringtoneRef.stop()
+          setRingtoneRef(null)
+        }
+        ringtoneService.stopRingtone()
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [clearCallRequest, ringtoneRef])
 
   const handleAcceptCall = () => {
     if (ringtoneRef) {
@@ -120,26 +155,9 @@ const GlobalCallNotification: React.FC = () => {
     setIsCallModalOpen(false)
   }
 
-  // Don't render if no active call
-  if (!activeCall) return null
-
-  return (
-    <VideoSDKCallModal
-      isOpen={isCallModalOpen}
-      onClose={handleCallEnd}
-      callType={activeCall.type}
-      callerName={activeCall.callerName}
-      recipientName={currentUser?.name || 'You'}
-      isIncoming={true} // This is for incoming calls from other users
-      onAccept={handleAcceptCall}
-      onReject={handleRejectCall}
-      onCallEnd={handleCallEnd}
-      threadId={activeCall.threadId}
-      currentUserId={currentUser?.id}
-      roomIdHint={activeCall.roomId}
-      tokenHint={activeCall.token}
-    />
-  )
+  // Don't render modal - calls now open in new windows (like Facebook)
+  // This component just manages the call request state and opens windows
+  return null
 }
 
 export default GlobalCallNotification

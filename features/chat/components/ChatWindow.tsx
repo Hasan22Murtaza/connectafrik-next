@@ -6,9 +6,6 @@ import {
   supabaseMessagingService,
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
-import {
-  VideoSDKCallModal
-} from "@/features/video/components/VideoSDKCallModal";
 import { useMembers } from "@/shared/hooks/useMembers";
 import {
   FileUploadResult,
@@ -184,6 +181,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const userInitiatedCall = useRef(false); // Track if user started the call
   const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map()); // Cache for delete permissions
   const processedMessageIdsRef = useRef<Set<string>>(new Set()); // Track already processed message IDs
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
 
   // Check delete permissions for each message (only when message list actually changes)
   useEffect(() => {
@@ -292,6 +290,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       markThreadRead(threadId);
     }
   }, [threadId, thread, minimizedThreadIds, messages.length, markThreadRead]);
+
+  // Scroll to bottom so latest messages show first; scroll up to see history
+  useEffect(() => {
+    const el = messagesScrollRef.current;
+    if (!el || visibleMessages.length === 0) return;
+    const scrollToBottom = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+    scrollToBottom();
+    requestAnimationFrame(scrollToBottom);
+  }, [threadId, visibleMessages.length]);
 
   if (!thread) return null;
 
@@ -475,15 +484,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {isCallOpen ? (
-            <button
-              onClick={handleEndCall}
-              className="text-red-600 hover:text-red-700"
-              title="End call"
-            >
-              <Phone className="h-4 w-4" />
-            </button>
-          ) : (
             <>
               <button
                 onClick={() => handleStartCall("audio")}
@@ -500,7 +500,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <Video className="h-4 w-4" />
               </button>
             </>
-          )}
 
           <button
             onClick={handleToggleMinimize}
@@ -548,23 +547,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </div>
 
-      {isCallOpen && (
-        <div className="flex items-center justify-between bg-primary-50 px-4 py-2 text-xs text-primary-700">
-          <span>
-            {currentCallType === "video"
-              ? "Video call active"
-              : "Audio call active"}
-          </span>
-          <button
-            onClick={handleEndCall}
-            className="font-semibold hover:text-primary-800"
-          >
-            End call
-          </button>
-        </div>
-      )}
-
-      <div className="flex h-[250px] sm:h-[290px]  flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3">
+      <div
+        ref={messagesScrollRef}
+        className="flex h-[250px] sm:h-[290px] flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3"
+      >
         {visibleMessages.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-500">
             Send a message to kick off the conversation.
@@ -598,7 +584,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               );
             })
         )}
-        <div/>
+        <div aria-hidden="true" />
       </div>
 
       {pendingFiles.length > 0 && (
@@ -666,33 +652,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onFilesSelected={handleFilesSelected}
       />
 
-      <VideoSDKCallModal
-        isOpen={isCallOpen}
-        onClose={handleEndCall}
-        callType={currentCallType}
-        callerName={
-          isIncomingCall
-            ? primaryParticipant?.name ||
-              pendingCallerName ||
-              thread.name ||
-              "Unknown caller"
-            : currentUser?.name || "You"
-        }
-        recipientName={
-          isIncomingCall
-            ? currentUser?.name || "You"
-            : primaryParticipant?.name ||
-              pendingCallerName ||
-              thread.name ||
-              "Unknown"
-        }
-        isIncoming={isIncomingCall}
-        onCallEnd={handleEndCall}
-        threadId={threadId}
-        currentUserId={currentUser?.id}
-        roomIdHint={activeRoomId ?? pendingRoomId ?? undefined}
-        tokenHint={pendingToken}
-      />
+      {/* Call modal removed - calls now open in new windows (like Facebook) */}
     </div>
   );
 };

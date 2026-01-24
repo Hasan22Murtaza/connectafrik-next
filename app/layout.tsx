@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import ConditionalHeader from "./components/ConditionalHeader";
-import Footer from "@/shared/components/layout/FooterNext";
+import ConditionalFooter from "./components/ConditionalFooter";
 import GlobalComponents from "./components/GlobalComponents";
 import { Poppins } from "next/font/google";
 
@@ -66,7 +66,7 @@ export default function RootLayout({
             <ConditionalHeader />
             
             {children}
-            <Footer />
+            <ConditionalFooter />
           </div>
           <GlobalComponents />
         </Providers>

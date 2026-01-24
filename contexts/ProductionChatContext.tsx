@@ -357,7 +357,26 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         [threadId]: callRequest
       }))
 
+      // Open new call window for the caller (like Facebook)
       if (typeof window !== 'undefined') {
+        const { openCallWindow } = await import('@/shared/utils/callWindow')
+        
+        // Get recipient name from thread
+        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
+        const thread = userThreads.find(t => t.id === threadId)
+        const recipient = thread?.participants?.find((p: any) => p.id !== currentUser?.id)
+        const recipientName = recipient?.name || 'Unknown'
+
+        openCallWindow({
+          roomId,
+          callType: type,
+          threadId,
+          callerName: currentUser?.name || 'Unknown',
+          recipientName,
+          isIncoming: false,
+          callerId: currentUser?.id
+        })
+
         window.dispatchEvent(new CustomEvent('startCall', {
           detail: {
             threadId,
