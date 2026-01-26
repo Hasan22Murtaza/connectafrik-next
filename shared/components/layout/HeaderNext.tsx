@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -24,13 +24,17 @@ import ChatDropdown from "@/features/chat/components/ChatDropdown";
 import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
 import { FaBars } from "react-icons/fa";
 import MobileSideDrawer from "../ui/MobileSideDrawer";
+import { useSearch } from "@/shared/hooks/useSearch";
+import SearchResultsDropdown from "@/shared/components/search/SearchResultsDropdown";
+import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
+
 interface HeaderProps {
   searchTerm?: string;
   onSearchTermChange?: (term: string) => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
-  searchTerm = "",
+  searchTerm: externalSearchTerm,
   onSearchTermChange,
 }) => {
   const router = useRouter();
@@ -41,12 +45,64 @@ const Header: React.FC<HeaderProps> = ({
   const [showInbox, setShowInbox] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   const [showCalls, setShowCalls] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Search functionality using custom hook
+  const {
+    searchTerm: internalSearchTerm,
+    searchResults,
+    isSearching,
+    handleSearch,
+  } = useSearch();
+
+  // Sync internal search term with external prop
+  const searchTerm = externalSearchTerm !== undefined ? externalSearchTerm : internalSearchTerm;
+
   // TODO: Get threads from messaging service or realtime hook
-  const unreadMessages = 0; // useMemo(() => threads.reduce((total: number, thread: any) => total + (thread.unread_count || 0), 0), [threads])
+  const unreadMessages = 0;
   const pathname = usePathname();
+
+  // Sync with external searchTerm prop
+  useEffect(() => {
+    if (externalSearchTerm !== undefined && externalSearchTerm !== internalSearchTerm) {
+      handleSearch(externalSearchTerm);
+    }
+  }, [externalSearchTerm, internalSearchTerm, handleSearch]);
+
+  // Handle search input change
+  const handleSearchChange = (value: string) => {
+    handleSearch(value);
+    if (onSearchTermChange) {
+      onSearchTermChange(value);
+    }
+    if (value.trim().length >= 2) {
+      setShowSearchResults(true);
+    } else {
+      setShowSearchResults(false);
+    }
+  };
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setShowSearchResults(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
 
   const handleSignOut = async () => {
     try {
@@ -72,19 +128,43 @@ const Header: React.FC<HeaderProps> = ({
 
           {/* Search Bar - Hidden on mobile, visible on tablet+ */}
           <div className="hidden md:flex flex-1 max-w-lg mx-4 lg:mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <div className="relative w-full" ref={searchContainerRef}>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
               <input
                 type="text"
-                placeholder="Search discussions, culture, politics..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316]  focus:border-transparent"
+                placeholder="Search connectafrik"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:border-transparent"
                 value={searchTerm}
-                onChange={(e) =>
-                  onSearchTermChange && onSearchTermChange(e.target.value)
-                }
+                onChange={(e) => handleSearchChange(e.target.value)}
+                onFocus={() => {
+                  if (searchTerm.trim().length >= 2 && searchResults) {
+                    setShowSearchResults(true);
+                  }
+                }}
               />
+              
+              {/* Search Results Dropdown */}
+              {showSearchResults && (
+                <SearchResultsDropdown
+                  results={searchResults}
+                  isSearching={isSearching}
+                  searchTerm={searchTerm}
+                  onClose={() => setShowSearchResults(false)}
+                />
+              )}
             </div>
           </div>
+
+          {/* Mobile Search Button - Visible only on mobile */}
+          {user && (
+            <button
+              onClick={() => setShowMobileSearch(true)}
+              className="md:hidden p-2 text-gray-600 hover:text-[#FF6900] transition-colors"
+              aria-label="Open search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          )}
 
           {/* Navigation and User Menu - Pinned to right */}
           <div className=" flex items-center space-x-1 sm:space-x-2 lg:space-x-4 ml-auto">
@@ -425,6 +505,12 @@ const Header: React.FC<HeaderProps> = ({
       <MobileSideDrawer
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Mobile Search Modal */}
+      <MobileSearchModal
+        isOpen={showMobileSearch}
+        onClose={() => setShowMobileSearch(false)}
       />
     </header>
   );

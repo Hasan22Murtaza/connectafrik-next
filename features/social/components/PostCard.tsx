@@ -566,10 +566,23 @@ export const PostCard: React.FC<PostCardProps> = ({
     );
   };
 
+  const handlePostClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (
+      target.closest('button') ||
+      target.closest('a') ||
+      target.closest('[role="button"]')
+    ) {
+      return
+    }
+    router.push(`/post/${post.id}`)
+  }
+
   return (
     <article
       ref={postRef}
-      className="card mb-4 sm:mb-6 hover:shadow-md transition-shadow duration-200 bg-white rounded-lg border border-gray-200 p-3 sm:p-4"
+      onClick={handlePostClick}
+      className="card mb-4 sm:mb-6 hover:shadow-md transition-shadow duration-200 bg-white rounded-lg border border-gray-200 p-3 sm:p-4 cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
