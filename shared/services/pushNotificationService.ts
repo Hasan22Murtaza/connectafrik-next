@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase'
+import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
+import { getMessaging, getToken, onMessage, Messaging, deleteToken } from 'firebase/messaging'
 
 export interface NotificationPayload {
   title: string
@@ -19,37 +21,54 @@ export interface NotificationPayload {
 }
 
 class PushNotificationService {
-  private vapidPublicKey: string
+  private firebaseApp: FirebaseApp | null = null
+  private messaging: Messaging | null = null
   private registration: ServiceWorkerRegistration | null = null
-  private subscription: PushSubscription | null = null
+  private fcmToken: string | null = null
 
   constructor() {
-    // Get VAPID public key from environment (Next.js uses process.env)
-    this.vapidPublicKey = (typeof window !== 'undefined' 
-      ? (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '')
-      : '')
-    
-    // If no VAPID key is provided, we'll use a fallback approach
-    // Only warn in development, not during build
-    if (!this.vapidPublicKey && process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-      console.warn('NEXT_PUBLIC_VAPID_PUBLIC_KEY not found. Push notifications may not work properly.')
-    } else if (this.vapidPublicKey && process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-      // Debug: Validate VAPID key format (only in development)
-      this.debugVapidKey()
+    // Initialize Firebase if not already initialized
+    if (typeof window !== 'undefined') {
+      this.initializeFirebase()
     }
   }
 
   /**
-   * Debug function to validate VAPID key format
+   * Initialize Firebase app
    */
-  private debugVapidKey(): void {
-    const key = this.vapidPublicKey
-    console.log('🔍 VAPID Key Debug Info:')
-    console.log('Key length:', key.length)
-    console.log('Key starts with:', key.substring(0, 10))
-    console.log('Key ends with:', key.substring(key.length - 10))
-    console.log('Contains only valid chars:', /^[A-Za-z0-9\-_]+$/.test(key))
-    console.log('Expected format (starts with BD):', key.startsWith('BD') || key.startsWith('BCTV'))
+  private initializeFirebase(): void {
+    try {
+      // Check if Firebase is already initialized
+      if (getApps().length > 0) {
+        this.firebaseApp = getApps()[0]
+        console.log('✅ Firebase already initialized')
+        return
+      }
+
+      // Get Firebase config from environment variables
+      const firebaseConfig = {
+        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+        measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+      }
+
+      // Validate required config
+      if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.messagingSenderId) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('⚠️ Firebase config not found. Please set Firebase environment variables.')
+        }
+        return
+      }
+
+      this.firebaseApp = initializeApp(firebaseConfig)
+      console.log('✅ Firebase initialized successfully')
+    } catch (error) {
+      console.error('❌ Error initializing Firebase:', error)
+    }
   }
 
   /**
@@ -69,9 +88,13 @@ class PushNotificationService {
         return false
       }
 
-      // Check if push messaging is supported
-      if (!('PushManager' in window)) {
-        console.warn('This browser does not support push messaging')
+      // Initialize Firebase if not already done
+      if (!this.firebaseApp) {
+        this.initializeFirebase()
+      }
+
+      if (!this.firebaseApp) {
+        console.error('Firebase not initialized. Please configure Firebase environment variables.')
         return false
       }
 
@@ -82,14 +105,30 @@ class PushNotificationService {
       
       const swPath = isProduction ? '/sw-enhanced.js' : '/sw.js';
       this.registration = await navigator.serviceWorker.register(swPath)
-      console.log('Service Worker registered:', this.registration)
+      console.log('✅ Service Worker registered:', this.registration)
 
       // Wait for service worker to be ready
       await navigator.serviceWorker.ready
 
+      // Initialize Firebase Messaging
+      try {
+        this.messaging = getMessaging(this.firebaseApp)
+        console.log('✅ Firebase Messaging initialized')
+        
+        // Set up message listener for foreground messages
+        onMessage(this.messaging, (payload) => {
+          console.log('📬 Foreground FCM message received:', payload)
+          // Handle foreground messages if needed
+          // You can show a notification or update UI
+        })
+      } catch (error) {
+        console.error('❌ Error initializing Firebase Messaging:', error)
+        return false
+      }
+
       return true
     } catch (error) {
-      console.error('Error initializing push notifications:', error)
+      console.error('❌ Error initializing push notifications:', error)
       return false
     }
   }
@@ -112,74 +151,72 @@ class PushNotificationService {
   }
 
   /**
-   * Subscribe to push notifications
+   * Subscribe to push notifications (get FCM token)
    */
-  async subscribe(): Promise<PushSubscription | null> {
+  async subscribe(): Promise<string | null> {
     try {
+      // Auto-initialize if not already done
+      if (!this.registration || !this.messaging) {
+        console.log('🔄 Service worker or messaging not initialized, initializing now...')
+        const initialized = await this.initialize()
+        if (!initialized) {
+          console.error('❌ Failed to initialize push notifications')
+          return null
+        }
+      }
+
       if (!this.registration) {
-        console.error('Service worker not registered')
-        return null
-      }
-      console.log('Registration:123', this.registration);
-
-      // Check if VAPID key is available
-      if (!this.vapidPublicKey) {
-        console.error('VAPID public key not configured. Please set NEXT_PUBLIC_VAPID_PUBLIC_KEY in your .env.local file.')
-        return null
-      }
-      console.log('VAPID public key:130', this.vapidPublicKey);
-      // Check if already subscribed
-      console.log('Checking for existing subscription...');
-      let existingSubscription: PushSubscription | null = null;
-      try {
-        existingSubscription = await this.registration.pushManager.getSubscription()
-        console.log('Existing subscription result:', existingSubscription);
-      } catch (error) {
-        console.error('Error getting existing subscription:', error);
-      }
-      
-      if (existingSubscription) {
-        console.log('Found existing subscription, saving to database');
-        this.subscription = existingSubscription
-        // Save existing subscription to database to ensure sync
-        await this.saveSubscription(existingSubscription)
-        console.log('Existing subscription saved to database');
-        return existingSubscription
-      }
-      console.log('No existing subscription found, creating new one');
-
-      // Validate VAPID key format
-      try {
-        this.urlBase64ToUint8Array(this.vapidPublicKey)
-      } catch (vapidError) {
-        console.error('Invalid VAPID key format:', vapidError)
+        console.error('❌ Service worker not registered after initialization')
         return null
       }
 
-      // Create new subscription
-      const subscription = await this.registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey) as BufferSource
+      if (!this.messaging) {
+        console.error('❌ Firebase Messaging not initialized after initialization')
+        return null
+      }
+
+      // Check permission first
+      const permission = await this.requestPermission()
+      if (permission !== 'granted') {
+        console.error('Notification permission not granted')
+        return null
+      }
+
+      // Get FCM token
+      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || ''
+      if (!vapidKey) {
+        console.error('FIREBASE_VAPID_KEY not configured. Please set NEXT_PUBLIC_FIREBASE_VAPID_KEY in your .env.local file.')
+        return null
+      }
+
+      console.log('🔑 Requesting FCM token...')
+      const token = await getToken(this.messaging, {
+        vapidKey: vapidKey,
+        serviceWorkerRegistration: this.registration,
       })
-      console.log('Subscription:151', subscription);
 
-      this.subscription = subscription
+      if (!token) {
+        console.error('No FCM token available')
+        return null
+      }
 
-      // Save subscription to database
-      await this.saveSubscription(subscription)
-      console.log('Subscription:158', subscription);
-      console.log('Push subscription created:', subscription)
-      return subscription
-    } catch (error) {
-      console.error('Error subscribing to push notifications:', error)
+      console.log('✅ FCM token obtained:', token.substring(0, 50) + '...')
+      this.fcmToken = token
+
+      // Save token to database
+      await this.saveFCMToken(token)
+
+      return token
+    } catch (error: any) {
+      console.error('❌ Error subscribing to FCM:', error)
       
       // Provide helpful error messages
-      if ((error as any).name === 'InvalidAccessError') {
-        console.error('VAPID key is invalid. Please check your NEXT_PUBLIC_VAPID_PUBLIC_KEY in .env.local file.')
-      } else if ((error as any).name === 'NotSupportedError') {
-        console.error('Push notifications are not supported in this browser.')
-      } else if ((error as any).name === 'NotAllowedError') {
-        console.error('Push notifications are not allowed. Please check your browser permissions.')
+      if (error.code === 'messaging/permission-blocked') {
+        console.error('Push notifications are blocked. Please enable them in your browser settings.')
+      } else if (error.code === 'messaging/permission-default') {
+        console.error('Push notification permission not granted.')
+      } else if (error.code === 'messaging/unsupported-browser') {
+        console.error('This browser does not support FCM.')
       }
       
       return null
@@ -191,20 +228,21 @@ class PushNotificationService {
    */
   async unsubscribe(): Promise<boolean> {
     try {
-      if (!this.subscription) {
+      if (!this.messaging || !this.fcmToken) {
         return true
       }
 
-      const result = await this.subscription.unsubscribe()
-      if (result) {
-        // Remove subscription from database
-        await this.removeSubscription()
-        this.subscription = null
-      }
-
-      return result
+      // Delete FCM token
+      await deleteToken(this.messaging)
+      
+      // Remove token from database
+      await this.removeFCMToken()
+      
+      this.fcmToken = null
+      console.log('✅ Unsubscribed from FCM notifications')
+      return true
     } catch (error) {
-      console.error('Error unsubscribing from push notifications:', error)
+      console.error('❌ Error unsubscribing from FCM:', error)
       return false
     }
   }
@@ -214,15 +252,57 @@ class PushNotificationService {
    */
   async isSubscribed(): Promise<boolean> {
     try {
-      if (!this.registration) {
+      // Auto-initialize if not already done
+      if (!this.messaging || !this.registration) {
+        const initialized = await this.initialize()
+        if (!initialized || !this.messaging || !this.registration) {
+          return false
+        }
+      }
+
+      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || ''
+      if (!vapidKey) {
         return false
       }
 
-      const subscription = await this.registration.pushManager.getSubscription()
-      return !!subscription
+      const token = await getToken(this.messaging, {
+        vapidKey: vapidKey,
+        serviceWorkerRegistration: this.registration,
+      })
+      return !!token
     } catch (error) {
-      console.error('Error checking subscription status:', error)
+      console.error('❌ Error checking subscription status:', error)
       return false
+    }
+  }
+
+  /**
+   * Get current FCM token
+   */
+  async getToken(): Promise<string | null> {
+    try {
+      // Auto-initialize if not already done
+      if (!this.messaging || !this.registration) {
+        const initialized = await this.initialize()
+        if (!initialized || !this.messaging || !this.registration) {
+          return null
+        }
+      }
+
+      const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || ''
+      if (!vapidKey) {
+        console.error('FIREBASE_VAPID_KEY not configured')
+        return null
+      }
+
+      const token = await getToken(this.messaging, {
+        vapidKey: vapidKey,
+        serviceWorkerRegistration: this.registration,
+      })
+      return token || null
+    } catch (error) {
+      console.error('❌ Error getting FCM token:', error)
+      return null
     }
   }
 
@@ -230,9 +310,14 @@ class PushNotificationService {
    * Send a local notification (for testing)
    */
   async sendLocalNotification(payload: NotificationPayload): Promise<void> {
+    // Auto-initialize if not already done
     if (!this.registration) {
-      console.error('Service worker not registered')
-      return
+      console.log('🔄 Service worker not registered, initializing now...')
+      const initialized = await this.initialize()
+      if (!initialized || !this.registration) {
+        console.error('❌ Failed to initialize service worker for local notification')
+        return
+      }
     }
 
     const notificationOptions: any = {
@@ -255,53 +340,115 @@ class PushNotificationService {
   }
 
   /**
-   * Save subscription to database
+   * Detect device type and ID
    */
-  private async saveSubscription(subscription: PushSubscription): Promise<void> {
+  private getDeviceInfo(): { device_type: 'web' | 'ios' | 'android', device_id: string | null } {
+    if (typeof window === 'undefined') {
+      return { device_type: 'web', device_id: null }
+    }
+
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera
+    
+    // Detect device type
+    let device_type: 'web' | 'ios' | 'android' = 'web'
+    if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
+      device_type = 'ios'
+    } else if (/android/i.test(userAgent)) {
+      device_type = 'android'
+    }
+
+    // Generate or retrieve device ID
+    let device_id: string | null = null
     try {
-      console.log('🔄 Attempting to save subscription to database...')
+      // Try to get existing device ID from localStorage
+      device_id = localStorage.getItem('fcm_device_id')
+      
+      if (!device_id) {
+        // Generate a unique device ID
+        device_id = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`
+        localStorage.setItem('fcm_device_id', device_id)
+      }
+    } catch (e) {
+      // localStorage might not be available
+      console.warn('Could not access localStorage for device ID')
+    }
+
+    return { device_type, device_id }
+  }
+
+  /**
+   * Save FCM token to database
+   */
+  private async saveFCMToken(token: string): Promise<void> {
+    try {
+      console.log('🔄 Attempting to save FCM token to database...')
       const { data: { user }, error: userError } = await supabase.auth.getUser()
       
       if (userError) {
-        console.error('Error getting user:', userError)
+        console.error('❌ Error getting user:', userError)
         return
       }
       
       console.log('User found:', user ? { id: user.id, email: user.email } : 'null')
       
       if (!user) {
-        console.error('❌ No user logged in, cannot save subscription')
+        console.error('❌ No user logged in, cannot save FCM token')
         return
       }
 
-      const subscriptionData = {
+      // Get device information
+      const { device_type, device_id } = this.getDeviceInfo()
+
+      const tokenData = {
         user_id: user.id,
-        endpoint: subscription.endpoint,
-        p256dh_key: this.arrayBufferToBase64(subscription.getKey('p256dh')!),
-        auth_key: this.arrayBufferToBase64(subscription.getKey('auth')!),
-        created_at: new Date().toISOString()
+        fcm_token: token,
+        device_type: device_type,
+        device_id: device_id,
+        is_active: true,
+        updated_at: new Date().toISOString()
       }
       
-      console.log('📤 Saving subscription data:', {
-        user_id: subscriptionData.user_id,
-        endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
-        has_p256dh: !!subscriptionData.p256dh_key,
-        has_auth: !!subscriptionData.auth_key
+      console.log('📤 Saving FCM token data:', {
+        user_id: tokenData.user_id,
+        fcm_token: tokenData.fcm_token.substring(0, 50) + '...',
+        device_type: tokenData.device_type,
+        device_id: tokenData.device_id
       })
 
+      // Use upsert with conflict resolution on user_id and fcm_token
       const { data, error } = await supabase
-        .from('push_subscriptions')
-        .upsert(subscriptionData, {
-          onConflict: 'user_id,endpoint' // Handle duplicate gracefully
+        .from('fcm_tokens')
+        .upsert(tokenData, {
+          onConflict: 'user_id,fcm_token',
+          ignoreDuplicates: false
         })
+        .select()
 
       if (error) {
-        // Ignore duplicate key errors (409 conflict) - subscription already exists
+        // Ignore duplicate key errors (23505) - token already exists
         if (error.code === '23505' || error.message?.includes('duplicate')) {
-          console.log('✅ Push subscription already exists for this user and endpoint')
+          console.log('✅ FCM token already exists for this user, updating...')
+          
+          // Update existing token to set is_active and updated_at
+          const { error: updateError } = await supabase
+            .from('fcm_tokens')
+            .update({
+              is_active: true,
+              device_type: device_type,
+              device_id: device_id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user.id)
+            .eq('fcm_token', token)
+          
+          if (updateError) {
+            console.error('❌ Error updating FCM token:', updateError)
+          } else {
+            console.log('✅ FCM token updated successfully')
+          }
           return
         }
-        console.error('❌ Error saving subscription:', error)
+        console.error('❌ Error saving FCM token:', error)
         console.error('Error details:', {
           code: error.code,
           message: error.message,
@@ -309,98 +456,43 @@ class PushNotificationService {
           hint: error.hint
         })
       } else {
-        console.log('✅ Push subscription saved successfully to database:', data)
+        console.log('✅ FCM token saved successfully to database:', data)
       }
     } catch (error) {
-      console.error('❌ Error saving push subscription:', error)
+      console.error('❌ Error saving FCM token:', error)
       console.error('Error stack:', (error as Error).stack)
     }
   }
 
   /**
-   * Remove subscription from database
+   * Remove FCM token from database (mark as inactive instead of deleting)
    */
-  private async removeSubscription(): Promise<void> {
+  private async removeFCMToken(): Promise<void> {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user || !this.fcmToken) {
+        return
+      }
+
+      // Mark token as inactive instead of deleting (soft delete)
       const { error } = await supabase
-        .from('push_subscriptions')
-        .delete()
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .from('fcm_tokens')
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('fcm_token', this.fcmToken)
 
       if (error) {
-        console.error('Error removing subscription:', error)
+        console.error('❌ Error deactivating FCM token:', error)
+      } else {
+        console.log('✅ FCM token deactivated in database')
       }
     } catch (error) {
-      console.error('Error removing push subscription:', error)
+      console.error('❌ Error removing FCM token:', error)
     }
-  }
-
-  /**
-   * Convert VAPID key to Uint8Array - Battle-tested version
-   */
-  private urlBase64ToUint8Array(base64String: string): Uint8Array {
-    try {
-      // Clean the key string - remove any extra text that might be concatenated
-      let cleanKey = base64String.trim()
-      
-      // Remove any common prefixes/suffixes that might be added
-      cleanKey = cleanKey
-        .replace(/^Public Key:\s*/i, '')
-        .replace(/^Private Key:\s*/i, '')
-        .replace(/^VAPID.*?:\s*/i, '')
-        .replace(/\s*Public Key:\s*$/i, '')
-        .replace(/\s*Private Key:\s*$/i, '')
-        .replace(/\s*VAPID.*?:\s*$/i, '')
-        .trim()
-      
-      // Extract only the base64url part (everything before any non-base64url characters)
-      const base64Match = cleanKey.match(/^[A-Za-z0-9\-_]+/)
-      if (!base64Match) {
-        throw new Error('No valid base64url characters found in VAPID key')
-      }
-      
-      cleanKey = base64Match[0]
-      
-      // Validate the cleaned key
-      if (!cleanKey.match(/^[A-Za-z0-9\-_]+$/)) {
-        throw new Error('VAPID key contains invalid characters after cleaning')
-      }
-      
-      // Add padding if needed
-      const padding = "=".repeat((4 - (cleanKey.length % 4)) % 4)
-      const base64 = (cleanKey + padding)
-        .replace(/-/g, "+")
-        .replace(/_/g, "/")
-
-      // Use browser's atob for reliable decoding
-      const rawData = window.atob(base64)
-      const outputArray = new Uint8Array(rawData.length)
-      
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i)
-      }
-      
-      return outputArray
-    } catch (error) {
-      console.error('Error converting VAPID key:', error)
-      console.error('Original VAPID key value:', base64String)
-      console.error('Key length:', base64String.length)
-      console.error('Key starts with:', base64String.substring(0, 20))
-      console.error('Key ends with:', base64String.substring(base64String.length - 20))
-      throw new Error('Invalid VAPID key format. Please check your NEXT_PUBLIC_VAPID_PUBLIC_KEY in .env.local file.')
-    }
-  }
-
-  /**
-   * Convert ArrayBuffer to base64
-   */
-  private arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    return window.btoa(binary)
   }
 }
 

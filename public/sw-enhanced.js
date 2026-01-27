@@ -193,66 +193,145 @@ self.addEventListener('sync', event => {
   }
 });
 
-// Push notifications
+// Push notifications - FCM format
 self.addEventListener('push', event => {
-  console.log('[SW] Push notification received');
+  console.log('[SW] FCM Push notification received');
 
-  const data = event.data ? event.data.json() : {};
-  const notificationData = data.data || {};
-  
-  // Check if this is a call notification by looking for call-related data
-  // Call notifications will have room_id, thread_id, or call_type in the data
-  const isCallNotification = notificationData.room_id || 
-                             notificationData.thread_id || 
-                             notificationData.call_type ||
-                             data.tag?.includes('call') ||
-                             data.title?.includes('Call') ||
-                             data.title?.includes('📞');
+  let notificationTitle = 'ConnectAfrik';
+  let notificationBody = 'You have a new notification';
+  let notificationIcon = '/icons/icon-192x192.png';
+  let notificationBadge = '/icons/icon-96x96.png';
+  let notificationImage = null;
+  let notificationTag = 'connectafrik-notification';
+  let notificationData = {};
+  let notificationActions = [];
+  let requireInteraction = false;
+  let silent = false;
+  let vibrate = [200, 100, 200];
 
-  if (isCallNotification) {
-    // Handle incoming call notification
-    const callType = notificationData.call_type || 'audio';
-    const roomId = notificationData.room_id;
-    const threadId = notificationData.thread_id;
-    const callerName = notificationData.caller_name || data.body?.split(' ')[0] || 'Someone';
-    
-    const title = data.title || `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`;
-    const options = {
-      body: data.body || `${callerName} is calling you...`,
-      icon: data.icon || '/icons/icon-192x192.png',
-      badge: data.badge || '/icons/icon-96x96.png',
-      tag: `incoming-call-${threadId || roomId || Date.now()}`, // Unique tag to replace previous notifications
-      data: {
-        type: 'incoming_call',
-        room_id: roomId,
-        thread_id: threadId,
-        token: notificationData.token,
-        caller_id: notificationData.caller_id,
-        call_type: callType,
-        caller_name: callerName,
-        url: roomId ? `/call/${roomId}` : '/chat'
-      },
-      actions: [
-        {
-          action: 'answer',
-          title: 'Answer',
-          icon: '/icons/phone.png'
-        },
-        {
-          action: 'decline',
-          title: 'Decline',
-          icon: '/icons/dismiss.png'
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      console.log('[SW] FCM Push payload:', payload);
+      
+      // FCM sends data in notification and data fields
+      if (payload.notification) {
+        notificationTitle = payload.notification.title || notificationTitle;
+        notificationBody = payload.notification.body || notificationBody;
+        notificationImage = payload.notification.image || notificationImage;
+      }
+      
+      // Extract custom data from FCM data field
+      if (payload.data) {
+        notificationData = payload.data;
+        
+        // Parse stringified data fields
+        if (payload.data.icon) notificationIcon = payload.data.icon;
+        if (payload.data.badge) notificationBadge = payload.data.badge;
+        if (payload.data.tag) notificationTag = payload.data.tag;
+        if (payload.data.requireInteraction) requireInteraction = payload.data.requireInteraction === 'true';
+        if (payload.data.silent) silent = payload.data.silent === 'true';
+        if (payload.data.vibrate) {
+          try {
+            vibrate = JSON.parse(payload.data.vibrate);
+          } catch (e) {
+            vibrate = [200, 100, 200];
+          }
         }
-      ],
-      requireInteraction: true, // Keep notification visible until user interacts
-      silent: false, // Make sure it makes sound
-      vibrate: [200, 100, 200, 100, 200, 100, 200], // Longer vibration pattern for calls
-      timestamp: Date.now()
-    };
+        if (payload.data.actions) {
+          try {
+            notificationActions = JSON.parse(payload.data.actions);
+          } catch (e) {
+            notificationActions = [];
+          }
+        }
+        
+        // Merge any additional data fields
+        Object.keys(payload.data).forEach(key => {
+          if (!['icon', 'badge', 'tag', 'requireInteraction', 'silent', 'vibrate', 'actions'].includes(key)) {
+            notificationData[key] = payload.data[key];
+          }
+        });
+      }
+      
+      // Check if this is a call notification by looking for call-related data
+      // Call notifications will have room_id, thread_id, or call_type in the data
+      const isCallNotification = notificationData.room_id || 
+                                 notificationData.thread_id || 
+                                 notificationData.call_type ||
+                                 notificationTag?.includes('call') ||
+                                 notificationTitle?.includes('Call') ||
+                                 notificationTitle?.includes('📞');
 
-    event.waitUntil(
-      self.registration.showNotification(title, options)
-    );
+      if (isCallNotification) {
+        // Handle incoming call notification
+        const callType = notificationData.call_type || 'audio';
+        const roomId = notificationData.room_id;
+        const threadId = notificationData.thread_id;
+        const callerName = notificationData.caller_name || notificationBody?.split(' ')[0] || 'Someone';
+        const recipientName = notificationData.recipient_name || notificationData.recipientName || '';
+        const callerId = notificationData.caller_id || notificationData.callerId || '';
+        const isIncoming = notificationData.is_incoming !== undefined 
+          ? String(notificationData.is_incoming) 
+          : (notificationData.isIncoming !== undefined ? String(notificationData.isIncoming) : 'true');
+        
+        // Build call URL with query parameters
+        const buildCallUrl = (roomId) => {
+          if (!roomId) return '/chat';
+          const params = new URLSearchParams({
+            call: 'true',
+            type: callType,
+            threadId: threadId || '',
+            callerName: callerName || '',
+            recipientName: recipientName || '',
+            isIncoming: isIncoming,
+            callerId: callerId || ''
+          });
+          return `/call/${roomId}?${params.toString()}`;
+        };
+        
+        const callUrl = buildCallUrl(roomId);
+        
+        const title = notificationTitle || `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`;
+        const options = {
+          body: notificationBody || `${callerName} is calling you...`,
+          icon: notificationIcon,
+          badge: notificationBadge,
+          image: notificationImage,
+          tag: `incoming-call-${threadId || roomId || Date.now()}`, // Unique tag to replace previous notifications
+          data: {
+            type: 'incoming_call',
+            room_id: roomId,
+            thread_id: threadId,
+            token: notificationData.token,
+            caller_id: callerId,
+            call_type: callType,
+            caller_name: callerName,
+            recipient_name: recipientName,
+            is_incoming: isIncoming,
+            url: callUrl
+          },
+          actions: [
+            {
+              action: 'answer',
+              title: 'Answer',
+              icon: '/icons/phone.png'
+            },
+            {
+              action: 'decline',
+              title: 'Decline',
+              icon: '/icons/dismiss.png'
+            }
+          ],
+          requireInteraction: true, // Keep notification visible until user interacts
+          silent: false, // Make sure it makes sound
+          vibrate: [200, 100, 200, 100, 200, 100, 200], // Longer vibration pattern for calls
+          timestamp: Date.now()
+        };
+
+        event.waitUntil(
+          self.registration.showNotification(title, options)
+        );
 
     // Try to wake up the app by sending a message to all clients
     event.waitUntil(
@@ -273,33 +352,56 @@ self.addEventListener('push', event => {
           }
         })
     );
-  } else {
-    // Regular notification handling
-    const title = data.title || 'ConnectAfrik';
-    const options = {
-      body: data.body || 'You have a new notification',
-      icon: data.icon || '/icons/icon-192x192.png',
-      badge: data.badge || '/icons/icon-96x96.png',
-      tag: data.tag || 'connectafrik-notification',
-      data: notificationData.url || data.url || '/',
-      actions: data.actions || [
-        {
-          action: 'open',
-          title: 'Open'
-        },
-        {
-          action: 'close',
-          title: 'Close'
-        }
-      ],
-      requireInteraction: data.requireInteraction || false,
-      silent: data.silent || false,
-      vibrate: data.vibrate || [200, 100, 200],
-      timestamp: Date.now()
-    };
+      } else {
+        // Regular notification handling
+        const options = {
+          body: notificationBody,
+          icon: notificationIcon,
+          badge: notificationBadge,
+          image: notificationImage,
+          tag: notificationTag,
+          data: notificationData.url || notificationData.url || '/',
+          actions: notificationActions.length > 0 ? notificationActions : [
+            {
+              action: 'open',
+              title: 'Open'
+            },
+            {
+              action: 'close',
+              title: 'Close'
+            }
+          ],
+          requireInteraction: requireInteraction,
+          silent: silent,
+          vibrate: vibrate,
+          timestamp: Date.now()
+        };
 
+        event.waitUntil(
+          self.registration.showNotification(notificationTitle, options)
+        );
+      }
+    } catch (error) {
+      console.error('[SW] Error parsing FCM push notification:', error);
+      // Fallback notification
+      event.waitUntil(
+        self.registration.showNotification('ConnectAfrik', {
+          body: 'You have a new notification',
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-96x96.png',
+          tag: 'connectafrik-notification'
+        })
+      );
+    }
+  } else {
+    // No data, show default notification
     event.waitUntil(
-      self.registration.showNotification(title, options)
+      self.registration.showNotification('ConnectAfrik', {
+        body: 'You have a new notification',
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-96x96.png',
+        tag: 'connectafrik-notification'
+      })
     );
   }
 });
@@ -318,8 +420,25 @@ self.addEventListener('notificationclick', event => {
   // Handle incoming call notification actions
   if (isIncomingCall) {
     if (event.action === 'answer' || !event.action) {
-      // Open the call page
-      const callUrl = notificationData.url || `/call/${notificationData.room_id}` || '/chat';
+      // Build call URL with query parameters
+      const buildCallUrl = () => {
+        if (!notificationData.room_id) return '/chat';
+        const params = new URLSearchParams({
+          call: 'true',
+          type: notificationData.call_type || 'audio',
+          threadId: notificationData.thread_id || '',
+          callerName: notificationData.caller_name || '',
+          recipientName: notificationData.recipient_name || '',
+          isIncoming: notificationData.is_incoming !== undefined 
+            ? String(notificationData.is_incoming) 
+            : (notificationData.isIncoming !== undefined ? String(notificationData.isIncoming) : 'true'),
+          callerId: notificationData.caller_id || ''
+        });
+        return `/call/${notificationData.room_id}?${params.toString()}`;
+      };
+      
+      const callUrl = notificationData.url || buildCallUrl();
+      
       event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
           .then(windowClients => {
