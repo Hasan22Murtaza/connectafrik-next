@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import webpush from 'web-push'
+import * as admin from 'firebase-admin'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,12 +17,49 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || ''
-const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:support@connectafrik.com'
+// Initialize Firebase Admin SDK
+let firebaseAdmin: admin.app.App | null = null
 
-if (vapidPublicKey && vapidPrivateKey) {
-  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
+try {
+  // Check if Firebase Admin is already initialized
+  if (admin.apps.length === 0) {
+    // Get Firebase service account credentials from environment
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+    
+    if (serviceAccount) {
+      // Parse JSON string if provided as environment variable
+      const credentials = typeof serviceAccount === 'string' 
+        ? JSON.parse(serviceAccount) 
+        : serviceAccount
+      
+      firebaseAdmin = admin.initializeApp({
+        credential: admin.credential.cert(credentials),
+      })
+      console.log('✅ Firebase Admin SDK initialized successfully')
+    } else {
+      // Alternative: Use individual environment variables
+      const projectId = process.env.FIREBASE_PROJECT_ID
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
+      
+      if (projectId && privateKey && clientEmail) {
+        firebaseAdmin = admin.initializeApp({
+          credential: admin.credential.cert({
+            projectId,
+            privateKey,
+            clientEmail,
+          }),
+        })
+        console.log('✅ Firebase Admin SDK initialized with individual credentials')
+      } else {
+        console.warn('⚠️ Firebase credentials not found. FCM notifications will not work.')
+      }
+    }
+  } else {
+    firebaseAdmin = admin.app()
+  }
+} catch (error) {
+  console.error('❌ Error initializing Firebase Admin SDK:', error)
 }
 
 export interface NotificationPayload {
@@ -65,10 +102,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('VAPID keys not configured')
+    if (!firebaseAdmin) {
+      console.error('Firebase Admin SDK not initialized')
       return NextResponse.json(
-        { error: 'Push notifications not configured. Missing VAPID keys.' },
+        { error: 'Push notifications not configured. Firebase Admin SDK not initialized.' },
         { 
           status: 500,
           headers: corsHeaders
@@ -76,10 +113,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
-      .from('push_subscriptions')
-      .select('endpoint, p256dh_key, auth_key')
+      .from('fcm_tokens')
+      .select('fcm_token, device_type, device_id')
       .eq('user_id', user_id)
+      .eq('is_active', true)
+      .not('fcm_token', 'is', null)
 
     if (subscriptionError) {
       console.error('Error fetching subscriptions:', subscriptionError)
@@ -107,60 +147,122 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const payload = JSON.stringify({
-      title,
-      body: notificationBody,
-      icon: icon || '/assets/images/logo.png',
-      badge: badge || '/assets/images/logo.png',
-      image,
-      tag: tag || 'connectafrik-notification',
-      data: data || {},
-      actions: actions || [
-        {
-          action: 'view',
-          title: 'View',
-          icon: '/icons/view.png'
+    // Prepare base FCM message payload (without token)
+    const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
+      notification: {
+        title,
+        body: notificationBody,
+        imageUrl: image,
+      },
+      data: {
+        ...(data || {}),
+        icon: icon || '/assets/images/logo.png',
+        badge: badge || '/assets/images/logo.png',
+        tag: tag || 'connectafrik-notification',
+        requireInteraction: String(requireInteraction || false),
+        silent: String(silent || false),
+        vibrate: JSON.stringify(vibrate || [200, 100, 200]),
+        timestamp: String(Date.now()),
+        actions: JSON.stringify(actions || [
+          {
+            action: 'view',
+            title: 'View',
+            icon: '/icons/view.png'
+          },
+          {
+            action: 'dismiss',
+            title: 'Dismiss',
+            icon: '/icons/dismiss.png'
+          }
+        ]),
+      },
+      webpush: {
+        notification: {
+          title,
+          body: notificationBody,
+          icon: icon || '/assets/images/logo.png',
+          badge: badge || '/assets/images/logo.png',
+          image,
+          tag: tag || 'connectafrik-notification',
+          requireInteraction: requireInteraction || false,
+          silent: silent || false,
+          vibrate: vibrate || [200, 100, 200],
+          actions: actions || [
+            {
+              action: 'view',
+              title: 'View',
+              icon: '/icons/view.png'
+            },
+            {
+              action: 'dismiss',
+              title: 'Dismiss',
+              icon: '/icons/dismiss.png'
+            }
+          ],
         },
-        {
-          action: 'dismiss',
-          title: 'Dismiss',
-          icon: '/icons/dismiss.png'
-        }
-      ],
-      requireInteraction: requireInteraction || false,
-      silent: silent || false,
-      vibrate: vibrate || [200, 100, 200],
-      timestamp: Date.now()
-    })
+        fcmOptions: {
+          link: data?.url || '/feed',
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: silent ? undefined : 'default',
+            badge: 1,
+          },
+        },
+      },
+    }
 
     const sendPromises = subscriptions.map(async (subscription) => {
       try {
-        const pushSubscription = {
-          endpoint: subscription.endpoint,
-          keys: {
-            p256dh: subscription.p256dh_key,
-            auth: subscription.auth_key
+        const fcmToken = subscription.fcm_token
+        
+        if (!fcmToken) {
+          return { 
+            success: false, 
+            endpoint: subscription.device_id || 'unknown', 
+            error: 'FCM token not found' 
           }
         }
 
-        await webpush.sendNotification(pushSubscription, payload)
-        console.log(`✅ Push notification sent to ${subscription.endpoint.substring(0, 50)}...`)
-        return { success: true, endpoint: subscription.endpoint }
-      } catch (error: any) {
-        console.error('Error sending push notification:', error)
+        // Create complete message with token
+        const fcmMessage: admin.messaging.Message = {
+          ...baseMessage,
+          token: fcmToken,
+        }
+
+        const response = await admin.messaging(firebaseAdmin).send(fcmMessage)
         
-        if (error.statusCode === 410) {
-          console.log(`Removing invalid subscription: ${subscription.endpoint}`)
+        console.log(`✅ FCM notification sent successfully to ${subscription.device_type} device: ${response}`)
+        return { 
+          success: true, 
+          endpoint: subscription.device_id || fcmToken.substring(0, 50), 
+          device_type: subscription.device_type,
+          messageId: response 
+        }
+      } catch (error: any) {
+        console.error('Error sending FCM notification:', error)
+        
+        // Handle invalid token errors - mark as inactive
+        if (error.code === 'messaging/invalid-registration-token' || 
+            error.code === 'messaging/registration-token-not-registered') {
+          console.log(`Deactivating invalid FCM token: ${subscription.fcm_token}`)
           await supabase
-            .from('push_subscriptions')
-            .delete()
-            .eq('endpoint', subscription.endpoint)
+            .from('fcm_tokens')
+            .update({
+              is_active: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('fcm_token', subscription.fcm_token)
+            .eq('user_id', user_id)
         }
         
         return { 
           success: false, 
-          endpoint: subscription.endpoint, 
-          error: error.message 
+          endpoint: subscription.device_id || subscription.fcm_token?.substring(0, 50) || 'unknown', 
+          device_type: subscription.device_type,
+          error: error.message || error.code 
         }
       }
     })
@@ -195,4 +297,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
 
