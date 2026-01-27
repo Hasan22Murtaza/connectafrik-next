@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import CommentsSection from '@/features/social/components/CommentsSection'
-import { usePostReactionsWithUsers } from '@/shared/hooks/usePostReactionsWithUsers'
+import { usePostReactionsWithUsers, ReactionGroup } from '@/shared/hooks/usePostReactionsWithUsers'
 import ReactionTooltip from '@/features/social/components/ReactionTooltip'
 import Link from 'next/link'
 
@@ -44,8 +44,9 @@ const PostDetailPage: React.FC = () => {
   const [isLiked, setIsLiked] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
+  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null)
 
-  const { postReactions, loading: reactionsLoading } = usePostReactionsWithUsers(postId)
+  const { reactions: postReactions, loading: reactionsLoading } = usePostReactionsWithUsers(postId)
 
   useEffect(() => {
     if (postId) {
@@ -226,6 +227,37 @@ const PostDetailPage: React.FC = () => {
 
   const isAuthor = user?.id === post.author_id
 
+  // Get reaction emoji
+  const getReactionEmoji = (type: string): string => {
+    const emojiMap: { [key: string]: string } = {
+      like: "👍",
+      love: "❤️",
+      laugh: "😂",
+      wow: "😮",
+      sad: "😢",
+      angry: "😡",
+      care: "🤗",
+    }
+    return emojiMap[type] || "👍"
+  }
+
+  // Get all reaction groups sorted by count
+  const getReactionGroups = (): ReactionGroup[] => {
+    const groups: ReactionGroup[] = []
+    if (!postReactions) return groups
+    
+    Object.keys(postReactions).forEach((key) => {
+      if (key !== "totalCount") {
+        const reaction = postReactions[key]
+        // Type guard: check if it's a ReactionGroup (has count property) and not a number
+        if (reaction && typeof reaction === "object" && "count" in reaction && reaction.count > 0) {
+          groups.push(reaction as ReactionGroup)
+        }
+      }
+    })
+    return groups.sort((a, b) => b.count - a.count)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto bg-white min-h-screen">
@@ -326,12 +358,40 @@ const PostDetailPage: React.FC = () => {
 
               <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                 <div className="flex items-center gap-4">
-                  {postReactions && Object.keys(postReactions).length > 0 && (
-                    <ReactionTooltip reactions={postReactions} />
+                  {postReactions && postReactions.totalCount > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center -space-x-1">
+                        {getReactionGroups()
+                          .slice(0, 3)
+                          .map((group) => (
+                            <div
+                              key={group.type}
+                              className="relative"
+                              onMouseEnter={() => setHoveredReaction(group.type)}
+                              onMouseLeave={() => setHoveredReaction(null)}
+                            >
+                              <span className="text-sm bg-white rounded-full p-0.5 border border-gray-200 cursor-pointer">
+                                {getReactionEmoji(group.type)}
+                              </span>
+                              <ReactionTooltip
+                                users={group.users || []}
+                                isVisible={hoveredReaction === group.type}
+                              />
+                            </div>
+                          ))}
+                      </div>
+                      {postReactions.totalCount > 0 && (
+                        <span className="text-sm text-gray-600 cursor-pointer hover:underline">
+                          {postReactions.totalCount} {postReactions.totalCount === 1 ? 'reaction' : 'reactions'}
+                        </span>
+                      )}
+                    </div>
                   )}
-                  <span className="text-sm text-gray-600">
-                    {post.likes_count} likes
-                  </span>
+                  {(!postReactions || postReactions.totalCount === 0) && (
+                    <span className="text-sm text-gray-600">
+                      {post.likes_count} likes
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <span>{post.comments_count} comments</span>
