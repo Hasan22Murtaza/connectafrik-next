@@ -34,23 +34,15 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
         const subscribed = await pushNotificationService.isSubscribed()
         setIsSubscribed(subscribed)
         
+        // Auto-subscribe by default if permission is granted and not already subscribed
         if (currentPermission === 'granted' && !subscribed && user) {
-          const autoSubscribedKey = `push_notifications_auto_subscribed_${user.id}`
-          const hasAttemptedAutoSubscribe = typeof window !== 'undefined' 
-            ? localStorage.getItem(autoSubscribedKey) === 'true'
-            : false
-          
-          if (!hasAttemptedAutoSubscribe) {
-            try {
-              const subscription = await pushNotificationService.subscribe()
-              if (subscription) {
-                setIsSubscribed(true)
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem(autoSubscribedKey, 'true')
-                }
-              }
-            } catch (error) {
+          try {
+            const subscription = await pushNotificationService.subscribe()
+            if (subscription) {
+              setIsSubscribed(true)
             }
+          } catch (error) {
+            // Silently fail - user can manually subscribe if needed
           }
         }
       }
