@@ -8,7 +8,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Initialize Supabase client for server-side operations
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
@@ -18,7 +17,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Configure VAPID details for web push
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || ''
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY || ''
 const vapidSubject = process.env.VAPID_SUBJECT || 'mailto:support@connectafrik.com'
@@ -57,7 +55,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as NotificationPayload
     const { user_id, title, body: notificationBody, icon, image, badge, tag, data, actions, requireInteraction, silent, vibrate } = body
 
-    // Validate required fields
     if (!user_id || !title || !notificationBody) {
       return NextResponse.json(
         { error: 'Missing required fields: user_id, title, and body are required' },
@@ -68,8 +65,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-
-    // Check if VAPID keys are configured
     if (!vapidPublicKey || !vapidPrivateKey) {
       console.error('VAPID keys not configured')
       return NextResponse.json(
@@ -81,7 +76,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get all push subscriptions for the user
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('push_subscriptions')
       .select('endpoint, p256dh_key, auth_key')
@@ -113,7 +107,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prepare notification payload
     const payload = JSON.stringify({
       title,
       body: notificationBody,
@@ -140,10 +133,8 @@ export async function POST(request: NextRequest) {
       timestamp: Date.now()
     })
 
-    // Send push notification to all subscriptions
     const sendPromises = subscriptions.map(async (subscription) => {
       try {
-        // web-push expects keys as base64 strings, not Buffers
         const pushSubscription = {
           endpoint: subscription.endpoint,
           keys: {
@@ -158,7 +149,6 @@ export async function POST(request: NextRequest) {
       } catch (error: any) {
         console.error('Error sending push notification:', error)
         
-        // If subscription is invalid (410 Gone), remove it from database
         if (error.statusCode === 410) {
           console.log(`Removing invalid subscription: ${subscription.endpoint}`)
           await supabase

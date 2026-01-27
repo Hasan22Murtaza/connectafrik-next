@@ -198,52 +198,201 @@ self.addEventListener('push', event => {
   console.log('[SW] Push notification received');
 
   const data = event.data ? event.data.json() : {};
-  const title = data.title || 'ConnectAfrik';
-  const options = {
-    body: data.body || 'You have a new notification',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/icon-96x96.png',
-    data: data.url || '/',
-    actions: [
-      {
-        action: 'open',
-        title: 'Open'
-      },
-      {
-        action: 'close',
-        title: 'Close'
-      }
-    ]
-  };
+  const notificationData = data.data || {};
+  
+  // Check if this is a call notification by looking for call-related data
+  // Call notifications will have room_id, thread_id, or call_type in the data
+  const isCallNotification = notificationData.room_id || 
+                             notificationData.thread_id || 
+                             notificationData.call_type ||
+                             data.tag?.includes('call') ||
+                             data.title?.includes('Call') ||
+                             data.title?.includes('📞');
 
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-  );
+  if (isCallNotification) {
+    // Handle incoming call notification
+    const callType = notificationData.call_type || 'audio';
+    const roomId = notificationData.room_id;
+    const threadId = notificationData.thread_id;
+    const callerName = notificationData.caller_name || data.body?.split(' ')[0] || 'Someone';
+    
+    const title = data.title || `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`;
+    const options = {
+      body: data.body || `${callerName} is calling you...`,
+      icon: data.icon || '/icons/icon-192x192.png',
+      badge: data.badge || '/icons/icon-96x96.png',
+      tag: `incoming-call-${threadId || roomId || Date.now()}`, // Unique tag to replace previous notifications
+      data: {
+        type: 'incoming_call',
+        room_id: roomId,
+        thread_id: threadId,
+        token: notificationData.token,
+        caller_id: notificationData.caller_id,
+        call_type: callType,
+        caller_name: callerName,
+        url: roomId ? `/call/${roomId}` : '/chat'
+      },
+      actions: [
+        {
+          action: 'answer',
+          title: 'Answer',
+          icon: '/icons/phone.png'
+        },
+        {
+          action: 'decline',
+          title: 'Decline',
+          icon: '/icons/dismiss.png'
+        }
+      ],
+      requireInteraction: true, // Keep notification visible until user interacts
+      silent: false, // Make sure it makes sound
+      vibrate: [200, 100, 200, 100, 200, 100, 200], // Longer vibration pattern for calls
+      timestamp: Date.now()
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+
+    // Try to wake up the app by sending a message to all clients
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clientList => {
+          for (const client of clientList) {
+            client.postMessage({
+              type: 'INCOMING_CALL',
+              data: {
+                roomId: roomId,
+                threadId: threadId,
+                token: notificationData.token,
+                callerId: notificationData.caller_id,
+                callType: callType,
+                callerName: callerName
+              }
+            });
+          }
+        })
+    );
+  } else {
+    // Regular notification handling
+    const title = data.title || 'ConnectAfrik';
+    const options = {
+      body: data.body || 'You have a new notification',
+      icon: data.icon || '/icons/icon-192x192.png',
+      badge: data.badge || '/icons/icon-96x96.png',
+      tag: data.tag || 'connectafrik-notification',
+      data: notificationData.url || data.url || '/',
+      actions: data.actions || [
+        {
+          action: 'open',
+          title: 'Open'
+        },
+        {
+          action: 'close',
+          title: 'Close'
+        }
+      ],
+      requireInteraction: data.requireInteraction || false,
+      silent: data.silent || false,
+      vibrate: data.vibrate || [200, 100, 200],
+      timestamp: Date.now()
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  }
 });
 
 // Notification click
 self.addEventListener('notificationclick', event => {
   console.log('[SW] Notification clicked:', event.action);
 
+  const notificationData = event.notification.data || {};
+  const isIncomingCall = notificationData.type === 'incoming_call' || 
+                         notificationData.room_id ||
+                         notificationData.call_type;
+
   event.notification.close();
 
-  if (event.action === 'open' || !event.action) {
-    const urlToOpen = event.notification.data || '/';
-    event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(windowClients => {
-          // Check if there's already a window open
-          for (let client of windowClients) {
-            if (client.url === urlToOpen && 'focus' in client) {
-              return client.focus();
+  // Handle incoming call notification actions
+  if (isIncomingCall) {
+    if (event.action === 'answer' || !event.action) {
+      // Open the call page
+      const callUrl = notificationData.url || `/call/${notificationData.room_id}` || '/chat';
+      event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+          .then(windowClients => {
+            // Check if there's already a window open
+            for (let client of windowClients) {
+              if (client.url.includes(self.location.origin) && 'focus' in client) {
+                // Send message to client to handle the call
+                client.postMessage({
+                  type: 'ANSWER_CALL',
+                  data: {
+                    roomId: notificationData.room_id,
+                    threadId: notificationData.thread_id,
+                    token: notificationData.token,
+                    callerId: notificationData.caller_id,
+                    callType: notificationData.call_type,
+                    callerName: notificationData.caller_name
+                  }
+                });
+                return client.focus().then(() => {
+                  // Navigate to call page if possible
+                  if ('navigate' in client && notificationData.room_id) {
+                    return client.navigate(callUrl);
+                  }
+                  return Promise.resolve();
+                });
+              }
             }
-          }
-          // Open new window if none exists
-          if (clients.openWindow) {
-            return clients.openWindow(urlToOpen);
-          }
-        })
-    );
+            // Open new window if none exists
+            if (clients.openWindow && notificationData.room_id) {
+              return clients.openWindow(callUrl);
+            }
+          })
+      );
+    } else if (event.action === 'decline') {
+      // Send decline message to any open clients
+      event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+          .then(windowClients => {
+            for (let client of windowClients) {
+              client.postMessage({
+                type: 'DECLINE_CALL',
+                data: {
+                  roomId: notificationData.room_id,
+                  threadId: notificationData.thread_id,
+                  callerId: notificationData.caller_id
+                }
+              });
+            }
+          })
+      );
+    }
+  } else {
+    // Regular notification handling
+    if (event.action === 'open' || !event.action) {
+      const urlToOpen = typeof notificationData === 'string' 
+        ? notificationData 
+        : (notificationData.url || event.notification.data || '/');
+      event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true })
+          .then(windowClients => {
+            // Check if there's already a window open
+            for (let client of windowClients) {
+              if (client.url === urlToOpen && 'focus' in client) {
+                return client.focus();
+              }
+            }
+            // Open new window if none exists
+            if (clients.openWindow) {
+              return clients.openWindow(urlToOpen);
+            }
+          })
+      );
+    }
   }
 });
 

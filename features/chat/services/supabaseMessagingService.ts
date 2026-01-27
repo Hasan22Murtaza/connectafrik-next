@@ -948,6 +948,53 @@ export const supabaseMessagingService = {
 
       if (fullMessage) {
         const formattedMessage = await formatMessage(fullMessage)
+        
+        // Send push notification for call requests immediately (works even when offline)
+        if (payload.message_type === 'call_request') {
+          try {
+            // Get thread participants to send notifications to
+            const { data: participants } = await supabase
+              .from('chat_participants')
+              .select('user_id')
+              .eq('thread_id', threadId)
+              .neq('user_id', currentUser.id) // Don't notify the sender
+
+            if (participants && participants.length > 0) {
+              const metadata = payload.metadata as any
+              const callType = metadata?.callType || 'audio'
+              const roomId = metadata?.roomId
+              const token = metadata?.token
+              const callerId = currentUser.id
+              const callerName = currentUser.name || metadata?.callerName || 'Someone'
+
+              // Send push notification to each participant
+              for (const participant of participants) {
+                try {
+                  if (roomId && token && callerId) {
+                    // Send via the existing push notification API
+                    await notificationService.sendIncomingCallNotification(
+                      participant.user_id,
+                      callerName,
+                      callType,
+                      roomId,
+                      threadId,
+                      token,
+                      callerId
+                    )
+                    console.log(`📞 Sent incoming call push notification to ${participant.user_id}`)
+                  }
+                } catch (notificationError) {
+                  console.error('Error sending call notification:', notificationError)
+                  // Don't fail the message if notification fails
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error processing call request notification:', error)
+            // Don't fail the message if notification fails
+          }
+        }
+        
         notifyMessageSubscribers(formattedMessage)
         return formattedMessage
       }

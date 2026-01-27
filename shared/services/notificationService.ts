@@ -207,6 +207,81 @@ export async function sendMessageNotification(
 }
 
 /**
+ * Send incoming call notification (for active calls when user is offline)
+ * @param recipientId - The user ID who will receive the notification
+ * @param callerName - The name of the person who called
+ * @param callType - Type of call: 'audio' or 'video'
+ * @param roomId - The VideoSDK room ID
+ * @param threadId - The chat thread ID
+ * @param token - The VideoSDK token
+ * @param callerId - The caller's user ID
+ * @returns Promise resolving to true if notification was sent successfully
+ */
+export async function sendIncomingCallNotification(
+  recipientId: string, 
+  callerName: string, 
+  callType: 'audio' | 'video',
+  roomId: string,
+  threadId: string,
+  token: string,
+  callerId: string
+): Promise<boolean> {
+  if (!recipientId || !callerName || !callType || !roomId || !threadId || !token || !callerId) {
+    console.error('sendIncomingCallNotification: Missing required parameters', {
+      hasRecipientId: !!recipientId,
+      hasCallerName: !!callerName,
+      hasCallType: !!callType,
+      hasRoomId: !!roomId,
+      hasThreadId: !!threadId,
+      hasToken: !!token,
+      hasCallerId: !!callerId
+    })
+    return false
+  }
+
+  if (callType !== 'audio' && callType !== 'video') {
+    console.error('sendIncomingCallNotification: Invalid callType, must be "audio" or "video"', {
+      callType
+    })
+    return false
+  }
+
+  return sendNotification({
+    user_id: recipientId,
+    title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
+    body: `${callerName} is calling you...`,
+    icon: '/assets/images/logo.png',
+    badge: '/assets/images/logo.png',
+    tag: `incoming-call-${threadId}`, // Unique tag per thread to replace previous notifications
+    data: {
+      type: 'incoming_call',
+      call_type: callType,
+      room_id: roomId,
+      thread_id: threadId,
+      token: token,
+      caller_id: callerId,
+      caller_name: callerName,
+      url: `/call/${roomId}`
+    },
+    actions: [
+      {
+        action: 'answer',
+        title: 'Answer',
+        icon: '/icons/phone.png'
+      },
+      {
+        action: 'decline',
+        title: 'Decline',
+        icon: '/icons/dismiss.png'
+      }
+    ],
+    requireInteraction: true, // Keep notification visible until user interacts
+    silent: false, // Make sure it makes sound
+    vibrate: [200, 100, 200, 100, 200, 100, 200] // Longer vibration pattern for calls
+  })
+}
+
+/**
  * Send missed call notification
  * @param recipientId - The user ID who will receive the notification
  * @param callerName - The name of the person who called
@@ -434,6 +509,7 @@ export const notificationService = {
   sendNotification,
   sendFriendRequestNotification,
   sendMessageNotification,
+  sendIncomingCallNotification,
   sendMissedCallNotification,
   sendPostInteractionNotification,
   sendNewPostNotification,
