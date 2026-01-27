@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch active FCM tokens from database
+    console.log(`🔍 Fetching FCM tokens for user: ${user_id}`)
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
       .select('fcm_token, device_type, device_id')
@@ -122,9 +123,15 @@ export async function POST(request: NextRequest) {
       .not('fcm_token', 'is', null)
 
     if (subscriptionError) {
-      console.error('Error fetching subscriptions:', subscriptionError)
+      console.error('❌ Error fetching subscriptions:', subscriptionError)
+      console.error('Subscription error details:', {
+        code: subscriptionError.code,
+        message: subscriptionError.message,
+        details: subscriptionError.details,
+        hint: subscriptionError.hint
+      })
       return NextResponse.json(
-        { error: 'Failed to fetch push subscriptions' },
+        { error: 'Failed to fetch push subscriptions', details: subscriptionError.message },
         { 
           status: 500,
           headers: corsHeaders
@@ -132,13 +139,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log(`📊 Found ${subscriptions?.length || 0} active FCM tokens for user ${user_id}`)
+
     if (!subscriptions || subscriptions.length === 0) {
-      console.log(`No push subscriptions found for user ${user_id}`)
+      console.log(`⚠️ No push subscriptions found for user ${user_id}`)
+      
+      // Also check for inactive tokens to help debug
+      const { data: inactiveTokens } = await supabase
+        .from('fcm_tokens')
+        .select('id, is_active, device_type')
+        .eq('user_id', user_id)
+      
+      console.log(`📋 Total tokens (including inactive) for user ${user_id}: ${inactiveTokens?.length || 0}`)
+      
       return NextResponse.json(
         { 
           success: false,
           message: 'No push subscriptions found for this user',
-          sent: 0
+          sent: 0,
+          debug: {
+            totalTokens: inactiveTokens?.length || 0,
+            activeTokens: 0
+          }
         },
         { 
           status: 200,

@@ -415,52 +415,237 @@ class PushNotificationService {
         device_id: tokenData.device_id
       })
 
-      // Use upsert with conflict resolution on user_id and fcm_token
-      const { data, error } = await supabase
+      // Strategy: Always try to insert first, then handle errors
+      // This ensures new users get their tokens saved
+      console.log('🆕 Attempting to insert/update FCM token...')
+      
+      // First, check if token already exists for this user
+      const { data: existingToken, error: checkError } = await supabase
         .from('fcm_tokens')
-        .upsert(tokenData, {
-          onConflict: 'user_id,fcm_token',
-          ignoreDuplicates: false
-        })
-        .select()
+        .select('id, fcm_token, is_active, user_id, device_id')
+        .eq('user_id', user.id)
+        .eq('fcm_token', token)
+        .maybeSingle()
 
-      if (error) {
-        // Ignore duplicate key errors (23505) - token already exists
-        if (error.code === '23505' || error.message?.includes('duplicate')) {
-          console.log('✅ FCM token already exists for this user, updating...')
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('❌ Error checking for existing token:', checkError)
+      }
+
+      if (existingToken) {
+        // Token exists for this user, update it
+        console.log('🔄 FCM token already exists for this user, updating...')
+        const { data: updatedData, error: updateError } = await supabase
+          .from('fcm_tokens')
+          .update({
+            is_active: true,
+            device_type: device_type,
+            device_id: device_id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingToken.id)
+          .select()
+
+        if (updateError) {
+          console.error('❌ Error updating FCM token:', updateError)
+          console.error('Update error details:', {
+            code: updateError.code,
+            message: updateError.message,
+            details: updateError.details,
+            hint: updateError.hint
+          })
+        } else {
+          console.log('✅ FCM token updated successfully:', updatedData)
           
-          // Update existing token to set is_active and updated_at
-          const { error: updateError } = await supabase
+          // Verify the token was updated
+          const { data: verifyData, error: verifyError } = await supabase
             .from('fcm_tokens')
-            .update({
-              is_active: true,
-              device_type: device_type,
-              device_id: device_id,
-              updated_at: new Date().toISOString()
-            })
+            .select('id, fcm_token, is_active, device_type, user_id')
             .eq('user_id', user.id)
             .eq('fcm_token', token)
+            .eq('is_active', true)
+            .maybeSingle()
           
-          if (updateError) {
-            console.error('❌ Error updating FCM token:', updateError)
-          } else {
-            console.log('✅ FCM token updated successfully')
+          if (verifyError) {
+            console.warn('⚠️ Could not verify updated token:', verifyError)
+          } else if (verifyData) {
+            console.log('✅ Token verified in database after update:', {
+              id: verifyData.id,
+              user_id: verifyData.user_id,
+              device_type: verifyData.device_type,
+              is_active: verifyData.is_active
+            })
           }
-          return
         }
-        console.error('❌ Error saving FCM token:', error)
-        console.error('Error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        })
-      } else {
-        console.log('✅ FCM token saved successfully to database:', data)
+        return // Exit early if we updated successfully
+      }
+
+      // Token doesn't exist for this user, try to insert
+      console.log('🆕 Inserting new FCM token for user...')
+      
+      // Try to insert first
+      const { data: insertedData, error: insertError } = await supabase
+        .from('fcm_tokens')
+        .insert(tokenData)
+        .select()
+
+        if (insertError) {
+          console.error('❌ Error inserting FCM token:', insertError)
+          console.error('Insert error details:', {
+            code: insertError.code,
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint
+          })
+
+          // If insert fails due to unique constraint on fcm_token
+          if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+            console.log('⚠️ Insert failed due to unique constraint on fcm_token')
+            
+            // Check if token exists for this user (maybe it was just created)
+            const { data: checkAgain, error: recheckError } = await supabase
+              .from('fcm_tokens')
+              .select('id, user_id, fcm_token, is_active')
+              .eq('user_id', user.id)
+              .eq('fcm_token', token)
+              .maybeSingle()
+
+            if (recheckError && recheckError.code !== 'PGRST116') {
+              console.error('❌ Error rechecking token:', recheckError)
+            }
+
+            if (checkAgain) {
+              // Token exists for this user, just update it
+              console.log('✅ Token found for this user after insert failure, updating...')
+              const { data: updateData, error: updateError2 } = await supabase
+                .from('fcm_tokens')
+                .update({
+                  is_active: true,
+                  device_type: device_type,
+                  device_id: device_id,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', checkAgain.id)
+                .select()
+
+              if (updateError2) {
+                console.error('❌ Error updating token:', updateError2)
+              } else {
+                console.log('✅ FCM token updated successfully:', updateData)
+              }
+            } else {
+              // Token doesn't exist for this user - check if it exists for another user
+              // (same device, different user scenario)
+              const { data: tokenForOtherUser, error: otherUserCheckError } = await supabase
+                .from('fcm_tokens')
+                .select('id, user_id, fcm_token, is_active')
+                .eq('fcm_token', token)
+                .neq('user_id', user.id)
+                .maybeSingle()
+
+              if (otherUserCheckError && otherUserCheckError.code !== 'PGRST116') {
+                console.warn('⚠️ Error checking for token with other users:', otherUserCheckError)
+              }
+
+              if (tokenForOtherUser) {
+                // Token exists for a different user - this means same device, different user
+                console.log('⚠️ Token exists for different user. This device is being used by multiple users.')
+                console.log('💡 Attempting to create new record for this user...')
+                
+                // Try to find any inactive token for this user and reactivate it
+                const { data: inactiveToken, error: inactiveError } = await supabase
+                  .from('fcm_tokens')
+                  .select('id, user_id, fcm_token, is_active')
+                  .eq('user_id', user.id)
+                  .eq('is_active', false)
+                  .maybeSingle()
+
+                if (inactiveToken) {
+                  console.log('🔄 Found inactive token for this user, reactivating with new token...')
+                  const { data: reactivateData, error: reactivateError } = await supabase
+                    .from('fcm_tokens')
+                    .update({
+                      fcm_token: token,
+                      is_active: true,
+                      device_type: device_type,
+                      device_id: device_id,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', inactiveToken.id)
+                    .select()
+
+                  if (reactivateError) {
+                    console.error('❌ Error reactivating token:', reactivateError)
+                  } else {
+                    console.log('✅ FCM token reactivated:', reactivateData)
+                  }
+                } else {
+                  console.error('❌ Cannot insert token: unique constraint violation and no inactive token to update')
+                  console.error('💡 This might indicate a database schema issue. FCM tokens should allow multiple users per token (same device).')
+                  console.error('💡 Consider checking your database schema - there may be a unique constraint on fcm_token that prevents multiple users.')
+                }
+              } else {
+              // Try to update any existing inactive token for this user/device
+              console.log('🔄 Trying to update existing inactive token for this user/device...')
+              const { data: updateData, error: updateError2 } = await supabase
+                .from('fcm_tokens')
+                .update({
+                  fcm_token: token,
+                  is_active: true,
+                  device_type: device_type,
+                  device_id: device_id,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('user_id', user.id)
+                .eq('is_active', false)
+                .select()
+
+              if (updateError2) {
+                console.error('❌ Error updating inactive token:', updateError2)
+              } else if (updateData && updateData.length > 0) {
+                console.log('✅ FCM token updated (from inactive):', updateData)
+              } else {
+                console.error('❌ No inactive token found to update. Insert failed and no fallback available.')
+              }
+            }
+          }
+        } else {
+          console.log('✅ FCM token inserted successfully:', insertedData)
+          
+          // Verify the token was saved by querying it back
+          const { data: verifyData, error: verifyError } = await supabase
+            .from('fcm_tokens')
+            .select('id, fcm_token, is_active, device_type')
+            .eq('user_id', user.id)
+            .eq('fcm_token', token)
+            .eq('is_active', true)
+            .maybeSingle()
+          
+          if (verifyError) {
+            console.warn('⚠️ Could not verify saved token:', verifyError)
+          } else if (verifyData) {
+            console.log('✅ Token verified in database:', {
+              id: verifyData.id,
+              device_type: verifyData.device_type,
+              is_active: verifyData.is_active
+            })
+          } else {
+            console.warn('⚠️ Token was inserted but could not be verified')
+          }
+        }
       }
     } catch (error) {
       console.error('❌ Error saving FCM token:', error)
       console.error('Error stack:', (error as Error).stack)
+      
+      // Try to provide more helpful error messages
+      if (error instanceof Error) {
+        if (error.message.includes('permission') || error.message.includes('policy')) {
+          console.error('💡 This might be a Row Level Security (RLS) policy issue. Check your Supabase RLS policies for the fcm_tokens table.')
+        }
+        if (error.message.includes('foreign key') || error.message.includes('constraint')) {
+          console.error('💡 This might be a database constraint issue. Check your fcm_tokens table schema.')
+        }
+      }
     }
   }
 
