@@ -81,7 +81,7 @@ export default function CallWindowPage() {
           roomIdHint={roomId}
         />
       ) : (
-        <div className="flex items-center justify-center h-full text-white text-lg">Call ended</div>
+        <div className="flex items-center justify-center h-full text-white text-sm sm:text-base md:text-lg px-4 text-center">Call ended</div>
       )}
     </div>
   )

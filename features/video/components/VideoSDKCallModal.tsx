@@ -1893,7 +1893,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* Local Video */}
           {localStream && callType === 'video' && localStream.getVideoTracks().length > 0 && (
-            <div className="absolute top-2 right-2 md:top-4 md:right-4 w-20 h-28 md:w-28 md:h-36 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border-2 border-white shadow-2xl ring-2 ring-white/20 hover:scale-105 transition-transform duration-200">
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-16 h-20 sm:w-20 sm:h-28 md:w-28 md:h-36 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border border-white sm:border-2 shadow-xl sm:shadow-2xl ring-1 ring-white/20 sm:ring-2 hover:scale-105 transition-transform duration-200">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -1906,11 +1906,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* Audio Call Avatar */}
           {callType === 'audio' && (
-            <div className="flex items-center justify-center h-full">
-              <div className="w-36 h-36 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center shadow-2xl ring-4 ring-primary-200/50 animate-pulse-glow">
+            <div className="flex items-center justify-center h-full px-4">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center shadow-2xl ring-2 sm:ring-4 ring-primary-200/50 animate-pulse-glow">
                 {/* Name is shown at top of ringing section, not here during ringing */}
                 {callStatus !== 'ringing' && (
-                  <span className="text-lg md:text-xl font-bold text-white text-center px-2 break-words">
+                  <span className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-white text-center px-2 break-words">
                     {isIncoming ? decodedCallerName : decodedRecipientName}
                   </span>
                 )}
@@ -1944,10 +1944,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             }
             
             return (
-              <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium shadow-lg border border-white/20">
-                <span className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                  {displayCount} participant{displayCount > 1 ? 's' : ''}
+              <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] sm:text-xs md:text-sm font-medium shadow-lg border border-white/20">
+                <span className="flex items-center gap-1 sm:gap-2">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></span>
+                  <span className="hidden sm:inline">{displayCount} participant{displayCount > 1 ? 's' : ''}</span>
+                  <span className="sm:hidden">{displayCount}</span>
                 </span>
               </div>
             );
@@ -1956,37 +1957,37 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           <audio ref={remoteAudioRef} autoPlay playsInline muted={!isSpeakerEnabled} className="hidden" />
 
           {/* Call Status Overlay */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
             <div className="text-center text-white">
               <div className="mb-4">
                 {callStatus === 'connecting' && (
                   <div className="flex flex-col items-center">
-                    <div className="animate-spin rounded-full h-14 w-14 border-4 border-white border-t-transparent mb-3"></div>
-                    <div className="text-base font-medium">Connecting...</div>
+                    <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 border-3 sm:border-4 border-white border-t-transparent mb-2 sm:mb-3"></div>
+                    <div className="text-sm sm:text-base font-medium">Connecting...</div>
                   </div>
                 )}
                 {callStatus === 'ringing' && (
                   <div className="animate-pulse">
                     {/* Caller/Recipient Name - At top of ringing section */}
-                    <div className="mb-4">
-                      <div className="text-2xl md:text-3xl font-bold">
+                    <div className="mb-3 sm:mb-4">
+                      <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words px-2">
                         {isIncoming ? decodedCallerName : decodedRecipientName}
                       </div>
                     </div>
-                    <div className="text-5xl mb-3 animate-bounce">📞</div>
-                    <div className="text-xl font-semibold">Ringing...</div>
-                    <div className="text-sm opacity-75 mt-1">Waiting for answer</div>
+                    <div className="text-4xl sm:text-5xl mb-2 sm:mb-3 animate-bounce">📞</div>
+                    <div className="text-base sm:text-lg md:text-xl font-semibold">Ringing...</div>
+                    <div className="text-xs sm:text-sm opacity-75 mt-1">Waiting for answer</div>
                   </div>
                 )}
                 {callStatus === 'connected' && (
                   <div className="space-y-2 flex ">
-                    <div className="absolute bottom-0 left-2 text-1xl font-bold tracking-wider text-gray-700">{formatDuration(callDuration)}</div>
+                    <div className="absolute bottom-0 left-2 sm:left-4 text-xs sm:text-sm md:text-base font-bold tracking-wider text-gray-300 sm:text-gray-700">{formatDuration(callDuration)}</div>
                   </div>
                 )}
                 {callStatus === 'ended' && (
                   <div>
-                    <div className="text-xl font-semibold mb-1">Call Ended</div>
-                    <div className="text-sm opacity-75">Duration: {formatDuration(callDuration)}</div>
+                    <div className="text-lg sm:text-xl font-semibold mb-1">Call Ended</div>
+                    <div className="text-xs sm:text-sm opacity-75">Duration: {formatDuration(callDuration)}</div>
                   </div>
                 )}
               </div>
@@ -1997,7 +1998,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           {callStatus === 'connected' && reactionAnimation && lastReactionEmoji && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
               <div
-                className="text-5xl animate-ping"
+                className="text-3xl sm:text-4xl md:text-5xl animate-ping"
                 style={{
                   animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) 1'
                 }}
@@ -2009,12 +2010,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* Accept/Reject Buttons Overlay - Inside video section for incoming calls */}
           {callStatus === 'ringing' && isIncoming && (
-            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
-              <div className="flex justify-center gap-4 md:gap-6">
+            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
+              <div className="flex justify-center gap-3 sm:gap-4 md:gap-6">
                 <button
                   onClick={handleAcceptCall}
                   disabled={isAcceptingCall}
-                  className={`rounded-full p-4 md:p-5 shadow-lg transition-all duration-200 focus:outline-none ${
+                  className={`rounded-full p-3 sm:p-4 md:p-5 shadow-lg transition-all duration-200 focus:outline-none ${
                     isAcceptingCall
                       ? 'bg-gray-400 cursor-not-allowed opacity-60 text-white'
                       : 'bg-green-500 hover:bg-green-600 active:bg-green-700 text-white hover:shadow-xl hover:scale-110 active:scale-95'
@@ -2022,15 +2023,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                   title={isAcceptingCall ? 'Connecting...' : 'Answer Call'}
                   aria-label={isAcceptingCall ? 'Connecting...' : 'Answer call'}
                 >
-                  <PhoneOff className="w-6 h-6 md:w-7 md:h-7 rotate-180" />
+                  <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rotate-180" />
                 </button>
                 <button
                   onClick={handleRejectCall}
-                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-3 sm:p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
                   title="Decline Call"
                   aria-label="Decline call"
                 >
-                  <PhoneOff className="w-6 h-6 md:w-7 md:h-7" />
+                  <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                 </button>
               </div>
             </div>
@@ -2038,15 +2039,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* End Call Button Overlay - Inside video section for outgoing calls */}
           {callStatus === 'ringing' && !isIncoming && (
-            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
+            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
               <div className="flex flex-col items-center gap-3">
                 <button
                   onClick={handleEndCall}
-                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
+                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-3 sm:p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
                   title="Drop Call"
                   aria-label="Drop call"
                 >
-                  <PhoneOff className="w-6 h-6 md:w-7 md:h-7" />
+                  <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
                 </button>
               </div>
             </div>
@@ -2104,13 +2105,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* Controls Overlay - Positioned at bottom center of video */}
           {callStatus === 'connected' && (
-            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-3 md:pb-6 px-2 md:px-4 z-10">
-              <div className="space-y-2 md:space-y-4 w-full max-w-2xl">
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-2 sm:pb-3 md:pb-6 px-2 sm:px-3 md:px-4 z-10">
+              <div className="space-y-2 sm:space-y-3 md:space-y-4 w-full max-w-2xl">
                 {/* Main controls - Mute, Video, Speaker, Message, End */}
-                <div className="flex justify-center items-center gap-2 md:gap-3 flex-wrap">
+                <div className="flex justify-center items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
                   <button
                     onClick={toggleMute}
-                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       isMuted 
                         ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white' 
                         : 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm'
@@ -2118,13 +2119,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     title={isMuted ? 'Unmute' : 'Mute'}
                     aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
                   >
-                    {isMuted ? <MicOff className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />}
+                    {isMuted ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
                   </button>
 
                   {callType === 'video' && (
                     <button
                       onClick={toggleVideo}
-                      className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                      className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                         isVideoEnabled 
                           ? 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm' 
                           : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
@@ -2132,13 +2133,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
                       aria-label={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
                     >
-                      {isVideoEnabled ? <Video className="w-5 h-5 md:w-6 md:h-6" /> : <VideoOff className="w-5 h-5 md:w-6 md:h-6" />}
+                      {isVideoEnabled ? <Video className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
                     </button>
                   )}
 
                   <button
                     onClick={toggleSpeaker}
-                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       isSpeakerEnabled 
                         ? 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm' 
                         : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
@@ -2146,13 +2147,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     title={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
                     aria-label={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
                   >
-                    {isSpeakerEnabled ? <Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
+                    {isSpeakerEnabled ? <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
                   </button>
 
                   {/* Send Message Button */}
                   <button
                     onClick={() => setShowMessageInput(!showMessageInput)}
-                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       showMessageInput 
                         ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white' 
                         : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
@@ -2160,13 +2161,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     title="Send message"
                     aria-label="Send message"
                   >
-                    <MessageSquare className="w-5 h-5 md:w-6 md:h-6" />
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                   </button>
 
                   {/* Raise Hand Button - Highlight when raised */}
                   {/* <button
                     onClick={handleRaiseHand}
-                    className={`rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                       isHandRaised 
                         ? 'bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white' 
                         : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
@@ -2174,16 +2175,16 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     title={isHandRaised ? 'Lower hand' : 'Raise hand'}
                     aria-label={isHandRaised ? 'Lower hand' : 'Raise hand'}
                   >
-                    <Hand className="w-5 h-5 md:w-6 md:h-6" />
+                    <Hand className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                   </button> */}
 
                   <button
                     onClick={handleEndCall}
-                    className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
+                    className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-2.5 sm:p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
                     title="End call"
                     aria-label="End call"
                   >
-                    <PhoneOff className="w-5 h-5 md:w-6 md:h-6" />
+                    <PhoneOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                   </button>
                 </div>
                     
@@ -2196,14 +2197,14 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         </div>
 
         {/* Controls */}
-        <div className="p-4 md:p-6">
+        <div className="p-2 sm:p-3 md:p-4 lg:p-6">
          
 
           {callStatus === 'connected' && (
-            <div className="space-y-4">
+            <div className="space-y-2 sm:space-y-3 md:space-y-4">
 
               {showMessageInput && (
-                <div className="flex gap-2 animate-slideIn">
+                <div className="flex gap-1.5 sm:gap-2 animate-slideIn">
                   <input
                     type="text"
                     value={messageText}
@@ -2214,12 +2215,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       }
                     }}
                     placeholder="Type a message..."
-                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 outline-1 border-gray-300 transition-all duration-200 text-sm text-white"
+                    className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg border border-gray-300 outline-1 border-gray-300 transition-all duration-200 text-xs sm:text-sm text-white bg-gray-800/50 backdrop-blur-sm"
                     autoFocus
                   />
                   <button
                     onClick={handleSendMessage}
-                    className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white px-5 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg font-medium focus:outline-none focus:ring-offset-2"
+                    className="bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white px-3 py-2 sm:px-4 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium focus:outline-none focus:ring-offset-2"
                   >
                     Send
                   </button>
@@ -2228,7 +2229,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       setShowMessageInput(false);
                       setMessageText('');
                     }}
-                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 px-5 py-2.5 rounded-lg transition-all duration-200 font-medium focus:outline-none"
+                    className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 px-3 py-2 sm:px-4 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 text-xs sm:text-sm font-medium focus:outline-none"
                   >
                     Cancel
                   </button>
