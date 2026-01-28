@@ -599,15 +599,50 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               if (localParticipant.on) {
                 localParticipant.on("stream-enabled", (stream: any) => {
                   if (stream.kind === 'video' && callType === 'video' && stream.track) {
-                    const localVideoStream = new MediaStream([stream.track]);
-                    updateLocalStream(localVideoStream);
-                    console.log('📹 Local video stream enabled from VideoSDK');
+                    // Create new MediaStream with the new video track
+                    // If we have an existing localStream with audio, preserve it
+                    const newVideoStream = new MediaStream([stream.track]);
+                    
+                    // If we have existing audio tracks, add them to the new stream
+                    if (localStreamRef.current) {
+                      const audioTracks = localStreamRef.current.getAudioTracks();
+                      audioTracks.forEach(track => {
+                        if (track.readyState !== 'ended') {
+                          newVideoStream.addTrack(track);
+                        }
+                      });
+                    }
+                    
+                    updateLocalStream(newVideoStream);
+                    console.log('📹 Local video stream enabled from VideoSDK - new track created');
+                    
+                    // Update video element immediately
+                    if (localVideoRef.current) {
+                      localVideoRef.current.srcObject = newVideoStream;
+                      localVideoRef.current.play().catch(err => 
+                        console.warn('⚠️ Local video playback error after stream-enabled:', err)
+                      );
+                    }
                   }
                 });
 
                 localParticipant.on("stream-disabled", (stream: any) => {
                   if (stream.kind === 'video') {
                     console.log('📹 Local video stream disabled');
+                    // Clear video element but keep audio
+                    if (localVideoRef.current) {
+                      localVideoRef.current.srcObject = null;
+                    }
+                    // Update local stream to remove video track but keep audio
+                    if (localStreamRef.current) {
+                      const audioTracks = localStreamRef.current.getAudioTracks();
+                      if (audioTracks.length > 0) {
+                        const audioOnlyStream = new MediaStream(audioTracks);
+                        updateLocalStream(audioOnlyStream);
+                      } else {
+                        updateLocalStream(null);
+                      }
+                    }
                   }
                 });
               }
@@ -664,16 +699,30 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 participant.on("stream-enabled", (stream: any) => {
                   console.log("📹 Stream enabled for participant:", participant.id, stream.kind);
                   
-                  if (stream.kind === 'video') {
+                  if (stream.kind === 'video' && stream.track) {
+                    // Remove any existing video streams from this participant first
+                    // This ensures we replace the old stream with the new one
+                    updateRemoteStreams((prev) => {
+                      return prev.filter((s) => {
+                        // Keep audio streams, remove old video streams
+                        const hasVideo = s.getVideoTracks().length > 0;
+                        return !hasVideo;
+                      });
+                    });
+                    
+                    // Create new video stream with the new track
                     const videoStream = new MediaStream([stream.track]);
                     addRemoteStream(videoStream);
+                    
+                    // Update remote video element immediately
                     if (remoteVideoRef.current && callType === 'video') {
                       remoteVideoRef.current.srcObject = videoStream;
                       remoteVideoRef.current.play().catch(err => 
                         console.warn('⚠️ Video playback error:', err)
                       );
+                      console.log('📹 Remote video stream updated - new track from participant:', participant.id);
                     }
-                  } else if (stream.kind === 'audio') {
+                  } else if (stream.kind === 'audio' && stream.track) {
                     const audioStream = new MediaStream([stream.track]);
                     addRemoteStream(audioStream);
                   }
@@ -980,16 +1029,28 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       if (participant.on) {
                         participant.on("stream-enabled", (stream: any) => {
                           console.log("📹 Stream enabled for existing participant:", participant.id, stream.kind);
-                          if (stream.kind === 'video') {
+                          if (stream.kind === 'video' && stream.track) {
+                            // Remove any existing video streams from this participant first
+                            updateRemoteStreams((prev) => {
+                              return prev.filter((s) => {
+                                const hasVideo = s.getVideoTracks().length > 0;
+                                return !hasVideo;
+                              });
+                            });
+                            
+                            // Create new video stream with the new track
                             const videoStream = new MediaStream([stream.track]);
                             addRemoteStream(videoStream);
+                            
+                            // Update remote video element immediately
                             if (remoteVideoRef.current && callType === 'video') {
                               remoteVideoRef.current.srcObject = videoStream;
                               remoteVideoRef.current.play().catch(err => 
                                 console.warn('⚠️ Video playback error:', err)
                               );
+                              console.log('📹 Remote video stream updated - new track from existing participant:', participant.id);
                             }
-                          } else if (stream.kind === 'audio') {
+                          } else if (stream.kind === 'audio' && stream.track) {
                             const audioStream = new MediaStream([stream.track]);
                             addRemoteStream(audioStream);
                           }
@@ -1043,15 +1104,50 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               if (localParticipant.on) {
                 localParticipant.on("stream-enabled", (stream: any) => {
                   if (stream.kind === 'video' && callType === 'video' && stream.track) {
-                    const localVideoStream = new MediaStream([stream.track]);
-                    updateLocalStream(localVideoStream);
-                    console.log('📹 Local video stream enabled from VideoSDK (accepted call)');
+                    // Create new MediaStream with the new video track
+                    // If we have an existing localStream with audio, preserve it
+                    const newVideoStream = new MediaStream([stream.track]);
+                    
+                    // If we have existing audio tracks, add them to the new stream
+                    if (localStreamRef.current) {
+                      const audioTracks = localStreamRef.current.getAudioTracks();
+                      audioTracks.forEach(track => {
+                        if (track.readyState !== 'ended') {
+                          newVideoStream.addTrack(track);
+                        }
+                      });
+                    }
+                    
+                    updateLocalStream(newVideoStream);
+                    console.log('📹 Local video stream enabled from VideoSDK (accepted call) - new track created');
+                    
+                    // Update video element immediately
+                    if (localVideoRef.current) {
+                      localVideoRef.current.srcObject = newVideoStream;
+                      localVideoRef.current.play().catch(err => 
+                        console.warn('⚠️ Local video playback error after stream-enabled (accepted call):', err)
+                      );
+                    }
                   }
                 });
 
                 localParticipant.on("stream-disabled", (stream: any) => {
                   if (stream.kind === 'video') {
                     console.log('📹 Local video stream disabled (accepted call)');
+                    // Clear video element but keep audio
+                    if (localVideoRef.current) {
+                      localVideoRef.current.srcObject = null;
+                    }
+                    // Update local stream to remove video track but keep audio
+                    if (localStreamRef.current) {
+                      const audioTracks = localStreamRef.current.getAudioTracks();
+                      if (audioTracks.length > 0) {
+                        const audioOnlyStream = new MediaStream(audioTracks);
+                        updateLocalStream(audioOnlyStream);
+                      } else {
+                        updateLocalStream(null);
+                      }
+                    }
                   }
                 });
               }
@@ -1094,22 +1190,37 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 participant.on("stream-enabled", (stream: any) => {
                   console.log("📹 Stream enabled for participant:", participant.id, stream.kind);
                   
-                  if (stream.kind === 'video') {
+                  if (stream.kind === 'video' && stream.track) {
+                    // Remove any existing video streams from this participant first
+                    // This ensures we replace the old stream with the new one
+                    updateRemoteStreams((prev) => {
+                      return prev.filter((s) => {
+                        // Keep audio streams, remove old video streams
+                        const hasVideo = s.getVideoTracks().length > 0;
+                        return !hasVideo;
+                      });
+                    });
+                    
+                    // Create new video stream with the new track
                     const videoStream = new MediaStream([stream.track]);
                     addRemoteStream(videoStream);
+                    
+                    // Update remote video element immediately
                     if (remoteVideoRef.current && callType === 'video') {
                       remoteVideoRef.current.srcObject = videoStream;
                       remoteVideoRef.current.play().catch(err => 
                         console.warn('⚠️ Video playback error:', err)
                       );
+                      console.log('📹 Remote video stream updated - new track from participant (accepted call):', participant.id);
                     }
-                  } else if (stream.kind === 'audio') {
+                  } else if (stream.kind === 'audio' && stream.track) {
                     const audioStream = new MediaStream([stream.track]);
                     addRemoteStream(audioStream);
                   }
                 });
 
                 participant.on("stream-disabled", (stream: any) => {
+                  console.log("📹 Stream disabled for participant:", participant.id, stream.kind);
                   if (stream.track) {
                     removeRemoteStream(stream.track.id);
                   }
@@ -1420,7 +1531,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     }
   };
 
-  const toggleVideo = () => {
+  const toggleVideo = async () => {
     if (callType === 'video') {
       const newVideoState = !isVideoEnabled;
       setIsVideoEnabled(newVideoState);
@@ -1429,21 +1540,68 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       if (currentMeetingRef.current) {
         try {
           if (newVideoState) {
+            // When enabling camera, VideoSDK will create a NEW track
+            // We need to wait for the stream-enabled event to update local stream
+            console.log('📹 Enabling webcam - VideoSDK will create new track');
             currentMeetingRef.current.enableWebcam();
+            
+            // VideoSDK will trigger stream-enabled event for local participant
+            // The event listener (set up in meeting-joined) will handle updating localStream
+            // But we also try to get the track directly after a short delay as fallback
+            setTimeout(async () => {
+              try {
+                const localParticipant = currentMeetingRef.current?.localParticipant;
+                if (localParticipant) {
+                  const videoStreams = localParticipant.getVideoStreams?.() || [];
+                  if (videoStreams.length > 0 && videoStreams[0].track) {
+                    const newVideoStream = new MediaStream([videoStreams[0].track]);
+                    updateLocalStream(newVideoStream);
+                    console.log('📹 Local video stream updated after enabling webcam');
+                    
+                    // Update video element
+                    if (localVideoRef.current) {
+                      localVideoRef.current.srcObject = newVideoStream;
+                      localVideoRef.current.play().catch(err => 
+                        console.warn('⚠️ Local video playback error:', err)
+                      );
+                    }
+                  }
+                }
+              } catch (error) {
+                console.warn('⚠️ Error getting video stream after enable:', error);
+              }
+            }, 500);
           } else {
+            // When disabling, stop the track and clear local stream
+            console.log('📹 Disabling webcam');
             currentMeetingRef.current.disableWebcam();
+            
+            // Stop local video track
+            if (localStream) {
+              const videoTrack = localStream.getVideoTracks()[0];
+              if (videoTrack) {
+                videoTrack.stop();
+                console.log('📹 Local video track stopped');
+              }
+            }
+            
+            // Clear local video element
+            if (localVideoRef.current) {
+              localVideoRef.current.srcObject = null;
+            }
+            
+            // Clear local stream state (but keep audio)
+            // Actually, we should keep the stream but just remove video track
+            // Let VideoSDK handle it via stream-disabled event
           }
         } catch (error) {
           console.warn('⚠️ VideoSDK webcam enable/disable failed:', error);
+          // Revert state on error
+          setIsVideoEnabled(!newVideoState);
         }
-      }
-
-      // Also update local track for immediate UI feedback
-      if (localStream) {
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack) {
-          videoTrack.enabled = newVideoState;
-        }
+      } else {
+        // Revert state if no meeting
+        setIsVideoEnabled(!newVideoState);
       }
     }
   };
