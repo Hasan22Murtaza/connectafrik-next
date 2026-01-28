@@ -448,18 +448,40 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
   const addRemoteStream = (stream: MediaStream) => {
     updateRemoteStreams((prev) => {
+      const newTracks = [...stream.getAudioTracks(), ...stream.getVideoTracks()];
+      const newTrackIds = new Set(newTracks.map(t => t.id));
+      
+      // Check if any of the new tracks already exist in previous streams
+      const hasDuplicate = prev.some(existing => {
+        const existingTracks = [...existing.getAudioTracks(), ...existing.getVideoTracks()];
+        return existingTracks.some(track => newTrackIds.has(track.id));
+      });
+      
+      if (hasDuplicate) {
+        console.log('🔇 Skipping duplicate stream - track already exists');
+        return prev; // Don't add duplicate
+      }
+      
+      // Also check by stream.id for exact matches
       const existingIndex = prev.findIndex((existing) => existing.id === stream.id);
       if (existingIndex >= 0) {
         const next = [...prev];
         next[existingIndex] = stream;
         return next;
       }
+      
       return [...prev, stream];
     });
   };
 
-  const removeRemoteStream = (streamId: string) => {
-    updateRemoteStreams((prev) => prev.filter((stream) => stream.id !== streamId));
+  const removeRemoteStream = (trackId: string) => {
+    updateRemoteStreams((prev) => {
+      // Remove streams that contain the track with this ID
+      return prev.filter((stream) => {
+        const allTracks = [...stream.getAudioTracks(), ...stream.getVideoTracks()];
+        return !allTracks.some(track => track.id === trackId);
+      });
+    });
   };
 
   // Helper function to get VideoSDK JWT token
@@ -738,7 +760,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
               // Check if participant already has active streams
               const videoStreams = participant.getVideoStreams?.() || [];
-              const audioStreams = participant.getAudioStreams?.() || [];
               
               videoStreams.forEach((vs: any) => {
                 if (vs.track) {
@@ -750,12 +771,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 }
               });
               
-              audioStreams.forEach((as: any) => {
-                if (as.track) {
-                  const stream = new MediaStream([as.track]);
-                  addRemoteStream(stream);
-                }
-              });
             } catch (error) {
               console.warn('⚠️ Error handling participant streams:', error);
             }
@@ -886,7 +901,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: callType === 'video' && isVideoEnabled,
-          audio: true
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 1
+          }
         });
 
         updateLocalStream(stream);
@@ -1065,7 +1086,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
                       // Check for existing streams
                       const videoStreams = participant.getVideoStreams?.() || [];
-                      const audioStreams = participant.getAudioStreams?.() || [];
                       
                       videoStreams.forEach((vs: any) => {
                         if (vs.track) {
@@ -1077,12 +1097,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                         }
                       });
                       
-                      audioStreams.forEach((as: any) => {
-                        if (as.track) {
-                          const stream = new MediaStream([as.track]);
-                          addRemoteStream(stream);
-                        }
-                      });
                     }
                   });
                   console.log('📞 Updated participants array:', updated.length);
@@ -1229,7 +1243,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
               // Check if participant already has active streams
               const videoStreams = participant.getVideoStreams?.() || [];
-              const audioStreams = participant.getAudioStreams?.() || [];
               
               videoStreams.forEach((vs: any) => {
                 if (vs.track) {
@@ -1241,12 +1254,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 }
               });
               
-              audioStreams.forEach((as: any) => {
-                if (as.track) {
-                  const stream = new MediaStream([as.track]);
-                  addRemoteStream(stream);
-                }
-              });
             } catch (error) {
               console.warn('⚠️ Error handling participant streams:', error);
             }
@@ -1356,7 +1363,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: callType === 'video' && isVideoEnabled,
-          audio: true
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            channelCount: 1
+          }
         });
 
         updateLocalStream(stream);
