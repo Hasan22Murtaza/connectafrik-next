@@ -6,35 +6,69 @@ const NOTIFICATION_BADGE = '/assets/icons/icon-96x96.png'; // Your app logo
 // Install event
 self.addEventListener('install', (event) => {
   console.log('Service Worker installing...');
+  // Skip waiting to activate immediately - important for offline notifications
   self.skipWaiting();
 });
 
 // Activate event
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activating...');
-  event.waitUntil(self.clients.claim());
+  // Claim all clients immediately - ensures service worker is active for push notifications
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      // Ensure service worker is ready to handle push notifications even when offline
+      self.registration.update()
+    ])
+  );
 });
 
 // Push event - handle incoming FCM push notifications
+// This works even when the app is offline because push notifications
+// are delivered through the browser's push service, not the app's network
 self.addEventListener('push', (event) => {
-  console.log('FCM Push notification received:', event);
+  console.log('🔔 FCM Push notification received (offline-capable)');
+  console.log('Event data type:', event.data ? event.data.type : 'no data');
   
-  let notificationTitle = 'ConnectAfrik';
-  let notificationBody = 'You have a new notification';
-  let notificationIcon = NOTIFICATION_ICON;
-  let notificationBadge = NOTIFICATION_BADGE;
-  let notificationImage = null;
-  let notificationTag = 'connectafrik-notification';
-  let notificationData = {};
-  let notificationActions = [];
-  let requireInteraction = false;
-  let silent = false;
-  let vibrate = [200, 100, 200];
-  
-  if (event.data) {
+  // Ensure the event is kept alive even if offline
+  const promiseChain = Promise.resolve().then(() => {
+    let notificationTitle = 'ConnectAfrik';
+    let notificationBody = 'You have a new notification';
+    let notificationIcon = NOTIFICATION_ICON;
+    let notificationBadge = NOTIFICATION_BADGE;
+    let notificationImage = null;
+    let notificationTag = 'connectafrik-notification';
+    let notificationData = {};
+    let notificationActions = [];
+    let requireInteraction = false;
+    let silent = false;
+    let vibrate = [200, 100, 200];
+    
+    if (event.data) {
     try {
-      const payload = event.data.json();
-      console.log('FCM Push payload:', payload);
+      // Handle both text() and json() methods
+      let payload;
+      try {
+        payload = event.data.json();
+        console.log('✅ FCM Push payload (JSON):', payload);
+      } catch (jsonError) {
+        // If json() fails, try text()
+        try {
+          const text = event.data.text();
+          console.log('📝 FCM Push payload (text):', text);
+          payload = JSON.parse(text);
+        } catch (textError) {
+          console.error('❌ Error parsing push data:', textError);
+          // Show default notification if parsing fails
+          return self.registration.showNotification('ConnectAfrik', {
+            body: 'You have a new notification',
+            icon: NOTIFICATION_ICON,
+            badge: NOTIFICATION_BADGE,
+            tag: 'connectafrik-notification',
+            data: { offline: true, parseError: true }
+          });
+        }
+      }
       
       // FCM sends data in notification and data fields
       if (payload.notification) {
@@ -149,29 +183,33 @@ self.addEventListener('push', (event) => {
           timestamp: Date.now()
         };
 
-        event.waitUntil(
-          self.registration.showNotification(notificationTitle || `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`, options)
-        );
-
-      // Try to wake up the app
-      event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
-          .then(clientList => {
-            for (const client of clientList) {
-              client.postMessage({
-                type: 'INCOMING_CALL',
-                data: {
-                  roomId: roomId,
-                  threadId: threadId,
-                  token: notificationData.token,
-                  callerId: notificationData.caller_id,
-                  callType: callType,
-                  callerName: callerName
+        return self.registration.showNotification(notificationTitle || `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`, options)
+          .then(() => {
+            // Try to wake up the app (non-blocking)
+            return clients.matchAll({ type: 'window', includeUncontrolled: true })
+              .then(clientList => {
+                for (const client of clientList) {
+                  try {
+                    client.postMessage({
+                      type: 'INCOMING_CALL',
+                      data: {
+                        roomId: roomId,
+                        threadId: threadId,
+                        token: notificationData.token,
+                        callerId: notificationData.caller_id,
+                        callType: callType,
+                        callerName: callerName
+                      }
+                    });
+                  } catch (e) {
+                    console.warn('Could not send message to client (may be offline):', e);
+                  }
                 }
+              })
+              .catch(err => {
+                console.warn('Could not wake up app (may be offline):', err);
               });
-            }
-          })
-      );
+          });
       } else {
         // Regular notification
         const options = {
@@ -199,33 +237,33 @@ self.addEventListener('push', (event) => {
           timestamp: Date.now()
         };
 
-        event.waitUntil(
-          self.registration.showNotification(notificationTitle, options)
-        );
+        return self.registration.showNotification(notificationTitle, options);
       }
     } catch (error) {
       console.error('Error parsing FCM push notification:', error);
-      // Fallback notification
-      event.waitUntil(
-        self.registration.showNotification('ConnectAfrik', {
-          body: 'You have a new notification',
-          icon: NOTIFICATION_ICON,
-          badge: NOTIFICATION_BADGE,
-          tag: 'connectafrik-notification'
-        })
-      );
-    }
-  } else {
-    // No data, show default notification
-    event.waitUntil(
-      self.registration.showNotification('ConnectAfrik', {
+      // Fallback notification - always show something even if parsing fails
+      return self.registration.showNotification('ConnectAfrik', {
         body: 'You have a new notification',
         icon: NOTIFICATION_ICON,
         badge: NOTIFICATION_BADGE,
-        tag: 'connectafrik-notification'
-      })
-    );
+        tag: 'connectafrik-notification',
+        data: { offline: true }
+      });
+    }
+  } else {
+    // No data, show default notification
+    return self.registration.showNotification('ConnectAfrik', {
+      body: 'You have a new notification',
+      icon: NOTIFICATION_ICON,
+      badge: NOTIFICATION_BADGE,
+      tag: 'connectafrik-notification',
+      data: { offline: true }
+    });
   }
+  });
+  
+  // Keep the service worker alive until notification is shown
+  event.waitUntil(promiseChain);
 });
 
 // Notification click event

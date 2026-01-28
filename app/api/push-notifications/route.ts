@@ -24,7 +24,7 @@ try {
   // Check if Firebase Admin is already initialized
   if (admin.apps.length === 0) {
     // Get Firebase service account credentials from environment
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
     
     if (serviceAccount) {
       // Parse JSON string if provided as environment variable

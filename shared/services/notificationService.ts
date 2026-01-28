@@ -24,6 +24,17 @@ export interface NotificationResponse {
   total?: number
   message?: string
   error?: string
+  results?: Array<{
+    success: boolean
+    endpoint?: string
+    device_type?: string
+    messageId?: string
+    error?: string
+  }>
+  debug?: {
+    totalTokens?: number
+    activeTokens?: number
+  }
 }
 
 /**
@@ -35,7 +46,7 @@ export async function sendNotification(notificationData: NotificationData): Prom
   try {
     // Validate required fields
     if (!notificationData.user_id || !notificationData.title || !notificationData.body) {
-      console.error('Missing required notification fields:', {
+      console.error('❌ Missing required notification fields:', {
         hasUserId: !!notificationData.user_id,
         hasTitle: !!notificationData.title,
         hasBody: !!notificationData.body
@@ -45,9 +56,16 @@ export async function sendNotification(notificationData: NotificationData): Prom
 
     // Only run on client side
     if (typeof window === 'undefined') {
-      console.warn('sendNotification can only be called from client-side code')
+      console.warn('⚠️ sendNotification can only be called from client-side code')
       return false
     }
+
+    console.log('📤 Sending notification:', {
+      user_id: notificationData.user_id,
+      title: notificationData.title,
+      body: notificationData.body.substring(0, 50) + '...',
+      hasData: !!notificationData.data
+    })
 
     const response = await fetch('/api/push-notifications', {
       method: 'POST',
@@ -70,10 +88,11 @@ export async function sendNotification(notificationData: NotificationData): Prom
         }
       }
       
-      console.error('Error sending push notification:', {
+      console.error('❌ Error sending push notification:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorData
+        error: errorData,
+        user_id: notificationData.user_id
       })
       return false
     }
@@ -81,21 +100,38 @@ export async function sendNotification(notificationData: NotificationData): Prom
     // Parse successful response
     const result: NotificationResponse = await response.json()
     
+    console.log('📬 Notification API response:', {
+      success: result.success,
+      sent: result.sent,
+      failed: result.failed,
+      total: result.total,
+      message: result.message
+    })
+    
     if (result.success && result.sent && result.sent > 0) {
+      console.log('✅ Notification sent successfully to', result.sent, 'device(s)')
       return true
     }
 
     // Log if no subscriptions found (not necessarily an error)
     if (result.message?.includes('No push subscriptions')) {
-      console.log('No push subscriptions found for user:', notificationData.user_id)
+      console.warn('⚠️ No push subscriptions found for user:', notificationData.user_id)
+      console.warn('💡 User may need to enable notifications in their browser settings')
+    } else if (result.failed && result.failed > 0) {
+      console.error('❌ Failed to send notifications:', {
+        failed: result.failed,
+        total: result.total,
+        results: result.results
+      })
     }
 
     return result.success || false
   } catch (error) {
     // Handle network errors and other exceptions
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    console.error('Error in sendNotification:', {
+    console.error('❌ Error in sendNotification:', {
       error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
       notificationData: {
         user_id: notificationData.user_id,
         title: notificationData.title
@@ -504,6 +540,46 @@ export async function sendSystemNotification(
   })
 }
 
+/**
+ * Test notification function - sends a test notification to the current user
+ * Use this to verify notifications are working
+ * @returns Promise resolving to true if notification was sent successfully
+ */
+export async function testNotification(): Promise<boolean> {
+  try {
+    // Get current user
+    const { supabase } = await import('@/lib/supabase')
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      console.error('❌ No user logged in. Please log in first.')
+      return false
+    }
+
+    console.log('🧪 Sending test notification to user:', user.id)
+    
+    return sendNotification({
+      user_id: user.id,
+      title: '🧪 Test Notification',
+      body: 'This is a test notification from ConnectAfrik. If you see this, notifications are working!',
+      icon: '/assets/images/logo.png',
+      badge: '/assets/images/logo.png',
+      tag: 'test-notification',
+      data: {
+        type: 'test',
+        url: '/feed',
+        timestamp: Date.now().toString()
+      },
+      requireInteraction: false,
+      silent: false,
+      vibrate: [200, 100, 200]
+    })
+  } catch (error) {
+    console.error('❌ Error in testNotification:', error)
+    return false
+  }
+}
+
 // Export a default object for backward compatibility
 export const notificationService = {
   sendNotification,
@@ -513,5 +589,6 @@ export const notificationService = {
   sendMissedCallNotification,
   sendPostInteractionNotification,
   sendNewPostNotification,
-  sendSystemNotification
+  sendSystemNotification,
+  testNotification
 }

@@ -111,8 +111,42 @@ export const initialize = async (): Promise<boolean> => {
       // Set up message listener for foreground messages
       onMessage(messaging, (payload) => {
         console.log('📬 Foreground FCM message received:', payload)
-        // Handle foreground messages if needed
-        // You can show a notification or update UI
+        
+        // Show notification even when app is in foreground
+        if (payload.notification && registration) {
+          const notificationTitle = payload.notification.title || 'ConnectAfrik'
+          const notificationBody = payload.notification.body || 'You have a new notification'
+          
+          const notificationOptions: any = {
+            body: notificationBody,
+            icon: payload.notification.icon || '/assets/images/logo.png',
+            badge: '/assets/images/logo.png',
+            tag: payload.data?.tag || 'connectafrik-notification',
+            data: payload.data || {},
+            image: payload.notification.image,
+            requireInteraction: payload.data?.requireInteraction === 'true',
+            silent: payload.data?.silent === 'true',
+          }
+          
+          if (payload.data?.vibrate) {
+            try {
+              notificationOptions.vibrate = JSON.parse(payload.data.vibrate)
+            } catch (e) {
+              notificationOptions.vibrate = [200, 100, 200]
+            }
+          }
+          
+          if (payload.data?.actions) {
+            try {
+              notificationOptions.actions = JSON.parse(payload.data.actions)
+            } catch (e) {
+              // Use default actions if parsing fails
+            }
+          }
+          
+          registration.showNotification(notificationTitle, notificationOptions)
+            .catch(err => console.error('Error showing foreground notification:', err))
+        }
       })
     } catch (error) {
       console.error('❌ Error initializing Firebase Messaging:', error)

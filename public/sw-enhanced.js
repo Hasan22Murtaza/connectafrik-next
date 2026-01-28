@@ -42,25 +42,31 @@ self.addEventListener('install', event => {
       })
       .catch(err => console.error('[SW] Failed to cache static assets:', err))
   );
-  self.skipWaiting(); // Activate immediately
+  self.skipWaiting(); // Activate immediately - important for offline notifications
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', event => {
   console.log('[SW] Activating service worker...');
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames
-          .filter(cacheName => cacheName.startsWith('connectafrik-') && cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE && cacheName !== IMAGE_CACHE)
-          .map(cacheName => {
-            console.log('[SW] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          })
-      );
-    })
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames
+            .filter(cacheName => cacheName.startsWith('connectafrik-') && cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE && cacheName !== IMAGE_CACHE)
+            .map(cacheName => {
+              console.log('[SW] Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            })
+        );
+      }),
+      // Claim all clients immediately - ensures service worker is active for push notifications
+      self.clients.claim(),
+      // Ensure service worker is ready to handle push notifications even when offline
+      self.registration.update()
+    ])
   );
-  self.clients.claim(); // Take control immediately
 });
 
 // Fetch event - smart caching strategies
@@ -194,25 +200,51 @@ self.addEventListener('sync', event => {
 });
 
 // Push notifications - FCM format
+// This works even when the app is offline because push notifications
+// are delivered through the browser's push service, not the app's network
 self.addEventListener('push', event => {
-  console.log('[SW] FCM Push notification received');
+  console.log('[SW] 🔔 FCM Push notification received (offline-capable)');
+  console.log('[SW] Event data type:', event.data ? event.data.type : 'no data');
 
-  let notificationTitle = 'ConnectAfrik';
-  let notificationBody = 'You have a new notification';
-  let notificationIcon = '/icons/icon-192x192.png';
-  let notificationBadge = '/icons/icon-96x96.png';
-  let notificationImage = null;
-  let notificationTag = 'connectafrik-notification';
-  let notificationData = {};
-  let notificationActions = [];
-  let requireInteraction = false;
-  let silent = false;
-  let vibrate = [200, 100, 200];
+  // Ensure the event is kept alive even if offline
+  const promiseChain = Promise.resolve().then(() => {
+    let notificationTitle = 'ConnectAfrik';
+    let notificationBody = 'You have a new notification';
+    let notificationIcon = '/icons/icon-192x192.png';
+    let notificationBadge = '/icons/icon-96x96.png';
+    let notificationImage = null;
+    let notificationTag = 'connectafrik-notification';
+    let notificationData = {};
+    let notificationActions = [];
+    let requireInteraction = false;
+    let silent = false;
+    let vibrate = [200, 100, 200];
 
-  if (event.data) {
+    if (event.data) {
     try {
-      const payload = event.data.json();
-      console.log('[SW] FCM Push payload:', payload);
+      // Handle both text() and json() methods
+      let payload;
+      try {
+        payload = event.data.json();
+        console.log('[SW] ✅ FCM Push payload (JSON):', payload);
+      } catch (jsonError) {
+        // If json() fails, try text()
+        try {
+          const text = event.data.text();
+          console.log('[SW] 📝 FCM Push payload (text):', text);
+          payload = JSON.parse(text);
+        } catch (textError) {
+          console.error('[SW] ❌ Error parsing push data:', textError);
+          // Show default notification if parsing fails
+          return self.registration.showNotification('ConnectAfrik', {
+            body: 'You have a new notification',
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-96x96.png',
+            tag: 'connectafrik-notification',
+            data: { offline: true, parseError: true }
+          });
+        }
+      }
       
       // FCM sends data in notification and data fields
       if (payload.notification) {
@@ -329,29 +361,33 @@ self.addEventListener('push', event => {
           timestamp: Date.now()
         };
 
-        event.waitUntil(
-          self.registration.showNotification(title, options)
-        );
-
-    // Try to wake up the app by sending a message to all clients
-    event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then(clientList => {
-          for (const client of clientList) {
-            client.postMessage({
-              type: 'INCOMING_CALL',
-              data: {
-                roomId: roomId,
-                threadId: threadId,
-                token: notificationData.token,
-                callerId: notificationData.caller_id,
-                callType: callType,
-                callerName: callerName
-              }
-            });
-          }
-        })
-    );
+        return self.registration.showNotification(title, options)
+          .then(() => {
+            // Try to wake up the app by sending a message to all clients (non-blocking)
+            return clients.matchAll({ type: 'window', includeUncontrolled: true })
+              .then(clientList => {
+                for (const client of clientList) {
+                  try {
+                    client.postMessage({
+                      type: 'INCOMING_CALL',
+                      data: {
+                        roomId: roomId,
+                        threadId: threadId,
+                        token: notificationData.token,
+                        callerId: notificationData.caller_id,
+                        callType: callType,
+                        callerName: callerName
+                      }
+                    });
+                  } catch (e) {
+                    console.warn('[SW] Could not send message to client (may be offline):', e);
+                  }
+                }
+              })
+              .catch(err => {
+                console.warn('[SW] Could not wake up app (may be offline):', err);
+              });
+          });
       } else {
         // Regular notification handling
         const options = {
@@ -377,33 +413,33 @@ self.addEventListener('push', event => {
           timestamp: Date.now()
         };
 
-        event.waitUntil(
-          self.registration.showNotification(notificationTitle, options)
-        );
+        return self.registration.showNotification(notificationTitle, options);
       }
     } catch (error) {
       console.error('[SW] Error parsing FCM push notification:', error);
-      // Fallback notification
-      event.waitUntil(
-        self.registration.showNotification('ConnectAfrik', {
-          body: 'You have a new notification',
-          icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-96x96.png',
-          tag: 'connectafrik-notification'
-        })
-      );
-    }
-  } else {
-    // No data, show default notification
-    event.waitUntil(
-      self.registration.showNotification('ConnectAfrik', {
+      // Fallback notification - always show something even if parsing fails
+      return self.registration.showNotification('ConnectAfrik', {
         body: 'You have a new notification',
         icon: '/icons/icon-192x192.png',
         badge: '/icons/icon-96x96.png',
-        tag: 'connectafrik-notification'
-      })
-    );
+        tag: 'connectafrik-notification',
+        data: { offline: true }
+      });
+    }
+  } else {
+    // No data, show default notification
+    return self.registration.showNotification('ConnectAfrik', {
+      body: 'You have a new notification',
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-96x96.png',
+      tag: 'connectafrik-notification',
+      data: { offline: true }
+    });
   }
+  });
+  
+  // Keep the service worker alive until notification is shown
+  event.waitUntil(promiseChain);
 });
 
 // Notification click
