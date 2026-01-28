@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { checkAndSetupFCMTokenOnLogin } from '@/shared/services/pushNotificationService'
 
 interface AuthContextType {
   user: User | null
@@ -38,15 +39,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      
+      // Check and setup FCM token on initial session load if user is logged in
+      if (session?.user && typeof window !== 'undefined') {
+        checkAndSetupFCMTokenOnLogin()
+      }
     })
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      
+      // Check and setup FCM token on login
+      if (event === 'SIGNED_IN' && session?.user && typeof window !== 'undefined') {
+        checkAndSetupFCMTokenOnLogin()
+      }
     })
 
     return () => subscription.unsubscribe()

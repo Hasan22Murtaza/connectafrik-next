@@ -28,26 +28,6 @@ export const useNotifications = () => {
         
         const subscribed = await pushNotificationService.isSubscribed()
         setIsSubscribed(subscribed)
-        
-        if (currentPermission === 'granted' && !subscribed) {
-          const autoSubscribedKey = `push_notifications_auto_subscribed_${user?.id}`
-          const hasAttemptedAutoSubscribe = typeof window !== 'undefined' 
-            ? localStorage.getItem(autoSubscribedKey) === 'true'
-            : false
-          
-          if (!hasAttemptedAutoSubscribe) {
-            try {
-              const subscription = await pushNotificationService.subscribe()
-              if (subscription) {
-                setIsSubscribed(true)
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem(autoSubscribedKey, 'true')
-                }
-              }
-            } catch (error) {
-            }
-          }
-        }
       }
     } catch (error) {
     } finally {
