@@ -2167,7 +2167,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* Floating reaction animation */}
           {callStatus === 'connected' && reactionAnimation && lastReactionEmoji && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20 mb-20 ">
               <div
                 className="text-3xl sm:text-4xl md:text-5xl animate-ping"
                 style={{
