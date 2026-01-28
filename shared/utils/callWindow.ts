@@ -39,7 +39,20 @@ export function openCallWindow(params: {
 
   if (!callWindow) {
     console.error('Failed to open call window. Please allow popups for this site.')
-    alert('Please allow popups to make calls. Click allow in your browser settings.')
+    alert(
+      'Popups are blocked. To make calls, please allow popups for this site:\n\n' +
+      'Chrome/Edge:\n' +
+      '1. Click the popup blocked icon (🚫) in the address bar\n' +
+      '2. Select "Always allow popups and redirects from [this site]"\n' +
+      '3. Click "Done"\n\n' +
+      'Firefox:\n' +
+      '1. Click the popup blocked icon (🚫) in the address bar\n' +
+      '2. Click "Allow popups for this site"\n\n' +
+      'Safari:\n' +
+      '1. Go to Safari > Settings > Websites > Pop-up Windows\n' +
+      '2. Find this site and change to "Allow"\n\n' +
+      'After allowing popups, please try making the call again.'
+    )
     return null
   }
 
