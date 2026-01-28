@@ -2181,7 +2181,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* Accept/Reject Buttons Overlay - Inside video section for incoming calls */}
           {callStatus === 'ringing' && isIncoming && (
-            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
+            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 mb-20 sm:mb-0 px-4 z-30 pointer-events-auto">
               <div className="flex justify-center gap-3 sm:gap-4 md:gap-6">
                 <button
                   onClick={handleAcceptCall}
@@ -2210,7 +2210,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* End Call Button Overlay - Inside video section for outgoing calls */}
           {callStatus === 'ringing' && !isIncoming && (
-            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 px-4 z-30 pointer-events-auto">
+            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 mb-20 sm:mb-0 px-4 z-30 pointer-events-auto">
               <div className="flex flex-col items-center gap-3">
                 <button
                   onClick={handleEndCall}
@@ -2224,59 +2224,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             </div>
           )}
 
-          {/* Emoji Icon Button - Right side bottom */}
-          {/* {callStatus === 'connected' && (
-            <div className="absolute bottom-20 md:bottom-6 right-2 md:right-6 z-30 emoji-dropdown-container pointer-events-auto">
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowEmojiDropdown(!showEmojiDropdown);
-                  }}
-                  className="rounded-full p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-white/90 hover:bg-white text-gray-700 cursor-pointer"
-                  title="Reactions"
-                  aria-label="Show reactions"
-                  type="button"
-                  style={{ pointerEvents: 'auto' }}
-                >
-                  <Smile className="w-5 h-5 md:w-6 md:h-6" />
-                </button>
-                
-                {showEmojiDropdown && (
-                  <div className="absolute bottom-full right-0 mb-1 bg-transparent rounded-lg p-2 flex flex-col gap-1 animate-slideIn z-40 pointer-events-auto">
-                    {['👍', '❤️', '😂', '😮', '😢', '🙏'].map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEmojiReaction(emoji);
-                          setShowEmojiDropdown(false);
-                        }}
-                        className="text-2xl hover:scale-125 active:scale-150 transition-transform duration-200 hover:drop-shadow-lg rounded-full p-2 hover:bg-white/20 bg-white/10 backdrop-blur-sm cursor-pointer"
-                        title={
-                          {
-                            '👍': 'Thumbs up',
-                            '❤️': 'Love',
-                            '😂': 'Laughing',
-                            '😮': 'Surprised',
-                            '😢': 'Sad',
-                            '🙏': 'Praying'
-                          }[emoji]
-                        }
-                        type="button"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )} */}
+         
 
           {/* Controls Overlay - Positioned at bottom center of video */}
           {callStatus === 'connected' && (
-            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-2 sm:pb-3 md:pb-6 px-2 sm:px-3 md:px-4 z-10">
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-2 sm:pb-3 md:pb-6 mb-20 sm:mb-0 px-2 sm:px-3 md:px-4 z-10">
               <div className="space-y-2 sm:space-y-3 md:space-y-4 w-full max-w-2xl">
                 {/* Main controls - Mute, Video, Speaker, Message, End */}
                 <div className="flex justify-center items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
