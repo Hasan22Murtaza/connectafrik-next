@@ -92,16 +92,48 @@ export const initialize = async (): Promise<boolean> => {
     }
 
     // Register service worker (use enhanced version for production)
+    // Production: any domain that's not localhost or 127.0.0.1
     const isProduction = !window.location.hostname.includes('localhost') && 
-                        !window.location.hostname.includes('127.0.0.1') &&
-                        !window.location.hostname.includes('vercel.app');
+                        !window.location.hostname.includes('127.0.0.1');
+    
+    // Check HTTPS in production (required for service workers)
+    if (isProduction && window.location.protocol !== 'https:') {
+      console.warn('⚠️ Service workers require HTTPS in production. Current protocol:', window.location.protocol)
+      throw new Error('Service workers require HTTPS in production')
+    }
+    
+    // Log production detection
+    if (isProduction) {
+      console.log(`🌐 Production mode detected: ${window.location.hostname}`)
+    }
     
     const swPath = isProduction ? '/sw-enhanced.js' : '/sw.js';
-    registration = await navigator.serviceWorker.register(swPath)
-    console.log('✅ Service Worker registered:', registration)
+    console.log(`📦 Registering service worker: ${swPath} (${isProduction ? 'production' : 'development'})`)
+    
+    try {
+      registration = await navigator.serviceWorker.register(swPath, {
+        scope: '/',
+      })
+      console.log('✅ Service Worker registered:', {
+        scope: registration.scope,
+        active: registration.active?.state,
+        installing: registration.installing?.state,
+        waiting: registration.waiting?.state
+      })
 
-    // Wait for service worker to be ready
-    await navigator.serviceWorker.ready
+      // Wait for service worker to be ready
+      await navigator.serviceWorker.ready
+      console.log('✅ Service Worker is ready')
+    } catch (swError: any) {
+      console.error('❌ Error registering service worker:', {
+        error: swError.message,
+        path: swPath,
+        isProduction,
+        protocol: window.location.protocol,
+        hostname: window.location.hostname
+      })
+      throw swError
+    }
 
     // Initialize Firebase Messaging
     try {

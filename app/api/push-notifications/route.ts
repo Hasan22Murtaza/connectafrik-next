@@ -103,9 +103,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (!firebaseAdmin) {
-      console.error('Firebase Admin SDK not initialized')
+      console.error('❌ Firebase Admin SDK not initialized')
+      console.error('Environment check:', {
+        hasServiceAccount: !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
+        hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
+        hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+        hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+        nodeEnv: process.env.NODE_ENV
+      })
       return NextResponse.json(
-        { error: 'Push notifications not configured. Firebase Admin SDK not initialized.' },
+        { 
+          error: 'Push notifications not configured. Firebase Admin SDK not initialized.',
+          hint: 'Please check that FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL are set in your production environment variables.'
+        },
         { 
           status: 500,
           headers: corsHeaders
