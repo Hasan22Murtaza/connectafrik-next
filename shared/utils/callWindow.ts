@@ -27,7 +27,10 @@ export function openCallWindow(params: {
 
   // Open new window with specific dimensions (like Facebook)
   const width = 1200
-  const height = 800
+  // Calculate height based on device screen height (80% of screen height, min 600, max 1000)
+  const screenHeight = window.screen.height
+  const calculatedHeight = Math.min(Math.max(screenHeight * 0.8, 600), 1000)
+  const height = Math.round(calculatedHeight)
   const left = (window.screen.width - width) / 2
   const top = (window.screen.height - height) / 2
 
