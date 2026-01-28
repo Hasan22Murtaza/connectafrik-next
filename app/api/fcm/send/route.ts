@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
-import { getFirebaseAdmin } from '../fcm/_utils'
+import { getFirebaseAdmin } from './_utils'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -43,7 +43,7 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📱 Push notification API called (legacy endpoint - consider using /api/fcm/send)')
+    console.log('📱 FCM Send notification API called')
 
     const body = await request.json() as NotificationPayload
     const { user_id, title, body: notificationBody } = body
@@ -259,7 +259,7 @@ export async function POST(request: NextRequest) {
       }
     )
   } catch (error) {
-    console.error('❌ Error in push notification API:', error)
+    console.error('❌ Error in FCM send notification API:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
       { 
@@ -273,5 +273,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-

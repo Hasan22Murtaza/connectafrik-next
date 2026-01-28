@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Bell, BellOff, Settings, X } from 'lucide-react'
-import { pushNotificationService, NotificationPayload } from '@/shared/services/pushNotificationService'
+import { initialize, requestPermission, subscribe, unsubscribe, isSubscribed, sendLocalNotification, NotificationPayload } from '@/shared/utils/fcmClient'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -24,14 +24,14 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
     try {
       setIsLoading(true)
       
-      const supported = await pushNotificationService.initialize()
+      const supported = await initialize()
       setIsSupported(supported)
       
       if (supported) {
-        const currentPermission = await pushNotificationService.requestPermission()
+        const currentPermission = await requestPermission()
         setPermission(currentPermission)
         
-        const subscribed = await pushNotificationService.isSubscribed()
+        const subscribed = await isSubscribed()
         console.log('subscribed', subscribed)
         setIsSubscribed(subscribed)
       }
@@ -45,11 +45,11 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
     try {
       setIsLoading(true)
       
-      const newPermission = await pushNotificationService.requestPermission()
+      const newPermission = await requestPermission()
       setPermission(newPermission)
       
       if (newPermission === 'granted') {
-        const subscription = await pushNotificationService.subscribe()
+        const subscription = await subscribe()
         if (subscription) {
           setIsSubscribed(true)
           toast.success('Push notifications enabled! You\'ll receive notifications for friend requests, messages, and calls.')
@@ -70,7 +70,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
     try {
       setIsLoading(true)
       
-      const success = await pushNotificationService.unsubscribe()
+      const success = await unsubscribe()
       if (success) {
         setIsSubscribed(false)
         toast.success('Push notifications disabled.')
@@ -94,7 +94,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
         data: { url: '/feed' }
       }
       
-      await pushNotificationService.sendLocalNotification(testPayload)
+      await sendLocalNotification(testPayload)
       toast.success('Test notification sent!')
     } catch (error) {
       toast.error('Failed to send test notification.')
