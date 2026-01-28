@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
-import { getFirebaseAdmin } from './_utils'
+import { getFirebaseAdmin } from '../_utils'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
