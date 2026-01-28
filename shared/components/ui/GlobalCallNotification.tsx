@@ -1,5 +1,4 @@
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import VideoSDKCallModal from '@/features/video/components/VideoSDKCallModal'
 import { ringtoneService } from '@/features/video/services/ringtoneService'
 import React, { useEffect, useState } from 'react'
 

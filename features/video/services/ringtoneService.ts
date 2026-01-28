@@ -5,8 +5,18 @@ class RingtoneService {
   private isPlaying = false;
   private intervalId: NodeJS.Timeout | null = null;
 
+  // Default ringtone settings (WhatsApp-like)
+  private waveform: OscillatorType = 'triangle';
+  private pattern: { time: number; frequency: number }[] = [
+    { time: 0, frequency: 600 },
+    { time: 0.2, frequency: 800 },
+    { time: 0.4, frequency: 600 },
+  ];
+  private ringDuration = 0.6; // total of 3 short beeps
+  private pauseDuration = 0.4; // pause before repeating
+  private volume = 0.3;
+
   constructor() {
-    // Initialize AudioContext on user interaction
     this.initializeAudioContext();
   }
 
@@ -19,10 +29,7 @@ class RingtoneService {
   }
 
   private async ensureAudioContext() {
-    if (!this.audioContext) {
-      this.initializeAudioContext();
-    }
-
+    if (!this.audioContext) this.initializeAudioContext();
     if (this.audioContext && this.audioContext.state === 'suspended') {
       try {
         await this.audioContext.resume();
@@ -32,12 +39,24 @@ class RingtoneService {
     }
   }
 
-  async startRingtone() {
-    if (this.isPlaying || !this.audioContext) return;
+  setTone(options: {
+    waveform?: OscillatorType;
+    pattern?: { time: number; frequency: number }[];
+    ringDuration?: number;
+    pauseDuration?: number;
+    volume?: number;
+  }) {
+    if (options.waveform) this.waveform = options.waveform;
+    if (options.pattern) this.pattern = options.pattern;
+    if (options.ringDuration !== undefined) this.ringDuration = options.ringDuration;
+    if (options.pauseDuration !== undefined) this.pauseDuration = options.pauseDuration;
+    if (options.volume !== undefined) this.volume = options.volume;
+  }
 
+  async startRingtone() {
+    if (this.isPlaying) return;
     try {
       await this.ensureAudioContext();
-      
       this.isPlaying = true;
       this.playRingtonePattern();
     } catch (error) {
@@ -48,56 +67,42 @@ class RingtoneService {
   private playRingtonePattern() {
     if (!this.audioContext || !this.isPlaying) return;
 
-    // Play ringtone pattern: ring for 2 seconds, pause for 1 second, repeat
     this.playTone();
-    
+
+    const intervalTime = (this.ringDuration + this.pauseDuration) * 1000;
     this.intervalId = setInterval(() => {
-      if (this.isPlaying) {
-        this.playTone();
-      }
-    }, 3000); // Repeat every 3 seconds (2s ring + 1s pause)
+      if (this.isPlaying) this.playTone();
+    }, intervalTime);
   }
 
   private playTone() {
     if (!this.audioContext) return;
 
     try {
-      // Create oscillator for the ringtone
       this.oscillator = this.audioContext.createOscillator();
       this.gainNode = this.audioContext.createGain();
 
-      // Connect nodes
       this.oscillator.connect(this.gainNode);
       this.gainNode.connect(this.audioContext.destination);
 
-      // Set ringtone frequency (pleasant phone ring tone)
-      this.oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-      
-      // Set volume
+      this.oscillator.type = this.waveform;
+
       this.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(0.3, this.audioContext.currentTime + 0.1);
-      this.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + 2);
+      this.gainNode.gain.linearRampToValueAtTime(this.volume, this.audioContext.currentTime + 0.05);
+      this.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + this.ringDuration);
 
-      // Create ringtone pattern with frequency modulation
-      this.oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-      this.oscillator.frequency.setValueAtTime(1000, this.audioContext.currentTime + 0.5);
-      this.oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime + 1);
-      this.oscillator.frequency.setValueAtTime(1000, this.audioContext.currentTime + 1.5);
+      this.pattern.forEach(({ time, frequency }) => {
+        this.oscillator!.frequency.setValueAtTime(frequency, this.audioContext!.currentTime + time);
+      });
 
-      // Start and stop the tone
       this.oscillator.start(this.audioContext.currentTime);
-      this.oscillator.stop(this.audioContext.currentTime + 2);
+      this.oscillator.stop(this.audioContext.currentTime + this.ringDuration);
 
-      // Clean up
       this.oscillator.onended = () => {
-        if (this.oscillator) {
-          this.oscillator.disconnect();
-          this.oscillator = null;
-        }
-        if (this.gainNode) {
-          this.gainNode.disconnect();
-          this.gainNode = null;
-        }
+        this.oscillator?.disconnect();
+        this.gainNode?.disconnect();
+        this.oscillator = null;
+        this.gainNode = null;
       };
     } catch (error) {
       console.error('Failed to play tone:', error);
@@ -113,11 +118,7 @@ class RingtoneService {
     }
 
     if (this.oscillator) {
-      try {
-        this.oscillator.stop();
-      } catch (error) {
-        // Oscillator might already be stopped
-      }
+      try { this.oscillator.stop(); } catch {}
       this.oscillator = null;
     }
 
@@ -127,42 +128,25 @@ class RingtoneService {
     }
   }
 
-  // Main method for playing ringtone (used by VideoSDKCallModal)
   async playRingtone() {
     try {
       await this.startRingtone();
-      return {
-        stop: () => this.stopRingtone()
-      };
-    } catch (error) {
-      console.error('Failed to play ringtone:', error);
-      return {
-        stop: () => this.stopRingtone()
-      };
+      return { stop: () => this.stopRingtone() };
+    } catch {
+      return { stop: () => this.stopRingtone() };
     }
   }
 
-  // Alternative method using HTML5 Audio with a ringtone file
   async playRingtoneFile(audioUrl: string = '/sounds/ringtone.mp3') {
     try {
       const audio = new Audio(audioUrl);
       audio.loop = true;
       audio.volume = 0.5;
-      
       await audio.play();
-      
-      return {
-        stop: () => {
-          audio.pause();
-          audio.currentTime = 0;
-        }
-      };
-    } catch (error) {
-      console.warn('Failed to play ringtone file, falling back to generated tone:', error);
+      return { stop: () => { audio.pause(); audio.currentTime = 0; } };
+    } catch {
       this.startRingtone();
-      return {
-        stop: () => this.stopRingtone()
-      };
+      return { stop: () => this.stopRingtone() };
     }
   }
 
@@ -175,9 +159,6 @@ class RingtoneService {
   }
 }
 
-// Create a singleton instance
+// Singleton instance
 export const ringtoneService = new RingtoneService();
-
 export default ringtoneService;
-
-
