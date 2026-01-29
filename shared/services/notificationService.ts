@@ -124,7 +124,7 @@ export async function sendNotification(notificationData: NotificationData): Prom
         results: result.results
       })
     }
-
+    console.log('🔔 Notification API response:', result)
     return result.success || false
   } catch (error) {
     // Handle network errors and other exceptions

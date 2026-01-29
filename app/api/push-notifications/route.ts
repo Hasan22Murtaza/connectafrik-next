@@ -43,7 +43,7 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📱 Push notification API called (legacy endpoint - consider using /api/fcm/send)')
+    console.log('📱 Push notification API called')
 
     const body = await request.json() as NotificationPayload
     const { user_id, title, body: notificationBody } = body
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
 
         const response = await admin.messaging(firebaseAdmin).send(fcmMessage)
         
-        console.log(`✅ FCM notification sent successfully to ${subscription.device_type} device: ${response}`)
+        console.log(`✅ djs FCM notification sent successfully to ${subscription.device_type} device: ${response}`)
         return { 
           success: true, 
           endpoint: subscription.device_id || fcmToken.substring(0, 50), 
