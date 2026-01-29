@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { initialize, requestPermission, subscribe, unsubscribe, isSubscribed, sendLocalNotification } from '../utils/fcmClient'
+import { initialize, requestPermission, subscribe, unsubscribe, isSubscribed as checkIsSubscribed, sendLocalNotification } from '../utils/fcmClient'
 import { useAuth } from '@/contexts/AuthContext'
 
 export const useNotifications = () => {
@@ -26,7 +26,7 @@ export const useNotifications = () => {
         const currentPermission = await requestPermission()
         setPermission(currentPermission)
         
-        const subscribed = await isSubscribed()
+        const subscribed = await checkIsSubscribed()
         setIsSubscribed(subscribed)
       }
     } catch (error) {

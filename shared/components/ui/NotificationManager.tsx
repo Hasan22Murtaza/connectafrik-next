@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Bell, BellOff, Settings, X } from 'lucide-react'
-import { initialize, requestPermission, subscribe, unsubscribe, isSubscribed, sendLocalNotification, NotificationPayload } from '@/shared/utils/fcmClient'
+import { initialize, requestPermission, subscribe, unsubscribe, isSubscribed as checkIsSubscribed, sendLocalNotification, NotificationPayload } from '@/shared/utils/fcmClient'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -31,7 +31,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
         const currentPermission = await requestPermission()
         setPermission(currentPermission)
         
-        const subscribed = await isSubscribed()
+        const subscribed = await checkIsSubscribed()
         console.log('subscribed', subscribed)
         setIsSubscribed(subscribed)
       }
