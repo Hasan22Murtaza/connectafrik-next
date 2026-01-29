@@ -6,7 +6,6 @@ import GroupPostCard from "@/features/groups/components/GroupPostCard";
 import { useGroups } from "@/shared/hooks/useGroups";
 import { Group } from "@/shared/types";
 import {
-  BookOpen,
   Compass,
   Plus,
   Search,
@@ -14,14 +13,17 @@ import {
   Settings,
   FileText,
   ChevronRight,
-  Menu,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
+import {
+  useShimmerCount,
+  GroupsFeedShimmer,
+  GroupsGridShimmer,
+} from "@/shared/components/ui/ShimmerLoaders";
 
 const GroupsPage: React.FC = () => {
   const { user } = useAuth();
@@ -42,6 +44,7 @@ const GroupsPage: React.FC = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllJoined, setShowAllJoined] = useState(false);
+  const shimmerCount = useShimmerCount();
 
   // Fetch managed and joined groups separately
   useEffect(() => {
@@ -413,8 +416,8 @@ const GroupsPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+    <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full min-w-0">
         {/* Mobile Header */}
         <div className="lg:hidden mb-4">
           <div className="flex items-center justify-between mb-4">
@@ -504,14 +507,12 @@ const GroupsPage: React.FC = () => {
           {/* Main Content */}
           <div className="flex-1 min-w-0 w-full lg:w-auto">
             {view === "feed" && (
-              <div className="max-w-2xl mx-auto">
+              <div className="max-w-2xl mx-auto w-full min-w-0">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
                   Recent activity
                 </h2>
                 {activityLoading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
+                  <GroupsFeedShimmer />
                 ) : recentActivity.length === 0 ? (
                   <div className="bg-white rounded-lg shadow-sm p-6 sm:p-12 text-center">
                     <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
@@ -576,7 +577,7 @@ const GroupsPage: React.FC = () => {
             )}
 
             {view === "discover" && (
-              <div className="max-w-4xl mx-auto">
+              <div className="max-w-4xl mx-auto w-full min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
                     Discover Groups
@@ -584,9 +585,7 @@ const GroupsPage: React.FC = () => {
                 </div>
 
                 {loading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
+                  <GroupsGridShimmer count={shimmerCount} />
                 ) : filteredGroups.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
                     {filteredGroups.map((group) => (
@@ -625,14 +624,12 @@ const GroupsPage: React.FC = () => {
             )}
 
             {view === "my-groups" && (
-              <div className="max-w-4xl mx-auto">
+              <div className="max-w-4xl mx-auto w-full min-w-0">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
                   Your Groups
                 </h2>
                 {loading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
+                  <GroupsGridShimmer count={shimmerCount} />
                 ) : filteredGroups.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
                     {filteredGroups.map((group) => (

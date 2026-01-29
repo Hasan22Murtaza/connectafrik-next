@@ -16,6 +16,11 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState, Suspense } from "react";
 import toast from "react-hot-toast";
+import {
+  useShimmerCount,
+  MarketplaceGridShimmer,
+  MarketplacePageShimmer,
+} from "@/shared/components/ui/ShimmerLoaders";
 
 const MarketplacePage: React.FC = () => {
   const { user } = useAuth();
@@ -32,6 +37,7 @@ const MarketplacePage: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const shimmerCount = useShimmerCount();
 
   const categories = [
     { value: "", label: "All Categories", emoji: "🛍️" },
@@ -173,8 +179,8 @@ const MarketplacePage: React.FC = () => {
     }
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto">
-      <div className="flex gap-4">
+    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
+      <div className="flex gap-4 min-w-0 w-full">
         {/* Sidebar */}
         <aside
           className={`fixed md:relative inset-y-0 left-0 z-40
@@ -283,7 +289,7 @@ const MarketplacePage: React.FC = () => {
         )}
 
         {/* Main */}
-        <main className="flex-1 px-4 py-6">
+        <main className="flex-1 px-3 sm:px-4 py-6 min-w-0 w-full">
           <div className="flex items-center justify-between mb-6 flex-wrap md:flex-nowrap gap-4 ">
             <div className="max-w-3xl">
               <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -338,9 +344,7 @@ const MarketplacePage: React.FC = () => {
 
           {/* Products */}
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin h-8 w-8 border-b-2 border-primary-600 rounded-full" />
-            </div>
+            <MarketplaceGridShimmer count={shimmerCount} />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
               {filteredProducts.map((p) => (
@@ -367,11 +371,7 @@ const MarketplacePage: React.FC = () => {
 
 const MarketplacePageWrapper: React.FC = () => {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-b-2 border-primary-600 rounded-full" />
-      </div>
-    }>
+    <Suspense fallback={<MarketplacePageShimmer />}>
       <MarketplacePage />
     </Suspense>
   );

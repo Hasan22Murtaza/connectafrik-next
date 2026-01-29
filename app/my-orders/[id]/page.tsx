@@ -2,27 +2,26 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { 
-  ArrowLeft, 
-  Package, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  MapPin, 
-  Phone, 
-  Mail, 
+import {
+  Package,
+  Clock,
+  CheckCircle,
+  XCircle,
   CreditCard,
   User,
   Calendar,
   FileText,
   Truck,
   ShoppingBag,
-  ChevronDown
+  ChevronDown,
+  Mail,
+  Phone
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
+import { OrderDetailPageShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 interface OrderDetail {
   id: string
@@ -281,11 +280,7 @@ const statusColor = deliveryStatus
 
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <OrderDetailPageShimmer />
   }
 
   if (!order) {
@@ -307,10 +302,10 @@ const statusColor = deliveryStatus
   const otherParty = isBuyer ? order.seller : order.buyer
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
+        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Details</h1>
@@ -325,8 +320,8 @@ const statusColor = deliveryStatus
       </div>
 
       {/* Content */}
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
-        <div className="grid md:grid-cols-3 gap-6">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content */}
           <div className="md:col-span-2 space-y-6">
             {/* Product Information */}

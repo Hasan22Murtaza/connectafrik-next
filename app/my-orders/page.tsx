@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   ShoppingBag,
   Package,
   Clock,
@@ -16,6 +15,10 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
+import {
+  useShimmerCountMd,
+  MyOrdersGridShimmer,
+} from "@/shared/components/ui/ShimmerLoaders";
 
 interface Order {
   id: string;
@@ -51,6 +54,7 @@ const MyOrders: React.FC = () => {
   const [sales, setSales] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const shimmerCount = useShimmerCountMd();
 
   useEffect(() => {
     if (user) {
@@ -387,10 +391,10 @@ const MyOrders: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
+        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
           <div className="flex items-center space-x-2 mb-6">
             <ShoppingBag className="w-7 h-7 text-primary-600" />
             <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
@@ -474,11 +478,9 @@ const MyOrders: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-          </div>
+          <MyOrdersGridShimmer count={shimmerCount} />
         ) : currentOrders.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {currentOrders.map((order) =>

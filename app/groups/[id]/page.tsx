@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   Users,
   MessageCircle,
   Shield,
@@ -13,12 +12,9 @@ import {
   Target,
   Tag,
   Plus,
-  LogOut,
   Edit,
   UserPlus,
-  Share2,
   FileText,
-  Image as ImageIcon,
   Calendar,
   Images,
   Folder,
@@ -41,9 +37,13 @@ import GroupEventsList from '@/features/groups/components/GroupEventsList'
 import GroupMediaGallery from '@/features/groups/components/GroupMediaGallery'
 import GroupFilesList from '@/features/groups/components/GroupFilesList'
 import { useGroupEvents } from '@/shared/hooks/useGroupEvents'
-import { getCategoryInfoLarge, getRoleIcon } from '@/shared/utils/groupUtils'
+import { getCategoryInfoLarge } from '@/shared/utils/groupUtils'
 import { CiViewTable } from "react-icons/ci";
-
+import {
+  useFeedShimmerCount,
+  GroupPostsFeedShimmer,
+  GroupDetailPageShimmer,
+} from '@/shared/components/ui/ShimmerLoaders'
 
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
@@ -70,7 +70,8 @@ const GroupDetailPage: React.FC = () => {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [isSticky, setIsSticky] = useState(false)
-  
+  const feedShimmerCount = useFeedShimmerCount()
+
   const {
     events,
     loading: eventsLoading,
@@ -187,11 +188,7 @@ const GroupDetailPage: React.FC = () => {
   }
 
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    )
+    return <GroupDetailPageShimmer />
   }
 
   if (!group) {
@@ -414,9 +411,7 @@ const GroupDetailPage: React.FC = () => {
 
                 {/* Posts Feed */}
                 {postsLoading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
+                  <GroupPostsFeedShimmer count={feedShimmerCount} />
                 ) : groupPosts.length === 0 ? (
                   <div className="bg-white rounded-lg shadow-sm p-12 text-center">
                     <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />

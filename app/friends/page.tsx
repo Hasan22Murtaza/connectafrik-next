@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { notificationService } from '@/shared/services/notificationService';
+import { useShimmerCount, FriendsGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
 
 const FriendsPage: React.FC = () => {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ const FriendsPage: React.FC = () => {
   const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
   const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
   const [activeSection, setActiveSection] = useState<"home" | "requests" | "suggestions" | "all" | "birthdays" | "custom">("home");
+  const shimmerCount = useShimmerCount();
 
   useEffect(() => {
     if (user) {
@@ -426,9 +428,7 @@ const FriendsPage: React.FC = () => {
 
                   {/* Friend Requests Grid */}
                   {loading ? (
-                    <div className="flex justify-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                    </div>
+                    <FriendsGridShimmer count={shimmerCount * 2} />
                   ) : requests.length > 0 ? (
                     <>
                       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
@@ -533,9 +533,7 @@ const FriendsPage: React.FC = () => {
 
                   {/* Suggestions Grid */}
                   {suggestionsLoading ? (
-                    <div className="flex justify-center py-12">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                    </div>
+                    <FriendsGridShimmer count={shimmerCount * 2} />
                   ) : suggestions.length > 0 ? (
                     <>
                       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
@@ -633,9 +631,7 @@ const FriendsPage: React.FC = () => {
 
                 {/* Friend Requests Grid */}
                 {loading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
+                  <FriendsGridShimmer count={shimmerCount * 2} />
                 ) : requests.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {requests.map((request) => (
@@ -814,9 +810,7 @@ const FriendsPage: React.FC = () => {
 
                 {/* Suggestions Grid */}
                 {suggestionsLoading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
+                  <FriendsGridShimmer count={shimmerCount * 2} />
                 ) : filteredSuggestions.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {filteredSuggestions.map((suggestion) => (
