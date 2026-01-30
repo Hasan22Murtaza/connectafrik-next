@@ -1,9 +1,10 @@
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ringtoneService } from '@/features/video/services/ringtoneService'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 const GlobalCallNotification: React.FC = () => {
   const { callRequests, currentUser, clearCallRequest } = useProductionChat()
+  const openedForRoomIdRef = useRef<string | null>(null)
   const [activeCall, setActiveCall] = useState<{
     threadId: string
     type: 'audio' | 'video'
@@ -28,23 +29,26 @@ const GlobalCallNotification: React.FC = () => {
       
       // Only show if it's an incoming call (not from current user)
       if (callRequest.callerId !== currentUser?.id) {
-        // Only open new window if we don't already have an active call for this thread
+        const roomId = callRequest.roomId || ''
+        // Only open new window once per room (avoid multiple accept screens)
+        const alreadyOpenedForThisRoom = openedForRoomIdRef.current === roomId
         if (!activeCall || activeCall.threadId !== threadId) {
           const newActiveCall = {
             threadId,
             type: callRequest.type,
             callerName: callRequest.callerName || 'Unknown caller',
-            roomId: callRequest.roomId || '',
+            roomId,
             token: callRequest.token || '',
             callerId: callRequest.callerId || ''
           }
           setActiveCall(newActiveCall)
           
-          // Open new call window for incoming call (like Facebook)
-          if (typeof window !== 'undefined' && callRequest.roomId) {
+          // Open call window only once per room (openCallWindow also reuses/focuses existing window)
+          if (typeof window !== 'undefined' && roomId && !alreadyOpenedForThisRoom) {
+            openedForRoomIdRef.current = roomId
             import('@/shared/utils/callWindow').then(({ openCallWindow }) => {
               openCallWindow({
-                roomId: callRequest.roomId!,
+                roomId,
                 callType: callRequest.type,
                 threadId,
                 callerName: callRequest.callerName || 'Unknown',
@@ -70,16 +74,13 @@ const GlobalCallNotification: React.FC = () => {
         console.log('📞 GlobalCallNotification: Call request is from current user, ignoring')
       }
     } else {
-     
       if (activeCall) {
-       
+        // keep activeCall until CLEAR
       } else {
         console.log('📞 GlobalCallNotification: No call requests and no active call - clearing')
-        // Only clear if there's truly no active call
         setActiveCall(null)
         setIsCallModalOpen(false)
-        
-        // Stop ringtone if no active calls
+        openedForRoomIdRef.current = null
         if (ringtoneRef) {
           ringtoneRef.stop()
           setRingtoneRef(null)
@@ -108,6 +109,7 @@ const GlobalCallNotification: React.FC = () => {
         clearCallRequest(event.data.threadId)
         setActiveCall(null)
         setIsCallModalOpen(false)
+        openedForRoomIdRef.current = null
         if (ringtoneRef) {
           ringtoneRef.stop()
           setRingtoneRef(null)

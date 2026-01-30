@@ -4,7 +4,7 @@ import { ringtoneService } from '@/features/video/services/ringtoneService';
 import { supabase } from '@/lib/supabase';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { notificationService } from '@/shared/services/notificationService';
-import { MessageSquare, Mic, MicOff, PhoneOff, Video, VideoOff, Volume2, VolumeX } from 'lucide-react';
+import { MessageSquare, Mic, MicOff, PhoneOff, Video, VideoOff, Volume1, Volume2 } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface VideoSDKCallModalProps {
@@ -56,7 +56,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const [callStatus, setCallStatus] = useState<'connecting' | 'ringing' | 'connected' | 'ended'>('connecting');
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoEnabled, setIsVideoEnabled] = useState(callType === 'video');
-  const [isSpeakerEnabled, setIsSpeakerEnabled] = useState(true);
+  type SpeakerLevel = 'normal' | 'low' | 'loud';
+  const [speakerLevel, setSpeakerLevel] = useState<SpeakerLevel>('normal');
+  const SPEAKER_VOLUMES: Record<SpeakerLevel, number> = { normal: 0.85, loud: 1, low: 0.3 };
   const [callDuration, setCallDuration] = useState(0);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
@@ -79,6 +81,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const currentMeetingRef = useRef<any>(null);
   const callStatusRef = useRef<'connecting' | 'ringing' | 'connected' | 'ended'>('connecting');
   const videoSDKModuleRef = useRef<{ VideoSDK: any } | null>(null);
+  const speakerLevelRef = useRef<SpeakerLevel>(speakerLevel);
+
+  useEffect(() => {
+    speakerLevelRef.current = speakerLevel;
+  }, [speakerLevel]);
 
   // Preload VideoSDK when incoming call modal opens so Accept is faster
   useEffect(() => {
@@ -1511,17 +1518,23 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   };
 
   const toggleSpeaker = () => {
-    setIsSpeakerEnabled(prev => {
-      const next = !prev;
+    setSpeakerLevel(prev => {
+      const next: SpeakerLevel = prev === 'normal' ? 'loud' : prev === 'loud' ? 'low' : 'normal';
+      speakerLevelRef.current = next;
+      const vol = SPEAKER_VOLUMES[next];
       const audioElement = remoteAudioRef.current;
       if (audioElement) {
-        audioElement.muted = !next;
-        if (next) {
-          const playPromise = audioElement.play();
-          if (playPromise) {
-            playPromise.catch(() => undefined);
+        audioElement.muted = false;
+        audioElement.volume = vol;
+        const playPromise = audioElement.play();
+        if (playPromise) playPromise.catch(() => undefined);
+        // Re-apply volume after a tick (some browsers reset on play)
+        requestAnimationFrame(() => {
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.volume = vol;
+            remoteAudioRef.current.muted = false;
           }
-        }
+        });
       }
       return next;
     });
@@ -1602,15 +1615,21 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             audioElement.srcObject = combinedStream;
           }
 
-          // Control mute state
-          audioElement.muted = !isSpeakerEnabled;
+          const vol = SPEAKER_VOLUMES[speakerLevelRef.current];
+          audioElement.muted = false;
+          audioElement.volume = vol;
 
-          // Ensure audio is playing
-          if (isSpeakerEnabled && audioElement.paused) {
+          if (audioElement.paused) {
             const playPromise = audioElement.play();
             if (playPromise) {
               playPromise
-                .then(() => {})
+                .then(() => {
+                  // Re-apply volume after stream is playing (loud speaker fix)
+                  if (remoteAudioRef.current) {
+                    remoteAudioRef.current.volume = SPEAKER_VOLUMES[speakerLevelRef.current];
+                    remoteAudioRef.current.muted = false;
+                  }
+                })
                 .catch(() => {});
             }
           }
@@ -1643,7 +1662,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     } else if (videoElement) {
       videoElement.srcObject = null;
     }
-  }, [remoteStreams, isSpeakerEnabled, callType]);
+  }, [remoteStreams, speakerLevel, callType]);
 
 
   // Simulate call duration timer
@@ -1851,7 +1870,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             );
           })()}
 
-          <audio ref={remoteAudioRef} autoPlay playsInline muted={!isSpeakerEnabled} className="hidden" />
+          <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
 
           {/* Call Status Overlay */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
@@ -1988,15 +2007,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
                   <button
                     onClick={toggleSpeaker}
-                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
-                      isSpeakerEnabled 
-                        ? 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm' 
-                        : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
-                    }`}
-                    title={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
-                    aria-label={isSpeakerEnabled ? 'Turn off speaker' : 'Turn on speaker'}
+                    className="rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm"
+                    title={speakerLevel === 'normal' ? 'Speaker: normal' : speakerLevel === 'loud' ? 'Speaker: loud' : 'Speaker: low'}
+                    aria-label={`Speaker ${speakerLevel}`}
                   >
-                    {isSpeakerEnabled ? <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <VolumeX className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
+                    {speakerLevel === 'low' ? (
+                      <Volume1 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                    ) : (
+                      <Volume2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                    )}
                   </button>
 
                   {/* Send Message Button */}
