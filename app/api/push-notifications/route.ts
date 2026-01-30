@@ -124,12 +124,38 @@ export async function POST(request: NextRequest) {
 
     // Prepare base FCM message payload
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
-      notification: {
-        title,
-        body: notificationBody,
-        imageUrl: body.image,
+
+      data: {
+        ...(body.data || {}),
+        icon: body.icon || '/assets/images/logo.png',
+        badge: body.badge || '/assets/images/logo.png',
+        tag: body.tag || 'connectafrik-notification',
+        requireInteraction: String(body.requireInteraction || false),
+        silent: String(body.silent || false),
+        vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),
+        timestamp: String(Date.now()),
+        actions: JSON.stringify(body.actions || [
+          {
+            action: 'view',
+            title: 'View',
+            icon: '/icons/view.png'
+          },
+          {
+            action: 'dismiss',
+            title: 'Dismiss',
+            icon: '/icons/dismiss.png'
+          }
+        ]),
       },
 
+      apns: {
+        payload: {
+          aps: {
+            sound: body.silent ? undefined : 'default',
+            badge: 1,
+          },
+        },
+      },
     }
 
     const sendPromises = subscriptions.map(async (subscription) => {
