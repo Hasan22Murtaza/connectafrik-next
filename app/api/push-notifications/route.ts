@@ -127,7 +127,6 @@ export async function POST(request: NextRequest) {
 
       data: {
         ...(body.data || {}),
-        message_id: Math.random().toString(36).substring(2, 15),
         icon: body.icon || '/assets/images/logo.png',
         badge: body.badge || '/assets/images/logo.png',
         tag: body.tag || 'connectafrik-notification',

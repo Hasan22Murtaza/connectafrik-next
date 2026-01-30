@@ -219,9 +219,8 @@ export async function sendMessageNotification(
     body: truncatedPreview,
     icon: '/assets/images/logo.png',
     badge: '/assets/images/logo.png',
-    tag: `message-${threadId}`,
+    tag: Math.random().toString(36).substring(2, 15),
     data: {
-      message_id: Math.random().toString(36).substring(2, 15),
       type: 'message',
       thread_id: threadId,
       url: '/chat'
