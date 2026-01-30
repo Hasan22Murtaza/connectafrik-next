@@ -219,7 +219,7 @@ export async function sendMessageNotification(
     body: truncatedPreview,
     icon: '/assets/images/logo.png',
     badge: '/assets/images/logo.png',
-    tag: Math.random().toString(36).substring(2, 15),
+    tag: `message-${threadId}`,
     data: {
       type: 'message',
       thread_id: threadId,
