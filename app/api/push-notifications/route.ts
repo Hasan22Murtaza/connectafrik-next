@@ -124,11 +124,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare base FCM message payload
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
-      notification: {
-        title,
-        body: notificationBody,
-        imageUrl: body.image,
-      },
+
       data: {
         ...(body.data || {}),
         icon: body.icon || '/assets/images/logo.png',
