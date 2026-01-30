@@ -69,6 +69,8 @@ interface PostCardProps {
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
   isPostLiked?: boolean;
+  /** When true, clicking the card does not navigate to the post page (e.g. when already on the detail page). */
+  disablePostClick?: boolean;
 }
 
 // Facebook-style background colors for short posts
@@ -96,6 +98,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   onEmojiReaction,
   postReactions = {},
   isPostLiked = false,
+  disablePostClick = false,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -567,6 +570,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   };
 
   const handlePostClick = (e: React.MouseEvent) => {
+    if (disablePostClick) return
     const target = e.target as HTMLElement
     if (
       target.closest('button') ||

@@ -1,16 +1,15 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Heart, MessageCircle, Share2, MoreHorizontal, User } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import CommentsSection from '@/features/social/components/CommentsSection'
-import { usePostReactionsWithUsers, ReactionGroup } from '@/shared/hooks/usePostReactionsWithUsers'
-import ReactionTooltip from '@/features/social/components/ReactionTooltip'
-import Link from 'next/link'
+import { PostCard } from '@/features/social/components/PostCard'
+import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
+import { PostCardShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 interface Post {
   id: string
@@ -43,10 +42,6 @@ const PostDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [isLiked, setIsLiked] = useState(false)
   const [showComments, setShowComments] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
-  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null)
-
-  const { reactions: postReactions, loading: reactionsLoading } = usePostReactionsWithUsers(postId)
 
   useEffect(() => {
     if (postId) {
@@ -201,10 +196,81 @@ const PostDetailPage: React.FC = () => {
     }
   }
 
+  const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
+    if (!user) {
+      toast.error('Please sign in to react')
+      return
+    }
+    const reactionType = getReactionTypeFromEmoji(emoji)
+    try {
+      const { data: existingReaction, error: checkError } = await supabase
+        .from('post_reactions')
+        .select('id, reaction_type')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing reaction:', checkError)
+        toast.error('Failed to check reaction')
+        return
+      }
+
+      if (existingReaction && existingReaction.reaction_type === reactionType) {
+        const { error: deleteError } = await supabase
+          .from('post_reactions')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .eq('reaction_type', reactionType)
+        if (deleteError) throw deleteError
+        setPost((prev) =>
+          prev ? { ...prev, likes_count: Math.max(0, prev.likes_count - 1) } : null
+        )
+        toast.success('Reaction removed')
+        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
+        return
+      }
+
+      if (existingReaction) {
+        const { error: updateError } = await supabase
+          .from('post_reactions')
+          .update({ reaction_type: reactionType })
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+        if (updateError) throw updateError
+        toast.success('Reaction updated')
+        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
+        return
+      }
+
+      const { error: insertError } = await supabase
+        .from('post_reactions')
+        .insert({ post_id: postId, user_id: user.id, reaction_type: reactionType })
+      if (insertError) throw insertError
+      setPost((prev) =>
+        prev ? { ...prev, likes_count: prev.likes_count + 1 } : null
+      )
+      toast.success('Reaction saved!')
+      window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
+    } catch (error: any) {
+      console.error('Error handling emoji reaction:', error)
+      toast.error('Something went wrong')
+    }
+  }, [user])
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F97316]"></div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-3xl mx-auto bg-white min-h-screen">
+          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-4">
+            <div className="w-9 h-9 rounded-full animate-shimmer bg-gray-200" />
+            <div className="h-5 w-24 animate-shimmer rounded bg-gray-200" />
+          </div>
+          <div className="p-4">
+            <PostCardShimmer />
+          </div>
+        </div>
       </div>
     )
   }
@@ -227,37 +293,6 @@ const PostDetailPage: React.FC = () => {
 
   const isAuthor = user?.id === post.author_id
 
-  // Get reaction emoji
-  const getReactionEmoji = (type: string): string => {
-    const emojiMap: { [key: string]: string } = {
-      like: "👍",
-      love: "❤️",
-      laugh: "😂",
-      wow: "😮",
-      sad: "😢",
-      angry: "😡",
-      care: "🤗",
-    }
-    return emojiMap[type] || "👍"
-  }
-
-  // Get all reaction groups sorted by count
-  const getReactionGroups = (): ReactionGroup[] => {
-    const groups: ReactionGroup[] = []
-    if (!postReactions) return groups
-    
-    Object.keys(postReactions).forEach((key) => {
-      if (key !== "totalCount") {
-        const reaction = postReactions[key]
-        // Type guard: check if it's a ReactionGroup (has count property) and not a number
-        if (reaction && typeof reaction === "object" && "count" in reaction && reaction.count > 0) {
-          groups.push(reaction as ReactionGroup)
-        }
-      }
-    })
-    return groups.sort((a, b) => b.count - a.count)
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto bg-white min-h-screen">
@@ -272,163 +307,16 @@ const PostDetailPage: React.FC = () => {
         </div>
 
         <div className="p-4">
-          <div className="bg-white rounded-lg border border-gray-200">
-            <div className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <Link href={`/user/${post.author.username}`}>
-                    {post.author.avatar_url ? (
-                      <img
-                        src={post.author.avatar_url}
-                        alt={post.author.full_name}
-                        className="w-10 h-10 rounded-full object-cover cursor-pointer"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                        <User className="w-5 h-5 text-gray-400" />
-                      </div>
-                    )}
-                  </Link>
-                  <div>
-                    <Link
-                      href={`/user/${post.author.username}`}
-                      className="font-semibold text-gray-900 hover:underline"
-                    >
-                      {post.author.full_name}
-                    </Link>
-                    <div className="text-sm text-gray-500">
-                      {formatDistanceToNow(new Date(post.created_at), {
-                        addSuffix: true,
-                      })}
-                    </div>
-                  </div>
-                </div>
-                {isAuthor && (
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowMenu(!showMenu)}
-                      className="p-2 hover:bg-gray-100 rounded-full"
-                    >
-                      <MoreHorizontal className="w-5 h-5" />
-                    </button>
-                    {showMenu && (
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                        <button
-                          onClick={handleDelete}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
-                        >
-                          Delete Post
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {post.title && (
-                <h2 className="text-xl font-semibold mb-2">{post.title}</h2>
-              )}
-
-              <p className="text-gray-900 mb-4 whitespace-pre-wrap">
-                {post.content}
-              </p>
-
-              {post.media_urls && post.media_urls.length > 0 && (
-                <div className="mb-4">
-                  {post.media_urls.length === 1 ? (
-                    <img
-                      src={post.media_urls[0]}
-                      alt="Post media"
-                      className="w-full rounded-lg object-cover max-h-[600px]"
-                    />
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {post.media_urls.slice(0, 4).map((url, index) => (
-                        <img
-                          key={index}
-                          src={url}
-                          alt={`Post media ${index + 1}`}
-                          className="w-full h-48 rounded-lg object-cover"
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                <div className="flex items-center gap-4">
-                  {postReactions && postReactions.totalCount > 0 && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center -space-x-1">
-                        {getReactionGroups()
-                          .slice(0, 3)
-                          .map((group) => (
-                            <div
-                              key={group.type}
-                              className="relative"
-                              onMouseEnter={() => setHoveredReaction(group.type)}
-                              onMouseLeave={() => setHoveredReaction(null)}
-                            >
-                              <span className="text-sm bg-white rounded-full p-0.5 border border-gray-200 cursor-pointer">
-                                {getReactionEmoji(group.type)}
-                              </span>
-                              <ReactionTooltip
-                                users={group.users || []}
-                                isVisible={hoveredReaction === group.type}
-                              />
-                            </div>
-                          ))}
-                      </div>
-                      {postReactions.totalCount > 0 && (
-                        <span className="text-sm text-gray-600 cursor-pointer hover:underline">
-                          {postReactions.totalCount} {postReactions.totalCount === 1 ? 'reaction' : 'reactions'}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {(!postReactions || postReactions.totalCount === 0) && (
-                    <span className="text-sm text-gray-600">
-                      {post.likes_count} likes
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <span>{post.comments_count} comments</span>
-                  <span>{post.shares_count} shares</span>
-                  <span>{post.views_count} views</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-around pt-3 border-t border-gray-200 mt-3">
-                <button
-                  onClick={handleLike}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                    isLiked
-                      ? 'text-[#F97316]'
-                      : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-                  <span className="font-medium">Like</span>
-                </button>
-                <button
-                  onClick={() => setShowComments(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-                >
-                  <MessageCircle className="w-5 h-5" />
-                  <span className="font-medium">Comment</span>
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
-                >
-                  <Share2 className="w-5 h-5" />
-                  <span className="font-medium">Share</span>
-                </button>
-              </div>
-            </div>
-          </div>
+          <PostCard
+            post={post as Parameters<typeof PostCard>[0]['post']}
+            onLike={handleLike}
+            onComment={() => setShowComments(true)}
+            onShare={handleShare}
+            onDelete={isAuthor ? handleDelete : undefined}
+            onEmojiReaction={handleEmojiReaction}
+            isPostLiked={isLiked}
+            disablePostClick
+          />
 
           {showComments && (
             <div className="mt-4">

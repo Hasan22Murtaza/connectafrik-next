@@ -16,6 +16,7 @@ import { updateEngagementReward } from '@/features/social/services/fairnessRanki
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
+import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
 
 const FEED_CATEGORIES = [
   { id: 'all' as const, label: 'All Posts', icon: Globe },
@@ -111,40 +112,6 @@ const FeedPage: React.FC = () => {
 
   return codePoints?.join(" ");
 }
-
-  // Map emoji to reaction type
-  const getReactionTypeFromEmoji = (emoji: string): 'like' | 'love' | 'laugh' | 'angry' | 'sad' | 'wow' | 'care' => {
-    // Common emoji mappings
-    const emojiMap: { [key: string]: 'like' | 'love' | 'laugh' | 'angry' | 'sad' | 'wow' | 'care' } = {
-      '\u{1F44D}': 'like',      // 👍 thumbs up
-      '\u2764\uFE0F': 'love',   // ❤️ heart
-      '\u{1F602}': 'laugh',     // 😂 laughing
-      '\u{1F62E}': 'wow',       // 😮 surprised
-      '\u{1F622}': 'sad',       // 😢 crying
-      '\u{1F621}': 'angry',     // 😡 angry
-      '\u{1F525}': 'love',      // 🔥 fire (love)
-      '\u{1F44F}': 'like',      // 👏 clapping (like)
-      '\u{1F64C}': 'like',      // 🙌 raising hands (like)
-      '\u{1F389}': 'wow',       // 🎉 party (wow)
-      '\u{1F4AF}': 'wow',       // 💯 100 (wow)
-      '\u{1F60E}': 'wow',       // 😎 cool (wow)
-      '\u{1F973}': 'laugh',     // 🥳 party face (laugh)
-      '\u{1F929}': 'wow',       // 🤩 star-struck (wow)
-      '\u{1F606}': 'laugh',     // 😆 laughing (laugh)
-      '\u{1F60F}': 'wow',       // 😏 smirking (wow)
-      '\u{1F607}': 'wow',       // 😇 halo (wow)
-      '\u{1F61C}': 'laugh',     // 😜 winking (laugh)
-      '\u{1F914}': 'wow',       // 🤔 thinking (wow)
-      '\u{1F631}': 'wow',       // 😱 screaming (wow)
-      '\u{1F624}': 'angry',     // 😤 huffing (angry)
-      '\u{1F605}': 'laugh',     // 😅 nervous laugh (laugh)
-      '\u{1F60B}': 'laugh',     // 😋 yummy (laugh)
-      '\u{1F62C}': 'laugh',     // 😬 grimacing (laugh)
-      '\u{1F603}': 'laugh',     // 😃 grinning (laugh)
-    };
-    
-    return emojiMap[emoji] || 'like';
-  };
 
   const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
     try {
