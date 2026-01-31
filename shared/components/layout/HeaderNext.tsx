@@ -126,36 +126,38 @@ const Header: React.FC<HeaderProps> = ({
             <img src="/assets/images/logo_2.png" alt="" className="w-16" />
           </Link>
 
-          {/* Search Bar - Hidden on mobile, visible on tablet+ */}
-          <div className="hidden md:flex flex-1 max-w-lg mx-4 lg:mx-8">
-            <div className="relative w-full" ref={searchContainerRef}>
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-              <input
-                type="text"
-                placeholder="Search connectafrik"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:border-transparent"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                onFocus={() => {
-                  if (searchTerm.trim().length >= 2 && searchResults) {
-                    setShowSearchResults(true);
-                  }
-                }}
-              />
-              
-              {/* Search Results Dropdown */}
-              {showSearchResults && (
-                <SearchResultsDropdown
-                  results={searchResults}
-                  isSearching={isSearching}
-                  searchTerm={searchTerm}
-                  onClose={() => setShowSearchResults(false)}
+          {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
+          {user && (
+            <div className="hidden md:flex flex-1 max-w-lg mx-4 lg:mx-8">
+              <div className="relative w-full" ref={searchContainerRef}>
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                <input
+                  type="text"
+                  placeholder="Search connectafrik"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:border-transparent"
+                  value={searchTerm}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  onFocus={() => {
+                    if (searchTerm.trim().length >= 2 && searchResults) {
+                      setShowSearchResults(true);
+                    }
+                  }}
                 />
-              )}
+                
+                {/* Search Results Dropdown */}
+                {showSearchResults && (
+                  <SearchResultsDropdown
+                    results={searchResults}
+                    isSearching={isSearching}
+                    searchTerm={searchTerm}
+                    onClose={() => setShowSearchResults(false)}
+                  />
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Mobile Search Button - Visible only on mobile */}
+          {/* Mobile Search Button - Visible only on mobile when logged in */}
           {user && (
             <button
               onClick={() => setShowMobileSearch(true)}

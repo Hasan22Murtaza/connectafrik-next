@@ -10,8 +10,10 @@ import {
   Heart,
   Share2,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Home: React.FC = () => {
+  const { user } = useAuth();
   const features = [
     {
       icon: TrendingUp,
@@ -61,14 +63,16 @@ const Home: React.FC = () => {
               connections across the continent.
             </p>
 
-            <div className="flex  gap-4 justify-center">
-              <Link href="/signup" className="btn-primary text-sm px-8 sm:text-lg ">
-                Join the Community
-              </Link>
-              <Link href="/signin" className="btn-secondary text-sm px-8 sm:text-lg">
-                Sign In
-              </Link>
-            </div>
+            {!user && (
+              <div className="flex  gap-4 justify-center">
+                <Link href="/signup" className="btn-primary text-sm px-8 sm:text-lg ">
+                  Join the Community
+                </Link>
+                <Link href="/signin" className="btn-secondary text-sm px-8 sm:text-lg">
+                  Sign In
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </section>
