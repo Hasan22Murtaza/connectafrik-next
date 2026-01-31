@@ -122,11 +122,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Deduplicate by device_id so we send at most one notification per device (avoids duplicate toasts)
+    const byDevice = new Map<string, (typeof subscriptions)[0]>()
+    for (const sub of subscriptions) {
+      const key = sub.device_id || sub.fcm_token
+      if (!byDevice.has(key)) byDevice.set(key, sub)
+    }
+    const subscriptionsToSend = Array.from(byDevice.values())
+
     // Prepare base FCM message payload
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
 
       data: {
         ...(body.data || {}),
+        title: body.title,
+        body: notificationBody,
+        ...(body.image && { image: body.image }),
         icon: body.icon || '/assets/images/logo.png',
         badge: body.badge || '/assets/images/logo.png',
         tag: body.tag || 'connectafrik-notification',
@@ -158,7 +169,7 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    const sendPromises = subscriptions.map(async (subscription) => {
+    const sendPromises = subscriptionsToSend.map(async (subscription) => {
       try {
         const fcmToken = subscription.fcm_token
         
@@ -220,7 +231,7 @@ export async function POST(request: NextRequest) {
         success: successful > 0,
         sent: successful,
         failed,
-        total: subscriptions.length,
+        total: subscriptionsToSend.length,
         results
       },
       {

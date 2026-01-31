@@ -246,7 +246,7 @@ self.addEventListener('push', event => {
         }
       }
       
-      // FCM sends data in notification and data fields
+      // FCM sends data in notification and data fields (data-only messages have title/body in payload.data)
       if (payload.notification) {
         notificationTitle = payload.notification.title || notificationTitle;
         notificationBody = payload.notification.body || notificationBody;
@@ -256,6 +256,9 @@ self.addEventListener('push', event => {
       // Extract custom data from FCM data field
       if (payload.data) {
         notificationData = payload.data;
+        if (payload.data.title) notificationTitle = payload.data.title;
+        if (payload.data.body) notificationBody = payload.data.body;
+        if (payload.data.image) notificationImage = payload.data.image;
         
         // Parse stringified data fields
         if (payload.data.icon) notificationIcon = payload.data.icon;
@@ -286,14 +289,11 @@ self.addEventListener('push', event => {
         });
       }
       
-      // Check if this is a call notification by looking for call-related data
-      // Call notifications will have room_id, thread_id, or call_type in the data
-      const isCallNotification = notificationData.room_id || 
-                                 notificationData.thread_id || 
-                                 notificationData.call_type ||
-                                 notificationTag?.includes('call') ||
-                                 notificationTitle?.includes('Call') ||
-                                 notificationTitle?.includes('📞');
+      // Only treat as call when it's an incoming call (type or room_id+call_type). Message notifications have thread_id but type 'message'.
+      const isCallNotification = notificationData.type === 'incoming_call' ||
+                                 (notificationData.room_id && notificationData.call_type) ||
+                                 notificationTag?.includes('incoming-call') ||
+                                 (notificationTitle?.includes('Call') && notificationTitle?.includes('📞'));
 
       if (isCallNotification) {
         // Handle incoming call notification
@@ -389,22 +389,24 @@ self.addEventListener('push', event => {
               });
           });
       } else {
-        // Regular notification handling
+        // Regular notification handling - pass full notificationData so click handling works
         const options = {
           body: notificationBody,
           icon: notificationIcon,
           badge: notificationBadge,
           image: notificationImage,
           tag: notificationTag,
-          data: notificationData.url || notificationData.url || '/',
+          data: notificationData,
           actions: notificationActions.length > 0 ? notificationActions : [
             {
-              action: 'open',
-              title: 'Open'
+              action: 'view',
+              title: 'View',
+              icon: '/icons/view.png'
             },
             {
-              action: 'close',
-              title: 'Close'
+              action: 'dismiss',
+              title: 'Dismiss',
+              icon: '/icons/dismiss.png'
             }
           ],
           requireInteraction: requireInteraction,
@@ -527,22 +529,23 @@ self.addEventListener('notificationclick', event => {
       );
     }
   } else {
-    // Regular notification handling
-    if (event.action === 'open' || !event.action) {
-      const urlToOpen = typeof notificationData === 'string' 
-        ? notificationData 
-        : (notificationData.url || event.notification.data || '/');
+    // Regular notification handling (view / open / default; dismiss just closes)
+    if (event.action === 'open' || event.action === 'view' || !event.action) {
+      const urlToOpen = typeof notificationData === 'string'
+        ? notificationData
+        : (notificationData.url || (event.notification.data && event.notification.data.url) || '/');
       event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
           .then(windowClients => {
-            // Check if there's already a window open
             for (let client of windowClients) {
-              if (client.url === urlToOpen && 'focus' in client) {
-                return client.focus();
+              if (client.url.includes(self.location.origin) && 'focus' in client) {
+                return client.focus().then(() => {
+                  if (urlToOpen && 'navigate' in client) return client.navigate(urlToOpen);
+                  return Promise.resolve();
+                });
               }
             }
-            // Open new window if none exists
-            if (clients.openWindow) {
+            if (clients.openWindow && urlToOpen) {
               return clients.openWindow(urlToOpen);
             }
           })

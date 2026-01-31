@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { checkAndSetupFCMTokenOnLogin } from '@/shared/utils/fcmClient'
+import { checkAndSetupFCMTokenOnLogin, deactivateTokenOnLogout } from '@/shared/utils/fcmClient'
 
 interface AuthContextType {
   user: User | null
@@ -98,6 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
+    // Deactivate FCM token so push notifications are not sent to this user until they log in again
+    await deactivateTokenOnLogout().catch(() => {})
     await supabase.auth.signOut()
     router.push('/')
   }

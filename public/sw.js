@@ -70,7 +70,7 @@ self.addEventListener('push', (event) => {
         }
       }
       
-      // FCM sends data in notification and data fields
+      // FCM sends data in notification and data fields (data-only messages have title/body in payload.data)
       if (payload.notification) {
         notificationTitle = payload.notification.title || notificationTitle;
         notificationBody = payload.notification.body || notificationBody;
@@ -80,6 +80,9 @@ self.addEventListener('push', (event) => {
       // Extract custom data from FCM data field
       if (payload.data) {
         notificationData = payload.data;
+        if (payload.data.title) notificationTitle = payload.data.title;
+        if (payload.data.body) notificationBody = payload.data.body;
+        if (payload.data.image) notificationImage = payload.data.image;
         
         // Parse stringified data fields
         if (payload.data.icon) notificationIcon = payload.data.icon;
@@ -110,13 +113,11 @@ self.addEventListener('push', (event) => {
         });
       }
       
-      // Check if this is a call notification
-      const isCallNotification = notificationData.room_id || 
-                                 notificationData.thread_id || 
-                                 notificationData.call_type ||
-                                 notificationTag?.includes('call') ||
-                                 notificationTitle?.includes('Call') ||
-                                 notificationTitle?.includes('📞');
+      // Only treat as call when it's an incoming call (type or room_id+call_type). Message notifications have thread_id but type 'message'.
+      const isCallNotification = notificationData.type === 'incoming_call' ||
+                                 (notificationData.room_id && notificationData.call_type) ||
+                                 notificationTag?.includes('incoming-call') ||
+                                 (notificationTitle?.includes('Call') && notificationTitle?.includes('📞'));
 
       if (isCallNotification) {
         // Handle incoming call notification

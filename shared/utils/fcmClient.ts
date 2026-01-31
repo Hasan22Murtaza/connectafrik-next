@@ -95,41 +95,16 @@ export const initialize = async (): Promise<boolean> => {
 
     messaging = getMessaging(firebaseApp)
     
-    // Set up message listener for foreground messages
+    // Set up message listener for foreground messages.
+    // Do NOT call registration.showNotification() here: the service worker already shows
+    // the notification for the same push, so showing again would cause duplicate notifications.
+    // Use in-app UI (toast, banner) here if you want to surface the message when the app is open.
     onMessage(messaging, (payload) => {
-      if (payload.notification && registration) {
-        const notificationTitle = payload.notification.title || 'ConnectAfrik'
-        const notificationBody = payload.notification.body || 'You have a new notification'
-        
-        const notificationOptions: any = {
-          body: notificationBody,
-          icon: payload.notification.icon || '/assets/images/logo.png',
-          badge: '/assets/images/logo.png',
-          tag: payload.data?.tag || 'connectafrik-notification',
-          data: payload.data || {},
-          image: payload.notification.image,
-          requireInteraction: payload.data?.requireInteraction === 'true',
-          silent: payload.data?.silent === 'true',
-        }
-        
-        if (payload.data?.vibrate) {
-          try {
-            notificationOptions.vibrate = JSON.parse(payload.data.vibrate)
-          } catch (e) {
-            notificationOptions.vibrate = [200, 100, 200]
-          }
-        }
-        
-        if (payload.data?.actions) {
-          try {
-            notificationOptions.actions = JSON.parse(payload.data.actions)
-          } catch (e) {
-            // Ignore
-          }
-        }
-        
-        registration.showNotification(notificationTitle, notificationOptions)
-          .catch(err => console.error('Error showing notification:', err))
+      if (payload.data && typeof window !== 'undefined') {
+        // Optional: dispatch a custom event so the app can show in-app UI (e.g. toast)
+        window.dispatchEvent(
+          new CustomEvent('fcm-foreground-message', { detail: payload })
+        )
       }
     })
 
@@ -294,6 +269,42 @@ export const removeToken = async (token: string): Promise<boolean> => {
   } catch (error) {
     console.error('❌ Error removing token:', error)
     return false
+  }
+}
+
+/**
+ * Deactivate FCM token for the current device on logout.
+ * Sets is_active = false in fcm_tokens so push notifications are not sent to this user until they log in again.
+ * Call this before signOut() while the session is still valid.
+ */
+export const deactivateTokenOnLogout = async (): Promise<void> => {
+  try {
+    if (typeof window === 'undefined') return
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: { session } } = await supabase.auth.getSession()
+    const authToken = session?.access_token
+    const { device_id } = getDeviceInfo()
+
+    if (!device_id) return
+
+    const url = `/api/fcm/token?device_id=${encodeURIComponent(device_id)}`
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+      },
+    })
+
+    if (response.ok) {
+      console.log('🔔 FCM token deactivated for this device on logout')
+    } else {
+      console.warn('⚠️ Could not deactivate FCM token on logout:', response.status)
+    }
+  } catch (error) {
+    console.warn('⚠️ Error deactivating FCM token on logout:', error)
   }
 }
 
