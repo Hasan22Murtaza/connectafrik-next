@@ -504,6 +504,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             }
           }
         }
+        // Clear call request when call ended message is received (so UI updates for both parties)
+        if (message.message_type === 'call_ended') {
+          clearCallRequest(threadId)
+        }
       })
       unsubscribeCallbacks.push(unsubscribe)
     })
@@ -511,7 +515,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
     }
-  }, [currentUser, openThreads])
+  }, [currentUser, openThreads, clearCallRequest])
 
   useEffect(() => {
     if (!currentUser) return

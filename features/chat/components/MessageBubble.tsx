@@ -87,7 +87,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   if (isDeletedForMe) return null;
 
+  // Show "Call ended" as a centered system message in the chat
+  if (message.message_type === "call_ended") {
+    return (
+      <div className="flex justify-center mb-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs">
+          <span>{message.content || "📞 Call ended"}</span>
+        </div>
+      </div>
+    );
+  }
+
   const systemMessageTypes = [
+    "call_ended",
     "call_accepted",
     "call_request",
     "call_notification",

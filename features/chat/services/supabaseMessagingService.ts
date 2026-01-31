@@ -88,7 +88,7 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
 
   // Send push notification for new messages (not call requests). Skip when skipPush is true
   // (e.g. from sendMessage path) so we only send push once from the realtime handler.
-  if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted') {
+  if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted' && message.message_type !== 'call_ended') {
     try {
       // Get thread participants to send notifications to
       const { data: participants } = await supabase
@@ -407,14 +407,14 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
         if (participantError) {
           // If it's a 406 or RLS error, we might still want to process call messages
           // as it could be a false negative. Continue for call messages.
-          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected') {
+          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected' || message.message_type === 'call_ended') {
             // Continue processing for call messages even if participant check fails
           } else {
             return
           }
         } else if (!participants || participants.length === 0) {
           // User is not a participant - but still process call messages as they're critical
-          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected') {
+          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected' || message.message_type === 'call_ended') {
             // Continue processing for call messages
           } else {
             return
@@ -436,7 +436,7 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
 
           // For call messages, notify only the specific thread subscribers
           // This prevents call flooding to all users
-          if (formattedMessage.message_type === 'call_request' || formattedMessage.message_type === 'call_accepted' || formattedMessage.message_type === 'call_rejected') {
+          if (formattedMessage.message_type === 'call_request' || formattedMessage.message_type === 'call_accepted' || formattedMessage.message_type === 'call_rejected' || formattedMessage.message_type === 'call_ended') {
             // Notify only the specific thread subscribers (not all users)
             notifyMessageSubscribers(formattedMessage)
           } else {

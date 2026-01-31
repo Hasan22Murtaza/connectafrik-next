@@ -396,7 +396,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       }
 
       // Check if this is an end message from the other participant
-      const isEndMessage = message.message_type === 'CALL_ENDED';
+      const isEndMessage = message.message_type === 'call_ended';
       const isFromOtherUser = message.sender_id && message.sender_id !== currentUserId;
       const hasEndMetadata = message.metadata?.endedBy;
 
@@ -773,7 +773,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                   threadId,
                   {
                     content: `📞 Call ended`,
-                    message_type: 'CALL_ENDED',
+                    message_type: 'call_ended',
                     metadata: {
                       callType: callType,
                       endedBy: currentUserId,
@@ -808,7 +808,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               threadId,
               {
                 content: `📞 Call ended`,
-                message_type: 'CALL_ENDED',
+                message_type: 'call_ended',
                 metadata: {
                   callType: callType,
                   endedBy: currentUserId,
@@ -1210,7 +1210,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                   threadId,
                   {
                     content: `📞 Call ended`,
-                    message_type: 'CALL_ENDED',
+                    message_type: 'call_ended',
                     metadata: {
                       callType: callType,
                       endedBy: currentUserId,
@@ -1245,7 +1245,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               threadId,
               {
                 content: `📞 Call ended`,
-                message_type: 'CALL_ENDED',
+                message_type: 'call_ended',
                 metadata: {
                   callType: callType,
                   endedBy: currentUserId,
@@ -1406,7 +1406,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           threadId,
           {
             content: `📞 Call ended`,
-            message_type: 'CALL_ENDED',
+            message_type: 'call_ended',
             metadata: {
               callType: callType,
               endedBy: currentUserId,
