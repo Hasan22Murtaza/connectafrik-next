@@ -80,14 +80,15 @@ const notifyThreadSubscribers = (thread: ChatThread) => {
   })
 }
 
-const notifyMessageSubscribers = async (message: ChatMessage) => {
+const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPush?: boolean }) => {
   const callbacks = messageSubscribers.get(message.thread_id)
   if (callbacks) {
     callbacks.forEach((callback) => callback(message))
   }
 
-  // Send push notification for new messages (not call requests)
-  if (message.message_type !== 'call_request' && message.message_type !== 'call_accepted') {
+  // Send push notification for new messages (not call requests). Skip when skipPush is true
+  // (e.g. from sendMessage path) so we only send push once from the realtime handler.
+  if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted') {
     try {
       // Get thread participants to send notifications to
       const { data: participants } = await supabase
@@ -285,7 +286,7 @@ const createLocalMessage = (
     notifyThreadSubscribers(updatedThread)
   }
 
-  notifyMessageSubscribers(message)
+  notifyMessageSubscribers(message, { skipPush: true })
   return message
 }
 
@@ -995,7 +996,7 @@ export const supabaseMessagingService = {
           }
         }
         
-        notifyMessageSubscribers(formattedMessage)
+        notifyMessageSubscribers(formattedMessage, { skipPush: true })
         return formattedMessage
       }
 

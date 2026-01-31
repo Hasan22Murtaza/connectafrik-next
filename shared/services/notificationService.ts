@@ -215,7 +215,7 @@ export async function sendMessageNotification(
 
   return sendNotification({
     user_id: recipientId,
-    title: `Message from ${senderName}`,
+    title: `${senderName}`,
     body: truncatedPreview,
     icon: '/assets/images/logo.png',
     badge: '/assets/images/logo.png',
