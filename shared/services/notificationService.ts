@@ -124,7 +124,7 @@ export async function sendNotification(notificationData: NotificationData): Prom
         results: result.results
       })
     }
-
+    console.log('🔔 Notification API response:', result)
     return result.success || false
   } catch (error) {
     // Handle network errors and other exceptions
@@ -497,48 +497,48 @@ export async function sendNewPostNotification(
  * @param data - Optional additional data to include
  * @returns Promise resolving to true if notification was sent successfully
  */
-export async function sendSystemNotification(
-  recipientId: string, 
-  title: string, 
-  body: string, 
-  data?: Record<string, any>
-): Promise<boolean> {
-  if (!recipientId || !title || !body) {
-    console.error('sendSystemNotification: Missing required parameters', {
-      hasRecipientId: !!recipientId,
-      hasTitle: !!title,
-      hasBody: !!body
-    })
-    return false
-  }
+// export async function sendSystemNotification(
+//   recipientId: string, 
+//   title: string, 
+//   body: string, 
+//   data?: Record<string, any>
+// ): Promise<boolean> {
+//   if (!recipientId || !title || !body) {
+//     console.error('sendSystemNotification: Missing required parameters', {
+//       hasRecipientId: !!recipientId,
+//       hasTitle: !!title,
+//       hasBody: !!body
+//     })
+//     return false
+//   }
 
-  return sendNotification({
-    user_id: recipientId,
-    title,
-    body,
-    icon: '/assets/images/logo.png',
-    badge: '/assets/images/logo.png',
-    tag: 'system-notification',
-    data: {
-      type: 'system',
-      ...(data || {})
-    },
-    actions: [
-      {
-        action: 'view',
-        title: 'View',
-        icon: '/icons/view.png'
-      },
-      {
-        action: 'dismiss',
-        title: 'Dismiss',
-        icon: '/icons/dismiss.png'
-      }
-    ],
-    requireInteraction: false,
-    vibrate: [200, 100, 200]
-  })
-}
+//   return sendNotification({
+//     user_id: recipientId,
+//     title,
+//     body,
+//     icon: '/assets/images/logo.png',
+//     badge: '/assets/images/logo.png',
+//     tag: 'system-notification',
+//     data: {
+//       type: 'system',
+//       ...(data || {})
+//     },
+//     actions: [
+//       {
+//         action: 'view',
+//         title: 'View',
+//         icon: '/icons/view.png'
+//       },
+//       {
+//         action: 'dismiss',
+//         title: 'Dismiss',
+//         icon: '/icons/dismiss.png'
+//       }
+//     ],
+//     requireInteraction: false,
+//     vibrate: [200, 100, 200]
+//   })
+// }
 
 /**
  * Test notification function - sends a test notification to the current user
@@ -589,6 +589,6 @@ export const notificationService = {
   sendMissedCallNotification,
   sendPostInteractionNotification,
   sendNewPostNotification,
-  sendSystemNotification,
+  // sendSystemNotification,
   testNotification
 }

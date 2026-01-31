@@ -1,65 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
+import { getFirebaseAdmin } from '../fcm/_utils'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables')
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-// Initialize Firebase Admin SDK
-let firebaseAdmin: admin.app.App | null = null
-
-try {
-  // Check if Firebase Admin is already initialized
-  if (admin.apps.length === 0) {
-    // Get Firebase service account credentials from environment
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-    
-    if (serviceAccount) {
-      // Parse JSON string if provided as environment variable
-      const credentials = typeof serviceAccount === 'string' 
-        ? JSON.parse(serviceAccount) 
-        : serviceAccount
-      
-      firebaseAdmin = admin.initializeApp({
-        credential: admin.credential.cert(credentials),
-      })
-      console.log('✅ Firebase Admin SDK initialized successfully')
-    } else {
-      // Alternative: Use individual environment variables
-      const projectId = process.env.FIREBASE_PROJECT_ID
-      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
-      
-      if (projectId && privateKey && clientEmail) {
-        firebaseAdmin = admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId,
-            privateKey,
-            clientEmail,
-          }),
-        })
-        console.log('✅ Firebase Admin SDK initialized with individual credentials')
-      } else {
-        console.warn('⚠️ Firebase credentials not found. FCM notifications will not work.')
-      }
-    }
-  } else {
-    firebaseAdmin = admin.app()
-  }
-} catch (error) {
-  console.error('❌ Error initializing Firebase Admin SDK:', error)
 }
 
 export interface NotificationPayload {
@@ -81,6 +28,15 @@ export interface NotificationPayload {
   vibrate?: number[]
 }
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('Missing Supabase environment variables')
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
 export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders })
 }
@@ -90,11 +46,14 @@ export async function POST(request: NextRequest) {
     console.log('📱 Push notification API called')
 
     const body = await request.json() as NotificationPayload
-    const { user_id, title, body: notificationBody, icon, image, badge, tag, data, actions, requireInteraction, silent, vibrate } = body
+    const { user_id, title, body: notificationBody } = body
 
     if (!user_id || !title || !notificationBody) {
       return NextResponse.json(
-        { error: 'Missing required fields: user_id, title, and body are required' },
+        { 
+          success: false,
+          error: 'Missing required fields: user_id, title, and body are required' 
+        },
         { 
           status: 400,
           headers: corsHeaders
@@ -102,29 +61,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const firebaseAdmin = getFirebaseAdmin()
     if (!firebaseAdmin) {
-      console.error('❌ Firebase Admin SDK not initialized')
-      console.error('Environment check:', {
-        hasServiceAccount: !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
-        hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
-        hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
-        hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
-        nodeEnv: process.env.NODE_ENV
-      })
       return NextResponse.json(
-        { 
-          error: 'Push notifications not configured. Firebase Admin SDK not initialized.',
-          hint: 'Please check that FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL are set in your production environment variables.'
+        {
+          success: false,
+          message: 'Firebase Admin SDK not initialized',
+          sent: 0,
+          failed: 0,
+          total: 0,
+          results: []
         },
-        { 
+        {
           status: 500,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       )
     }
 
     // Fetch active FCM tokens from database
-    console.log(`🔍 Fetching FCM tokens for user: ${user_id}`)
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
       .select('fcm_token, device_type, device_id')
@@ -134,68 +89,52 @@ export async function POST(request: NextRequest) {
 
     if (subscriptionError) {
       console.error('❌ Error fetching subscriptions:', subscriptionError)
-      console.error('Subscription error details:', {
-        code: subscriptionError.code,
-        message: subscriptionError.message,
-        details: subscriptionError.details,
-        hint: subscriptionError.hint
-      })
       return NextResponse.json(
-        { error: 'Failed to fetch push subscriptions', details: subscriptionError.message },
-        { 
+        {
+          success: false,
+          message: 'Failed to fetch push subscriptions',
+          sent: 0,
+          failed: 0,
+          total: 0,
+          results: []
+        },
+        {
           status: 500,
-          headers: corsHeaders
+          headers: corsHeaders,
         }
       )
     }
 
-    console.log(`📊 Found ${subscriptions?.length || 0} active FCM tokens for user ${user_id}`)
-
     if (!subscriptions || subscriptions.length === 0) {
-      console.log(`⚠️ No push subscriptions found for user ${user_id}`)
-      
-      // Also check for inactive tokens to help debug
-      const { data: inactiveTokens } = await supabase
-        .from('fcm_tokens')
-        .select('id, is_active, device_type')
-        .eq('user_id', user_id)
-      
-      console.log(`📋 Total tokens (including inactive) for user ${user_id}: ${inactiveTokens?.length || 0}`)
-      
       return NextResponse.json(
-        { 
+        {
           success: false,
           message: 'No push subscriptions found for this user',
           sent: 0,
-          debug: {
-            totalTokens: inactiveTokens?.length || 0,
-            activeTokens: 0
-          }
+          failed: 0,
+          total: 0,
+          results: []
         },
-        { 
-          status: 200,
-          headers: corsHeaders
+        {
+          status: 200, // Return 200 even if no tokens found (not an error)
+          headers: corsHeaders,
         }
       )
     }
 
-    // Prepare base FCM message payload (without token)
+    // Prepare base FCM message payload
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
-      notification: {
-        title,
-        body: notificationBody,
-        imageUrl: image,
-      },
+
       data: {
-        ...(data || {}),
-        icon: icon || '/assets/images/logo.png',
-        badge: badge || '/assets/images/logo.png',
-        tag: tag || 'connectafrik-notification',
-        requireInteraction: String(requireInteraction || false),
-        silent: String(silent || false),
-        vibrate: JSON.stringify(vibrate || [200, 100, 200]),
+        ...(body.data || {}),
+        icon: body.icon || '/assets/images/logo.png',
+        badge: body.badge || '/assets/images/logo.png',
+        tag: body.tag || 'connectafrik-notification',
+        requireInteraction: String(body.requireInteraction || false),
+        silent: String(body.silent || false),
+        vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),
         timestamp: String(Date.now()),
-        actions: JSON.stringify(actions || [
+        actions: JSON.stringify(body.actions || [
           {
             action: 'view',
             title: 'View',
@@ -208,38 +147,11 @@ export async function POST(request: NextRequest) {
           }
         ]),
       },
-      webpush: {
-        notification: {
-          title,
-          body: notificationBody,
-          icon: icon || '/assets/images/logo.png',
-          badge: badge || '/assets/images/logo.png',
-          image,
-          tag: tag || 'connectafrik-notification',
-          requireInteraction: requireInteraction || false,
-          silent: silent || false,
-          vibrate: vibrate || [200, 100, 200],
-          actions: actions || [
-            {
-              action: 'view',
-              title: 'View',
-              icon: '/icons/view.png'
-            },
-            {
-              action: 'dismiss',
-              title: 'Dismiss',
-              icon: '/icons/dismiss.png'
-            }
-          ],
-        },
-        fcmOptions: {
-          link: data?.url || '/feed',
-        },
-      },
+
       apns: {
         payload: {
           aps: {
-            sound: silent ? undefined : 'default',
+            sound: body.silent ? undefined : 'default',
             badge: 1,
           },
         },
@@ -266,7 +178,7 @@ export async function POST(request: NextRequest) {
 
         const response = await admin.messaging(firebaseAdmin).send(fcmMessage)
         
-        console.log(`✅ FCM notification sent successfully to ${subscription.device_type} device: ${response}`)
+        console.log(`✅ djs FCM notification sent successfully to ${subscription.device_type} device: ${response}`)
         return { 
           success: true, 
           endpoint: subscription.device_id || fcmToken.substring(0, 50), 
@@ -303,8 +215,6 @@ export async function POST(request: NextRequest) {
     const successful = results.filter(r => r.success).length
     const failed = results.filter(r => !r.success).length
 
-    console.log(`📊 Push notification results: ${successful} sent, ${failed} failed`)
-
     return NextResponse.json(
       {
         success: successful > 0,
@@ -321,7 +231,10 @@ export async function POST(request: NextRequest) {
     console.error('❌ Error in push notification API:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { error: errorMessage },
+      { 
+        success: false,
+        error: errorMessage 
+      },
       {
         status: 500,
         headers: corsHeaders,

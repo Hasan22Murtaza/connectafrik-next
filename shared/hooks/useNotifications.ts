@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { pushNotificationService } from '../services/pushNotificationService'
+import { initialize, requestPermission, subscribe, unsubscribe, isSubscribed as checkIsSubscribed, sendLocalNotification } from '../utils/fcmClient'
 import { useAuth } from '@/contexts/AuthContext'
 
 export const useNotifications = () => {
@@ -19,14 +19,14 @@ export const useNotifications = () => {
     try {
       setIsLoading(true)
       
-      const supported = await pushNotificationService.initialize()
+      const supported = await initialize()
       setIsSupported(supported)
       
       if (supported) {
-        const currentPermission = await pushNotificationService.requestPermission()
+        const currentPermission = await requestPermission()
         setPermission(currentPermission)
         
-        const subscribed = await pushNotificationService.isSubscribed()
+        const subscribed = await checkIsSubscribed()
         setIsSubscribed(subscribed)
       }
     } catch (error) {
@@ -35,15 +35,15 @@ export const useNotifications = () => {
     }
   }
 
-  const subscribe = useCallback(async () => {
+  const subscribeToNotifications = useCallback(async () => {
     try {
       setIsLoading(true)
       
-      const newPermission = await pushNotificationService.requestPermission()
+      const newPermission = await requestPermission()
       setPermission(newPermission)
       
       if (newPermission === 'granted') {
-        const subscription = await pushNotificationService.subscribe()
+        const subscription = await subscribe()
         setIsSubscribed(!!subscription)
         return !!subscription
       }
@@ -56,11 +56,11 @@ export const useNotifications = () => {
     }
   }, [])
 
-  const unsubscribe = useCallback(async () => {
+  const unsubscribeFromNotifications = useCallback(async () => {
     try {
       setIsLoading(true)
       
-      const success = await pushNotificationService.unsubscribe()
+      const success = await unsubscribe()
       setIsSubscribed(!success)
       return success
     } catch (error) {
@@ -72,7 +72,7 @@ export const useNotifications = () => {
 
   const sendTestNotification = useCallback(async () => {
     try {
-      await pushNotificationService.sendLocalNotification({
+      await sendLocalNotification({
         title: 'ConnectAfrik Test',
         body: 'This is a test notification from ConnectAfrik!',
         icon: '/assets/images/logo.png',
@@ -90,8 +90,8 @@ export const useNotifications = () => {
     permission,
     isSubscribed,
     isLoading,
-    subscribe,
-    unsubscribe,
+    subscribe: subscribeToNotifications,
+    unsubscribe: unsubscribeFromNotifications,
     sendTestNotification
   }
 }

@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-import { checkAndSetupFCMTokenOnLogin } from '@/shared/services/pushNotificationService'
+import { checkAndSetupFCMTokenOnLogin } from '@/shared/utils/fcmClient'
 
 interface AuthContextType {
   user: User | null
