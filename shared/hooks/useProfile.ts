@@ -1,17 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-
-export interface Profile {
-  id: string
-  username: string
-  full_name: string
-  avatar_url: string | null
-  country: string | null
-  bio: string | null
-  created_at: string
-  updated_at: string
-}
+import type { Profile } from '@/shared/types'
 
 export const useProfile = () => {
   const { user } = useAuth()

@@ -208,6 +208,19 @@ export async function sendMessageNotification(
     return false
   }
 
+  // Respect recipient message notification preference
+  try {
+    const { supabase } = await import('@/lib/supabase')
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('message_notifications')
+      .eq('id', recipientId)
+      .single()
+    if (profile?.message_notifications === false) return true
+  } catch {
+    // If pref check fails, allow notification (fail open)
+  }
+
   // Truncate long message previews
   const truncatedPreview = messagePreview.length > 100 
     ? `${messagePreview.substring(0, 100)}...` 
@@ -403,6 +416,20 @@ export async function sendPostInteractionNotification(
       action
     })
     return false
+  }
+
+  // Respect recipient notification preferences (Facebook-style)
+  try {
+    const { supabase } = await import('@/lib/supabase')
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('like_notifications, comment_notifications')
+      .eq('id', recipientId)
+      .single()
+    if (action === 'like' && profile?.like_notifications === false) return true
+    if (action === 'comment' && profile?.comment_notifications === false) return true
+  } catch {
+    // If pref check fails, allow notification (fail open)
   }
 
   const actionText = {

@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { notificationService } from '@/shared/services/notificationService'
+import { getMutualUserIds } from '@/features/social/services/followService'
+import { canViewPost, canComment, canFollow } from '@/shared/utils/visibilityUtils'
+import type { ProfileVisibilityLevel } from '@/shared/types'
 
 export interface Post {
   id: string
@@ -17,6 +20,9 @@ export interface Post {
     country: string | null
     creator_type?: string
     location?: string
+    post_visibility?: ProfileVisibilityLevel
+    allow_comments?: ProfileVisibilityLevel
+    allow_follows?: ProfileVisibilityLevel
   }
   media_urls: string[] | null
   likes_count: number
@@ -26,6 +32,10 @@ export interface Post {
   language?: string
   created_at: string
   isLiked?: boolean
+  /** Whether the current viewer can comment (based on author allow_comments). Set by usePosts for feed. */
+  canComment?: boolean
+  /** Whether the current viewer can follow the author (based on author allow_follows). Set by usePosts for feed. */
+  canFollow?: boolean
 }
 
 export const usePosts = (category?: string) => {
@@ -50,7 +60,10 @@ export const usePosts = (category?: string) => {
             username,
             full_name,
             avatar_url,
-            country
+            country,
+            post_visibility,
+            allow_comments,
+            allow_follows
           )
         `)
         .order('created_at', { ascending: false })
@@ -63,24 +76,43 @@ export const usePosts = (category?: string) => {
 
       if (postsError) throw postsError
 
-      // Check which posts the current user has liked
+      const viewerId = user?.id ?? null
+      const authorIds = [...new Set((postsData || []).map(p => p.author_id))]
+      // Friends = mutual follow; used to show posts with post_visibility === 'friends' only to friends
+      const mutualSet = viewerId ? await getMutualUserIds(viewerId, authorIds) : new Set<string>()
+
+      const filtered = (postsData || []).filter(p => {
+        const authorId = p.author_id
+        const postVis = (p.author as any)?.post_visibility ?? 'public'
+        const isFriend = mutualSet.has(authorId)
+        return canViewPost(viewerId, authorId, postVis, isFriend)
+      })
+
       let likesData: any[] = []
-      if (user) {
+      if (user && filtered.length > 0) {
         const { data, error: likesError } = await supabase
           .from('likes')
           .select('post_id')
           .eq('user_id', user.id)
-          .in('post_id', postsData?.map(p => p.id) || [])
+          .in('post_id', filtered.map(p => p.id))
 
         if (!likesError) {
           likesData = data || []
         }
       }
 
-      const postsWithLikes = postsData?.map(post => ({
-        ...post,
-        isLiked: likesData.some(like => like.post_id === post.id)
-      })) || []
+      const postsWithLikes = filtered.map(post => {
+        const authorId = post.author_id
+        const allowComments = (post.author as any)?.allow_comments ?? 'everyone'
+        const allowFollows = (post.author as any)?.allow_follows ?? 'everyone'
+        const isMutual = mutualSet.has(authorId)
+        return {
+          ...post,
+          isLiked: likesData.some(like => like.post_id === post.id),
+          canComment: canComment(viewerId, authorId, allowComments, isMutual),
+          canFollow: canFollow(viewerId, authorId, allowFollows, isMutual),
+        }
+      })
 
       setPosts(postsWithLikes)
     } catch (error: any) {

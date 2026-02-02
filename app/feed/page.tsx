@@ -354,6 +354,7 @@ const FeedPage: React.FC = () => {
               onView={recordView}
               onEmojiReaction={handleEmojiReaction}
               isPostLiked={post.isLiked}
+              canComment={post.canComment}
             />
             {/* Mobile inline comments */}
             {showCommentsFor === post.id && (
@@ -362,6 +363,7 @@ const FeedPage: React.FC = () => {
                   postId={post.id}
                   isOpen={true}
                   onClose={() => setShowCommentsFor(null)}
+                  canComment={post.canComment}
                 />
               </div>
             )}
@@ -460,6 +462,7 @@ const FeedPage: React.FC = () => {
           postId={showCommentsFor ?? ''}
           isOpen={Boolean(showCommentsFor)}
           onClose={() => setShowCommentsFor(null)}
+          canComment={posts.find(p => p.id === showCommentsFor)?.canComment}
         />
       </div>
 

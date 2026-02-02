@@ -69,6 +69,10 @@ interface PostCardProps {
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
   isPostLiked?: boolean;
+  /** When false, comment action is hidden/disabled (e.g. post owner turned off comments). Default true. */
+  canComment?: boolean;
+  /** When false, follow (Tap In) button is hidden (e.g. post author allow_follows is none or friends-only). Default true. */
+  canFollow?: boolean;
   /** When true, clicking the card does not navigate to the post page (e.g. when already on the detail page). */
   disablePostClick?: boolean;
 }
@@ -98,6 +102,8 @@ export const PostCard: React.FC<PostCardProps> = ({
   onEmojiReaction,
   postReactions = {},
   isPostLiked = false,
+  canComment = true,
+  canFollow = true,
   disablePostClick = false,
 }) => {
   const { user } = useAuth();
@@ -666,7 +672,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
 
         {/* Tap In button or Three-dot menu */}
-        {!isOwnPost ? (
+        {!isOwnPost && canFollow ? (
           <button
             onClick={handleFollow}
             disabled={followCheckLoading}
@@ -693,7 +699,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               </>
             )}
           </button>
-        ) : (
+        ) : !isOwnPost && !canFollow ? null : (
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowMenu(!showMenu)}

@@ -5,6 +5,7 @@ import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { PresenceStatus, ChatParticipant } from '@/shared/types/chat'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'
+import { ChatDropdownShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 interface ChatDropdownProps {
   onClose: () => void
@@ -20,9 +21,11 @@ const statusColor: Record<PresenceStatus, string> = {
 
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) => {
   const { openThread, startCall, startChatWithMembers, presence, currentUser, threads: contextThreads } = useProductionChat()
-  const { members } = useMembers()
+  const { members, loading: membersLoading } = useMembers()
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [recentCallEntries, setRecentCallEntries] = useState<RecentCallEntry[]>([])
+  const [threadsLoading, setThreadsLoading] = useState(true)
+  const [recentCallsLoading, setRecentCallsLoading] = useState(true)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -37,12 +40,19 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
 
   useEffect(() => {
     const loadThreads = async () => {
-      if (currentUser) {
+      if (!currentUser) {
+        setThreadsLoading(false)
+        return
+      }
+      setThreadsLoading(true)
+      try {
         const userThreads = await supabaseMessagingService.getUserThreads({
           id: currentUser.id,
           name: currentUser.name || '',
         })
         setThreads(userThreads)
+      } finally {
+        setThreadsLoading(false)
       }
     }
     loadThreads()
@@ -50,9 +60,16 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
 
   useEffect(() => {
     const loadRecentCalls = async () => {
-      if (currentUser?.id) {
+      if (!currentUser?.id) {
+        setRecentCallsLoading(false)
+        return
+      }
+      setRecentCallsLoading(true)
+      try {
         const entries = await supabaseMessagingService.getRecentCalls(currentUser.id)
         setRecentCallEntries(entries)
+      } finally {
+        setRecentCallsLoading(false)
       }
     }
     loadRecentCalls()
@@ -150,6 +167,15 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
       {mode === 'call' ? (
         // Call mode: Show latest calls (Facebook-style) then contacts
         <div className="space-y-4 max-h-64 sm:max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+          {recentCallsLoading || membersLoading ? (
+            <>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent</p>
+              <ChatDropdownShimmer mode="call" count={2} />
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 mt-4">Contacts</p>
+              <ChatDropdownShimmer mode="call" count={4} />
+            </>
+          ) : (
+          <>
           {sortedRecentCalls.length > 0 && (
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent</p>
@@ -266,10 +292,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               </div>
             )}
           </div>
+          </>
+          )}
         </div>
       ) : (
         // Chat mode: Show existing threads
-        sortedThreads.length === 0 ? (
+        threadsLoading ? (
+          <ChatDropdownShimmer mode="chat" count={4} />
+        ) : sortedThreads.length === 0 ? (
           <div className="py-6 text-center text-sm text-gray-500">
             No conversations yet. Start a chat from the feed or contacts.
           </div>

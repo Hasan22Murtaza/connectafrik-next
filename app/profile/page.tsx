@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
+import type { ProfileVisibilityLevel } from '@/shared/types'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { supabase } from '@/lib/supabase'
 import NotificationManager from '@/shared/components/ui/NotificationManager'
@@ -26,12 +27,34 @@ const ProfileSettings: React.FC = () => {
     birthday: ''
   })
 
-  const [privacySettings, setPrivacySettings] = useState({
+  const [privacySettings, setPrivacySettings] = useState<{
+    profile_visibility: ProfileVisibilityLevel
+    post_visibility: ProfileVisibilityLevel
+    allow_comments: ProfileVisibilityLevel
+    allow_follows: ProfileVisibilityLevel
+    allow_direct_messages: ProfileVisibilityLevel
+    show_online_status: boolean
+    show_last_seen: boolean
+    show_location: boolean
+    show_phone: boolean
+    show_email: boolean
+    show_followers: boolean
+    show_following: boolean
+    show_country: boolean
+    show_followers_count: boolean
+  }>({
     profile_visibility: 'public',
     post_visibility: 'public',
     allow_comments: 'everyone',
     allow_follows: 'everyone',
+    allow_direct_messages: 'everyone',
     show_online_status: true,
+    show_last_seen: true,
+    show_location: true,
+    show_phone: false,
+    show_email: false,
+    show_followers: true,
+    show_following: true,
     show_country: true,
     show_followers_count: true
   })
@@ -42,6 +65,7 @@ const ProfileSettings: React.FC = () => {
     comment_notifications: true,
     like_notifications: true,
     follow_notifications: true,
+    message_notifications: true,
     mention_notifications: true,
     post_updates: false,
     weekly_digest: true
@@ -73,40 +97,47 @@ const ProfileSettings: React.FC = () => {
 
   useEffect(() => {
     if (profile) {
-      const birthdayValue = (profile as any).birthday || ''
       setProfileForm({
         username: profile.username || '',
         full_name: profile.full_name || '',
         bio: profile.bio || '',
-        country: (profile as any).country || '',
-        birthday: birthdayValue
+        country: profile.country || '',
+        birthday: profile.birthday || ''
       })
 
       setPrivacySettings({
-        profile_visibility: (profile as any).profile_visibility || 'public',
-        post_visibility: (profile as any).post_visibility || 'public',
-        allow_comments: (profile as any).allow_comments || 'everyone',
-        allow_follows: 'everyone',
-        show_online_status: (profile as any).show_online_status ?? true,
-        show_country: (profile as any).show_country ?? true,
-        show_followers_count: (profile as any).show_followers_count ?? true
+        profile_visibility: profile.profile_visibility || 'public',
+        post_visibility: profile.post_visibility || 'public',
+        allow_comments: profile.allow_comments || 'everyone',
+        allow_follows: profile.allow_follows || 'everyone',
+        allow_direct_messages: profile.allow_direct_messages || 'everyone',
+        show_online_status: profile.show_online_status ?? true,
+        show_last_seen: profile.show_last_seen ?? true,
+        show_location: profile.show_location ?? true,
+        show_phone: profile.show_phone ?? false,
+        show_email: profile.show_email ?? false,
+        show_followers: profile.show_followers ?? true,
+        show_following: profile.show_following ?? true,
+        show_country: profile.show_country ?? true,
+        show_followers_count: profile.show_followers_count ?? true
       })
 
       setNotificationSettings({
-        email_notifications: (profile as any).email_notifications ?? true,
-        push_notifications: (profile as any).push_notifications ?? true,
-        comment_notifications: (profile as any).comment_notifications ?? true,
-        like_notifications: (profile as any).like_notifications ?? true,
-        follow_notifications: (profile as any).follow_notifications ?? true,
-        mention_notifications: (profile as any).mention_notifications ?? true,
-        post_updates: (profile as any).post_updates ?? false,
-        weekly_digest: (profile as any).weekly_digest ?? true
+        email_notifications: profile.email_notifications ?? true,
+        push_notifications: profile.push_notifications ?? true,
+        comment_notifications: profile.comment_notifications ?? true,
+        like_notifications: profile.like_notifications ?? true,
+        follow_notifications: profile.follow_notifications ?? true,
+        message_notifications: profile.message_notifications ?? true,
+        mention_notifications: profile.mention_notifications ?? true,
+        post_updates: profile.post_updates ?? false,
+        weekly_digest: profile.weekly_digest ?? true
       })
 
       setSecuritySettings({
-        two_factor_enabled: (profile as any).two_factor_enabled ?? false,
-        login_alerts: (profile as any).login_alerts ?? true,
-        data_download_requested: false
+        two_factor_enabled: profile.two_factor_enabled ?? false,
+        login_alerts: profile.login_alerts ?? true,
+        data_download_requested: profile.data_download_requested ?? false
       })
     }
   }, [profile])
@@ -130,7 +161,7 @@ const ProfileSettings: React.FC = () => {
   const handlePrivacyUpdate = async () => {
     setIsSaving(true)
     try {
-      const { error } = await updateProfile(privacySettings as any)
+      const { error } = await updateProfile(privacySettings)
       if (error) {
         toast.error(error)
       } else {
@@ -146,7 +177,7 @@ const ProfileSettings: React.FC = () => {
   const handleNotificationUpdate = async () => {
     setIsSaving(true)
     try {
-      const { error } = await updateProfile(notificationSettings as any)
+      const { error } = await updateProfile(notificationSettings)
       if (error) {
         toast.error(error)
       } else {
@@ -165,7 +196,7 @@ const ProfileSettings: React.FC = () => {
       const { error } = await updateProfile({
         two_factor_enabled: securitySettings.two_factor_enabled,
         login_alerts: securitySettings.login_alerts
-      } as any)
+      })
       if (error) {
         toast.error(error)
       } else {
@@ -411,7 +442,7 @@ const ProfileSettings: React.FC = () => {
                       <textarea
                         value={profileForm.bio}
                         onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                        className="w-full px-4 py-3 border-0 focus:outline-none focus:ring-0 resize-none bg-transparent"
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 resize-none bg-transparent"
                         rows={4}
                         placeholder="Tell us about yourself..."
                         maxLength={500}
@@ -460,7 +491,7 @@ const ProfileSettings: React.FC = () => {
                               name="profile_visibility"
                               value={option.value}
                               checked={privacySettings.profile_visibility === option.value}
-                              onChange={(e) => setPrivacySettings({ ...privacySettings, profile_visibility: e.target.value })}
+                              onChange={(e) => setPrivacySettings({ ...privacySettings, profile_visibility: e.target.value as ProfileVisibilityLevel })}
                               className="text-primary-600"
                             />
                             <IconComponent className="w-5 h-5 text-gray-600" />
@@ -483,7 +514,7 @@ const ProfileSettings: React.FC = () => {
                         </label>
                         <select
                           value={privacySettings.post_visibility}
-                          onChange={(e) => setPrivacySettings({ ...privacySettings, post_visibility: e.target.value })}
+                          onChange={(e) => setPrivacySettings({ ...privacySettings, post_visibility: e.target.value as ProfileVisibilityLevel })}
                           className="input-field"
                         >
                           <option value="public">Everyone</option>
@@ -498,7 +529,37 @@ const ProfileSettings: React.FC = () => {
                         </label>
                         <select
                           value={privacySettings.allow_comments}
-                          onChange={(e) => setPrivacySettings({ ...privacySettings, allow_comments: e.target.value })}
+                          onChange={(e) => setPrivacySettings({ ...privacySettings, allow_comments: e.target.value as ProfileVisibilityLevel })}
+                          className="input-field"
+                        >
+                          <option value="everyone">Everyone</option>
+                          <option value="friends">Friends Only</option>
+                          <option value="none">No One</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Who can follow you?
+                        </label>
+                        <select
+                          value={privacySettings.allow_follows}
+                          onChange={(e) => setPrivacySettings({ ...privacySettings, allow_follows: e.target.value as ProfileVisibilityLevel })}
+                          className="input-field"
+                        >
+                          <option value="everyone">Everyone</option>
+                          <option value="friends">Friends Only</option>
+                          <option value="none">No One</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Who can send you direct messages?
+                        </label>
+                        <select
+                          value={privacySettings.allow_direct_messages}
+                          onChange={(e) => setPrivacySettings({ ...privacySettings, allow_direct_messages: e.target.value as ProfileVisibilityLevel })}
                           className="input-field"
                         >
                           <option value="everyone">Everyone</option>
@@ -510,11 +571,17 @@ const ProfileSettings: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Other Privacy Options</h3>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">What others can see on your profile</h3>
                     <div className="space-y-4">
                       {[
                         { key: 'show_online_status', label: 'Show when you\'re online' },
+                        { key: 'show_last_seen', label: 'Show last seen' },
                         { key: 'show_country', label: 'Show your country on profile' },
+                        { key: 'show_location', label: 'Show location' },
+                        { key: 'show_phone', label: 'Show phone number' },
+                        { key: 'show_email', label: 'Show email' },
+                        { key: 'show_followers', label: 'Show followers list' },
+                        { key: 'show_following', label: 'Show following list' },
                         { key: 'show_followers_count', label: 'Show followers count' }
                       ].map(option => (
                         <label key={option.key} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
@@ -578,6 +645,7 @@ const ProfileSettings: React.FC = () => {
                       { key: 'comment_notifications', label: 'Comments', desc: 'When someone comments on your posts' },
                       { key: 'like_notifications', label: 'Likes', desc: 'When someone likes your posts or comments' },
                       { key: 'follow_notifications', label: 'New Followers', desc: 'When someone follows you' },
+                      { key: 'message_notifications', label: 'Direct Messages', desc: 'When someone sends you a message' },
                       { key: 'mention_notifications', label: 'Mentions', desc: 'When someone mentions you in a post' },
                       { key: 'post_updates', label: 'Post Updates', desc: 'Updates from people you follow' },
                       { key: 'weekly_digest', label: 'Weekly Digest', desc: 'Weekly summary of activity' }

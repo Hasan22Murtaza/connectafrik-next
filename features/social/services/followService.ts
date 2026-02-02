@@ -56,17 +56,25 @@ export const followUser = async (followerId: string, followingId: string): Promi
       supabase.rpc('increment_follower_count', { user_id: followingId }),
     ])
 
-    // Create notification for the followed user
-    await supabase.from('notifications').insert({
-      user_id: followingId,
-      type: 'follow',
-      title: 'New Tap In!',
-      message: 'Someone tapped in to follow you',
-      data: {
-        follower_id: followerId,
-      },
-      is_read: false,
-    })
+    // Create notification only if the followed user has follow_notifications enabled
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('follow_notifications')
+      .eq('id', followingId)
+      .single()
+    const allowFollowNotifications = profile?.follow_notifications !== false
+    if (allowFollowNotifications) {
+      await supabase.from('notifications').insert({
+        user_id: followingId,
+        type: 'follow',
+        title: 'New Tap In!',
+        message: 'Someone tapped in to follow you',
+        data: {
+          follower_id: followerId,
+        },
+        is_read: false,
+      })
+    }
 
     return true
   } catch (error) {
@@ -104,6 +112,45 @@ export const unfollowUser = async (followerId: string, followingId: string): Pro
     console.error('Error in unfollowUser:', error)
     return false
   }
+}
+
+/**
+ * Check if two users follow each other (mutual follow / "friends")
+ */
+export const checkIsMutual = async (
+  userId1: string,
+  userId2: string
+): Promise<boolean> => {
+  try {
+    if (userId1 === userId2) return true
+    const [aFollowsB, bFollowsA] = await Promise.all([
+      checkIsFollowing(userId1, userId2),
+      checkIsFollowing(userId2, userId1),
+    ])
+    return aFollowsB && bFollowsA
+  } catch (error) {
+    console.error('Error in checkIsMutual:', error)
+    return false
+  }
+}
+
+/**
+ * Get set of user IDs that have a mutual follow relationship with currentUser
+ */
+export const getMutualUserIds = async (
+  currentUserId: string,
+  userIds: string[]
+): Promise<Set<string>> => {
+  if (!userIds.length) return new Set()
+  const uniq = [...new Set(userIds)]
+  const results = await Promise.all(
+    uniq.map((id) => (id === currentUserId ? true : checkIsMutual(currentUserId, id)))
+  )
+  const set = new Set<string>()
+  uniq.forEach((id, i) => {
+    if (results[i]) set.add(id)
+  })
+  return set
 }
 
 /**

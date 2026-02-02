@@ -17,11 +17,20 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import { followUser, unfollowUser, checkIsFollowing } from '@/features/social/services/followService'
+import { followUser, unfollowUser, checkIsFollowing, checkIsMutual } from '@/features/social/services/followService'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
-import { UserProfile, MutualFriend } from '@/shared/types'
+import { UserProfileWithVisibility, MutualFriend } from '@/shared/types'
+import {
+  canViewProfile,
+  canViewPost,
+  canComment,
+  canFollow,
+  canSendMessage,
+  getVisibleProfileFields,
+  type VisibleProfileFieldsInput,
+} from '@/shared/utils/visibilityUtils'
 import { PostCard } from '@/features/social/components/PostCard'
 import CommentsSection from '@/features/social/components/CommentsSection'
 import ShareModal from '@/features/social/components/ShareModal'
@@ -58,12 +67,13 @@ const UserProfilePage: React.FC = () => {
   const { startChatWithMembers, openThread, startCall } = useProductionChat()
   const { members } = useMembers()
 
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profile, setProfile] = useState<UserProfileWithVisibility | null>(null)
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
   const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([])
   const [mutualFriendsCount, setMutualFriendsCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isFollowing, setIsFollowing] = useState(false)
+  const [isMutual, setIsMutual] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
@@ -94,6 +104,20 @@ const UserProfilePage: React.FC = () => {
 
       if (profileError) throw profileError
       setProfile(profileData)
+
+      const viewerId = user?.id ?? null
+      const ownerId = profileData.id
+      const isOwn = viewerId === ownerId
+      const mutual = !isOwn && viewerId ? await checkIsMutual(viewerId, ownerId) : false
+      setIsMutual(mutual)
+
+      const pv = profileData.profile_visibility || 'public'
+      const postVis = profileData.post_visibility || 'public'
+      if (!isOwn && !canViewProfile(viewerId, ownerId, pv, mutual)) {
+        setPosts([])
+        setLoading(false)
+        return
+      }
 
       // Fetch user posts with author for PostCard
       const { data: postsData, error: postsError } = await supabase
@@ -136,9 +160,12 @@ const UserProfilePage: React.FC = () => {
         const likedPostIds = new Set((likesData || []).map((l) => l.post_id))
         postsWithLikes = postsWithLikes.map((p) => ({ ...p, isLiked: likedPostIds.has(p.id) }))
       }
-      setPosts(postsWithLikes)
 
-      // Check if current user is following this user and fetch mutual friends
+      const canSeePost = (authorId: string) =>
+        canViewPost(viewerId, authorId, postVis, mutual)
+      const visiblePosts = isOwn ? postsWithLikes : postsWithLikes.filter((p) => canSeePost(p.author_id))
+      setPosts(visiblePosts)
+
       if (user && user.id !== profileData.id) {
         await checkFollowStatus()
         await fetchMutualFriends(user.id, profileData.id)
@@ -422,6 +449,38 @@ const UserProfilePage: React.FC = () => {
   }
 
   const isOwnProfile = user && user.id === profile.id
+  const viewerId = user?.id ?? null
+  const canView = isOwnProfile || canViewProfile(viewerId, profile.id, profile.profile_visibility || 'public', isMutual)
+  const showFollowBtn = canFollow(viewerId, profile.id, profile.allow_follows || 'everyone', isMutual)
+  const showMessageBtn = canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)
+  const visibleFields = getVisibleProfileFields(profile as VisibleProfileFieldsInput, Boolean(isOwnProfile), Boolean(isMutual))
+  const allowComments = profile.allow_comments ?? 'everyone'
+  const canCommentOnPost = (authorId: string) =>
+    isOwnProfile || canComment(viewerId, authorId, allowComments, isMutual)
+
+  if (!canView) {
+    return (
+      <div className="min-h-screen bg-[#eef0f4] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md text-center">
+          <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-6">
+            <span className="text-4xl font-bold text-gray-400">
+              {profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}
+            </span>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">This content isn&apos;t available</h1>
+          <p className="text-gray-600 mb-6">
+            The person who shared this content only shares it with a small group of people or the link may be broken.
+          </p>
+          <button
+            onClick={() => router.push('/feed')}
+            className="px-5 py-2.5 bg-primary-600 text-white rounded-full font-semibold hover:bg-primary-700 transition-colors"
+          >
+            Go to Feed
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#eef0f4] pb-24 sm:pb-8">
@@ -458,67 +517,77 @@ const UserProfilePage: React.FC = () => {
                 </h1>
                 <p className="text-gray-500 text-sm mt-1">@{profile.username}</p>
                 <div className="flex flex-wrap justify-center sm:justify-start items-center gap-x-4 gap-y-1 mt-3 text-sm text-gray-500">
-                  <span><span className="font-semibold text-gray-900">{profile.followers_count}</span> tapped in</span>
-                  <span className="hidden sm:inline text-gray-300">·</span>
+                  {visibleFields.followersCount && (
+                    <>
+                      <span><span className="font-semibold text-gray-900">{profile.followers_count}</span> tapped in</span>
+                      <span className="hidden sm:inline text-gray-300">·</span>
+                    </>
+                  )}
                   <span><span className="font-semibold text-gray-900">{profile.following_count}</span> tapping in</span>
                   <span className="hidden sm:inline text-gray-300">·</span>
                   <span><span className="font-semibold text-gray-900">{profile.posts_count}</span> posts</span>
                 </div>
 
-                {!isOwnProfile && (
+                {!isOwnProfile && (showFollowBtn || showMessageBtn) && (
                   <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 mt-5">
-                    <button
-                      onClick={handleFollow}
-                      disabled={followLoading}
-                      className={`min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all disabled:opacity-50 active:scale-[0.98] ${
-                        isFollowing
-                          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                          : 'bg-[#F97316] text-white hover:bg-[#ea580c] shadow-sm'
-                      }`}
-                    >
-                      {followLoading ? (
-                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      ) : isFollowing ? (
-                        <UserCheck className="w-4 h-4" />
-                      ) : (
-                        <UserPlus className="w-4 h-4" />
-                      )}
-                      {isFollowing ? 'Tapped In' : 'Tap In'}
-                    </button>
-                    <button
-                      onClick={handleStartChat}
-                      className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-all active:scale-[0.98]"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      Message
-                    </button>
-                    <div className="relative">
+                    {showFollowBtn && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
-                        className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 transition-all active:scale-[0.98]"
-                        aria-label="More"
+                        onClick={handleFollow}
+                        disabled={followLoading}
+                        className={`min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all disabled:opacity-50 active:scale-[0.98] ${
+                          isFollowing
+                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                            : 'bg-[#F97316] text-white hover:bg-[#ea580c] shadow-sm'
+                        }`}
                       >
-                        <MoreHorizontal className="w-5 h-5" />
+                        {followLoading ? (
+                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        ) : isFollowing ? (
+                          <UserCheck className="w-4 h-4" />
+                        ) : (
+                          <UserPlus className="w-4 h-4" />
+                        )}
+                        {isFollowing ? 'Tapped In' : 'Tap In'}
                       </button>
-                      {showMenu && (
-                        <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50">
-                          <button
-                            onClick={() => { handleCall(false); setShowMenu(false) }}
-                            className="w-full px-4 py-3 text-left text-gray-800 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium"
-                          >
-                            <Phone className="w-4 h-4 text-gray-500" />
-                            Call
-                          </button>
-                          <button
-                            onClick={() => { handleCall(true); setShowMenu(false) }}
-                            className="w-full px-4 py-3 text-left text-gray-800 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium"
-                          >
-                            <Video className="w-4 h-4 text-gray-500" />
-                            Video Call
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                    )}
+                    {showMessageBtn && (
+                      <button
+                        onClick={handleStartChat}
+                        className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-all active:scale-[0.98]"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Message
+                      </button>
+                    )}
+                    {(showFollowBtn || showMessageBtn) && (
+                      <div className="relative">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
+                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 transition-all active:scale-[0.98]"
+                          aria-label="More"
+                        >
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                        {showMenu && showMessageBtn && (
+                          <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50">
+                            <button
+                              onClick={() => { handleCall(false); setShowMenu(false) }}
+                              className="w-full px-4 py-3 text-left text-gray-800 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium"
+                            >
+                              <Phone className="w-4 h-4 text-gray-500" />
+                              Call
+                            </button>
+                            <button
+                              onClick={() => { handleCall(true); setShowMenu(false) }}
+                              className="w-full px-4 py-3 text-left text-gray-800 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium"
+                            >
+                              <Video className="w-4 h-4 text-gray-500" />
+                              Video Call
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -542,10 +611,16 @@ const UserProfilePage: React.FC = () => {
               <p className="text-gray-800 text-[15px] leading-relaxed">{profile.bio}</p>
             )}
             <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-              {profile.country && (
+              {visibleFields.country && profile.country && (
                 <span className="inline-flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   {profile.country}
+                </span>
+              )}
+              {visibleFields.location && (profile as UserProfileWithVisibility).location && (
+                <span className="inline-flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  {(profile as UserProfileWithVisibility).location}
                 </span>
               )}
               <span className="inline-flex items-center gap-2">
@@ -554,7 +629,7 @@ const UserProfilePage: React.FC = () => {
               </span>
             </div>
 
-            {user && user.id !== profile.id && mutualFriendsCount > 0 && (
+            {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
               <div className="pt-1">
                 <p className="text-sm font-medium text-gray-700 mb-3">
                   {mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}

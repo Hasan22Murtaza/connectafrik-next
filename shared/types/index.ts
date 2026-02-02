@@ -19,20 +19,36 @@ export interface Post {
   updated_at: string
 }
 
+/** Visibility / permission enum used in profiles (DB: public | friends | private | everyone | none) */
+export type ProfileVisibilityLevel = 'public' | 'friends' | 'private' | 'everyone' | 'none'
+
 export interface Profile {
   id: string
   username: string
   full_name: string
+  first_name?: string
+  last_name?: string
   avatar_url?: string
   country?: string
   bio?: string
+  birthday?: string
+  gender?: string
+  phone_number?: string | null
   created_at: string
   updated_at: string
-  // Privacy settings
-  profile_visibility?: 'public' | 'followers' | 'private'
-  post_visibility?: 'public' | 'followers' | 'private'
-  allow_comments?: boolean
+  // Privacy & visibility (aligned with public.profiles)
+  profile_visibility?: ProfileVisibilityLevel
+  post_visibility?: ProfileVisibilityLevel
+  allow_comments?: ProfileVisibilityLevel
+  allow_follows?: ProfileVisibilityLevel
+  allow_direct_messages?: ProfileVisibilityLevel
   show_online_status?: boolean
+  show_last_seen?: boolean
+  show_location?: boolean
+  show_phone?: boolean
+  show_email?: boolean
+  show_followers?: boolean
+  show_following?: boolean
   show_country?: boolean
   show_followers_count?: boolean
   // Notification settings
@@ -41,12 +57,14 @@ export interface Profile {
   comment_notifications?: boolean
   like_notifications?: boolean
   follow_notifications?: boolean
+  message_notifications?: boolean
   mention_notifications?: boolean
   post_updates?: boolean
   weekly_digest?: boolean
-  // Security settings
+  // Security
   two_factor_enabled?: boolean
   login_alerts?: boolean
+  data_download_requested?: boolean
 }
 
 export interface UserProfile {
@@ -66,6 +84,12 @@ export interface UserProfile {
   posts_count: number
   created_at: string
 }
+
+/** User profile including visibility/privacy settings (for viewing other users) */
+export type UserProfileWithVisibility = UserProfile & Partial<Pick<Profile,
+  'profile_visibility' | 'post_visibility' | 'allow_comments' | 'allow_follows' | 'allow_direct_messages' |
+  'show_country' | 'show_phone' | 'show_email' | 'show_followers' | 'show_following' | 'show_followers_count' |
+  'show_last_seen' | 'show_online_status' | 'show_location'>>
 
 export interface MutualFriend {
   user_id: string

@@ -1,4 +1,4 @@
-﻿
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Heart, Reply, MoreHorizontal, Send, Trash2, Flag, Smile, Edit2, Check, X, Image as ImageIcon, Sticker, Loader2, CheckCircle } from 'lucide-react'
@@ -12,6 +12,8 @@ interface CommentsSectionProps {
   postId: string
   isOpen: boolean
   onClose: () => void
+  /** When false, composer is hidden and message shown (e.g. post owner turned off comments). Default true. */
+  canComment?: boolean
 }
 
 type ComposerAttachment =
@@ -61,7 +63,7 @@ const getUserInitial = (user: User | null): string => {
   return displayName.charAt(0).toUpperCase() || 'C'
 }
 
-const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClose }) => {
+const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClose, canComment = true }) => {
   const { user } = useAuth()
   const {
     comments,
@@ -290,6 +292,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
               <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600"></div>
               <p className="mt-2 text-gray-500">Loading comments...</p>
             </div>
+          ) : comments.length === 0 && !canComment ? (
+            <div className="py-8 text-center text-gray-500">Comments are turned off for this post.</div>
           ) : comments.length === 0 ? (
             <div className="py-8 text-center text-gray-500">No comments yet. Be the first to comment!</div>
           ) : (
@@ -313,7 +317,12 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
           )}
         </div>
 
-        {user && (
+        {user && !canComment && (
+          <div className="border-t border-gray-200 p-4 text-center text-sm text-gray-500">
+            Comments are turned off for this post.
+          </div>
+        )}
+        {user && canComment && (
           <div className="border-t border-gray-200 p-4">
             <form onSubmit={handleSubmitComment} className="space-y-3">
               <div className="flex items-start space-x-3">
