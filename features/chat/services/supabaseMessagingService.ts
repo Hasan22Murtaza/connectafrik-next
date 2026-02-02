@@ -61,6 +61,14 @@ export interface SendMessageOptions {
   reply_to_id?: string
 }
 
+export interface RecentCallEntry {
+  thread_id: string
+  created_at: string
+  message_type: string
+  call_type: 'audio' | 'video'
+  metadata?: Record<string, unknown>
+}
+
 type ThreadSubscriber = (thread: ChatThread) => void
 type MessageSubscriber = (message: ChatMessage) => void
 
@@ -799,6 +807,51 @@ export const supabaseMessagingService = {
       console.error('Error in getThreadMessages:', error)
       activateFallback(error)
       return localMessages.get(threadId) ?? []
+    }
+  },
+
+  async getRecentCalls(currentUserId: string, limit = 50): Promise<RecentCallEntry[]> {
+    if (!currentUserId) return []
+
+    try {
+      const { data: memberships, error: membershipError } = await supabase
+        .from('chat_participants')
+        .select('thread_id')
+        .eq('user_id', currentUserId)
+
+      if (membershipError || !memberships?.length) return []
+
+      const threadIds = [...new Set((memberships ?? []).map((m: { thread_id: string }) => m.thread_id).filter(Boolean))]
+
+      const { data: messages, error } = await supabase
+        .from('chat_messages')
+        .select('id, thread_id, created_at, message_type, metadata')
+        .in('thread_id', threadIds)
+        .in('message_type', ['call_request', 'call_accepted', 'call_ended', 'call_rejected'])
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+      if (error || !messages?.length) return []
+
+      const seenThreads = new Set<string>()
+      const entries: RecentCallEntry[] = []
+      for (const m of messages) {
+        if (seenThreads.has(m.thread_id)) continue
+        seenThreads.add(m.thread_id)
+        const meta = (m.metadata ?? {}) as Record<string, unknown>
+        entries.push({
+          thread_id: m.thread_id,
+          created_at: m.created_at,
+          message_type: m.message_type,
+          call_type: (meta.callType === 'video' ? 'video' : 'audio') as 'audio' | 'video',
+          metadata: meta,
+        })
+      }
+      return entries
+    } catch (err) {
+      console.error('Error fetching recent calls:', err)
+      return []
     }
   },
 

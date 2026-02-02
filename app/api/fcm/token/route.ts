@@ -130,7 +130,6 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const providedUserId = searchParams.get('user_id')
-    const fcm_token = searchParams.get('fcm_token')
     const device_id = searchParams.get('device_id')
 
     // Get user_id from authenticated user or from query params
@@ -173,9 +172,6 @@ export async function DELETE(request: NextRequest) {
       })
       .eq('user_id', user_id)
 
-    if (fcm_token) {
-      query = query.eq('fcm_token', fcm_token)
-    }
 
     if (device_id) {
       query = query.eq('device_id', device_id)

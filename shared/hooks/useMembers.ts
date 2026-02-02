@@ -11,8 +11,6 @@ export interface Member {
   last_seen?: string | null
 }
 
-export const REAL_MEMBER_USERNAMES = ['stsedze', 'rtsedze'] as const
-
 const normalizedName = (fullName?: string | null, username?: string | null) => {
   const byFullName = fullName?.trim()
   if (byFullName) return byFullName
@@ -39,17 +37,8 @@ export function useMembers() {
           return
         }
 
-        const targetUsernames = new Set(
-          REAL_MEMBER_USERNAMES.map((name) => name.toLowerCase())
-        )
-
-        const filtered = (data ?? []).filter((profile: any) => {
-          const username = (profile.username ?? '').toLowerCase()
-          return targetUsernames.has(username)
-        })
-
         setMembers(
-          filtered.map((profile: any) => ({
+          (data ?? []).map((profile: any) => ({
             id: profile.id,
             name: normalizedName(profile.full_name, profile.username),
             avatar_url: profile.avatar_url ?? undefined,
