@@ -73,8 +73,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
 
-  const currentUser = user ? { id: user.id, name: user.user_metadata?.full_name || user.email } : null
-
+  const displayName =
+    user?.user_metadata?.full_name ||
+    [user?.user_metadata?.first_name, user?.user_metadata?.last_name].filter(Boolean).join(' ') ||
+    user?.email
+  const currentUser = user ? { id: user.id, name: displayName || user.email } : null
   const updatePresence = useCallback((userId: string, status: 'online' | 'away' | 'busy' | 'offline') => {
     setPresence(prev => ({
       ...prev,
@@ -388,7 +391,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           }
         }))
       }
-
+      console.log('Sending call request message', currentUser?.name)
       try {
         await supabaseMessagingService.sendMessage(
           threadId,
