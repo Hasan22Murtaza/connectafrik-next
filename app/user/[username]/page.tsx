@@ -698,6 +698,8 @@ const UserProfilePage: React.FC = () => {
                       onEdit={user?.id === profile.id ? handleEdit : undefined}
                       onEmojiReaction={handleEmojiReaction}
                       isPostLiked={post.isLiked}
+                      canComment={canCommentOnPost(post.author_id)}
+                      canFollow={showFollowBtn}
                     />
                     {showCommentsFor === post.id && (
                       <div className="mt-2">
@@ -705,6 +707,7 @@ const UserProfilePage: React.FC = () => {
                           postId={post.id}
                           isOpen={true}
                           onClose={() => setShowCommentsFor(null)}
+                          canComment={canCommentOnPost(post.author_id)}
                         />
                       </div>
                     )}

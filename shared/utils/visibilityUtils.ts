@@ -1,6 +1,11 @@
 import type { Profile, ProfileVisibilityLevel } from '@/shared/types'
 
-/** Whether viewer can see the profile (profile_visibility: public | friends | private) */
+/**
+ * Whether viewer can see the profile (profile_visibility: public | friends | private).
+ * - public/everyone: everyone can see
+ * - friends: show only to friends (mutual follow)
+ * - private: only the owner can see
+ */
 export function canViewProfile(
   viewerId: string | null,
   ownerId: string,
@@ -10,7 +15,7 @@ export function canViewProfile(
   if (viewerId === ownerId) return true
   if (profileVisibility === 'public' || profileVisibility === 'everyone') return true
   if (profileVisibility === 'private') return false
-  if (profileVisibility === 'friends') return isMutual
+  if (profileVisibility === 'friends') return isMutual // show to friends (mutual follow)
   return false
 }
 

@@ -355,6 +355,7 @@ const FeedPage: React.FC = () => {
               onEmojiReaction={handleEmojiReaction}
               isPostLiked={post.isLiked}
               canComment={post.canComment}
+              canFollow={post.canFollow}
             />
             {/* Mobile inline comments */}
             {showCommentsFor === post.id && (
