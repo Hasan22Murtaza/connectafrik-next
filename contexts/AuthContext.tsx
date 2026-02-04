@@ -34,29 +34,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const router = useRouter()
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-      
-      // Check and setup FCM token on initial session load if user is logged in
-      if (session?.user && typeof window !== 'undefined') {
-        checkAndSetupFCMTokenOnLogin()
-      }
-    })
+    // Get initial session (guard against refresh_token_not_found / invalid session)
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
+        if (session?.user && typeof window !== 'undefined') {
+          checkAndSetupFCMTokenOnLogin()
+        }
+      })
+      .catch(() => {
+        setSession(null)
+        setUser(null)
+        setLoading(false)
+      })
 
-    // Listen for auth changes
+    // Listen for auth changes (guard against malformed session updates)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
-      
-      // Check and setup FCM token on login
-      if (event === 'SIGNED_IN' && session?.user && typeof window !== 'undefined') {
-        checkAndSetupFCMTokenOnLogin()
+      try {
+        setSession(session ?? null)
+        setUser(session?.user ?? null)
+        setLoading(false)
+        if (event === 'SIGNED_IN' && session?.user && typeof window !== 'undefined') {
+          checkAndSetupFCMTokenOnLogin()
+        }
+      } catch {
+        setSession(null)
+        setUser(null)
+        setLoading(false)
       }
     })
 

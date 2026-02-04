@@ -1,12 +1,42 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/** Supabase auth cookie key derived from project URL (matches default in supabase-js). */
+function getSupabaseAuthCookieKey(): string {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (!url) return 'sb-auth-token'
+    const hostname = new URL(url).hostname.split('.')[0]
+    return `sb-${hostname}-auth-token`
+  } catch {
+    return 'sb-auth-token'
+  }
+}
+
+/** Clear Supabase auth cookies (base key + chunked keys) so user is treated as signed out. */
+function clearSupabaseAuthCookies(
+  request: NextRequest,
+  response: NextResponse,
+  baseKey: string
+): NextResponse {
+  const options = { path: '/' }
+  for (const name of [baseKey, ...Array.from({ length: 12 }, (_, i) => `${baseKey}.${i}`)]) {
+    request.cookies.set({ name, value: '', ...options })
+    response.cookies.set(name, '', options)
+  }
+  return NextResponse.next({
+    request: { headers: request.headers },
+  })
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   })
+
+  const authCookieKey = getSupabaseAuthCookieKey()
 
   // Create a Supabase client configured to use cookies
   const supabase = createServerClient(
@@ -55,12 +85,37 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Get the current session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  // Get the current session (may throw if refresh token is invalid)
+  let session: Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session'] = null
+  let didClearAuthCookies = false
+  try {
+    const { data } = await supabase.auth.getSession()
+    session = data.session
+  } catch (err: unknown) {
+    // Invalid or missing refresh token (e.g. refresh_token_not_found) or malformed session
+    const isAuthError =
+      err &&
+      typeof err === 'object' &&
+      'code' in err &&
+      (err as { code?: string }).code === 'refresh_token_not_found'
+    if (isAuthError || (err && typeof err === 'object' && '__isAuthError' in err)) {
+      response = clearSupabaseAuthCookies(request, response, authCookieKey)
+      didClearAuthCookies = true
+    }
+    // Proceed with session = null so user is treated as unauthenticated
+  }
 
   const { pathname } = request.nextUrl
+
+  /** Ensure auth cookies are cleared on an outgoing response (e.g. redirect). */
+  const applyClearedAuthCookiesIfNeeded = (res: NextResponse) => {
+    if (!didClearAuthCookies) return res
+    const options = { path: '/' }
+    for (const name of [authCookieKey, ...Array.from({ length: 12 }, (_, i) => `${authCookieKey}.${i}`)]) {
+      res.cookies.set(name, '', options)
+    }
+    return res
+  }
 
   // Define route categories
   const authRoutes = ['/signin', '/signup', '/forgot-password', '/reset-password']
@@ -101,7 +156,7 @@ export async function middleware(request: NextRequest) {
   if (session && isAuthRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/feed'
-    return NextResponse.redirect(url)
+    return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))
   }
 
   // If user is not authenticated and tries to access protected routes, redirect to signin
@@ -109,7 +164,7 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/signin'
     url.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(url)
+    return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))
   }
 
   // Allow access to public routes, protected routes (if authenticated), and API routes
