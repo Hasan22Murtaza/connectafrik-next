@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext'
 import CreatePost from '@/features/social/components/CreatePost'
 import { PostCard } from '@/features/social/components/PostCard'
+import { usePoliticsStats } from '@/shared/hooks/usePoliticsStats'
 import { usePosts } from '@/shared/hooks/usePosts'
 import { Globe, Plus, TrendingUp, Users } from 'lucide-react'
 import React, { useState } from 'react'
@@ -11,7 +12,20 @@ import toast from 'react-hot-toast'
 const PoliticsPage: React.FC = () => {
   const { user } = useAuth()
   const [showCreatePost, setShowCreatePost] = useState(false)
-  const { posts, loading, createPost, toggleLike, sharePost } = usePosts('politics')
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
+  const {
+    totalPosts,
+    enthusiastsCount,
+    countriesRepresented,
+    topicCounts,
+    featuredThisWeek,
+    loading: statsLoading,
+    error: statsError,
+    refetch: refetchStats
+  } = usePoliticsStats()
+  const { posts, loading: postsLoading, createPost, toggleLike, sharePost, refetch } = usePosts('politics', {
+    politicsSubcategory: selectedSubcategory ?? undefined
+  })
 
   const handleCreatePost = async (postData: any) => {
     const { error } = await createPost({ ...postData, category: 'politics' })
@@ -20,6 +34,8 @@ const PoliticsPage: React.FC = () => {
     } else {
       toast.success('Political post created successfully!')
       setShowCreatePost(false)
+      refetch()
+      refetchStats()
     }
   }
 
@@ -44,14 +60,7 @@ const PoliticsPage: React.FC = () => {
     }
   }
 
-  const politicalTopics = [
-    { name: 'Democracy & Governance', count: 45, trend: '+12%' },
-    { name: 'Economic Development', count: 32, trend: '+8%' },
-    { name: 'Youth & Politics', count: 28, trend: '+15%' },
-    { name: 'Continental Integration', count: 23, trend: '+5%' },
-    { name: 'Education Policy', count: 19, trend: '+7%' },
-    { name: 'Healthcare Systems', count: 16, trend: '+3%' },
-  ]
+  const formatStat = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -68,23 +77,32 @@ const PoliticsPage: React.FC = () => {
               <p className="text-gray-600">
                 Engaging discussions on governance, democracy, and political development across Africa
               </p>
+              {statsError && (
+                <p className="text-sm text-amber-600 mt-2">Stats: {statsError}</p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="card text-center">
               <TrendingUp className="w-8 h-8 text-red-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">{posts.length}</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {statsLoading ? '—' : formatStat(totalPosts)}
+              </div>
               <div className="text-sm text-gray-600">Active Discussions</div>
             </div>
             <div className="card text-center">
               <Users className="w-8 h-8 text-red-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">2.3k</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {statsLoading ? '—' : formatStat(enthusiastsCount)}
+              </div>
               <div className="text-sm text-gray-600">Political Enthusiasts</div>
             </div>
             <div className="card text-center">
               <Globe className="w-8 h-8 text-red-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">54</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {statsLoading ? '—' : countriesRepresented}
+              </div>
               <div className="text-sm text-gray-600">Countries Represented</div>
             </div>
           </div>
@@ -97,19 +115,67 @@ const PoliticsPage: React.FC = () => {
               {/* Trending Topics */}
               <div className="card">
                 <h3 className="font-semibold text-gray-900 mb-4">Trending Topics</h3>
+                <div className="space-y-1 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubcategory(null)}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      selectedSubcategory === null ? 'bg-red-50 border border-red-200' : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="font-medium text-gray-900 text-sm">All topics</span>
+                    {totalPosts > 0 && (
+                      <span className="text-xs text-gray-500 ml-2">({totalPosts} discussions)</span>
+                    )}
+                  </button>
+                </div>
                 <div className="space-y-3">
-                  {politicalTopics.map((topic, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg cursor-pointer"
+                  {(statsLoading ? [] : topicCounts).map((topic) => (
+                    <button
+                      key={topic.slug}
+                      type="button"
+                      onClick={() => setSelectedSubcategory(topic.slug)}
+                      className={`w-full text-left p-3 rounded-lg transition-colors ${
+                        selectedSubcategory === topic.slug ? 'bg-red-50 border border-red-200' : 'hover:bg-gray-50'
+                      }`}
                     >
-                      <div>
-                        <div className="font-medium text-gray-900 text-sm">{topic.name}</div>
-                        <div className="text-xs text-gray-500">{topic.count} discussions</div>
+                      <div className="flex gap-3">
+                        <span className="text-lg shrink-0">{topic.icon}</span>
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="font-medium text-gray-900 text-sm">{topic.name}</div>
+                          <div className="text-xs text-gray-500">{topic.description}</div>
+                          {topic.count > 0 && (
+                            <div className="text-xs text-red-600 font-medium">{topic.count} discussions</div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-xs text-green-600 font-medium">{topic.trend}</div>
-                    </div>
+                    </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Featured This Week */}
+              <div className="card">
+                <h3 className="font-semibold text-gray-900 mb-4">Active This Week</h3>
+                <div className="space-y-3">
+                  {statsLoading ? (
+                    <div className="text-sm text-gray-500">Loading…</div>
+                  ) : featuredThisWeek.length === 0 ? (
+                    <div className="text-sm text-gray-500">No activity this week yet. Start a discussion!</div>
+                  ) : (
+                    featuredThisWeek.map((item, index) => (
+                      <div
+                        key={`${item.country}-${index}`}
+                        className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg"
+                      >
+                        <div>
+                          <div className="font-medium text-gray-900 text-sm">{item.country}</div>
+                          <div className="text-xs text-gray-500">{item.feature}</div>
+                        </div>
+                        <div className="text-xs text-gray-400">{item.participants}</div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -167,13 +233,17 @@ const PoliticsPage: React.FC = () => {
             {/* Create Post Form */}
             {showCreatePost && (
               <div className="mb-6">
-                <CreatePost onSubmit={handleCreatePost} onCancel={() => setShowCreatePost(false)} />
+                <CreatePost
+                  politicsPageMode
+                  onSubmit={handleCreatePost}
+                  onCancel={() => setShowCreatePost(false)}
+                />
               </div>
             )}
 
             {/* Posts Feed */}
             <div>
-              {loading ? (
+              {postsLoading ? (
                 <div className="space-y-6">
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="card animate-pulse">
@@ -196,7 +266,7 @@ const PoliticsPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : posts.length === 0 ? (
+              ) : posts.length === 0 && !postsLoading ? (
                 <div className="card text-center py-12">
                   <TrendingUp className="w-16 h-16 text-red-200 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No political discussions yet</h3>

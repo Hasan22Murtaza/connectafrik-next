@@ -25,6 +25,7 @@ export interface Post {
     allow_follows?: ProfileVisibilityLevel
   }
   media_urls: string[] | null
+  tags?: string[] | null
   likes_count: number
   comments_count: number
   shares_count: number
@@ -38,15 +39,24 @@ export interface Post {
   canFollow?: boolean
 }
 
-export const usePosts = (category?: string) => {
+export interface UsePostsOptions {
+  /** When category is 'culture', filter by this subcategory slug (posts.tags contains this value). */
+  cultureSubcategory?: string
+  /** When category is 'politics', filter by this subcategory slug (posts.tags contains this value). */
+  politicsSubcategory?: string
+}
+
+export const usePosts = (category?: string, options?: UsePostsOptions) => {
   const { user } = useAuth()
+  const cultureSubcategory = options?.cultureSubcategory
+  const politicsSubcategory = options?.politicsSubcategory
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchPosts()
-  }, [category, user?.id])
+  }, [category, cultureSubcategory, politicsSubcategory, user?.id])
 
   const fetchPosts = async () => {
     try {
@@ -66,10 +76,18 @@ export const usePosts = (category?: string) => {
             allow_follows
           )
         `)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
 
       if (category && category !== 'all') {
         query = query.eq('category', category)
+      }
+
+      if (category === 'culture' && cultureSubcategory) {
+        query = query.contains('tags', [cultureSubcategory])
+      }
+      if (category === 'politics' && politicsSubcategory) {
+        query = query.contains('tags', [politicsSubcategory])
       }
 
       const { data: postsData, error: postsError } = await query
@@ -128,6 +146,7 @@ export const usePosts = (category?: string) => {
     category: 'politics' | 'culture' | 'general'
     media_type: 'image' | 'video' | 'none'
     media_urls?: string[]
+    tags?: string[]
   }) => {
     try {
       if (!user) throw new Error('User not authenticated')
@@ -136,6 +155,7 @@ export const usePosts = (category?: string) => {
         .from('posts')
         .insert({
           ...postData,
+          tags: postData.tags ?? [],
           author_id: user.id
         })
         .select(`

@@ -5,6 +5,8 @@ import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import VideoUploader from '@/shared/components/ui/VideoUploader'
 import toast from 'react-hot-toast'
+import { CULTURE_SUBCATEGORIES, type CultureSubcategorySlug } from '@/shared/constants/culture'
+import { POLITICS_SUBCATEGORIES, type PoliticsSubcategorySlug } from '@/shared/constants/politics'
 
 type MediaType = 'image' | 'video' | 'none'
 
@@ -15,17 +17,28 @@ interface CreatePostProps {
     category: 'politics' | 'culture' | 'general'
     media_type: MediaType
     media_urls?: string[]
+    tags?: string[]
   }) => void
   onCancel?: () => void
+  /** Pre-select category when opening (e.g. "culture" on culture page). */
+  defaultCategory?: 'politics' | 'culture' | 'general'
+  /** When true (e.g. on culture page), hide Category selector and show only Cultural category; post is always culture. */
+  culturePageMode?: boolean
+  /** When true (e.g. on politics page), hide Category selector and show only Political topic; post is always politics. */
+  politicsPageMode?: boolean
 }
 
-const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onCancel }) => {
+const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onCancel, defaultCategory, culturePageMode, politicsPageMode }) => {
   const { user } = useAuth()
   const { profile } = useProfile()
   const { uploadMultipleFiles, uploading } = useFileUpload()
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
-  const [category, setCategory] = useState<'politics' | 'culture' | 'general'>('general')
+  const [category, setCategory] = useState<'politics' | 'culture' | 'general'>(
+    culturePageMode ? 'culture' : politicsPageMode ? 'politics' : (defaultCategory ?? 'general')
+  )
+  const [cultureSubcategory, setCultureSubcategory] = useState<CultureSubcategorySlug | ''>('')
+  const [politicsSubcategory, setPoliticsSubcategory] = useState<PoliticsSubcategorySlug | ''>('')
   const [mediaFiles, setMediaFiles] = useState<File[]>([])
   const [videoUrl, setVideoUrl] = useState<string>('')
   const [videoKey, setVideoKey] = useState<string>('')
@@ -46,6 +59,16 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onCancel }) => {
     // Validate content length (minimum 10 characters)
     if (content.trim().length < 10) {
       toast.error('Content must be at least 10 characters long')
+      return
+    }
+
+    const effectiveCategory = culturePageMode ? 'culture' : politicsPageMode ? 'politics' : category
+    if (effectiveCategory === 'culture' && !cultureSubcategory) {
+      toast.error('Please select a cultural category for your post')
+      return
+    }
+    if (effectiveCategory === 'politics' && !politicsSubcategory) {
+      toast.error('Please select a topic for your political post')
       return
     }
 
@@ -102,15 +125,23 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onCancel }) => {
       await onSubmit({
         title: title.trim(),
         content: content.trim(),
-        category,
+        category: effectiveCategory,
         media_type,
-        media_urls: media_urls.length > 0 ? media_urls : undefined
+        media_urls: media_urls.length > 0 ? media_urls : undefined,
+        tags:
+          effectiveCategory === 'culture' && cultureSubcategory
+            ? [cultureSubcategory]
+            : effectiveCategory === 'politics' && politicsSubcategory
+              ? [politicsSubcategory]
+              : undefined
       })
 
       // Reset form
       setTitle('')
       setContent('')
-      setCategory('general')
+      setCategory(culturePageMode ? 'culture' : politicsPageMode ? 'politics' : 'general')
+      setCultureSubcategory('')
+      setPoliticsSubcategory('')
       setMediaFiles([])
       setVideoUrl('')
       setVideoKey('')
@@ -210,31 +241,87 @@ const formatFileSize = (bytes: number): string => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Category Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-          <div className="flex gap-2">
-            {[
-              { value: 'general', label: 'General', icon: '💬' },
-              { value: 'politics', label: 'Politics', icon: '🏛️' },
-              { value: 'culture', label: 'Culture', icon: '🎭' }
-            ].map(({ value, label, icon }) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setCategory(value as any)}
-                className={`flex items-center text-sm space-x-1 sm:px-4 px-2 sm:py-1 py-2 rounded-lg border transition-colors duration-200 ${
-                  category === value
-                    ? 'border-orange-400 bg-primary-200 text-orange-900'
-                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <span>{icon}</span>
-                <span className="text-sm font-medium">{label}</span>
-              </button>
-            ))}
+        {/* Category Selection (hidden on culture or politics page) */}
+        {!culturePageMode && !politicsPageMode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <div className="flex gap-2">
+              {[
+                { value: 'general', label: 'General', icon: '💬' },
+                { value: 'politics', label: 'Politics', icon: '🏛️' },
+                { value: 'culture', label: 'Culture', icon: '🎭' }
+              ].map(({ value, label, icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setCategory(value as any)
+                    if (value !== 'culture') setCultureSubcategory('')
+                    if (value !== 'politics') setPoliticsSubcategory('')
+                  }}
+                  className={`flex items-center text-sm space-x-1 sm:px-4 px-2 sm:py-1 py-2 rounded-lg border transition-colors duration-200 ${
+                    category === value
+                      ? 'border-orange-400 bg-primary-200 text-orange-900'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>{icon}</span>
+                  <span className="text-sm font-medium">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Cultural category (when category is Culture, or always on culture page) */}
+        {(culturePageMode || category === 'culture') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cultural category</label>
+            <div className="flex flex-wrap gap-2">
+              {CULTURE_SUBCATEGORIES.map((cat) => (
+                <button
+                  key={cat.slug}
+                  type="button"
+                  onClick={() => setCultureSubcategory(cat.slug)}
+                  className={`flex items-center text-sm space-x-1 px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                    cultureSubcategory === cat.slug
+                      ? 'border-green-500 bg-green-50 text-green-800'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span className="text-sm font-medium">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Choose the category that best fits your post</p>
+          </div>
+        )}
+
+        {/* Political topic (when category is Politics, or always on politics page) */}
+        {(politicsPageMode || category === 'politics') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Topic</label>
+            <div className="flex flex-wrap gap-2">
+              {POLITICS_SUBCATEGORIES.map((cat) => (
+                <button
+                  key={cat.slug}
+                  type="button"
+                  onClick={() => setPoliticsSubcategory(cat.slug)}
+                  className={`flex items-center text-sm space-x-1 px-3 py-2 rounded-lg border transition-colors duration-200 ${
+                    politicsSubcategory === cat.slug
+                      ? 'border-red-500 bg-red-50 text-red-800'
+                      : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span className="text-sm font-medium">{cat.name}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Choose the topic that best fits your post</p>
+          </div>
+        )}
 
         {/* Title Input */}
         <div>
