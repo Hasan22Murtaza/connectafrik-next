@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useState } from 'react'
 import { Image, MapPin, Send, X, Upload, Film, Music } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
@@ -6,11 +6,14 @@ import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import VideoUploader from '@/shared/components/ui/VideoUploader'
 import toast from 'react-hot-toast'
 
+type MediaType = 'image' | 'video' | 'none'
+
 interface CreatePostProps {
   onSubmit: (postData: {
     title: string
     content: string
     category: 'politics' | 'culture' | 'general'
+    media_type: MediaType
     media_urls?: string[]
   }) => void
   onCancel?: () => void
@@ -88,10 +91,19 @@ const CreatePost: React.FC<CreatePostProps> = ({ onSubmit, onCancel }) => {
 
       setUploadProgress('Creating post...')
 
+      // Determine media_type: video if video attached, image if images only, else none
+      const media_type: MediaType =
+        videoUrl || mediaFiles.some(f => f.type.startsWith('video/'))
+          ? 'video'
+          : mediaFiles.length > 0
+            ? 'image'
+            : 'none'
+
       await onSubmit({
         title: title.trim(),
         content: content.trim(),
         category,
+        media_type,
         media_urls: media_urls.length > 0 ? media_urls : undefined
       })
 

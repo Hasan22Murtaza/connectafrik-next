@@ -126,6 +126,7 @@ export const usePosts = (category?: string) => {
     title: string
     content: string
     category: 'politics' | 'culture' | 'general'
+    media_type: 'image' | 'video' | 'none'
     media_urls?: string[]
   }) => {
     try {
