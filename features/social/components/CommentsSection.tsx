@@ -364,27 +364,11 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
                       </button>
                       <button
                         type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="rounded-full p-2 transition hover:bg-gray-200"
-                        aria-label="Add photo"
-                      >
-                        <ImageIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setIsGifPickerOpen(prev => !prev)}
                         className="rounded-full px-2 py-1 text-xs font-semibold transition hover:bg-gray-200"
                         aria-label="Add GIF"
                       >
                         GIF
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIsStickerPickerOpen(prev => !prev)}
-                        className="rounded-full p-2 transition hover:bg-gray-200"
-                        aria-label="Add sticker"
-                      >
-                        <Sticker className="h-4 w-4" />
                       </button>
 
                       <EmojiPicker

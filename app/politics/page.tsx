@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext'
 import CreatePost from '@/features/social/components/CreatePost'
 import { PostCard } from '@/features/social/components/PostCard'
+import CommentsSection from '@/features/social/components/CommentsSection'
 import { usePoliticsStats } from '@/shared/hooks/usePoliticsStats'
 import { usePosts } from '@/shared/hooks/usePosts'
 import { Globe, Plus, TrendingUp, Users } from 'lucide-react'
@@ -13,6 +14,7 @@ const PoliticsPage: React.FC = () => {
   const { user } = useAuth()
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
+  const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const {
     totalPosts,
     enthusiastsCount,
@@ -47,8 +49,8 @@ const PoliticsPage: React.FC = () => {
     await toggleLike(postId)
   }
 
-  const handleComment = (_postId: string) => {
-    toast('Comment feature coming soon!')
+  const handleComment = (postId: string) => {
+    setShowCommentsFor((prev) => (prev === postId ? null : postId))
   }
 
   const handleShare = async (postId: string) => {
@@ -280,13 +282,25 @@ const PoliticsPage: React.FC = () => {
               ) : (
                 <div className="space-y-6">
                   {posts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onLike={handleLike}
-                      onComment={handleComment}
-                      onShare={handleShare}
-                    />
+                    <React.Fragment key={post.id}>
+                      <PostCard
+                        post={post}
+                        onLike={handleLike}
+                        onComment={handleComment}
+                        onShare={handleShare}
+                        canComment={(post as { canComment?: boolean }).canComment ?? true}
+                      />
+                      {showCommentsFor === post.id && (
+                        <div className="lg:hidden">
+                          <CommentsSection
+                            postId={post.id}
+                            isOpen
+                            onClose={() => setShowCommentsFor(null)}
+                            canComment={(post as { canComment?: boolean }).canComment ?? true}
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
               )}
@@ -294,7 +308,15 @@ const PoliticsPage: React.FC = () => {
           </div>
         </div>
       </div>
-     
+      {/* Desktop comment modal */}
+      <div className="hidden lg:block">
+        <CommentsSection
+          postId={showCommentsFor ?? ''}
+          isOpen={Boolean(showCommentsFor)}
+          onClose={() => setShowCommentsFor(null)}
+          canComment={(posts.find((p) => p.id === showCommentsFor) as { canComment?: boolean } | undefined)?.canComment ?? true}
+        />
+      </div>
     </div>
   )
 }
