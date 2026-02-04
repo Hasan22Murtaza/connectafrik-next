@@ -76,12 +76,13 @@ export function useCultureStats(): CultureStats {
         return
       }
 
+      // Supabase returns foreign key relations as arrays
       const posts = (postsRes.data || []) as Array<{
         author_id: string
         tags: string[] | null
         created_at: string
         likes_count: number
-        author: { country: string | null } | null
+        author: { country: string | null }[] | null
       }>
       const total =
         (countRes as { count?: number }).count ??
@@ -101,7 +102,7 @@ export function useCultureStats(): CultureStats {
       const recent = posts.filter(p => p.created_at >= weekAgo)
       const byCountry = new Map<string, { count: number; likes: number }>()
       for (const p of recent) {
-        const country = (p.author as any)?.country ?? 'Unknown'
+        const country = (Array.isArray(p.author) ? p.author[0] : p.author)?.country ?? 'Unknown'
         const cur = byCountry.get(country) ?? { count: 0, likes: 0 }
         byCountry.set(country, { count: cur.count + 1, likes: cur.likes + (p.likes_count || 0) })
       }
