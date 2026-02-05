@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
 import { getFirebaseAdmin } from '../fcm/_utils'
+import type { NotificationType } from '@/shared/types/notifications'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,6 +14,10 @@ export interface NotificationPayload {
   user_id: string
   title: string
   body: string
+  // Notification type for database storage
+  notification_type?: NotificationType
+  // Optional: skip database storage (for push-only scenarios)
+  skip_db?: boolean
   icon?: string
   image?: string
   badge?: string
@@ -46,7 +51,7 @@ export async function POST(request: NextRequest) {
     console.log('📱 Push notification API called')
 
     const body = await request.json() as NotificationPayload
-    const { user_id, title, body: notificationBody } = body
+    const { user_id, title, body: notificationBody, notification_type, skip_db } = body
 
     if (!user_id || !title || !notificationBody) {
       return NextResponse.json(
@@ -61,6 +66,32 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Step 1: Create notification record in database (unless skip_db is true)
+    let notificationId: string | null = null
+    if (!skip_db) {
+      const { data: notification, error: dbError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id,
+          type: notification_type || 'system',
+          title,
+          message: notificationBody,
+          data: body.data || {},
+          is_read: false
+        })
+        .select('id')
+        .single()
+
+      if (dbError) {
+        console.error('❌ Error creating notification in database:', dbError)
+        // Continue with push notification even if DB insert fails
+      } else {
+        notificationId = notification?.id
+        console.log('✅ Notification created in database:', notificationId)
+      }
+    }
+
+    // Step 2: Send FCM push notification
     const firebaseAdmin = getFirebaseAdmin()
     if (!firebaseAdmin) {
       return NextResponse.json(
@@ -108,7 +139,8 @@ export async function POST(request: NextRequest) {
     if (!subscriptions || subscriptions.length === 0) {
       return NextResponse.json(
         {
-          success: false,
+          success: notificationId !== null, // Success if notification was stored in DB
+          notification_id: notificationId,
           message: 'No push subscriptions found for this user',
           sent: 0,
           failed: 0,
@@ -228,7 +260,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        success: successful > 0,
+        success: successful > 0 || notificationId !== null,
+        notification_id: notificationId,
         sent: successful,
         failed,
         total: subscriptionsToSend.length,

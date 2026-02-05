@@ -209,12 +209,19 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
         }
 
         const notificationPromises = Array.from(recipientIds).map(recipientId =>
-          notificationService.sendNewPostNotification(
-            recipientId,
-            authorName,
-            postTitle,
-            data.id
-          ).catch(() => false)
+          notificationService.sendNotification({
+            user_id: recipientId,
+            title: 'New Post',
+            body: `${authorName} shared a new post: "${postTitle}"`,
+            notification_type: 'system',
+            data: {
+              type: 'new_post',
+              post_id: data.id,
+              author_id: user.id,
+              author_name: authorName,
+              url: `/post/${data.id}`
+            }
+          }).catch(() => ({ success: false }))
         )
 
         await Promise.allSettled(notificationPromises)
@@ -271,12 +278,18 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
           try {
             const actorName = user.user_metadata?.full_name || user.email || 'Someone'
             const postTitle = post.title || post.content?.substring(0, 50) || 'your post'
-            await notificationService.sendPostInteractionNotification(
-              post.author_id,
-              actorName,
-              'like',
-              postTitle
-            )
+            await notificationService.sendNotification({
+              user_id: post.author_id,
+              title: 'Post Interaction',
+              body: `${actorName} liked your post${postTitle ? `: "${postTitle}"` : ''}`,
+              notification_type: 'post_like',
+              data: {
+                post_id: postId,
+                actor_id: user.id,
+                actor_name: actorName,
+                url: `/post/${postId}`
+              }
+            })
           } catch (notificationError) {
             // Don't fail the like if notification fails
           }

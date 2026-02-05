@@ -1382,12 +1382,38 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
         const callerId = participants[0].user_id; // The caller (other participant)
         const recipientWhoRejected = decodedRecipientName; // The recipient who rejected
+        const currentRoomId = roomId || roomIdHint; // Get the room ID
 
-        await notificationService.sendMissedCallNotification(
-          callerId,
-          recipientWhoRejected,
-          callType
-        );
+        // Fetch recipient's (current user's) profile image
+        let recipientImage: string | undefined;
+        try {
+          const { data: recipientProfile } = await supabase
+            .from('profiles')
+            .select('avatar_url')
+            .eq('id', currentUserId)
+            .single();
+          recipientImage = recipientProfile?.avatar_url || undefined;
+        } catch {
+          // Continue without image if fetch fails
+        }
+
+        await notificationService.sendNotification({
+          user_id: callerId,
+          title: 'Missed Call',
+          body: `${recipientWhoRejected} missed your ${callType} call`,
+          notification_type: 'missed_call',
+          image: recipientImage, // Recipient's profile image
+          data: {
+            type: 'missed_call',
+            call_type: callType,
+            room_id: currentRoomId || '',
+            thread_id: threadId || '',
+            recipient_id: currentUserId || '',
+            recipient_name: recipientWhoRejected,
+            recipient_image: recipientImage || '',
+            url: '/chat'
+          }
+        });
       } catch (notificationError) {
         // Don't fail the rejection if notification fails
       }

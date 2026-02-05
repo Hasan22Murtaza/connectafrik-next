@@ -117,10 +117,18 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
 
       // Send push notification to the recipient
       try {
-        await notificationService.sendFriendRequestNotification(
-          userId, 
-          user?.user_metadata?.full_name || user?.email || 'Someone'
-        )
+        const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
+        await notificationService.sendNotification({
+          user_id: userId,
+          title: 'New Friend Request',
+          body: `${senderName} wants to be your friend on ConnectAfrik`,
+          notification_type: 'friend_request',
+          data: {
+            sender_id: user.id,
+            sender_name: senderName,
+            url: '/friends'
+          }
+        })
       } catch (notificationError) {
         console.error('Error sending push notification:', notificationError)
         // Don't fail the friend request if notification fails
