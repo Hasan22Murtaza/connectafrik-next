@@ -250,4 +250,36 @@ button{
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
+/* Slow spin animation for music icon */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Custom scrollbar for story components */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #374151;
+  border-radius: 3px;
+}
+.scrollbar-thumb-gray-700::-webkit-scrollbar-thumb {
+  background-color: #374151;
+}
+
 
