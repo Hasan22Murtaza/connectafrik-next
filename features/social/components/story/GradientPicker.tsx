@@ -34,21 +34,21 @@ const GradientPicker: React.FC<GradientPickerProps> = ({ selectedGradient, onSel
   const isSelected = (gradient: string) => selectedGradient === gradient
 
   return (
-    <div className="space-y-3">
-      <h4 className="text-sm font-semibold text-gray-900">Background</h4>
-      <div className="grid grid-cols-7 gap-2">
+    <div className="space-y-2 sm:space-y-3">
+      <h4 className="text-xs sm:text-sm font-semibold text-gray-900">Background</h4>
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {STORY_GRADIENTS.map((option) => (
           <button
             key={option.id}
             onClick={() => onSelect(option)}
             title={option.name}
-            className={`relative w-8 h-8 rounded-full bg-gradient-to-br ${option.gradient} transition-all hover:scale-110 shadow-sm ${
-              isSelected(option.gradient) ? 'ring-2 ring-primary-500 ring-offset-2 ring-offset-white scale-110' : 'hover:shadow-md'
+            className={`relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br ${option.gradient} transition-all active:scale-95 sm:hover:scale-110 shadow-sm ${
+              isSelected(option.gradient) ? 'ring-2 ring-primary-500 ring-offset-1 sm:ring-offset-2 ring-offset-white scale-110' : 'sm:hover:shadow-md'
             }`}
           >
             {isSelected(option.gradient) && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <Check className="w-4 h-4 text-white drop-shadow-lg" />
+                <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white drop-shadow-lg" />
               </div>
             )}
           </button>

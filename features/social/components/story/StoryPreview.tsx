@@ -42,21 +42,21 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
 
   return (
     <div className="flex flex-col items-center">
-      <p className="text-gray-400 text-sm mb-4">Preview</p>
+      <p className="text-gray-400 text-xs sm:text-sm mb-2 sm:mb-4">Preview</p>
 
       <div className="relative">
-        <div className="w-[280px] h-[500px] bg-gray-800 rounded-[40px] p-2 shadow-2xl">
-          <div className="relative w-full h-full bg-black rounded-[32px] overflow-hidden">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-b-2xl z-20" />
+        <div className="w-[180px] h-[320px] sm:w-[240px] sm:h-[428px] lg:w-[280px] lg:h-[500px] bg-gray-800 rounded-[24px] sm:rounded-[32px] lg:rounded-[40px] p-1.5 sm:p-2 shadow-2xl">
+          <div className="relative w-full h-full bg-black rounded-[20px] sm:rounded-[28px] lg:rounded-[32px] overflow-hidden">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 sm:w-20 lg:w-24 h-4 sm:h-5 lg:h-6 bg-black rounded-b-xl sm:rounded-b-2xl z-20" />
 
-            <div className="absolute top-2 left-4 right-4 z-10 flex gap-1">
-              <div className="flex-1 h-0.5 bg-white/50 rounded-full overflow-hidden">
+            <div className="absolute top-1.5 sm:top-2 left-3 sm:left-4 right-3 sm:right-4 z-10 flex gap-1">
+              <div className="flex-1 h-[1.5px] sm:h-0.5 bg-white/50 rounded-full overflow-hidden">
                 <div className="h-full w-1/2 bg-white rounded-full" />
               </div>
             </div>
 
-            <div className="absolute top-8 left-3 right-3 z-10 flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-xs font-semibold ring-2 ring-primary-500">
+            <div className="absolute top-5 sm:top-7 lg:top-8 left-2 sm:left-3 right-2 sm:right-3 z-10 flex items-center gap-1.5 sm:gap-2">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-[10px] sm:text-xs font-semibold ring-1 sm:ring-2 ring-primary-500">
                 {userAvatar ? (
                   <img src={userAvatar} alt={userName} className="w-full h-full rounded-full object-cover" />
                 ) : (
@@ -64,8 +64,8 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
                 )}
               </div>
               <div className="flex-1">
-                <p className="text-white text-sm font-semibold drop-shadow-lg">{userName}</p>
-                <p className="text-white/70 text-xs drop-shadow">Just now</p>
+                <p className="text-white text-[10px] sm:text-xs lg:text-sm font-semibold drop-shadow-lg">{userName}</p>
+                <p className="text-white/70 text-[8px] sm:text-[10px] lg:text-xs drop-shadow">Just now</p>
               </div>
             </div>
 
@@ -81,12 +81,12 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
               {textOverlays.map((overlay) => (
                 <div
                   key={overlay.id}
-                  className="absolute px-3 py-2 rounded-lg max-w-[90%]"
+                  className="absolute px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg max-w-[90%]"
                   style={{
                     left: `${overlay.x}%`,
                     top: `${overlay.y}%`,
                     transform: 'translate(-50%, -50%)',
-                    fontSize: `${overlay.fontSize}px`,
+                    fontSize: `${overlay.fontSize * 0.7}px`,
                     fontFamily: overlay.fontFamily,
                     color: overlay.color,
                     backgroundColor: overlay.backgroundColor,
@@ -99,20 +99,20 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
 
               {type === 'text' && textOverlays.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <p className="text-white/50 text-lg font-medium">Start typing...</p>
+                  <p className="text-white/50 text-sm sm:text-lg font-medium">Start typing...</p>
                 </div>
               )}
 
               {type === 'photo' && !mediaUrl && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
-                  <p className="text-white/50 text-sm">Add photo or video</p>
+                  <p className="text-white/50 text-xs sm:text-sm">Add photo or video</p>
                 </div>
               )}
             </div>
 
             {caption && (
-              <div className="absolute bottom-4 left-3 right-3 z-10">
-                <p className="text-white text-sm drop-shadow-lg bg-black/30 backdrop-blur-sm rounded-lg px-3 py-2">
+              <div className="absolute bottom-3 sm:bottom-4 left-2 sm:left-3 right-2 sm:right-3 z-10">
+                <p className="text-white text-[10px] sm:text-xs lg:text-sm drop-shadow-lg bg-black/30 backdrop-blur-sm rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
                   {caption}
                 </p>
               </div>
@@ -120,7 +120,7 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
           </div>
         </div>
 
-        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[40px] pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent rounded-[24px] sm:rounded-[32px] lg:rounded-[40px] pointer-events-none" />
       </div>
     </div>
   )

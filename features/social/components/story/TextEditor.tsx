@@ -44,40 +44,40 @@ interface TextEditorProps {
 
 const TextEditor: React.FC<TextEditorProps> = ({ style, onChange }) => {
   const getButtonClass = (isActive: boolean) =>
-    `p-2 rounded-lg transition-colors border ${
+    `p-1.5 sm:p-2 rounded-lg transition-colors border ${
       isActive
         ? 'bg-primary-500 text-white border-primary-500'
         : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
     }`
 
   const getColorButtonClass = (isActive: boolean) =>
-    `w-7 h-7 rounded-full border-2 transition-all hover:scale-110 shadow-sm ${
+    `w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 transition-all active:scale-95 sm:hover:scale-110 shadow-sm ${
       isActive ? 'border-primary-500 ring-2 ring-primary-200 scale-110' : 'border-gray-200'
     }`
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 sm:space-y-5">
       <div>
-        <label className="block text-sm font-semibold text-gray-900 mb-2">Your Text</label>
+        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Your Text</label>
         <textarea
           value={style.text}
           onChange={(e) => onChange({ text: e.target.value })}
           placeholder="Start typing..."
           maxLength={MAX_TEXT_LENGTH}
-          className="w-full h-24 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+          className="w-full h-20 sm:h-24 bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
         />
-        <p className="text-xs text-gray-400 mt-1 text-right">{style.text.length}/{MAX_TEXT_LENGTH}</p>
+        <p className="text-[10px] sm:text-xs text-gray-400 mt-1 text-right">{style.text.length}/{MAX_TEXT_LENGTH}</p>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-900 mb-2">Font Style</label>
-        <div className="flex flex-wrap gap-2">
+        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Font Style</label>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {FONT_FAMILIES.map((font) => (
             <button
               key={font.id}
               onClick={() => onChange({ fontFamily: font.family })}
               style={{ fontFamily: font.family }}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${
+              className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm transition-colors border ${
                 style.fontFamily === font.family
                   ? 'bg-primary-500 text-white border-primary-500'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
@@ -90,7 +90,7 @@ const TextEditor: React.FC<TextEditorProps> = ({ style, onChange }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-900 mb-2">Size: {style.fontSize}px</label>
+        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Size: {style.fontSize}px</label>
         <input
           type="range"
           min="14"
@@ -102,29 +102,29 @@ const TextEditor: React.FC<TextEditorProps> = ({ style, onChange }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-900 mb-2">Alignment</label>
-        <div className="flex gap-2">
+        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Alignment</label>
+        <div className="flex gap-1.5 sm:gap-2">
           {ALIGNMENT_OPTIONS.map(({ value, Icon }) => (
             <button
               key={value}
               onClick={() => onChange({ align: value })}
               className={getButtonClass(style.align === value)}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           ))}
           <button
             onClick={() => onChange({ isBold: !style.isBold })}
             className={getButtonClass(style.isBold)}
           >
-            <Bold className="w-5 h-5" />
+            <Bold className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-900 mb-2">Text Color</label>
-        <div className="flex flex-wrap gap-2">
+        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Text Color</label>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {TEXT_COLORS.map((color) => (
             <button
               key={color}
@@ -137,8 +137,8 @@ const TextEditor: React.FC<TextEditorProps> = ({ style, onChange }) => {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-900 mb-2">Text Background</label>
-        <div className="flex flex-wrap gap-2">
+        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Text Background</label>
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {BG_COLORS.map((color, index) => (
             <button
               key={index}

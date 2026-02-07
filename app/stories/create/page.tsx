@@ -158,8 +158,12 @@ export default function CreateStoryPage() {
         background_color: storyType === 'text' ? selectedBackgroundColor : '#000000'
       }
 
-      await createStory(storyData)
+      const createdStory = await createStory(storyData)
       toast.success('Story created successfully!')
+
+      // Dispatch event so StoriesBar can instantly show the new story (no page refresh needed)
+      window.dispatchEvent(new CustomEvent('story-created', { detail: createdStory }))
+
       router.push('/feed')
     } catch (error) {
       console.error('Error uploading story:', error)
@@ -185,7 +189,7 @@ export default function CreateStoryPage() {
 
   if (!storyType) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="min-h-screen bg-white sm:bg-gradient-to-br sm:from-gray-50 sm:to-gray-100">
         <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center h-14 sm:h-16 gap-3 sm:gap-4">
@@ -196,7 +200,7 @@ export default function CreateStoryPage() {
             </div>
           </div>
         </div>
-        <div className="flex items-center justify-center min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
+        <div className="flex items-center justify-center min-h-[calc(100vh-120px)] sm:min-h-[calc(100vh-64px)]">
           <StoryTypeSelector onSelect={setStoryType} userName={userName} userAvatar={userAvatar} />
         </div>
       </div>
@@ -217,25 +221,23 @@ export default function CreateStoryPage() {
               </h1>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <button onClick={handleDiscard} className="hidden sm:block px-4 py-2 text-gray-500 hover:text-gray-700 font-medium text-sm">
+              <button onClick={handleDiscard} className="px-3 sm:px-4 py-1.5 sm:py-2 text-gray-500 hover:text-gray-700 font-medium text-xs sm:text-sm">
                 Discard
               </button>
               <button
                 onClick={uploadStory}
                 disabled={isUploading || !canSubmit}
-                className="px-3 sm:px-5 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium text-xs sm:text-sm rounded-lg transition-all flex items-center gap-1.5 sm:gap-2"
+                className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-[#FF6900] hover:bg-[#ea580c] active:bg-[#c2410c] disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md disabled:shadow-none transition-all flex items-center gap-1.5 sm:gap-2"
               >
                 {isUploading ? (
                   <>
                     <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span className="hidden sm:inline">Sharing...</span>
-                    <span className="sm:hidden">...</span>
+                    Sharing...
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Share Story</span>
-                    <span className="sm:hidden">Share</span>
+                    Share
                   </>
                 )}
               </button>

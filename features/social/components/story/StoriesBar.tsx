@@ -197,6 +197,7 @@ const StoriesBar: React.FC = () => {
   const { user } = useAuth()
   const { profile } = useProfile()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const hasLoadedOnce = useRef(false)
 
   const [stories, setStories] = useState<Story[]>([])
   const [userOwnStories, setUserOwnStories] = useState<Story[]>([])
@@ -229,46 +230,99 @@ const StoriesBar: React.FC = () => {
     scrollContainerRef.current?.scrollBy({ left: direction === 'left' ? -240 : 240, behavior: 'smooth' })
   }, [])
 
+  // Process raw data into state (reusable helper)
+  const processStoryData = useCallback((storyRecommendations: Story[], ownStories: Story[]) => {
+    const storiesByUser = new Map<string, Story>()
+    storyRecommendations.forEach(story => {
+      const existing = storiesByUser.get(story.user_id)
+      if (!existing || new Date(story.created_at) > new Date(existing.created_at)) {
+        storiesByUser.set(story.user_id, {
+          ...story,
+          user_name: story.username || story.user_name || 'Unknown User',
+          user_avatar: story.profile_picture_url || story.user_avatar || '',
+          username: story.username,
+          profile_picture_url: story.profile_picture_url
+        })
+      }
+    })
+
+    setStories(Array.from(storiesByUser.values()))
+    setUserOwnStories(ownStories.map(story => ({
+      ...story,
+      user_name: story.user_name || profile?.full_name || user?.user_metadata?.full_name || 'You',
+      user_avatar: story.user_avatar || profile?.avatar_url || user?.user_metadata?.avatar_url || ''
+    })))
+  }, [profile?.full_name, profile?.avatar_url, user?.user_metadata?.full_name, user?.user_metadata?.avatar_url])
+
+  // Initial load — shows skeleton only the first time
   const loadStories = useCallback(async () => {
     if (!user?.id) return
 
     try {
-      setLoading(true)
+      if (!hasLoadedOnce.current) setLoading(true)
+
       const [storyRecommendations, ownStories] = await Promise.all([
         getStoryRecommendations(user.id),
         getUserStories(user.id)
       ])
 
-      const storiesByUser = new Map<string, Story>()
-      storyRecommendations.forEach(story => {
-        const existing = storiesByUser.get(story.user_id)
-        if (!existing || new Date(story.created_at) > new Date(existing.created_at)) {
-          storiesByUser.set(story.user_id, {
-            ...story,
-            user_name: story.username || story.user_name || 'Unknown User',
-            user_avatar: story.profile_picture_url || story.user_avatar || '',
-            username: story.username,
-            profile_picture_url: story.profile_picture_url
-          })
-        }
-      })
-
-      setStories(Array.from(storiesByUser.values()))
-      setUserOwnStories(ownStories.map(story => ({
-        ...story,
-        user_name: story.user_name || profile?.full_name || user.user_metadata?.full_name || 'You',
-        user_avatar: story.user_avatar || profile?.avatar_url || user.user_metadata?.avatar_url || ''
-      })))
+      processStoryData(storyRecommendations, ownStories)
+      hasLoadedOnce.current = true
     } catch (error) {
       console.error('Error loading stories:', error)
     } finally {
       setLoading(false)
     }
-  }, [user?.id, profile?.full_name, profile?.avatar_url, user?.user_metadata?.full_name, user?.user_metadata?.avatar_url])
+  }, [user?.id, processStoryData])
+
+  // Silent background refresh — no skeleton, no flash
+  const refreshStories = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      const [storyRecommendations, ownStories] = await Promise.all([
+        getStoryRecommendations(user.id),
+        getUserStories(user.id)
+      ])
+      processStoryData(storyRecommendations, ownStories)
+    } catch (error) {
+      console.error('Error refreshing stories:', error)
+    }
+  }, [user?.id, processStoryData])
 
   useEffect(() => {
     loadStories()
   }, [loadStories])
+
+  // Listen for new story created from the create page — push optimistically
+  useEffect(() => {
+    const handleStoryCreated = (e: CustomEvent<Story>) => {
+      const newStory = e.detail
+      if (!newStory) return
+
+      // Prepend to user's own stories immediately (no DB call)
+      setUserOwnStories(prev => {
+        const exists = prev.some(s => s.id === newStory.id)
+        if (exists) return prev
+        return [{
+          ...newStory,
+          user_name: newStory.user_name || profile?.full_name || user?.user_metadata?.full_name || 'You',
+          user_avatar: newStory.user_avatar || profile?.avatar_url || user?.user_metadata?.avatar_url || '',
+          has_viewed: true
+        }, ...prev]
+      })
+
+      // Scroll the bar to the start to show the new story
+      setTimeout(() => {
+        scrollContainerRef.current?.scrollTo({ left: 0, behavior: 'smooth' })
+      }, 100)
+
+      // Sync with DB in background after a short delay
+      setTimeout(() => refreshStories(), 2000)
+    }
+
+    window.addEventListener('story-created', handleStoryCreated as EventListener)
+    return () => window.removeEventListener('story-created', handleStoryCreated as EventListener)
+  }, [profile?.full_name, profile?.avatar_url, user?.user_metadata?.full_name, user?.user_metadata?.avatar_url, refreshStories])
 
   const handleCreateStory = useCallback(() => router.push('/stories/create'), [router])
 
@@ -294,19 +348,31 @@ const StoriesBar: React.FC = () => {
     setIsViewerOpen(true)
   }, [user, userOwnStories])
 
+  // On viewer close: mark viewed stories locally, then silent refresh in background
   const handleViewerClose = useCallback(() => {
     setIsViewerOpen(false)
-    loadStories()
-  }, [loadStories])
+
+    // Mark the viewed stories as seen locally (instant, no DB call)
+    if (viewerStories.length > 0) {
+      const viewedIds = new Set(viewerStories.map(s => s.id))
+      setStories(prev => prev.map(s =>
+        viewedIds.has(s.id) ? { ...s, has_viewed: true } : s
+      ))
+    }
+
+    // Silent background sync (no skeleton flash)
+    refreshStories()
+  }, [viewerStories, refreshStories])
 
   const storyCards = useMemo(() =>
     stories.map((story, index) => (
-      <StoryCard
-        key={story.id}
-        story={story}
-        onClick={() => handleViewStory(index)}
-        hasUnseenStory={!story.has_viewed}
-      />
+      <div key={story.id} className="animate-fade-in-card">
+        <StoryCard
+          story={story}
+          onClick={() => handleViewStory(index)}
+          hasUnseenStory={!story.has_viewed}
+        />
+      </div>
     )), [stories, handleViewStory]
   )
 
