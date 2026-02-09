@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { notificationService } from '@/shared/services/notificationService'
 
 interface BirthdayUser {
   id: string
@@ -127,23 +128,19 @@ const createBirthdayNotification = async (
       ? `Today is ${birthdayUser.full_name}'s birthday! Send them a message to celebrate.`
       : `${birthdayUser.full_name}'s birthday is tomorrow! Don't forget to wish them well.`
 
-    const { error } = await supabase.from('notifications').insert({
+    await notificationService.sendNotification({
       user_id: userId,
-      type: 'birthday',
       title,
-      message,
+      body: message,
+      notification_type: 'birthday',
       data: {
         birthday_user_id: birthdayUser.id,
         birthday_username: birthdayUser.username,
         birthday_full_name: birthdayUser.full_name,
         when,
-      },
-      is_read: false,
+        url: `/user/${birthdayUser.username}`
+      }
     })
-
-    if (error) {
-      console.error('Error creating birthday notification:', error)
-    }
   } catch (error) {
     console.error('Error creating birthday notification:', error)
   }

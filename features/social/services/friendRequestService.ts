@@ -76,7 +76,17 @@ class FriendRequestService {
       // Send push notification to the recipient
       try {
         const senderName = user.user_metadata?.full_name || user.email || 'Someone'
-        await notificationService.sendFriendRequestNotification(receiverId, senderName)
+        await notificationService.sendNotification({
+          user_id: receiverId,
+          title: 'New Friend Request',
+          body: `${senderName} wants to be your friend on ConnectAfrik`,
+          notification_type: 'friend_request',
+          data: {
+            sender_id: user.id,
+            sender_name: senderName,
+            url: '/friends'
+          }
+        })
       } catch (notificationError) {
         console.error('Error sending push notification:', notificationError)
         // Don't fail the friend request if notification fails

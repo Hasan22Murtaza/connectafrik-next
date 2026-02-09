@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { notificationService } from '@/shared/services/notificationService'
 
 export interface FollowStats {
   follower_count: number
@@ -59,20 +60,30 @@ export const followUser = async (followerId: string, followingId: string): Promi
     // Create notification only if the followed user has follow_notifications enabled
     const { data: profile } = await supabase
       .from('profiles')
-      .select('follow_notifications')
+      .select('follow_notifications, full_name')
       .eq('id', followingId)
       .single()
     const allowFollowNotifications = profile?.follow_notifications !== false
     if (allowFollowNotifications) {
-      await supabase.from('notifications').insert({
+      // Get follower's name for the notification
+      const { data: followerProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', followerId)
+        .single()
+      const followerName = followerProfile?.full_name || 'Someone'
+
+      await notificationService.sendNotification({
         user_id: followingId,
-        type: 'follow',
         title: 'New Tap In!',
-        message: 'Someone tapped in to follow you',
+        body: `${followerName} tapped in to follow you`,
+        notification_type: 'follow',
         data: {
+          type: 'follow',
           follower_id: followerId,
-        },
-        is_read: false,
+          follower_name: followerName,
+          url: `/user/${followerId}`
+        }
       })
     }
 

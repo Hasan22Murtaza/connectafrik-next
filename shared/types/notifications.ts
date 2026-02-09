@@ -11,25 +11,37 @@ export interface Notification {
 }
 
 export type NotificationType =
+  // Existing database types
+  | 'like'
+  | 'new_order'
+  | 'system'
+  // Post interactions
   | 'post_like'
   | 'post_comment'
   | 'post_share'
+  | 'post_reaction'
+  // Comment interactions
+  | 'comment'
   | 'comment_reply'
   | 'comment_like'
-  | 'post_reaction'
   | 'comment_reaction'
+  // Reel interactions
   | 'reel_like'
   | 'reel_comment'
   | 'reel_share'
+  // Social
   | 'follow'
   | 'mention'
+  // Friend requests
   | 'friend_request'
   | 'friend_request_accepted'
   | 'friend_request_confirmed'
   | 'friend_request_declined'
+  // Communication
   | 'chat_message'
+  | 'missed_call'
+  // Other
   | 'birthday'
-  | 'system'
 
 export interface CreateNotificationData {
   user_id: string

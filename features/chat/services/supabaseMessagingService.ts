@@ -122,12 +122,18 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
         // Send push notification to each participant
         for (const participant of participants) {
           try {
-            await notificationService.sendMessageNotification(
-              participant.user_id,
-              senderName,
-              messagePreview,
-              message.thread_id
-            )
+            await notificationService.sendNotification({
+              user_id: participant.user_id,
+              title: senderName,
+              body: messagePreview,
+              notification_type: 'chat_message',
+              data: {
+                thread_id: message.thread_id,
+                sender_id: message.sender_id,
+                sender_name: senderName,
+                url: '/chat'
+              }
+            })
           } catch (notificationError) {
             // Don't fail the message if notification fails
           }
@@ -1021,20 +1027,46 @@ export const supabaseMessagingService = {
               const callerId = currentUser.id
               const callerName = currentUser.name || metadata?.callerName || 'Someone'
 
+              // Fetch caller's profile image
+              let callerImage: string | undefined
+              try {
+                const { data: callerProfile } = await supabase
+                  .from('profiles')
+                  .select('avatar_url')
+                  .eq('id', callerId)
+                  .single()
+                callerImage = callerProfile?.avatar_url || undefined
+              } catch {
+                // Continue without image if fetch fails
+              }
+
               // Send push notification to each participant
               for (const participant of participants) {
                 try {
                   if (roomId && token && callerId) {
                     // Send via the existing push notification API
-                    await notificationService.sendIncomingCallNotification(
-                      participant.user_id,
-                      callerName,
-                      callType,
-                      roomId,
-                      threadId,
-                      token,
-                      callerId
-                    )
+                    await notificationService.sendNotification({
+                      user_id: participant.user_id,
+                      title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
+                      body: `${callerName} is calling you...`,
+                      notification_type: 'system',
+                      skip_db: true, // Don't store incoming calls, only missed calls
+                      tag: `incoming-call-${threadId}`,
+                      image: callerImage, // Caller's profile image
+                      requireInteraction: true,
+                      vibrate: [200, 100, 200, 100, 200, 100, 200],
+                      data: {
+                        type: 'incoming_call',
+                        call_type: callType,
+                        room_id: roomId,
+                        thread_id: threadId,
+                        token: token,
+                        caller_id: callerId,
+                        caller_name: callerName,
+                        caller_image: callerImage || '',
+                        url: `/call/${roomId}`
+                      }
+                    })
                     console.log(`📞 Sent incoming call push notification to ${participant.user_id}`)
                   }
                 } catch (notificationError) {
