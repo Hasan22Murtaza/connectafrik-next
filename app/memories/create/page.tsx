@@ -12,10 +12,18 @@ import { useFileUpload } from '@/shared/hooks/useFileUpload'
 
 // Aspect ratio to CSS dimensions mapping for preview
 const ASPECT_RATIO_STYLES: Record<string, { containerClass: string; width: string; height: string; cameraWidth: number; cameraHeight: number }> = {
-  '9:16': { containerClass: 'max-w-[280px]', width: '280px', height: '498px', cameraWidth: 1080, cameraHeight: 1920 },
-  '16:9': { containerClass: 'max-w-full', width: '100%', height: '280px', cameraWidth: 1920, cameraHeight: 1080 },
-  '1:1': { containerClass: 'max-w-[360px]', width: '360px', height: '360px', cameraWidth: 1080, cameraHeight: 1080 },
-  '4:3': { containerClass: 'max-w-[420px]', width: '420px', height: '315px', cameraWidth: 1440, cameraHeight: 1080 },
+  '9:16': { containerClass: 'max-w-[280px] w-full', width: '100%', height: 'auto', cameraWidth: 1080, cameraHeight: 1920 },
+  '16:9': { containerClass: 'max-w-full w-full', width: '100%', height: 'auto', cameraWidth: 1920, cameraHeight: 1080 },
+  '1:1': { containerClass: 'max-w-[360px] w-full', width: '100%', height: 'auto', cameraWidth: 1080, cameraHeight: 1080 },
+  '4:3': { containerClass: 'max-w-[420px] w-full', width: '100%', height: 'auto', cameraWidth: 1440, cameraHeight: 1080 },
+}
+
+// CSS aspect-ratio values for responsive sizing
+const ASPECT_RATIO_CSS: Record<string, string> = {
+  '9:16': '9/16',
+  '16:9': '16/9',
+  '1:1': '1/1',
+  '4:3': '4/3',
 }
 
 const CreateMemoryPage: React.FC = () => {
@@ -506,282 +514,285 @@ const CreateMemoryPage: React.FC = () => {
       </div>
 
       {/* Page Content */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-6 sm:py-8">
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Video Upload/Recording Section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Video</h2>
+      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+        <form onSubmit={handleSubmit}>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
 
-            {!videoFile && recordingMode === 'upload' ? (
-              <div className="space-y-4">
-                {/* Mode Selection */}
-                <div className="flex space-x-4">
-                  <button
-                    type="button"
-                    onClick={() => setRecordingMode('upload')}
-                    className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
-                      recordingMode === 'upload'
-                        ? 'border-orange-400 bg-primary-50 text-primary-700'
-                        : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <Upload className="w-5 h-5 mx-auto mb-2" />
-                    <span className="text-sm font-medium">Upload Video</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRecordingMode('record')
-                      startCamera('user').catch(err => console.error('Camera error:', err))
-                    }}
-                    className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
-                      (recordingMode as string) === 'record'
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
-                        : 'border-gray-300 text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    <Camera className="w-5 h-5 mx-auto mb-2" />
-                    <span className="text-sm font-medium">Record Video</span>
-                  </button>
-                </div>
+            {/* Video Upload/Recording Section */}
+            <div className="p-3 sm:p-6">
+              <h2 className="text-sm sm:text-base font-semibold text-gray-900 mb-3 sm:mb-4">Video</h2>
 
-                {/* Upload Interface */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    MP4, MOV, AVI up to 100MB &bull; Max {MAX_REEL_DURATION / 60} minutes
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="btn-primary"
-                  >
-                    Select Video
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoSelect}
-                    className="hidden"
-                  />
-                </div>
-              </div>
-            ) : recordingMode === 'record' && !videoFile ? (
-              <div className="space-y-4">
-                {/* Camera Preview — aspect-ratio-aware */}
-                <div className="flex justify-center">
-                  <div
-                    className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
-                    style={{ width: previewStyle.width, height: previewStyle.height, maxHeight: '500px' }}
-                  >
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      muted
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-
-                    {/* Aspect Ratio Badge */}
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
-                      <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
-                      <span>{aspectRatio}</span>
-                    </div>
-
-                    {/* Camera Flip Button */}
+              {!videoFile && recordingMode === 'upload' ? (
+                <div className="space-y-4">
+                  {/* Mode Selection */}
+                  <div className="flex gap-4 sm:gap-6">
                     <button
                       type="button"
-                      onClick={flipCamera}
-                      className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white rounded-full p-2.5 transition-colors backdrop-blur-sm"
-                      title={`Switch to ${cameraFacing === 'user' ? 'back' : 'front'} camera`}
+                      onClick={() => setRecordingMode('upload')}
+                      className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg border-2 transition-colors ${
+                        recordingMode === 'upload'
+                          ? 'border-orange-400 bg-primary-50 text-primary-700'
+                          : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                      }`}
                     >
-                      <RotateCcw className="w-5 h-5" />
+                      <Upload className="w-5 h-5 mx-auto mb-1 sm:mb-2" />
+                      <span className="text-xs sm:text-sm font-medium">Upload Video</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecordingMode('record')
+                        startCamera('user').catch(err => console.error('Camera error:', err))
+                      }}
+                      className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg border-2 transition-colors ${
+                        (recordingMode as string) === 'record'
+                          ? 'border-primary-500 bg-primary-50 text-primary-700'
+                          : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                      }`}
+                    >
+                      <Camera className="w-5 h-5 mx-auto mb-1 sm:mb-2" />
+                      <span className="text-xs sm:text-sm font-medium">Record Video</span>
+                    </button>
+                  </div>
 
-                    {/* Camera Indicator */}
-                    <div className="absolute top-12 right-3 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[10px]">
-                      {cameraFacing === 'user' ? 'Front' : 'Back'}
-                    </div>
+                  {/* Upload Interface */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center">
+                    <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
+                    <p className="text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Click to upload or drag and drop</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
+                      MP4, MOV, AVI up to 100MB &bull; Max {MAX_REEL_DURATION / 60} minutes
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="btn-primary text-sm sm:text-base"
+                    >
+                      Select Video
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoSelect}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              ) : recordingMode === 'record' && !videoFile ? (
+                <div className="space-y-4">
+                  {/* Camera Preview — aspect-ratio-aware */}
+                  <div className="flex justify-center px-2 sm:px-0">
+                    <div
+                      className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
+                      style={{ aspectRatio: ASPECT_RATIO_CSS[aspectRatio] || '9/16', maxHeight: '70vh' }}
+                    >
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
 
-                    {/* Recording indicator dot */}
-                    {isRecording && !isPaused && (
-                      <div className="absolute top-3 left-1/2 -translate-x-1/2">
-                        <div className="flex items-center gap-1.5 bg-red-600/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                          <span className="text-white text-xs font-medium">REC</span>
-                        </div>
+                      {/* Aspect Ratio Badge */}
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                        <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
+                        <span>{aspectRatio}</span>
                       </div>
-                    )}
 
-                    {/* Recording Controls */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10">
-                      {isRecording && (
-                        <div className="text-center mb-3">
-                          <div className="inline-flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                            <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-400' : 'bg-red-500 animate-pulse'}`} />
-                            <span className="text-white text-sm font-mono font-medium">
-                              {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                            </span>
-                          </div>
-                          <div className="text-white/60 text-[10px] mt-1">
-                            {isPaused ? 'Paused' : 'Recording...'}
+                      {/* Camera Flip Button */}
+                      <button
+                        type="button"
+                        onClick={flipCamera}
+                        className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white rounded-full p-2.5 transition-colors backdrop-blur-sm"
+                        title={`Switch to ${cameraFacing === 'user' ? 'back' : 'front'} camera`}
+                      >
+                        <RotateCcw className="w-5 h-5" />
+                      </button>
+
+                      {/* Camera Indicator */}
+                      <div className="absolute top-12 right-3 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[10px]">
+                        {cameraFacing === 'user' ? 'Front' : 'Back'}
+                      </div>
+
+                      {/* Recording indicator dot */}
+                      {isRecording && !isPaused && (
+                        <div className="absolute top-3 left-1/2 -translate-x-1/2">
+                          <div className="flex items-center gap-1.5 bg-red-600/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                            <span className="text-white text-xs font-medium">REC</span>
                           </div>
                         </div>
                       )}
 
-                      <div className="flex items-center justify-center space-x-4">
-                        {!isRecording ? (
-                          <button
-                            type="button"
-                            onClick={startRecording}
-                            className="bg-red-600 hover:bg-red-700 text-white rounded-full p-4 transition-all shadow-lg shadow-red-600/30 hover:scale-105 active:scale-95"
-                          >
-                            <Camera className="w-6 h-6" />
-                          </button>
-                        ) : (
-                          <div className="flex items-center space-x-3">
-                            <button
-                              type="button"
-                              onClick={isPaused ? resumeRecording : pauseRecording}
-                              className="bg-yellow-500 hover:bg-yellow-600 text-white rounded-full p-3 transition-all hover:scale-105 active:scale-95"
-                            >
-                              {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={stopRecording}
-                              className="bg-white hover:bg-gray-100 text-red-600 rounded-full p-3 transition-all hover:scale-105 active:scale-95 ring-2 ring-red-400"
-                            >
-                              <Square className="w-5 h-5 fill-current" />
-                            </button>
+                      {/* Recording Controls */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 sm:p-4 pt-8 sm:pt-10">
+                        {isRecording && (
+                          <div className="text-center mb-2 sm:mb-3">
+                            <div className="inline-flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                              <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-400' : 'bg-red-500 animate-pulse'}`} />
+                              <span className="text-white text-xs sm:text-sm font-mono font-medium">
+                                {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                              </span>
+                            </div>
+                            <div className="text-white/60 text-[10px] mt-1">
+                              {isPaused ? 'Paused' : 'Recording...'}
+                            </div>
                           </div>
                         )}
+
+                        <div className="flex items-center justify-center space-x-3 sm:space-x-4">
+                          {!isRecording ? (
+                            <button
+                              type="button"
+                              onClick={startRecording}
+                              className="bg-red-600 hover:bg-red-700 text-white rounded-full p-3 sm:p-4 transition-all shadow-lg shadow-red-600/30 hover:scale-105 active:scale-95"
+                            >
+                              <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
+                            </button>
+                          ) : (
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <button
+                                type="button"
+                                onClick={isPaused ? resumeRecording : pauseRecording}
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white rounded-full p-2.5 sm:p-3 transition-all hover:scale-105 active:scale-95"
+                              >
+                                {isPaused ? <Play className="w-4 h-4 sm:w-5 sm:h-5" /> : <Pause className="w-4 h-4 sm:w-5 sm:h-5" />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={stopRecording}
+                                className="bg-white hover:bg-gray-100 text-red-600 rounded-full p-2.5 sm:p-3 transition-all hover:scale-105 active:scale-95 ring-2 ring-red-400"
+                              >
+                                <Square className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Camera Controls */}
-                <div className="flex justify-center space-x-4">
-                  <button
-                    type="button"
-                    onClick={stopCamera}
-                    className="btn-secondary"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Cancel
-                  </button>
-                  {videoFile && (
+                  {/* Camera Controls */}
+                  <div className="flex justify-center space-x-2 sm:space-x-4">
                     <button
                       type="button"
-                      onClick={discardRecording}
-                      className="btn-secondary"
+                      onClick={stopCamera}
+                      className="btn-secondary text-xs sm:text-sm py-2 px-3 sm:px-4"
                     >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Record Again
+                      <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                      Cancel
                     </button>
+                    {videoFile && (
+                      <button
+                        type="button"
+                        onClick={discardRecording}
+                        className="btn-secondary text-xs sm:text-sm py-2 px-3 sm:px-4"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+                        Record Again
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Camera Error */}
+                  {cameraError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-red-700 text-sm">{cameraError}</p>
+                    </div>
                   )}
                 </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Video Preview — aspect-ratio-aware */}
+                  <div className="flex justify-center px-2 sm:px-0">
+                    <div
+                      className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
+                      style={{ aspectRatio: ASPECT_RATIO_CSS[aspectRatio] || '9/16', maxHeight: '70vh' }}
+                    >
+                      <video
+                        ref={videoRef}
+                        src={videoUrl}
+                        className="w-full h-full object-contain"
+                        onTimeUpdate={handleTimeUpdate}
+                        onEnded={() => setIsPlaying(false)}
+                      />
 
-                {/* Camera Error */}
-                {cameraError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-red-700 text-sm">{cameraError}</p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Video Preview — aspect-ratio-aware */}
-                <div className="flex justify-center">
-                  <div
-                    className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
-                    style={{ width: previewStyle.width, height: previewStyle.height, maxHeight: '500px' }}
-                  >
-                    <video
-                      ref={videoRef}
-                      src={videoUrl}
-                      className="w-full h-full object-contain"
-                      onTimeUpdate={handleTimeUpdate}
-                      onEnded={() => setIsPlaying(false)}
-                    />
+                      {/* Aspect Ratio Badge */}
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                        <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
+                        <span>{aspectRatio}</span>
+                      </div>
 
-                    {/* Aspect Ratio Badge */}
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
-                      <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
-                      <span>{aspectRatio}</span>
-                    </div>
-
-                    {/* Video Controls */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10">
-                      <div className="flex items-center space-x-3">
-                        <button
-                          type="button"
-                          onClick={handlePlayPause}
-                          className="text-white hover:text-gray-300 transition-colors flex-shrink-0"
-                        >
-                          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                        </button>
-
-                        <div className="flex-1 min-w-0">
-                          <input
-                            type="range"
-                            min="0"
-                            max={videoDuration}
-                            value={currentTime}
-                            onChange={handleSeek}
-                            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                          />
-                          <div className="flex justify-between text-[10px] text-white/80 mt-0.5">
-                            <span>{formatTime(currentTime)}</span>
-                            <span>{formatTime(videoDuration)}</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-1.5 flex-shrink-0">
+                      {/* Video Controls */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 sm:p-4 pt-8 sm:pt-10">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
                           <button
                             type="button"
-                            onClick={handleMuteToggle}
-                            className="text-white hover:text-gray-300 transition-colors"
+                            onClick={handlePlayPause}
+                            className="text-white hover:text-gray-300 transition-colors flex-shrink-0"
                           >
-                            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                            {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5" />}
                           </button>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={volume}
-                            onChange={handleVolumeChange}
-                            className="w-12 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                          />
+
+                          <div className="flex-1 min-w-0">
+                            <input
+                              type="range"
+                              min="0"
+                              max={videoDuration}
+                              value={currentTime}
+                              onChange={handleSeek}
+                              className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+                            />
+                            <div className="flex justify-between text-[10px] text-white/80 mt-0.5">
+                              <span>{formatTime(currentTime)}</span>
+                              <span>{formatTime(videoDuration)}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-1.5 flex-shrink-0">
+                            <button
+                              type="button"
+                              onClick={handleMuteToggle}
+                              className="text-white hover:text-gray-300 transition-colors"
+                            >
+                              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                            </button>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={volume}
+                              onChange={handleVolumeChange}
+                              className="w-12 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider hidden sm:block"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>Duration: {formatTime(videoDuration)}</span>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-primary-600 hover:text-primary-700 font-medium"
-                  >
-                    Change Video
-                  </button>
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 px-1">
+                    <span>Duration: {formatTime(videoDuration)}</span>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-primary-600 hover:text-primary-700 font-medium"
+                    >
+                      Change Video
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* Video Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Column */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4">
-              <h2 className="text-base font-semibold text-gray-900">Details</h2>
+            {/* Divider */}
+            <div className="border-t border-gray-200" />
+
+            {/* Details Section */}
+            <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
+              <h2 className="text-sm sm:text-base font-semibold text-gray-900">Details</h2>
 
               {/* Title */}
               <div>
@@ -812,7 +823,7 @@ const CreateMemoryPage: React.FC = () => {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Tell people what your memory is about..."
                   rows={3}
-                  className="w-full px-3 py-2 text-base text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  className="w-full px-3 py-2 text-sm sm:text-base text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                   maxLength={MAX_REEL_DESCRIPTION_LENGTH}
                 />
                 <div className="text-right text-xs text-gray-500 mt-1">
@@ -820,155 +831,164 @@ const CreateMemoryPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value as ReelCategory)}
-                  className="input-field"
-                >
-                  {REEL_CATEGORIES.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.icon} {cat.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Category & Aspect Ratio - side by side on md+ */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Category
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as ReelCategory)}
+                    className="input-field"
+                  >
+                    {REEL_CATEGORIES.map((cat) => (
+                      <option key={cat.value} value={cat.value}>
+                        {cat.icon} {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              {/* Aspect Ratio */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Aspect Ratio
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {REEL_ASPECT_RATIOS.map((ratio) => (
-                    <button
-                      key={ratio.value}
-                      type="button"
-                      onClick={() => setAspectRatio(ratio.value as '9:16' | '16:9' | '1:1' | '4:3')}
-                      className={`sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-all duration-200 ${
-                        aspectRatio === ratio.value
-                          ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-300 shadow-sm'
-                          : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-1">
-                        <span>{ratio.icon}</span>
-                        <span>{ratio.label}</span>
-                      </div>
-                    </button>
-                  ))}
+                {/* Aspect Ratio */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Aspect Ratio
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {REEL_ASPECT_RATIOS.map((ratio) => (
+                      <button
+                        key={ratio.value}
+                        type="button"
+                        onClick={() => setAspectRatio(ratio.value as '9:16' | '16:9' | '1:1' | '4:3')}
+                        className={`sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-all duration-200 ${
+                          aspectRatio === ratio.value
+                            ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-300 shadow-sm'
+                            : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>{ratio.icon}</span>
+                          <span>{ratio.label}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 space-y-4">
-              <h2 className="text-base font-semibold text-gray-900">Settings</h2>
+            {/* Divider */}
+            <div className="border-t border-gray-200" />
 
-              {/* Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags
-                </label>
-                <div className="space-y-2">
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault()
-                          addTag()
-                        }
-                      }}
-                      placeholder="Add a tag..."
-                      className="input-field flex-1"
-                      maxLength={20}
-                    />
-                    <button
-                      type="button"
-                      onClick={addTag}
-                      disabled={!newTag.trim() || tags.length >= MAX_REEL_TAGS}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Add
-                    </button>
-                  </div>
+            {/* Settings Section */}
+            <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
+              <h2 className="text-sm sm:text-base font-semibold text-gray-900">Settings</h2>
 
-                  {tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                        >
-                          <Tag className="w-3 h-3" />
-                          <span>{tag}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            className="text-gray-500 hover:text-gray-700"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
+              {/* Tags & Privacy - side by side on md+ */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                {/* Tags */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tags
+                  </label>
+                  <div className="space-y-2">
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            addTag()
+                          }
+                        }}
+                        placeholder="Add a tag..."
+                        className="input-field flex-1"
+                        maxLength={20}
+                      />
+                      <button
+                        type="button"
+                        onClick={addTag}
+                        disabled={!newTag.trim() || tags.length >= MAX_REEL_TAGS}
+                        className="px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      >
+                        Add
+                      </button>
                     </div>
-                  )}
 
-                  <div className="text-xs text-gray-500">
-                    {tags.length}/{MAX_REEL_TAGS} tags
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                          >
+                            <Tag className="w-3 h-3" />
+                            <span>{tag}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeTag(tag)}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="text-xs text-gray-500">
+                      {tags.length}/{MAX_REEL_TAGS} tags
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Privacy Settings */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Privacy
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={isPublic}
-                      onChange={() => setIsPublic(true)}
-                      className="text-primary-600 focus:ring-primary-500"
-                    />
-                    <div className="flex items-center space-x-2">
-                      <Globe className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-700">Public</span>
-                    </div>
+                {/* Privacy Settings */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Privacy
                   </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={isPublic}
+                        onChange={() => setIsPublic(true)}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      <div className="flex items-center space-x-2">
+                        <Globe className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-700">Public</span>
+                      </div>
+                    </label>
 
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={!isPublic}
-                      onChange={() => setIsPublic(false)}
-                      className="text-primary-600 focus:ring-primary-500"
-                    />
-                    <div className="flex items-center space-x-2">
-                      <Lock className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-700">Private</span>
-                    </div>
-                  </label>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={!isPublic}
+                        onChange={() => setIsPublic(false)}
+                        className="text-primary-600 focus:ring-primary-500"
+                      />
+                      <div className="flex items-center space-x-2">
+                        <Lock className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm text-gray-700">Private</span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
 
               {/* Video Info */}
               {videoFile && (
-                <div className="bg-gray-50 rounded-lg p-4">
+                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Video Information</h4>
-                  <div className="space-y-1.5 text-sm text-gray-600">
+                  <div className="space-y-1.5 text-xs sm:text-sm text-gray-600">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500">File:</span>
-                      <span className="font-medium text-gray-700 truncate ml-2 max-w-[180px]">{videoFile.name}</span>
+                      <span className="text-gray-500 flex-shrink-0">File:</span>
+                      <span className="font-medium text-gray-700 truncate ml-2 max-w-[50%] sm:max-w-[180px]">{videoFile.name}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-500">Size:</span>
@@ -983,33 +1003,37 @@ const CreateMemoryPage: React.FC = () => {
                       <span className="font-medium text-gray-700">{videoFile.type}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Aspect Ratio:</span>
+                      <span className="text-gray-500">Ratio:</span>
                       <span className="font-medium text-gray-700">{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.label || aspectRatio}</span>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
-            <div className="flex items-center justify-end space-x-4">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading || isSubmitting || isUploadingFile || !videoFile || !title.trim()}
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading || isSubmitting || isUploadingFile ? 'Creating...' : 'Create Memory'}
-              </button>
+            {/* Divider */}
+            <div className="border-t border-gray-200" />
+
+            {/* Action Buttons */}
+            <div className="p-3 sm:p-6">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-4">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="btn-secondary text-sm sm:text-base py-2.5 sm:py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || isSubmitting || isUploadingFile || !videoFile || !title.trim()}
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base py-2.5 sm:py-2"
+                >
+                  {loading || isSubmitting || isUploadingFile ? 'Creating...' : 'Create Memory'}
+                </button>
+              </div>
             </div>
+
           </div>
         </form>
       </div>
