@@ -68,7 +68,7 @@ export const followUser = async (followerId: string, followingId: string): Promi
       // Get follower's name for the notification
       const { data: followerProfile } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, username')
         .eq('id', followerId)
         .single()
       const followerName = followerProfile?.full_name || 'Someone'
@@ -82,7 +82,7 @@ export const followUser = async (followerId: string, followingId: string): Promi
           type: 'follow',
           follower_id: followerId,
           follower_name: followerName,
-          url: `/user/${followerId}`
+          url: `/user/${followerProfile?.username}`
         }
       })
     }

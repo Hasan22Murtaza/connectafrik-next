@@ -97,7 +97,8 @@ export const checkUpcomingBirthdays = async (currentUserId: string) => {
 }
 
 /**
- * Creates a birthday notification for a user
+ * Creates a birthday notification for a user (with robust deduplication).
+ * Uses title-based matching which works regardless of JSON column type.
  */
 const createBirthdayNotification = async (
   userId: string,
@@ -105,24 +106,26 @@ const createBirthdayNotification = async (
   when: 'today' | 'tomorrow'
 ) => {
   try {
-    // Check if notification already exists for today
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
+    const title = when === 'today'
+      ? `${birthdayUser.full_name}'s Birthday!`
+      : `Upcoming Birthday`
+
+    // Dedup: check if a birthday notification with this exact title already exists today
     const { data: existing } = await supabase
       .from('notifications')
       .select('id')
       .eq('user_id', userId)
       .eq('type', 'birthday')
-      .eq('data->>birthday_user_id', birthdayUser.id)
-      .gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
-      .single()
+      .eq('title', title)
+      .gte('created_at', todayStart.toISOString())
+      .limit(1)
 
-    if (existing) {
-      console.log('Birthday notification already exists')
-      return
+    if (existing && existing.length > 0) {
+      return // Already notified today for this person
     }
-
-    const title = when === 'today'
-      ? `🎂 ${birthdayUser.full_name}'s Birthday!`
-      : `🎂 Upcoming Birthday`
 
     const message = when === 'today'
       ? `Today is ${birthdayUser.full_name}'s birthday! Send them a message to celebrate.`

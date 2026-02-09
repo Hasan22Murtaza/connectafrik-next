@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Bell, Check, X, Heart, MessageCircle, Share2, UserPlus, AtSign } from 'lucide-react'
+import { Bell, Check, X, Heart, MessageCircle, Share2, UserPlus, AtSign, MessageSquare, Cake, ShoppingBag, PhoneMissed, ThumbsUp, Info, UserX } from 'lucide-react'
 import { Notification } from '@/shared/types/notifications'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { useProductionChat } from '@/contexts/ProductionChatContext'
+import { useRouter } from 'next/navigation'
 
 interface NotificationDropdownProps {
   isOpen: boolean
@@ -15,6 +17,8 @@ interface NotificationDropdownProps {
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose, onUnreadCountChange }) => {
   const { user } = useAuth()
+  const router = useRouter()
+  const { startChatWithMembers, openThread } = useProductionChat()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState({ unread: 0 })
@@ -40,7 +44,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
       if (data) {
         const transformedNotifications: Notification[] = data.map((record: any) => {
-          const payload = record.payload || {}
+          const payload = record.payload || record.data || {}
           return {
             id: record.id,
             user_id: record.user_id,
@@ -70,11 +74,15 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
   const getDefaultTitle = (type: string): string => {
     const titleMap: Record<string, string> = {
+      like: 'New Like',
       post_like: 'New Like',
       post_comment: 'New Comment',
       post_share: 'Post Shared',
+      post_reaction: 'New Reaction',
+      comment: 'New Comment',
       comment_reply: 'New Reply',
       comment_like: 'Comment Liked',
+      comment_reaction: 'Comment Reaction',
       reel_like: 'Reel Liked',
       reel_comment: 'Reel Comment',
       reel_share: 'Reel Shared',
@@ -82,8 +90,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       mention: 'You were mentioned',
       friend_request: 'Friend Request',
       friend_request_accepted: 'Friend Request Accepted',
+      friend_request_confirmed: 'Friend Request Confirmed',
+      friend_request_declined: 'Friend Request Declined',
       chat_message: 'New Message',
+      missed_call: 'Missed Call',
       birthday: 'Birthday Reminder',
+      new_order: 'New Order',
       system: 'System Notification',
     }
     return titleMap[type] || 'New Notification'
@@ -92,11 +104,15 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   const getDefaultMessage = (type: string, payload: any): string => {
     const actorName = payload?.actor_name || payload?.sender_name || payload?.username || 'Someone'
     const messageMap: Record<string, string> = {
+      like: `${actorName} liked your post`,
       post_like: `${actorName} liked your post`,
       post_comment: `${actorName} commented on your post`,
       post_share: `${actorName} shared your post`,
+      post_reaction: `${actorName} reacted to your post`,
+      comment: `${actorName} commented on your post`,
       comment_reply: `${actorName} replied to your comment`,
       comment_like: `${actorName} liked your comment`,
+      comment_reaction: `${actorName} reacted to your comment`,
       reel_like: `${actorName} liked your reel`,
       reel_comment: `${actorName} commented on your reel`,
       reel_share: `${actorName} shared your reel`,
@@ -104,8 +120,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       mention: `${actorName} mentioned you`,
       friend_request: `${actorName} sent you a friend request`,
       friend_request_accepted: `${actorName} accepted your friend request`,
+      friend_request_confirmed: `${actorName} confirmed your friend request`,
+      friend_request_declined: `${actorName} declined your friend request`,
       chat_message: `${actorName} sent you a message`,
+      missed_call: `You missed a call from ${actorName}`,
       birthday: `It's ${actorName}'s birthday today!`,
+      new_order: `${actorName} placed a new order`,
       system: payload?.message || 'You have a new notification',
     }
     return messageMap[type] || 'You have a new notification'
@@ -251,11 +271,217 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
     }
   }, [isOpen, onClose])
 
+  // Navigate based on notification type
   const handleNotificationClick = async (notification: Notification) => {
     if (!notification.is_read) {
       await markAsRead(notification.id)
     }
-    onClose()
+
+    const data = notification.data || {}
+
+    // Helper: if data has a url field, use it as fallback
+    const fallbackUrl = data.url as string | undefined
+
+    try {
+      switch (notification.type) {
+        // Chat message → open chat window for reply
+        case 'chat_message': {
+          const threadId = data.thread_id || data.chat_thread_id
+          const actorId = data.sender_id || data.actor_id || data.user_id
+          const actorName = data.sender_name || data.actor_name || data.username || 'User'
+          const actorAvatar = data.actor_avatar || data.avatar_url || ''
+
+          if (threadId) {
+            openThread(threadId)
+          } else if (actorId) {
+            await startChatWithMembers(
+              [{ id: actorId, name: actorName, avatarUrl: actorAvatar }],
+              { participant_ids: [actorId], type: 'direct', openInDock: true }
+            )
+          }
+          onClose()
+          break
+        }
+
+        // Post interactions → navigate to view the post
+        case 'post_like':
+        case 'post_comment':
+        case 'post_share':
+        case 'post_reaction':
+        case 'like': {
+          const postId = data.post_id || data.content_id
+          if (postId) {
+            router.push(`/post/${postId}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/feed')
+          }
+          onClose()
+          break
+        }
+
+        // Comment interactions → navigate to the post with comment
+        case 'comment':
+        case 'comment_reply':
+        case 'comment_like':
+        case 'comment_reaction': {
+          const postId = data.post_id || data.content_id
+          const commentId = data.comment_id
+          if (postId) {
+            router.push(`/post/${postId}${commentId ? `?comment=${commentId}` : ''}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/feed')
+          }
+          onClose()
+          break
+        }
+
+        // Reel interactions → navigate to the reel
+        case 'reel_like':
+        case 'reel_comment':
+        case 'reel_share': {
+          const reelId = data.reel_id || data.content_id
+          if (reelId) {
+            router.push(`/reels?reel=${reelId}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/reels')
+          }
+          onClose()
+          break
+        }
+
+        // Follow / Tap In → navigate to follower's profile
+        case 'follow': {
+          console.log(data);
+          const followerId = data.follower_id || data.actor_id || data.user_id
+          const username =  data.follower_name
+          if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else if (username) {
+            router.push(`/user/${username}`)
+          } else if (followerId) {
+            router.push(`/user/${followerId}`)
+          }
+          onClose()
+          break
+        }
+
+        // Mention → navigate to the post/comment where mentioned
+        case 'mention': {
+          const postId = data.post_id || data.content_id
+          const commentId = data.comment_id
+          if (postId) {
+            router.push(`/post/${postId}${commentId ? `?comment=${commentId}` : ''}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/feed')
+          }
+          onClose()
+          break
+        }
+
+        // Friend request → go to friend requests page
+        case 'friend_request': {
+          router.push(fallbackUrl || '/friends?tab=requests')
+          onClose()
+          break
+        }
+
+        // Friend request declined → navigate to friends page
+        case 'friend_request_declined': {
+          router.push(fallbackUrl || '/friends')
+          onClose()
+          break
+        }
+
+        // Friend request accepted → navigate to their profile
+        case 'friend_request_accepted':
+        case 'friend_request_confirmed': {
+          const actorId = data.sender_id || data.actor_id || data.user_id
+          const username = data.username || data.actor_username || data.sender_name
+          if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else if (username) {
+            router.push(`/user/${username}`)
+          } else if (actorId) {
+            router.push(`/user/${actorId}`)
+          }
+          onClose()
+          break
+        }
+
+        // Birthday → open chat window to send wishes
+        case 'birthday': {
+          const actorId = data.actor_id || data.user_id || data.birthday_user_id
+          const actorName = data.actor_name || data.username || data.name || data.follower_name || 'Friend'
+          const actorAvatar = data.actor_avatar || data.avatar_url || ''
+
+          if (actorId) {
+            await startChatWithMembers(
+              [{ id: actorId, name: actorName, avatarUrl: actorAvatar }],
+              { participant_ids: [actorId], type: 'direct', openInDock: true }
+            )
+          }
+          onClose()
+          break
+        }
+
+        // Missed call → open chat with caller
+        case 'missed_call': {
+          const threadId = data.thread_id || data.chat_thread_id
+          const actorId = data.caller_id || data.sender_id || data.actor_id || data.user_id
+          const actorName = data.caller_name || data.sender_name || data.actor_name || 'User'
+          const actorAvatar = data.actor_avatar || data.avatar_url || ''
+
+          if (threadId) {
+            openThread(threadId)
+          } else if (actorId) {
+            await startChatWithMembers(
+              [{ id: actorId, name: actorName, avatarUrl: actorAvatar }],
+              { participant_ids: [actorId], type: 'direct', openInDock: true }
+            )
+          }
+          onClose()
+          break
+        }
+
+        // Order notification → navigate to order detail page
+        case 'new_order': {
+          const orderId = data.order_id || data.id
+          if (orderId) {
+            router.push(`/my-orders/${orderId}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/my-orders')
+          }
+          onClose()
+          break
+        }
+
+        // System / default → use fallback url or just close
+        default: {
+          if (fallbackUrl) {
+            router.push(fallbackUrl)
+          }
+          onClose()
+          break
+        }
+      }
+    } catch (error) {
+      console.error('Error handling notification click:', error)
+      // Fallback: try url from data, otherwise just close
+      if (fallbackUrl) {
+        router.push(fallbackUrl)
+      }
+      onClose()
+    }
   }
 
   const handleMarkAllAsRead = async () => {
@@ -264,10 +490,15 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
+      case 'like':
       case 'post_like':
       case 'reel_like':
       case 'comment_like':
         return <Heart className="w-4 h-4 text-red-500" />
+      case 'post_reaction':
+      case 'comment_reaction':
+        return <ThumbsUp className="w-4 h-4 text-blue-500" />
+      case 'comment':
       case 'post_comment':
       case 'reel_comment':
       case 'comment_reply':
@@ -279,8 +510,22 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         return <UserPlus className="w-4 h-4 text-purple-500" />
       case 'mention':
         return <AtSign className="w-4 h-4 text-orange-500" />
+      case 'friend_request':
+      case 'friend_request_accepted':
+      case 'friend_request_confirmed':
+        return <UserPlus className="w-4 h-4 text-indigo-500" />
+      case 'friend_request_declined':
+        return <UserX className="w-4 h-4 text-gray-500" />
+      case 'chat_message':
+        return <MessageSquare className="w-4 h-4 text-[#FF6900]" />
+      case 'missed_call':
+        return <PhoneMissed className="w-4 h-4 text-red-500" />
       case 'birthday':
         return <span className="text-lg">🎂</span>
+      case 'new_order':
+        return <ShoppingBag className="w-4 h-4 text-[#FF6900]" />
+      case 'system':
+        return <Info className="w-4 h-4 text-blue-500" />
       default:
         return <Bell className="w-4 h-4 text-gray-500" />
     }
@@ -288,10 +533,15 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
   const getNotificationColor = (type: string) => {
     switch (type) {
+      case 'like':
       case 'post_like':
       case 'reel_like':
       case 'comment_like':
         return 'bg-red-50 border-red-200'
+      case 'post_reaction':
+      case 'comment_reaction':
+        return 'bg-blue-50 border-blue-200'
+      case 'comment':
       case 'post_comment':
       case 'reel_comment':
       case 'comment_reply':
@@ -303,8 +553,22 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         return 'bg-purple-50 border-purple-200'
       case 'mention':
         return 'bg-orange-50 border-orange-200'
+      case 'friend_request':
+      case 'friend_request_accepted':
+      case 'friend_request_confirmed':
+        return 'bg-indigo-50 border-indigo-200'
+      case 'friend_request_declined':
+        return 'bg-gray-50 border-gray-200'
+      case 'chat_message':
+        return 'bg-orange-50 border-orange-200'
+      case 'missed_call':
+        return 'bg-red-50 border-red-200'
       case 'birthday':
         return 'bg-pink-50 border-pink-200'
+      case 'new_order':
+        return 'bg-orange-50 border-orange-200'
+      case 'system':
+        return 'bg-blue-50 border-blue-200'
       default:
         return 'bg-gray-50 border-gray-200'
     }
@@ -400,4 +664,3 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 }
 
 export default NotificationDropdown
-

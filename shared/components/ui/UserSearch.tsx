@@ -126,7 +126,7 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
           data: {
             sender_id: user.id,
             sender_name: senderName,
-            url: '/friends'
+            url: `/user/${user.user_metadata?.username}`
           }
         })
       } catch (notificationError) {

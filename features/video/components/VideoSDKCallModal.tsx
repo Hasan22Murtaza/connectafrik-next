@@ -1411,7 +1411,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             recipient_id: currentUserId || '',
             recipient_name: recipientWhoRejected,
             recipient_image: recipientImage || '',
-            url: '/chat'
           }
         });
       } catch (notificationError) {

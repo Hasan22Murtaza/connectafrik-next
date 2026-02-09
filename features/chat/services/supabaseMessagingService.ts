@@ -95,7 +95,7 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
   }
 
   // Send push notification for new messages (not call requests). Skip when skipPush is true
-  // (e.g. from sendMessage path) so we only send push once from the realtime handler.
+  // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
   if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted' && message.message_type !== 'call_ended') {
     try {
       // Get thread participants to send notifications to
@@ -131,7 +131,6 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
                 thread_id: message.thread_id,
                 sender_id: message.sender_id,
                 sender_name: senderName,
-                url: '/chat'
               }
             })
           } catch (notificationError) {
@@ -450,12 +449,14 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
 
           // For call messages, notify only the specific thread subscribers
           // This prevents call flooding to all users
+          // skipPush: true because the realtime handler fires on every connected client;
+          // push notifications are sent once from the sendMessage path instead.
           if (formattedMessage.message_type === 'call_request' || formattedMessage.message_type === 'call_accepted' || formattedMessage.message_type === 'call_rejected' || formattedMessage.message_type === 'call_ended') {
             // Notify only the specific thread subscribers (not all users)
-            notifyMessageSubscribers(formattedMessage)
+            notifyMessageSubscribers(formattedMessage, { skipPush: true })
           } else {
             // Regular messages - notify specific thread subscribers only
-            notifyMessageSubscribers(formattedMessage)
+            notifyMessageSubscribers(formattedMessage, { skipPush: true })
           }
         }
       }
@@ -1081,7 +1082,7 @@ export const supabaseMessagingService = {
           }
         }
         
-        notifyMessageSubscribers(formattedMessage, { skipPush: true })
+        notifyMessageSubscribers(formattedMessage)
         return formattedMessage
       }
 
