@@ -106,6 +106,9 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
         .neq('user_id', message.sender_id) // Don't notify the sender
 
       if (participants && participants.length > 0) {
+        // Deduplicate participant user_ids to avoid sending multiple notifications to the same user
+        const uniqueUserIds = [...new Set(participants.map(p => p.user_id))]
+
         // Get sender name from message or fetch from profile
         const senderName = message.sender?.name || 
                           (message as any).sender?.full_name || 
@@ -119,11 +122,12 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
                                 ? 'Shared an attachment' 
                                 : 'Sent a message')
 
-        // Send push notification to each participant
-        for (const participant of participants) {
+        // Send ONE push notification per unique participant (saves 1 DB record + pushes to all their devices)
+        for (const userId of uniqueUserIds) {
+          console.log('Sending push notification to participant:', userId)
           try {
             await notificationService.sendNotification({
-              user_id: participant.user_id,
+              user_id: userId,
               title: senderName,
               body: messagePreview,
               notification_type: 'chat_message',
