@@ -12,6 +12,7 @@ import {
   UserPlus,
   UserCheck,
   Trash2,
+  Pencil,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReelInteractions } from "@/shared/hooks/useReels";
@@ -35,6 +36,7 @@ interface ReelCardProps {
   onSave?: (reelId: string) => void;
   onFollow?: (authorId: string) => void;
   onDelete?: (reelId: string) => void;
+  onEdit?: (reelId: string) => void;
   showComments?: boolean;
   onToggleComments?: (reelId: string) => void;
 }
@@ -47,6 +49,7 @@ const ReelCard: React.FC<ReelCardProps> = ({
   onSave,
   onFollow,
   onDelete,
+  onEdit,
   showComments = false,
   onToggleComments,
 }) => {
@@ -659,6 +662,21 @@ useEffect(() => {
                 {/* Divider */}
                 {user && user.id === reel.author_id && (
                   <div className="my-1 border-t border-gray-200/70" />
+                )}
+
+                {/* Edit (Author only) */}
+                {user && user.id === reel.author_id && onEdit && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(reel.id);
+                      setShowMenu(false);
+                    }}
+                    className="w-full px-4 py-2.5 flex items-center gap-3 text-gray-700 hover:bg-gray-100 transition-colors font-medium"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span>Edit Video</span>
+                  </button>
                 )}
 
                 {/* Delete (Author only) */}

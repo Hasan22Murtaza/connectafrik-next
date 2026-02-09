@@ -287,6 +287,96 @@ export const useCreateReel = () => {
   }
 }
 
+export const useUpdateReel = () => {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updateReel = useCallback(async (reelId: string, updateData: UpdateReelData) => {
+    if (!user) {
+      throw new Error('User must be logged in to update a reel')
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      const { data, error: updateError } = await supabase
+        .from('reels')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', reelId)
+        .eq('author_id', user.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        throw updateError
+      }
+
+      return { data, error: null }
+    } catch (err) {
+      console.error('Error updating reel:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update reel'
+      setError(errorMessage)
+      return { data: null, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  return {
+    updateReel,
+    loading,
+    error
+  }
+}
+
+export const useDeleteReel = () => {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteReel = useCallback(async (reelId: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to delete a reel')
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Soft delete by marking as deleted
+      const { error: deleteError } = await supabase
+        .from('reels')
+        .update({ is_deleted: true, updated_at: new Date().toISOString() })
+        .eq('id', reelId)
+        .eq('author_id', user.id)
+
+      if (deleteError) {
+        throw deleteError
+      }
+
+      return { success: true, error: null }
+    } catch (err) {
+      console.error('Error deleting reel:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete reel'
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  return {
+    deleteReel,
+    loading,
+    error
+  }
+}
+
 export const useReelInteractions = (reelId: string) => {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
