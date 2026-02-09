@@ -1,7 +1,7 @@
 import MessageStatusIndicator from "@/features/chat/components/MessageStatusIndicator";
-import type { ChatMessage } from "@/features/chat/services/supabaseMessagingService";
+import type { ChatMessage, ChatAttachment } from "@/features/chat/services/supabaseMessagingService";
 import { formatDistanceToNow } from "date-fns";
-import { MoreVertical, UserCircle } from "lucide-react";
+import { Download, FileText, MoreVertical, UserCircle } from "lucide-react";
 import React, { useState } from "react";
 import { BsReply } from "react-icons/bs";
 import { RiShareForwardLine } from "react-icons/ri";
@@ -218,7 +218,80 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               🚫 This message was deleted
             </p>
           ) : (
-            <p className="text-sm break-words">{message.content}</p>
+            <>
+              {/* Attachments */}
+              {message.attachments && message.attachments.length > 0 && (
+                <div className="mb-1 space-y-2">
+                  {message.attachments.map((att: ChatAttachment) => {
+                    if (att.type === "image") {
+                      return (
+                        <a
+                          key={att.id}
+                          href={att.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <img
+                            src={att.url}
+                            alt={att.name}
+                            className="max-w-full rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                            loading="lazy"
+                          />
+                        </a>
+                      );
+                    }
+
+                    if (att.type === "video") {
+                      return (
+                        <video
+                          key={att.id}
+                          src={att.url}
+                          controls
+                          preload="metadata"
+                          className="max-w-full rounded-lg max-h-48"
+                        />
+                      );
+                    }
+
+                    // Generic file attachment
+                    return (
+                      <a
+                        key={att.id}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 rounded-lg p-2 transition-colors ${
+                          isOwnMessage
+                            ? "bg-orange-600/30 hover:bg-orange-600/50"
+                            : "bg-gray-300/50 hover:bg-gray-300/70 dark:bg-gray-600/50 dark:hover:bg-gray-600/70"
+                        }`}
+                      >
+                        <FileText className="h-5 w-5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">
+                            {att.name}
+                          </p>
+                          <p className="text-[10px] opacity-70">
+                            {att.size < 1024
+                              ? `${att.size} B`
+                              : att.size < 1048576
+                              ? `${(att.size / 1024).toFixed(1)} KB`
+                              : `${(att.size / 1048576).toFixed(1)} MB`}
+                          </p>
+                        </div>
+                        <Download className="h-4 w-4 flex-shrink-0 opacity-70" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Text content */}
+              {message.content && (
+                <p className="text-sm break-words">{message.content}</p>
+              )}
+            </>
           )}
 
           {/* Timestamp and Status */}
