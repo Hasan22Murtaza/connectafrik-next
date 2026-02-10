@@ -32,6 +32,7 @@ import { PiShareFatLight } from "react-icons/pi";
 import dynamic from "next/dynamic";
 import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
 import ReactionTooltip from "./ReactionTooltip";
+import { quickReactions, getReactionEmoji } from "@/shared/utils/reactionUtils";
 interface Post {
   id: string;
   title: string;
@@ -224,33 +225,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, [user, hasViewed, onView, post.id]);
 
-  const quickReactions = [
-    "\u{1F44D}",
-    "\u2764\uFE0F",
-    "\u{1F602}",
-    "\u{1F62E}",
-    "\u{1F622}",
-    "\u{1F621}",
-    "\u{1F525}",
-    "\u{1F44F}",
-    "\u{1F64C}",
-    "\u{1F389}",
-    "\u{1F4AF}",
-    "\u{1F60E}",
-    "\u{1F973}",
-    "\u{1F929}",
-    "\u{1F606}",
-    "\u{1F60F}",
-    "\u{1F607}",
-    "\u{1F61C}",
-    "\u{1F914}",
-    "\u{1F631}",
-    "\u{1F624}",
-    "\u{1F605}",
-    "\u{1F60B}",
-    "\u{1F62C}",
-    "\u{1F603}",
-  ];
 
   const handleEmojiHover = (emoji: string) => {
     setHoveredEmoji(emoji);
@@ -459,19 +433,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)$/i.test(url);
   };
 
-  // Get reaction emoji/icon based on type
-  const getReactionEmoji = (type: string): string => {
-    const emojiMap: { [key: string]: string } = {
-      like: "👍",
-      love: "❤️",
-      laugh: "😂",
-      wow: "😮",
-      sad: "😢",
-      angry: "😡",
-      care: "🤗",
-    };
-    return emojiMap[type] || "👍";
-  };
 
   // Get reaction display name
   const getReactionName = (type: string): string => {
@@ -854,134 +815,109 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
       )}
 
+      {/* Engagement Stats & Actions */}
       <div>
-        <div className="flex justify-between items-center pb-2">
-          <div className="flex gap-2 items-center">
-          <div className="flex items-center -space-x-1 ">
-            {getReactionGroups()
-              .slice(0, 3)
-              .map((group) => (
-                <div
-                  key={group.type}
-                  className="relative"
-                  onMouseEnter={() => setHoveredReaction(group.type)}
-                  onMouseLeave={() => setHoveredReaction(null)}
-                >
-                  <span className="text-sm bg-white rounded-full p-0.5 border border-gray-200 cursor-pointer">
-                    {getReactionEmoji(group.type)}
-                  </span>
-
-                
-
-                  {/* Custom Tooltip */}
-                  <ReactionTooltip
-                    users={group.users || []}
-                    isVisible={hoveredReaction === group.type}
-                  />
-                </div>
-                 
-              ))}
-              
-          </div>
-          {reactions.totalCount > 0 && (
-             <span className="text-sm  cursor-pointer hover:underline duration-300">
-                {reactions.totalCount} 
-          </span>
-          )}
-         
-          </div>
-          {/* Facebook-style reactions display */}
-          {/* {reactions.totalCount > 0 && (
-              <div 
-                className="flex items-center gap-1 hover:underline cursor-pointer"
-                onClick={() => setShowReactionsModal(true)}
+        {/* Stats Row - Facebook style */}
+        <div className="flex items-center justify-between px-1 py-2">
+          {/* Left: Reaction emoji circles + total count */}
+          <div className="flex items-center gap-1.5">
+            {getReactionGroups().length > 0 && (
+              <div
+                className="flex items-center gap-1 cursor-pointer group"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowReactionsModal(true);
+                }}
               >
-                <div className="flex items-center -space-x-1">
-                  {getReactionGroups().slice(0, 3).map((group, idx) => (
-                    <span 
-                      key={group.type} 
-                      className="text-sm bg-white rounded-full p-0.5 border border-gray-200"
-                      title={`${getReactionName(group.type)}: ${group.count}`}
-                    >
-                      {getReactionEmoji(group.type)}
-                    </span>
-                  ))}
+                <div className="flex items-center -space-x-1.5">
+                  {getReactionGroups()
+                    .slice(0, 3)
+                    .map((group) => (
+                      <div
+                        key={group.type}
+                        className="relative z-10"
+                        onMouseEnter={() => setHoveredReaction(group.type)}
+                        onMouseLeave={() => setHoveredReaction(null)}
+                      >
+                        <span className="inline-flex items-center justify-center w-[22px] h-[22px] text-sm rounded-full border-2 border-white shadow-sm bg-gray-50 cursor-pointer">
+                          {getReactionEmoji(group.type)}
+                        </span>
+                        <ReactionTooltip
+                          users={group.users || []}
+                          isVisible={hoveredReaction === group.type}
+                        />
+                      </div>
+                    ))}
                 </div>
-                <span className="text-gray-600 text-sm font-medium">
-                  {(() => {
-                    const topReaction = getReactionGroups()[0];
-                    if (topReaction) {
-                      const summary = formatReactionSummary(topReaction);
-                      if (summary) {
-                        return summary;
-                      }
-                    }
-                    return `${reactions.totalCount} reaction${reactions.totalCount !== 1 ? 's' : ''}`;
-                  })()}
-                </span>
+                {reactions.totalCount > 0 && (
+                  <span className="text-[15px] text-gray-500 group-hover:underline">
+                    {reactions.totalCount}
+                  </span>
+                )}
               </div>
-            )} */}
+            )}
+          </div>
 
-          {/* Fallback to likes_count if no reactions */}
-          {/* {reactions.totalCount === 0 && post.likes_count > 0 && (
-              <span className="text-gray-600 text-sm">
-                {post.likes_count} like{post.likes_count !== 1 ? 's' : ''}
-              </span>
-            )} */}
-          <div className="space-x-2">
-            {post.views_count > 0 && (
-              <span className=" hover:underline cursor-pointer text-gray-600 text-sm ">
-                Watch {post.views_count || 0}
+          {/* Right: counts with icons (FB style: "62 💬  7 ➤") */}
+          <div className="flex items-center gap-3 text-gray-500">
+            {post.media_urls && post.media_urls.some((url) => isVideoFile(url)) && post.views_count > 0 && (
+              <span className="flex items-center gap-1 text-[15px] hover:underline cursor-pointer">
+                {post.views_count}
+                <Eye className="w-4 h-4" />
               </span>
             )}
             {post.comments_count > 0 && (
               <span
-                className=" hover:underline cursor-pointer text-gray-600 text-sm "
+                className="flex items-center gap-1 text-[15px] hover:underline cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
                   onComment(post.id);
                 }}
               >
-                Comment {post.comments_count}
+                {post.comments_count}
+                <MessageCircle className="w-4 h-4" />
               </span>
             )}
             {post.shares_count > 0 && (
-              <span className=" hover:underline cursor-pointer text-gray-600 text-sm ">
-                Share {post.shares_count}
+              <span className="flex items-center gap-1 text-[15px] hover:underline cursor-pointer">
+                {post.shares_count}
+                <PiShareFatLight className="w-4 h-4" />
               </span>
             )}
           </div>
         </div>
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          {/* React button with hover emoji picker */}
+
+        {/* Action Buttons - Facebook style */}
+        <div className="flex items-stretch border-t border-gray-200">
+          {/* Like button with hover emoji picker */}
           <div className="relative flex-1">
             <button
               onMouseEnter={handleReactHover}
               onMouseLeave={handleReactLeave}
-              className="flex  items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
-              aria-label="React to post"
+              className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-all duration-150 cursor-pointer rounded-sm"
+              aria-label="Like post"
             >
-              <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm font-medium">React</span>
+              <ThumbsUp className="w-5 h-5" />
+              <span className="text-[15px] font-semibold">Like</span>
             </button>
 
             {showReactionPicker && (
               <div
-                className="absolute bottom-full left-0 mb-2 z-50"
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
                 onMouseEnter={handleReactHover}
                 onMouseLeave={handleReactLeave}
               >
-                <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-1 sm:p-2">
-                  <div className="flex space-x-1 overflow-x-auto scrollbar-hide max-w-xs px-1">
+                <div className="bg-white rounded-full shadow-xl border border-gray-100 px-2 py-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <div className="flex items-center gap-0.5">
                     {quickReactions.slice(0, 6).map((emoji) => (
                       <button
                         key={emoji}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           onEmojiReaction?.(post.id, emoji);
                           setShowReactionPicker(false);
                         }}
-                        className="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg hover:scale-125 transition-transform cursor-pointer flex-shrink-0"
+                        className="w-9 h-9 text-xl hover:scale-[1.4] hover:-translate-y-1.5 transition-all duration-200 cursor-pointer flex items-center justify-center rounded-full"
                       >
                         <span className="emoji">{emoji}</span>
                       </button>
@@ -993,21 +929,27 @@ export const PostCard: React.FC<PostCardProps> = ({
           </div>
 
           <button
-            onClick={() => onComment(post.id)}
-            className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              onComment(post.id);
+            }}
+            className="flex flex-1 items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-all duration-150 cursor-pointer rounded-sm"
             aria-label="Comment on post"
           >
-            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-base sm:text-sm ">Comments</span>
+            <MessageCircle className="w-5 h-5" />
+            <span className="text-[15px] font-semibold">Comment</span>
           </button>
 
           <button
-            onClick={() => onShare(post.id)}
-            className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-green-600 hover:bg-green-50 transition-colors duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare(post.id);
+            }}
+            className="flex flex-1 items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-all duration-150 cursor-pointer rounded-sm"
             aria-label="Share post"
           >
-            <PiShareFatLight className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-base sm:text-sm font-medium">Share</span>
+            <PiShareFatLight className="w-5 h-5" />
+            <span className="text-[15px] font-semibold">Share</span>
           </button>
         </div>
       </div>

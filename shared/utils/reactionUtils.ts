@@ -1,5 +1,28 @@
 export type ReactionType = 'like' | 'love' | 'laugh' | 'angry' | 'sad' | 'wow' | 'care'
 
+/** Quick-pick emojis shown in the reaction picker popup. */
+export const quickReactions = [
+  '\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F621}',
+  '\u{1F525}', '\u{1F44F}', '\u{1F64C}', '\u{1F389}', '\u{1F4AF}', '\u{1F60E}',
+  '\u{1F973}', '\u{1F929}', '\u{1F606}', '\u{1F60F}', '\u{1F607}', '\u{1F61C}',
+  '\u{1F914}', '\u{1F631}', '\u{1F624}', '\u{1F605}', '\u{1F60B}', '\u{1F62C}',
+  '\u{1F603}',
+]
+
+/** Maps a reaction type string to its display emoji. */
+export function getReactionEmoji(type: string): string {
+  const emojiMap: Record<string, string> = {
+    like: '👍',
+    love: '❤️',
+    laugh: '😂',
+    wow: '😮',
+    sad: '😢',
+    angry: '😡',
+    care: '🤗',
+  }
+  return emojiMap[type] || '👍'
+}
+
 const EMOJI_TO_REACTION: Record<string, ReactionType> = {
   '\u{1F44D}': 'like',      // 👍 thumbs up
   '\u2764\uFE0F': 'love',   // ❤️ heart
