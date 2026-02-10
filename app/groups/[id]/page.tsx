@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   Users,
   MessageCircle,
@@ -28,6 +28,8 @@ import { useGroupPosts } from '@/shared/hooks/useGroupPosts'
 import { Group } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { supabase } from '@/lib/supabase'
+import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
 import GroupMembersList from '@/features/groups/components/GroupMembersList'
 import InviteFriendsModal from '@/features/groups/components/InviteFriendsModal'
 import CreateGroupPost from '@/features/groups/components/CreateGroupPost'
@@ -48,7 +50,9 @@ import {
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const groupId = params?.id as string
+  const postQueryParam = searchParams?.get('post')
   const { user, loading: authLoading } = useAuth()
   const { fetchGroupById, joinGroup, leaveGroup } = useGroups()
   const { openGroupChat } = useGroupChat()
@@ -86,6 +90,14 @@ const GroupDetailPage: React.FC = () => {
       fetchGroup()
     }
   }, [groupId, user, authLoading])
+
+  // Auto-open comments when ?post= query param is present
+  useEffect(() => {
+    if (postQueryParam && !postsLoading && groupPosts.length > 0) {
+      setShowCommentsFor(postQueryParam)
+      setActiveTab('posts')
+    }
+  }, [postQueryParam, postsLoading, groupPosts.length])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -167,23 +179,173 @@ const GroupDetailPage: React.FC = () => {
     setShowCommentsFor(postId)
   }
 
-  const handleShare = (postId: string) => {
-    const shareUrl = `${window.location.origin}/posts/${postId}`
-    if (navigator.share) {
-      navigator.share({ url: shareUrl })
-    } else {
-      navigator.clipboard.writeText(shareUrl)
-      toast.success('Link copied to clipboard!')
+  const handleShare = async (postId: string) => {
+    const shareUrl = `${window.location.origin}/groups/${groupId}?post=${postId}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: group?.name || 'Group Post', url: shareUrl })
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        toast.success('Link copied to clipboard!')
+      }
+    } catch (err: any) {
+      // Fallback: use a hidden textarea to copy
+      if (err?.name !== 'AbortError') {
+        try {
+          const textarea = document.createElement('textarea')
+          textarea.value = shareUrl
+          textarea.style.position = 'fixed'
+          textarea.style.opacity = '0'
+          document.body.appendChild(textarea)
+          textarea.select()
+          document.execCommand('copy')
+          document.body.removeChild(textarea)
+          toast.success('Link copied to clipboard!')
+        } catch {
+          toast.error('Failed to copy link')
+        }
+      }
     }
   }
 
-  const handleShareGroup = (groupid: string) => {
+  const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
+    if (!user) {
+      toast.error('Please sign in to react')
+      return
+    }
+
+    try {
+      const reactionType = getReactionTypeFromEmoji(emoji)
+
+      // Check if user already has a reaction for this post
+      const { data: existingReaction, error: checkError } = await supabase
+        .from('group_post_reactions')
+        .select('id, reaction_type')
+        .eq('group_post_id', postId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing reaction:', checkError)
+        toast.error('Failed to check reaction')
+        return
+      }
+
+      // If user already reacted with the same type, remove it (toggle off)
+      if (existingReaction && existingReaction.reaction_type === reactionType) {
+        const { error: deleteError } = await supabase
+          .from('group_post_reactions')
+          .delete()
+          .eq('group_post_id', postId)
+          .eq('user_id', user.id)
+          .eq('reaction_type', reactionType)
+
+        if (deleteError) {
+          console.error('Error removing reaction:', deleteError)
+          toast.error('Failed to remove reaction')
+          return
+        }
+
+        // Decrement likes_count in group_posts table
+        const { data: currentPost } = await supabase
+          .from('group_posts')
+          .select('likes_count')
+          .eq('id', postId)
+          .single()
+
+        if (currentPost) {
+          await supabase
+            .from('group_posts')
+            .update({ likes_count: Math.max(0, (currentPost.likes_count || 0) - 1) })
+            .eq('id', postId)
+        }
+
+        toast.success('Reaction removed')
+        window.dispatchEvent(new CustomEvent('group-reaction-updated', { detail: { postId } }))
+        return
+      }
+
+      // If user has a different reaction, update it
+      if (existingReaction) {
+        const { error: updateError } = await supabase
+          .from('group_post_reactions')
+          .update({ reaction_type: reactionType })
+          .eq('group_post_id', postId)
+          .eq('user_id', user.id)
+
+        if (updateError) {
+          console.error('Error updating reaction:', updateError)
+          toast.error('Failed to update reaction')
+          return
+        }
+
+        toast.success('Reaction updated')
+        window.dispatchEvent(new CustomEvent('group-reaction-updated', { detail: { postId } }))
+        return
+      }
+
+      // Insert new reaction
+      const { error: insertError } = await supabase
+        .from('group_post_reactions')
+        .insert({
+          group_post_id: postId,
+          user_id: user.id,
+          reaction_type: reactionType
+        })
+
+      if (insertError) {
+        console.error('Error inserting reaction:', insertError)
+        toast.error('Failed to save reaction')
+        return
+      }
+
+      // Increment likes_count in group_posts table
+      const { data: currentPost } = await supabase
+        .from('group_posts')
+        .select('likes_count')
+        .eq('id', postId)
+        .single()
+
+      if (currentPost) {
+        await supabase
+          .from('group_posts')
+          .update({ likes_count: (currentPost.likes_count || 0) + 1 })
+          .eq('id', postId)
+      }
+
+      toast.success('Reaction saved!')
+      window.dispatchEvent(new CustomEvent('group-reaction-updated', { detail: { postId } }))
+    } catch (error: any) {
+      console.error('Error handling emoji reaction:', error)
+      toast.error('Something went wrong')
+    }
+  }, [user, groupId])
+
+  const handleShareGroup = async (groupid: string) => {
     const shareUrl = `${window.location.origin}/groups/${groupid}`
-    if (navigator.share) {
-      navigator.share({ url: shareUrl })
-    } else {
-      navigator.clipboard.writeText(shareUrl)
-      toast.success('Link copied to clipboard!')
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: group?.name || 'Group', url: shareUrl })
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        toast.success('Link copied to clipboard!')
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        try {
+          const textarea = document.createElement('textarea')
+          textarea.value = shareUrl
+          textarea.style.position = 'fixed'
+          textarea.style.opacity = '0'
+          document.body.appendChild(textarea)
+          textarea.select()
+          document.execCommand('copy')
+          document.body.removeChild(textarea)
+          toast.success('Link copied to clipboard!')
+        } catch {
+          toast.error('Failed to copy link')
+        }
+      }
     }
   }
 
@@ -432,6 +594,7 @@ const GroupDetailPage: React.FC = () => {
                         onDelete={() => deletePost(post.id)}
                         onEdit={(title, content) => updatePost(post.id, { title, content })}
                         onView={() => recordView(post.id)}
+                        onEmojiReaction={handleEmojiReaction}
                         isPostLiked={post.isLiked}
                         showCommentsFor={showCommentsFor === post.id}
                         onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}

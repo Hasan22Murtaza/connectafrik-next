@@ -77,17 +77,17 @@ export const useGroupPosts = (groupId: string) => {
         (profilesData || []).map(profile => [profile.id, profile])
       )
 
-      // Check which posts the current user has liked
-      let likesData: any[] = []
+      // Check which posts the current user has reacted to (using group_post_reactions table)
+      let reactionsData: any[] = []
       if (user) {
-        const { data, error: likesError } = await supabase
-          .from('likes')
-          .select('post_id')
+        const { data, error: reactionsError } = await supabase
+          .from('group_post_reactions')
+          .select('group_post_id')
           .eq('user_id', user.id)
-          .in('post_id', postsData.map(p => p.id))
+          .in('group_post_id', postsData.map(p => p.id))
 
-        if (!likesError) {
-          likesData = data || []
+        if (!reactionsError) {
+          reactionsData = data || []
         }
       }
 
@@ -101,7 +101,7 @@ export const useGroupPosts = (groupId: string) => {
           avatar_url: null,
           country: null
         },
-        isLiked: likesData.some(like => like.post_id === post.id)
+        isLiked: reactionsData.some(r => r.group_post_id === post.id)
       }))
 
       setPosts(postsWithAuthors)
@@ -174,28 +174,43 @@ export const useGroupPosts = (groupId: string) => {
   }
 
   const toggleLike = async (postId: string) => {
+    // Legacy toggle - now handled via onEmojiReaction in group pages
+    // Kept for backward compatibility, defaults to 'like' reaction type
     if (!user) {
-      toast.error('You must be logged in to like posts')
+      toast.error('You must be logged in to react to posts')
       return
     }
 
     try {
-      // Check if already liked
-      const { data: existingLike } = await supabase
-        .from('likes')
-        .select('id')
-        .eq('post_id', postId)
+      // Check if user already has a reaction for this post
+      const { data: existingReaction, error: checkError } = await supabase
+        .from('group_post_reactions')
+        .select('id, reaction_type')
+        .eq('group_post_id', postId)
         .eq('user_id', user.id)
         .single()
 
-      if (existingLike) {
-        // Unlike
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError
+      }
+
+      if (existingReaction) {
+        // Remove reaction
         const { error } = await supabase
-          .from('likes')
+          .from('group_post_reactions')
           .delete()
-          .eq('id', existingLike.id)
+          .eq('id', existingReaction.id)
 
         if (error) throw error
+
+        // Update likes_count in group_posts table
+        const currentPost = posts.find(p => p.id === postId)
+        if (currentPost) {
+          await supabase
+            .from('group_posts')
+            .update({ likes_count: Math.max(0, currentPost.likes_count - 1) })
+            .eq('id', postId)
+        }
 
         // Update local state
         setPosts(prev => prev.map(post => {
@@ -208,18 +223,30 @@ export const useGroupPosts = (groupId: string) => {
           }
           return post
         }))
+
+        window.dispatchEvent(new CustomEvent('group-reaction-updated', { detail: { postId } }))
       } else {
-        // Like
+        // Insert 'like' reaction
         const { error } = await supabase
-          .from('likes')
+          .from('group_post_reactions')
           .insert([
             {
-              post_id: postId,
-              user_id: user.id
+              group_post_id: postId,
+              user_id: user.id,
+              reaction_type: 'like'
             }
           ])
 
         if (error) throw error
+
+        // Update likes_count in group_posts table
+        const currentPost = posts.find(p => p.id === postId)
+        if (currentPost) {
+          await supabase
+            .from('group_posts')
+            .update({ likes_count: (currentPost.likes_count || 0) + 1 })
+            .eq('id', postId)
+        }
 
         // Update local state
         setPosts(prev => prev.map(post => {
@@ -232,10 +259,12 @@ export const useGroupPosts = (groupId: string) => {
           }
           return post
         }))
+
+        window.dispatchEvent(new CustomEvent('group-reaction-updated', { detail: { postId } }))
       }
     } catch (err: any) {
-      console.error('Error toggling like:', err)
-      toast.error('Failed to update like')
+      console.error('Error toggling reaction:', err)
+      toast.error('Failed to update reaction')
     }
   }
 

@@ -691,15 +691,15 @@ export const useGroups = () => {
         (profilesData || []).map(profile => [profile.id, profile])
       )
 
-      // Check which posts the current user has liked
-      let likesData: any[] = []
-      const { data: likes } = await supabase
-        .from('likes')
-        .select('post_id')
+      // Check which posts the current user has reacted to (using group_post_reactions table)
+      let reactionsData: any[] = []
+      const { data: userReactions } = await supabase
+        .from('group_post_reactions')
+        .select('group_post_id')
         .eq('user_id', user.id)
-        .in('post_id', postsData.map(p => p.id))
+        .in('group_post_id', postsData.map(p => p.id))
 
-      if (likes) likesData = likes
+      if (userReactions) reactionsData = userReactions
 
       // Combine posts with author profiles and group info
       const postsWithDetails = postsData.map(post => ({
@@ -711,7 +711,7 @@ export const useGroups = () => {
           avatar_url: null,
           country: null
         },
-        isLiked: likesData.some(like => like.post_id === post.id)
+        isLiked: reactionsData.some(r => r.group_post_id === post.id)
       }))
 
       return postsWithDetails

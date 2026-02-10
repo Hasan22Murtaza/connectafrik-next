@@ -14,10 +14,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
+import { getReactionTypeFromEmoji } from "@/shared/utils/reactionUtils";
 import {
   useShimmerCount,
   GroupsFeedShimmer,
@@ -41,6 +42,7 @@ const GroupsPage: React.FC = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllJoined, setShowAllJoined] = useState(false);
+  const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
   const shimmerCount = useShimmerCount();
 
   // Fetch managed and joined groups separately
@@ -138,69 +140,159 @@ const GroupsPage: React.FC = () => {
   );
 
   const handlePostLike = async (postId: string) => {
+    // Default like reaction via the React button fallback
+    handlePostEmojiReaction(postId, '\u{1F44D}');
+  };
+
+  const handlePostEmojiReaction = useCallback(async (postId: string, emoji: string) => {
     if (!user) {
-      toast.error("You must be logged in to like posts");
+      toast.error("You must be logged in to react to posts");
       return;
     }
 
     try {
-      const post = recentActivity.find((p: any) => p.id === postId);
-      if (!post) return;
+      const reactionType = getReactionTypeFromEmoji(emoji);
 
-      // Check if already liked
-      const { data: existingLike } = await supabase
-        .from("likes")
-        .select("id")
-        .eq("post_id", postId)
+      // Check if user already has a reaction for this post
+      const { data: existingReaction, error: checkError } = await supabase
+        .from("group_post_reactions")
+        .select("id, reaction_type")
+        .eq("group_post_id", postId)
         .eq("user_id", user.id)
         .single();
 
-      if (existingLike) {
-        // Unlike
-        await supabase.from("likes").delete().eq("id", existingLike.id);
-
-        setRecentActivity((prev: any[]) =>
-          prev.map((p: any) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  likes_count: Math.max(0, p.likes_count - 1),
-                  isLiked: false,
-                }
-              : p,
-          ),
-        );
-      } else {
-        // Like
-        await supabase
-          .from("likes")
-          .insert([{ post_id: postId, user_id: user.id }]);
-
-        setRecentActivity((prev: any[]) =>
-          prev.map((p: any) =>
-            p.id === postId
-              ? { ...p, likes_count: p.likes_count + 1, isLiked: true }
-              : p,
-          ),
-        );
+      if (checkError && checkError.code !== "PGRST116") {
+        console.error("Error checking existing reaction:", checkError);
+        toast.error("Failed to check reaction");
+        return;
       }
+
+      // If user already reacted with the same type, remove it (toggle off)
+      if (existingReaction && existingReaction.reaction_type === reactionType) {
+        await supabase
+          .from("group_post_reactions")
+          .delete()
+          .eq("group_post_id", postId)
+          .eq("user_id", user.id)
+          .eq("reaction_type", reactionType);
+
+        // Decrement likes_count
+        const { data: currentPost } = await supabase
+          .from("group_posts")
+          .select("likes_count")
+          .eq("id", postId)
+          .single();
+
+        if (currentPost) {
+          await supabase
+            .from("group_posts")
+            .update({ likes_count: Math.max(0, (currentPost.likes_count || 0) - 1) })
+            .eq("id", postId);
+        }
+
+        setRecentActivity((prev: any[]) =>
+          prev.map((p: any) =>
+            p.id === postId
+              ? { ...p, likes_count: Math.max(0, p.likes_count - 1), isLiked: false }
+              : p,
+          ),
+        );
+
+        toast.success("Reaction removed");
+        window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
+        return;
+      }
+
+      // If user has a different reaction, update it (no count change)
+      if (existingReaction) {
+        await supabase
+          .from("group_post_reactions")
+          .update({ reaction_type: reactionType })
+          .eq("group_post_id", postId)
+          .eq("user_id", user.id);
+
+        toast.success("Reaction updated");
+        window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
+        return;
+      }
+
+      // Insert new reaction
+      const { error: insertError } = await supabase
+        .from("group_post_reactions")
+        .insert({
+          group_post_id: postId,
+          user_id: user.id,
+          reaction_type: reactionType,
+        });
+
+      if (insertError) {
+        console.error("Error inserting reaction:", insertError);
+        toast.error("Failed to save reaction");
+        return;
+      }
+
+      // Increment likes_count
+      const { data: currentPost } = await supabase
+        .from("group_posts")
+        .select("likes_count")
+        .eq("id", postId)
+        .single();
+
+      if (currentPost) {
+        await supabase
+          .from("group_posts")
+          .update({ likes_count: (currentPost.likes_count || 0) + 1 })
+          .eq("id", postId);
+      }
+
+      setRecentActivity((prev: any[]) =>
+        prev.map((p: any) =>
+          p.id === postId
+            ? { ...p, likes_count: p.likes_count + 1, isLiked: true }
+            : p,
+        ),
+      );
+
+      toast.success("Reaction saved!");
+      window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
     } catch (err: any) {
-      console.error("Error toggling like:", err);
-      toast.error("Failed to update like");
+      console.error("Error handling emoji reaction:", err);
+      toast.error("Something went wrong");
     }
-  };
+  }, [user]);
 
   const handlePostComment = (postId: string) => {
-    // Navigate to group post detail or open comment modal
-    const post = recentActivity.find((p: any) => p.id === postId);
-    if (post) {
-      router.push(`/groups/${post.group_id}?post=${postId}`);
-    }
+    setShowCommentsFor(showCommentsFor === postId ? null : postId);
   };
 
-  const handlePostShare = (postId: string) => {
-    // Implement share functionality
-    toast.success("Share functionality coming soon!");
+  const handlePostShare = async (postId: string) => {
+    const post = recentActivity.find((p: any) => p.id === postId);
+    const shareUrl = `${window.location.origin}/groups/${post?.group_id || ''}?post=${postId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: post?.group?.name || 'Group Post', url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard!");
+      }
+    } catch (err: any) {
+      // Fallback: use a hidden textarea to copy
+      if (err?.name !== 'AbortError') {
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = shareUrl;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          toast.success("Link copied to clipboard!");
+        } catch {
+          toast.error("Failed to copy link");
+        }
+      }
+    }
   };
 
   // Sidebar content as plain JSX — avoids recreating a component type every
@@ -554,7 +646,10 @@ const GroupsPage: React.FC = () => {
                           onLike={() => handlePostLike(post.id)}
                           onComment={() => handlePostComment(post.id)}
                           onShare={() => handlePostShare(post.id)}
+                          onEmojiReaction={handlePostEmojiReaction}
                           isPostLiked={post.isLiked}
+                          showCommentsFor={showCommentsFor === post.id}
+                          onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}
                         />
                       </div>
                     ))}

@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, Edit, Eye } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, Edit, Eye, Smile } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { GroupPost } from '@/shared/hooks/useGroupPosts'
 import GroupPostCommentsSection from '@/features/groups/components/GroupPostCommentsSection'
+import { useGroupPostReactions, GroupReactionGroup } from '@/shared/hooks/useGroupPostReactions'
+import ReactionTooltip from '@/features/social/components/ReactionTooltip'
 import toast from 'react-hot-toast'
 import { PiShareFat } from 'react-icons/pi'
 
@@ -18,6 +20,7 @@ interface GroupPostCardProps {
   onDelete?: () => void
   onEdit?: (title: string, content: string) => void
   onView?: () => void
+  onEmojiReaction?: (postId: string, emoji: string) => void
   isPostLiked?: boolean
   showCommentsFor?: boolean
   onToggleComments?: () => void
@@ -39,6 +42,28 @@ const POST_TYPE_COLORS = {
   resource: 'bg-orange-100 text-orange-700'
 }
 
+const quickReactions = [
+  '\u{1F44D}', '\u2764\uFE0F', '\u{1F602}', '\u{1F62E}', '\u{1F622}', '\u{1F621}',
+  '\u{1F525}', '\u{1F44F}', '\u{1F64C}', '\u{1F389}', '\u{1F4AF}', '\u{1F60E}',
+  '\u{1F973}', '\u{1F929}', '\u{1F606}', '\u{1F60F}', '\u{1F607}', '\u{1F61C}',
+  '\u{1F914}', '\u{1F631}', '\u{1F624}', '\u{1F605}', '\u{1F60B}', '\u{1F62C}',
+  '\u{1F603}',
+]
+
+// Get reaction emoji/icon based on type
+const getReactionEmoji = (type: string): string => {
+  const emojiMap: { [key: string]: string } = {
+    like: '👍',
+    love: '❤️',
+    laugh: '😂',
+    wow: '😮',
+    sad: '😢',
+    angry: '😡',
+    care: '🤗',
+  }
+  return emojiMap[type] || '👍'
+}
+
 const GroupPostCard: React.FC<GroupPostCardProps> = ({
   post,
   onLike,
@@ -47,6 +72,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   onDelete,
   onEdit,
   onView,
+  onEmojiReaction,
   isPostLiked = false,
   showCommentsFor = false,
   onToggleComments
@@ -57,6 +83,16 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(post.title)
   const [editContent, setEditContent] = useState(post.content)
+  const [showReactionPicker, setShowReactionPicker] = useState(false)
+  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null)
+  const closeTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  // Fetch reactions with user data
+  const {
+    reactions,
+    loading: reactionsLoading,
+    refetch: refetchReactions,
+  } = useGroupPostReactions(post.id)
 
   const isAuthor = user?.id === post.author_id
 
@@ -71,6 +107,34 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
     if (confirm('Are you sure you want to delete this post?')) {
       onDelete?.()
     }
+  }
+
+  const handleReactHover = () => {
+    if (closeTimeout.current) {
+      clearTimeout(closeTimeout.current)
+      closeTimeout.current = null
+    }
+    setShowReactionPicker(true)
+  }
+
+  const handleReactLeave = () => {
+    closeTimeout.current = setTimeout(() => {
+      setShowReactionPicker(false)
+    }, 300)
+  }
+
+  // Get all reaction groups sorted by count
+  const getReactionGroups = () => {
+    const groups: GroupReactionGroup[] = []
+    Object.keys(reactions).forEach((key) => {
+      if (key !== 'totalCount') {
+        const reaction = reactions[key]
+        if (reaction && typeof reaction === 'object' && 'count' in reaction && reaction.count > 0) {
+          groups.push(reaction as GroupReactionGroup)
+        }
+      }
+    })
+    return groups.sort((a, b) => b.count - a.count)
   }
 
   return (
@@ -207,34 +271,107 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         </>
       )}
 
-      {/* Actions */}
-        <div className="flex items-center gap-6 justify-between pt-3 border-t border-gray-200">
-          <button
-            onClick={onLike}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-              isPostLiked
-                ? 'bg-red-50 text-red-600'
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
-          >
-            <Heart className={`w-5 h-5 ${isPostLiked ? 'fill-current' : ''}`} />
-            <span className="text-sm font-medium">{post.likes_count}</span>
-          </button>
+      {/* Reactions Summary & Counts */}
+      <div>
+        <div className="flex justify-between items-center pb-2">
+          <div className="flex gap-2 items-center">
+            <div className="flex items-center -space-x-1">
+              {getReactionGroups()
+                .slice(0, 3)
+                .map((group) => (
+                  <div
+                    key={group.type}
+                    className="relative"
+                    onMouseEnter={() => setHoveredReaction(group.type)}
+                    onMouseLeave={() => setHoveredReaction(null)}
+                  >
+                    <span className="text-sm bg-white rounded-full p-0.5 border border-gray-200 cursor-pointer">
+                      {getReactionEmoji(group.type)}
+                    </span>
+                    <ReactionTooltip
+                      users={group.users || []}
+                      isVisible={hoveredReaction === group.type}
+                    />
+                  </div>
+                ))}
+            </div>
+            {reactions.totalCount > 0 && (
+              <span className="text-sm cursor-pointer hover:underline duration-300">
+                {reactions.totalCount}
+              </span>
+            )}
+          </div>
+          <div className="space-x-2">
+            {post.comments_count > 0 && (
+              <span
+                className="hover:underline cursor-pointer text-gray-600 text-sm"
+                onClick={() => onToggleComments ? onToggleComments() : onComment()}
+              >
+                Comment {post.comments_count}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+          {/* React button with hover emoji picker */}
+          <div className="relative flex-1">
+            <button
+              onMouseEnter={handleReactHover}
+              onMouseLeave={handleReactLeave}
+              className="flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
+              aria-label="React to post"
+            >
+              <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs sm:text-sm font-medium">React</span>
+            </button>
+
+            {showReactionPicker && (
+              <div
+                className="absolute bottom-full left-0 mb-2 z-50"
+                onMouseEnter={handleReactHover}
+                onMouseLeave={handleReactLeave}
+              >
+                <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-1 sm:p-2">
+                  <div className="flex space-x-1 overflow-x-auto scrollbar-hide max-w-xs px-1">
+                    {quickReactions.slice(0, 6).map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => {
+                          onEmojiReaction?.(post.id, emoji)
+                          setShowReactionPicker(false)
+                        }}
+                        className="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg hover:scale-125 transition-transform cursor-pointer flex-shrink-0"
+                      >
+                        <span className="emoji">{emoji}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onToggleComments || onComment}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+            className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200"
+            aria-label="Comment on post"
           >
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-sm font-medium">{post.comments_count}</span>
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-base sm:text-sm">Comments</span>
           </button>
+
           <button
             onClick={onShare}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+            className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-green-600 hover:bg-green-50 transition-colors duration-200"
+            aria-label="Share post"
           >
-            <PiShareFat className="w-5 h-5" />
-            <span className="text-sm font-medium">Share</span>
+            <PiShareFat className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-base sm:text-sm font-medium">Share</span>
           </button>
         </div>
+      </div>
 
       {/* Comments Section */}
       {showCommentsFor && (
@@ -249,4 +386,3 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
 }
 
 export default GroupPostCard
-
