@@ -116,12 +116,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   }, [thread?.participants, currentUser?.id]);
 
+  const isGroupThread = (thread?.participants?.length ?? 0) > 2 || (thread as any)?.isGroup;
+
   const displayThreadName = useMemo(() => {
     if (isSelfChat) {
       return `${currentUser?.name || "You"} (Notes)`;
     }
+    // For group threads, prefer the thread/group name over a participant's name
+    if (isGroupThread && thread?.name) {
+      return thread.name;
+    }
     return primaryParticipant?.name || thread?.name || "Chat";
-  }, [isSelfChat, primaryParticipant?.name, thread?.name, currentUser?.name]);
+  }, [isSelfChat, isGroupThread, primaryParticipant?.name, thread?.name, currentUser?.name]);
 
   const [headerImageFailed, setHeaderImageFailed] = useState(false);
 
@@ -141,9 +147,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const headerAvatarAvailable = Boolean(headerAvatarUrl) && !headerImageFailed;
 
   const headerInitial = useMemo(() => {
-    const name = isSelfChat ? currentUser?.name || "You" : primaryParticipant?.name || thread?.name || "U";
+    if (isSelfChat) return (currentUser?.name || "You").charAt(0).toUpperCase();
+    if (isGroupThread && thread?.name) return thread.name.charAt(0).toUpperCase();
+    const name = primaryParticipant?.name || thread?.name || "U";
     return name.charAt(0).toUpperCase();
-  }, [isSelfChat, currentUser?.name, primaryParticipant?.name, thread?.name]);
+  }, [isSelfChat, isGroupThread, currentUser?.name, primaryParticipant?.name, thread?.name]);
 
   const participantStatuses = useMemo<PresenceStatus[]>(
     () =>

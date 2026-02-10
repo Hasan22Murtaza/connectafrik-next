@@ -105,10 +105,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
         )
         const primary = otherParticipants[0] ?? thread.participants[0]
         if (!primary) return null
+        const isGroup = otherParticipants.length > 1 || (thread as any).isGroup
         return {
           ...entry,
-          name: primary.name || thread.name || 'Unknown',
-          avatarUrl: primary.avatarUrl,
+          name: (isGroup && thread.name) ? thread.name : (primary.name || thread.name || 'Unknown'),
+          avatarUrl: isGroup ? undefined : primary.avatarUrl,
           id: primary.id,
         }
       })
@@ -312,6 +313,8 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               const primary = otherParticipants[0] ?? thread.participants[0]
               const status = presence[primary?.id ?? ''] || 'offline'
               const lastActive = thread.last_message_at
+              const isGroup = otherParticipants.length > 1 || (thread as any).isGroup
+              const threadDisplayName = (isGroup && thread.name) ? thread.name : (primary?.name || thread.name || 'Conversation')
 
               return (
                 <div
@@ -324,7 +327,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                   >
                     <div className="relative w-8 h-8 sm:w-10 sm:h-10">
                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
-                        {(primary?.name || thread.name).charAt(0).toUpperCase()}
+                        {threadDisplayName.charAt(0).toUpperCase()}
                       </div>
                       <Circle
                         className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[status as PresenceStatus]}`}
@@ -333,7 +336,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
-                        {primary?.name || thread.name || 'Conversation'}
+                        {threadDisplayName}
                       </p>
                       <p className="text-xs text-gray-500">
                         {thread.last_message_preview
