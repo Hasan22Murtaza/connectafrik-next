@@ -4,8 +4,25 @@ import { ringtoneService } from '@/features/video/services/ringtoneService';
 import { supabase } from '@/lib/supabase';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { notificationService } from '@/shared/services/notificationService';
-import { MessageSquare, Mic, MicOff, PhoneOff, Video, VideoOff, Volume1, Volume2 } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { MessageSquare, Mic, MicOff, PhoneOff, UserPlus, Video, VideoOff, Volume1, Volume2, X, Search } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+// Stable component for per-participant video in grid layout
+const ParticipantVideo = React.memo(function ParticipantVideo({ stream }: { stream: MediaStream }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [stream]);
+  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />;
+});
 
 export interface VideoSDKCallModalProps {
   isOpen: boolean;
@@ -68,6 +85,16 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isAcceptingCall, setIsAcceptingCall] = useState(false);
+
+  // Per-participant video tracking for group call grid
+  const participantVideoMapRef = useRef<Map<string, MediaStream>>(new Map());
+  const [participantVideoMap, setParticipantVideoMap] = useState<Map<string, MediaStream>>(new Map());
+
+  // Add People feature
+  const [showAddPeople, setShowAddPeople] = useState(false);
+  const [addPeopleSearch, setAddPeopleSearch] = useState('');
+  const [addPeopleResults, setAddPeopleResults] = useState<any[]>([]);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -199,6 +226,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
     if (isMountedRef.current) {
       setParticipants([]);
+      participantVideoMapRef.current.clear();
+      setParticipantVideoMap(new Map());
       setCallStatus('ended');
       setRoomId('');
       setError('');
@@ -688,23 +717,18 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               // Subscribe to participant stream events
               if (participant.on) {
                 participant.on("stream-enabled", (stream: any) => {
-                  
                   if (stream.kind === 'video' && stream.track) {
-                    // Remove any existing video streams from this participant first
-                    // This ensures we replace the old stream with the new one
-                    updateRemoteStreams((prev) => {
-                      return prev.filter((s) => {
-                        // Keep audio streams, remove old video streams
-                        const hasVideo = s.getVideoTracks().length > 0;
-                        return !hasVideo;
-                      });
-                    });
-                    
-                    // Create new video stream with the new track
                     const videoStream = new MediaStream([stream.track]);
+
+                    // Track per-participant video for grid layout
+                    participantVideoMapRef.current.set(participant.id, videoStream);
+                    if (isMountedRef.current) {
+                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                    }
+
                     addRemoteStream(videoStream);
-                    
-                    // Update remote video element immediately
+
+                    // Update remote video element for 1-on-1 calls
                     if (remoteVideoRef.current && callType === 'video') {
                       remoteVideoRef.current.srcObject = videoStream;
                       remoteVideoRef.current.play().catch(() => {});
@@ -718,6 +742,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 participant.on("stream-disabled", (stream: any) => {
                   if (stream.track) {
                     removeRemoteStream(stream.track.id);
+                  }
+                  // Remove participant video from grid map
+                  if (stream.kind === 'video') {
+                    participantVideoMapRef.current.delete(participant.id);
+                    if (isMountedRef.current) {
+                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                    }
                   }
                 });
               }
@@ -745,6 +776,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       meeting.on("participant-left", (p: any) => {
         if (isMountedRef.current) {
+          // Clean up participant video for grid layout
+          participantVideoMapRef.current.delete(p.id);
+          setParticipantVideoMap(new Map(participantVideoMapRef.current));
+
           setParticipants(prev => {
             const updated = prev.filter((x: any) => x.id !== p.id);
             
@@ -1125,23 +1160,18 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               // Subscribe to participant stream events
               if (participant.on) {
                 participant.on("stream-enabled", (stream: any) => {
-                  
                   if (stream.kind === 'video' && stream.track) {
-                    // Remove any existing video streams from this participant first
-                    // This ensures we replace the old stream with the new one
-                    updateRemoteStreams((prev) => {
-                      return prev.filter((s) => {
-                        // Keep audio streams, remove old video streams
-                        const hasVideo = s.getVideoTracks().length > 0;
-                        return !hasVideo;
-                      });
-                    });
-                    
-                    // Create new video stream with the new track
                     const videoStream = new MediaStream([stream.track]);
+
+                    // Track per-participant video for grid layout
+                    participantVideoMapRef.current.set(participant.id, videoStream);
+                    if (isMountedRef.current) {
+                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                    }
+
                     addRemoteStream(videoStream);
-                    
-                    // Update remote video element immediately
+
+                    // Update remote video element for 1-on-1 calls
                     if (remoteVideoRef.current && callType === 'video') {
                       remoteVideoRef.current.srcObject = videoStream;
                       remoteVideoRef.current.play().catch(() => {});
@@ -1155,6 +1185,13 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                 participant.on("stream-disabled", (stream: any) => {
                   if (stream.track) {
                     removeRemoteStream(stream.track.id);
+                  }
+                  // Remove participant video from grid map
+                  if (stream.kind === 'video') {
+                    participantVideoMapRef.current.delete(participant.id);
+                    if (isMountedRef.current) {
+                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                    }
                   }
                 });
               }
@@ -1182,6 +1219,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
       meeting.on("participant-left", (p: any) => {
         if (isMountedRef.current) {
+          // Clean up participant video for grid layout
+          participantVideoMapRef.current.delete(p.id);
+          setParticipantVideoMap(new Map(participantVideoMapRef.current));
+
           setParticipants(prev => {
             const updated = prev.filter((x: any) => x.id !== p.id);
             
@@ -1586,6 +1627,109 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     }
   };
 
+  // Search users to invite to the call
+  const searchUsersForInvite = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setAddPeopleResults([]);
+      return;
+    }
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url')
+        .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`)
+        .neq('id', currentUserId || '')
+        .limit(10);
+      setAddPeopleResults(data || []);
+    } catch {
+      setAddPeopleResults([]);
+    }
+  }, [currentUserId]);
+
+  // Invite a user to the current call
+  const handleInviteToCall = useCallback(async (targetUser: { id: string; full_name: string; username: string }) => {
+    if (!currentUserId || invitingUserId) return;
+    setInvitingUserId(targetUser.id);
+    try {
+      const currentRoomId = roomId || roomIdHint;
+      if (!currentRoomId) throw new Error('No active room');
+
+      // Find an existing direct thread with the target user
+      const { data: myParticipations } = await supabase
+        .from('chat_participants')
+        .select('thread_id')
+        .eq('user_id', currentUserId);
+
+      const myThreadIds = (myParticipations || []).map((p: any) => p.thread_id);
+      let directThreadId: string | null = null;
+
+      if (myThreadIds.length > 0) {
+        const { data: shared } = await supabase
+          .from('chat_participants')
+          .select('thread_id, chat_threads!inner(type)')
+          .eq('user_id', targetUser.id)
+          .in('thread_id', myThreadIds);
+
+        const directThread = shared?.find((s: any) => s.chat_threads?.type === 'direct');
+        if (directThread) directThreadId = directThread.thread_id;
+      }
+
+      // Create new direct thread if none exists
+      if (!directThreadId) {
+        const { data: newThread } = await supabase
+          .from('chat_threads')
+          .insert({ type: 'direct' })
+          .select()
+          .single();
+
+        if (newThread) {
+          await supabase.from('chat_participants').insert([
+            { thread_id: newThread.id, user_id: currentUserId, display_name: user?.user_metadata?.full_name || 'Unknown' },
+            { thread_id: newThread.id, user_id: targetUser.id, display_name: targetUser.full_name || targetUser.username },
+          ]);
+          directThreadId = newThread.id;
+        }
+      }
+
+      if (!directThreadId) throw new Error('Could not find or create thread');
+
+      // Send call invitation with current room ID
+      await supabaseMessagingService.sendMessage(
+        directThreadId,
+        {
+          content: `📞 Incoming ${callType === 'video' ? 'video' : 'audio'} call`,
+          message_type: 'call_request',
+          metadata: {
+            callType,
+            roomId: currentRoomId,
+            callerId: currentUserId,
+            callerName: user?.user_metadata?.full_name || 'Unknown',
+            timestamp: new Date().toISOString(),
+          },
+        },
+        { id: currentUserId, name: user?.user_metadata?.full_name || 'Unknown' }
+      );
+
+      // Close the panel after successful invite
+      setShowAddPeople(false);
+      setAddPeopleSearch('');
+      setAddPeopleResults([]);
+    } catch (error: any) {
+      console.error('Failed to invite to call:', error);
+    } finally {
+      setInvitingUserId(null);
+    }
+  }, [currentUserId, roomId, roomIdHint, callType, user, invitingUserId]);
+
+  // Debounced search for add people
+  useEffect(() => {
+    if (!showAddPeople) return;
+    const timer = setTimeout(() => {
+      searchUsersForInvite(addPeopleSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [addPeopleSearch, showAddPeople, searchUsersForInvite]);
+
   // Update local video element when localStream changes
   useEffect(() => {
     const videoElement = localVideoRef.current;
@@ -1817,19 +1961,46 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
         {/* Video/Audio Content - Fullscreen */}
         <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-screen overflow-hidden">
-          {/* Remote Videos - Show all participants */}
-          {remoteStreams.length > 0 && callType === 'video' && (
+          {/* Remote Video - 1-on-1 call (single full-screen) */}
+          {remoteStreams.length > 0 && callType === 'video' && participants.length <= 1 && (
             <div className="w-full h-full">
-              {remoteStreams.map((stream, index) => (
-                <video
-                  key={stream.id}
-                  ref={index === 0 ? remoteVideoRef : undefined}
-                  autoPlay
-                  playsInline
-                  className="w-full h-full object-cover"
-                  style={{ display: isVideoEnabled ? 'block' : 'none' }}
-                />
-              ))}
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          {/* Remote Video Grid - Group call (2+ remote participants) */}
+          {callType === 'video' && participants.length > 1 && (
+            <div className={`w-full h-full grid gap-1 p-1 ${
+              participants.length === 2 ? 'grid-cols-2' :
+              participants.length <= 4 ? 'grid-cols-2' :
+              'grid-cols-3'
+            }`}>
+              {participants.map((p: any) => {
+                const videoStream = participantVideoMap.get(p.id);
+                return (
+                  <div key={p.id} className="relative bg-gray-800 rounded-lg overflow-hidden min-h-0">
+                    {videoStream ? (
+                      <ParticipantVideo stream={videoStream} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center">
+                          <span className="text-xl sm:text-2xl font-bold text-white">
+                            {(p.displayName || 'U')[0].toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="absolute bottom-1 left-1 text-[10px] sm:text-xs text-white bg-black/50 px-1.5 py-0.5 rounded">
+                      {p.displayName || 'Participant'}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -2057,6 +2228,20 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                   </button>
 
+                  {/* Add People Button */}
+                  <button
+                    onClick={() => setShowAddPeople(!showAddPeople)}
+                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                      showAddPeople
+                        ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white'
+                        : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                    }`}
+                    title="Add people to call"
+                    aria-label="Add people to call"
+                  >
+                    <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                  </button>
+
                   {/* Raise Hand Button - Highlight when raised */}
                   {/* <button
                     onClick={handleRaiseHand}
@@ -2088,6 +2273,89 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           )}
 
         </div>
+
+        {/* Add People Panel */}
+        {showAddPeople && callStatus === 'connected' && (
+          <div className="absolute top-0 right-0 w-full sm:w-80 h-full bg-gray-900/95 backdrop-blur-md z-50 flex flex-col border-l border-white/10">
+            {/* Header */}
+            <div className="flex items-center justify-between p-3 border-b border-white/10">
+              <h3 className="text-sm font-semibold text-white">Add People</h3>
+              <button
+                onClick={() => {
+                  setShowAddPeople(false);
+                  setAddPeopleSearch('');
+                  setAddPeopleResults([]);
+                }}
+                className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="p-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name..."
+                  value={addPeopleSearch}
+                  onChange={(e) => setAddPeopleSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Results */}
+            <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+              {addPeopleSearch.length < 2 ? (
+                <p className="text-xs text-gray-500 text-center mt-4">Type at least 2 characters to search</p>
+              ) : addPeopleResults.length === 0 ? (
+                <p className="text-xs text-gray-500 text-center mt-4">No users found</p>
+              ) : (
+                addPeopleResults.map((person: any) => {
+                  const isAlreadyInCall = participants.some((p: any) => p.displayName === person.full_name);
+                  return (
+                    <button
+                      key={person.id}
+                      onClick={() => !isAlreadyInCall && handleInviteToCall(person)}
+                      disabled={isAlreadyInCall || invitingUserId === person.id}
+                      className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left ${
+                        isAlreadyInCall
+                          ? 'opacity-50 cursor-not-allowed'
+                          : invitingUserId === person.id
+                          ? 'bg-primary-500/20'
+                          : 'hover:bg-white/10'
+                      }`}
+                    >
+                      {person.avatar_url ? (
+                        <img src={person.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center">
+                          <span className="text-xs font-bold text-white">
+                            {(person.full_name || person.username || 'U')[0].toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{person.full_name || person.username}</p>
+                        {person.username && <p className="text-xs text-gray-400 truncate">@{person.username}</p>}
+                      </div>
+                      {isAlreadyInCall ? (
+                        <span className="text-[10px] text-green-400 font-medium">In call</span>
+                      ) : invitingUserId === person.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-400 border-t-transparent" />
+                      ) : (
+                        <span className="text-xs text-primary-400 font-medium">Invite</span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Controls */}
         <div className="p-2 sm:p-3 md:p-4 lg:p-6">

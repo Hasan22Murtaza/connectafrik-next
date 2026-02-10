@@ -364,11 +364,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (typeof window !== 'undefined') {
         const { openCallWindow } = await import('@/shared/utils/callWindow')
         
-        // Get recipient name from thread
+        // Get recipient/group name from thread
         const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
         const thread = userThreads.find(t => t.id === threadId)
-        const recipient = thread?.participants?.find((p: any) => p.id !== currentUser?.id)
-        const recipientName = recipient?.name || 'Unknown'
+        const isGroupCall = (thread?.participants?.length || 0) > 2
+        const recipientName = isGroupCall
+          ? (thread?.name || 'Group Call')
+          : (thread?.participants?.find((p: any) => p.id !== currentUser?.id)?.name || 'Unknown')
 
         openCallWindow({
           roomId,
