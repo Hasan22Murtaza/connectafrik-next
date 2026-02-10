@@ -15,7 +15,6 @@ const MobileMenuButton = () => {
     { icon: Users2, label: 'Groups', path: '/groups', color: 'text-indigo-600' },
     { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace', color: 'text-orange-600' },
     { icon: Package, label: 'My Orders', path: '/my-orders', color: 'text-orange-600' },
-    { icon: Clock, label: 'Memories', path: '/memories', color: 'text-pink-600' },
     { icon: Bookmark, label: 'Saved', path: '/saved', color: 'text-yellow-600' },
     { icon: Video, label: 'Video', path: '/video', color: 'text-red-600' },
   ]

@@ -55,15 +55,21 @@ export const useGroups = () => {
 
       if (error) throw error
 
-      // Process data to add user's membership info
+      // Process data to add user's membership info and accurate member count
       const processedGroups = (data || []).map(group => {
+        // Count actual active memberships for accurate member_count
+        const activeMemberships = (group.memberships || []).filter(
+          (m: any) => m.status === 'active'
+        )
+
         // Find current user's membership
-        const userMembership = group.memberships?.find(
-          (m: any) => m.user_id === user?.id && m.status === 'active'
+        const userMembership = activeMemberships.find(
+          (m: any) => m.user_id === user?.id
         )
 
         return {
           ...group,
+          member_count: activeMemberships.length,
           membership: userMembership ? {
             id: userMembership.id,
             group_id: group.id,
@@ -132,6 +138,29 @@ export const useGroups = () => {
           memberships: undefined
         }
       })
+
+      // Fix member counts by counting actual active memberships
+      // (the !inner join above only returns the current user's membership)
+      const groupIds = processedGroups.map((g: any) => g.id)
+      if (groupIds.length > 0) {
+        const { data: allMemberships } = await supabase
+          .from('group_memberships')
+          .select('group_id')
+          .in('group_id', groupIds)
+          .eq('status', 'active')
+
+        const countMap = new Map<string, number>()
+        ;(allMemberships || []).forEach((m: any) => {
+          countMap.set(m.group_id, (countMap.get(m.group_id) || 0) + 1)
+        })
+
+        processedGroups.forEach((g: any) => {
+          const actualCount = countMap.get(g.id)
+          if (actualCount !== undefined) {
+            g.member_count = actualCount
+          }
+        })
+      }
 
       setGroups(processedGroups)
     } catch (err: any) {
@@ -267,14 +296,14 @@ export const useGroups = () => {
 
           if (error) throw error
 
-          // Get current member count and increment it
-          const { data: currentGroup } = await supabase
-            .from('groups')
-            .select('member_count')
-            .eq('id', groupId)
-            .single()
+          // Count actual active memberships for accurate member count
+          const { count: actualCount } = await supabase
+            .from('group_memberships')
+            .select('id', { count: 'exact', head: true })
+            .eq('group_id', groupId)
+            .eq('status', 'active')
 
-          const newMemberCount = (currentGroup?.member_count || 0) + 1
+          const newMemberCount = actualCount || 0
 
           // Update member count in database
           const { error: updateError } = await supabase
@@ -334,14 +363,14 @@ export const useGroups = () => {
 
       if (error) throw error
 
-      // Get current member count and increment it
-      const { data: currentGroup } = await supabase
-        .from('groups')
-        .select('member_count')
-        .eq('id', groupId)
-        .single()
+      // Count actual active memberships for accurate member count
+      const { count: actualCount } = await supabase
+        .from('group_memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('group_id', groupId)
+        .eq('status', 'active')
 
-      const newMemberCount = (currentGroup?.member_count || 0) + 1
+      const newMemberCount = actualCount || 0
 
       // Update member count in database
       const { error: updateError } = await supabase
@@ -404,14 +433,14 @@ export const useGroups = () => {
 
       if (error) throw error
 
-      // Get current member count and decrement it
-      const { data: currentGroup } = await supabase
-        .from('groups')
-        .select('member_count')
-        .eq('id', groupId)
-        .single()
+      // Count actual active memberships for accurate member count
+      const { count: actualCount } = await supabase
+        .from('group_memberships')
+        .select('id', { count: 'exact', head: true })
+        .eq('group_id', groupId)
+        .eq('status', 'active')
 
-      const newMemberCount = Math.max(0, (currentGroup?.member_count || 1) - 1)
+      const newMemberCount = actualCount || 0
 
       // Update member count in database
       const { error: updateError } = await supabase
@@ -506,15 +535,33 @@ export const useGroups = () => {
 
       if (error) throw error
 
+      // Count actual active memberships for accurate member_count
+      const activeMemberships = (data.memberships || []).filter(
+        (m: any) => m.status === 'active'
+      )
+      const actualMemberCount = activeMemberships.length
+
+      // Sync member_count in DB if it drifted out of sync
+      if (data.member_count !== actualMemberCount) {
+        supabase
+          .from('groups')
+          .update({ member_count: actualMemberCount })
+          .eq('id', groupId)
+          .then(({ error: syncError }) => {
+            if (syncError) console.error('Failed to sync member_count:', syncError)
+          })
+      }
+
       // Find current user's membership if user is logged in
       const userMembership = user 
-        ? data.memberships?.find(
-            (m: any) => m.user_id === user.id && m.status === 'active'
+        ? activeMemberships.find(
+            (m: any) => m.user_id === user.id
           )
         : undefined
 
       return {
         ...data,
+        member_count: actualMemberCount,
         membership: userMembership ? {
           id: userMembership.id,
           group_id: groupId,
@@ -570,6 +617,28 @@ export const useGroups = () => {
           memberships: undefined
         }
       })
+
+      // Fix member counts by counting actual active memberships
+      const groupIds = processedGroups.map((g: any) => g.id)
+      if (groupIds.length > 0) {
+        const { data: allMemberships } = await supabase
+          .from('group_memberships')
+          .select('group_id')
+          .in('group_id', groupIds)
+          .eq('status', 'active')
+
+        const countMap = new Map<string, number>()
+        ;(allMemberships || []).forEach((m: any) => {
+          countMap.set(m.group_id, (countMap.get(m.group_id) || 0) + 1)
+        })
+
+        processedGroups.forEach((g: any) => {
+          const actualCount = countMap.get(g.id)
+          if (actualCount !== undefined) {
+            g.member_count = actualCount
+          }
+        })
+      }
 
       return processedGroups
     } catch (err: any) {

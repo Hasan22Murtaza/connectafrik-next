@@ -10,12 +10,11 @@ import {
   Plus,
   Search,
   Users,
-  Settings,
   FileText,
   ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
@@ -38,9 +37,7 @@ const GroupsPage: React.FC = () => {
   } = useGroups();
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState<"feed" | "discover" | "my-groups">("feed");
-  const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
   const [managedGroups, setManagedGroups] = useState<Group[]>([]);
-  const [joinedGroups, setJoinedGroups] = useState<Group[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllJoined, setShowAllJoined] = useState(false);
@@ -58,17 +55,15 @@ const GroupsPage: React.FC = () => {
     }
   }, [user]);
 
-  // Separate joined groups from managed groups
-  useEffect(() => {
-    if (groups.length > 0 && user) {
-      const joined = groups.filter(
-        (g: Group) =>
-          g.membership &&
-          g.membership.status === "active" &&
-          !managedGroups.some((mg) => mg.id === g.id),
-      );
-      setJoinedGroups(joined);
-    }
+  // Derive joined groups synchronously — no extra render cycle
+  const joinedGroups = useMemo(() => {
+    if (!user || groups.length === 0) return [];
+    return groups.filter(
+      (g: Group) =>
+        g.membership &&
+        g.membership.status === "active" &&
+        !managedGroups.some((mg) => mg.id === g.id),
+    );
   }, [groups, managedGroups, user]);
 
   // Fetch recent activity
@@ -84,26 +79,21 @@ const GroupsPage: React.FC = () => {
     }
   }, [user, view]);
 
-  // Filter groups based on search
-  useEffect(() => {
-    let filtered = groups;
-
-    if (searchTerm) {
-      const lowercaseSearch = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (group) =>
-          group.name.toLowerCase().includes(lowercaseSearch) ||
-          group.description.toLowerCase().includes(lowercaseSearch) ||
-          group.tags.some((tag) =>
-            tag.toLowerCase().includes(lowercaseSearch),
-          ) ||
-          group.goals.some((goal) =>
-            goal.toLowerCase().includes(lowercaseSearch),
-          ),
-      );
-    }
-
-    setFilteredGroups(filtered);
+  // Derive filtered groups synchronously — no extra render cycle
+  const filteredGroups = useMemo(() => {
+    if (!searchTerm) return groups;
+    const lowercaseSearch = searchTerm.toLowerCase();
+    return groups.filter(
+      (group) =>
+        group.name.toLowerCase().includes(lowercaseSearch) ||
+        group.description.toLowerCase().includes(lowercaseSearch) ||
+        group.tags.some((tag) =>
+          tag.toLowerCase().includes(lowercaseSearch),
+        ) ||
+        group.goals.some((goal) =>
+          goal.toLowerCase().includes(lowercaseSearch),
+        ),
+    );
   }, [groups, searchTerm]);
 
   const handleViewChange = (newView: "feed" | "discover" | "my-groups") => {
@@ -142,9 +132,10 @@ const GroupsPage: React.FC = () => {
     router.push(`/groups/${groupId}`);
   };
 
-  const displayedJoinedGroups = showAllJoined
-    ? joinedGroups
-    : joinedGroups.slice(0, 5);
+  const displayedJoinedGroups = useMemo(
+    () => (showAllJoined ? joinedGroups : joinedGroups.slice(0, 5)),
+    [joinedGroups, showAllJoined],
+  );
 
   const handlePostLike = async (postId: string) => {
     if (!user) {
@@ -212,18 +203,14 @@ const GroupsPage: React.FC = () => {
     toast.success("Share functionality coming soon!");
   };
 
-  // Sidebar content component
-  const SidebarContent = () => (
+  // Sidebar content as plain JSX — avoids recreating a component type every
+  // render which would cause React to fully unmount/remount the sidebar DOM.
+  const sidebarContent = (
     <div className="space-y-4">
       {/* Groups Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-900">Groups</h2>
-        <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <Settings className="w-5 h-5 text-gray-600" />
-          </button>
-         
-        </div>
+      
       </div>
 
       {/* Search Bar */}
@@ -499,7 +486,7 @@ const GroupsPage: React.FC = () => {
           {/* Left Sidebar - Desktop */}
           <div className="hidden lg:block w-80 shrink-0">
             <div className="sticky top-4 space-y-4">
-              <SidebarContent />
+              {sidebarContent}
             </div>
           </div>
 

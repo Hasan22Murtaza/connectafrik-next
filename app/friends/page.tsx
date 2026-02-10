@@ -4,24 +4,28 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Friend, FriendRequest } from "@/shared/types";
 import {
+  Cake,
   ChevronDown,
   ChevronRight,
   Clock,
   Gift,
+  PartyPopper,
   Search,
   UserPlus,
   Users
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { notificationService } from '@/shared/services/notificationService';
 import { useShimmerCount, FriendsGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import { useProductionChat } from "@/contexts/ProductionChatContext";
 
 const FriendsPage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const { startChatWithMembers, openThread } = useProductionChat();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<(FriendRequest & { mutualFriendsCount?: number })[]>([]);
   const [suggestions, setSuggestions] = useState<Array<{
@@ -39,7 +43,100 @@ const FriendsPage: React.FC = () => {
   const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
   const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
   const [activeSection, setActiveSection] = useState<"home" | "requests" | "suggestions" | "all" | "birthdays" | "custom">("home");
+  const [birthdayDisplayLimit, setBirthdayDisplayLimit] = useState(10);
+  const birthdaySentinelRef = useRef<HTMLDivElement>(null);
   const shimmerCount = useShimmerCount();
+
+  // Derive birthday categories from already-fetched friends (no extra DB call)
+  const birthdayFriends = useMemo(() => {
+    const today = new Date();
+    const todayMonth = today.getMonth() + 1;
+    const todayDay = today.getDate();
+    const currentYear = today.getFullYear();
+
+    const todayList: Friend[] = [];
+    const thisMonthList: Friend[] = [];
+    const upcomingList: Friend[] = [];
+
+    friends.forEach((friend) => {
+      if (!friend.birthday) return;
+
+      const parts = String(friend.birthday).split("-");
+      if (parts.length < 3) return;
+
+      const bMonth = parseInt(parts[1], 10);
+      const bDay = parseInt(parts[2], 10);
+
+      if (bMonth === todayMonth && bDay === todayDay) {
+        todayList.push(friend);
+      } else if (bMonth === todayMonth && bDay > todayDay) {
+        thisMonthList.push(friend);
+      } else {
+        let nextBirthday = new Date(currentYear, bMonth - 1, bDay);
+        if (nextBirthday < today) {
+          nextBirthday = new Date(currentYear + 1, bMonth - 1, bDay);
+        }
+        const diffDays = Math.ceil(
+          (nextBirthday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (diffDays <= 30 && diffDays > 0) {
+          upcomingList.push(friend);
+        }
+      }
+    });
+
+    const sortByNextBirthday = (a: Friend, b: Friend) => {
+      const getNext = (f: Friend) => {
+        const p = String(f.birthday).split("-");
+        const m = parseInt(p[1], 10);
+        const d = parseInt(p[2], 10);
+        let next = new Date(currentYear, m - 1, d);
+        if (next < today) next = new Date(currentYear + 1, m - 1, d);
+        return next.getTime();
+      };
+      return getNext(a) - getNext(b);
+    };
+
+    thisMonthList.sort(sortByNextBirthday);
+    upcomingList.sort(sortByNextBirthday);
+
+    return { today: todayList, thisMonth: thisMonthList, upcoming: upcomingList };
+  }, [friends]);
+
+  // Flat list of all birthday friends for pagination
+  const allBirthdayFriends = useMemo(
+    () => [...birthdayFriends.today, ...birthdayFriends.thisMonth, ...birthdayFriends.upcoming],
+    [birthdayFriends]
+  );
+
+  const hasMoreBirthdays = birthdayDisplayLimit < allBirthdayFriends.length;
+
+  // Reset pagination when switching to birthdays
+  useEffect(() => {
+    if (activeSection === "birthdays") {
+      setBirthdayDisplayLimit(10);
+    }
+  }, [activeSection]);
+
+  // IntersectionObserver for infinite scroll on birthdays
+  useEffect(() => {
+    if (activeSection !== "birthdays" || !hasMoreBirthdays) return;
+
+    const sentinel = birthdaySentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setBirthdayDisplayLimit((prev) => prev + 10);
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [activeSection, hasMoreBirthdays]);
 
   useEffect(() => {
     if (user) {
@@ -65,8 +162,8 @@ const FriendsPage: React.FC = () => {
         .select(
           `
           *,
-          sender:profiles!friend_requests_sender_id_profiles_fkey(id, username, full_name, avatar_url, country, bio),
-          receiver:profiles!friend_requests_receiver_id_profiles_fkey(id, username, full_name, avatar_url, country, bio)
+          sender:profiles!friend_requests_sender_id_profiles_fkey(id, username, full_name, avatar_url, country, bio, birthday),
+          receiver:profiles!friend_requests_receiver_id_profiles_fkey(id, username, full_name, avatar_url, country, bio, birthday)
         `
         )
         .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
@@ -88,6 +185,7 @@ const FriendsPage: React.FC = () => {
           country: friendData?.country,
           bio: friendData?.bio,
           friendship_date: req.created_at,
+          birthday: friendData?.birthday,
         };
       });
 
@@ -226,6 +324,30 @@ const FriendsPage: React.FC = () => {
       console.error('Error in fetchSuggestions:', error);
     } finally {
       setSuggestionsLoading(false);
+    }
+  };
+
+  const handleStartBirthdayChat = async (friend: Friend) => {
+    if (!user) return;
+
+    try {
+      const chatParticipant = {
+        id: friend.id,
+        name: friend.full_name,
+        avatarUrl: friend.avatar_url || undefined,
+      };
+
+      const threadId = await startChatWithMembers([chatParticipant], {
+        participant_ids: [friend.id],
+        openInDock: true,
+      });
+
+      if (threadId) {
+        openThread(threadId);
+      }
+    } catch (error) {
+      console.error("Error starting birthday chat:", error);
+      toast.error("Failed to open chat");
     }
   };
 
@@ -634,7 +756,7 @@ const FriendsPage: React.FC = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-gray-900">Friend Requests</h2>
-                  <button className="text-blue-600 hover:text-blue-700 font-medium">
+                  <button className="text-orange-600 hover:text-orange-700 font-medium">
                     See all
                   </button>
                 </div>
@@ -894,12 +1016,215 @@ const FriendsPage: React.FC = () => {
                   </div>
                 )}
               </div>
+            ) : activeSection === "birthdays" ? (
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Birthdays</h2>
+
+                {loading ? (
+                  <FriendsGridShimmer count={shimmerCount} />
+                ) : allBirthdayFriends.length > 0 ? (
+                  <div className="space-y-8">
+                    {/* Today's Birthdays */}
+                    {birthdayFriends.today.length > 0 && (
+                      <div>
+                        <div className="flex items-center space-x-2 mb-4">
+                          <PartyPopper className="w-5 h-5 text-orange-500" />
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            Today's Birthdays
+                          </h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {birthdayFriends.today
+                            .slice(0, birthdayDisplayLimit)
+                            .map((friend) => (
+                              <div
+                                key={friend.id}
+                                className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                              >
+                                <Link href={`/user/${friend.username || ""}`} className="shrink-0">
+                                  {friend.avatar_url ? (
+                                    <img
+                                      src={friend.avatar_url}
+                                      alt={friend.full_name}
+                                      className="w-14 h-14 rounded-full object-cover ring-2 ring-orange-300"
+                                    />
+                                  ) : (
+                                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-orange-600 bg-orange-100 ring-2 ring-orange-300">
+                                      {friend.full_name?.charAt(0) || "U"}
+                                    </div>
+                                  )}
+                                </Link>
+                                <div className="flex-1 min-w-0">
+                                  <Link href={`/user/${friend.username || ""}`}>
+                                    <h4 className="font-semibold text-gray-900 truncate hover:text-orange-600 transition-colors">
+                                      {friend.full_name}
+                                    </h4>
+                                  </Link>
+                                  <p className="text-sm text-orange-600 font-medium flex items-center space-x-1">
+                                    <Cake className="w-4 h-4" />
+                                    <span>Birthday today!</span>
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => handleStartBirthdayChat(friend)}
+                                  className="shrink-0 btn-sm-primary text-sm"
+                                >
+                                  Send Wish
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* This Month */}
+                    {(() => {
+                      const todayCount = birthdayFriends.today.length;
+                      const remaining = birthdayDisplayLimit - todayCount;
+                      if (remaining <= 0 || birthdayFriends.thisMonth.length === 0) return null;
+                      const visibleThisMonth = birthdayFriends.thisMonth.slice(0, remaining);
+                      return (
+                        <div>
+                          <div className="flex items-center space-x-2 mb-4">
+                            <Gift className="w-5 h-5 text-orange-500" />
+                            <h3 className="text-lg font-semibold text-gray-900">Later This Month</h3>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {visibleThisMonth.map((friend) => {
+                              const parts = String(friend.birthday).split("-");
+                              const bMonth = parseInt(parts[1], 10);
+                              const bDay = parseInt(parts[2], 10);
+                              const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
+                              const today = new Date();
+                              const next = new Date(today.getFullYear(), bMonth - 1, bDay);
+                              const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                              return (
+                                <div
+                                  key={friend.id}
+                                  className="bg-white border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                                >
+                                  <Link href={`/user/${friend.username || ""}`} className="shrink-0">
+                                    {friend.avatar_url ? (
+                                      <img
+                                        src={friend.avatar_url}
+                                        alt={friend.full_name}
+                                        className="w-14 h-14 rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
+                                        {friend.full_name?.charAt(0) || "U"}
+                                      </div>
+                                    )}
+                                  </Link>
+                                  <div className="flex-1 min-w-0">
+                                    <Link href={`/user/${friend.username || ""}`}>
+                                      <h4 className="font-semibold text-gray-900 truncate hover:text-orange-600 transition-colors">
+                                        {friend.full_name}
+                                      </h4>
+                                    </Link>
+                                    <p className="text-sm text-gray-500">
+                                      {monthName} {bDay}
+                                    </p>
+                                  </div>
+                                  <div className="shrink-0 text-right">
+                                    <span className="text-xs font-medium text-gray-400">
+                                      {diff} day{diff === 1 ? "" : "s"}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Upcoming (next 30 days, excluding this month) */}
+                    {(() => {
+                      const consumed = birthdayFriends.today.length + birthdayFriends.thisMonth.length;
+                      const remaining = birthdayDisplayLimit - consumed;
+                      if (remaining <= 0 || birthdayFriends.upcoming.length === 0) return null;
+                      const visibleUpcoming = birthdayFriends.upcoming.slice(0, remaining);
+                      return (
+                        <div>
+                          <div className="flex items-center space-x-2 mb-4">
+                            <Cake className="w-5 h-5 text-gray-500" />
+                            <h3 className="text-lg font-semibold text-gray-900">Upcoming Birthdays</h3>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {visibleUpcoming.map((friend) => {
+                              const parts = String(friend.birthday).split("-");
+                              const bMonth = parseInt(parts[1], 10);
+                              const bDay = parseInt(parts[2], 10);
+                              const monthName = new Date(2000, bMonth - 1).toLocaleString("default", { month: "long" });
+                              const today = new Date();
+                              const currentYear = today.getFullYear();
+                              let next = new Date(currentYear, bMonth - 1, bDay);
+                              if (next < today) next = new Date(currentYear + 1, bMonth - 1, bDay);
+                              const diff = Math.ceil((next.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                              return (
+                                <div
+                                  key={friend.id}
+                                  className="bg-white border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                                >
+                                  <Link href={`/user/${friend.username || ""}`} className="shrink-0">
+                                    {friend.avatar_url ? (
+                                      <img
+                                        src={friend.avatar_url}
+                                        alt={friend.full_name}
+                                        className="w-14 h-14 rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-primary-100">
+                                        {friend.full_name?.charAt(0) || "U"}
+                                      </div>
+                                    )}
+                                  </Link>
+                                  <div className="flex-1 min-w-0">
+                                    <Link href={`/user/${friend.username || ""}`}>
+                                      <h4 className="font-semibold text-gray-900 truncate hover:text-orange-600 transition-colors">
+                                        {friend.full_name}
+                                      </h4>
+                                    </Link>
+                                    <p className="text-sm text-gray-500">
+                                      {monthName} {bDay}
+                                    </p>
+                                  </div>
+                                  <div className="shrink-0 text-right">
+                                    <span className="text-xs font-medium text-gray-400">
+                                      {diff} day{diff === 1 ? "" : "s"}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Infinite scroll sentinel */}
+                    {hasMoreBirthdays && (
+                      <div ref={birthdaySentinelRef} className="flex justify-center py-6">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500" />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-white rounded-lg">
+                    <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No upcoming birthdays
+                    </h3>
+                    <p className="text-gray-500">
+                      None of your friends have birthdays coming up in the next 30 days.
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : (
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  {activeSection === "birthdays" && "Birthdays"}
-                  {activeSection === "custom" && "Custom Lists"}
-                </h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Custom Lists</h2>
                 <div className="bg-white rounded-lg shadow-sm p-8 text-center">
                   <p className="text-gray-500">Coming soon...</p>
                 </div>

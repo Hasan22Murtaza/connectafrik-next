@@ -482,8 +482,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <div className="text-xs text-gray-500">
               {isSelfChat
                 ? "Save messages to yourself"
-                : otherParticipants.length > 1
-                ? `${otherParticipants.length} participants`
+                : (thread?.participants?.length ?? 0) > 2
+                ? `${thread?.participants?.length} participants`
                 : formatPresenceLabel(presenceStatus)}
             </div>
           </div>

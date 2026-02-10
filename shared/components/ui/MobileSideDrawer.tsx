@@ -36,7 +36,6 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
     { icon: Users2, label: 'Groups', path: '/groups' },
     { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
     { icon: Package, label: 'My Orders', path: '/my-orders' },
-    { icon: Clock, label: 'Memories', path: '/memories' },
     { icon: Bookmark, label: 'Saved', path: '/saved' },
     { icon: Video, label: 'Video', path: '/video' },
   ]
