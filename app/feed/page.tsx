@@ -351,7 +351,7 @@ const FeedPage: React.FC = () => {
     }
 
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-2 sm:space-y-3">
         {filteredPosts.map((post) => (
           <React.Fragment key={post.id}>
             <PostCard
@@ -386,7 +386,7 @@ const FeedPage: React.FC = () => {
 
         {/* Shimmer loading skeleton for more posts */}
         {loadingMore && (
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-2 sm:space-y-3">
             {Array.from({ length: 2 }).map((_, idx) => (
               <div key={idx} className="animate-pulse rounded-2xl border border-gray-200 bg-white p-2">
                 <div className="flex items-center space-x-3">
@@ -411,8 +411,8 @@ const FeedPage: React.FC = () => {
           </div>
         )}
 
-        {/* End of feed message */}
-        {!hasMore && filteredPosts.length > 0 && (
+        {/* End of feed message — only show if more than one page was loaded */}
+        {!hasMore && filteredPosts.length >= 10 && (
           <div className="py-6 text-center text-sm text-gray-400">
             You&apos;ve reached the end of the feed
           </div>

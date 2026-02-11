@@ -24,9 +24,29 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
   const displayAvatar = story.profile_picture_url || story.user_avatar || ''
   const isTextStory = story.media_url?.startsWith('gradient:') || story.text_overlay
   const textOverlay = parseTextOverlay(story.text_overlay)
+  const isVideo = story.media_type === 'video' && !isTextStory
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const handleMouseEnter = useCallback(() => {
+    if (isVideo && videoRef.current) {
+      videoRef.current.play().catch(() => {})
+    }
+  }, [isVideo])
+
+  const handleMouseLeave = useCallback(() => {
+    if (isVideo && videoRef.current) {
+      videoRef.current.pause()
+      videoRef.current.currentTime = 0.5
+    }
+  }, [isVideo])
 
   return (
-    <button onClick={onClick} className="flex-shrink-0 w-[90px] sm:w-[112px] group">
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 w-[90px] sm:w-[112px] group"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer">
         {isTextStory ? (
           <div
@@ -39,6 +59,20 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
               </p>
             )}
           </div>
+        ) : isVideo && story.media_url ? (
+          <video
+            ref={videoRef}
+            src={story.media_url}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onLoadedData={(e) => {
+              const video = e.currentTarget
+              video.currentTime = 0.5
+            }}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
         ) : story.media_url ? (
           <img
             src={story.media_url}
@@ -106,14 +140,47 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'You'
   const isTextStory = latestStory?.media_url?.startsWith('gradient:') || latestStory?.text_overlay
+  const isVideo = latestStory?.media_type === 'video' && !isTextStory
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const handleMouseEnter = useCallback(() => {
+    if (isVideo && videoRef.current) {
+      videoRef.current.play().catch(() => {})
+    }
+  }, [isVideo])
+
+  const handleMouseLeave = useCallback(() => {
+    if (isVideo && videoRef.current) {
+      videoRef.current.pause()
+      videoRef.current.currentTime = 0.5
+    }
+  }, [isVideo])
 
   if (hasStories) {
     return (
-      <div className="flex-shrink-0 w-[90px] sm:w-[112px]">
+      <div
+        className="flex-shrink-0 w-[90px] sm:w-[112px]"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
         <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow">
           <button onClick={onView} className="absolute inset-0 cursor-pointer">
             {isTextStory ? (
               <div className="w-full h-full" style={{ backgroundColor: latestStory.background_color || '#2563eb' }} />
+            ) : isVideo && latestStory.media_url ? (
+              <video
+                ref={videoRef}
+                src={latestStory.media_url}
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                onLoadedData={(e) => {
+                  const video = e.currentTarget
+                  video.currentTime = 0.5
+                }}
+                className="w-full h-full object-cover"
+              />
             ) : latestStory.media_url ? (
               <img src={latestStory.media_url} alt="Your story" className="w-full h-full object-cover" loading="lazy" />
             ) : (
