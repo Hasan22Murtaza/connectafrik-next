@@ -33,6 +33,7 @@ import dynamic from "next/dynamic";
 import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
 import ReactionTooltip from "./ReactionTooltip";
 import { quickReactions, getReactionEmoji } from "@/shared/utils/reactionUtils";
+import ImageViewer from "@/shared/components/ui/ImageViewer";
 interface Post {
   id: string;
   title: string;
@@ -120,6 +121,8 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [hasViewed, setHasViewed] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showReactionsModal, setShowReactionsModal] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
@@ -425,6 +428,17 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
+  // Open image viewer on image click
+  const handleImageClick = (index: number) => {
+    setImageViewerIndex(index);
+    setImageViewerOpen(true);
+  };
+
+  // Get only image URLs for the viewer (exclude videos)
+  const imageUrls = (post.media_urls || []).filter((url) =>
+    /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url)
+  );
+
   const isImageFile = (url: string): boolean => {
     return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url);
   };
@@ -498,17 +512,27 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   const renderMedia = (url: string, index: number) => {
     if (isImageFile(url)) {
+      // Find the index of this image within imageUrls (excluding videos)
+      const imageIndex = imageUrls.indexOf(url);
       return (
-        <img
-          src={url}
-          alt={`Post media ${index + 1}`}
-          className="w-full h-auto max-h-96 object-cover"
-          loading="lazy"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.style.display = "none";
+        <div
+          className="relative cursor-pointer group"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleImageClick(imageIndex >= 0 ? imageIndex : 0);
           }}
-        />
+        >
+          <img
+            src={url}
+            alt={`Post media ${index + 1}`}
+            className="w-full h-auto max-h-96 object-cover transition-transform duration-200 group-hover:brightness-95"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+            }}
+          />
+        </div>
       );
     }
 
@@ -753,25 +777,74 @@ export const PostCard: React.FC<PostCardProps> = ({
         </>
       )}
 
-      {/* Media */}
+      {/* Media - Facebook style grid */}
       {post.media_urls && post.media_urls.length > 0 && (
-        <div className="mb-4">
-          <div
-            className={`grid gap-3 ${
-              post.media_urls.length === 1
-                ? "grid-cols-1"
-                : "grid-cols-1 sm:grid-cols-2"
-            }`}
-          >
-            {post.media_urls.map((url, index) => (
-              <div
-                key={`${post.id}-media-${index}`}
-                className="rounded-lg overflow-hidden"
-              >
-                {renderMedia(url, index)}
+        <div className="mb-4 -mx-3 sm:-mx-4">
+          {(() => {
+            const mediaCount = post.media_urls!.length;
+            const visibleMedia = post.media_urls!.slice(0, mediaCount === 1 ? 1 : mediaCount === 2 ? 2 : mediaCount === 3 ? 3 : 4);
+            const extraCount = mediaCount - visibleMedia.length;
+
+            if (mediaCount === 1) {
+              return (
+                <div className="overflow-hidden">
+                  {renderMedia(visibleMedia[0], 0)}
+                </div>
+              );
+            }
+
+            if (mediaCount === 2) {
+              return (
+                <div className="grid grid-cols-2 gap-0.5">
+                  {visibleMedia.map((url, index) => (
+                    <div key={`${post.id}-media-${index}`} className="overflow-hidden aspect-square">
+                      {renderMedia(url, index)}
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+
+            if (mediaCount === 3) {
+              return (
+                <div className="grid grid-cols-2 gap-0.5">
+                  <div className="col-span-2 overflow-hidden aspect-video">
+                    {renderMedia(visibleMedia[0], 0)}
+                  </div>
+                  {visibleMedia.slice(1).map((url, index) => (
+                    <div key={`${post.id}-media-${index + 1}`} className="overflow-hidden aspect-square">
+                      {renderMedia(url, index + 1)}
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+
+            // 4+ images: 2x2 grid with +N overlay on last cell
+            return (
+              <div className="grid grid-cols-2 gap-0.5">
+                {visibleMedia.map((url, index) => (
+                  <div key={`${post.id}-media-${index}`} className="relative overflow-hidden aspect-square">
+                    {renderMedia(url, index)}
+                    {/* +N overlay on the last visible image if there are more */}
+                    {index === visibleMedia.length - 1 && extraCount > 0 && (
+                      <div
+                        className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleImageClick(index);
+                        }}
+                      >
+                        <span className="text-white text-3xl font-bold">
+                          +{extraCount}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       )}
 
@@ -981,6 +1054,16 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Viewer - Facebook style lightbox */}
+      {imageUrls.length > 0 && (
+        <ImageViewer
+          images={imageUrls}
+          initialIndex={imageViewerIndex}
+          isOpen={imageViewerOpen}
+          onClose={() => setImageViewerOpen(false)}
+        />
       )}
 
       {/* Reactions Modal - Facebook style */}
