@@ -93,7 +93,7 @@ const POST_BACKGROUNDS = [
   "linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)", // Red-Blue
 ];
 
-export const PostCard: React.FC<PostCardProps> = ({
+export const PostCard: React.FC<PostCardProps> = React.memo(({
   post,
   onLike,
   onComment,
@@ -1161,4 +1161,6 @@ export const PostCard: React.FC<PostCardProps> = ({
       )}
     </article>
   );
-};
+});
+
+PostCard.displayName = 'PostCard';

@@ -12,7 +12,10 @@ import {
   Send,
   Pause,
   MoreHorizontal,
-  Trash2
+  Trash2,
+  MessageCircle,
+  ChevronDown,
+  Eye
 } from 'lucide-react'
 import {
   Story,
@@ -75,6 +78,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const audioRef = useRef<HTMLAudioElement>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const storyDuration = useRef<number>(STORY_DURATION.IMAGE)
+  const repliesEndRef = useRef<HTMLDivElement>(null)
 
   const currentStory = stories[currentIndex]
   const isOwnStory = currentStory?.user_id === user?.id
@@ -170,6 +174,15 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     syncMedia(audioRef.current)
   }, [isMuted, isPaused])
 
+  // Pause story when replies bottom sheet is open
+  useEffect(() => {
+    if (showReplies) {
+      setIsPaused(true)
+      // Auto-scroll to latest reply
+      setTimeout(() => repliesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100)
+    }
+  }, [showReplies, replies.length])
+
   const handleLike = async () => {
     if (!user || !currentStory) return
     try {
@@ -215,6 +228,13 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   }
 
   const stopPropagation = (e: React.MouseEvent) => e.stopPropagation()
+
+  const toggleRepliesSheet = useCallback(() => {
+    setShowReplies(prev => {
+      if (prev) setIsPaused(false) // Resume when closing
+      return !prev
+    })
+  }, [])
 
   if (!isOpen || !currentStory) return null
 
@@ -382,66 +402,170 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
             <div className="absolute bottom-2 md:bottom-3 left-2 md:left-3 right-2 md:right-3 z-20 pb-safe">
               {!isOwnStory ? (
-                <div className="flex items-center gap-1.5 md:gap-2">
-                  <input
-                    type="text"
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') handleSendReply() }}
-                    onClick={stopPropagation}
-                    placeholder="Reply to story..."
-                    className="flex-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-3 md:px-4 py-2 md:py-2.5 text-white text-xs md:text-sm placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
-                  />
-                  <button
-                    onClick={(e) => { stopPropagation(e); handleLike() }}
-                    className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-colors ${
-                      isLiked ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'
-                    }`}
-                  >
-                    <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current' : ''}`} />
-                  </button>
-                  {replyText.trim() && (
+                <div className="space-y-2">
+                  {/* View replies indicator for viewers */}
+                  {replies.length > 0 && (
                     <button
-                      onClick={(e) => { stopPropagation(e); handleSendReply() }}
-                      className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-primary-600 text-white flex items-center justify-center hover:bg-primary-700 transition-colors"
+                      onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
                     >
-                      <Send className="w-4 h-4 md:w-5 md:h-5" />
+                      <MessageCircle className="w-3.5 h-3.5 text-white/70" />
+                      <span className="text-white/70 text-xs font-medium">
+                        View {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                      </span>
                     </button>
                   )}
+                  <div className="flex items-center gap-1.5 md:gap-2">
+                    <input
+                      type="text"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') handleSendReply() }}
+                      onClick={stopPropagation}
+                      onFocus={() => setIsPaused(true)}
+                      onBlur={() => setIsPaused(false)}
+                      placeholder="Reply to story..."
+                      className="flex-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-3 md:px-4 py-2 md:py-2.5 text-white text-xs md:text-sm placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
+                    />
+                    <button
+                      onClick={(e) => { stopPropagation(e); handleLike() }}
+                      className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-colors ${
+                        isLiked ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'
+                      }`}
+                    >
+                      <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current' : ''}`} />
+                    </button>
+                    {replyText.trim() && (
+                      <button
+                        onClick={(e) => { stopPropagation(e); handleSendReply() }}
+                        className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-primary-600 text-white flex items-center justify-center hover:bg-primary-700 transition-colors"
+                      >
+                        <Send className="w-4 h-4 md:w-5 md:h-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center gap-2 text-white/70 text-xs md:text-sm">
-                  <span>{currentStory.view_count || 0} views</span>
-                  {replies.length > 0 && (
-                    <>
-                      <span>•</span>
-                      <button onClick={(e) => { stopPropagation(e); setShowReplies(!showReplies) }} className="hover:text-white transition-colors">
-                        {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-                      </button>
-                    </>
-                  )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-white/70">
+                    <Eye className="w-4 h-4" />
+                    <span className="text-xs md:text-sm font-medium">{currentStory.view_count || 0}</span>
+                  </div>
+                  <button
+                    onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ${
+                      replies.length > 0
+                        ? 'bg-white/15 hover:bg-white/25 text-white'
+                        : 'bg-white/10 text-white/50 cursor-default'
+                    }`}
+                    disabled={replies.length === 0}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    <span className="text-xs md:text-sm font-medium">
+                      {replies.length > 0 ? `${replies.length} ${replies.length === 1 ? 'Reply' : 'Replies'}` : 'No replies'}
+                    </span>
+                  </button>
                 </div>
               )}
             </div>
 
-            {isOwnStory && showReplies && replies.length > 0 && (
-              <div className="absolute inset-x-2 md:inset-x-3 bottom-14 md:bottom-16 z-30 bg-gray-900/95 backdrop-blur-sm rounded-xl max-h-40 md:max-h-48 overflow-y-auto" onClick={stopPropagation}>
-                <div className="p-2.5 md:p-3 space-y-2.5 md:space-y-3">
-                  <p className="text-white/70 text-[10px] md:text-xs font-medium">Replies</p>
-                  {replies.map((reply) => (
-                    <div key={reply.id} className="flex items-start gap-2">
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-gray-700 flex items-center justify-center text-white text-[10px] md:text-xs">
-                        {reply.author_name?.charAt(0).toUpperCase() || '?'}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-white text-[10px] md:text-xs font-medium">{reply.author_name}</p>
-                        <p className="text-white/80 text-[10px] md:text-xs">{reply.content}</p>
-                      </div>
-                    </div>
-                  ))}
+            {/* Facebook-style replies bottom sheet — visible to both owner and viewer */}
+            <div
+              className={`absolute inset-x-0 bottom-0 z-40 transition-transform duration-300 ease-out ${
+                showReplies ? 'translate-y-0' : 'translate-y-full'
+              }`}
+              onClick={stopPropagation}
+            >
+              <div className="bg-gray-900/98 backdrop-blur-xl rounded-t-2xl md:rounded-t-3xl shadow-2xl border-t border-white/10"
+                style={{ maxHeight: '65%', height: 'auto' }}
+              >
+                {/* Drag handle */}
+                <div className="flex justify-center pt-2.5 pb-1">
+                  <div className="w-10 h-1 rounded-full bg-white/30" />
                 </div>
+
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-white/80" />
+                    <h3 className="text-white font-semibold text-sm md:text-base">
+                      Replies
+                    </h3>
+                    <span className="bg-white/15 text-white/80 text-[10px] md:text-xs font-medium px-2 py-0.5 rounded-full">
+                      {replies.length}
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Replies list */}
+                <div className="overflow-y-auto px-4 py-3 space-y-3" style={{ maxHeight: isOwnStory ? 'calc(65vh - 80px)' : 'calc(65vh - 140px)' }}>
+                  {replies.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-white/40">
+                      <MessageCircle className="w-10 h-10 mb-2" />
+                      <p className="text-sm">No replies yet</p>
+                    </div>
+                  ) : (
+                    replies.map((reply) => (
+                      <div key={reply.id} className="flex items-start gap-2.5 group">
+                        {/* Avatar */}
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white text-xs md:text-sm font-semibold flex-shrink-0 ring-1 ring-white/10">
+                          {reply.author_avatar ? (
+                            <img src={reply.author_avatar} alt={reply.author_name} className="w-full h-full rounded-full object-cover" />
+                          ) : (
+                            reply.author_name?.charAt(0).toUpperCase() || '?'
+                          )}
+                        </div>
+                        {/* Message bubble */}
+                        <div className="flex-1 min-w-0">
+                          <div className="bg-white/10 rounded-2xl rounded-tl-md px-3.5 py-2.5">
+                            <p className="text-white text-xs md:text-sm font-semibold leading-tight">{reply.author_name}</p>
+                            <p className="text-white/90 text-xs md:text-sm mt-0.5 break-words">{reply.content}</p>
+                          </div>
+                          <p className="text-white/40 text-[10px] md:text-xs mt-1 ml-2">
+                            {reply.created_at ? formatRelativeTime(reply.created_at) : ''}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={repliesEndRef} />
+                </div>
+
+                {/* Reply input inside bottom sheet for viewers */}
+                {!isOwnStory && (
+                  <div className="px-4 py-3 border-t border-white/10">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') handleSendReply() }}
+                        onClick={stopPropagation}
+                        placeholder="Write a reply..."
+                        className="flex-1 bg-white/10 border border-white/20 rounded-full px-3 md:px-4 py-2 md:py-2.5 text-white text-xs md:text-sm placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                      />
+                      <button
+                        onClick={(e) => { stopPropagation(e); handleSendReply() }}
+                        disabled={!replyText.trim()}
+                        className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-colors ${
+                          replyText.trim()
+                            ? 'bg-primary-600 text-white hover:bg-primary-700'
+                            : 'bg-white/10 text-white/30'
+                        }`}
+                      >
+                        <Send className="w-4 h-4 md:w-5 md:h-5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             <div className="absolute inset-0 z-10 flex">
               <div className="w-1/3 h-full cursor-pointer" onClick={(e) => { stopPropagation(e); goToPrev() }} />

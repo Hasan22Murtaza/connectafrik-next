@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Globe, TrendingUp, Users, Sparkles } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePosts } from '@/shared/hooks/usePosts'
@@ -35,31 +35,40 @@ const FeedPage: React.FC = () => {
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [explorationBoost, setExplorationBoost] = useState(false)
 
-  const { posts, loading, createPost, toggleLike, deletePost, updatePost, recordView, updatePostLikesCount } = usePosts(activeCategory)
+  const { posts, loading, loadingMore, hasMore, loadMore, createPost, toggleLike, deletePost, updatePost, recordView, updatePostLikesCount } = usePosts(activeCategory)
   const { members } = useMembers()
 
-  // Sort posts by creation date (newest first)
-  const rankedPosts = useMemo(() => {
-    if (!posts.length) return []
+  // Infinite scroll observer
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
-    // Sort posts by created_at in descending order (newest first)
-    return [...posts].sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime()
-      const dateB = new Date(b.created_at).getTime()
-      return dateB - dateA // Descending order (newest first)
-    })
-  }, [posts])
+  useEffect(() => {
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMore()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, loadMore])
+
+  // Posts are already sorted by created_at DESC from the database
   const filteredPosts = useMemo(() => {
-    if (!searchTerm.trim()) return rankedPosts
+    if (!searchTerm.trim()) return posts
     const term = searchTerm.toLowerCase()
-    return rankedPosts.filter((post) =>
+    return posts.filter((post) =>
       post.title.toLowerCase().includes(term) ||
       post.content.toLowerCase().includes(term) ||
       post.author?.full_name?.toLowerCase().includes(term) ||
       post.author?.username?.toLowerCase().includes(term)
     )
-  }, [rankedPosts, searchTerm])
+  }, [posts, searchTerm])
 
   const memoizedMembers = useMemo(() => members, [members])
 
@@ -371,6 +380,43 @@ const FeedPage: React.FC = () => {
             )}
           </React.Fragment>
         ))}
+
+        {/* Infinite scroll sentinel */}
+        <div ref={loadMoreRef} className="h-1" />
+
+        {/* Shimmer loading skeleton for more posts */}
+        {loadingMore && (
+          <div className="space-y-4 sm:space-y-6">
+            {Array.from({ length: 2 }).map((_, idx) => (
+              <div key={idx} className="animate-pulse rounded-2xl border border-gray-200 bg-white p-2">
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 rounded-full bg-gray-200" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 w-1/3 rounded bg-gray-200" />
+                    <div className="h-3 w-1/4 rounded bg-gray-200" />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <div className="h-3 w-full rounded bg-gray-200" />
+                  <div className="h-3 w-5/6 rounded bg-gray-200" />
+                  <div className="h-3 w-4/6 rounded bg-gray-200" />
+                </div>
+                <div className="mt-4 flex items-center space-x-6">
+                  <div className="h-3 w-12 rounded bg-gray-200" />
+                  <div className="h-3 w-12 rounded bg-gray-200" />
+                  <div className="h-3 w-12 rounded bg-gray-200" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* End of feed message */}
+        {!hasMore && filteredPosts.length > 0 && (
+          <div className="py-6 text-center text-sm text-gray-400">
+            You&apos;ve reached the end of the feed
+          </div>
+        )}
       </div>
     )
   }

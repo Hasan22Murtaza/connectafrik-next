@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { notificationService } from '@/shared/services/notificationService'
 import { getMutualUserIds } from '@/features/social/services/followService'
 import { canViewPost, canComment, canFollow } from '@/shared/utils/visibilityUtils'
 import type { ProfileVisibilityLevel } from '@/shared/types'
+
+const PAGE_SIZE = 10
 
 export interface Post {
   id: string
@@ -52,15 +54,19 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
   const politicsSubcategory = options?.politicsSubcategory
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(true)
+  const pageRef = useRef(0)
 
-  useEffect(() => {
-    fetchPosts()
-  }, [category, cultureSubcategory, politicsSubcategory, user?.id])
-
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async (pageNum: number = 0, append: boolean = false) => {
     try {
-      setLoading(true)
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+
       let query = supabase
         .from('posts')
         .select(`
@@ -89,6 +95,11 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
       if (category === 'politics' && politicsSubcategory) {
         query = query.contains('tags', [politicsSubcategory])
       }
+
+      // Apply pagination
+      const from = pageNum * PAGE_SIZE
+      const to = from + PAGE_SIZE - 1
+      query = query.range(from, to)
 
       const { data: postsData, error: postsError } = await query
 
@@ -132,13 +143,33 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
         }
       })
 
-      setPosts(postsWithLikes)
+      if (append) {
+        setPosts(prev => [...prev, ...postsWithLikes])
+      } else {
+        setPosts(postsWithLikes)
+      }
+
+      setHasMore((postsData || []).length === PAGE_SIZE)
+      pageRef.current = pageNum
     } catch (error: any) {
       setError(error.message)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
-  }
+  }, [category, cultureSubcategory, politicsSubcategory, user?.id])
+
+  useEffect(() => {
+    pageRef.current = 0
+    setHasMore(true)
+    fetchPosts(0, false)
+  }, [fetchPosts])
+
+  const loadMore = useCallback(() => {
+    if (!loading && !loadingMore && hasMore) {
+      fetchPosts(pageRef.current + 1, true)
+    }
+  }, [loading, loadingMore, hasMore, fetchPosts])
 
   const createPost = async (postData: {
     title: string
@@ -405,7 +436,10 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
   return {
     posts,
     loading,
+    loadingMore,
     error,
+    hasMore,
+    loadMore,
     createPost,
     toggleLike,
     sharePost,
@@ -413,6 +447,6 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     updatePost,
     recordView,
     updatePostLikesCount,
-    refetch: fetchPosts
+    refetch: () => { pageRef.current = 0; setHasMore(true); fetchPosts(0, false) }
   }
 }
