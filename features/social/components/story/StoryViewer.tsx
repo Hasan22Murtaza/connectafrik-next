@@ -26,7 +26,8 @@ import {
   removeStoryReaction,
   getUserStoryReaction,
   addStoryReply,
-  getStoryReplies
+  getStoryReplies,
+  getStoryViewers
 } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
@@ -66,13 +67,14 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [currentIndex, setCurrentIndex] = useState(initialStoryIndex)
   const [progress, setProgress] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
-  const [isMuted, setIsMuted] = useState(true)
+  const [isMuted, setIsMuted] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [replies, setReplies] = useState<StoryReply[]>([])
   const [showReplies, setShowReplies] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [viewCount, setViewCount] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -112,8 +114,16 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     setShowReplies(false)
 
     if (user && currentStory.user_id !== user.id) {
-      recordStoryView(currentStory.id, user.id).catch(console.error)
+      recordStoryView(currentStory.id, user.id)
+        .then(() => getStoryViewers(currentStory.id))
+        .then(viewers => setViewCount(viewers.length))
+        .catch(console.error)
     }
+
+    // Fetch actual view count from database
+    getStoryViewers(currentStory.id)
+      .then(viewers => setViewCount(viewers.length))
+      .catch(console.error)
 
     if (user) {
       getUserStoryReaction(currentStory.id, user.id)
@@ -123,6 +133,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
     getStoryReplies(currentStory.id).then(setReplies).catch(console.error)
     storyDuration.current = currentStory.media_type === 'video' ? STORY_DURATION.VIDEO : STORY_DURATION.IMAGE
+
+    // Auto-play music/audio unmuted for video stories or stories with music
+    if (currentStory.media_type === 'video' || currentStory.music_url) {
+      setIsMuted(false)
+    }
   }, [isOpen, currentStory, user])
 
   useEffect(() => {
@@ -165,10 +180,23 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   }, [isOpen, goToPrev, goToNext, togglePause, onClose, toggleMute])
 
   useEffect(() => {
-    const syncMedia = (ref: HTMLVideoElement | HTMLAudioElement | null) => {
+    const syncMedia = async (ref: HTMLVideoElement | HTMLAudioElement | null) => {
       if (!ref) return
       ref.muted = isMuted
-      isPaused ? ref.pause() : ref.play().catch(() => {})
+      if (isPaused) {
+        ref.pause()
+      } else {
+        try {
+          await ref.play()
+        } catch {
+          // Browser blocked unmuted autoplay — fall back to muted playback
+          if (!isMuted) {
+            ref.muted = true
+            setIsMuted(true)
+            ref.play().catch(() => {})
+          }
+        }
+      }
     }
     syncMedia(videoRef.current)
     syncMedia(audioRef.current)
@@ -400,68 +428,72 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
               </div>
             )}
 
-            <div className="absolute bottom-2 md:bottom-3 left-2 md:left-3 right-2 md:right-3 z-20 pb-safe">
+            <div className="absolute bottom-3 md:bottom-4 left-3 md:left-4 right-3 md:right-4 z-20 pb-safe">
               {!isOwnStory ? (
-                <div className="space-y-2">
-                  {/* View replies indicator for viewers */}
+                <div className="space-y-2.5">
+                  {/* View replies indicator */}
                   {replies.length > 0 && (
                     <button
                       onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
-                      className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
+                      className="flex items-center gap-1.5 mx-auto px-3 py-1 rounded-full bg-black/40 hover:bg-black/50 transition-colors"
                     >
-                      <MessageCircle className="w-3.5 h-3.5 text-white/70" />
-                      <span className="text-white/70 text-xs font-medium">
-                        View {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                      <MessageCircle className="w-3 h-3 text-white/60" />
+                      <span className="text-white/60 text-[11px] font-medium">
+                        {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
                       </span>
                     </button>
                   )}
-                  <div className="flex items-center gap-1.5 md:gap-2">
-                    <input
-                      type="text"
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') handleSendReply() }}
-                      onClick={stopPropagation}
-                      onFocus={() => setIsPaused(true)}
-                      onBlur={() => setIsPaused(false)}
-                      placeholder="Reply to story..."
-                      className="flex-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-3 md:px-4 py-2 md:py-2.5 text-white text-xs md:text-sm placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-white/30"
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') handleSendReply() }}
+                        onClick={stopPropagation}
+                        onFocus={() => setIsPaused(true)}
+                        onBlur={() => setIsPaused(false)}
+                        placeholder="Reply to story..."
+                        className="w-full bg-white/[0.08] border border-white/[0.12] rounded-full px-4 py-2 text-white text-sm placeholder:text-white/40 focus:outline-none focus:border-white/25 transition-colors"
+                      />
+                    </div>
                     <button
                       onClick={(e) => { stopPropagation(e); handleLike() }}
-                      className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center transition-colors ${
-                        isLiked ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                        isLiked
+                          ? 'text-red-500 scale-110'
+                          : 'text-white/70 hover:text-white'
                       }`}
                     >
-                      <Heart className={`w-4 h-4 md:w-5 md:h-5 ${isLiked ? 'fill-current' : ''}`} />
+                      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                     </button>
                     {replyText.trim() && (
                       <button
                         onClick={(e) => { stopPropagation(e); handleSendReply() }}
-                        className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-primary-600 text-white flex items-center justify-center hover:bg-primary-700 transition-colors"
+                        className="w-9 h-9 rounded-full bg-primary-500 text-white flex items-center justify-center hover:bg-primary-600 transition-colors shadow-lg shadow-primary-500/30"
                       >
-                        <Send className="w-4 h-4 md:w-5 md:h-5" />
+                        <Send className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-white/70">
+                  <div className="flex items-center gap-1.5 text-white/60">
                     <Eye className="w-4 h-4" />
-                    <span className="text-xs md:text-sm font-medium">{currentStory.view_count || 0}</span>
+                    <span className="text-sm font-medium">{viewCount}</span>
                   </div>
                   <button
                     onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ${
                       replies.length > 0
-                        ? 'bg-white/15 hover:bg-white/25 text-white'
-                        : 'bg-white/10 text-white/50 cursor-default'
+                        ? 'bg-black/40 hover:bg-black/50 text-white/80'
+                        : 'text-white/40 cursor-default'
                     }`}
                     disabled={replies.length === 0}
                   >
-                    <MessageCircle className="w-4 h-4" />
-                    <span className="text-xs md:text-sm font-medium">
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">
                       {replies.length > 0 ? `${replies.length} ${replies.length === 1 ? 'Reply' : 'Replies'}` : 'No replies'}
                     </span>
                   </button>
@@ -581,15 +613,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         />
       </div>
 
-      <div className="hidden md:flex absolute bottom-6 left-1/2 -translate-x-1/2 items-center gap-2">
-        {stories.map((story, idx) => (
-          <button
-            key={story.id}
-            onClick={() => setCurrentIndex(idx)}
-            className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex ? 'w-6 bg-white' : 'bg-white/40 hover:bg-white/60'}`}
-          />
-        ))}
-      </div>
+      
     </div>
   )
 }

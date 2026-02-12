@@ -1,18 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Heart,
-  MessageCircle,
-  Share2,
   MoreHorizontal,
-  ThumbsUp,
-  Smile,
   Trash2,
   Edit,
   UserPlus,
   UserCheck,
   Eye,
-  Share,
-  ShareIcon,
   Plus,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -28,12 +21,12 @@ import { supabase } from "@/lib/supabase";
 import { getDiversityBadges } from "../services/fairnessRankingService";
 import { DwellTimeTracker } from "../services/engagementTracking";
 import toast from "react-hot-toast";
-import { PiShareFatLight } from "react-icons/pi";
 import dynamic from "next/dynamic";
 import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
-import ReactionTooltip from "./ReactionTooltip";
-import { quickReactions, getReactionEmoji } from "@/shared/utils/reactionUtils";
+import ReactionIcon from "@/shared/components/ReactionIcon";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
+import CommentsSection from "./CommentsSection";
+import PostEngagement from "@/shared/components/PostEngagement";
 interface Post {
   id: string;
   title: string;
@@ -127,7 +120,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
   const dwellTrackerRef = useRef<DwellTimeTracker | null>(null);
-  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
+  const [showInlineComments, setShowInlineComments] = useState(false);
 
   // Fetch reactions with user data
   const {
@@ -577,10 +570,10 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     <article
       ref={postRef}
       onClick={handlePostClick}
-      className="card mb-4 sm:mb-6 hover:shadow-md transition-shadow duration-200 bg-white rounded-lg border border-gray-200 p-3 sm:p-4 cursor-pointer"
+      className="card mb-1 sm:mb-2 hover:shadow-md transition-shadow duration-200 bg-white rounded-lg border border-gray-200 p-3 sm:p-4 cursor-pointer"
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <button
             onClick={handleUserProfileClick}
@@ -763,7 +756,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             </div>
           ) : (
             /* Regular post style */
-            <div className="mb-4">
+            <div className="mb-2">
               {post.title && (
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
                   {post.title}
@@ -779,7 +772,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
       {/* Media - Facebook style grid */}
       {post.media_urls && post.media_urls.length > 0 && (
-        <div className="mb-4 -mx-3 sm:-mx-4">
+        <div className="mb-2 -mx-3 sm:-mx-4">
           {(() => {
             const mediaCount = post.media_urls!.length;
             const visibleMedia = post.media_urls!.slice(0, mediaCount === 1 ? 1 : mediaCount === 2 ? 2 : mediaCount === 3 ? 3 : 4);
@@ -889,143 +882,18 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       )}
 
       {/* Engagement Stats & Actions */}
-      <div>
-        {/* Stats Row - Facebook style */}
-        <div className="flex items-center justify-between px-1 py-2">
-          {/* Left: Reaction emoji circles + total count */}
-          <div className="flex items-center gap-1.5">
-            {getReactionGroups().length > 0 && (
-              <div
-                className="flex items-center gap-1 cursor-pointer group"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowReactionsModal(true);
-                }}
-              >
-                <div className="flex items-center -space-x-1.5">
-                  {getReactionGroups()
-                    .slice(0, 3)
-                    .map((group) => (
-                      <div
-                        key={group.type}
-                        className="relative z-10"
-                        onMouseEnter={() => setHoveredReaction(group.type)}
-                        onMouseLeave={() => setHoveredReaction(null)}
-                      >
-                        <span className="inline-flex items-center justify-center w-[22px] h-[22px] text-sm rounded-full border-2 border-white shadow-sm bg-gray-50 cursor-pointer">
-                          {getReactionEmoji(group.type)}
-                        </span>
-                        <ReactionTooltip
-                          users={group.users || []}
-                          isVisible={hoveredReaction === group.type}
-                        />
-                      </div>
-                    ))}
-                </div>
-                {reactions.totalCount > 0 && (
-                  <span className="text-[15px] text-gray-500 group-hover:underline">
-                    {reactions.totalCount}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Right: counts with icons (FB style: "62 💬  7 ➤") */}
-          <div className="flex items-center gap-3 text-gray-500">
-            {post.media_urls && post.media_urls.some((url) => isVideoFile(url)) && post.views_count > 0 && (
-              <span className="flex items-center gap-1 text-[15px] hover:underline cursor-pointer">
-                {post.views_count}
-                <Eye className="w-4 h-4" />
-              </span>
-            )}
-            {post.comments_count > 0 && (
-              <span
-                className="flex items-center gap-1 text-[15px] hover:underline cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onComment(post.id);
-                }}
-              >
-                {post.comments_count}
-                <MessageCircle className="w-4 h-4" />
-              </span>
-            )}
-            {post.shares_count > 0 && (
-              <span className="flex items-center gap-1 text-[15px] hover:underline cursor-pointer">
-                {post.shares_count}
-                <PiShareFatLight className="w-4 h-4" />
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons - Facebook style */}
-        <div className="flex items-stretch border-t border-gray-200">
-          {/* Like button with hover emoji picker */}
-          <div className="relative flex-1">
-            <button
-              onMouseEnter={handleReactHover}
-              onMouseLeave={handleReactLeave}
-              className="w-full flex items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-all duration-150 cursor-pointer rounded-sm"
-              aria-label="Like post"
-            >
-              <ThumbsUp className="w-5 h-5" />
-              <span className="text-[15px] font-semibold">Like</span>
-            </button>
-
-            {showReactionPicker && (
-              <div
-                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50"
-                onMouseEnter={handleReactHover}
-                onMouseLeave={handleReactLeave}
-              >
-                <div className="bg-white rounded-full shadow-xl border border-gray-100 px-2 py-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                  <div className="flex items-center gap-0.5">
-                    {quickReactions.slice(0, 6).map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEmojiReaction?.(post.id, emoji);
-                          setShowReactionPicker(false);
-                        }}
-                        className="w-9 h-9 text-xl hover:scale-[1.4] hover:-translate-y-1.5 transition-all duration-200 cursor-pointer flex items-center justify-center rounded-full"
-                      >
-                        <span className="emoji">{emoji}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onComment(post.id);
-            }}
-            className="flex flex-1 items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-all duration-150 cursor-pointer rounded-sm"
-            aria-label="Comment on post"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-[15px] font-semibold">Comment</span>
-          </button>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onShare(post.id);
-            }}
-            className="flex flex-1 items-center justify-center gap-2 py-2.5 text-gray-600 hover:bg-gray-100 active:bg-gray-200 transition-all duration-150 cursor-pointer rounded-sm"
-            aria-label="Share post"
-          >
-            <PiShareFatLight className="w-5 h-5" />
-            <span className="text-[15px] font-semibold">Share</span>
-          </button>
-        </div>
-      </div>
+      <PostEngagement
+        reactionGroups={getReactionGroups()}
+        totalReactionCount={reactions.totalCount}
+        commentsCount={post.comments_count}
+        sharesCount={post.shares_count}
+        viewsCount={post.views_count}
+        showViews={!!(post.media_urls && post.media_urls.some((url) => isVideoFile(url)))}
+        onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
+        onComment={() => setShowInlineComments(prev => !prev)}
+        onShare={() => onShare(post.id)}
+        onReactionsClick={() => setShowReactionsModal(true)}
+      />
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
@@ -1066,6 +934,18 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         />
       )}
 
+      {/* Inline Comments Section - Facebook style */}
+      {showInlineComments && (
+        <div className="border-t border-gray-100 mt-1" onClick={(e) => e.stopPropagation()}>
+          <CommentsSection
+            postId={post.id}
+            isOpen={true}
+            onClose={() => setShowInlineComments(false)}
+            canComment={canComment}
+          />
+        </div>
+      )}
+
       {/* Reactions Modal - Facebook style */}
       {showReactionsModal && (
         <div
@@ -1092,9 +972,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                   className="border-b border-gray-100 last:border-b-0"
                 >
                   <div className="p-4 flex items-center gap-3">
-                    <span className="text-2xl">
-                      {getReactionEmoji(group.type)}
-                    </span>
+                    <ReactionIcon type={group.type} size={32} />
                     <div className="flex-1">
                       <div className="font-semibold text-gray-900">
                         {getReactionName(group.type)}

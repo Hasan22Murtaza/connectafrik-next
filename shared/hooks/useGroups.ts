@@ -664,12 +664,13 @@ export const useGroups = () => {
 
       const groupIds = memberships.map(m => m.group_id)
 
-      // Fetch recent posts from these groups
+      // Fetch recent posts from these groups (include comment count)
       const { data: postsData, error: postsError } = await supabase
         .from('group_posts')
         .select(`
           *,
-          group:groups(id, name, avatar_url)
+          group:groups(id, name, avatar_url),
+          group_post_comments(count)
         `)
         .in('group_id', groupIds)
         .eq('is_deleted', false)
@@ -701,18 +702,24 @@ export const useGroups = () => {
 
       if (userReactions) reactionsData = userReactions
 
-      // Combine posts with author profiles and group info
-      const postsWithDetails = postsData.map(post => ({
-        ...post,
-        author: profilesMap.get(post.author_id) || {
-          id: post.author_id,
-          username: 'Unknown',
-          full_name: 'Unknown User',
-          avatar_url: null,
-          country: null
-        },
-        isLiked: reactionsData.some(r => r.group_post_id === post.id)
-      }))
+      // Combine posts with author profiles, group info, and real comment count
+      const postsWithDetails = postsData.map(post => {
+        const realCommentCount = Array.isArray((post as any).group_post_comments) && (post as any).group_post_comments.length > 0
+          ? (post as any).group_post_comments[0].count
+          : post.comments_count
+        return {
+          ...post,
+          comments_count: realCommentCount,
+          author: profilesMap.get(post.author_id) || {
+            id: post.author_id,
+            username: 'Unknown',
+            full_name: 'Unknown User',
+            avatar_url: null,
+            country: null
+          },
+          isLiked: reactionsData.some(r => r.group_post_id === post.id)
+        }
+      })
 
       return postsWithDetails
     } catch (err: any) {

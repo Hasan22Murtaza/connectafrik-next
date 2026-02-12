@@ -44,10 +44,10 @@ export const useGroupPosts = (groupId: string) => {
       setLoading(true)
       setError(null)
 
-      // Fetch posts
+      // Fetch posts with comment count
       const { data: postsData, error: postsError } = await supabase
         .from('group_posts')
-        .select('*')
+        .select('*, group_post_comments(count)')
         .eq('group_id', groupId)
         .eq('is_deleted', false)
         .order('is_pinned', { ascending: false })
@@ -91,18 +91,24 @@ export const useGroupPosts = (groupId: string) => {
         }
       }
 
-      // Combine posts with author profiles
-      const postsWithAuthors = postsData.map(post => ({
-        ...post,
-        author: profilesMap.get(post.author_id) || {
-          id: post.author_id,
-          username: 'Unknown',
-          full_name: 'Unknown User',
-          avatar_url: null,
-          country: null
-        },
-        isLiked: reactionsData.some(r => r.group_post_id === post.id)
-      }))
+      // Combine posts with author profiles and real comment count
+      const postsWithAuthors = postsData.map(post => {
+        const realCommentCount = Array.isArray((post as any).group_post_comments) && (post as any).group_post_comments.length > 0
+          ? (post as any).group_post_comments[0].count
+          : post.comments_count
+        return {
+          ...post,
+          comments_count: realCommentCount,
+          author: profilesMap.get(post.author_id) || {
+            id: post.author_id,
+            username: 'Unknown',
+            full_name: 'Unknown User',
+            avatar_url: null,
+            country: null
+          },
+          isLiked: reactionsData.some(r => r.group_post_id === post.id)
+        }
+      })
 
       setPosts(postsWithAuthors)
     } catch (err: any) {

@@ -24,6 +24,8 @@ import {
   GroupsFeedShimmer,
   GroupsGridShimmer,
 } from "@/shared/components/ui/ShimmerLoaders";
+import ShareModal from "@/features/social/components/ShareModal";
+import { useMembers } from "@/shared/hooks/useMembers";
 
 const GroupsPage: React.FC = () => {
   const { user } = useAuth();
@@ -43,6 +45,8 @@ const GroupsPage: React.FC = () => {
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllJoined, setShowAllJoined] = useState(false);
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
+  const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null; groupId: string | null }>({ open: false, postId: null, groupId: null });
+  const { members } = useMembers();
   const shimmerCount = useShimmerCount();
 
   // Fetch managed and joined groups separately
@@ -265,35 +269,24 @@ const GroupsPage: React.FC = () => {
     setShowCommentsFor(showCommentsFor === postId ? null : postId);
   };
 
-  const handlePostShare = async (postId: string) => {
+  const handlePostShare = (postId: string) => {
     const post = recentActivity.find((p: any) => p.id === postId);
-    const shareUrl = `${window.location.origin}/groups/${post?.group_id || ''}?post=${postId}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: post?.group?.name || 'Group Post', url: shareUrl });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        toast.success("Link copied to clipboard!");
-      }
-    } catch (err: any) {
-      // Fallback: use a hidden textarea to copy
-      if (err?.name !== 'AbortError') {
-        try {
-          const textarea = document.createElement('textarea');
-          textarea.value = shareUrl;
-          textarea.style.position = 'fixed';
-          textarea.style.opacity = '0';
-          document.body.appendChild(textarea);
-          textarea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textarea);
-          toast.success("Link copied to clipboard!");
-        } catch {
-          toast.error("Failed to copy link");
-        }
-      }
-    }
+    setShareModalState({ open: true, postId, groupId: post?.group_id || null });
   };
+
+  const handleSendToMembers = async (memberIds: string[], message: string) => {
+    if (!memberIds.length) {
+      toast.success('No members selected');
+      return;
+    }
+    toast.success(`Shared with ${memberIds.length} member${memberIds.length === 1 ? '' : 's'}`);
+  };
+
+  const shareUrl = useMemo(() => {
+    if (!shareModalState.postId) return '';
+    if (typeof window === 'undefined') return `/groups/${shareModalState.groupId || ''}?post=${shareModalState.postId}`;
+    return `${window.location.origin}/groups/${shareModalState.groupId || ''}?post=${shareModalState.postId}`;
+  }, [shareModalState.postId, shareModalState.groupId]);
 
   // Sidebar content as plain JSX — avoids recreating a component type every
   // render which would cause React to fully unmount/remount the sidebar DOM.
@@ -750,6 +743,18 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {shareModalState.postId && (
+        <ShareModal
+          isOpen={shareModalState.open}
+          onClose={() => setShareModalState({ open: false, postId: null, groupId: null })}
+          postUrl={shareUrl}
+          postId={shareModalState.postId}
+          members={members}
+          onSendToMembers={handleSendToMembers}
+        />
+      )}
     </div>
   );
 };

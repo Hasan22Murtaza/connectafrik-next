@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Heart, Reply, MoreHorizontal, Send, Trash2, Edit2, X } from 'lucide-react'
+import { Send, Trash2, Smile, Loader2, Flag } from 'lucide-react'
 import { useGroupPostComments, GroupPostComment } from '@/shared/hooks/useGroupPostComments'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
@@ -19,18 +19,19 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
   onClose
 }) => {
   const { user } = useAuth()
-  const { comments, loading, addComment, toggleLike, deleteComment, refetch } = useGroupPostComments(groupPostId)
+  const { comments, loading, addComment, toggleLike, deleteComment } = useGroupPostComments(groupPostId)
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isReplySubmitting, setIsReplySubmitting] = useState(false)
+  const commentInputRef = useRef<HTMLInputElement | null>(null)
+
+  const userInitial = (user?.user_metadata?.full_name || user?.email || 'U').charAt(0).toUpperCase()
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newComment.trim()) {
-      toast.error('Please enter a comment')
-      return
-    }
+    if (!newComment.trim()) return
 
     setIsSubmitting(true)
     const { error } = await addComment(newComment)
@@ -40,280 +41,282 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
     setIsSubmitting(false)
   }
 
-  const handleSubmitReply = async (parentId: string) => {
-    if (!replyContent.trim()) {
-      toast.error('Please enter a reply')
-      return
+  const handleCommentKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && newComment.trim()) {
+      e.preventDefault()
+      handleSubmitComment(e as unknown as React.FormEvent)
     }
+  }
 
-    setIsSubmitting(true)
+  const handleSubmitReply = async (parentId: string) => {
+    if (!replyContent.trim()) return
+
+    setIsReplySubmitting(true)
     const { error } = await addComment(replyContent, parentId)
     if (!error) {
       setReplyContent('')
       setReplyingTo(null)
     }
-    setIsSubmitting(false)
+    setIsReplySubmitting(false)
+  }
+
+  const handleReplyKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, parentId: string) => {
+    if (e.key === 'Enter' && !e.shiftKey && replyContent.trim()) {
+      e.preventDefault()
+      handleSubmitReply(parentId)
+    }
   }
 
   const handleDelete = async (commentId: string) => {
-    if (confirm('Are you sure you want to delete this comment?')) {
-      await deleteComment(commentId)
-    }
+    await deleteComment(commentId)
   }
 
   if (!isOpen) return null
 
   return (
-    <div className="border-t border-gray-200 pt-4 mt-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Comments</h3>
-        <button
-          onClick={onClose}
-          className="p-1 hover:bg-gray-100 rounded-full"
-        >
-          <X className="w-4 h-4 text-gray-500" />
-        </button>
-      </div>
-
-      {/* Comment Form */}
-      {user && (
-        <form onSubmit={handleSubmitComment} className="mb-4">
-          <div className="flex gap-2">
-            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-              {user.user_metadata?.avatar_url ? (
-                <img
-                  src={user.user_metadata.avatar_url}
-                  alt="You"
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                <span className="text-gray-500 font-semibold text-sm">
-                  {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
-                </span>
-              )}
-            </div>
-            <div className="flex-1">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Write a comment..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                disabled={isSubmitting}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isSubmitting || !newComment.trim()}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+    <div className="w-full border-t border-gray-100 mt-1">
+      {/* Comments list */}
+      <div className="space-y-1 px-3 pt-2 pb-1">
+        {loading ? (
+          <div className="py-4 text-center">
+            <div className="mx-auto h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
           </div>
-        </form>
-      )}
-
-      {/* Comments List */}
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-        </div>
-      ) : comments.length === 0 ? (
-        <p className="text-center text-gray-500 py-8">No comments yet. Be the first to comment!</p>
-      ) : (
-        <div className="space-y-4">
-          {comments.map((comment) => (
-            <CommentItem
+        ) : comments.length === 0 ? (
+          <p className="py-3 text-center text-xs text-gray-400">Be the first to comment</p>
+        ) : (
+          comments.map(comment => (
+            <FBGroupCommentItem
               key={comment.id}
               comment={comment}
-              onLike={() => toggleLike(comment.id)}
-              onReply={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-              onDelete={() => handleDelete(comment.id)}
-              onDeleteComment={handleDelete}
-              onToggleLike={toggleLike}
-              onSubmitReply={(content) => handleSubmitReply(comment.id)}
-              replyingTo={replyingTo === comment.id}
+              onLike={toggleLike}
+              onReplyToggle={(id) => {
+                setReplyContent('')
+                setReplyingTo(replyingTo === id ? null : id)
+              }}
+              onDelete={handleDelete}
+              replyingTo={replyingTo}
               replyContent={replyContent}
-              onReplyContentChange={setReplyContent}
+              setReplyContent={setReplyContent}
+              onSubmitReply={handleSubmitReply}
+              onReplyKeyDown={handleReplyKeyDown}
+              isReplySubmitting={isReplySubmitting}
               currentUserId={user?.id}
             />
-          ))}
+          ))
+        )}
+      </div>
+
+      {/* Comment composer */}
+      {user && (
+        <div className="flex items-center gap-2 px-3 py-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 flex-shrink-0">
+            {user.user_metadata?.avatar_url ? (
+              <img src={user.user_metadata.avatar_url} alt="You" className="w-full h-full rounded-full object-cover" />
+            ) : (
+              userInitial
+            )}
+          </div>
+          <form onSubmit={handleSubmitComment} className="relative flex flex-1 items-center">
+            <input
+              ref={commentInputRef}
+              type="text"
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={handleCommentKeyDown}
+              placeholder="Write a comment..."
+              className="w-full rounded-full bg-gray-100 py-2 pl-4 pr-12 text-sm text-gray-700 outline-none placeholder:text-gray-400 focus:bg-gray-50 focus:ring-1 focus:ring-gray-200"
+              maxLength={1000}
+              disabled={isSubmitting}
+            />
+            <div className="absolute right-2 flex items-center gap-1">
+              {newComment.trim() && (
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-primary-600 hover:bg-primary-50 transition-colors disabled:opacity-50"
+                  aria-label="Post comment"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
+          </form>
         </div>
       )}
     </div>
   )
 }
 
-interface CommentItemProps {
+/* ────────────────────────────────────────────── */
+/*  Facebook-style Group Comment Item             */
+/* ────────────────────────────────────────────── */
+
+interface FBGroupCommentItemProps {
   comment: GroupPostComment
-  onLike: () => void
-  onReply: () => void
-  onDelete: () => void
-  onDeleteComment: (commentId: string) => void
-  onToggleLike: (commentId: string) => void
-  onSubmitReply: (content: string) => void
-  replyingTo: boolean
+  onLike: (commentId: string) => void
+  onReplyToggle: (commentId: string) => void
+  onDelete: (commentId: string) => void
+  replyingTo: string | null
   replyContent: string
-  onReplyContentChange: (content: string) => void
+  setReplyContent: React.Dispatch<React.SetStateAction<string>>
+  onSubmitReply: (parentId: string) => void
+  onReplyKeyDown: (e: React.KeyboardEvent<HTMLInputElement>, parentId: string) => void
+  isReplySubmitting: boolean
   currentUserId?: string
+  depth?: number
 }
 
-const CommentItem: React.FC<CommentItemProps> = ({
+const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
   comment,
   onLike,
-  onReply,
+  onReplyToggle,
   onDelete,
-  onDeleteComment,
-  onToggleLike,
-  onSubmitReply,
   replyingTo,
   replyContent,
-  onReplyContentChange,
-  currentUserId
+  setReplyContent,
+  onSubmitReply,
+  onReplyKeyDown,
+  isReplySubmitting,
+  currentUserId,
+  depth = 0
 }) => {
+  const [showMenu, setShowMenu] = useState(false)
   const isAuthor = currentUserId === comment.author_id
 
+  const timeAgo = formatDistanceToNow(new Date(comment.created_at), { addSuffix: false })
+    .replace('about ', '')
+    .replace('less than a minute', '1m')
+    .replace(/ minutes?/, 'm')
+    .replace(/ hours?/, 'h')
+    .replace(/ days?/, 'd')
+    .replace(/ months?/, 'mo')
+    .replace(/ years?/, 'y')
+
   return (
-    <div className="space-y-2">
-      <div className="flex gap-3">
+    <div className={depth > 0 ? 'ml-8 mt-1' : 'mt-1'}>
+      <div className="flex gap-2">
         {/* Avatar */}
-        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+        <div className="flex-shrink-0 pt-0.5">
           {comment.author?.avatar_url ? (
             <img
               src={comment.author.avatar_url}
               alt={comment.author.full_name || comment.author.username}
-              className="w-full h-full rounded-full object-cover"
+              className={`rounded-full object-cover ${depth > 0 ? 'h-7 w-7' : 'h-8 w-8'}`}
             />
           ) : (
-            <span className="text-gray-500 font-semibold text-sm">
-              {(comment.author?.full_name || comment.author?.username || 'U')[0].toUpperCase()}
-            </span>
+            <div className={`flex items-center justify-center rounded-full bg-gray-300 text-xs font-semibold text-gray-600 ${depth > 0 ? 'h-7 w-7' : 'h-8 w-8'}`}>
+              {(comment.author?.full_name || comment.author?.username || 'U').charAt(0).toUpperCase()}
+            </div>
           )}
         </div>
 
         {/* Content */}
-        <div className="flex-1">
-          <div className="bg-gray-50 rounded-lg p-3">
-            <div className="flex items-start justify-between mb-1">
-              <div>
-                <span className="font-semibold text-sm text-gray-900">
-                  {comment.author?.full_name || comment.author?.username || 'Unknown'}
-                </span>
-                <span className="text-xs text-gray-500 ml-2">
-                  {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                </span>
-              </div>
-              {isAuthor && (
-                <button
-                  onClick={onDelete}
-                  className="p-1 hover:bg-gray-200 rounded text-red-600"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              )}
+        <div className="flex-1 min-w-0">
+          {/* Gray bubble */}
+          <div className="relative group inline-block max-w-full">
+            <div className="rounded-2xl bg-gray-100 px-3 py-1.5 inline-block max-w-full">
+              <span className="text-[13px] font-semibold text-gray-900 leading-tight">
+                {comment.author?.full_name || comment.author?.username || 'Unknown'}
+              </span>
+              <p className="text-[13px] text-gray-700 leading-snug whitespace-pre-wrap break-words">{comment.content}</p>
             </div>
-            <p className="text-sm text-gray-700">{comment.content}</p>
-          </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-4 mt-1 ml-2">
-            <button
-              onClick={onLike}
-              className={`flex items-center gap-1 text-xs ${
-                comment.isLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
-              }`}
-            >
-              <Heart className={`w-4 h-4 ${comment.isLiked ? 'fill-current' : ''}`} />
-              <span>{comment.likes_count}</span>
-            </button>
-            <button
-              onClick={onReply}
-              className="flex items-center gap-1 text-xs text-gray-600 hover:text-primary-600"
-            >
-              <Reply className="w-4 h-4" />
-              Reply
-            </button>
-          </div>
-
-          {/* Reply Form */}
-          {replyingTo && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                if (replyContent.trim()) {
-                  onSubmitReply(replyContent)
-                }
-              }}
-              className="mt-2 flex gap-2"
-            >
-              <input
-                type="text"
-                value={replyContent}
-                onChange={(e) => onReplyContentChange(e.target.value)}
-                placeholder="Write a reply..."
-                className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-              <button
-                type="submit"
-                disabled={!replyContent.trim()}
-                className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 text-sm"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
-          )}
-
-          {/* Replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-2 ml-4 space-y-2 border-l-2 border-gray-200 pl-4">
-              {comment.replies.map((reply) => (
-                <div key={reply.id} className="flex gap-3">
-                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    {reply.author?.avatar_url ? (
-                      <img
-                        src={reply.author.avatar_url}
-                        alt={reply.author.full_name || reply.author.username}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-gray-500 font-semibold text-xs">
-                        {(reply.author?.full_name || reply.author?.username || 'U')[0].toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-gray-50 rounded-lg p-2">
-                      <div className="flex items-start justify-between mb-1">
-                        <div>
-                          <span className="font-semibold text-xs text-gray-900">
-                            {reply.author?.full_name || reply.author?.username || 'Unknown'}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
-                          </span>
-                        </div>
-                        {currentUserId === reply.author_id && (
-                          <button
-                            onClick={() => onDeleteComment(reply.id)}
-                            className="p-1 hover:bg-gray-200 rounded text-red-600"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-700">{reply.content}</p>
-                    </div>
+            {/* Three-dot menu on hover */}
+            {isAuthor && (
+              <div className="absolute -right-7 top-1 hidden group-hover:block">
+                <button
+                  onClick={() => setShowMenu(prev => !prev)}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                >
+                  <span className="text-sm leading-none">···</span>
+                </button>
+                {showMenu && (
+                  <div className="absolute right-0 top-full mt-1 z-10 w-28 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                     <button
-                      onClick={() => onToggleLike(reply.id)}
-                      className={`flex items-center gap-1 text-xs mt-1 ml-2 ${
-                        reply.isLiked ? 'text-red-600' : 'text-gray-600 hover:text-red-600'
-                      }`}
+                      onClick={() => { onDelete(comment.id); setShowMenu(false) }}
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50"
                     >
-                      <Heart className={`w-3 h-3 ${reply.isLiked ? 'fill-current' : ''}`} />
-                      <span>{reply.likes_count}</span>
+                      <Trash2 className="h-3 w-3" /> Delete
                     </button>
                   </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Like · Reply · Time row */}
+          <div className="flex items-center gap-3 pl-1 mt-0.5 text-xs">
+            <button
+              onClick={() => onLike(comment.id)}
+              className={`font-semibold transition hover:underline ${comment.isLiked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              Like
+            </button>
+            {depth === 0 && (
+              <button
+                onClick={() => onReplyToggle(comment.id)}
+                className="font-semibold text-gray-500 hover:text-gray-700 hover:underline transition"
+              >
+                Reply
+              </button>
+            )}
+            <span className="text-gray-400">{timeAgo}</span>
+            {comment.likes_count > 0 && (
+              <span className="text-gray-400 ml-auto">{comment.likes_count} ❤️</span>
+            )}
+          </div>
+
+          {/* Reply input */}
+          {replyingTo === comment.id && depth === 0 && (
+            <div className="flex items-center gap-2 mt-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-500 flex-shrink-0">
+                {(currentUserId || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="relative flex flex-1 items-center">
+                <input
+                  type="text"
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
+                  onKeyDown={(e) => onReplyKeyDown(e, comment.id)}
+                  placeholder={`Reply to ${comment.author?.full_name || 'user'}...`}
+                  className="w-full rounded-full bg-gray-100 py-1.5 pl-3 pr-10 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:ring-1 focus:ring-gray-200"
+                  maxLength={500}
+                  autoFocus
+                />
+                <div className="absolute right-1.5 flex items-center">
+                  {replyContent.trim() && (
+                    <button
+                      onClick={() => onSubmitReply(comment.id)}
+                      disabled={isReplySubmitting}
+                      className="flex h-6 w-6 items-center justify-center rounded-full text-primary-600 hover:bg-primary-50 disabled:opacity-50"
+                    >
+                      {isReplySubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                    </button>
+                  )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Nested replies */}
+          {comment.replies && comment.replies.length > 0 && (
+            <div className="mt-1">
+              {comment.replies.map(reply => (
+                <FBGroupCommentItem
+                  key={reply.id}
+                  comment={reply}
+                  onLike={onLike}
+                  onReplyToggle={onReplyToggle}
+                  onDelete={onDelete}
+                  replyingTo={replyingTo}
+                  replyContent={replyContent}
+                  setReplyContent={setReplyContent}
+                  onSubmitReply={onSubmitReply}
+                  onReplyKeyDown={onReplyKeyDown}
+                  isReplySubmitting={isReplySubmitting}
+                  currentUserId={currentUserId}
+                  depth={depth + 1}
+                />
               ))}
             </div>
           )}
@@ -324,4 +327,3 @@ const CommentItem: React.FC<CommentItemProps> = ({
 }
 
 export default GroupPostCommentsSection
-

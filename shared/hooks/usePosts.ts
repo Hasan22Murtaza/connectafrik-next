@@ -80,7 +80,8 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
             post_visibility,
             allow_comments,
             allow_follows
-          )
+          ),
+          comments(count)
         `)
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
@@ -135,8 +136,13 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
         const allowComments = (post.author as any)?.allow_comments ?? 'everyone'
         const allowFollows = (post.author as any)?.allow_follows ?? 'everyone'
         const isMutual = mutualSet.has(authorId)
+        // Use real comment count from relation instead of stored column
+        const realCommentCount = Array.isArray((post as any).comments) && (post as any).comments.length > 0
+          ? (post as any).comments[0].count
+          : post.comments_count
         return {
           ...post,
+          comments_count: realCommentCount,
           isLiked: likesData.some(like => like.post_id === post.id),
           canComment: canComment(viewerId, authorId, allowComments, isMutual),
           canFollow: canFollow(viewerId, authorId, allowFollows, isMutual),

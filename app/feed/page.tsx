@@ -10,7 +10,6 @@ import Advertisement from '@/shared/components/ui/Advertisement'
 import { StoriesBar } from '@/features/social/components/story'
 import CreatePost from '@/features/social/components/CreatePost'
 import { PostCard } from '@/features/social/components/PostCard'
-import CommentsSection from '@/features/social/components/CommentsSection'
 import ShareModal from '@/features/social/components/ShareModal'
 import { updateEngagementReward } from '@/features/social/services/fairnessRankingService'
 import { trackEvent } from '@/features/social/services/engagementTracking'
@@ -31,7 +30,6 @@ const FeedPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all')
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
-  const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [explorationBoost, setExplorationBoost] = useState(false)
 
@@ -106,8 +104,6 @@ const FeedPage: React.FC = () => {
     if (post?.author_id) {
       updateEngagementReward(post.author_id, 'comment')
     }
-    setShowCommentsFor((prev) => (prev === postId ? null : postId))
-
     // Track engagement event
     if (user?.id) {
       trackEvent.comment(user.id, postId)
@@ -353,8 +349,8 @@ const FeedPage: React.FC = () => {
     return (
       <div className="space-y-2 sm:space-y-3">
         {filteredPosts.map((post) => (
-          <React.Fragment key={post.id}>
-            <PostCard
+          <PostCard
+              key={post.id}
               post={post}
               onLike={handleToggleLike}
               onComment={handleComment}
@@ -367,18 +363,6 @@ const FeedPage: React.FC = () => {
               canComment={post.canComment}
               canFollow={post.canFollow}
             />
-            {/* Mobile inline comments */}
-            {showCommentsFor === post.id && (
-              <div className="lg:hidden">
-                <CommentsSection
-                  postId={post.id}
-                  isOpen={true}
-                  onClose={() => setShowCommentsFor(null)}
-                  canComment={post.canComment}
-                />
-              </div>
-            )}
-          </React.Fragment>
         ))}
 
         {/* Infinite scroll sentinel */}
@@ -386,7 +370,7 @@ const FeedPage: React.FC = () => {
 
         {/* Shimmer loading skeleton for more posts */}
         {loadingMore && (
-          <div className="space-y-2 sm:space-y-3">
+          <div className="space-y-2 sm:space-y-2">
             {Array.from({ length: 2 }).map((_, idx) => (
               <div key={idx} className="animate-pulse rounded-2xl border border-gray-200 bg-white p-2">
                 <div className="flex items-center space-x-3">
@@ -425,7 +409,7 @@ const FeedPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto ">
 
       <FeedLayout>
-        <div className="w-full space-y-6 sm:space-y-8">
+        <div className="w-full space-y-3 sm:space-y-4">
           <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-r from-orange-100 to-green-100">
             <Advertisement type="banner" placement="feed-top" className="rounded-none" />
           </div>
@@ -504,16 +488,6 @@ const FeedPage: React.FC = () => {
           {renderPosts()}
         </div>
       </FeedLayout>
-      {/* Desktop modal comments */}
-      <div className="hidden lg:block">
-        <CommentsSection
-          postId={showCommentsFor ?? ''}
-          isOpen={Boolean(showCommentsFor)}
-          onClose={() => setShowCommentsFor(null)}
-          canComment={posts.find(p => p.id === showCommentsFor)?.canComment}
-        />
-      </div>
-
       {activeSharePost && (
         <ShareModal
           isOpen={shareModalState.open}

@@ -38,6 +38,8 @@ import CreateGroupEventModal from '@/features/groups/components/CreateGroupEvent
 import GroupEventsList from '@/features/groups/components/GroupEventsList'
 import GroupMediaGallery from '@/features/groups/components/GroupMediaGallery'
 import GroupFilesList from '@/features/groups/components/GroupFilesList'
+import ShareModal from '@/features/social/components/ShareModal'
+import { useMembers } from '@/shared/hooks/useMembers'
 import { useGroupEvents } from '@/shared/hooks/useGroupEvents'
 import { getCategoryInfoLarge } from '@/shared/utils/groupUtils'
 import { CiViewTable } from "react-icons/ci";
@@ -74,6 +76,8 @@ const GroupDetailPage: React.FC = () => {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [isSticky, setIsSticky] = useState(false)
+  const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
+  const { members } = useMembers()
   const feedShimmerCount = useFeedShimmerCount()
 
   const {
@@ -179,34 +183,23 @@ const GroupDetailPage: React.FC = () => {
     setShowCommentsFor(postId)
   }
 
-  const handleShare = async (postId: string) => {
-    const shareUrl = `${window.location.origin}/groups/${groupId}?post=${postId}`
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: group?.name || 'Group Post', url: shareUrl })
-      } else {
-        await navigator.clipboard.writeText(shareUrl)
-        toast.success('Link copied to clipboard!')
-      }
-    } catch (err: any) {
-      // Fallback: use a hidden textarea to copy
-      if (err?.name !== 'AbortError') {
-        try {
-          const textarea = document.createElement('textarea')
-          textarea.value = shareUrl
-          textarea.style.position = 'fixed'
-          textarea.style.opacity = '0'
-          document.body.appendChild(textarea)
-          textarea.select()
-          document.execCommand('copy')
-          document.body.removeChild(textarea)
-          toast.success('Link copied to clipboard!')
-        } catch {
-          toast.error('Failed to copy link')
-        }
-      }
-    }
+  const handleShare = (postId: string) => {
+    setShareModalState({ open: true, postId })
   }
+
+  const handleSendToMembers = async (memberIds: string[], message: string) => {
+    if (!memberIds.length) {
+      toast.success('No members selected')
+      return
+    }
+    toast.success(`Shared with ${memberIds.length} member${memberIds.length === 1 ? '' : 's'}`)
+  }
+
+  const shareUrl = useMemo(() => {
+    if (!shareModalState.postId) return ''
+    if (typeof window === 'undefined') return `/groups/${groupId}?post=${shareModalState.postId}`
+    return `${window.location.origin}/groups/${groupId}?post=${shareModalState.postId}`
+  }, [shareModalState.postId, groupId])
 
   const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
     if (!user) {
@@ -829,6 +822,18 @@ const GroupDetailPage: React.FC = () => {
           onSubmit={async (eventData) => {
             await createEvent(eventData)
           }}
+        />
+      )}
+
+      {/* Share Modal */}
+      {shareModalState.postId && (
+        <ShareModal
+          isOpen={shareModalState.open}
+          onClose={() => setShareModalState({ open: false, postId: null })}
+          postUrl={shareUrl}
+          postId={shareModalState.postId}
+          members={members}
+          onSendToMembers={handleSendToMembers}
         />
       )}
     </div>

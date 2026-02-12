@@ -14,7 +14,7 @@ export function getReactionEmoji(type: string): string {
   const emojiMap: Record<string, string> = {
     like: '👍',
     love: '❤️',
-    laugh: '😂',
+    laugh: '🤣',
     wow: '😮',
     sad: '😢',
     angry: '😡',
@@ -27,6 +27,7 @@ const EMOJI_TO_REACTION: Record<string, ReactionType> = {
   '\u{1F44D}': 'like',      // 👍 thumbs up
   '\u2764\uFE0F': 'love',   // ❤️ heart
   '\u{1F602}': 'laugh',     // 😂 laughing
+  '\u{1F923}': 'laugh',     // 🤣 rolling on floor laughing
   '\u{1F62E}': 'wow',       // 😮 surprised
   '\u{1F622}': 'sad',       // 😢 crying
   '\u{1F621}': 'angry',     // 😡 angry
