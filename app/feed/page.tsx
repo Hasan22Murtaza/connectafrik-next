@@ -13,6 +13,7 @@ import { PostCard } from '@/features/social/components/PostCard'
 import ShareModal from '@/features/social/components/ShareModal'
 import { updateEngagementReward } from '@/features/social/services/fairnessRankingService'
 import { trackEvent } from '@/features/social/services/engagementTracking'
+import { sendNotification } from '@/shared/services/notificationService'
 import toast from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
@@ -297,8 +298,39 @@ const FeedPage: React.FC = () => {
       toast.success('No members selected')
       return
     }
-    toast.success(`Shared with ${memberIds.length} member${memberIds.length === 1 ? '' : 's'}`)
-  }, [])
+
+    const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
+    const postId = shareModalState.postId
+
+    // Send FCM notification to each selected member
+    const results = await Promise.allSettled(
+      memberIds.map((memberId) =>
+        sendNotification({
+          user_id: memberId,
+          title: 'Post Shared With You',
+          body: message
+            ? `${senderName} shared a post with you: "${message}"`
+            : `${senderName} shared a post with you`,
+          notification_type: 'post_share',
+          data: {
+            type: 'post_share',
+            post_id: postId || '',
+            sender_id: user?.id || '',
+            sender_name: senderName,
+            message,
+            url: `/post/${postId}`,
+          },
+        })
+      )
+    )
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length
+    if (succeeded > 0) {
+      toast.success(`Shared with ${succeeded} member${succeeded === 1 ? '' : 's'}`)
+    } else {
+      toast.error('Failed to send notifications')
+    }
+  }, [user, shareModalState.postId])
 
 
 
@@ -311,7 +343,7 @@ const FeedPage: React.FC = () => {
   const shareUrl = useMemo(() => {
     if (!shareModalState.postId) return ''
     if (typeof window === 'undefined') return `/post/${shareModalState.postId}`
-    return `${process.env.NEXT_PUBLIC_APP_UR}/post/${shareModalState.postId}`
+    return `${process.env.NEXT_PUBLIC_APP_URL}/post/${shareModalState.postId}`
   }, [shareModalState.postId])
 
   const renderPosts = () => {

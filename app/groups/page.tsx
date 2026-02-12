@@ -26,6 +26,7 @@ import {
 } from "@/shared/components/ui/ShimmerLoaders";
 import ShareModal from "@/features/social/components/ShareModal";
 import { useMembers } from "@/shared/hooks/useMembers";
+import { sendNotification } from "@/shared/services/notificationService";
 
 const GroupsPage: React.FC = () => {
   const { user } = useAuth();
@@ -279,7 +280,39 @@ const GroupsPage: React.FC = () => {
       toast.success('No members selected');
       return;
     }
-    toast.success(`Shared with ${memberIds.length} member${memberIds.length === 1 ? '' : 's'}`);
+
+    const senderName = user?.user_metadata?.full_name || user?.email || 'Someone';
+    const postId = shareModalState.postId;
+    const groupId = shareModalState.groupId;
+
+    const results = await Promise.allSettled(
+      memberIds.map((memberId) =>
+        sendNotification({
+          user_id: memberId,
+          title: 'Post Shared With You',
+          body: message
+            ? `${senderName} shared a group post with you: "${message}"`
+            : `${senderName} shared a group post with you`,
+          notification_type: 'post_share',
+          data: {
+            type: 'post_share',
+            post_id: postId || '',
+            group_id: groupId || '',
+            sender_id: user?.id || '',
+            sender_name: senderName,
+            message,
+            url: `/groups/${groupId || ''}?post=${postId}`,
+          },
+        })
+      )
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;
+    if (succeeded > 0) {
+      toast.success(`Shared with ${succeeded} member${succeeded === 1 ? '' : 's'}`);
+    } else {
+      toast.error('Failed to send notifications');
+    }
   };
 
   const shareUrl = useMemo(() => {

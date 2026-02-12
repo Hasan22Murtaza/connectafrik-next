@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Portal from "@/shared/components/ui/Portal";
 import {
   X,
@@ -69,6 +69,17 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Ensure the share URL is always absolute
+  const fullUrl = (() => {
+    if (!postUrl) return "";
+    if (/^https?:\/\//.test(postUrl)) return postUrl;
+    const base =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : process.env.NEXT_PUBLIC_APP_URL || "";
+    return `${base}${postUrl.startsWith("/") ? "" : "/"}${postUrl}`;
+  })();
+
   // Lock background scroll when open
   useEffect(() => {
     if (!isOpen) return;
@@ -100,7 +111,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(postUrl);
+    await navigator.clipboard.writeText(fullUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -199,7 +210,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 {socialPlatforms.map((platform) => (
                   <a
                     key={platform.name}
-                    href={platform.url(postUrl)}
+                    href={platform.url(fullUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1 group"

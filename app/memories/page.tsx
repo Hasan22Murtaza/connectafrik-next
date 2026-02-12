@@ -9,6 +9,7 @@ import { useMembers } from '@/shared/hooks/useMembers'
 import ReelCard from '@/features/social/components/ReelCard'
 import ShareModal from '@/features/social/components/ShareModal'
 import { trackEvent } from '@/features/social/services/engagementTracking'
+import { sendNotification } from '@/shared/services/notificationService'
 import { REEL_CATEGORIES, MAX_REEL_TITLE_LENGTH, MAX_REEL_DESCRIPTION_LENGTH, MAX_REEL_TAGS } from '@/shared/types/reels'
 import { Reel, ReelCategory } from '@/shared/types/reels'
 import toast from 'react-hot-toast'
@@ -39,7 +40,7 @@ const MemoriesPage: React.FC = () => {
   const shareUrl = useMemo(() => {
     if (!shareModalState.reelId) return ''
     if (typeof window === 'undefined') return `/memories/${shareModalState.reelId}`
-    return `${process.env.NEXT_PUBLIC_APP_UR}/memories/${shareModalState.reelId}`
+    return `${process.env.NEXT_PUBLIC_APP_URL}/memories/${shareModalState.reelId}`
   }, [shareModalState.reelId])
 
   const handleLike = useCallback((reelId: string) => {
@@ -153,8 +154,38 @@ const MemoriesPage: React.FC = () => {
       toast.success('No members selected')
       return
     }
-    toast.success(`Shared with ${memberIds.length} member${memberIds.length === 1 ? '' : 's'}`)
-  }, [])
+
+    const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
+    const reelId = shareModalState.reelId
+
+    const results = await Promise.allSettled(
+      memberIds.map((memberId) =>
+        sendNotification({
+          user_id: memberId,
+          title: 'Memory Shared With You',
+          body: message
+            ? `${senderName} shared a memory with you: "${message}"`
+            : `${senderName} shared a memory with you`,
+          notification_type: 'post_share',
+          data: {
+            type: 'reel_share',
+            reel_id: reelId || '',
+            sender_id: user?.id || '',
+            sender_name: senderName,
+            message,
+            url: `/memories/${reelId}`,
+          },
+        })
+      )
+    )
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length
+    if (succeeded > 0) {
+      toast.success(`Shared with ${succeeded} member${succeeded === 1 ? '' : 's'}`)
+    } else {
+      toast.error('Failed to send notifications')
+    }
+  }, [user, shareModalState.reelId])
 
   const handleToggleComments = useCallback((reelId: string) => {
     setShowCommentsFor(showCommentsFor === reelId ? null : reelId)

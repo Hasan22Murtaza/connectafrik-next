@@ -47,7 +47,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
   const handleShareProduct = async (e: React.MouseEvent) => {
     e.stopPropagation()
 
-    const shareUrl = `${process.env.NEXT_PUBLIC_APP_UR}/marketplace/product/${product.id}`
+    const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/marketplace/product/${product.id}`
     const shareText = `Check out this product: ${product.title} - ${getCurrencySymbol(product.currency)}${product.price.toLocaleString()}`
 
     // Try native share API first (mobile)
