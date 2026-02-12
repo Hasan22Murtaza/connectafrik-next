@@ -577,7 +577,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <button
             onClick={handleUserProfileClick}
-            className="flex items-center space-x-3 flex-1 min-w-0 "
+            className="flex items-center space-x-3 flex-1 min-w-0 !no-underline"
+            style={{ textDecoration: 'none' }}
           >
             {post.author.avatar_url ? (
               <img
@@ -603,7 +604,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center space-x-2 flex-wrap">
-                <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base">
+                <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base !no-underline">
                   {post.author.full_name}
                 </h3>
                 <span className="text-gray-500 truncate text-xs sm:text-sm">

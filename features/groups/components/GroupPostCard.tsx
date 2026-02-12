@@ -122,7 +122,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
           {/* Author Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-gray-900">
+              <h4 className="font-semibold text-gray-900 !no-underline">
                 {post.author?.full_name || post.author?.username || 'Unknown'}
               </h4>
               {post.is_pinned && (

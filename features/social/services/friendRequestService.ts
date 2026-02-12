@@ -333,21 +333,27 @@ class FriendRequestService {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return 'none'
 
+      // Use .select() instead of .maybeSingle() to handle multiple records
       const { data, error } = await supabase
         .from('friend_requests')
         .select('sender_id, receiver_id, status')
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${user.id})`)
-        .maybeSingle()
+        .order('created_at', { ascending: false })
 
-      if (error || !data) return 'none'
+      if (error || !data || data.length === 0) return 'none'
 
-      if (data.status === 'accepted') return 'friends'
-      if (data.status === 'pending') {
-        return data.sender_id === user.id ? 'pending_sent' : 'pending_received'
+      // Prioritize: accepted > pending > declined/other
+      const accepted = data.find(r => r.status === 'accepted')
+      if (accepted) return 'friends'
+
+      const pending = data.find(r => r.status === 'pending')
+      if (pending) {
+        return pending.sender_id === user.id ? 'pending_sent' : 'pending_received'
       }
 
       return 'none'
     } catch (error) {
+      console.error('Error checking friendship status:', error)
       return 'none'
     }
   }
