@@ -27,6 +27,7 @@ import ReactionIcon from "@/shared/components/ReactionIcon";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
+import CreatePost, { type PostSubmitData } from "./CreatePost";
 interface Post {
   id: string;
   title: string;
@@ -58,7 +59,7 @@ interface PostCardProps {
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
-  onEdit?: (postId: string, newContent: string) => void;
+  onEdit?: (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void;
   onView?: (postId: string) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void;
   showEmojiPicker?: boolean;
@@ -108,7 +109,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
   const [followCheckLoading, setFollowCheckLoading] = useState(true);
   const [hasViewed, setHasViewed] = useState(false);
@@ -307,27 +307,39 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   };
 
   // Handle edit post
-  const handleEditClick = () => {
-    setEditContent(post.content);
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsEditing(true);
     setShowMenu(false);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (postData: PostSubmitData) => {
     try {
+      const updatePayload: Record<string, any> = {
+        title: postData.title,
+        content: postData.content,
+        category: postData.category,
+        media_type: postData.media_type,
+        media_urls: postData.media_urls ?? [],
+        updated_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
         .from("posts")
-        .update({
-          content: editContent,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", post.id);
 
       if (error) throw error;
 
-      // Update the post in the parent component
       if (onEdit) {
-        onEdit(post.id, editContent);
+        onEdit(post.id, {
+          title: postData.title,
+          content: postData.content,
+          category: postData.category,
+          media_urls: postData.media_urls,
+          media_type: postData.media_type,
+          tags: postData.tags,
+        });
       }
 
       setIsEditing(false);
@@ -340,7 +352,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    setEditContent("");
   };
 
   // Check if user is following the post author on mount
@@ -428,17 +439,15 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   };
 
   // Get only image URLs for the viewer (exclude videos)
-  const imageUrls = (post.media_urls || []).filter((url) =>
-    /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url)
-  );
-
   const isImageFile = (url: string): boolean => {
-    return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url);
+    return /\.(jpg|jpeg|png|gif|webp|bmp|svg|jfif|avif)(\?|#|$)/i.test(url);
   };
 
   const isVideoFile = (url: string): boolean => {
-    return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)$/i.test(url);
+    return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)(\?|#|$)/i.test(url);
   };
+
+  const imageUrls = (post.media_urls || []).filter(isImageFile);
 
 
   // Get reaction display name
@@ -554,12 +563,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   };
 
   const handlePostClick = (e: React.MouseEvent) => {
-    if (disablePostClick) return
+    if (disablePostClick || isEditing) return
     const target = e.target as HTMLElement
     if (
       target.closest('button') ||
       target.closest('a') ||
-      target.closest('[role="button"]')
+      target.closest('[role="button"]') ||
+      target.closest('[data-edit-modal]')
     ) {
       return
     }
@@ -710,33 +720,29 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         )}
       </div>
 
-      {/* Content */}
-      {isEditing ? (
-        /* Edit form */
-        <div className="mb-4">
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            rows={4}
-            placeholder="What's on your mind?"
-          />
-          <div className="flex justify-end space-x-2 mt-2">
-            <button
-              onClick={handleCancelEdit}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveEdit}
-              className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Save
-            </button>
+      {/* Edit Post Modal */}
+      {isEditing && (
+        <div data-edit-modal className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleCancelEdit} />
+          {/* Modal */}
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl z-10">
+            <CreatePost
+              editData={{
+                id: post.id,
+                title: post.title,
+                content: post.content,
+                category: post.category,
+                media_urls: post.media_urls ?? undefined,
+              }}
+              onSubmit={handleSaveEdit}
+              onCancel={handleCancelEdit}
+            />
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Content */}
+      {!isEditing && (
         <>
           {isShortTextPost() ? (
             /* Facebook-style large text with gradient background */

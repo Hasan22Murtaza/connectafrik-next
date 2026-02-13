@@ -423,12 +423,14 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     }
   }
 
-  const updatePost = (postId: string, newContent: string) => {
-    setPosts(prev => prev.map(p => 
-      p.id === postId 
-        ? { ...p, content: newContent, updated_at: new Date().toISOString() }
-        : p
-    ))
+  const updatePost = (postId: string, updates: string | { title?: string; content?: string; category?: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+    setPosts(prev => prev.map(p => {
+      if (p.id !== postId) return p
+      if (typeof updates === 'string') {
+        return { ...p, content: updates, updated_at: new Date().toISOString() }
+      }
+      return { ...p, ...updates, updated_at: new Date().toISOString() } as typeof p
+    }))
   }
 
   const updatePostLikesCount = (postId: string, delta: number) => {

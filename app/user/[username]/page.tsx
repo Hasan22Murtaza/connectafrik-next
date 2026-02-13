@@ -377,9 +377,9 @@ const UserProfilePage: React.FC = () => {
     catch { toast.error('Failed to delete post') }
   }, [user, profile])
 
-  const handleEdit = useCallback(async (postId: string, content: string) => {
-    try { await supabase.from('posts').update({ content, updated_at: new Date().toISOString() }).eq('id', postId); updatePost(postId, (p) => ({ ...p, content })); toast.success('Post updated') }
-    catch { toast.error('Failed to update post') }
+  const handleEdit = useCallback(async (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+    // PostCard already saves to DB; just update local state
+    updatePost(postId, (p: any) => ({ ...p, ...updates }))
   }, [updatePost])
 
   const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {

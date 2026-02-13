@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, Globe, TrendingUp, Users, Sparkles } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { useProfile } from '@/shared/hooks/useProfile'
 import { usePosts } from '@/shared/hooks/usePosts'
 import { useMembers } from '@/shared/hooks/useMembers'
 import FeedLayout from '@/shared/components/layout/FeedLayout'
@@ -28,6 +29,7 @@ type CategoryFilter = typeof FEED_CATEGORIES[number]['id'] | 'general'
 
 const FeedPage: React.FC = () => {
   const { user } = useAuth()
+  const { profile } = useProfile()
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all')
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
@@ -289,8 +291,8 @@ const FeedPage: React.FC = () => {
     }
   }, [deletePost])
 
-  const handleEdit = useCallback((postId: string, newContent: string) => {
-    updatePost(postId, newContent)
+  const handleEdit = useCallback((postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+    updatePost(postId, updates)
   }, [updatePost])
 
   const handleSendToMembers = useCallback(async (memberIds: string[], message: string) => {
@@ -449,9 +451,9 @@ const FeedPage: React.FC = () => {
           <StoriesBar />
 
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-2 sm:p-6">
+          <section>
             {!user ? (
-              <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
                 Sign in to share your thoughts with the community.
               </div>
             ) : isComposerOpen ? (
@@ -463,14 +465,17 @@ const FeedPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsComposerOpen(true)}
-                className="flex w-full items-center space-x-4 rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-6 text-left transition-colors hover:border-primary-200 hover:bg-primary-50"
+                className="flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 text-left shadow-sm transition-all hover:shadow hover:border-gray-200"
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-gray-600 shrink-0">
-                  <Plus className="h-6 w-6" />
-                </span>
-                <div>
-                  <p className="text-base font-semibold text-gray-700">Share your thoughts with the community...</p>
-                  <p className="text-sm text-gray-500">Tap to start a post</p>
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.full_name} className="h-10 w-10 rounded-full object-cover shrink-0" />
+                ) : (
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-semibold text-sm shrink-0">
+                    {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                )}
+                <div className="flex-1 min-w-0 rounded-full bg-gray-100 px-4 py-2.5">
+                  <p className="text-sm sm:text-base text-gray-500">What&apos;s on your mind, {profile?.full_name?.split(' ')[0] || 'there'}?</p>
                 </div>
               </button>
             )}

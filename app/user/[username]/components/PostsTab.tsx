@@ -37,7 +37,7 @@ interface PostsTabProps {
   onComment: (postId: string) => void
   onShare: (postId: string) => void
   onDelete?: (postId: string) => Promise<void>
-  onEdit?: (postId: string, content: string) => Promise<void>
+  onEdit?: (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void
   onEmojiReaction: (postId: string, emoji: string) => void
   onCloseComments: () => void
 }
