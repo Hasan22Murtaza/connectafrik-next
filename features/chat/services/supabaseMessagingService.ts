@@ -1032,19 +1032,6 @@ export const supabaseMessagingService = {
               const callerId = currentUser.id
               const callerName = currentUser.name || metadata?.callerName || 'Someone'
 
-              // Fetch caller's profile image
-              let callerImage: string | undefined
-              try {
-                const { data: callerProfile } = await supabase
-                  .from('profiles')
-                  .select('avatar_url')
-                  .eq('id', callerId)
-                  .single()
-                callerImage = callerProfile?.avatar_url || undefined
-              } catch {
-                // Continue without image if fetch fails
-              }
-
               // Send push notification to each participant
               for (const participant of participants) {
                 try {
@@ -1057,7 +1044,6 @@ export const supabaseMessagingService = {
                       notification_type: 'system',
                       skip_db: true, // Don't store incoming calls, only missed calls
                       tag: `incoming-call-${threadId}`,
-                      image: callerImage, // Caller's profile image
                       requireInteraction: true,
                       vibrate: [200, 100, 200, 100, 200, 100, 200],
                       data: {
@@ -1068,7 +1054,6 @@ export const supabaseMessagingService = {
                         token: token,
                         caller_id: callerId,
                         caller_name: callerName,
-                        caller_image: callerImage || '',
                         url: `/call/${roomId}`
                       }
                     })
@@ -1085,6 +1070,7 @@ export const supabaseMessagingService = {
             // Don't fail the message if notification fails
           }
         }
+
         
         notifyMessageSubscribers(formattedMessage)
         return formattedMessage

@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
         ...(body.data || {}),
         title: body.title,
         body: notificationBody,
-        ...(body.image && { image: body.image }),
+        // No large image in notifications — keep them clean and compact
         icon: body.icon || '/assets/images/logo.png',
         badge: body.badge || '/assets/images/logo.png',
         tag: body.tag || 'connectafrik-notification',
@@ -177,18 +177,10 @@ export async function POST(request: NextRequest) {
         silent: String(body.silent || false),
         vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),
         timestamp: String(Date.now()),
-        actions: JSON.stringify(body.actions || [
-          {
-            action: 'view',
-            title: 'View',
-            icon: '/icons/view.png'
-          },
-          {
-            action: 'dismiss',
-            title: 'Dismiss',
-            icon: '/icons/dismiss.png'
-          }
-        ]),
+        // Actions are determined by the service worker based on notification type.
+        // For incoming_call: SW shows Answer/Decline. For missed_call: SW shows no actions.
+        // Pass through any explicit actions, or let the SW decide based on type.
+        actions: JSON.stringify(body.actions || []),
       },
 
       apns: {

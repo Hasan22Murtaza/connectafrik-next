@@ -463,6 +463,79 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     };
   }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
 
+  // Polling fallback: check for call_ended/call_rejected messages in case Realtime subscription
+  // wasn't established in time (e.g. new call window where auth/subscription is still loading).
+  // This ensures the call ALWAYS ends on the receiver side when the caller hangs up.
+  useEffect(() => {
+    if (!isOpen || !threadId || !currentUserId) return;
+    // Only poll while call is not yet connected or ended
+    if (callStatus === 'connected' || callStatus === 'ended') return;
+
+    let cancelled = false;
+
+    const pollForCallEnd = async () => {
+      try {
+        const { data: endMessages } = await supabase
+          .from('chat_messages')
+          .select('id, message_type, sender_id, metadata, created_at')
+          .eq('thread_id', threadId)
+          .in('message_type', ['call_ended', 'call_rejected'])
+          .neq('sender_id', currentUserId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (cancelled) return;
+
+        if (endMessages && endMessages.length > 0) {
+          // Verify the message is recent (within last 2 minutes) to avoid stale data
+          const msgTime = new Date(endMessages[0].created_at).getTime();
+          const now = Date.now();
+          if (now - msgTime < 120000) {
+            console.log('📞 Polling detected call ended/rejected:', endMessages[0].message_type);
+            
+            // Stop ringtone
+            if (ringtoneRef.current) {
+              ringtoneRef.current.stop();
+              ringtoneRef.current = null;
+            }
+            ringtoneService.stopRingtone();
+
+            // Clear timeout
+            if (callTimeoutRef.current) {
+              clearTimeout(callTimeoutRef.current);
+              callTimeoutRef.current = null;
+            }
+
+            // End the call
+            if (isMountedRef.current) {
+              setCallStatus('ended');
+              cleanupResources();
+              setTimeout(() => {
+                if (isMountedRef.current) {
+                  onClose();
+                }
+              }, 1000);
+            }
+            return; // Stop polling
+          }
+        }
+      } catch (error) {
+        console.error('📞 Polling error:', error);
+      }
+    };
+
+    // Poll every 3 seconds
+    const pollInterval = setInterval(pollForCallEnd, 3000);
+    // Also poll immediately after a short delay (give Realtime a chance first)
+    const initialPoll = setTimeout(pollForCallEnd, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
+      clearTimeout(initialPoll);
+    };
+  }, [isOpen, threadId, currentUserId, callStatus, cleanupResources, onClose]);
+
   const addRemoteStream = (stream: MediaStream) => {
     updateRemoteStreams((prev) => {
       const newTracks = [...stream.getAudioTracks(), ...stream.getVideoTracks()];
@@ -1425,25 +1498,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         const recipientWhoRejected = decodedRecipientName; // The recipient who rejected
         const currentRoomId = roomId || roomIdHint; // Get the room ID
 
-        // Fetch recipient's (current user's) profile image
-        let recipientImage: string | undefined;
-        try {
-          const { data: recipientProfile } = await supabase
-            .from('profiles')
-            .select('avatar_url')
-            .eq('id', currentUserId)
-            .single();
-          recipientImage = recipientProfile?.avatar_url || undefined;
-        } catch {
-          // Continue without image if fetch fails
-        }
-
         await notificationService.sendNotification({
           user_id: callerId,
-          title: 'Missed Call',
+          title: '📞 Missed Call',
           body: `${recipientWhoRejected} missed your ${callType} call`,
           notification_type: 'missed_call',
-          image: recipientImage, // Recipient's profile image
+          tag: `incoming-call-${threadId}`,
+          actions: [], // No buttons for missed calls
+          requireInteraction: false,
+          silent: true,
           data: {
             type: 'missed_call',
             call_type: callType,
@@ -1451,9 +1514,29 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             thread_id: threadId || '',
             recipient_id: currentUserId || '',
             recipient_name: recipientWhoRejected,
-            recipient_image: recipientImage || '',
           }
         });
+
+        // Also send a replacement push notification to the RECIPIENT (self) to replace
+        // the stale "Accept/Decline" incoming call notification on their device
+        await notificationService.sendNotification({
+          user_id: currentUserId,
+          title: '📞 Missed Call',
+          body: `You missed a ${callType} call from ${decodedCallerName}`,
+          notification_type: 'missed_call',
+          tag: `incoming-call-${threadId}`, // Same tag replaces the incoming call notification
+          actions: [], // No buttons for missed calls
+          requireInteraction: false,
+          silent: true, // Don't ring again for the replacement
+          data: {
+            type: 'missed_call',
+            call_type: callType,
+            thread_id: threadId || '',
+            caller_id: callerId,
+            caller_name: decodedCallerName,
+          }
+        });
+        console.log(`📞 Sent missed call replacement notification to self (recipient)`);
       } catch (notificationError) {
         // Don't fail the rejection if notification fails
       }
@@ -1465,6 +1548,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   };
 
   const handleEndCall = async () => {
+    // Check if call was never connected (missed call scenario)
+    const wasNeverConnected = callStatusRef.current === 'ringing' || callStatusRef.current === 'connecting';
+
     // Send call_ended notification to the other participant
     if (threadId && currentUserId && callStatusRef.current !== 'ended') {
       try {
@@ -1483,6 +1569,49 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         );
       } catch (msgError) {
         // Don't fail the call end if message sending fails
+      }
+
+      // If call was never connected (caller hung up during ringing), send a "Missed Call"
+      // push notification to the recipient to replace the stale "Accept/Decline" notification
+      if (wasNeverConnected && !isIncoming) {
+        try {
+          const { data: participants } = await supabase
+            .from('chat_participants')
+            .select('user_id')
+            .eq('thread_id', threadId)
+            .neq('user_id', currentUserId);
+
+          if (participants && participants.length > 0) {
+            const callerDisplayName = decodedCallerName || user?.user_metadata?.full_name || 'Someone';
+
+            for (const participant of participants) {
+              try {
+                await notificationService.sendNotification({
+                  user_id: participant.user_id,
+                  title: '📞 Missed Call',
+                  body: `${callerDisplayName} tried to ${callType} call you`,
+                  notification_type: 'missed_call',
+                  tag: `incoming-call-${threadId}`, // Same tag replaces the incoming call notification
+                  actions: [], // No buttons for missed calls
+                  requireInteraction: false,
+                  silent: true, // Don't ring again for the replacement
+                  data: {
+                    type: 'missed_call',
+                    call_type: callType,
+                    thread_id: threadId,
+                    caller_id: currentUserId,
+                    caller_name: callerDisplayName,
+                  }
+                });
+                console.log(`📞 Sent missed call replacement notification to ${participant.user_id}`);
+              } catch (notifError) {
+                console.error('Error sending missed call replacement notification:', notifError);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error sending missed call notifications:', error);
+        }
       }
     }
     
