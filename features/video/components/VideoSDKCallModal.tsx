@@ -684,14 +684,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         if (isMountedRef.current) {
           setCallStatus(isIncoming ? 'connected' : 'ringing');
 
-          if (!isIncoming) {
-            ringtoneService.playRingtone().then(r => {
-              if (isMountedRef.current) {
-                ringtoneRef.current = r;
-              }
-            });
-          }
-
           // Get local stream from VideoSDK meeting after joining
           try {
             const localParticipant = meeting.localParticipant;
