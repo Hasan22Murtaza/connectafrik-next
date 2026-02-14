@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Image, MapPin, Send, X, Film, ChevronDown, Save } from 'lucide-react'
+import { Image, MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
@@ -18,6 +18,7 @@ export interface PostSubmitData {
   media_type: MediaType
   media_urls?: string[]
   tags?: string[]
+  location?: string
 }
 
 export interface EditPostData {
@@ -27,6 +28,7 @@ export interface EditPostData {
   category: Category
   media_urls?: string[] | null
   tags?: string[]
+  location?: string
 }
 
 interface CreatePostProps {
@@ -64,6 +66,41 @@ const getMediaBucket = (file: File): 'post-images' | 'post-videos' | 'post-audio
   return 'post-images'
 }
 
+interface SelectedLocation {
+  name: string
+  address: string
+  lat: number
+  lng: number
+  types: string[]
+}
+
+interface PlaceSuggestion {
+  placeId: string
+  name: string
+  address: string
+  lat?: number
+  lng?: number
+  types: string[]
+}
+
+const getPlaceTypeIcon = (types: string[]): string => {
+  if (types.some(t => ['store', 'shopping_mall', 'clothing_store', 'shoe_store', 'jewelry_store', 'hardware_store', 'convenience_store', 'department_store', 'supermarket'].includes(t))) return '🛍️'
+  if (types.some(t => ['restaurant', 'food', 'cafe', 'bakery', 'bar', 'meal_delivery', 'meal_takeaway'].includes(t))) return '🍽️'
+  if (types.some(t => ['lodging', 'hotel'].includes(t))) return '🏨'
+  if (types.some(t => ['hospital', 'doctor', 'pharmacy', 'health', 'dentist', 'physiotherapist'].includes(t))) return '🏥'
+  if (types.some(t => ['school', 'university', 'library', 'book_store'].includes(t))) return '🎓'
+  if (types.some(t => ['park', 'natural_feature', 'campground'].includes(t))) return '🌳'
+  if (types.some(t => ['gym', 'stadium', 'bowling_alley'].includes(t))) return '🏟️'
+  if (types.some(t => ['church', 'mosque', 'hindu_temple', 'synagogue', 'place_of_worship'].includes(t))) return '🕌'
+  if (types.some(t => ['airport', 'bus_station', 'train_station', 'transit_station', 'subway_station'].includes(t))) return '✈️'
+  if (types.some(t => ['gas_station', 'car_dealer', 'car_rental', 'car_repair', 'car_wash'].includes(t))) return '⛽'
+  if (types.some(t => ['bank', 'atm', 'finance'].includes(t))) return '🏦'
+  if (types.some(t => ['movie_theater', 'amusement_park', 'night_club', 'casino'].includes(t))) return '🎬'
+  return '📍'
+}
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+
 const CreatePost: React.FC<CreatePostProps> = ({
   onSubmit,
   onCancel,
@@ -98,9 +135,25 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState('')
   const [showSubcategories, setShowSubcategories] = useState(false)
+  const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(
+    editData?.location ? { name: editData.location, address: '', lat: 0, lng: 0, types: [] } : null
+  )
+  const [showLocationModal, setShowLocationModal] = useState(false)
+  const [locationQuery, setLocationQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<PlaceSuggestion[]>([])
+  const [suggestedPlaces, setSuggestedPlaces] = useState<PlaceSuggestion[]>([])
+  const [loadingPlaces, setLoadingPlaces] = useState(false)
+  const [loadingNearby, setLoadingNearby] = useState(false)
+  const [mapsLoaded, setMapsLoaded] = useState(false)
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const titleRef = useRef<HTMLInputElement>(null)
+  const locationInputRef = useRef<HTMLInputElement>(null)
+  const autocompleteServiceRef = useRef<any>(null)
+  const placesServiceRef = useRef<any>(null)
+  const placesAttrRef = useRef<HTMLDivElement>(null)
+  const locationSearchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const existingImageUrls = existingMediaUrls.filter((u) => !VIDEO_REGEX.test(u))
   const existingVideoUrls = existingMediaUrls.filter((u) => VIDEO_REGEX.test(u))
@@ -119,6 +172,193 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   useEffect(() => { autoResize() }, [content, autoResize, hasMedia])
   useEffect(() => { titleRef.current?.focus() }, [])
+
+  // Load Google Maps Places script when location modal opens
+  useEffect(() => {
+    if (!showLocationModal) return
+    const win = window as any
+    if (win.google?.maps?.places) { setMapsLoaded(true); return }
+    const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]')
+    if (existing) {
+      const check = setInterval(() => { if ((window as any).google?.maps?.places) { setMapsLoaded(true); clearInterval(check) } }, 100)
+      return () => clearInterval(check)
+    }
+    if (!GOOGLE_MAPS_API_KEY) return
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`
+    script.async = true
+    script.defer = true
+    script.onload = () => setMapsLoaded(true)
+    document.head.appendChild(script)
+  }, [showLocationModal])
+
+  // Initialize PlacesService once maps loaded
+  useEffect(() => {
+    if (!mapsLoaded || placesServiceRef.current) return
+    const win = window as any
+    if (placesAttrRef.current) {
+      placesServiceRef.current = new win.google.maps.places.PlacesService(placesAttrRef.current)
+    }
+  }, [mapsLoaded])
+
+  // Get user coordinates when modal opens
+  useEffect(() => {
+    if (!showLocationModal || userCoords) return
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: false, timeout: 8000 }
+    )
+  }, [showLocationModal, userCoords])
+
+  // Fetch nearby "Suggested" places
+  useEffect(() => {
+    if (!showLocationModal || !mapsLoaded || !userCoords || !placesServiceRef.current || suggestedPlaces.length > 0) return
+    setLoadingNearby(true)
+    const win = window as any
+    placesServiceRef.current.nearbySearch(
+      {
+        location: new win.google.maps.LatLng(userCoords.lat, userCoords.lng),
+        rankBy: win.google.maps.places.RankBy.DISTANCE,
+        type: 'point_of_interest',
+      },
+      (results: any[] | null, status: string) => {
+        setLoadingNearby(false)
+        if (status === 'OK' && results) {
+          setSuggestedPlaces(results.slice(0, 15).map((r: any) => ({
+            placeId: r.place_id,
+            name: r.name,
+            address: r.vicinity || '',
+            lat: r.geometry?.location?.lat(),
+            lng: r.geometry?.location?.lng(),
+            types: r.types || [],
+          })))
+        }
+      }
+    )
+  }, [showLocationModal, mapsLoaded, userCoords, suggestedPlaces.length])
+
+  // Focus location input when modal opens
+  useEffect(() => {
+    if (showLocationModal) setTimeout(() => locationInputRef.current?.focus(), 200)
+  }, [showLocationModal])
+
+  // Search locations with debounce
+  useEffect(() => {
+    if (!locationQuery.trim()) { setSearchResults([]); setLoadingPlaces(false); return }
+    if (!mapsLoaded) return
+    setLoadingPlaces(true)
+    if (locationSearchTimeout.current) clearTimeout(locationSearchTimeout.current)
+    locationSearchTimeout.current = setTimeout(() => {
+      const win = window as any
+      if (!autocompleteServiceRef.current) {
+        autocompleteServiceRef.current = new win.google.maps.places.AutocompleteService()
+      }
+      const opts: any = { input: locationQuery, types: ['establishment', 'geocode'] }
+      if (userCoords) {
+        opts.location = new win.google.maps.LatLng(userCoords.lat, userCoords.lng)
+        opts.radius = 50000
+      }
+      autocompleteServiceRef.current.getPlacePredictions(opts,
+        (predictions: any[] | null, status: string) => {
+          setLoadingPlaces(false)
+          if (status === 'OK' && predictions) {
+            setSearchResults(predictions.map((p: any) => ({
+              placeId: p.place_id,
+              name: p.structured_formatting?.main_text || p.description,
+              address: p.structured_formatting?.secondary_text || '',
+              types: p.types || [],
+            })))
+          } else {
+            setSearchResults([])
+          }
+        }
+      )
+    }, 300)
+    return () => { if (locationSearchTimeout.current) clearTimeout(locationSearchTimeout.current) }
+  }, [locationQuery, mapsLoaded, userCoords])
+
+  // Get place details (lat/lng) for a place_id
+  const getPlaceDetails = useCallback((placeId: string): Promise<{ lat: number; lng: number; name: string; address: string; types: string[] }> => {
+    return new Promise((resolve, reject) => {
+      if (!placesServiceRef.current) { reject('No PlacesService'); return }
+      placesServiceRef.current.getDetails(
+        { placeId, fields: ['geometry', 'name', 'formatted_address', 'types'] },
+        (result: any, status: string) => {
+          if (status === 'OK' && result?.geometry?.location) {
+            resolve({
+              lat: result.geometry.location.lat(),
+              lng: result.geometry.location.lng(),
+              name: result.name || '',
+              address: result.formatted_address || '',
+              types: result.types || [],
+            })
+          } else { reject('Failed to get place details') }
+        }
+      )
+    })
+  }, [])
+
+  // Select a place (from search or suggestions)
+  const handleSelectPlace = useCallback(async (place: PlaceSuggestion) => {
+    try {
+      if (place.lat && place.lng) {
+        setSelectedLocation({ name: place.name, address: place.address, lat: place.lat, lng: place.lng, types: place.types })
+      } else {
+        const details = await getPlaceDetails(place.placeId)
+        setSelectedLocation({
+          name: place.name || details.name,
+          address: place.address || details.address,
+          lat: details.lat,
+          lng: details.lng,
+          types: details.types,
+        })
+      }
+    } catch {
+      setSelectedLocation({ name: place.name, address: place.address, lat: 0, lng: 0, types: place.types })
+    }
+    setShowLocationModal(false)
+    setLocationQuery('')
+    setSearchResults([])
+  }, [getPlaceDetails])
+
+  const clearLocation = () => setSelectedLocation(null)
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) { toast.error('Geolocation is not supported'); return }
+    setLoadingPlaces(true)
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords
+        const win = window as any
+        if (win.google?.maps?.Geocoder) {
+          const geocoder = new win.google.maps.Geocoder()
+          geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results: any[], status: string) => {
+            setLoadingPlaces(false)
+            if (status === 'OK' && results?.[0]) {
+              const components = results[0].address_components || []
+              const locality = components.find((c: any) => c.types.includes('locality'))?.long_name
+              const area = components.find((c: any) => c.types.includes('administrative_area_level_1'))?.long_name
+              const country = components.find((c: any) => c.types.includes('country'))?.long_name
+              const name = [locality, area, country].filter(Boolean).join(', ')
+              setSelectedLocation({
+                name: name || results[0].formatted_address,
+                address: results[0].formatted_address || '',
+                lat: latitude,
+                lng: longitude,
+                types: ['current_location'],
+              })
+              setShowLocationModal(false)
+              setLocationQuery('')
+            }
+          })
+        } else { setLoadingPlaces(false) }
+      },
+      () => { setLoadingPlaces(false); toast.error('Unable to get your location') },
+      { enableHighAccuracy: false, timeout: 10000 }
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -163,6 +403,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
         media_type,
         media_urls: media_urls.length > 0 ? media_urls : undefined,
         tags,
+        location: selectedLocation?.name || undefined,
       })
 
       if (!isEditMode) {
@@ -177,6 +418,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
         setVideoKey('')
         setShowVideoUploader(false)
         setUploadProgress('')
+        setSelectedLocation(null)
+        setShowLocationModal(false)
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to save post')
@@ -219,7 +462,15 @@ const CreatePost: React.FC<CreatePostProps> = ({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 text-sm sm:text-base leading-tight truncate">{profile?.full_name || 'User'}</p>
+          <p className="font-semibold text-gray-900 text-sm sm:text-base leading-tight">
+            {profile?.full_name || 'User'}
+            {selectedLocation && (
+              <>
+                <span className="font-normal text-gray-500"> is at </span>
+                <span className="font-semibold text-gray-900">{selectedLocation.name}</span>
+              </>
+            )}
+          </p>
           <p className="text-xs text-gray-400 leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
         </div>
         {onCancel && (
@@ -389,6 +640,49 @@ const CreatePost: React.FC<CreatePostProps> = ({
           </div>
         )}
 
+        {/* Location Map Preview (Facebook-style) */}
+        {selectedLocation && (
+          <div className="px-3 sm:px-4 mt-2">
+            {/* Map Image */}
+            {selectedLocation.lat !== 0 && selectedLocation.lng !== 0 && GOOGLE_MAPS_API_KEY && (
+              <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                <img
+                  src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedLocation.lat},${selectedLocation.lng}&zoom=15&size=600x200&scale=2&markers=color:red%7C${selectedLocation.lat},${selectedLocation.lng}&key=${GOOGLE_MAPS_API_KEY}`}
+                  alt="Location map"
+                  className="w-full h-[140px] sm:h-[180px] object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={clearLocation}
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-gray-600 hover:bg-white hover:text-red-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {/* Place Info Card */}
+            <div className="flex items-center gap-3 mt-2 mb-1">
+              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-lg">
+                {getPlaceTypeIcon(selectedLocation.types)}
+              </div>
+              <div className="min-w-0 flex-1">
+                {selectedLocation.address && (
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider leading-tight truncate">
+                    {selectedLocation.types.find(t => ['restaurant', 'cafe', 'store', 'shopping_mall', 'lodging', 'hospital', 'school', 'park', 'gym'].includes(t))?.replace(/_/g, ' ') || 'Location'}
+                  </p>
+                )}
+                <p className="text-sm font-semibold text-gray-800 truncate">{selectedLocation.name}</p>
+              </div>
+              {/* Remove if no map shown */}
+              {(selectedLocation.lat === 0 || !GOOGLE_MAPS_API_KEY) && (
+                <button type="button" onClick={clearLocation} className="p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-gray-100 transition-colors shrink-0">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="mx-3 sm:mx-4 mt-2 h-px bg-gray-100" />
 
         <div className="flex items-center justify-between px-1.5 sm:px-2 py-1.5">
@@ -409,9 +703,20 @@ const CreatePost: React.FC<CreatePostProps> = ({
               <span className="hidden sm:inline text-xs">{hasActiveVideo ? 'Video added' : 'Video'}</span>
             </button>
 
-            <button type="button" disabled className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium text-gray-300 cursor-not-allowed">
-              <MapPin className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-orange-300" />
-              <span className="hidden sm:inline text-xs">Location</span>
+            <button
+              type="button"
+              onClick={() => setShowLocationModal(true)}
+              disabled={uploading || isSubmitting}
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                selectedLocation
+                  ? 'text-orange-600 bg-orange-50'
+                  : uploading || isSubmitting
+                    ? 'text-gray-300 cursor-not-allowed'
+                    : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
+              }`}
+            >
+              <MapPin className={`w-[18px] h-[18px] sm:w-5 sm:h-5 ${selectedLocation ? 'text-orange-500' : 'text-orange-400'}`} />
+              <span className="hidden sm:inline text-xs">{selectedLocation ? 'Location' : 'Check In'}</span>
             </button>
           </div>
 
@@ -443,6 +748,156 @@ const CreatePost: React.FC<CreatePostProps> = ({
         <div className="absolute inset-0 z-20 rounded-xl bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center">
           <div className="h-10 w-10 rounded-full border-[3px] border-gray-200 border-t-[var(--african-orange)] animate-spin" />
           <span className="text-sm font-medium text-gray-700 mt-3">{uploadProgress || (isEditMode ? 'Saving...' : 'Creating post...')}</span>
+        </div>
+      )}
+
+      {/* Hidden attribution div for PlacesService */}
+      <div ref={placesAttrRef} className="hidden" />
+
+      {/* Full-Screen Location Search Modal (Facebook-style) */}
+      {showLocationModal && (
+        <div className="fixed inset-0 z-[9999] bg-white flex flex-col" onClick={(e) => e.stopPropagation()}>
+          {/* Modal Header */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 shrink-0">
+            <button
+              type="button"
+              onClick={() => { setShowLocationModal(false); setLocationQuery(''); setSearchResults([]) }}
+              className="p-1 -ml-1 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <h2 className="font-bold text-base sm:text-lg text-gray-900">Search for location</h2>
+          </div>
+
+          {/* Search Bar */}
+          <div className="px-4 py-3 border-b border-gray-100 shrink-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                ref={locationInputRef}
+                type="text"
+                placeholder="Where are you?"
+                value={locationQuery}
+                onChange={(e) => setLocationQuery(e.target.value)}
+                className="w-full pl-9 pr-10 py-2.5 text-sm rounded-full border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 focus:bg-white placeholder-gray-400 transition-all"
+              />
+              {loadingPlaces && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
+              {locationQuery && !loadingPlaces && (
+                <button
+                  type="button"
+                  onClick={() => { setLocationQuery(''); setSearchResults([]) }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto">
+            {/* Use Current Location */}
+            {mapsLoaded && (
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={loadingPlaces}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100"
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
+                  <Navigation className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">Use current location</p>
+                  <p className="text-xs text-gray-400">Detect your location automatically</p>
+                </div>
+              </button>
+            )}
+
+            {/* Search Results */}
+            {locationQuery.trim() && searchResults.length > 0 && (
+              <div>
+                <div className="px-4 pt-3 pb-1">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Results</h3>
+                </div>
+                {searchResults.map((place) => (
+                  <button
+                    key={place.placeId}
+                    type="button"
+                    onClick={() => handleSelectPlace(place)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 text-lg">
+                      {getPlaceTypeIcon(place.types)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{place.name}</p>
+                      {place.address && <p className="text-xs text-gray-400 truncate">{place.address}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* No results */}
+            {locationQuery.trim() && !loadingPlaces && searchResults.length === 0 && mapsLoaded && (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                <MapPin className="w-8 h-8 mb-2 opacity-40" />
+                <p className="text-sm">No places found</p>
+              </div>
+            )}
+
+            {/* Suggested Nearby Places */}
+            {!locationQuery.trim() && (
+              <div>
+                <div className="px-4 pt-3 pb-1">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Suggested</h3>
+                </div>
+                {loadingNearby && (
+                  <div className="flex items-center gap-3 px-4 py-6">
+                    <Loader2 className="w-5 h-5 text-gray-300 animate-spin" />
+                    <p className="text-sm text-gray-400">Finding nearby places...</p>
+                  </div>
+                )}
+                {!loadingNearby && suggestedPlaces.length === 0 && !mapsLoaded && (
+                  <div className="flex items-center gap-3 px-4 py-6">
+                    <Loader2 className="w-5 h-5 text-gray-300 animate-spin" />
+                    <p className="text-sm text-gray-400">Loading maps...</p>
+                  </div>
+                )}
+                {!loadingNearby && suggestedPlaces.length === 0 && mapsLoaded && (
+                  <div className="px-4 py-6 text-center">
+                    <p className="text-sm text-gray-400">Search for a location above</p>
+                    <p className="text-xs text-gray-300 mt-1">Allow location access for nearby suggestions</p>
+                  </div>
+                )}
+                {suggestedPlaces.map((place) => (
+                  <button
+                    key={place.placeId}
+                    type="button"
+                    onClick={() => handleSelectPlace(place)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 text-lg">
+                      {getPlaceTypeIcon(place.types)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{place.name}</p>
+                      {place.address && <p className="text-xs text-gray-400 truncate">{place.address}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Loading Maps */}
+            {!mapsLoaded && locationQuery.trim() && (
+              <div className="flex items-center justify-center gap-2 py-8">
+                <Loader2 className="w-5 h-5 text-gray-300 animate-spin" />
+                <span className="text-sm text-gray-400">Loading maps...</span>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

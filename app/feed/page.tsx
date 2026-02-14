@@ -79,6 +79,7 @@ const FeedPage: React.FC = () => {
     category: 'politics' | 'culture' | 'general'
     media_type: 'image' | 'video' | 'none'
     media_urls?: string[]
+    location?: string
   }) => {
     const { error } = await createPost(postData)
     if (error) {

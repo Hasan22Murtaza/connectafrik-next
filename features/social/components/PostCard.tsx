@@ -7,6 +7,7 @@ import {
   UserCheck,
   Eye,
   Plus,
+  MapPin,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -44,6 +45,7 @@ interface Post {
     location?: string;
   };
   media_urls: string[] | null;
+  location?: string | null;
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -321,6 +323,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         category: postData.category,
         media_type: postData.media_type,
         media_urls: postData.media_urls ?? [],
+        location: postData.location || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -655,6 +658,19 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                     addSuffix: true,
                   })}
                 </time>
+                {post.location && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(post.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-orange-500 hover:text-orange-600 text-xs sm:text-sm transition-colors"
+                    title="Open in Google Maps"
+                  >
+                    <MapPin className="w-3 h-3" />
+                    <span className="truncate max-w-[150px] sm:max-w-[200px] underline">{post.location}</span>
+                  </a>
+                )}
               </div>
             </div>
           </button>
@@ -733,6 +749,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                 content: post.content,
                 category: post.category,
                 media_urls: post.media_urls ?? undefined,
+                location: post.location ?? undefined,
               }}
               onSubmit={handleSaveEdit}
               onCancel={handleCancelEdit}
