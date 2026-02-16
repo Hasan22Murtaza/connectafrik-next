@@ -4,7 +4,7 @@ import { ringtoneService } from '@/features/video/services/ringtoneService';
 import { supabase } from '@/lib/supabase';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { notificationService } from '@/shared/services/notificationService';
-import { MessageSquare, Mic, MicOff, PhoneOff, UserPlus, Video, VideoOff, Volume1, Volume2, X, Search } from 'lucide-react';
+import { MessageSquare, Mic, MicOff, MonitorUp, MonitorOff, PhoneOff, UserPlus, Video, VideoOff, Volume1, Volume2, X, Search } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // Stable component for per-participant video in grid layout
@@ -85,8 +85,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [isAcceptingCall, setIsAcceptingCall] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenShareStream, setScreenShareStream] = useState<MediaStream | null>(null);
+  const [remoteScreenShareStream, setRemoteScreenShareStream] = useState<MediaStream | null>(null);
+  const [screenShareParticipantName, setScreenShareParticipantName] = useState<string>('');
+  const screenShareVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Per-participant video tracking for group call grid
   const participantVideoMapRef = useRef<Map<string, MediaStream>>(new Map());
   const [participantVideoMap, setParticipantVideoMap] = useState<Map<string, MediaStream>>(new Map());
 
@@ -165,14 +169,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     }
     ringtoneService.stopAll();
 
-    // Leave the VideoSDK meeting BEFORE stopping streams
     if (currentMeetingRef.current) {
-      try {
-        currentMeetingRef.current.leave();
-      } catch {
-      }
+      try { currentMeetingRef.current.disableScreenShare(); } catch {}
+      try { currentMeetingRef.current.leave(); } catch {}
       currentMeetingRef.current = null;
     }
+    setIsScreenSharing(false);
+    setScreenShareStream(null);
+    setRemoteScreenShareStream(null);
+    setScreenShareParticipantName('');
 
     // Stop local stream
     const currentLocalStream = localStreamRef.current;
@@ -938,8 +943,36 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           cleanupResources();
         }
       });
-      
-      // Add connection timeout (30 seconds)
+
+      meeting.on("presenter-changed", (presenterId: string | null) => {
+        if (!isMountedRef.current) return;
+        if (!presenterId) {
+          setRemoteScreenShareStream(null);
+          setScreenShareParticipantName('');
+          return;
+        }
+        const localId = meeting.localParticipant?.id;
+        if (presenterId === localId) return;
+        const presenter = meeting.participants?.get?.(presenterId);
+        if (presenter) {
+          setScreenShareParticipantName(presenter.displayName || 'Participant');
+          if (presenter.on) {
+            presenter.on("stream-enabled", (stream: any) => {
+              if (stream.kind === 'share' && stream.track) {
+                const shareStream = new MediaStream([stream.track]);
+                setRemoteScreenShareStream(shareStream);
+              }
+            });
+            presenter.on("stream-disabled", (stream: any) => {
+              if (stream.kind === 'share') {
+                setRemoteScreenShareStream(null);
+                setScreenShareParticipantName('');
+              }
+            });
+          }
+        }
+      });
+
       const joinTimeout = setTimeout(() => {
         if (isMountedRef.current && currentMeetingRef.current) {
           if (isMountedRef.current) {
@@ -1389,7 +1422,38 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         }
       });
 
-      // Join first so "connected" happens quickly; get local media after join (reduces accept delay)
+      meeting.on("presenter-changed", (presenterId: string | null) => {
+        if (!isMountedRef.current) return;
+        if (!presenterId) {
+          setRemoteScreenShareStream(null);
+          setScreenShareParticipantName('');
+          return;
+        }
+        const localId = meeting.localParticipant?.id;
+        if (presenterId === localId) return;
+        const presenter = meeting.participants?.get?.(presenterId);
+        if (presenter) {
+          setScreenShareParticipantName(presenter.displayName || 'Participant');
+          if (presenter.on) {
+            presenter.on("stream-enabled", (stream: any) => {
+              if (stream.kind === 'share' && stream.track) {
+                const shareStream = new MediaStream([stream.track]);
+                setRemoteScreenShareStream(shareStream);
+              }
+            });
+            presenter.on("stream-disabled", (stream: any) => {
+              if (stream.kind === 'share') {
+                setRemoteScreenShareStream(null);
+                setScreenShareParticipantName('');
+              }
+            });
+          }
+        }
+      });
+
+      if (!currentMeetingRef.current) {
+        throw new Error('Meeting initialization failed');
+      }
       if (!currentMeetingRef.current) {
         throw new Error('Meeting initialization failed');
       }
@@ -1739,6 +1803,37 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     });
   };
 
+
+  const toggleScreenShare = async () => {
+    if (!currentMeetingRef.current) return;
+
+    if (isScreenSharing) {
+      try {
+        currentMeetingRef.current.disableScreenShare();
+      } catch {}
+      if (screenShareStream) {
+        screenShareStream.getTracks().forEach(t => t.stop());
+      }
+      setScreenShareStream(null);
+      setIsScreenSharing(false);
+    } else {
+      try {
+        currentMeetingRef.current.enableScreenShare();
+        setIsScreenSharing(true);
+      } catch (err) {
+        setIsScreenSharing(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (screenShareVideoRef.current && remoteScreenShareStream) {
+      screenShareVideoRef.current.srcObject = remoteScreenShareStream;
+      screenShareVideoRef.current.play().catch(() => {});
+    } else if (screenShareVideoRef.current) {
+      screenShareVideoRef.current.srcObject = null;
+    }
+  }, [remoteScreenShareStream]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim()) return;
@@ -2302,6 +2397,34 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             </div>
           )}
 
+          {remoteScreenShareStream && (
+            <div className="absolute inset-0 z-20 bg-black flex flex-col">
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-600/90 text-white text-sm">
+                <MonitorUp className="w-4 h-4" />
+                <span>{screenShareParticipantName} is sharing their screen</span>
+              </div>
+              <video
+                ref={screenShareVideoRef}
+                autoPlay
+                playsInline
+                className="flex-1 w-full object-contain bg-black"
+              />
+            </div>
+          )}
+
+          {isScreenSharing && !remoteScreenShareStream && (
+            <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-4 py-2 bg-blue-600/90 text-white text-sm">
+              <MonitorUp className="w-4 h-4" />
+              <span>You are sharing your screen</span>
+              <button
+                onClick={toggleScreenShare}
+                className="ml-auto text-xs bg-red-500 hover:bg-red-600 px-3 py-1 rounded-full font-medium transition-colors"
+              >
+                Stop
+              </button>
+            </div>
+          )}
+
           {/* End Call Button Overlay - Inside video section for outgoing calls */}
           {callStatus === 'ringing' && !isIncoming && (
             <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 mb-20 sm:mb-0 px-4 z-30 pointer-events-auto">
@@ -2367,7 +2490,19 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     )}
                   </button>
 
-                  {/* Send Message Button */}
+                  <button
+                    onClick={toggleScreenShare}
+                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
+                      isScreenSharing
+                        ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
+                        : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                    }`}
+                    title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
+                    aria-label={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
+                  >
+                    {isScreenSharing ? <MonitorOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <MonitorUp className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
+                  </button>
+
                   <button
                     onClick={() => setShowMessageInput(!showMessageInput)}
                     className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
