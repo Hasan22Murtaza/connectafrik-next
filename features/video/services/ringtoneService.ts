@@ -1,131 +1,82 @@
+const RINGTONE_URL = '/assets/sounds/ring-tone.mp4';
+
 class RingtoneService {
-  private audioContext: AudioContext | null = null;
-  private oscillator: OscillatorNode | null = null;
-  private gainNode: GainNode | null = null;
+  // Incoming ringtone (receiver side)
+  private ringtoneAudio: HTMLAudioElement | null = null;
   private isPlaying = false;
-  private intervalId: NodeJS.Timeout | null = null;
 
-  // Default ringtone settings (WhatsApp-like)
-  private waveform: OscillatorType = 'triangle';
-  private pattern: { time: number; frequency: number }[] = [
-    { time: 0, frequency: 600 },
-    { time: 0.2, frequency: 800 },
-    { time: 0.4, frequency: 600 },
-  ];
-  private ringDuration = 0.6; // total of 3 short beeps
-  private pauseDuration = 0.4; // pause before repeating
-  private volume = 0.3;
+  // Ringback tone (caller side) — uses same file with lower volume
+  private ringbackAudio: HTMLAudioElement | null = null;
+  private isRingbackPlaying = false;
 
-  constructor() {
-    this.initializeAudioContext();
-  }
+  // Generation counter: incremented on every stop so pending async starts are cancelled
+  private generation = 0;
 
-  private initializeAudioContext() {
-    try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    } catch (error) {
-      console.warn('Web Audio API not supported:', error);
-    }
-  }
-
-  private async ensureAudioContext() {
-    if (!this.audioContext) this.initializeAudioContext();
-    if (this.audioContext && this.audioContext.state === 'suspended') {
-      try {
-        await this.audioContext.resume();
-      } catch (error) {
-        console.warn('Failed to resume audio context:', error);
-      }
-    }
-  }
-
-  setTone(options: {
-    waveform?: OscillatorType;
-    pattern?: { time: number; frequency: number }[];
-    ringDuration?: number;
-    pauseDuration?: number;
-    volume?: number;
-  }) {
-    if (options.waveform) this.waveform = options.waveform;
-    if (options.pattern) this.pattern = options.pattern;
-    if (options.ringDuration !== undefined) this.ringDuration = options.ringDuration;
-    if (options.pauseDuration !== undefined) this.pauseDuration = options.pauseDuration;
-    if (options.volume !== undefined) this.volume = options.volume;
-  }
-
+  /** Play the ringtone file for incoming calls (receiver hears this). */
   async startRingtone() {
     if (this.isPlaying) return;
+    const gen = this.generation;
     try {
-      await this.ensureAudioContext();
+      const audio = this.createAudio(0.7);
+      // Await the play() promise — browsers may reject if no user gesture yet
+      await audio.play();
+      if (gen !== this.generation) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+      this.ringtoneAudio = audio;
       this.isPlaying = true;
-      this.playRingtonePattern();
     } catch (error) {
-      console.error('Failed to start ringtone:', error);
-    }
-  }
-
-  private playRingtonePattern() {
-    if (!this.audioContext || !this.isPlaying) return;
-
-    this.playTone();
-
-    const intervalTime = (this.ringDuration + this.pauseDuration) * 1000;
-    this.intervalId = setInterval(() => {
-      if (this.isPlaying) this.playTone();
-    }, intervalTime);
-  }
-
-  private playTone() {
-    if (!this.audioContext) return;
-
-    try {
-      this.oscillator = this.audioContext.createOscillator();
-      this.gainNode = this.audioContext.createGain();
-
-      this.oscillator.connect(this.gainNode);
-      this.gainNode.connect(this.audioContext.destination);
-
-      this.oscillator.type = this.waveform;
-
-      this.gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      this.gainNode.gain.linearRampToValueAtTime(this.volume, this.audioContext.currentTime + 0.05);
-      this.gainNode.gain.linearRampToValueAtTime(0, this.audioContext.currentTime + this.ringDuration);
-
-      this.pattern.forEach(({ time, frequency }) => {
-        this.oscillator!.frequency.setValueAtTime(frequency, this.audioContext!.currentTime + time);
-      });
-
-      this.oscillator.start(this.audioContext.currentTime);
-      this.oscillator.stop(this.audioContext.currentTime + this.ringDuration);
-
-      this.oscillator.onended = () => {
-        this.oscillator?.disconnect();
-        this.gainNode?.disconnect();
-        this.oscillator = null;
-        this.gainNode = null;
-      };
-    } catch (error) {
-      console.error('Failed to play tone:', error);
+      console.warn('Ringtone play blocked (no user gesture yet), will retry on interaction:', error);
     }
   }
 
   stopRingtone() {
     this.isPlaying = false;
+    this.generation++;
 
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.ringtoneAudio) {
+      this.ringtoneAudio.pause();
+      this.ringtoneAudio.currentTime = 0;
+      this.ringtoneAudio = null;
     }
+  }
 
-    if (this.oscillator) {
-      try { this.oscillator.stop(); } catch {}
-      this.oscillator = null;
+  /** Play ringback tone for outgoing calls (caller hears this while waiting). */
+  async startRingback() {
+    if (this.isRingbackPlaying) return;
+    const gen = this.generation;
+    try {
+      const audio = this.createAudio(0.35);
+      await audio.play();
+      if (gen !== this.generation) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+      this.ringbackAudio = audio;
+      this.isRingbackPlaying = true;
+    } catch (error) {
+      console.warn('Ringback play blocked:', error);
     }
+  }
 
-    if (this.gainNode) {
-      this.gainNode.disconnect();
-      this.gainNode = null;
+  stopRingback() {
+    this.isRingbackPlaying = false;
+    this.generation++;
+
+    if (this.ringbackAudio) {
+      this.ringbackAudio.pause();
+      this.ringbackAudio.currentTime = 0;
+      this.ringbackAudio = null;
     }
+  }
+
+  /** Stop all tones (both ringtone and ringback). */
+  stopAll() {
+    this.stopRingtone();
+    this.stopRingback();
   }
 
   async playRingtone() {
@@ -137,25 +88,26 @@ class RingtoneService {
     }
   }
 
-  async playRingtoneFile(audioUrl: string = '/sounds/ringtone.mp3') {
+  async playRingbackTone() {
     try {
-      const audio = new Audio(audioUrl);
-      audio.loop = true;
-      audio.volume = 0.5;
-      await audio.play();
-      return { stop: () => { audio.pause(); audio.currentTime = 0; } };
+      await this.startRingback();
+      return { stop: () => this.stopRingback() };
     } catch {
-      this.startRingtone();
-      return { stop: () => this.stopRingtone() };
+      return { stop: () => this.stopRingback() };
     }
   }
 
   dispose() {
-    this.stopRingtone();
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
+    this.stopAll();
+  }
+
+  /** Create a looping Audio element from the ringtone file. */
+  private createAudio(volume: number): HTMLAudioElement {
+    const audio = new Audio(RINGTONE_URL);
+    audio.loop = true;
+    audio.volume = volume;
+    audio.preload = 'auto';
+    return audio;
   }
 }
 

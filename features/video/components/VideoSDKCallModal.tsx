@@ -114,14 +114,14 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     speakerLevelRef.current = speakerLevel;
   }, [speakerLevel]);
 
-  // Preload VideoSDK when incoming call modal opens so Accept is faster
+  // Preload VideoSDK when modal opens so join is faster (both incoming and outgoing)
   useEffect(() => {
-    if (isOpen && isIncoming && roomIdHint) {
+    if (isOpen && !videoSDKModuleRef.current) {
       import('@videosdk.live/js-sdk').then((mod) => {
         videoSDKModuleRef.current = mod;
       }).catch(() => {});
     }
-  }, [isOpen, isIncoming, roomIdHint]);
+  }, [isOpen]);
 
   // Keep ref in sync with state for use in callbacks
   useEffect(() => {
@@ -155,7 +155,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       callTimeoutRef.current = null;
     }
 
-    // Stop ringtone
+    // Stop ringtone and ringback
     if (ringtoneRef.current) {
       try {
         ringtoneRef.current.stop();
@@ -163,7 +163,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       }
       ringtoneRef.current = null;
     }
-    ringtoneService.stopRingtone();
+    ringtoneService.stopAll();
 
     // Leave the VideoSDK meeting BEFORE stopping streams
     if (currentMeetingRef.current) {
@@ -260,10 +260,6 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     if (isIncoming) {
       if (roomIdHint) {
         setRoomId(roomIdHint);
-        // Set status to ringing for incoming calls
-        if (callStatus === 'connecting') {
-          setCallStatus('ringing');
-        }
       }
       return; // Don't initialize call automatically for incoming calls
     }
@@ -314,7 +310,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           ringtoneRef.current.stop();
           ringtoneRef.current = null;
         }
-        ringtoneService.stopRingtone();
+        ringtoneService.stopAll();
 
         // Clear timeout
         if (callTimeoutRef.current) {
@@ -375,7 +371,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           ringtoneRef.current.stop();
           ringtoneRef.current = null;
         }
-        ringtoneService.stopRingtone();
+        ringtoneService.stopAll();
 
         // Clear timeout
         if (callTimeoutRef.current) {
@@ -437,7 +433,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           ringtoneRef.current.stop();
           ringtoneRef.current = null;
         }
-        ringtoneService.stopRingtone();
+        ringtoneService.stopAll();
 
         // Clear timeout
         if (callTimeoutRef.current) {
@@ -470,6 +466,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     if (!isOpen || !threadId || !currentUserId) return;
     // Only poll while call is not yet connected or ended
     if (callStatus === 'connected' || callStatus === 'ended') return;
+    // Don't poll once the user has accepted — the SDK handles it from here
+    if (isAcceptingCall) return;
 
     let cancelled = false;
 
@@ -498,7 +496,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               ringtoneRef.current.stop();
               ringtoneRef.current = null;
             }
-            ringtoneService.stopRingtone();
+            ringtoneService.stopAll();
 
             // Clear timeout
             if (callTimeoutRef.current) {
@@ -534,7 +532,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       clearInterval(pollInterval);
       clearTimeout(initialPoll);
     };
-  }, [isOpen, threadId, currentUserId, callStatus, cleanupResources, onClose]);
+  }, [isOpen, threadId, currentUserId, callStatus, isAcceptingCall, cleanupResources, onClose]);
 
   const addRemoteStream = (stream: MediaStream) => {
     updateRemoteStreams((prev) => {
@@ -646,11 +644,18 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           throw new Error('Failed to create call room. Please try again.');
         }
       }
-      // Get secure JWT token from Supabase edge function
-      const token = await getVideoSDKToken(meetingId, user?.id);
+
+      // Parallelize: fetch token, load SDK, and request media simultaneously
+      const [token, sdkModule] = await Promise.all([
+        getVideoSDKToken(meetingId, user?.id),
+        videoSDKModuleRef.current
+          ? Promise.resolve(videoSDKModuleRef.current)
+          : import('@videosdk.live/js-sdk'),
+      ]);
+      const { VideoSDK } = sdkModule;
+      videoSDKModuleRef.current = sdkModule;
       setRoomId(meetingId);
-      // Dynamically import VideoSDK to avoid SSR issues
-      const { VideoSDK } = await import('@videosdk.live/js-sdk');
+
       // Validate token format (should be a JWT with 3 parts)
       if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
         throw new Error('Invalid VideoSDK token format. Token must be a valid JWT.');
@@ -769,7 +774,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
               ringtoneRef.current.stop();
               ringtoneRef.current = null;
             }
-            ringtoneService.stopRingtone();
+            ringtoneService.stopAll();
           }
 
           setParticipants(prev => {
@@ -953,40 +958,42 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         throw joinError;
       }
 
-      // Local media setup - VideoSDK handles media internally
-      // We still get local stream for preview and local controls
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: callType === 'video' && isVideoEnabled,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-            sampleRate: 48000,
-            channelCount: 1
-          }
-        });
-
-        updateLocalStream(stream);
-
-        const audioTrack = stream.getAudioTracks()[0];
-        if (audioTrack) audioTrack.enabled = true;
-
-        if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-
-        // Enable tracks in VideoSDK meeting
-        if (callType === 'video' && isVideoEnabled) {
-          meeting.enableWebcam();
-        }
-        meeting.unmuteMic();
-      } catch (mediaError: any) {
-        // VideoSDK will request permissions itself, so this is not critical
-      }
-
       // Ensure meeting is still valid before proceeding
       if (!currentMeetingRef.current) {
         throw new Error('Meeting initialization failed');
       }
+
+      // Local media setup (non-blocking so we reach 'ringing' state immediately)
+      const attachLocalMedia = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: callType === 'video' && isVideoEnabled,
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              sampleRate: 48000,
+              channelCount: 1
+            }
+          });
+          if (!currentMeetingRef.current || !isMountedRef.current) return;
+
+          updateLocalStream(stream);
+
+          const audioTrack = stream.getAudioTracks()[0];
+          if (audioTrack) audioTrack.enabled = true;
+
+          if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+          if (callType === 'video' && isVideoEnabled) {
+            meeting.enableWebcam();
+          }
+          meeting.unmuteMic();
+        } catch (mediaError: any) {
+          // VideoSDK will request permissions itself, so this is not critical
+        }
+      };
+      void attachLocalMedia();
 
     } catch (error: any) {
       setError(`Failed to start call: ${error.message || 'Please check permissions and try again.'}`);
@@ -1009,7 +1016,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         ringtoneRef.current.stop();
         ringtoneRef.current = null;
       }
-      ringtoneService.stopRingtone();
+      ringtoneService.stopAll();
 
       if (!roomIdHint) {
         setError('Cannot accept call - missing room information.');
@@ -1024,12 +1031,17 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       if (tokenHint) {
       }
 
-      // Run token fetch and SDK load in parallel to reduce delay
+      // Parallelize token fetch, SDK load, and media permission request
       const [token, sdkModule] = await Promise.all([
         getVideoSDKToken(roomIdHint, user?.id),
-        videoSDKModuleRef.current ? Promise.resolve(videoSDKModuleRef.current) : import('@videosdk.live/js-sdk')
+        videoSDKModuleRef.current ? Promise.resolve(videoSDKModuleRef.current) : import('@videosdk.live/js-sdk'),
+        // Warm up media permissions early (non-blocking; actual stream attached after join)
+        navigator.mediaDevices.getUserMedia({ audio: true, video: callType === 'video' }).then(s => {
+          s.getTracks().forEach(t => t.stop());
+        }).catch(() => {}),
       ]);
       const { VideoSDK } = sdkModule;
+      videoSDKModuleRef.current = sdkModule;
       setRoomId(roomIdHint);
       
       // Validate token format (should be a JWT with 3 parts)
@@ -1446,7 +1458,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       ringtoneRef.current.stop();
       ringtoneRef.current = null;
     }
-    ringtoneService.stopRingtone();
+    ringtoneService.stopAll();
     
     // Send call_rejected notification to the other participant
     if (threadId && currentUserId) {
@@ -1974,7 +1986,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
           ringtoneRef.current.stop();
           ringtoneRef.current = null;
         }
-        ringtoneService.stopRingtone();
+        ringtoneService.stopAll();
         setCallStatus('connected');
       }
     };
@@ -1983,25 +1995,45 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
     return () => window.removeEventListener('call-accepted', handleCallAccepted);
   }, [threadId, isIncoming]);
 
-  // Auto-connect for incoming calls (simulate)
+  // Start ringtone/ringback as soon as status hits 'ringing'
   useEffect(() => {
+    if (!isOpen || callStatus !== 'ringing') return;
 
-    // Only transition to ringing once for incoming calls
-    if (isIncoming && isOpen && callStatus === 'connecting') {
-      const timer = setTimeout(() => {
-        setCallStatus('ringing');
-        ringtoneService.playRingtone().then(ringtone => {
-          ringtoneRef.current = ringtone;
-        });
-
-        // Start 45-second timeout for incoming calls
-        callTimeoutRef.current = setTimeout(() => {
-          handleRejectCall(); // Auto-reject if not answered
-        }, 45000); // 45 seconds
-      }, 500);
-      return () => clearTimeout(timer);
+    if (isIncoming) {
+      // Incoming call: play ringtone for receiver immediately
+      ringtoneService.playRingtone().then(ringtone => {
+        ringtoneRef.current = ringtone;
+      });
+    } else {
+      // Outgoing call: play ringback tone so caller hears ringing
+      ringtoneService.playRingbackTone().then(ringback => {
+        ringtoneRef.current = ringback;
+      });
     }
-  }, [isIncoming, isOpen, callStatus]);
+
+    return () => {
+      // Cleanup on status change away from ringing
+      if (ringtoneRef.current) {
+        ringtoneRef.current.stop();
+        ringtoneRef.current = null;
+      }
+      ringtoneService.stopAll();
+    };
+  }, [isOpen, callStatus, isIncoming]);
+
+  // Transition incoming calls to ringing state immediately (no artificial delay)
+  // Skip if the user already clicked Accept (isAcceptingCall), so we don't
+  // flip back to 'ringing' and replay the ringtone.
+  useEffect(() => {
+    if (isIncoming && isOpen && callStatus === 'connecting' && !isAcceptingCall) {
+      setCallStatus('ringing');
+
+      // Start 45-second timeout for incoming calls
+      callTimeoutRef.current = setTimeout(() => {
+        handleRejectCall();
+      }, 45000);
+    }
+  }, [isIncoming, isOpen, callStatus, isAcceptingCall]);
 
   // Auto-disconnect timeout for outgoing calls
   useEffect(() => {
@@ -2035,7 +2067,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         ringtoneRef.current.stop();
         ringtoneRef.current = null;
       }
-      ringtoneService.stopRingtone();
+      ringtoneService.stopAll();
       // Reset accepting state when connected
       setIsAcceptingCall(false);
     }
@@ -2046,7 +2078,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         ringtoneRef.current.stop();
         ringtoneRef.current = null;
       }
-      ringtoneService.stopRingtone();
+      ringtoneService.stopAll();
       // Reset accepting state when call ends
       setIsAcceptingCall(false);
     }
@@ -2468,7 +2500,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                       ) : invitingUserId === person.id ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-400 border-t-transparent" />
                       ) : (
-                        <span className="text-xs text-primary-400 font-medium">Invite</span>
+                        <span className="text-xs bg-orange-500 text-white px-3 py-1 rounded-full font-medium">Invite</span>
                       )}
                     </button>
                   );
