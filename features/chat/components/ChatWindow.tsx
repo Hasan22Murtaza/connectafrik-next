@@ -7,6 +7,7 @@ import {
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
 import { useMembers } from "@/shared/hooks/useMembers";
+import { useTypingIndicator } from "@/shared/hooks/useTypingIndicator";
 import {
   FileUploadResult,
   fileUploadService,
@@ -31,6 +32,7 @@ import { toast } from "react-hot-toast";
 import FileAttachment from "./FileAttachment";
 import FilePreview from "./FilePreview";
 import { MessageBubble } from "./MessageBubble";
+import TypingIndicator from "./TypingIndicator";
 
 interface ChatWindowProps {
   threadId: string;
@@ -85,6 +87,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     });
     return map;
   }, [members]);
+
+  // Typing indicator
+  const { typingUserIds, handleTyping, stopTyping } = useTypingIndicator(
+    threadId,
+    currentUser?.id ?? null
+  );
 
   const thread = getThreadById(threadId);
   const messages = getMessagesForThread(threadId);
@@ -338,6 +346,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setDraft("");
       setPendingFiles([]);
       setReplyingTo(null);
+      stopTyping();
     } catch (error: any) {
       toast.error("Failed to send message");
     } finally {
@@ -599,6 +608,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <div aria-hidden="true" />
       </div>
 
+      {/* WhatsApp-style typing indicator */}
+      <TypingIndicator isTyping={typingUserIds.length > 0} />
+
       {pendingFiles.length > 0 && (
         <div className="border-t border-gray-100 px-4 pb-3">
           <FilePreview files={pendingFiles} onRemove={removePendingFile} />
@@ -643,7 +655,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
           <input
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              handleTyping();
+            }}
             placeholder="Message..."
             className=" w-full px-3 py-2 border border-gray-300 rounded-full text-gray-800 text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
           />
