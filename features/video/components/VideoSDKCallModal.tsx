@@ -94,6 +94,38 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
   const participantVideoMapRef = useRef<Map<string, MediaStream>>(new Map());
   const [participantVideoMap, setParticipantVideoMap] = useState<Map<string, MediaStream>>(new Map());
 
+  // Helper to safely get participants array from meeting.participants (handles both Map and Object)
+  const getMeetingParticipants = useCallback((meetingParticipants: any): any[] => {
+    if (!meetingParticipants) return [];
+    if (meetingParticipants instanceof Map) return Array.from(meetingParticipants.values());
+    if (typeof meetingParticipants.values === 'function') {
+      try { return Array.from(meetingParticipants.values()); } catch { /* fall through */ }
+    }
+    if (typeof meetingParticipants === 'object') return Object.values(meetingParticipants);
+    return [];
+  }, []);
+
+  // Compute participant count: remote participants (from state) + 1 for local, cross-checked with meeting object
+  const getParticipantCount = useCallback((): number => {
+    let count = participants.length + 1;
+
+    if (currentMeetingRef.current) {
+      try {
+        const meeting = currentMeetingRef.current;
+        const localId = meeting.localParticipant?.id;
+        const all = getMeetingParticipants(meeting.participants);
+        if (all.length > 0) {
+          const remoteCount = all.filter((p: any) => p.id !== localId).length;
+          count = Math.max(count, remoteCount + 1);
+        }
+      } catch {
+        // Fallback already set above
+      }
+    }
+
+    return Math.max(count, 1);
+  }, [participants, getMeetingParticipants]);
+
   // Add People feature
   const [showAddPeople, setShowAddPeople] = useState(false);
   const [addPeopleSearch, setAddPeopleSearch] = useState('');
@@ -863,9 +895,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             let hasRemoteParticipants = false;
             try {
               const localParticipantId = meeting.localParticipant?.id;
-              const allParticipants = meeting.participants 
-                ? Object.values(meeting.participants) 
-                : [];
+              const allParticipants = getMeetingParticipants(meeting.participants);
               const remoteParticipants = allParticipants.filter(
                 (participant: any) => participant.id !== localParticipantId
               );
@@ -1116,9 +1146,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             try {
               // Get participants from meeting object (exclude local participant)
               const localParticipantId = meeting.localParticipant?.id;
-              const allParticipants = meeting.participants 
-                ? Object.values(meeting.participants) 
-                : [];
+              const allParticipants = getMeetingParticipants(meeting.participants);
               
               // Filter out local participant
               const existingParticipants = allParticipants.filter(
@@ -1341,9 +1369,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             let hasRemoteParticipants = false;
             try {
               const localParticipantId = meeting.localParticipant?.id;
-              const allParticipants = meeting.participants 
-                ? Object.values(meeting.participants) 
-                : [];
+              const allParticipants = getMeetingParticipants(meeting.participants);
               const remoteParticipants = allParticipants.filter(
                 (participant: any) => participant.id !== localParticipantId
               );
@@ -2281,28 +2307,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
           {/* Participants Count */}
           {callStatus === 'connected' && (() => {
-            // Get count from meeting object (most accurate)
-            let displayCount = participants.length + 1; // Default: remote participants + local
-            
-            if (currentMeetingRef.current) {
-              try {
-                const meeting = currentMeetingRef.current;
-                const localParticipantId = meeting.localParticipant?.id;
-                const allParticipants = meeting.participants 
-                  ? Object.values(meeting.participants) 
-                  : [];
-                
-                // Count only remote participants, then add 1 for local
-                const remoteParticipants = allParticipants.filter(
-                  (p: any) => p.id !== localParticipantId
-                );
-                displayCount = remoteParticipants.length + 1;
-              } catch (error) {
-                // Fallback to participants.length + 1
-                displayCount = participants.length + 1;
-              }
-            }
-            
+            const displayCount = getParticipantCount();
             return (
               <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] sm:text-xs md:text-sm font-medium shadow-lg border border-white/20">
                 <span className="flex items-center gap-1 sm:gap-2">
