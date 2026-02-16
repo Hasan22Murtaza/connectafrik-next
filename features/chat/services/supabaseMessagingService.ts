@@ -710,16 +710,20 @@ const fetchSenderInfo = async (senderId: string) => {
 }
 
 export const supabaseMessagingService = {
-  async getUserThreads(currentUser?: ChatParticipant | null): Promise<ChatThread[]> {
+  async getUserThreads(currentUser?: ChatParticipant | null, options?: { limit?: number; offset?: number }): Promise<ChatThread[]> {
     if (!currentUser) {
       return []
     }
+
+    const limit = options?.limit ?? 20
+    const offset = options?.offset ?? 0
 
     const sortThreads = (threads: ChatThread[]) =>
       [...threads].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
 
     if (fallbackEnabled) {
-      return sortThreads(getLocalThreadsForUser(currentUser.id))
+      const all = sortThreads(getLocalThreadsForUser(currentUser.id))
+      return all.slice(offset, offset + limit)
     }
 
     try {
@@ -734,7 +738,8 @@ export const supabaseMessagingService = {
           return loadThreadsViaRpc(currentUser.id, sortThreads)
         }
         activateFallback(membershipError)
-        return sortThreads(getLocalThreadsForUser(currentUser.id))
+        const all = sortThreads(getLocalThreadsForUser(currentUser.id))
+        return all.slice(offset, offset + limit)
       }
 
       const threadIds = Array.from(
@@ -756,6 +761,7 @@ export const supabaseMessagingService = {
         `)
         .in('id', threadIds)
         .order('last_message_at', { ascending: false })
+        .range(offset, offset + limit - 1)
 
       if (threadError) {
         console.error('Error fetching threads:', threadError)
@@ -763,7 +769,8 @@ export const supabaseMessagingService = {
           return loadThreadsViaRpc(currentUser.id, sortThreads)
         }
         activateFallback(threadError)
-        return sortThreads(getLocalThreadsForUser(currentUser.id))
+        const all = sortThreads(getLocalThreadsForUser(currentUser.id))
+        return all.slice(offset, offset + limit)
       }
 
       if (!threads) {
@@ -783,7 +790,8 @@ export const supabaseMessagingService = {
       }
       console.error('Error in getUserThreads:', error)
       activateFallback(error)
-      return sortThreads(getLocalThreadsForUser(currentUser.id))
+      const all = sortThreads(getLocalThreadsForUser(currentUser.id))
+      return all.slice(offset, offset + limit)
     }
   },
 
@@ -821,7 +829,7 @@ export const supabaseMessagingService = {
     }
   },
 
-  async getRecentCalls(currentUserId: string, limit = 50): Promise<RecentCallEntry[]> {
+  async getRecentCalls(currentUserId: string, limit = 50, offset = 0): Promise<RecentCallEntry[]> {
     if (!currentUserId) return []
 
     try {
@@ -841,7 +849,7 @@ export const supabaseMessagingService = {
         .in('message_type', ['call_request', 'call_accepted', 'call_ended', 'call_rejected'])
         .eq('is_deleted', false)
         .order('created_at', { ascending: false })
-        .limit(limit)
+        .range(offset, offset + limit - 1)
 
       if (error || !messages?.length) return []
 
