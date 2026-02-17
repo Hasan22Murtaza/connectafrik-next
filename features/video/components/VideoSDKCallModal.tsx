@@ -24,6 +24,49 @@ const ParticipantVideo = React.memo(function ParticipantVideo({ stream }: { stre
   return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />;
 });
 
+// Dedicated component for screen share video with smooth fade-in
+const ScreenShareVideo = React.memo(function ScreenShareVideo({ stream }: { stream: MediaStream }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    setIsPlaying(false);
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(() => {
+        setIsPlaying(true);
+      });
+    }
+    return () => {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [stream]);
+
+  return (
+    <div className="relative w-full h-full">
+      {/* Loading shimmer while stream hasn't started playing yet */}
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-gray-400 animate-pulse">Loading screen share...</span>
+          </div>
+        </div>
+      )}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className={`w-full h-full object-contain bg-black transition-opacity duration-500 ease-out ${isPlaying ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </div>
+  );
+});
+
 export interface VideoSDKCallModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -819,50 +862,74 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             if (exists) return prev;
             const updated = [...prev, participant];
             
-            // FIXED: Subscribe to participant's streams using VideoSDK API
+            // Subscribe to participant's streams using VideoSDK API
             try {
-              // Subscribe to participant stream events
               if (participant.on) {
                 participant.on("stream-enabled", (stream: any) => {
+                  if (!isMountedRef.current) return;
                   if (stream.kind === 'video' && stream.track) {
                     const videoStream = new MediaStream([stream.track]);
-
-                    // Track per-participant video for grid layout
                     participantVideoMapRef.current.set(participant.id, videoStream);
-                    if (isMountedRef.current) {
-                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
-                    }
-
+                    setParticipantVideoMap(new Map(participantVideoMapRef.current));
                     addRemoteStream(videoStream);
-
-                    // Update remote video element for 1-on-1 calls
                     if (remoteVideoRef.current && callType === 'video') {
                       remoteVideoRef.current.srcObject = videoStream;
                       remoteVideoRef.current.play().catch(() => {});
                     }
                   } else if (stream.kind === 'audio' && stream.track) {
-                    const audioStream = new MediaStream([stream.track]);
-                    addRemoteStream(audioStream);
+                    addRemoteStream(new MediaStream([stream.track]));
+                  } else if (stream.kind === 'share' && stream.track) {
+                    const shareStream = new MediaStream([stream.track]);
+                    setRemoteScreenShareStream(shareStream);
+                    setScreenShareParticipantName(participant.displayName || 'Participant');
                   }
                 });
 
                 participant.on("stream-disabled", (stream: any) => {
+                  if (!isMountedRef.current) return;
                   if (stream.track) {
                     removeRemoteStream(stream.track.id);
                   }
-                  // Remove participant video from grid map
                   if (stream.kind === 'video') {
                     participantVideoMapRef.current.delete(participant.id);
-                    if (isMountedRef.current) {
-                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
-                    }
+                    setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                  }
+                  if (stream.kind === 'share') {
+                    setRemoteScreenShareStream(null);
+                    setScreenShareParticipantName('');
                   }
                 });
               }
 
-              // Check if participant already has active streams
+              // Check if participant already has active streams (video, audio, share)
+              try {
+                const streams = participant.streams;
+                if (streams) {
+                  const streamEntries = streams instanceof Map
+                    ? Array.from(streams.values())
+                    : Object.values(streams);
+                  for (const s of streamEntries as any[]) {
+                    if (s.kind === 'video' && s.track) {
+                      const stream = new MediaStream([s.track]);
+                      participantVideoMapRef.current.set(participant.id, stream);
+                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                      addRemoteStream(stream);
+                      if (remoteVideoRef.current && callType === 'video') {
+                        remoteVideoRef.current.srcObject = stream;
+                        remoteVideoRef.current.play().catch(() => {});
+                      }
+                    } else if (s.kind === 'audio' && s.track) {
+                      addRemoteStream(new MediaStream([s.track]));
+                    } else if (s.kind === 'share' && s.track) {
+                      setRemoteScreenShareStream(new MediaStream([s.track]));
+                      setScreenShareParticipantName(participant.displayName || 'Participant');
+                    }
+                  }
+                }
+              } catch {}
+
+              // Fallback: also try getVideoStreams for older SDK versions
               const videoStreams = participant.getVideoStreams?.() || [];
-              
               videoStreams.forEach((vs: any) => {
                 if (vs.track) {
                   const stream = new MediaStream([vs.track]);
@@ -986,14 +1053,35 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         const presenter = meeting.participants?.get?.(presenterId);
         if (presenter) {
           setScreenShareParticipantName(presenter.displayName || 'Participant');
+
+          // Check if presenter already has an active share stream (fixes race condition)
+          try {
+            const streams = presenter.streams;
+            if (streams) {
+              const streamEntries = streams instanceof Map
+                ? Array.from(streams.values())
+                : Object.values(streams);
+              for (const s of streamEntries as any[]) {
+                if (s.kind === 'share' && s.track) {
+                  const shareStream = new MediaStream([s.track]);
+                  setRemoteScreenShareStream(shareStream);
+                  break;
+                }
+              }
+            }
+          } catch {}
+
+          // Also subscribe to future stream events as backup
           if (presenter.on) {
             presenter.on("stream-enabled", (stream: any) => {
+              if (!isMountedRef.current) return;
               if (stream.kind === 'share' && stream.track) {
                 const shareStream = new MediaStream([stream.track]);
                 setRemoteScreenShareStream(shareStream);
               }
             });
             presenter.on("stream-disabled", (stream: any) => {
+              if (!isMountedRef.current) return;
               if (stream.kind === 'share') {
                 setRemoteScreenShareStream(null);
                 setScreenShareParticipantName('');
@@ -1293,50 +1381,74 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             if (exists) return prev;
             const updated = [...prev, participant];
             
-            // FIXED: Subscribe to participant's streams using VideoSDK API
+            // Subscribe to participant's streams using VideoSDK API
             try {
-              // Subscribe to participant stream events
               if (participant.on) {
                 participant.on("stream-enabled", (stream: any) => {
+                  if (!isMountedRef.current) return;
                   if (stream.kind === 'video' && stream.track) {
                     const videoStream = new MediaStream([stream.track]);
-
-                    // Track per-participant video for grid layout
                     participantVideoMapRef.current.set(participant.id, videoStream);
-                    if (isMountedRef.current) {
-                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
-                    }
-
+                    setParticipantVideoMap(new Map(participantVideoMapRef.current));
                     addRemoteStream(videoStream);
-
-                    // Update remote video element for 1-on-1 calls
                     if (remoteVideoRef.current && callType === 'video') {
                       remoteVideoRef.current.srcObject = videoStream;
                       remoteVideoRef.current.play().catch(() => {});
                     }
                   } else if (stream.kind === 'audio' && stream.track) {
-                    const audioStream = new MediaStream([stream.track]);
-                    addRemoteStream(audioStream);
+                    addRemoteStream(new MediaStream([stream.track]));
+                  } else if (stream.kind === 'share' && stream.track) {
+                    const shareStream = new MediaStream([stream.track]);
+                    setRemoteScreenShareStream(shareStream);
+                    setScreenShareParticipantName(participant.displayName || 'Participant');
                   }
                 });
 
                 participant.on("stream-disabled", (stream: any) => {
+                  if (!isMountedRef.current) return;
                   if (stream.track) {
                     removeRemoteStream(stream.track.id);
                   }
-                  // Remove participant video from grid map
                   if (stream.kind === 'video') {
                     participantVideoMapRef.current.delete(participant.id);
-                    if (isMountedRef.current) {
-                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
-                    }
+                    setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                  }
+                  if (stream.kind === 'share') {
+                    setRemoteScreenShareStream(null);
+                    setScreenShareParticipantName('');
                   }
                 });
               }
 
-              // Check if participant already has active streams
+              // Check if participant already has active streams (video, audio, share)
+              try {
+                const streams = participant.streams;
+                if (streams) {
+                  const streamEntries = streams instanceof Map
+                    ? Array.from(streams.values())
+                    : Object.values(streams);
+                  for (const s of streamEntries as any[]) {
+                    if (s.kind === 'video' && s.track) {
+                      const stream = new MediaStream([s.track]);
+                      participantVideoMapRef.current.set(participant.id, stream);
+                      setParticipantVideoMap(new Map(participantVideoMapRef.current));
+                      addRemoteStream(stream);
+                      if (remoteVideoRef.current && callType === 'video') {
+                        remoteVideoRef.current.srcObject = stream;
+                        remoteVideoRef.current.play().catch(() => {});
+                      }
+                    } else if (s.kind === 'audio' && s.track) {
+                      addRemoteStream(new MediaStream([s.track]));
+                    } else if (s.kind === 'share' && s.track) {
+                      setRemoteScreenShareStream(new MediaStream([s.track]));
+                      setScreenShareParticipantName(participant.displayName || 'Participant');
+                    }
+                  }
+                }
+              } catch {}
+
+              // Fallback: also try getVideoStreams for older SDK versions
               const videoStreams = participant.getVideoStreams?.() || [];
-              
               videoStreams.forEach((vs: any) => {
                 if (vs.track) {
                   const stream = new MediaStream([vs.track]);
@@ -1460,14 +1572,35 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
         const presenter = meeting.participants?.get?.(presenterId);
         if (presenter) {
           setScreenShareParticipantName(presenter.displayName || 'Participant');
+
+          // Check if presenter already has an active share stream (fixes race condition)
+          try {
+            const streams = presenter.streams;
+            if (streams) {
+              const streamEntries = streams instanceof Map
+                ? Array.from(streams.values())
+                : Object.values(streams);
+              for (const s of streamEntries as any[]) {
+                if (s.kind === 'share' && s.track) {
+                  const shareStream = new MediaStream([s.track]);
+                  setRemoteScreenShareStream(shareStream);
+                  break;
+                }
+              }
+            }
+          } catch {}
+
+          // Also subscribe to future stream events as backup
           if (presenter.on) {
             presenter.on("stream-enabled", (stream: any) => {
+              if (!isMountedRef.current) return;
               if (stream.kind === 'share' && stream.track) {
                 const shareStream = new MediaStream([stream.track]);
                 setRemoteScreenShareStream(shareStream);
               }
             });
             presenter.on("stream-disabled", (stream: any) => {
+              if (!isMountedRef.current) return;
               if (stream.kind === 'share') {
                 setRemoteScreenShareStream(null);
                 setScreenShareParticipantName('');
@@ -1844,14 +1977,65 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
       setIsScreenSharing(false);
     } else {
       try {
+        // enableScreenShare triggers the browser's screen picker dialog
+        // VideoSDK will handle signaling to other participants via presenter-changed
         currentMeetingRef.current.enableScreenShare();
-        setIsScreenSharing(true);
+
+        // Don't set isScreenSharing(true) immediately -- wait for the stream
+        // to actually be enabled. This handles the case when user cancels the
+        // browser screen picker dialog.
+        const localParticipant = currentMeetingRef.current.localParticipant;
+        if (localParticipant?.on) {
+          const handleLocalShareEnabled = (stream: any) => {
+            if (!isMountedRef.current) return;
+            if (stream.kind === 'share' && stream.track) {
+              setIsScreenSharing(true);
+              const shareMs = new MediaStream([stream.track]);
+              setScreenShareStream(shareMs);
+              // Detect when user stops sharing via browser "Stop sharing" button
+              stream.track.addEventListener('ended', () => {
+                if (isMountedRef.current) {
+                  try { currentMeetingRef.current?.disableScreenShare(); } catch {}
+                  setScreenShareStream(null);
+                  setIsScreenSharing(false);
+                }
+              });
+            }
+          };
+          const handleLocalShareDisabled = (stream: any) => {
+            if (!isMountedRef.current) return;
+            if (stream.kind === 'share') {
+              setScreenShareStream(null);
+              setIsScreenSharing(false);
+            }
+          };
+          localParticipant.on("stream-enabled", handleLocalShareEnabled);
+          localParticipant.on("stream-disabled", handleLocalShareDisabled);
+        }
+
+        // Also watch presenter-changed to confirm we became the presenter
+        const meeting = currentMeetingRef.current;
+        const onPresenterChanged = (presenterId: string | null) => {
+          if (!isMountedRef.current) return;
+          const localId = meeting.localParticipant?.id;
+          if (presenterId === localId) {
+            setIsScreenSharing(true);
+          } else if (!presenterId) {
+            setIsScreenSharing(false);
+            setScreenShareStream(null);
+          }
+          // Remove one-time listener after first fire
+          try { meeting.off?.("presenter-changed", onPresenterChanged); } catch {}
+        };
+        try { meeting.on("presenter-changed", onPresenterChanged); } catch {}
       } catch (err) {
         setIsScreenSharing(false);
       }
     }
   };
 
+  // ScreenShareVideo component now handles its own ref; this effect is kept as a
+  // fallback safety net for any remaining screenShareVideoRef usage.
   useEffect(() => {
     if (screenShareVideoRef.current && remoteScreenShareStream) {
       screenShareVideoRef.current.srcObject = remoteScreenShareStream;
@@ -2278,8 +2462,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             </div>
           )}
 
-          {/* Local Video */}
-          {localStream && callType === 'video' && localStream.getVideoTracks().length > 0 && (
+          {/* Local Video PiP - hidden during screen share (shown in sidebar instead) */}
+          {localStream && callType === 'video' && localStream.getVideoTracks().length > 0 && !remoteScreenShareStream && (
             <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-16 h-20 sm:w-20 sm:h-28 md:w-28 md:h-36 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border border-white sm:border-2 shadow-xl sm:shadow-2xl ring-1 ring-white/20 sm:ring-2 hover:scale-105 transition-transform duration-200">
               <video
                 ref={localVideoRef}
@@ -2305,8 +2489,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             </div>
           )}
 
-          {/* Participants Count */}
-          {callStatus === 'connected' && (() => {
+          {/* Participants Count - hidden during screen share (shown in banner instead) */}
+          {callStatus === 'connected' && !remoteScreenShareStream && !isScreenSharing && (() => {
             const displayCount = getParticipantCount();
             return (
               <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] sm:text-xs md:text-sm font-medium shadow-lg border border-white/20">
@@ -2344,9 +2528,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
                     <div className="text-xs sm:text-sm opacity-75 mt-1">Waiting for answer</div>
                   </div>
                 )}
-                {callStatus === 'connected' && (
-                  <div className="space-y-2 flex ">
-                    <div className="absolute bottom-0 left-2 sm:left-4 text-xs sm:text-sm md:text-base font-bold tracking-wider text-gray-300 sm:text-gray-700">{formatDuration(callDuration)}</div>
+                {callStatus === 'connected' && !remoteScreenShareStream && !isScreenSharing && (
+                  <div className="space-y-2 flex">
+                    <div className="absolute bottom-0 left-2 sm:left-4 text-xs sm:text-sm md:text-base font-bold tracking-wider text-gray-300 sm:text-gray-700 font-mono tabular-nums z-30">{formatDuration(callDuration)}</div>
                   </div>
                 )}
                 {callStatus === 'ended' && (
@@ -2402,30 +2586,91 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
             </div>
           )}
 
+          {/* Teams-like Screen Share Layout: screen as main content, participants as sidebar thumbnails */}
           {remoteScreenShareStream && (
-            <div className="absolute inset-0 z-20 bg-black flex flex-col">
-              <div className="flex items-center gap-2 px-4 py-2 bg-blue-600/90 text-white text-sm">
+            <div className="absolute inset-0 z-20 bg-gray-950 flex flex-col animate-[fadeIn_300ms_ease-out]">
+              {/* Top bar with presenter info + call timer */}
+              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm shrink-0 shadow-lg animate-[slideDown_300ms_ease-out]">
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
                 <MonitorUp className="w-4 h-4" />
-                <span>{screenShareParticipantName} is sharing their screen</span>
+                <span className="font-medium">{screenShareParticipantName} is presenting</span>
+                <div className="ml-auto flex items-center gap-3">
+                  <span className="text-xs opacity-80 font-mono tabular-nums">{formatDuration(callDuration)}</span>
+                  <span className="text-xs opacity-60">|</span>
+                  <span className="flex items-center gap-1 text-xs opacity-80">
+                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                    {getParticipantCount()}
+                  </span>
+                </div>
               </div>
-              <video
-                ref={screenShareVideoRef}
-                autoPlay
-                playsInline
-                className="flex-1 w-full object-contain bg-black"
-              />
+              {/* Main content area: screen share + participant sidebar */}
+              <div className="flex-1 flex min-h-0">
+                {/* Screen share takes the main area */}
+                <div className="flex-1 min-w-0 bg-black flex items-center justify-center relative">
+                  <ScreenShareVideo stream={remoteScreenShareStream} />
+                </div>
+                {/* Participant thumbnails sidebar (Teams-style right strip) */}
+                <div className="w-36 sm:w-44 md:w-52 bg-gray-900/95 backdrop-blur-sm flex flex-col gap-1.5 p-1.5 overflow-y-auto shrink-0 border-l border-gray-800 animate-[slideLeft_400ms_ease-out]">
+                  <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider px-1 py-0.5">Participants</div>
+                  {/* Local video thumbnail */}
+                  {localStream && callType === 'video' && localStream.getVideoTracks().length > 0 ? (
+                    <div className="relative aspect-video bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50 shadow-sm transition-all duration-300 hover:border-blue-500/50">
+                      <ParticipantVideo stream={localStream} />
+                      <div className="absolute bottom-1 left-1 text-[9px] text-white bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded-md font-medium">
+                        You
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative aspect-video bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50 shadow-sm flex items-center justify-center">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center">
+                        <span className="text-xs sm:text-sm font-bold text-white">
+                          {(user?.user_metadata?.full_name || 'Y')[0].toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="absolute bottom-1 left-1 text-[9px] text-white bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded-md font-medium">
+                        You
+                      </div>
+                    </div>
+                  )}
+                  {/* Remote participant thumbnails */}
+                  {participants.map((p: any) => {
+                    const videoStream = participantVideoMap.get(p.id);
+                    return (
+                      <div key={p.id} className="relative aspect-video bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50 shadow-sm transition-all duration-300 hover:border-blue-500/50">
+                        {videoStream ? (
+                          <ParticipantVideo stream={videoStream} />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-gray-800 to-gray-850">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center shadow-md">
+                              <span className="text-xs sm:text-sm font-bold text-white">
+                                {(p.displayName || 'U')[0].toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute bottom-1 left-1 text-[9px] text-white bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded-md truncate max-w-[90%] font-medium">
+                          {p.displayName || 'Participant'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
+          {/* Local screen sharing banner with Teams-style indicator */}
           {isScreenSharing && !remoteScreenShareStream && (
-            <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2 px-4 py-2 bg-blue-600/90 text-white text-sm">
+            <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm shadow-lg animate-[slideDown_300ms_ease-out]">
+              <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
               <MonitorUp className="w-4 h-4" />
-              <span>You are sharing your screen</span>
+              <span className="font-medium">You are presenting</span>
+              <span className="text-xs opacity-60 font-mono tabular-nums">{formatDuration(callDuration)}</span>
               <button
                 onClick={toggleScreenShare}
-                className="ml-auto text-xs bg-red-500 hover:bg-red-600 px-3 py-1 rounded-full font-medium transition-colors"
+                className="ml-auto text-xs bg-red-500 hover:bg-red-600 active:bg-red-700 px-4 py-1.5 rounded-full font-medium transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
               >
-                Stop
+                Stop presenting
               </button>
             </div>
           )}
@@ -2448,12 +2693,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
          
 
-          {/* Controls Overlay - Positioned at bottom center of video */}
+          {/* Controls Overlay - Positioned at bottom center, z-30 to float above screen share */}
           {callStatus === 'connected' && (
-            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-2 sm:pb-3 md:pb-6 mb-20 sm:mb-0 px-2 sm:px-3 md:px-4 z-10">
+            <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-2 sm:pb-3 md:pb-6 mb-20 sm:mb-0 px-2 sm:px-3 md:px-4 z-30">
               <div className="space-y-2 sm:space-y-3 md:space-y-4 w-full max-w-2xl">
                 {/* Main controls - Mute, Video, Speaker, Message, End */}
-                <div className="flex justify-center items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
+                <div className="flex justify-center items-center gap-1.5 sm:gap-2 md:gap-3 flex-wrap bg-black/40 backdrop-blur-md rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 shadow-2xl border border-white/10 transition-all duration-300">
                   <button
                     onClick={toggleMute}
                     className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
@@ -2497,13 +2742,16 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = ({
 
                   <button
                     onClick={toggleScreenShare}
-                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
-                      isScreenSharing
-                        ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white'
-                        : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                    disabled={!!remoteScreenShareStream && !isScreenSharing}
+                    className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md focus:outline-none ${
+                      remoteScreenShareStream && !isScreenSharing
+                        ? 'bg-gray-400/60 text-gray-500 cursor-not-allowed opacity-50'
+                        : isScreenSharing
+                          ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white hover:shadow-lg hover:scale-110 active:scale-95'
+                          : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm hover:shadow-lg hover:scale-110 active:scale-95'
                     }`}
-                    title={isScreenSharing ? 'Stop sharing' : 'Share screen'}
-                    aria-label={isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
+                    title={remoteScreenShareStream && !isScreenSharing ? `${screenShareParticipantName} is already presenting` : isScreenSharing ? 'Stop sharing' : 'Share screen'}
+                    aria-label={remoteScreenShareStream && !isScreenSharing ? 'Screen share unavailable - someone is presenting' : isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
                   >
                     {isScreenSharing ? <MonitorOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <MonitorUp className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
                   </button>
