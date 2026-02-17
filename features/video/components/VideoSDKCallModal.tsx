@@ -39,39 +39,92 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
             </div>
           )}
 
-          {/* Remote Video Grid - Group call (2+ remote participants) */}
-          {vc.callType === 'video' && vc.participants.length > 1 && (
-            <div className={`w-full h-full grid gap-1 p-1 ${
-              vc.participants.length === 2 ? 'grid-cols-2' :
-              vc.participants.length <= 4 ? 'grid-cols-2' :
-              'grid-cols-3'
-            }`}>
-              {vc.participants.map((p: any) => {
-                const videoStream = vc.participantVideoMap.get(p.id);
-                return (
-                  <div key={p.id} className="relative bg-gray-800 rounded-lg overflow-hidden min-h-0">
-                    {videoStream ? (
-                      <ParticipantVideo stream={videoStream} />
+          {/* Teams-style Video Gallery - Group call (2+ remote participants + local) */}
+          {vc.callType === 'video' && vc.participants.length > 1 && (() => {
+            const tiles = [
+              ...vc.participants.map((p: any) => ({
+                id: p.id as string,
+                displayName: (p.displayName || 'Participant') as string,
+                stream: (vc.participantVideoMap.get(p.id) || null) as MediaStream | null,
+                isLocal: false,
+                hasVideo: !!(vc.participantVideoMap.get(p.id)?.getVideoTracks()?.length),
+              })),
+              {
+                id: 'local',
+                displayName: (vc.user?.user_metadata?.full_name || 'You') as string,
+                stream: vc.localStream,
+                isLocal: true,
+                hasVideo: vc.isVideoEnabled && !!(vc.localStream?.getVideoTracks()?.length),
+              },
+            ];
+
+            const total = tiles.length;
+            const cols = total <= 2 ? 2 : total <= 4 ? 2 : total <= 9 ? 3 : total <= 16 ? 4 : 5;
+            const rows = Math.ceil(total / cols);
+
+            return (
+              <div
+                className="w-full h-full flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
+                style={{ gap: '4px', background: '#1b1b1b' }}
+              >
+                {tiles.map((tile) => (
+                  <div
+                    key={tile.id}
+                    className="relative overflow-hidden rounded-md sm:rounded-lg"
+                    style={{
+                      width: `calc(${100 / cols}% - 6px)`,
+                      height: `calc(${100 / rows}% - 6px)`,
+                      background: '#272727',
+                      minHeight: 0,
+                    }}
+                  >
+                    {tile.hasVideo && tile.stream ? (
+                      <ParticipantVideo
+                        stream={tile.stream}
+                        muted={tile.isLocal}
+                        mirrored={tile.isLocal}
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center">
-                          <span className="text-xl sm:text-2xl font-bold text-white">
-                            {(p.displayName || 'U')[0].toUpperCase()}
+                      <div className="w-full h-full flex items-center justify-center" style={{ background: '#272727' }}>
+                        <div
+                          className={`rounded-full flex items-center justify-center ${
+                            total <= 4
+                              ? 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24'
+                              : total <= 9
+                                ? 'w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20'
+                                : 'w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14'
+                          }`}
+                          style={{
+                            background: tile.isLocal
+                              ? 'linear-gradient(135deg, #5b5fc7, #4f46e5)'
+                              : 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+                          }}
+                        >
+                          <span
+                            className={`font-semibold text-white ${
+                              total <= 4
+                                ? 'text-xl sm:text-2xl md:text-3xl'
+                                : total <= 9
+                                  ? 'text-lg sm:text-xl md:text-2xl'
+                                  : 'text-base sm:text-lg'
+                            }`}
+                          >
+                            {tile.displayName[0].toUpperCase()}
                           </span>
                         </div>
                       </div>
                     )}
-                    <div className="absolute bottom-1 left-1 text-[10px] sm:text-xs text-white bg-black/50 px-1.5 py-0.5 rounded">
-                      {p.displayName || 'Participant'}
+                    <div className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2 text-[10px] sm:text-xs text-white/90 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 sm:px-2 sm:py-1 rounded">
+                      {tile.isLocal ? 'You' : tile.displayName}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            );
+          })()}
 
-          {/* Local Video PiP - hidden during screen share (shown in sidebar instead) */}
-          {vc.localStream && vc.callType === 'video' && vc.localStream.getVideoTracks().length > 0 && !vc.remoteScreenShareStream && (
+          {/* Local Video PiP - only for 1-on-1 calls; hidden during group calls (local is in grid) and screen share */}
+          {vc.localStream && vc.callType === 'video' && vc.localStream.getVideoTracks().length > 0 && !vc.remoteScreenShareStream && vc.participants.length <= 1 && (
             <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-20 h-28 sm:w-24 sm:h-32 md:w-32 md:h-44 lg:w-36 lg:h-48 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border border-white sm:border-2 shadow-xl sm:shadow-2xl ring-1 ring-white/20 sm:ring-2 hover:scale-105 transition-transform duration-200">
               <video
                 ref={vc.localVideoRef}
