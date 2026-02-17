@@ -26,7 +26,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
       <div className="bg-black w-full h-full overflow-hidden">
         {/* Video/Audio Content - Fullscreen */}
         <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-screen overflow-hidden">
-          {/* Remote Video - 1-on-1 call (single full-screen) */}
+          {/* Remote Video - 1-on-1 call (single full-screen, HD) */}
           {vc.remoteStreams.length > 0 && vc.callType === 'video' && vc.participants.length <= 1 && (
             <div className="w-full h-full">
               <video
@@ -34,6 +34,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                 autoPlay
                 playsInline
                 className="w-full h-full object-cover"
+                style={{ willChange: 'transform', backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
               />
             </div>
           )}
@@ -71,13 +72,14 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
 
           {/* Local Video PiP - hidden during screen share (shown in sidebar instead) */}
           {vc.localStream && vc.callType === 'video' && vc.localStream.getVideoTracks().length > 0 && !vc.remoteScreenShareStream && (
-            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-16 h-20 sm:w-20 sm:h-28 md:w-28 md:h-36 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border border-white sm:border-2 shadow-xl sm:shadow-2xl ring-1 ring-white/20 sm:ring-2 hover:scale-105 transition-transform duration-200">
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-20 h-28 sm:w-24 sm:h-32 md:w-32 md:h-44 lg:w-36 lg:h-48 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border border-white sm:border-2 shadow-xl sm:shadow-2xl ring-1 ring-white/20 sm:ring-2 hover:scale-105 transition-transform duration-200">
               <video
                 ref={vc.localVideoRef}
                 autoPlay
                 playsInline
                 muted
                 className="w-full h-full object-cover"
+                style={{ willChange: 'transform', backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
               />
             </div>
           )}

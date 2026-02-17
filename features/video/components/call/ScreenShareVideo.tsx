@@ -36,6 +36,7 @@ const ScreenShareVideo = React.memo(function ScreenShareVideo({ stream }: { stre
         autoPlay
         playsInline
         className={`w-full h-full object-contain bg-black transition-opacity duration-500 ease-out ${isPlaying ? 'opacity-100' : 'opacity-0'}`}
+        style={{ willChange: 'transform', backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
       />
     </div>
   );

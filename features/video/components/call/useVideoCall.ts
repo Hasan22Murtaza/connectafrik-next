@@ -472,11 +472,43 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     });
   };
 
+  // Adaptive video constraints based on screen size & device capabilities
+  const getVideoConstraints = useCallback(() => {
+    const screenW = typeof window !== 'undefined' ? window.screen.width * (window.devicePixelRatio || 1) : 1920;
+    const screenH = typeof window !== 'undefined' ? window.screen.height * (window.devicePixelRatio || 1) : 1080;
+    const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+    // Desktop with high-res display: Full HD
+    if (!isMobile && screenW >= 1920 && screenH >= 1080) {
+      return { width: { ideal: 1920, min: 1280 }, height: { ideal: 1080, min: 720 }, frameRate: { ideal: 30, min: 20 }, facingMode: 'user' };
+    }
+    // Desktop standard or tablet landscape: 720p HD
+    if (!isMobile && screenW >= 1280) {
+      return { width: { ideal: 1280, min: 640 }, height: { ideal: 720, min: 480 }, frameRate: { ideal: 30, min: 20 }, facingMode: 'user' };
+    }
+    // Tablet portrait or large phone
+    if (screenW >= 768) {
+      return { width: { ideal: 960, min: 640 }, height: { ideal: 540, min: 360 }, frameRate: { ideal: 24, min: 15 }, facingMode: 'user' };
+    }
+    // Mobile phone
+    return { width: { ideal: 640, min: 480 }, height: { ideal: 480, min: 360 }, frameRate: { ideal: 24, min: 15 }, facingMode: 'user' };
+  }, []);
+
+  const getWebcamResolution = useCallback(() => {
+    const screenW = typeof window !== 'undefined' ? window.screen.width * (window.devicePixelRatio || 1) : 1920;
+    const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (!isMobile && screenW >= 1920) return 'h1080p_w1920p';
+    if (!isMobile && screenW >= 1280) return 'h720p_w1280p';
+    if (screenW >= 768) return 'h540p_w960p';
+    return 'h480p_w640p';
+  }, []);
+
   // --- Shared: attach local media after join ---
   const attachLocalMedia = async (meeting: any) => {
     try {
+      const constraints = getVideoConstraints();
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: callType === 'video' && isVideoEnabled,
+        video: callType === 'video' && isVideoEnabled ? constraints : false,
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000, channelCount: 1 },
       });
       if (!currentMeetingRef.current || !isMountedRef.current) return;
@@ -484,7 +516,15 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) audioTrack.enabled = true;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-      if (callType === 'video' && isVideoEnabled) meeting.enableWebcam();
+      if (callType === 'video' && isVideoEnabled) {
+        // Pass custom track to VideoSDK for HD quality
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack) {
+          try { meeting.enableWebcam(videoTrack); } catch { meeting.enableWebcam(); }
+        } else {
+          meeting.enableWebcam();
+        }
+      }
       meeting.unmuteMic();
     } catch {}
   };
@@ -550,6 +590,9 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           name: user?.user_metadata?.full_name || user?.email || 'User',
           micEnabled: true,
           webcamEnabled: callType === 'video' && isVideoEnabled,
+          multiStream: false,
+          webcamResolution: getWebcamResolution(),
+          customCameraVideoTrack: null,
         });
       } catch (e: any) { throw new Error(`Init failed: ${e.message}`); }
 
@@ -597,7 +640,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       const [token, sdkModule] = await Promise.all([
         getVideoSDKToken(roomIdHint, user?.id),
         videoSDKModuleRef.current ? Promise.resolve(videoSDKModuleRef.current) : import('@videosdk.live/js-sdk'),
-        navigator.mediaDevices.getUserMedia({ audio: true, video: callType === 'video' }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {}),
+        navigator.mediaDevices.getUserMedia({ audio: true, video: callType === 'video' ? getVideoConstraints() : false }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {}),
       ]);
       const { VideoSDK } = sdkModule;
       videoSDKModuleRef.current = sdkModule;
@@ -613,6 +656,9 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           name: user?.user_metadata?.full_name || user?.email || 'User',
           micEnabled: true,
           webcamEnabled: callType === 'video' && isVideoEnabled,
+          multiStream: false,
+          webcamResolution: getWebcamResolution(),
+          customCameraVideoTrack: null,
         });
       } catch (e: any) { throw new Error(`Init failed: ${e.message}`); }
 
@@ -783,7 +829,18 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (currentMeetingRef.current) {
       try {
         if (newVideoState) {
-          currentMeetingRef.current.enableWebcam();
+          // Re-enable with adaptive HD quality track
+          try {
+            const hdStream = await navigator.mediaDevices.getUserMedia({ video: getVideoConstraints() });
+            const hdTrack = hdStream.getVideoTracks()[0];
+            if (hdTrack) {
+              currentMeetingRef.current.enableWebcam(hdTrack);
+            } else {
+              currentMeetingRef.current.enableWebcam();
+            }
+          } catch {
+            currentMeetingRef.current.enableWebcam();
+          }
           setTimeout(async () => {
             try {
               const lp = currentMeetingRef.current?.localParticipant;
