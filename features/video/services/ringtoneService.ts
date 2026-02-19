@@ -1,4 +1,4 @@
-const RINGTONE_URL = '/assets/sounds/ring-tone.mp4';
+const RINGTONE_URL = '/assets/sounds/ringtone.mp3';
 
 class RingtoneService {
   // Incoming ringtone (receiver side)
