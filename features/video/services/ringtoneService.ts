@@ -1,116 +1,131 @@
 const RINGTONE_URL = '/assets/sounds/ringtone.mp3';
 
-class RingtoneService {
-  // Incoming ringtone (receiver side)
-  private ringtoneAudio: HTMLAudioElement | null = null;
-  private isPlaying = false;
+let ringtoneAudio: HTMLAudioElement | null = null;
+let isRingtonePlaying = false;
+let ringbackAudio: HTMLAudioElement | null = null;
+let isRingbackPlaying = false;
+let generation = 0;
+let ringtoneInteractionCleanup: (() => void) | null = null;
+let ringbackInteractionCleanup: (() => void) | null = null;
 
-  // Ringback tone (caller side) — uses same file with lower volume
-  private ringbackAudio: HTMLAudioElement | null = null;
-  private isRingbackPlaying = false;
+function createAudio(volume: number): HTMLAudioElement {
+  const audio = new Audio(RINGTONE_URL);
+  audio.loop = true;
+  audio.volume = volume;
+  audio.preload = 'auto';
+  return audio;
+}
 
-  // Generation counter: incremented on every stop so pending async starts are cancelled
-  private generation = 0;
+/**
+ * Registers click/touch/key listeners so the audio starts on the very
+ * first user interaction. Handles browsers that block autoplay when
+ * the page hasn't received a gesture yet.
+ */
+function setupInteractionRetry(audio: HTMLAudioElement, gen: number): () => void {
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    document.removeEventListener('click', tryPlay);
+    document.removeEventListener('touchstart', tryPlay);
+    document.removeEventListener('keydown', tryPlay);
+  };
+  const tryPlay = () => {
+    if (generation !== gen || cleaned) { cleanup(); return; }
+    audio.play().then(cleanup).catch(() => {});
+  };
+  document.addEventListener('click', tryPlay);
+  document.addEventListener('touchstart', tryPlay);
+  document.addEventListener('keydown', tryPlay);
+  return cleanup;
+}
 
-  /** Play the ringtone file for incoming calls (receiver hears this). */
-  async startRingtone() {
-    if (this.isPlaying) return;
-    const gen = this.generation;
-    try {
-      const audio = this.createAudio(0.7);
-      // Await the play() promise — browsers may reject if no user gesture yet
-      await audio.play();
-      if (gen !== this.generation) {
-        audio.pause();
-        audio.currentTime = 0;
-        return;
-      }
-      this.ringtoneAudio = audio;
-      this.isPlaying = true;
-    } catch (error) {
-      console.warn('Ringtone play blocked (no user gesture yet), will retry on interaction:', error);
+/** Play the ringtone for incoming calls (receiver hears this). */
+export async function startRingtone(): Promise<void> {
+  if (isRingtonePlaying) return;
+  const gen = generation;
+  const audio = createAudio(0.7);
+  try {
+    await audio.play();
+    if (gen !== generation) {
+      audio.pause();
+      audio.currentTime = 0;
+      return;
     }
-  }
-
-  stopRingtone() {
-    this.isPlaying = false;
-    this.generation++;
-
-    if (this.ringtoneAudio) {
-      this.ringtoneAudio.pause();
-      this.ringtoneAudio.currentTime = 0;
-      this.ringtoneAudio = null;
-    }
-  }
-
-  /** Play ringback tone for outgoing calls (caller hears this while waiting). */
-  async startRingback() {
-    if (this.isRingbackPlaying) return;
-    const gen = this.generation;
-    try {
-      const audio = this.createAudio(0.35);
-      await audio.play();
-      if (gen !== this.generation) {
-        audio.pause();
-        audio.currentTime = 0;
-        return;
-      }
-      this.ringbackAudio = audio;
-      this.isRingbackPlaying = true;
-    } catch (error) {
-      console.warn('Ringback play blocked:', error);
-    }
-  }
-
-  stopRingback() {
-    this.isRingbackPlaying = false;
-    this.generation++;
-
-    if (this.ringbackAudio) {
-      this.ringbackAudio.pause();
-      this.ringbackAudio.currentTime = 0;
-      this.ringbackAudio = null;
-    }
-  }
-
-  /** Stop all tones (both ringtone and ringback). */
-  stopAll() {
-    this.stopRingtone();
-    this.stopRingback();
-  }
-
-  async playRingtone() {
-    try {
-      await this.startRingtone();
-      return { stop: () => this.stopRingtone() };
-    } catch {
-      return { stop: () => this.stopRingtone() };
-    }
-  }
-
-  async playRingbackTone() {
-    try {
-      await this.startRingback();
-      return { stop: () => this.stopRingback() };
-    } catch {
-      return { stop: () => this.stopRingback() };
-    }
-  }
-
-  dispose() {
-    this.stopAll();
-  }
-
-  /** Create a looping Audio element from the ringtone file. */
-  private createAudio(volume: number): HTMLAudioElement {
-    const audio = new Audio(RINGTONE_URL);
-    audio.loop = true;
-    audio.volume = volume;
-    audio.preload = 'auto';
-    return audio;
+    ringtoneAudio = audio;
+    isRingtonePlaying = true;
+  } catch {
+    // Autoplay blocked — store audio and retry on next user interaction
+    ringtoneAudio = audio;
+    isRingtonePlaying = true;
+    ringtoneInteractionCleanup = setupInteractionRetry(audio, gen);
   }
 }
 
-// Singleton instance
-export const ringtoneService = new RingtoneService();
-export default ringtoneService;
+export function stopRingtone(): void {
+  isRingtonePlaying = false;
+  generation++;
+  if (ringtoneInteractionCleanup) {
+    ringtoneInteractionCleanup();
+    ringtoneInteractionCleanup = null;
+  }
+  if (ringtoneAudio) {
+    ringtoneAudio.pause();
+    ringtoneAudio.currentTime = 0;
+    ringtoneAudio = null;
+  }
+}
+
+/** Play ringback tone for outgoing calls (caller hears this while waiting). */
+export async function startRingback(): Promise<void> {
+  if (isRingbackPlaying) return;
+  const gen = generation;
+  const audio = createAudio(0.35);
+  try {
+    await audio.play();
+    if (gen !== generation) {
+      audio.pause();
+      audio.currentTime = 0;
+      return;
+    }
+    ringbackAudio = audio;
+    isRingbackPlaying = true;
+  } catch {
+    ringbackAudio = audio;
+    isRingbackPlaying = true;
+    ringbackInteractionCleanup = setupInteractionRetry(audio, gen);
+  }
+}
+
+export function stopRingback(): void {
+  isRingbackPlaying = false;
+  generation++;
+  if (ringbackInteractionCleanup) {
+    ringbackInteractionCleanup();
+    ringbackInteractionCleanup = null;
+  }
+  if (ringbackAudio) {
+    ringbackAudio.pause();
+    ringbackAudio.currentTime = 0;
+    ringbackAudio = null;
+  }
+}
+
+export function stopAll(): void {
+  stopRingtone();
+  stopRingback();
+}
+
+export async function playRingtone(): Promise<{ stop: () => void }> {
+  await startRingtone();
+  return { stop: stopRingtone };
+}
+
+export async function playRingbackTone(): Promise<{ stop: () => void }> {
+  await startRingback();
+  return { stop: stopRingback };
+}
+
+export function dispose(): void {
+  stopAll();
+}

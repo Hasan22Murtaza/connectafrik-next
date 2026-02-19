@@ -577,7 +577,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   if (!isOpen) return null
 
   return (
-    <div className="absolute sm:right-0 -right-6 mt-2 w-57 sm:w-80 max-w-[90vw] sm:max-w-[90vw] bg-white rounded-lg shadow-lg border border-gray-200 z-[120] transform -translate-x-0 sm:translate-x-0">
+    <div className="absolute sm:right-0 -right-6 mt-2 w-56 sm:w-80 max-w-[90vw] bg-white rounded-lg shadow-lg border border-gray-200 z-[120] overflow-hidden">
       <div ref={dropdownRef}>
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200">
           <h3 className="text-base sm:text-lg font-semibold text-gray-900">Notifications</h3>
@@ -599,7 +599,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           </div>
         </div>
 
-        <div className="max-h-80 sm:max-h-96 overflow-y-auto">
+        <div className="max-h-80 sm:max-h-96 overflow-y-auto overflow-x-hidden">
           {loading ? (
             <div className="p-3 sm:p-4 text-center text-gray-500">
               Loading notifications...
@@ -626,14 +626,14 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-gray-900 truncate">
                           {notification.title}
                         </p>
                         {!notification.is_read && (
                           <div className="w-2 h-2 bg-[#FF6900] rounded-full"></div>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-gray-600 mt-1 break-words overflow-hidden">
                         {notification.message}
                       </p>
                       <p className="text-xs text-gray-400 mt-2">

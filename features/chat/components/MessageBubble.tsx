@@ -2,9 +2,45 @@ import MessageStatusIndicator from "@/features/chat/components/MessageStatusIndi
 import type { ChatMessage, ChatAttachment } from "@/features/chat/services/supabaseMessagingService";
 import { formatDistanceToNow } from "date-fns";
 import { Download, FileText, MoreVertical, UserCircle } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { BsReply } from "react-icons/bs";
 import { RiShareForwardLine } from "react-icons/ri";
+
+const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<]+/gi;
+
+function linkifyContent(text: string, isOwn: boolean): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const regex = new RegExp(URL_REGEX.source, 'gi');
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[0];
+    const href = url.startsWith('http') ? url : `https://${url}`;
+    parts.push(
+      <a
+        key={match.index}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`underline break-all ${isOwn ? 'text-white hover:text-orange-100' : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {url}
+      </a>
+    );
+    lastIndex = match.index + url.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -289,7 +325,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
               {/* Text content */}
               {message.content && (
-                <p className="text-sm break-words">{message.content}</p>
+                <p className="text-sm break-words">{linkifyContent(message.content, isOwnMessage)}</p>
               )}
             </>
           )}

@@ -6,7 +6,7 @@
  */
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
-import { ringtoneService } from '@/features/video/services/ringtoneService';
+import { stopAll as stopAllRingtones, playRingtone, playRingbackTone } from '@/features/video/services/ringtoneService';
 import { supabase } from '@/lib/supabase';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { notificationService } from '@/shared/services/notificationService';
@@ -187,7 +187,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       try { ringtoneRef.current.stop(); } catch {}
       ringtoneRef.current = null;
     }
-    ringtoneService.stopAll();
+    stopAllRingtones();
     if (currentMeetingRef.current) {
       try { currentMeetingRef.current.disableScreenShare(); } catch {}
       try { currentMeetingRef.current.leave(); } catch {}
@@ -406,7 +406,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (options?.isOutgoing && (callStatusRef.current === 'ringing' || callStatusRef.current === 'connecting')) {
         setCallStatus('connected');
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-        ringtoneService.stopAll();
+        stopAllRingtones();
       }
       setParticipants(prev => {
         if (prev.find(x => x.id === participant.id)) return prev;
@@ -633,7 +633,10 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     setIsAcceptingCall(true);
     try {
       if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-      ringtoneService.stopAll();
+      stopAllRingtones();
+      if (typeof window !== 'undefined' && window.opener) {
+        try { window.opener.postMessage({ type: 'CALL_ACCEPTED', threadId }, window.location.origin); } catch {}
+      }
       if (!roomIdHint) { setError('Cannot accept call - missing room information.'); setIsAcceptingCall(false); return; }
       setCallStatus('connecting');
 
@@ -745,7 +748,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
   const handleRejectCall = async () => {
     if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-    ringtoneService.stopAll();
+    stopAllRingtones();
     if (threadId && currentUserId) {
       try {
         await supabaseMessagingService.sendMessage(threadId, {
@@ -1024,7 +1027,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (!accepted && msg.message_type === 'call_accepted' && msg.metadata?.acceptedBy) {
         accepted = true;
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-        ringtoneService.stopAll();
+        stopAllRingtones();
         if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
         if (isMountedRef.current) setCallStatus('connected');
       }
@@ -1041,7 +1044,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (!rejected && msg.message_type === 'call_rejected' && msg.metadata?.rejectedBy && msg.sender_id && msg.sender_id !== currentUserId) {
         rejected = true;
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-        ringtoneService.stopAll();
+        stopAllRingtones();
         if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
         if (isMountedRef.current) { setCallStatus('ended'); cleanupResources(); setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000); }
       }
@@ -1058,7 +1061,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (!ended && msg.message_type === 'call_ended' && msg.metadata?.endedBy && msg.sender_id && msg.sender_id !== currentUserId) {
         ended = true;
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-        ringtoneService.stopAll();
+        stopAllRingtones();
         if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
         if (isMountedRef.current) { setCallStatus('ended'); cleanupResources(); setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000); }
       }
@@ -1079,7 +1082,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         if (cancelled) return;
         if (data && data.length > 0 && Date.now() - new Date(data[0].created_at).getTime() < 120000) {
           if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-          ringtoneService.stopAll();
+          stopAllRingtones();
           if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
           if (isMountedRef.current) { setCallStatus('ended'); cleanupResources(); setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000); }
           return;
@@ -1158,7 +1161,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     const handler = (e: any) => {
       if (e.detail?.threadId === threadId && !isIncoming) {
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-        ringtoneService.stopAll();
+        stopAllRingtones();
         setCallStatus('connected');
       }
     };
@@ -1169,9 +1172,9 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   // Ringtone/ringback
   useEffect(() => {
     if (!isOpen || callStatus !== 'ringing') return;
-    if (isIncoming) { ringtoneService.playRingtone().then(r => { ringtoneRef.current = r; }); }
-    else { ringtoneService.playRingbackTone().then(r => { ringtoneRef.current = r; }); }
-    return () => { if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; } ringtoneService.stopAll(); };
+    if (isIncoming) { playRingtone().then(r => { ringtoneRef.current = r; }); }
+    else { playRingbackTone().then(r => { ringtoneRef.current = r; }); }
+    return () => { if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; } stopAllRingtones(); };
   }, [isOpen, callStatus, isIncoming]);
 
   // Transition incoming to ringing
@@ -1199,7 +1202,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   useEffect(() => {
     if (callStatus === 'connected' || callStatus === 'ended') {
       if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
-      ringtoneService.stopAll();
+      stopAllRingtones();
       setIsAcceptingCall(false);
     }
   }, [callStatus]);
