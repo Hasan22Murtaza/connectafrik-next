@@ -15,6 +15,9 @@ interface UseEmojiReactionOptions {
   trackEngagement?: boolean
 }
 
+type ReactionRow = { id: string; reaction_type: string }
+type PostRow = { likes_count: number; author_id?: string }
+
 export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
   const { user } = useAuth()
 
@@ -41,7 +44,7 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
         .select('id, reaction_type')
         .eq(postIdColumn, postId)
         .eq('user_id', user.id)
-        .single()
+        .single() as { data: ReactionRow | null; error: any }
 
       if (checkError && checkError.code !== 'PGRST116') {
         console.error('Error checking existing reaction:', checkError)
@@ -67,11 +70,11 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
           .from(postsTable)
           .select('likes_count')
           .eq('id', postId)
-          .single()
+          .single() as { data: PostRow | null; error: any }
 
         if (currentPost) {
           const newCount = Math.max(0, (currentPost.likes_count || 0) - 1)
-          await supabase.from(postsTable).update({ likes_count: newCount }).eq('id', postId)
+          await supabase.from(postsTable).update({ likes_count: newCount } as any).eq('id', postId)
         }
 
         onLikesCountChange?.(postId, -1)
@@ -83,7 +86,7 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
       if (existingReaction) {
         const { error: updateError } = await supabase
           .from(reactionsTable)
-          .update({ reaction_type: reactionType })
+          .update({ reaction_type: reactionType } as any)
           .eq(postIdColumn, postId)
           .eq('user_id', user.id)
 
@@ -100,7 +103,7 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
 
       const { error: insertError } = await supabase
         .from(reactionsTable)
-        .insert({ [postIdColumn]: postId, user_id: user.id, reaction_type: reactionType })
+        .insert({ [postIdColumn]: postId, user_id: user.id, reaction_type: reactionType } as any)
 
       if (insertError) {
         console.error('Error inserting reaction:', insertError)
@@ -113,11 +116,11 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
         .from(postsTable)
         .select(selectFields)
         .eq('id', postId)
-        .single()
+        .single() as { data: PostRow | null; error: any }
 
       if (currentPost) {
         const newCount = (currentPost.likes_count || 0) + 1
-        await supabase.from(postsTable).update({ likes_count: newCount }).eq('id', postId)
+        await supabase.from(postsTable).update({ likes_count: newCount } as any).eq('id', postId)
 
         if (trackEngagement && currentPost.author_id) {
           updateEngagementReward(currentPost.author_id, 'like')
