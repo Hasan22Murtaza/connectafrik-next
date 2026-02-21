@@ -77,8 +77,8 @@ export const REACTION_CONFIG: Record<ReactionKind, ReactionConfig> = {
   },
 }
 
-/** Order of reactions shown in the hover picker */
-export const PICKER_REACTIONS: ReactionKind[] = ['like', 'love', 'laugh', 'wow', 'sad', 'angry']
+/** Order of reactions shown in the hover picker (matches Facebook) */
+export const PICKER_REACTIONS: ReactionKind[] = ['like', 'love', 'care', 'laugh', 'wow', 'sad', 'angry']
 
 /** Map emoji strings to reaction kinds for backward compat */
 export const EMOJI_TO_KIND: Record<string, ReactionKind> = {
@@ -128,17 +128,17 @@ const ReactionIcon: React.FC<ReactionIconProps> = ({
 }) => {
   const config = REACTION_CONFIG[type as ReactionKind] || REACTION_CONFIG.like
 
-  // SVG icon mode (Like, Love) — icon on gradient circle
   if (config.mode === 'icon' && config.icon) {
     const IconComponent = config.icon
     const iconSize = size * 0.55
     return (
       <span
-        className={`inline-flex items-center justify-center rounded-full shrink-0 shadow-sm ${className}`}
+        className={`inline-flex items-center justify-center rounded-full shrink-0 ${className}`}
         style={{
           width: size,
           height: size,
           background: config.gradient,
+          filter: size >= 28 ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' : undefined,
         }}
       >
         <IconComponent
@@ -148,14 +148,15 @@ const ReactionIcon: React.FC<ReactionIconProps> = ({
     )
   }
 
-  // Emoji mode (Haha, Wow, Sad, Angry, Care) — native emoji fills the space
   return (
     <span
       className={`inline-flex items-center justify-center shrink-0 select-none leading-none ${className}`}
       style={{
         width: size,
         height: size,
-        fontSize: size * 0.92,
+        fontSize: size * 0.88,
+        filter: size >= 28 ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))' : undefined,
+        textRendering: 'optimizeLegibility',
       }}
     >
       {config.emoji}

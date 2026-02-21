@@ -9,6 +9,7 @@ import {
   Users,
   Copy,
 } from "lucide-react";
+import { FaWhatsapp } from "react-icons/fa";
 
 export interface ShareModalProps {
   isOpen: boolean;
@@ -23,15 +24,7 @@ const socialPlatforms = [
   {
     name: "WhatsApp",
     color: "#25D366",
-    icon: (
-      <svg
-        className="w-5 h-5 text-white"
-        fill="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.151-.174.2-.298.3-.497.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51-.173-.007-.372-.009-.571-.009-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.363.709.306 1.262.489 1.694.626.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 5.421h-.001a9.87 9.87 0 01-4.946-1.354l-.355-.211-3.682.964.985-3.588-.231-.368a9.86 9.86 0 01-1.51-5.19c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.991c-.003 5.451-4.437 9.885-9.888 9.885m8.413-18.297A11.815 11.815 0 0012.05.001C5.495 0 .001 5.493 0 12.047c0 2.124.557 4.199 1.613 6.032L.057 23.925a1.001 1.001 0 001.225 1.225l5.858-1.545a11.93 11.93 0 005.91 1.511h.005c6.554 0 11.947-5.492 11.949-12.043a11.89 11.89 0 00-3.489-8.462" />
-      </svg>
-    ),
+    icon: <FaWhatsapp className="w-5 h-5 text-white" />,
     url: (url: string) => `https://wa.me/?text=${encodeURIComponent(url)}`,
   },
   {
@@ -152,53 +145,54 @@ const ShareModal: React.FC<ShareModalProps> = ({
               <div className="font-semibold mb-2 flex items-center gap-2">
                 <Users className="w-4 h-4" /> Send to Members
               </div>
-              <div className="max-h-40 overflow-y-auto border rounded mb-3 border-gray-200 shadow-sm">
+              <div className="max-h-40 overflow-y-auto border rounded-lg border-gray-200">
                 {members.length === 0 ? (
-                  <div className="p-3 text-gray-500">No members found.</div>
+                  <div className="p-3 text-gray-500 text-sm">No members found.</div>
                 ) : (
                   members.map((m) => (
                     <label
                       key={m.id}
-                      className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                      className="flex items-center px-3 py-2 hover:bg-gray-50 cursor-pointer transition-colors"
                     >
                       <input
                         type="checkbox"
                         checked={selected.includes(m.id)}
                         onChange={() => handleSelect(m.id)}
-                        className="mr-2"
+                        className="mr-2.5 accent-primary-600 w-4 h-4"
                       />
                       {m.avatar_url ? (
                         <img
                           src={m.avatar_url}
                           alt={m.name}
-                          className="w-7 h-7 rounded-full mr-2 object-cover"
+                          className="w-8 h-8 rounded-full mr-2.5 object-cover"
                         />
                       ) : (
-                        <div className="w-7 h-7 rounded-full bg-gray-200 mr-2 flex items-center justify-center text-xs font-bold text-gray-600">
+                        <div className="w-8 h-8 rounded-full bg-gray-200 mr-2.5 flex items-center justify-center text-xs font-bold text-gray-600">
                           {m.name.charAt(0)}
                         </div>
                       )}
-                      <span>{m.name}</span>
+                      <span className="text-sm text-gray-800">{m.name}</span>
                     </label>
                   ))
                 )}
               </div>
 
-              <input
-                type="text"
-                className="input-field mb-4"
-                placeholder="Add an optional message..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-
-              <button
-                className="w-full bg-primary-600 text-white py-2 rounded font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60"
-                disabled={selected.length === 0 || sending}
-                onClick={handleSend}
-              >
-                {sending ? "Sending..." : "Send"}
-              </button>
+              <div className="flex items-center gap-2 mt-3">
+                <input
+                  type="text"
+                  className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                  placeholder="Add an optional message..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                />
+                <button
+                  className="px-5 py-2 bg-primary-600 text-white rounded-lg font-semibold text-sm hover:bg-primary-700 active:bg-primary-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  disabled={selected.length === 0 || sending}
+                  onClick={handleSend}
+                >
+                  {sending ? "Sending..." : "Send"}
+                </button>
+              </div>
             </div>
 
             {/* External share */}

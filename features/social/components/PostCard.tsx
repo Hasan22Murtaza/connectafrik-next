@@ -24,7 +24,6 @@ import { DwellTimeTracker } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
 import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
-import ReactionIcon from "@/shared/components/ReactionIcon";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
@@ -115,7 +114,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [followCheckLoading, setFollowCheckLoading] = useState(true);
   const [hasViewed, setHasViewed] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showReactionsModal, setShowReactionsModal] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -452,20 +450,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
   const imageUrls = (post.media_urls || []).filter(isImageFile);
 
-
-  // Get reaction display name
-  const getReactionName = (type: string): string => {
-    const nameMap: { [key: string]: string } = {
-      like: "Like",
-      love: "Love",
-      laugh: "Haha",
-      wow: "Wow",
-      sad: "Sad",
-      angry: "Angry",
-      care: "Care",
-    };
-    return nameMap[type] || "Like";
-  };
 
   // Format reaction summary (Facebook style: "John, Mary and 5 others")
   const formatReactionSummary = (reactionGroup: any): string => {
@@ -865,46 +849,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         </div>
       )}
 
-      {/* Reaction display */}
-      {Object.keys(postReactions).length > 0 && (
-        <div className="flex items-center space-x-1 justify-center mb-3 p-2 bg-gray-50 rounded-lg">
-          {Object.entries(postReactions).map(([emoji, users]) => (
-            <div key={emoji} className="relative group">
-              <span
-                className="text-lg cursor-pointer hover:scale-110 transition-transform emoji"
-                onMouseEnter={() => handleEmojiHover(emoji)}
-                onMouseLeave={handleEmojiLeave}
-              >
-                {emoji}
-              </span>
-
-              {/* Hover tooltip showing users who reacted */}
-              {hoveredEmoji === emoji && users.length > 0 && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-                  <div className="bg-gray-800 text-white rounded-lg p-3 shadow-lg min-w-48">
-                    <div className="font-semibold text-sm mb-2">
-                      <span className="emoji">{emoji}</span> {users.length}{" "}
-                      reaction{users.length !== 1 ? "s" : ""}
-                    </div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {users.map((user, index) => (
-                        <div key={index} className="text-sm text-gray-200">
-                          {user}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-          <span className="text-sm text-gray-600 ml-2">
-            {Object.values(postReactions).flat().length}
-          </span>
-        </div>
-      )}
-
       {/* Engagement Stats & Actions */}
       <PostEngagement
         reactionGroups={getReactionGroups()}
@@ -916,7 +860,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
         onComment={() => setShowInlineComments(prev => !prev)}
         onShare={() => onShare(post.id)}
-        onReactionsClick={() => setShowReactionsModal(true)}
+        onUserClick={(username) => router.push(`/user/${username}`)}
+        postId={post.id}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -970,97 +915,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         </div>
       )}
 
-      {/* Reactions Modal - Facebook style */}
-      {showReactionsModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowReactionsModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Reactions</h3>
-              <button
-                onClick={() => setShowReactionsModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <MoreHorizontal className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="overflow-y-auto max-h-[60vh]">
-              {getReactionGroups().map((group) => (
-                <div
-                  key={group.type}
-                  className="border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="p-4 flex items-center gap-3">
-                    <ReactionIcon type={group.type} size={32} />
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">
-                        {getReactionName(group.type)}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {group.count}{" "}
-                        {group.count === 1 ? "reaction" : "reactions"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="px-4 pb-4 space-y-2">
-                    {group.users.slice(0, 10).map((reactedUser: any) => (
-                      <div
-                        key={reactedUser.id}
-                        className="flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg cursor-pointer transition-colors"
-                        onClick={() => {
-                          router.push(`/user/${reactedUser.username}`);
-                          setShowReactionsModal(false);
-                        }}
-                      >
-                        {reactedUser.avatar_url ? (
-                          <img
-                            src={reactedUser.avatar_url}
-                            alt={reactedUser.full_name || reactedUser.username}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                            <span className="text-gray-600 font-medium text-sm">
-                              {(reactedUser.full_name || reactedUser.username)
-                                .charAt(0)
-                                .toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">
-                            {reactedUser.full_name || reactedUser.username}
-                          </div>
-                          {reactedUser.full_name && (
-                            <div className="text-sm text-gray-500">
-                              @{reactedUser.username}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {group.users.length > 10 && (
-                      <div className="text-sm text-gray-500 text-center py-2">
-                        and {group.users.length - 10} more...
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {getReactionGroups().length === 0 && (
-                <div className="p-8 text-center text-gray-500">
-                  No reactions yet
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </article>
   );
 });

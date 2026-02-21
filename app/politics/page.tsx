@@ -6,6 +6,7 @@ import { PostCard } from '@/features/social/components/PostCard'
 import CommentsSection from '@/features/social/components/CommentsSection'
 import { usePoliticsStats } from '@/shared/hooks/usePoliticsStats'
 import { usePosts } from '@/shared/hooks/usePosts'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import { Globe, Plus, TrendingUp, Users } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -25,9 +26,10 @@ const PoliticsPage: React.FC = () => {
     error: statsError,
     refetch: refetchStats
   } = usePoliticsStats()
-  const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, toggleLike, sharePost, refetch } = usePosts('politics', {
+  const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, toggleLike, sharePost, refetch, updatePostLikesCount } = usePosts('politics', {
     politicsSubcategory: selectedSubcategory ?? undefined
   })
+  const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: updatePostLikesCount, trackEngagement: true })
 
   // Infinite scroll observer
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
@@ -308,6 +310,7 @@ const PoliticsPage: React.FC = () => {
                         onLike={handleLike}
                         onComment={handleComment}
                         onShare={handleShare}
+                        onEmojiReaction={handleEmojiReaction}
                         canComment={(post as { canComment?: boolean }).canComment ?? true}
                       />
                       {showCommentsFor === post.id && (

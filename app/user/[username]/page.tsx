@@ -21,7 +21,7 @@ import {
 import ShareModal from '@/features/social/components/ShareModal'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { sendNotification } from '@/shared/services/notificationService'
-import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import PostsTab from './components/PostsTab'
 import AboutTab from './components/AboutTab'
 import PhotosTab from './components/PhotosTab'
@@ -353,6 +353,11 @@ const UserProfilePage: React.FC = () => {
     setPosts((prev) => prev.map((p) => (p.id === id ? fn(p) : p)))
   }, [])
 
+  const handleUserLikesCountChange = useCallback((postId: string, delta: number) => {
+    updatePost(postId, (p) => ({ ...p, likes_count: Math.max(0, (p.likes_count || 0) + delta) }))
+  }, [updatePost])
+  const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: handleUserLikesCountChange })
+
   const handleLike = useCallback(async (postId: string) => {
     if (!user) { toast.error('Please sign in to like posts'); return }
     const post = posts.find((p) => p.id === postId)
@@ -381,30 +386,6 @@ const UserProfilePage: React.FC = () => {
     // PostCard already saves to DB; just update local state
     updatePost(postId, (p: any) => ({ ...p, ...updates }))
   }, [updatePost])
-
-  const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
-    if (!user) { toast.error('Please sign in to react'); return }
-    const reactionType = getReactionTypeFromEmoji(emoji)
-    try {
-      const { data: existing, error: checkErr } = await supabase.from('post_reactions').select('id,reaction_type').eq('post_id', postId).eq('user_id', user.id).single()
-      if (checkErr && checkErr.code !== 'PGRST116') { toast.error('Failed to check reaction'); return }
-      if (existing?.reaction_type === reactionType) {
-        await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', user.id).eq('reaction_type', reactionType)
-        updatePost(postId, (p) => ({ ...p, likes_count: Math.max(0, p.likes_count - 1) }))
-        toast.success('Reaction removed'); window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } })); return
-      }
-      if (existing) {
-        await supabase.from('post_reactions').update({ reaction_type: reactionType }).eq('post_id', postId).eq('user_id', user.id)
-        toast.success('Reaction updated'); window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } })); return
-      }
-      await supabase.from('post_reactions').insert({ post_id: postId, user_id: user.id, reaction_type: reactionType })
-      const { data: cp } = await supabase.from('posts').select('likes_count').eq('id', postId).single()
-      const nc = (cp?.likes_count || 0) + 1
-      await supabase.from('posts').update({ likes_count: nc }).eq('id', postId)
-      updatePost(postId, (p) => ({ ...p, likes_count: nc })); toast.success('Reaction saved!')
-      window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
-    } catch { toast.error('Something went wrong') }
-  }, [user, updatePost])
 
   const handleSendToMembers = useCallback(async (memberIds: string[], message: string) => {
     if (!memberIds.length) { toast.success('No members selected'); return }

@@ -16,8 +16,7 @@ import { updateEngagementReward } from '@/features/social/services/fairnessRanki
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import { sendNotification } from '@/shared/services/notificationService'
 import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
-import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 
 const FEED_CATEGORIES = [
   { id: 'all' as const, label: 'All Posts', icon: Globe },
@@ -38,6 +37,7 @@ const FeedPage: React.FC = () => {
 
   const { posts, loading, loadingMore, hasMore, loadMore, createPost, toggleLike, deletePost, updatePost, recordView, updatePostLikesCount } = usePosts(activeCategory)
   const { members } = useMembers()
+  const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: updatePostLikesCount, trackEngagement: true })
 
   // Infinite scroll observer
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
@@ -113,155 +113,6 @@ const FeedPage: React.FC = () => {
       trackEvent.comment(user.id, postId)
     }
   }, [posts, user])
-
-  function getEmojiUnicodeCodes(emoji: string): string {
-  // Convert the emoji into array of code points, then convert each to hex string
-  const codePoints = Array.from(emoji).map(char =>
-    char.codePointAt(0)?.toString(16).toUpperCase()
-  );
-
-  return codePoints?.join(" ");
-}
-
-  const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
-    try {
-      if (!user) {
-        toast.error('Please sign in to react');
-        return;
-      }
-
-      const reactionType = getReactionTypeFromEmoji(emoji);
-
-      // Check if user already has a reaction for this post
-      const { data: existingReaction, error: checkError } = await supabase
-        .from('post_reactions')
-        .select('id, reaction_type')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error checking existing reaction:', checkError);
-        toast.error('Failed to check reaction');
-        return;
-      }
-
-      // If user already reacted with the same type, remove it (toggle off)
-      if (existingReaction && existingReaction.reaction_type === reactionType) {
-        const { error: deleteError } = await supabase
-          .from('post_reactions')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
-          .eq('reaction_type', reactionType);
-
-        if (deleteError) {
-          console.error('Error removing reaction:', deleteError);
-          toast.error('Failed to remove reaction');
-          return;
-        }
-
-        // Decrement likes_count in posts table
-        const { data: currentPost, error: fetchError } = await supabase
-          .from('posts')
-          .select('likes_count')
-          .eq('id', postId)
-          .single();
-
-        if (!fetchError && currentPost) {
-          const newLikesCount = Math.max(0, (currentPost.likes_count || 0) - 1);
-          const { error: updateError } = await supabase
-            .from('posts')
-            .update({ likes_count: newLikesCount })
-            .eq('id', postId);
-
-          if (updateError) {
-            console.error('Error updating likes count:', updateError);
-          } else {
-            // Update local state for real-time UI update
-            updatePostLikesCount(postId, -1);
-          }
-        }
-
-        toast.success('Reaction removed');
-        // Trigger a custom event to refetch reactions in PostCard
-        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }));
-        return;
-      }
-
-      // If user has a different reaction, update it
-      if (existingReaction) {
-        const { error: updateError } = await supabase
-          .from('post_reactions')
-          .update({ reaction_type: reactionType })
-          .eq('post_id', postId)
-          .eq('user_id', user.id);
-
-        if (updateError) {
-          console.error('Error updating reaction:', updateError);
-          toast.error('Failed to update reaction');
-          return;
-        }
-
-        toast.success('Reaction updated');
-        // Trigger a custom event to refetch reactions in PostCard
-        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }));
-        return;
-      }
-
-      // Insert new reaction
-      const { error: insertError } = await supabase
-        .from('post_reactions')
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-          reaction_type: reactionType
-        });
-
-      if (insertError) {
-        console.error('Error inserting reaction:', insertError);
-        toast.error('Failed to save reaction');
-        return;
-      }
-
-      // Increment likes_count in posts table
-      const { data: currentPost, error: fetchError } = await supabase
-        .from('posts')
-        .select('likes_count, author_id')
-        .eq('id', postId)
-        .single();
-
-      if (!fetchError && currentPost) {
-        const newLikesCount = (currentPost.likes_count || 0) + 1;
-        const { error: updateError } = await supabase
-          .from('posts')
-          .update({ likes_count: newLikesCount })
-          .eq('id', postId);
-
-        if (updateError) {
-          console.error('Error updating likes count:', updateError);
-        } else {
-          // Update local state for real-time UI update
-          updatePostLikesCount(postId, 1);
-        }
-
-        // Update engagement reward for post author
-        if (currentPost.author_id) {
-          updateEngagementReward(currentPost.author_id, 'like');
-        }
-      }
-
-      // Track engagement event
-      trackEvent.like(user.id, postId);
-
-      toast.success('Reaction saved!');
-      // Trigger a custom event to refetch reactions in PostCard
-      window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }));
-    } catch (error: any) {
-      console.error('Error handling emoji reaction:', error);
-      toast.error('Something went wrong');
-    }
-  }, [user, posts, updatePostLikesCount]);
 
 
 

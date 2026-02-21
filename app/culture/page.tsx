@@ -6,6 +6,7 @@ import { PostCard } from '@/features/social/components/PostCard'
 import CommentsSection from '@/features/social/components/CommentsSection'
 import { useCultureStats } from '@/shared/hooks/useCultureStats'
 import { usePosts } from '@/shared/hooks/usePosts'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import { Camera, Globe, Heart, Plus, Users } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -16,9 +17,10 @@ const CulturePage: React.FC = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const { totalPosts, enthusiastsCount, categoryCounts, featuredThisWeek, loading: statsLoading, error: statsError, refetch: refetchStats } = useCultureStats()
-  const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, toggleLike, sharePost, refetch } = usePosts('culture', {
+  const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, toggleLike, sharePost, refetch, updatePostLikesCount } = usePosts('culture', {
     cultureSubcategory: selectedSubcategory ?? undefined
   })
+  const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: updatePostLikesCount, trackEngagement: true })
 
   // Infinite scroll observer
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
@@ -307,6 +309,7 @@ const CulturePage: React.FC = () => {
                         onLike={handleLike}
                         onShare={handleShare}
                         onComment={handleComment}
+                        onEmojiReaction={handleEmojiReaction}
                         canComment={(post as { canComment?: boolean }).canComment ?? true}
                       />
                       {showCommentsFor === post.id && (

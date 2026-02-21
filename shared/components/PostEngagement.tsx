@@ -10,6 +10,7 @@ import ReactionIcon, {
   KIND_TO_EMOJI,
   ReactionKind,
 } from './ReactionIcon'
+import ReactionsModal from './ReactionsModal'
 
 export interface ReactionGroup {
   type: string
@@ -18,26 +19,19 @@ export interface ReactionGroup {
 }
 
 export interface PostEngagementProps {
-  /** Reaction groups sorted by count */
   reactionGroups: ReactionGroup[]
-  /** Total reaction count */
   totalReactionCount: number
-  /** Comment count */
   commentsCount: number
-  /** Share count (optional, not all post types track this) */
   sharesCount?: number
-  /** View count (optional, for video posts) */
   viewsCount?: number
-  /** Whether to show views count */
   showViews?: boolean
-  /** Called when a reaction emoji is selected (default 👍 on click) */
   onLike: (emoji?: string) => void
-  /** Called when Comment button or comment count clicked */
   onComment: () => void
-  /** Called when Share button clicked */
   onShare: () => void
-  /** Called when reaction area clicked (to open reactions modal) */
-  onReactionsClick?: () => void
+  onUserClick?: (username: string) => void
+  postId?: string
+  reactionsTable?: string
+  postIdColumn?: string
 }
 
 const PostEngagement: React.FC<PostEngagementProps> = ({
@@ -50,10 +44,14 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
   onLike,
   onComment,
   onShare,
-  onReactionsClick,
+  onUserClick,
+  postId,
+  reactionsTable,
+  postIdColumn,
 }) => {
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null)
   const [showReactionPicker, setShowReactionPicker] = useState(false)
+  const [showReactionsModal, setShowReactionsModal] = useState(false)
   const closeTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const handleLikeHover = useCallback(() => {
@@ -79,14 +77,13 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
     <div>
       {/* Stats Row */}
       <div className="flex items-center justify-between px-1 py-1">
-        {/* Left: Reaction icon circles + total count */}
         <div className="flex items-center gap-1.5">
           {reactionGroups.length > 0 && (
             <div
               className="flex items-center gap-1 cursor-pointer group"
               onClick={(e) => {
                 e.stopPropagation()
-                onReactionsClick?.()
+                setShowReactionsModal(true)
               }}
             >
               <div className="flex items-center -space-x-1">
@@ -101,7 +98,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                     <ReactionIcon
                       type={group.type}
                       size={22}
-                      className="border-[2px] border-white shadow-sm cursor-pointer"
+                      className="cursor-pointer"
                     />
                     <ReactionTooltip
                       users={group.users || []}
@@ -119,7 +116,6 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
           )}
         </div>
 
-        {/* Right: counts as text */}
         <div className="flex items-center gap-2 text-[13px] text-gray-500">
           {showViews && viewsCount > 0 && (
             <span className="hover:underline cursor-pointer">
@@ -147,22 +143,19 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
 
       {/* Action Buttons */}
       <div className="flex items-center gap-1 pt-1">
-        {/* Like button with hover reaction picker */}
         <div
           className="relative flex-1"
           onMouseEnter={handleLikeHover}
           onMouseLeave={handleLikeLeave}
         >
-          {/* Reaction Picker Popup */}
           {showReactionPicker && (
             <div
-              className="absolute bottom-full left-0 mb-2 z-50"
+              className="absolute bottom-full left-0 mb-2 z-50 animate-[reactionPickerIn_280ms_cubic-bezier(0.34,1.56,0.64,1)_both]"
               onMouseEnter={handleLikeHover}
               onMouseLeave={handleLikeLeave}
             >
-              <div className="flex items-end gap-0.5 bg-white rounded-full shadow-[0_3px_16px_rgba(0,0,0,0.18)] px-2 py-1.5">
-                {PICKER_REACTIONS.map((kind) => {
-                  const config = REACTION_CONFIG[kind]
+              <div className="flex items-center bg-white rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.05)] px-0.5 py-0.5">
+                {PICKER_REACTIONS.map((kind, index) => {
                   return (
                     <button
                       key={kind}
@@ -170,19 +163,29 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                         e.stopPropagation()
                         handleReactionSelect(kind)
                       }}
-                      className="group/reaction relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-200 ease-[cubic-bezier(0.17,0.67,0.21,1.4)] cursor-pointer hover:scale-[1.4] hover:-translate-y-2 active:scale-110"
-                      title={config.label}
+                      className="group/reaction relative flex items-center justify-center w-[32px] h-[32px] rounded-full cursor-pointer transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.15] hover:-translate-y-1.5 active:scale-100"
                     >
-                      <ReactionIcon type={kind} size={40} />
-                      <span
-                        className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/75 backdrop-blur-sm text-white text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap opacity-0 group-hover/reaction:opacity-100 transition-all duration-150 pointer-events-none"
-                      >
-                        {config.label}
+                      <div className="animate-[reactionBounceIn_350ms_cubic-bezier(0.34,1.56,0.64,1)_both]" style={{ animationDelay: `${index * 30 + 80}ms` }}>
+                        <ReactionIcon type={kind} size={30} />
+                      </div>
+                      <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-800/90 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap scale-0 group-hover/reaction:scale-100 opacity-0 group-hover/reaction:opacity-100 transition-all duration-150 origin-bottom pointer-events-none">
+                        {REACTION_CONFIG[kind].label}
                       </span>
                     </button>
                   )
                 })}
               </div>
+              <style>{`
+                @keyframes reactionPickerIn {
+                  from { opacity: 0; transform: scale(0.8) translateY(8px); }
+                  to   { opacity: 1; transform: scale(1) translateY(0); }
+                }
+                @keyframes reactionBounceIn {
+                  0%   { opacity: 0; transform: scale(0) translateY(12px); }
+                  60%  { opacity: 1; transform: scale(1.15) translateY(-2px); }
+                  100% { opacity: 1; transform: scale(1) translateY(0); }
+                }
+              `}</style>
             </div>
           )}
 
@@ -223,6 +226,16 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
           <span>Share</span>
         </button>
       </div>
+
+      <ReactionsModal
+        isOpen={showReactionsModal}
+        onClose={() => setShowReactionsModal(false)}
+        reactionGroups={reactionGroups}
+        onUserClick={onUserClick}
+        postId={postId}
+        reactionsTable={reactionsTable}
+        postIdColumn={postIdColumn}
+      />
     </div>
   )
 }

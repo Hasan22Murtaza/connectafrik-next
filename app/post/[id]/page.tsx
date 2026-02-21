@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 import CommentsSection from '@/features/social/components/CommentsSection'
 import { PostCard } from '@/features/social/components/PostCard'
-import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import { PostCardShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 interface Post {
@@ -42,6 +42,11 @@ const PostDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [isLiked, setIsLiked] = useState(false)
   const [showComments, setShowComments] = useState(false)
+
+  const handleLikesCountChange = useCallback((_postId: string, delta: number) => {
+    setPost(prev => prev ? { ...prev, likes_count: Math.max(0, prev.likes_count + delta) } : null)
+  }, [])
+  const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: handleLikesCountChange })
 
   useEffect(() => {
     if (postId) {
@@ -195,69 +200,6 @@ const PostDetailPage: React.FC = () => {
       toast.error('Failed to delete post')
     }
   }
-
-  const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
-    if (!user) {
-      toast.error('Please sign in to react')
-      return
-    }
-    const reactionType = getReactionTypeFromEmoji(emoji)
-    try {
-      const { data: existingReaction, error: checkError } = await supabase
-        .from('post_reactions')
-        .select('id, reaction_type')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .single()
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing reaction:', checkError)
-        toast.error('Failed to check reaction')
-        return
-      }
-
-      if (existingReaction && existingReaction.reaction_type === reactionType) {
-        const { error: deleteError } = await supabase
-          .from('post_reactions')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
-          .eq('reaction_type', reactionType)
-        if (deleteError) throw deleteError
-        setPost((prev) =>
-          prev ? { ...prev, likes_count: Math.max(0, prev.likes_count - 1) } : null
-        )
-        toast.success('Reaction removed')
-        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
-        return
-      }
-
-      if (existingReaction) {
-        const { error: updateError } = await supabase
-          .from('post_reactions')
-          .update({ reaction_type: reactionType })
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
-        if (updateError) throw updateError
-        toast.success('Reaction updated')
-        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
-        return
-      }
-
-      const { error: insertError } = await supabase
-        .from('post_reactions')
-        .insert({ post_id: postId, user_id: user.id, reaction_type: reactionType })
-      if (insertError) throw insertError
-      setPost((prev) =>
-        prev ? { ...prev, likes_count: prev.likes_count + 1 } : null
-      )
-      toast.success('Reaction saved!')
-      window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
-    } catch (error: any) {
-      console.error('Error handling emoji reaction:', error)
-      toast.error('Something went wrong')
-    }
-  }, [user])
 
   if (loading) {
     return (

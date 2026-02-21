@@ -241,6 +241,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
         onComment={() => onToggleComments ? onToggleComments() : onComment()}
         onShare={onShare}
+        onUserClick={(username) => router.push(`/user/${username}`)}
+        postId={post.id}
+        reactionsTable="group_post_reactions"
+        postIdColumn="group_post_id"
       />
 
       {/* Comments Section */}
