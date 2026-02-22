@@ -99,14 +99,13 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
   // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
   if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted' && message.message_type !== 'call_ended') {
     try {
-      // Get thread participants to send notifications to
-      const { data: participants } = await supabase
-        .from('chat_participants')
-        .select('user_id')
-        .eq('thread_id', message.thread_id)
-        .neq('user_id', message.sender_id) // Don't notify the sender
+      const res = await apiClient.get<{ data: { user_id: string }[] }>(
+        `/api/chat/threads/${message.thread_id}/participants`,
+        { exclude_user_id: message.sender_id }
+      )
+      const participants = res?.data ?? []
 
-      if (participants && participants.length > 0) {
+      if (participants.length > 0) {
         // Deduplicate participant user_ids to avoid sending multiple notifications to the same user
         const uniqueUserIds = [...new Set(participants.map(p => p.user_id))]
 
@@ -836,13 +835,13 @@ export const supabaseMessagingService = {
       // Send push notification for call requests immediately (works even when offline)
       if (payload.message_type === 'call_request') {
         try {
-          const { data: participants } = await supabase
-            .from('chat_participants')
-            .select('user_id')
-            .eq('thread_id', threadId)
-            .neq('user_id', currentUser.id)
+          const callParticipantsRes = await apiClient.get<{ data: { user_id: string }[] }>(
+            `/api/chat/threads/${threadId}/participants`,
+            { exclude_user_id: currentUser.id }
+          )
+          const participants = callParticipantsRes?.data ?? []
 
-          if (participants && participants.length > 0) {
+          if (participants.length > 0) {
             const metadata = payload.metadata as any
             const callType = metadata?.callType || 'audio'
             const roomId = metadata?.roomId
