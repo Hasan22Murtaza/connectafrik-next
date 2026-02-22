@@ -185,12 +185,7 @@ export async function POST(request: NextRequest) {
       },
       
       android: {
-        priority: 'high', // 🔑 ensures delivery even if app killed
-        notification: {
-          channelId: 'connectafrik_call_service', // Android notification channel
-          sound: 'default',
-          clickAction: 'FLUTTER_NOTIFICATION_CLICK' // optional, but good practice
-        }
+        priority: 'high',
       },
       apns: {
         payload: {
