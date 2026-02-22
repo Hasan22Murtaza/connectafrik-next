@@ -166,22 +166,21 @@ export async function POST(request: NextRequest) {
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
 
       data: {
-
         ...(body.data || {}),
         title: body.title,
         body: notificationBody,
+        // No large image in notifications — keep them clean and compact
         icon: body.icon || '/assets/images/logo.png',
-        badge: body.badge || '/assets/images/logo.png',      
-        tag: body.tag || 'connectafrik-notification',      
-        requireInteraction: String(body.requireInteraction || true), // always true for calls
-        silent: String(body.silent || false),      
-        vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),      
+        badge: body.badge || '/assets/images/logo.png',
+        tag: body.tag || 'connectafrik-notification',
+        requireInteraction: String(body.requireInteraction || false),
+        silent: String(body.silent || false),
+        vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),
         timestamp: String(Date.now()),
-        type: body.data?.type || 'incoming_call', // very important
-        actions: JSON.stringify(body.actions || [
-          { action: 'accept', title: 'Answer' },
-          { action: 'decline', title: 'Decline' }
-        ]),
+        // Actions are determined by the service worker based on notification type.
+        // For incoming_call: SW shows Answer/Decline. For missed_call: SW shows no actions.
+        // Pass through any explicit actions, or let the SW decide based on type.
+        actions: JSON.stringify(body.actions || []),
       },
       
       android: {
