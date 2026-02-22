@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import ProductCard from '@/features/marketplace/components/ProductCard'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import Footer from '@/shared/components/layout/FooterNext'
 import { Product } from '@/shared/types'
 import { Bookmark, FileText, ShoppingBag } from 'lucide-react'
@@ -23,50 +23,9 @@ const SavedPage: React.FC = () => {
       setLoading(true)
 
       if (activeTab === 'products') {
-        // Step 1: Fetch product saves with product IDs
-        const { data: savesData, error: savesError } = await supabase
-          .from('product_saves')
-          .select('created_at, product_id')
-          .eq('user_id', user?.id)
-          .order('created_at', { ascending: false })
-
-        if (savesError) throw savesError
-
-        if (!savesData || savesData.length === 0) {
-          setSavedProducts([])
-          return
-        }
-
-        // Step 2: Fetch products separately
-        const productIds = savesData.map(save => save.product_id)
-        const { data: productsData, error: productsError } = await supabase
-          .from('products')
-          .select('*')
-          .in('id', productIds)
-
-        if (productsError) throw productsError
-
-        // Step 3: Fetch sellers for each product
-        const productsWithSellers = await Promise.all(
-          (productsData || []).map(async (product) => {
-            const { data: seller } = await supabase
-              .from('profiles')
-              .select('id, username, full_name, avatar_url')
-              .eq('id', product.seller_id)
-              .single()
-
-            return {
-              ...product,
-              seller,
-              is_saved: true
-            }
-          })
-        )
-
-        setSavedProducts(productsWithSellers)
+        const res = await apiClient.get<{ data: Product[] }>('/api/marketplace/saved')
+        setSavedProducts(res.data || [])
       } else {
-        // Fetch saved posts (if you have a saved_posts table)
-        // For now, showing empty state
         setSavedPosts([])
       }
     } catch (error: any) {
@@ -85,12 +44,7 @@ const SavedPage: React.FC = () => {
 
   const handleUnsaveProduct = async (productId: string) => {
     try {
-      await supabase
-        .from('product_saves')
-        .delete()
-        .eq('product_id', productId)
-        .eq('user_id', user?.id)
-
+      await apiClient.post(`/api/marketplace/${productId}/save`)
       toast.success('Product removed from saved items')
       fetchSavedItems()
     } catch (error: any) {

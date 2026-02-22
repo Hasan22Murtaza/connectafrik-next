@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import { stopAll as stopAllRingtones, playRingtone, playRingbackTone } from '@/features/video/services/ringtoneService';
 import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api-client';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { notificationService } from '@/shared/services/notificationService';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -758,9 +759,11 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         }, { id: currentUserId, name: isIncoming ? decodedRecipientName : decodedCallerName });
       } catch {}
       try {
-        const { data: parts } = await supabase.from('chat_participants').select('user_id').eq('thread_id', threadId).neq('user_id', currentUserId);
-        if (isIncoming && parts && parts.length > 0) {
-          const callerId = parts[0].user_id;
+        const threadRes = await apiClient.get<{ data: any }>(`/api/chat/threads/${threadId}`);
+        const participants = threadRes?.data?.chat_participants || [];
+        const otherParts = participants.filter((p: any) => p.user_id !== currentUserId);
+        if (isIncoming && otherParts.length > 0) {
+          const callerId = otherParts[0].user_id;
           await notificationService.sendNotification({
             user_id: callerId, title: '📞 Missed Call', body: `${decodedRecipientName} missed your ${callType} call`,
             notification_type: 'missed_call', tag: `incoming-call-${threadId}`, actions: [], requireInteraction: false, silent: true,
@@ -791,10 +794,12 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       } catch {}
       if (wasNeverConnected && !isIncoming) {
         try {
-          const { data: parts } = await supabase.from('chat_participants').select('user_id').eq('thread_id', threadId).neq('user_id', currentUserId);
-          if (parts && parts.length > 0) {
+          const threadRes = await apiClient.get<{ data: any }>(`/api/chat/threads/${threadId}`);
+          const participants = threadRes?.data?.chat_participants || [];
+          const otherParts = participants.filter((p: any) => p.user_id !== currentUserId);
+          if (otherParts.length > 0) {
             const callerDisplayName = decodedCallerName || user?.user_metadata?.full_name || 'Someone';
-            for (const p of parts) {
+            for (const p of otherParts) {
               try {
                 await notificationService.sendNotification({
                   user_id: p.user_id, title: '📞 Missed Call', body: `${callerDisplayName} tried to ${callType} call you`,
@@ -951,9 +956,9 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const searchUsersForInvite = useCallback(async (query: string) => {
     if (!query.trim() || query.length < 2) { setAddPeopleResults([]); return; }
     try {
-      const { data } = await supabase.from('profiles').select('id, username, full_name, avatar_url')
-        .or(`full_name.ilike.%${query}%,username.ilike.%${query}%`).neq('id', currentUserId || '').limit(10);
-      setAddPeopleResults(data || []);
+      const res = await apiClient.get<{ data: any[] }>('/api/users/search', { q: query, limit: 10 });
+      const users = (res?.data || []).filter((u: any) => u.id !== currentUserId);
+      setAddPeopleResults(users);
     } catch { setAddPeopleResults([]); }
   }, [currentUserId]);
 
@@ -963,25 +968,11 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     try {
       const currentRoomId = roomId || roomIdHint;
       if (!currentRoomId) throw new Error('No active room');
-      const { data: myP } = await supabase.from('chat_participants').select('thread_id').eq('user_id', currentUserId);
-      const myThreadIds = (myP || []).map((p: any) => p.thread_id);
-      let directThreadId: string | null = null;
-      if (myThreadIds.length > 0) {
-        const { data: shared } = await supabase.from('chat_participants').select('thread_id, chat_threads!inner(type)')
-          .eq('user_id', targetUser.id).in('thread_id', myThreadIds);
-        const dt = shared?.find((s: any) => s.chat_threads?.type === 'direct');
-        if (dt) directThreadId = dt.thread_id;
-      }
-      if (!directThreadId) {
-        const { data: newThread } = await supabase.from('chat_threads').insert({ type: 'direct' }).select().single();
-        if (newThread) {
-          await supabase.from('chat_participants').insert([
-            { thread_id: newThread.id, user_id: currentUserId, display_name: user?.user_metadata?.full_name || 'Unknown' },
-            { thread_id: newThread.id, user_id: targetUser.id, display_name: targetUser.full_name || targetUser.username },
-          ]);
-          directThreadId = newThread.id;
-        }
-      }
+      const threadRes = await apiClient.post<{ data: { id: string } }>('/api/chat/threads', {
+        participant_ids: [targetUser.id],
+        type: 'direct',
+      });
+      const directThreadId = threadRes?.data?.id;
       if (!directThreadId) throw new Error('Could not find or create thread');
       await supabaseMessagingService.sendMessage(directThreadId, {
         content: `📞 Incoming ${callType === 'video' ? 'video' : 'audio'} call`,
@@ -1077,10 +1068,13 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     let cancelled = false;
     const poll = async () => {
       try {
-        const { data } = await supabase.from('chat_messages').select('id, message_type, sender_id, metadata, created_at')
-          .eq('thread_id', threadId).in('message_type', ['call_ended', 'call_rejected']).neq('sender_id', currentUserId).order('created_at', { ascending: false }).limit(1);
+        const res = await apiClient.get<{ data: any[] }>(`/api/chat/threads/${threadId}/messages`, { limit: 20 });
         if (cancelled) return;
-        if (data && data.length > 0 && Date.now() - new Date(data[0].created_at).getTime() < 120000) {
+        const msgs = (res?.data || []).filter((m: any) =>
+          ['call_ended', 'call_rejected'].includes(m.message_type) && m.sender_id !== currentUserId
+        );
+        const latest = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+        if (latest && Date.now() - new Date(latest.created_at).getTime() < 120000) {
           if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
           stopAllRingtones();
           if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }

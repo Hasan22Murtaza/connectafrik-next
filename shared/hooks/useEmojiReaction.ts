@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
 import { updateEngagementReward } from '@/features/social/services/fairnessRankingService'
 import { trackEvent } from '@/features/social/services/engagementTracking'
@@ -15,8 +15,10 @@ interface UseEmojiReactionOptions {
   trackEngagement?: boolean
 }
 
-type ReactionRow = { id: string; reaction_type: string }
-type PostRow = { likes_count: number; author_id?: string }
+interface ReactionResponse {
+  action: 'added' | 'updated' | 'removed'
+  reaction_type: string
+}
 
 export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
   const { user } = useAuth()
@@ -39,12 +41,39 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
 
       const reactionType = getReactionTypeFromEmoji(emoji)
 
+      // For standard post_reactions, use the API
+      if (reactionsTable === 'post_reactions' && postIdColumn === 'post_id' && postsTable === 'posts') {
+        const response = await apiClient.post<ReactionResponse>(
+          `/api/posts/${postId}/reaction`,
+          { reaction_type: reactionType }
+        )
+
+        if (response.action === 'removed') {
+          onLikesCountChange?.(postId, -1)
+          toast.success('Reaction removed')
+        } else if (response.action === 'updated') {
+          toast.success('Reaction updated')
+        } else if (response.action === 'added') {
+          onLikesCountChange?.(postId, 1)
+          if (trackEngagement && user.id) {
+            trackEvent.like(user.id, postId)
+          }
+          toast.success('Reaction saved!')
+        }
+
+        window.dispatchEvent(new CustomEvent(eventName, { detail: { postId } }))
+        return
+      }
+
+      // Fallback for non-standard tables (e.g. group_post_reactions) — use Supabase directly
+      const { supabase } = await import('@/lib/supabase')
+
       const { data: existingReaction, error: checkError } = await supabase
         .from(reactionsTable)
         .select('id, reaction_type')
         .eq(postIdColumn, postId)
         .eq('user_id', user.id)
-        .single() as { data: ReactionRow | null; error: any }
+        .single() as { data: { id: string; reaction_type: string } | null; error: any }
 
       if (checkError && checkError.code !== 'PGRST116') {
         console.error('Error checking existing reaction:', checkError)
@@ -61,7 +90,6 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
           .eq('reaction_type', reactionType)
 
         if (deleteError) {
-          console.error('Error removing reaction:', deleteError)
           toast.error('Failed to remove reaction')
           return
         }
@@ -70,7 +98,7 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
           .from(postsTable)
           .select('likes_count')
           .eq('id', postId)
-          .single() as { data: PostRow | null; error: any }
+          .single() as { data: { likes_count: number } | null; error: any }
 
         if (currentPost) {
           const newCount = Math.max(0, (currentPost.likes_count || 0) - 1)
@@ -91,7 +119,6 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
           .eq('user_id', user.id)
 
         if (updateError) {
-          console.error('Error updating reaction:', updateError)
           toast.error('Failed to update reaction')
           return
         }
@@ -106,7 +133,6 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
         .insert({ [postIdColumn]: postId, user_id: user.id, reaction_type: reactionType } as any)
 
       if (insertError) {
-        console.error('Error inserting reaction:', insertError)
         toast.error('Failed to save reaction')
         return
       }
@@ -116,7 +142,7 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
         .from(postsTable)
         .select(selectFields)
         .eq('id', postId)
-        .single() as { data: PostRow | null; error: any }
+        .single() as { data: { likes_count: number; author_id?: string } | null; error: any }
 
       if (currentPost) {
         const newCount = (currentPost.likes_count || 0) + 1

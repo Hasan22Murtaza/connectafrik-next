@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import type { ProfileVisibilityLevel } from '@/shared/types'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import NotificationManager from '@/shared/components/ui/NotificationManager'
 import toast from 'react-hot-toast'
 
@@ -253,22 +253,8 @@ const ProfileSettings: React.FC = () => {
 
   const handleDataDownload = async () => {
     try {
-      const { data: posts } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('author_id', user?.id)
-
-      const { data: comments } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('author_id', user?.id)
-
-      const userData = {
-        profile: profile,
-        posts: posts,
-        comments: comments,
-        exported_at: new Date().toISOString()
-      }
+      const res = await apiClient.get<{ data: any }>('/api/users/me/export')
+      const userData = res?.data ?? {}
 
       const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)

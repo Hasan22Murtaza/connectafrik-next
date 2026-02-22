@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 
 export type FriendRequestStatus = "pending" | "accepted" | "declined" | "blocked";
 
@@ -28,48 +29,47 @@ export interface NotificationRecord {
 
 export const socialService = {
   async sendFriendRequest(recipientId: string, message?: string) {
-    const { data, error } = await supabase
-      .from("friend_requests")
-      .insert({ recipient_id: recipientId, message })
-      .select()
-      .single();
-
-    return { data, error };
+    try {
+      const data = await apiClient.post<{ success: boolean }>("/api/friends", {
+        receiver_id: recipientId,
+      });
+      return { data, error: null };
+    } catch (error: any) {
+      return { data: null, error };
+    }
   },
 
   async respondToFriendRequest(requestId: string, status: "accepted" | "declined") {
-    const { data, error } = await supabase
-      .from("friend_requests")
-      .update({ status, responded_at: new Date().toISOString() })
-      .eq("id", requestId)
-      .select()
-      .single();
-
-    return { data, error };
+    try {
+      const data = await apiClient.patch(`/api/friends/requests/${requestId}`, { status });
+      return { data, error: null };
+    } catch (error: any) {
+      return { data: null, error };
+    }
   },
 
   async blockUser(requestId: string) {
-    const { data, error } = await supabase
-      .from("friend_requests")
-      .update({ status: "blocked", responded_at: new Date().toISOString() })
-      .eq("id", requestId)
-      .select()
-      .single();
-
-    return { data, error };
+    try {
+      const data = await apiClient.patch(`/api/friends/requests/${requestId}`, { status: "blocked" });
+      return { data, error: null };
+    } catch (error: any) {
+      return { data: null, error };
+    }
   },
 
   async getPendingFriendRequests(): Promise<{ data: FriendRequest[] | null; error: Error | null }> {
-    const { data, error } = await supabase
-      .from("friend_requests")
-      .select(
-        `*,
-        requester:requester_id(id, username, full_name, avatar_url)`
-      )
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
-
-    return { data: data as FriendRequest[] | null, error };
+    try {
+      const res = await apiClient.get<{ data: any[] }>("/api/friends/requests");
+      const mapped = (res.data || []).map((req: any) => ({
+        ...req,
+        requester_id: req.sender_id || req.requester_id,
+        recipient_id: req.receiver_id || req.recipient_id,
+        requester: req.requester || req.sender,
+      }));
+      return { data: mapped as FriendRequest[], error: null };
+    } catch (error: any) {
+      return { data: null, error };
+    }
   },
 
   async getNotifications(limit = 25): Promise<{ data: NotificationRecord[] | null; error: Error | null }> {
@@ -102,10 +102,7 @@ export const socialService = {
       },
     });
 
-    channel.on("presence", { event: "sync" }, () => {
-      // Presence state can be accessed with channel.presenceState()
-      // Components can subscribe to updates by reading from this channel.
-    });
+    channel.on("presence", { event: "sync" }, () => {});
 
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {

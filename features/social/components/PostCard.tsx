@@ -16,14 +16,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   followUser,
   unfollowUser,
-  checkIsFollowing,
 } from "../services/followService";
 import { supabase } from "@/lib/supabase";
 import { getDiversityBadges } from "../services/fairnessRankingService";
 import { DwellTimeTracker } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
-import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
+import { apiClient } from "@/lib/api-client";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
@@ -52,6 +51,9 @@ interface Post {
   language?: string;
   created_at: string;
   isLiked?: boolean;
+  is_following?: boolean;
+  reactions?: Record<string, any>;
+  reactions_total_count?: number;
 }
 
 interface PostCardProps {
@@ -110,8 +112,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followCheckLoading, setFollowCheckLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(post.is_following ?? false);
+  const [followCheckLoading, setFollowCheckLoading] = useState(false);
   const [hasViewed, setHasViewed] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -122,35 +124,31 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const dwellTrackerRef = useRef<DwellTimeTracker | null>(null);
   const [showInlineComments, setShowInlineComments] = useState(false);
 
-  // Fetch reactions with user data
-  const {
-    reactions,
-    loading: reactionsLoading,
-    refetch: refetchReactions,
-  } = usePostReactionsWithUsers(post.id);
+  const [reactions, setReactions] = useState<Record<string, any> & { totalCount: number }>({
+    ...(post.reactions || {}),
+    totalCount: post.reactions_total_count ?? 0,
+  });
 
-  // Listen for reaction updates and refetch
   useEffect(() => {
     const handleReactionUpdate = (event: CustomEvent) => {
       if (event.detail?.postId === post.id) {
-        // Small delay to ensure DB has updated
-        setTimeout(() => {
-          refetchReactions();
+        setTimeout(async () => {
+          try {
+            const res = await apiClient.get<{
+              data: Record<string, any>
+              totalCount: number
+            }>(`/api/posts/${post.id}/reaction`);
+            setReactions({ ...(res.data || {}), totalCount: res.totalCount || 0 });
+          } catch {}
         }, 300);
       }
     };
 
-    window.addEventListener(
-      "reaction-updated",
-      handleReactionUpdate as EventListener
-    );
+    window.addEventListener("reaction-updated", handleReactionUpdate as EventListener);
     return () => {
-      window.removeEventListener(
-        "reaction-updated",
-        handleReactionUpdate as EventListener
-      );
+      window.removeEventListener("reaction-updated", handleReactionUpdate as EventListener);
     };
-  }, [post.id, refetchReactions]);
+  }, [post.id]);
 
   // Determine if this is a short text-only post (Facebook-style large text)
   const isShortTextPost = () => {
@@ -174,27 +172,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     const index = Math.abs(hash) % POST_BACKGROUNDS.length;
     return POST_BACKGROUNDS[index];
   };
-
-  // Check if current user is following the post author
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!user || !post.author?.id || user.id === post.author.id) {
-        setFollowCheckLoading(false);
-        return;
-      }
-
-      try {
-        const following = await checkIsFollowing(user.id, post.author.id);
-        setIsFollowing(following);
-      } catch (error) {
-        console.error("Error checking follow status:", error);
-      } finally {
-        setFollowCheckLoading(false);
-      }
-    };
-
-    checkFollowStatus();
-  }, [user, post.author?.id]);
 
   // Track view when post comes into view
   useEffect(() => {
@@ -268,6 +245,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     }
 
     try {
+      setFollowCheckLoading(true);
       if (isFollowing) {
         const success = await unfollowUser(user.id, post.author.id);
         if (success) {
@@ -282,22 +260,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           setIsFollowing(true);
           toast.success("Tapped in!");
         } else {
-          // Check if already following (failed because duplicate)
-          const stillFollowing = await checkIsFollowing(
-            user.id,
-            post.author.id
-          );
-          if (stillFollowing) {
-            setIsFollowing(true);
-            toast.success("Already tapped in!");
-          } else {
-            toast.error("Failed to tap in");
-          }
+          toast.error("Failed to tap in");
         }
       }
     } catch (error) {
       console.error("Error handling follow:", error);
       toast.error("Something went wrong");
+    } finally {
+      setFollowCheckLoading(false);
     }
   };
 
@@ -367,16 +337,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       dwellTrackerRef.current?.cleanup();
     };
   }, [post.id, user?.id]);
-
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (user && post.author && user.id !== post.author.id) {
-        const following = await checkIsFollowing(user.id, post.author.id);
-        setIsFollowing(following);
-      }
-    };
-    checkFollowStatus();
-  }, [user, post.author?.id]);
 
   // Close menu when clicking outside
   useEffect(() => {

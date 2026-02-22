@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -42,59 +42,21 @@ export const useGroupEvents = (groupId: string) => {
       setLoading(true)
       setError(null)
 
-      // Fetch events
-      const { data: eventsData, error: eventsError } = await supabase
-        .from('group_events')
-        .select('*')
-        .eq('group_id', groupId)
-        .order('start_time', { ascending: true })
+      const res = await apiClient.get<{ data: GroupEvent[] }>(`/api/groups/${groupId}/events`)
+      const eventsData = res.data || []
 
-      if (eventsError) throw eventsError
-
-      if (!eventsData || eventsData.length === 0) {
-        setEvents([])
-        setLoading(false)
-        return
-      }
-
-      // Fetch creator profiles
-      const creatorIds = [...new Set(eventsData.map(e => e.creator_id))]
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url')
-        .in('id', creatorIds)
-
-      const profilesMap = new Map(
-        (profilesData || []).map(profile => [profile.id, profile])
+      setEvents(
+        eventsData.map((e: GroupEvent) => ({
+          ...e,
+          creator: e.creator ?? {
+            id: e.creator_id,
+            username: 'Unknown',
+            full_name: 'Unknown User',
+            avatar_url: null
+          },
+          isAttending: e.isAttending ?? false
+        }))
       )
-
-      // Check if user is attending events
-      let attendingEventIds: string[] = []
-      if (user) {
-        const { data: attendanceData } = await supabase
-          .from('group_event_attendees')
-          .select('event_id')
-          .eq('user_id', user.id)
-          .in('event_id', eventsData.map(e => e.id))
-
-        if (attendanceData) {
-          attendingEventIds = attendanceData.map(a => a.event_id)
-        }
-      }
-
-      // Combine events with creator profiles
-      const eventsWithCreators = eventsData.map(event => ({
-        ...event,
-        creator: profilesMap.get(event.creator_id) || {
-          id: event.creator_id,
-          username: 'Unknown',
-          full_name: 'Unknown User',
-          avatar_url: null
-        },
-        isAttending: attendingEventIds.includes(event.id)
-      }))
-
-      setEvents(eventsWithCreators)
     } catch (err: any) {
       console.error('Error fetching group events:', err)
       setError(err.message)
@@ -125,30 +87,15 @@ export const useGroupEvents = (groupId: string) => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('group_events')
-        .insert({
-          group_id: groupId,
-          creator_id: user.id,
-          ...eventData,
-          attendee_count: 0,
-          status: 'scheduled'
-        })
-        .select('*')
-        .single()
-
-      if (error) throw error
-
-      // Fetch creator profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url')
-        .eq('id', user.id)
-        .single()
+      const res = await apiClient.post<{ data: GroupEvent }>(`/api/groups/${groupId}/events`, {
+        ...eventData,
+        attendee_count: 0,
+        status: 'scheduled'
+      })
 
       const newEvent: GroupEvent = {
-        ...data,
-        creator: profileData || {
+        ...res.data,
+        creator: res.data.creator ?? {
           id: user.id,
           username: 'Unknown',
           full_name: 'Unknown User',
@@ -174,56 +121,26 @@ export const useGroupEvents = (groupId: string) => {
     }
 
     try {
-      // Check if already attending
-      const { data: existingAttendance } = await supabase
-        .from('group_event_attendees')
-        .select('id')
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .single()
+      const res = await apiClient.post<{ attending: boolean; attendee_count: number }>(
+        `/api/groups/${groupId}/events/${eventId}/attend`
+      )
 
-      if (existingAttendance) {
-        // Remove attendance
-        await supabase
-          .from('group_event_attendees')
-          .delete()
-          .eq('id', existingAttendance.id)
+      setEvents(prev =>
+        prev.map(event =>
+          event.id === eventId
+            ? {
+                ...event,
+                attendee_count: res.attendee_count,
+                isAttending: res.attending
+              }
+            : event
+        )
+      )
 
-        // Update attendee count
-        setEvents(prev => prev.map(event => {
-          if (event.id === eventId) {
-            return {
-              ...event,
-              attendee_count: Math.max(0, event.attendee_count - 1),
-              isAttending: false
-            }
-          }
-          return event
-        }))
-
-        toast.success('RSVP removed')
-      } else {
-        // Add attendance
-        await supabase
-          .from('group_event_attendees')
-          .insert({
-            event_id: eventId,
-            user_id: user.id
-          })
-
-        // Update attendee count
-        setEvents(prev => prev.map(event => {
-          if (event.id === eventId) {
-            return {
-              ...event,
-              attendee_count: event.attendee_count + 1,
-              isAttending: true
-            }
-          }
-          return event
-        }))
-
+      if (res.attending) {
         toast.success('You are now attending this event')
+      } else {
+        toast.success('RSVP removed')
       }
     } catch (err: any) {
       console.error('Error toggling attendance:', err)
@@ -235,13 +152,7 @@ export const useGroupEvents = (groupId: string) => {
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('group_events')
-        .delete()
-        .eq('id', eventId)
-        .eq('creator_id', user.id) // Only creator can delete
-
-      if (error) throw error
+      await apiClient.delete(`/api/groups/${groupId}/events/${eventId}`)
 
       setEvents(prev => prev.filter(event => event.id !== eventId))
       toast.success('Event deleted successfully')
@@ -262,4 +173,3 @@ export const useGroupEvents = (groupId: string) => {
     refetch: fetchEvents
   }
 }
-

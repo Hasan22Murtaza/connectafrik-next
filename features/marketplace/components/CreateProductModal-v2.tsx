@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react'
 import { X, Upload, DollarSign, Image as ImageIcon, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useImageUpload } from '@/shared/hooks/useImageUpload'
 import toast from 'react-hot-toast'
 
@@ -117,28 +117,19 @@ const CreateProductModal: React.FC<CreateProductModalProps> = ({ isOpen, onClose
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0)
 
-      const { data, error } = await supabase
-        .from('products')
-        .insert({
-          seller_id: user.id,
-          title: formData.title,
-          description: formData.description,
-          price: parseFloat(formData.price),
-          currency: formData.currency,
-          category: formData.category,
-          condition: formData.condition,
-          location: formData.location || null,
-          country: formData.country || null,
-          images: uploadedImages,
-          tags,
-          stock_quantity: parseInt(formData.stock_quantity),
-          is_available: true,
-          is_featured: false
-        })
-        .select()
-        .single()
-
-      if (error) throw error
+      await apiClient.post('/api/marketplace', {
+        title: formData.title,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        currency: formData.currency,
+        category: formData.category,
+        condition: formData.condition,
+        location: formData.location || null,
+        country: formData.country || null,
+        images: uploadedImages,
+        tags,
+        stock_quantity: parseInt(formData.stock_quantity),
+      })
 
       toast.success('Product listed successfully!')
       onSuccess()

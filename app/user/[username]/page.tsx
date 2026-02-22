@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { followUser, unfollowUser, checkIsFollowing, checkIsMutual } from '@/features/social/services/followService'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
 import { UserProfileWithVisibility, MutualFriend } from '@/shared/types'
@@ -161,9 +161,9 @@ const UserProfilePage: React.FC = () => {
   const fetchUserProfile = async () => {
     try {
       setLoading(true)
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles').select('*').eq('username', username).single()
-      if (profileError) throw profileError
+      const profileRes = await apiClient.get<{ data: any }>(`/api/users/${username}`)
+      const profileData = profileRes.data
+      if (!profileData) throw new Error('Not found')
       setProfile(profileData)
 
       const viewerId = user?.id ?? null
@@ -172,39 +172,8 @@ const UserProfilePage: React.FC = () => {
       const mutual = !isOwn && viewerId ? await checkIsMutual(viewerId, ownerId) : false
       setIsMutual(mutual)
 
-      const friendsMap = new Map<string, any>()
-
-      const { data: friendReqData } = await supabase
-        .from('friend_requests')
-        .select('*, sender:profiles!friend_requests_sender_id_profiles_fkey(id,username,full_name,avatar_url), receiver:profiles!friend_requests_receiver_id_profiles_fkey(id,username,full_name,avatar_url)')
-        .or(`sender_id.eq.${ownerId},receiver_id.eq.${ownerId}`)
-        .eq('status', 'accepted')
-      if (friendReqData) {
-        friendReqData.forEach((r: any) => {
-          const f = r.sender_id === ownerId ? r.receiver : r.sender
-          const friend = Array.isArray(f) ? f[0] : f
-          if (friend?.id) friendsMap.set(friend.id, friend)
-        })
-      }
-
-      const [{ data: followersData }, { data: followingData }] = await Promise.all([
-        supabase.from('follows').select('follower_id').eq('following_id', ownerId),
-        supabase.from('follows').select('following_id').eq('follower_id', ownerId),
-      ])
-      if (followersData && followingData) {
-        const followerIds = new Set(followersData.map((f: any) => f.follower_id))
-        const mutualIds = followingData.filter((f: any) => followerIds.has(f.following_id)).map((f: any) => f.following_id)
-        if (mutualIds.length > 0) {
-          const { data: mutualProfiles } = await supabase
-            .from('profiles').select('id,username,full_name,avatar_url')
-            .in('id', mutualIds)
-          if (mutualProfiles) {
-            mutualProfiles.forEach((p: any) => { if (!friendsMap.has(p.id)) friendsMap.set(p.id, p) })
-          }
-        }
-      }
-
-      setUserFriends(Array.from(friendsMap.values()))
+      const connectionsRes = await apiClient.get<{ data: any[] }>(`/api/users/${ownerId}/connections`)
+      setUserFriends(connectionsRes.data || [])
 
       const pv = profileData.profile_visibility || 'public'
       const postVis = profileData.post_visibility || 'public'
@@ -212,24 +181,11 @@ const UserProfilePage: React.FC = () => {
         setPosts([]); setLoading(false); return
       }
 
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select('*, author:profiles!posts_author_id_fkey(id,username,full_name,avatar_url,country)')
-        .eq('author_id', ownerId).eq('is_deleted', false)
-        .order('created_at', { ascending: false }).limit(20)
-      if (postsError) throw postsError
-
-      let postsWithLikes: PostWithAuthor[] = (postsData || []).map((p) => ({
+      const postsRes = await apiClient.get<{ data: any[] }>(`/api/users/${ownerId}/posts`, { limit: 20 })
+      const postsWithLikes: PostWithAuthor[] = (postsRes.data || []).map((p: any) => ({
         ...p,
         author: p.author || { id: ownerId, username: profileData.username, full_name: profileData.full_name, avatar_url: profileData.avatar_url, country: profileData.country },
-        isLiked: false,
       }))
-
-      if (user && postsWithLikes.length > 0) {
-        const { data: likesData } = await supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', postsWithLikes.map((p) => p.id))
-        const likedIds = new Set((likesData || []).map((l) => l.post_id))
-        postsWithLikes = postsWithLikes.map((p) => ({ ...p, isLiked: likedIds.has(p.id) }))
-      }
 
       const canSeePost = (authorId: string) => canViewPost(viewerId, authorId, postVis, mutual)
       setPosts(isOwn ? postsWithLikes : postsWithLikes.filter((p) => canSeePost(p.author_id)))
@@ -237,24 +193,10 @@ const UserProfilePage: React.FC = () => {
       if (user && !isOwn) {
         await checkFollowStatus()
         await fetchMutualFriends(user.id, ownerId)
-        let status = await friendRequestService.getFriendshipStatus(ownerId)
-        if (status === 'none') {
-          const { data: dc } = await supabase.from('friend_requests').select('sender_id,receiver_id,status')
-            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${ownerId}),and(sender_id.eq.${ownerId},receiver_id.eq.${user.id})`)
-            .order('created_at', { ascending: false })
-          if (dc?.length) {
-            const acc = dc.find((r: any) => r.status === 'accepted')
-            const pnd = dc.find((r: any) => r.status === 'pending')
-            if (acc) status = 'friends'
-            else if (pnd) status = pnd.sender_id === user.id ? 'pending_sent' : 'pending_received'
-          }
-        }
-        setFriendshipStatus(status)
-        if (status === 'pending_sent' || status === 'pending_received') {
-          const { data: reqData } = await supabase.from('friend_requests').select('id')
-            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${ownerId}),and(sender_id.eq.${ownerId},receiver_id.eq.${user.id})`)
-            .eq('status', 'pending').maybeSingle()
-          if (reqData) setFriendRequestId(reqData.id)
+        const statusRes = await apiClient.get<{ status: string; request_id: string | null }>(`/api/friends/status/${ownerId}`)
+        setFriendshipStatus(statusRes.status as FriendStatus)
+        if (statusRes.request_id) {
+          setFriendRequestId(statusRes.request_id)
         }
       }
     } catch (error: any) {
@@ -263,12 +205,11 @@ const UserProfilePage: React.FC = () => {
     } finally { setLoading(false) }
   }
 
-  const fetchMutualFriends = async (uid: string, tid: string) => {
+  const fetchMutualFriends = async (_uid: string, tid: string) => {
     try {
-      const { data: c } = await supabase.rpc('get_mutual_friends_count', { user1_id: uid, user2_id: tid })
-      setMutualFriendsCount(c || 0)
-      const { data: f } = await supabase.rpc('get_mutual_friends', { user1_id: uid, user2_id: tid, limit_count: 6 })
-      setMutualFriends(f || [])
+      const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(`/api/friends/mutual/${tid}`, { limit: 6 })
+      setMutualFriendsCount(res.count || 0)
+      setMutualFriends(res.data || [])
     } catch (e) { console.error('Mutual friends error:', e) }
   }
 
@@ -309,8 +250,8 @@ const UserProfilePage: React.FC = () => {
         const r = await friendRequestService.sendFriendRequest(profile.id)
         if (r.success) {
           setFriendshipStatus('pending_sent')
-          const { data } = await supabase.from('friend_requests').select('id').eq('sender_id', user.id).eq('receiver_id', profile.id).eq('status', 'pending').maybeSingle()
-          if (data) setFriendRequestId(data.id)
+          const statusRes = await apiClient.get<{ status: string; request_id: string | null }>(`/api/friends/status/${profile.id}`)
+          if (statusRes.request_id) setFriendRequestId(statusRes.request_id)
           toast.success(`Friend request sent to ${profile.full_name}`)
         } else if (r.error === 'Already friends') { setFriendshipStatus('friends'); toast.success('You are already friends!') }
         else if (r.error === 'Friend request already sent') { setFriendshipStatus('pending_sent'); toast.success('Friend request already sent') }
@@ -362,15 +303,15 @@ const UserProfilePage: React.FC = () => {
     if (!user) { toast.error('Please sign in to like posts'); return }
     const post = posts.find((p) => p.id === postId)
     if (!post) return
+    const wasLiked = post.isLiked
+    updatePost(postId, (p) => ({ ...p, isLiked: !wasLiked, likes_count: wasLiked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1 }))
     try {
-      if (post.isLiked) {
-        await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', user.id)
-        updatePost(postId, (p) => ({ ...p, isLiked: false, likes_count: Math.max(0, p.likes_count - 1) }))
-      } else {
-        await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
-        updatePost(postId, (p) => ({ ...p, isLiked: true, likes_count: p.likes_count + 1 }))
-      }
-    } catch { toast.error('Failed to update like') }
+      const res = await apiClient.post<{ liked: boolean; likes_count: number }>(`/api/posts/${postId}/like`)
+      updatePost(postId, (p) => ({ ...p, isLiked: res.liked, likes_count: res.likes_count }))
+    } catch {
+      updatePost(postId, (p) => ({ ...p, isLiked: wasLiked, likes_count: wasLiked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1) }))
+      toast.error('Failed to update like')
+    }
   }, [user, posts, updatePost])
 
   const handleComment = useCallback((id: string) => setShowCommentsFor((p) => (p === id ? null : id)), [])
@@ -378,7 +319,7 @@ const UserProfilePage: React.FC = () => {
 
   const handleDelete = useCallback(async (postId: string) => {
     if (!user || !profile || profile.id !== user.id) return
-    try { await supabase.from('posts').update({ is_deleted: true }).eq('id', postId).eq('author_id', user.id); setPosts((p) => p.filter((x) => x.id !== postId)); toast.success('Post deleted') }
+    try { await apiClient.delete(`/api/posts/${postId}`); setPosts((p) => p.filter((x) => x.id !== postId)); toast.success('Post deleted') }
     catch { toast.error('Failed to delete post') }
   }, [user, profile])
 

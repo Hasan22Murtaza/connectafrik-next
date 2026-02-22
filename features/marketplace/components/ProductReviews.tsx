@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Star, ThumbsUp, MessageSquare, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 
 interface Review {
@@ -67,50 +67,12 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
     try {
       setLoading(true)
 
-      const { data, error } = await supabase
-        .from('product_reviews')
-        .select(`
-          *,
-          user:profiles!product_reviews_user_id_fkey(id, username, full_name, avatar_url)
-        `)
-        .eq('product_id', productId)
-        .order('created_at', { ascending: false })
+      const res = await apiClient.get<{ data: Review[]; userReview: Review | null }>(
+        `/api/marketplace/${productId}/reviews`
+      )
 
-      // If table doesn't exist yet, just show empty state
-      if (error) {
-        if (error.message?.includes('relation "product_reviews" does not exist')) {
-          console.warn('product_reviews table not created yet. Run add-product-reviews.sql')
-          setReviews([])
-          setLoading(false)
-          return
-        }
-        throw error
-      }
-
-      // Check which reviews user marked as helpful
-      let helpfulReviewIds: string[] = []
-      if (user) {
-        const { data: helpfulData } = await supabase
-          .from('review_helpful')
-          .select('review_id')
-          .eq('user_id', user.id)
-
-        helpfulReviewIds = helpfulData?.map(h => h.review_id) || []
-      }
-
-      const reviewsWithHelpful = (data || []).map(review => ({
-        ...review,
-        user: Array.isArray(review.user) ? review.user[0] : review.user,
-        is_helpful: helpfulReviewIds.includes(review.id)
-      }))
-
-      setReviews(reviewsWithHelpful)
-
-      // Find user's own review
-      if (user) {
-        const myReview = reviewsWithHelpful.find(r => r.user_id === user.id)
-        setUserReview(myReview || null)
-      }
+      setReviews(res.data || [])
+      setUserReview(res.userReview || null)
     } catch (error: any) {
       console.error('Error fetching reviews:', error)
       toast.error('Failed to load reviews')
@@ -138,33 +100,13 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
 
     setIsSubmitting(true)
     try {
-      if (userReview) {
-        // Update existing review
-        const { error } = await supabase
-          .from('product_reviews')
-          .update({
-            rating,
-            review_text: reviewText,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userReview.id)
+      await apiClient.post(`/api/marketplace/${productId}/reviews`, {
+        rating,
+        review_text: reviewText,
+        ...(userReview ? { reviewId: userReview.id } : {}),
+      })
 
-        if (error) throw error
-        toast.success('Review updated successfully!')
-      } else {
-        // Create new review
-        const { error } = await supabase
-          .from('product_reviews')
-          .insert({
-            product_id: productId,
-            user_id: user.id,
-            rating,
-            review_text: reviewText
-          })
-
-        if (error) throw error
-        toast.success('Review posted successfully!')
-      }
+      toast.success(userReview ? 'Review updated successfully!' : 'Review posted successfully!')
 
       // Reset form and refresh reviews
       setShowWriteReview(false)
@@ -186,40 +128,22 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
     }
 
     try {
-      if (isCurrentlyHelpful) {
-        // Remove helpful mark
-        const { error } = await supabase
-          .from('review_helpful')
-          .delete()
-          .eq('review_id', reviewId)
-          .eq('user_id', user.id)
+      const res = await apiClient.post<{ helpful: boolean }>(
+        `/api/marketplace/${productId}/reviews/${reviewId}/helpful`
+      )
 
-        if (error) throw error
-      } else {
-        // Add helpful mark
-        const { error } = await supabase
-          .from('review_helpful')
-          .insert({
-            review_id: reviewId,
-            user_id: user.id
-          })
-
-        if (error) throw error
-      }
-
-      // Update local state
       setReviews(prev => prev.map(review => {
         if (review.id === reviewId) {
           return {
             ...review,
-            is_helpful: !isCurrentlyHelpful,
-            helpful_count: review.helpful_count + (isCurrentlyHelpful ? -1 : 1)
+            is_helpful: res.helpful,
+            helpful_count: review.helpful_count + (res.helpful ? 1 : -1),
           }
         }
         return review
       }))
 
-      toast.success(isCurrentlyHelpful ? 'Removed helpful mark' : 'Marked as helpful')
+      toast.success(res.helpful ? 'Marked as helpful' : 'Removed helpful mark')
     } catch (error: any) {
       console.error('Error toggling helpful:', error)
       toast.error('Failed to update helpful status')

@@ -52,7 +52,7 @@ const GroupsPage: React.FC = () => {
 
   // Fetch managed and joined groups separately
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       const loadGroups = async () => {
         await fetchMyGroups();
         const managed = await fetchManagedGroups();
@@ -60,7 +60,7 @@ const GroupsPage: React.FC = () => {
       };
       loadGroups();
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Derive joined groups synchronously — no extra render cycle
   const joinedGroups = useMemo(() => {
@@ -264,7 +264,7 @@ const GroupsPage: React.FC = () => {
       console.error("Error handling emoji reaction:", err);
       toast.error("Something went wrong");
     }
-  }, [user]);
+  }, [user?.id]);
 
   const handlePostComment = (postId: string) => {
     setShowCommentsFor(showCommentsFor === postId ? null : postId);

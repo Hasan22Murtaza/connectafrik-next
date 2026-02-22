@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api-client'
 
 export interface Story {
   id: string
@@ -28,6 +28,10 @@ export interface StoryGroup {
   latestStory: Story
 }
 
+interface ActiveStoriesResponse {
+  data: Story[]
+}
+
 export const useStories = () => {
   const { user } = useAuth()
   const [stories, setStories] = useState<Story[]>([])
@@ -37,25 +41,19 @@ export const useStories = () => {
 
   useEffect(() => {
     fetchStories()
-  }, [user])
+  }, [user?.id])
 
   const fetchStories = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .rpc('get_active_stories')
-
-      if (fetchError) throw fetchError
-
-      const storiesData = data || []
+      const response = await apiClient.get<ActiveStoriesResponse>('/api/stories')
+      const storiesData = response.data || []
       setStories(storiesData)
 
-      // Group stories by author
       const grouped = groupStoriesByAuthor(storiesData)
       setStoryGroups(grouped)
-
     } catch (error: any) {
       setError(error.message)
       console.error('Error fetching stories:', error)
@@ -81,19 +79,17 @@ export const useStories = () => {
       }
 
       grouped[story.author_id].stories.push(story)
-      
+
       if (!story.has_viewed) {
         grouped[story.author_id].hasUnviewed = true
       }
 
-      // Keep the latest story as the representative
       if (new Date(story.created_at) > new Date(grouped[story.author_id].latestStory.created_at)) {
         grouped[story.author_id].latestStory = story
       }
     })
 
-    // Sort by latest story creation time
-    return Object.values(grouped).sort((a, b) => 
+    return Object.values(grouped).sort((a, b) =>
       new Date(b.latestStory.created_at).getTime() - new Date(a.latestStory.created_at).getTime()
     )
   }
@@ -107,24 +103,10 @@ export const useStories = () => {
     try {
       if (!user) throw new Error('User not authenticated')
 
-      const { data, error } = await supabase
-        .from('stories')
-        .insert({
-          author_id: user.id,
-          media_url: storyData.media_url,
-          media_type: storyData.media_type,
-          text_overlay: storyData.text_overlay,
-          background_color: storyData.background_color || '#000000'
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Refresh stories
+      await apiClient.post('/api/stories', storyData)
       await fetchStories()
 
-      return { data, error: null }
+      return { data: true, error: null }
     } catch (error: any) {
       console.error('Error creating story:', error)
       return { data: null, error: error.message }
@@ -135,23 +117,18 @@ export const useStories = () => {
     try {
       if (!user) return
 
-      const { error } = await supabase
-        .rpc('mark_story_viewed', { story_id_param: storyId })
+      await apiClient.post(`/api/stories/${storyId}/view`)
 
-      if (error) throw error
-
-      // Update local state
-      setStories(prev => prev.map(story => 
-        story.id === storyId 
+      setStories(prev => prev.map(story =>
+        story.id === storyId
           ? { ...story, has_viewed: true, view_count: story.view_count + 1 }
           : story
       ))
 
-      // Update story groups
       const updatedGroups = storyGroups.map(group => ({
         ...group,
-        stories: group.stories.map(story => 
-          story.id === storyId 
+        stories: group.stories.map(story =>
+          story.id === storyId
             ? { ...story, has_viewed: true, view_count: story.view_count + 1 }
             : story
         ),
@@ -159,7 +136,6 @@ export const useStories = () => {
       }))
 
       setStoryGroups(updatedGroups)
-
     } catch (error: any) {
       console.error('Error marking story as viewed:', error)
     }
@@ -169,15 +145,7 @@ export const useStories = () => {
     try {
       if (!user) throw new Error('User not authenticated')
 
-      const { error } = await supabase
-        .from('stories')
-        .delete()
-        .eq('id', storyId)
-        .eq('author_id', user.id)
-
-      if (error) throw error
-
-      // Refresh stories
+      await apiClient.delete(`/api/stories/${storyId}`)
       await fetchStories()
 
       return { error: null }

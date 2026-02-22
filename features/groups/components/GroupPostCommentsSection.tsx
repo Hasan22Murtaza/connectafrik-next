@@ -8,18 +8,20 @@ import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
 interface GroupPostCommentsSectionProps {
+  groupId: string
   groupPostId: string
   isOpen: boolean
   onClose: () => void
 }
 
 const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
+  groupId,
   groupPostId,
   isOpen,
   onClose
 }) => {
   const { user } = useAuth()
-  const { comments, loading, addComment, toggleLike, deleteComment } = useGroupPostComments(groupPostId)
+  const { comments, loading, addComment, toggleLike, deleteComment } = useGroupPostComments(groupId, groupPostId)
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState('')

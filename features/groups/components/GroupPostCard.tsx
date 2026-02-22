@@ -68,7 +68,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
     reactions,
     loading: reactionsLoading,
     refetch: refetchReactions,
-  } = useGroupPostReactions(post.id)
+  } = useGroupPostReactions(post.group_id, post.id)
 
   const isAuthor = user?.id === post.author_id
 
@@ -250,6 +250,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
       {/* Comments Section */}
       {showCommentsFor && (
         <GroupPostCommentsSection
+          groupId={post.group_id}
           groupPostId={post.id}
           isOpen={true}
           onClose={() => onToggleComments?.()}

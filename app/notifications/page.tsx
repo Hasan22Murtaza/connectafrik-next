@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
 
 type FilterType = 'all' | 'unread' | NotificationType
@@ -19,55 +20,40 @@ const NotificationsPage: React.FC = () => {
   const [filter, setFilter] = useState<FilterType>('all')
   const [stats, setStats] = useState({ total: 0, unread: 0 })
 
-  // Fetch notifications from database
   const fetchNotifications = useCallback(async () => {
     if (!user) return
 
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(100)
+      const res = await apiClient.get<{ data: any[] }>('/api/notifications', { limit: 100 })
+      const data = res?.data ?? []
 
-      if (error) {
-        console.error('Error fetching notifications:', error)
-        toast.error('Failed to load notifications')
-        return
-      }
+      const transformedNotifications: Notification[] = data.map((record: any) => {
+        const payload = record.payload || {}
+        return {
+          id: record.id,
+          user_id: record.user_id,
+          type: record.type as Notification['type'],
+          title: payload.title || record.title || getDefaultTitle(record.type),
+          message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
+          data: payload.data || payload,
+          is_read: record.is_read || false,
+          created_at: record.created_at,
+          updated_at: record.updated_at || record.created_at,
+        }
+      })
 
-      if (data) {
-        // Transform database records to Notification format
-        const transformedNotifications: Notification[] = data.map((record: any) => {
-          const payload = record.payload || {}
-          return {
-            id: record.id,
-            user_id: record.user_id,
-            type: record.type as Notification['type'],
-            title: payload.title || record.title || getDefaultTitle(record.type),
-            message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
-            data: payload.data || payload,
-            is_read: record.is_read || false,
-            created_at: record.created_at,
-            updated_at: record.updated_at || record.created_at,
-          }
-        })
-
-        setNotifications(transformedNotifications)
-        
-        // Calculate stats
-        const unreadCount = transformedNotifications.filter(n => !n.is_read).length
-        setStats({ total: transformedNotifications.length, unread: unreadCount })
-      }
+      setNotifications(transformedNotifications)
+      
+      const unreadCount = transformedNotifications.filter(n => !n.is_read).length
+      setStats({ total: transformedNotifications.length, unread: unreadCount })
     } catch (error) {
       console.error('Error fetching notifications:', error)
       toast.error('Failed to load notifications')
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user?.id])
 
   // Helper function to get default title based on notification type
   const getDefaultTitle = (type: string): string => {
@@ -118,17 +104,7 @@ const NotificationsPage: React.FC = () => {
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id)
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Error marking notification as read:', error)
-        toast.error('Failed to mark notification as read')
-        return
-      }
+      await apiClient.patch(`/api/notifications/${id}/read`, {})
 
       setNotifications(prev =>
         prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
@@ -141,7 +117,6 @@ const NotificationsPage: React.FC = () => {
     }
   }
 
-  // Mark all notifications as read
   const markAllAsRead = async () => {
     if (!user) return
 
@@ -152,25 +127,12 @@ const NotificationsPage: React.FC = () => {
         return
       }
 
-      // Mark all unread notifications as read
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false)
+      await apiClient.patch('/api/notifications/read-all', {})
 
-      if (error) {
-        console.error('Error marking all notifications as read:', error)
-        toast.error('Failed to mark all notifications as read')
-        return
-      }
-
-      // Update local state
       setNotifications(prev =>
         prev.map(n => ({ ...n, is_read: true }))
       )
       
-      // Update stats
       setStats(prev => ({ ...prev, unread: 0 }))
       toast.success('All notifications marked as read')
     } catch (error) {
@@ -235,7 +197,7 @@ const NotificationsPage: React.FC = () => {
         supabase.removeChannel(channel)
       }
     }
-  }, [user, fetchNotifications])
+  }, [user?.id, fetchNotifications])
 
   if (!user) {
     return (

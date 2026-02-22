@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import Link from 'next/link'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useRouter } from 'next/navigation'
@@ -29,41 +30,29 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50)
+      const res = await apiClient.get<{ data: any[] }>('/api/notifications', { limit: 50 })
+      const data = res?.data ?? []
 
-      if (error) {
-        console.error('Error fetching notifications:', error)
-        toast.error('Failed to load notifications')
-        return
-      }
+      const transformedNotifications: Notification[] = data.map((record: any) => {
+        const payload = record.payload || record.data || {}
+        return {
+          id: record.id,
+          user_id: record.user_id,
+          type: record.type as Notification['type'],
+          title: payload.title || record.title || getDefaultTitle(record.type),
+          message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
+          data: payload.data || payload,
+          is_read: record.is_read || false,
+          created_at: record.created_at,
+          updated_at: record.updated_at || record.created_at,
+        }
+      })
 
-      if (data) {
-        const transformedNotifications: Notification[] = data.map((record: any) => {
-          const payload = record.payload || record.data || {}
-          return {
-            id: record.id,
-            user_id: record.user_id,
-            type: record.type as Notification['type'],
-            title: payload.title || record.title || getDefaultTitle(record.type),
-            message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
-            data: payload.data || payload,
-            is_read: record.is_read || false,
-            created_at: record.created_at,
-            updated_at: record.updated_at || record.created_at,
-          }
-        })
-
-        setNotifications(transformedNotifications)
-        
-        const unreadCount = transformedNotifications.filter(n => !n.is_read).length
-        setStats({ unread: unreadCount })
-        onUnreadCountChange?.(unreadCount)
-      }
+      setNotifications(transformedNotifications)
+      
+      const unreadCount = transformedNotifications.filter(n => !n.is_read).length
+      setStats({ unread: unreadCount })
+      onUnreadCountChange?.(unreadCount)
     } catch (error) {
       console.error('Error fetching notifications:', error)
       toast.error('Failed to load notifications')
@@ -135,17 +124,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id)
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Error marking notification as read:', error)
-        toast.error('Failed to mark notification as read')
-        return
-      }
+      await apiClient.patch(`/api/notifications/${id}/read`, {})
 
       setNotifications(prev =>
         prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
@@ -167,17 +146,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       const unreadNotifications = notifications.filter(n => !n.is_read)
       if (unreadNotifications.length === 0) return
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true})
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-
-      if (error) {
-        console.error('Error marking all notifications as read:', error)
-        toast.error('Failed to mark all notifications as read')
-        return
-      }
+      await apiClient.patch('/api/notifications/read-all', {})
 
       setNotifications(prev =>
         prev.map(n => ({ ...n, is_read: true }))
@@ -195,18 +164,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (!user) return
-
       try {
-        const { data, error } = await supabase
-          .from('notifications')
-          .select('id, is_read')
-          .eq('user_id', user.id)
-          .eq('is_read', false)
-
-        if (!error && data) {
-          const unreadCount = data.length
-          onUnreadCountChange?.(unreadCount)
-        }
+        const res = await apiClient.get<{ data: { unread_count: number } }>('/api/notifications/unread-count')
+        onUnreadCountChange?.(res?.data?.unread_count ?? 0)
       } catch (error) {
         console.error('Error fetching unread count:', error)
       }
@@ -233,18 +193,11 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           },
           () => {
             fetchNotifications()
-            if (user) {
-              supabase
-                .from('notifications')
-                .select('id, is_read')
-                .eq('user_id', user.id)
-                .eq('is_read', false)
-                .then(({ data, error }) => {
-                  if (!error && data) {
-                    onUnreadCountChange?.(data.length)
-                  }
-                })
-            }
+            apiClient.get<{ data: { unread_count: number } }>('/api/notifications/unread-count')
+              .then((res) => {
+                onUnreadCountChange?.(res?.data?.unread_count ?? 0)
+              })
+              .catch(() => {})
           }
         )
         .subscribe()

@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import CreateProductModal from "@/features/marketplace/components/CreateProductModal-v2";
 import ProductCard from "@/features/marketplace/components/ProductCard";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import { Product } from "@/shared/types";
 import {
   ArrowLeft,
@@ -92,14 +92,8 @@ const MarketplacePage: React.FC = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_available", true)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setProducts(data || []);
+      const res = await apiClient.get<{ data: Product[] }>("/api/marketplace");
+      setProducts(res.data || []);
     } catch {
       toast.error("Failed to load products");
     } finally {
@@ -142,31 +136,12 @@ const MarketplacePage: React.FC = () => {
       try {
         const product = products.find(p => p.id === productId)
         if (!product) return
-  
-        if (product.is_saved) {
-          // Unsave
-          await supabase
-            .from('product_saves')
-            .delete()
-            .eq('product_id', productId)
-            .eq('user_id', user.id)
-  
-          toast.success('Product removed from saved items')
-        } else {
-          // Save
-          await supabase
-            .from('product_saves')
-            .insert({
-              product_id: productId,
-              user_id: user.id
-            })
-  
-          toast.success('Product saved!')
-        }
-  
-        // Update local state
+
+        const res = await apiClient.post<{ saved: boolean }>(`/api/marketplace/${productId}/save`)
+        toast.success(res.saved ? 'Product saved!' : 'Product removed from saved items')
+
         setProducts(products.map(p =>
-          p.id === productId ? { ...p, is_saved: !p.is_saved } : p
+          p.id === productId ? { ...p, is_saved: res.saved } : p
         ))
       } catch (error: any) {
         console.error('Error saving product:', error)

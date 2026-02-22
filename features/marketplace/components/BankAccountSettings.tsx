@@ -35,7 +35,7 @@ const BankAccountSettings: React.FC = () => {
   useEffect(() => {
     loadBanks()
     loadUserBankDetails()
-  }, [user])
+  }, [user?.id])
 
   const loadBanks = async () => {
     try {

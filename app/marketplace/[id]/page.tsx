@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import { Product } from "@/shared/types";
 import toast from "react-hot-toast";
 import ProductReviews from "@/features/marketplace/components/ProductReviews";
@@ -34,7 +34,6 @@ const ProductDetailPage: React.FC = () => {
   useEffect(() => {
     if (id) {
       fetchProduct();
-      checkIfSaved();
       updateViewCount();
     }
   }, [id, user]);
@@ -42,41 +41,12 @@ const ProductDetailPage: React.FC = () => {
   const fetchProduct = async () => {
     try {
       setLoading(true);
-      console.log("Fetching product with ID:", id);
 
-      // Step 1: Fetch product
-      const { data: productData, error: productError } = await supabase
-        .from("products")
-        .select("*")
-        .eq("id", id)
-        .single();
+      const res = await apiClient.get<{ data: Product }>(`/api/marketplace/${id}`);
+      const productData = res.data;
 
-      if (productError) {
-        console.error("Product query error:", productError);
-        throw productError;
-      }
-
-      console.log("Product fetched:", productData);
-
-      // Step 2: Fetch seller profile separately
-      if (productData.seller_id) {
-        const { data: sellerData, error: sellerError } = await supabase
-          .from("profiles")
-          .select("id, username, full_name, avatar_url, bio")
-          .eq("id", productData.seller_id)
-          .single();
-
-        if (!sellerError && sellerData) {
-          // Combine product and seller data
-          productData.seller = sellerData;
-          console.log("Seller data added:", sellerData);
-        } else {
-          console.warn("Could not fetch seller data:", sellerError);
-        }
-      }
-
-      console.log("Product loaded successfully:", productData);
       setProduct(productData);
+      setIsSaved(!!productData.is_saved);
       if (productData.images && productData.images.length > 0) {
         setSelectedImage(0);
       }
@@ -90,31 +60,9 @@ const ProductDetailPage: React.FC = () => {
     }
   };
 
-  const checkIfSaved = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("product_saves")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("product_id", id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Error checking saved status:", error);
-        return;
-      }
-
-      if (data) setIsSaved(true);
-    } catch (error) {
-      console.error("Caught error checking saved status:", error);
-    }
-  };
-
   const updateViewCount = async () => {
     try {
-      await supabase.rpc("increment_product_views", { product_id: id });
+      await apiClient.post(`/api/marketplace/${id}/view`);
     } catch (error) {
       console.error("Error updating view count:", error);
     }
@@ -127,23 +75,9 @@ const ProductDetailPage: React.FC = () => {
     }
 
     try {
-      if (isSaved) {
-        await supabase
-          .from("product_saves")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("product_id", id);
-
-        setIsSaved(false);
-        toast.success("Removed from saved items");
-      } else {
-        await supabase
-          .from("product_saves")
-          .insert({ user_id: user.id, product_id: id });
-
-        setIsSaved(true);
-        toast.success("Added to saved items");
-      }
+      const res = await apiClient.post<{ saved: boolean }>(`/api/marketplace/${id}/save`);
+      setIsSaved(res.saved);
+      toast.success(res.saved ? "Added to saved items" : "Removed from saved items");
     } catch (error) {
       toast.error("Failed to update saved status");
     }
