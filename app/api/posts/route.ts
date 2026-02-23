@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || String(PAGE_SIZE), 10) || PAGE_SIZE, 1), 50)
     const category = searchParams.get('category') || undefined
     const subcategory = searchParams.get('subcategory') || undefined
 
@@ -57,8 +58,8 @@ export async function GET(request: NextRequest) {
       query = query.contains('tags', [subcategory])
     }
 
-    const from = page * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
+    const from = page * limit
+    const to = from + limit - 1
     query = query.range(from, to)
 
     const { data: postsData, error: postsError } = await query
@@ -188,8 +189,8 @@ export async function GET(request: NextRequest) {
     return jsonResponse({
       data: result,
       page,
-      pageSize: PAGE_SIZE,
-      hasMore: posts.length === PAGE_SIZE,
+      pageSize: limit,
+      hasMore: posts.length === limit,
     })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch posts', 500)
