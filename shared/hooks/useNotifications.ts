@@ -10,10 +10,10 @@ export const useNotifications = () => {
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       initializeNotifications()
     }
-  }, [user])
+  }, [user?.id])
 
   const initializeNotifications = async () => {
     try {

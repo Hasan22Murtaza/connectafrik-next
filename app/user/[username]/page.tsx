@@ -1,63 +1,123 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
-  UserPlus,
-  UserCheck,
-  MessageCircle,
-  Phone,
-  Video,
-  MoreHorizontal,
-  MapPin,
-  Calendar,
-  Users,
-  MessageSquare,
+  UserPlus, UserCheck, MessageCircle, Phone, Video, MoreHorizontal,
+  MapPin, Calendar, Users,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { followUser, unfollowUser, checkIsFollowing, checkIsMutual } from '@/features/social/services/followService'
-import { supabase } from '@/lib/supabase'
+import { friendRequestService } from '@/features/social/services/friendRequestService'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
 import { UserProfileWithVisibility, MutualFriend } from '@/shared/types'
 import {
-  canViewProfile,
-  canViewPost,
-  canComment,
-  canFollow,
-  canSendMessage,
-  getVisibleProfileFields,
-  type VisibleProfileFieldsInput,
+  canViewProfile, canViewPost, canComment, canFollow, canSendMessage,
+  getVisibleProfileFields, type VisibleProfileFieldsInput,
 } from '@/shared/utils/visibilityUtils'
-import { PostCard } from '@/features/social/components/PostCard'
-import CommentsSection from '@/features/social/components/CommentsSection'
 import ShareModal from '@/features/social/components/ShareModal'
 import { useMembers } from '@/shared/hooks/useMembers'
-import { getReactionTypeFromEmoji } from '@/shared/utils/reactionUtils'
+import { sendNotification } from '@/shared/services/notificationService'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
+import PostsTab from './components/PostsTab'
+import AboutTab from './components/AboutTab'
+import PhotosTab from './components/PhotosTab'
+import FriendsTab from './components/FriendsTab'
+import ReelsTab from './components/ReelsTab'
 
 interface PostWithAuthor {
-  id: string
-  title: string
-  content: string
+  id: string; title: string; content: string
   category: 'politics' | 'culture' | 'general'
-  author_id: string
-  created_at: string
-  likes_count: number
-  comments_count: number
-  shares_count: number
-  views_count: number
+  author_id: string; created_at: string
+  likes_count: number; comments_count: number; shares_count: number; views_count: number
   media_urls: string[] | null
-  author: {
-    id: string
-    username: string
-    full_name: string
-    avatar_url: string | null
-    country: string | null
-  }
+  author: { id: string; username: string; full_name: string; avatar_url: string | null; country: string | null }
   isLiked?: boolean
 }
+
+type TabId = 'posts' | 'about' | 'photos' | 'friends' | 'reels'
+type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends'
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'posts', label: 'Posts' },
+  { id: 'about', label: 'About' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'reels', label: 'Reels' },
+]
+
+const fmt = (n: number) => {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}K`
+  return String(n)
+}
+
+const isVideo = (url: string) => /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)($|\?)/i.test(url)
+
+const Spinner = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <div className={`${className} border-2 border-current border-t-transparent rounded-full animate-spin`} />
+)
+
+const Avatar = ({ src, name, size = 'md' }: { src?: string | null; name: string; size?: 'sm' | 'md' | 'lg' }) => {
+  const sizes = { sm: 'w-7 h-7 text-[10px]', md: 'w-14 h-14 text-lg', lg: 'w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36 text-4xl sm:text-5xl' }
+  const cls = sizes[size]
+  return src ? (
+    <img src={src} alt={name} className={`${cls} rounded-full object-cover`} />
+  ) : (
+    <div className={`${cls} rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center`}>
+      <span className="font-bold text-gray-500">{name.charAt(0).toUpperCase()}</span>
+    </div>
+  )
+}
+
+const DetailRow = ({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) => (
+  <div className="flex items-center gap-3 text-[15px] text-gray-700">
+    <Icon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+    <span>{children}</span>
+  </div>
+)
+
+const ProfileSkeleton = () => (
+  <div className="min-h-screen bg-[#f0f2f5]">
+    <div className="max-w-[940px] mx-auto bg-white shadow-sm border-b border-gray-200">
+      <div className="px-4 sm:px-6 py-5">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-center sm:items-start">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-300 animate-pulse" />
+          <div className="flex-1 space-y-3 text-center sm:text-left w-full">
+            <div className="h-8 w-56 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
+            <div className="h-4 w-44 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
+            <div className="h-4 w-72 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2 px-4 sm:px-6 py-3 border-t border-gray-200">
+        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-8 w-16 bg-gray-200 rounded animate-pulse" />)}
+      </div>
+    </div>
+    <div className="max-w-[940px] mx-auto px-4 mt-4 flex flex-col lg:flex-row gap-4">
+      <div className="w-full lg:w-[300px]">
+        <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${90 - i * 15}%` }} />)}
+        </div>
+      </div>
+      <div className="flex-1 space-y-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+            <div className="space-y-2 flex-1">
+              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+              <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+          <div className="h-20 w-full bg-gray-200 rounded animate-pulse" />
+        </div>
+      </div>
+    </div>
+  </div>
+)
 
 const UserProfilePage: React.FC = () => {
   const params = useParams()
@@ -78,31 +138,32 @@ const UserProfilePage: React.FC = () => {
   const [showMenu, setShowMenu] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
+  const [activeTab, setActiveTab] = useState<TabId>('posts')
+  const [userFriends, setUserFriends] = useState<any[]>([])
+  const [friendshipStatus, setFriendshipStatus] = useState<FriendStatus>('none')
+  const [friendRequestId, setFriendRequestId] = useState<string | null>(null)
+  const [friendLoading, setFriendLoading] = useState(false)
 
-  useEffect(() => {
-    if (username) {
-      fetchUserProfile()
-    }
-  }, [username])
+  const allPhotos = useMemo(() =>
+    posts.filter((p) => p.media_urls?.length).flatMap((p) => (p.media_urls || []).map((url) => ({ url, postId: p.id }))),
+    [posts]
+  )
 
-  useEffect(() => {
-    if (profile && user && user.id !== profile.id) {
-      checkFollowStatus()
-    }
-  }, [profile, user])
+  const allVideos = useMemo(() =>
+    posts.filter((p) => p.media_urls?.some(isVideo)).flatMap((p) =>
+      (p.media_urls || []).filter(isVideo).map((url) => ({ url, postId: p.id, content: p.content, author: p.author }))
+    ), [posts]
+  )
+
+  useEffect(() => { if (username) fetchUserProfile() }, [username])
+  useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
 
   const fetchUserProfile = async () => {
     try {
       setLoading(true)
-      
-      // Fetch user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', username)
-        .single()
-
-      if (profileError) throw profileError
+      const profileRes = await apiClient.get<{ data: any }>(`/api/users/${username}`)
+      const profileData = profileRes.data
+      if (!profileData) throw new Error('Not found')
       setProfile(profileData)
 
       const viewerId = user?.id ?? null
@@ -111,342 +172,187 @@ const UserProfilePage: React.FC = () => {
       const mutual = !isOwn && viewerId ? await checkIsMutual(viewerId, ownerId) : false
       setIsMutual(mutual)
 
+      const connectionsRes = await apiClient.get<{ data: any[] }>(`/api/users/${ownerId}/connections`)
+      setUserFriends(connectionsRes.data || [])
+
       const pv = profileData.profile_visibility || 'public'
       const postVis = profileData.post_visibility || 'public'
       if (!isOwn && !canViewProfile(viewerId, ownerId, pv, mutual)) {
-        setPosts([])
-        setLoading(false)
-        return
+        setPosts([]); setLoading(false); return
       }
 
-      // Fetch user posts with author for PostCard
-      const { data: postsData, error: postsError } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          author:profiles!posts_author_id_fkey(
-            id,
-            username,
-            full_name,
-            avatar_url,
-            country
-          )
-        `)
-        .eq('author_id', profileData.id)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(20)
-
-      if (postsError) throw postsError
-
-      let postsWithLikes: PostWithAuthor[] = (postsData || []).map((p) => ({
+      const postsRes = await apiClient.get<{ data: any[] }>(`/api/users/${ownerId}/posts`, { limit: 20 })
+      const postsWithLikes: PostWithAuthor[] = (postsRes.data || []).map((p: any) => ({
         ...p,
-        author: p.author || {
-          id: profileData.id,
-          username: profileData.username,
-          full_name: profileData.full_name,
-          avatar_url: profileData.avatar_url,
-          country: profileData.country,
-        },
-        isLiked: false,
+        author: p.author || { id: ownerId, username: profileData.username, full_name: profileData.full_name, avatar_url: profileData.avatar_url, country: profileData.country },
       }))
 
-      if (user && postsWithLikes.length > 0) {
-        const { data: likesData } = await supabase
-          .from('likes')
-          .select('post_id')
-          .eq('user_id', user.id)
-          .in('post_id', postsWithLikes.map((p) => p.id))
-        const likedPostIds = new Set((likesData || []).map((l) => l.post_id))
-        postsWithLikes = postsWithLikes.map((p) => ({ ...p, isLiked: likedPostIds.has(p.id) }))
-      }
+      const canSeePost = (authorId: string) => canViewPost(viewerId, authorId, postVis, mutual)
+      setPosts(isOwn ? postsWithLikes : postsWithLikes.filter((p) => canSeePost(p.author_id)))
 
-      const canSeePost = (authorId: string) =>
-        canViewPost(viewerId, authorId, postVis, mutual)
-      const visiblePosts = isOwn ? postsWithLikes : postsWithLikes.filter((p) => canSeePost(p.author_id))
-      setPosts(visiblePosts)
-
-      if (user && user.id !== profileData.id) {
+      if (user && !isOwn) {
         await checkFollowStatus()
-        await fetchMutualFriends(user.id, profileData.id)
+        await fetchMutualFriends(user.id, ownerId)
+        const statusRes = await apiClient.get<{ status: string; request_id: string | null }>(`/api/friends/status/${ownerId}`)
+        setFriendshipStatus(statusRes.status as FriendStatus)
+        if (statusRes.request_id) {
+          setFriendRequestId(statusRes.request_id)
+        }
       }
-
     } catch (error: any) {
-      console.error('Error fetching user profile:', error)
-      toast.error('User not found')
-      router.push('/feed')
-    } finally {
-      setLoading(false)
-    }
+      console.error('Error fetching profile:', error)
+      toast.error('User not found'); router.push('/feed')
+    } finally { setLoading(false) }
   }
 
-  const fetchMutualFriends = async (currentUserId: string, targetUserId: string) => {
+  const fetchMutualFriends = async (_uid: string, tid: string) => {
     try {
-      // Get mutual friends count
-      const { data: countData, error: countError } = await supabase.rpc('get_mutual_friends_count', {
-        user1_id: currentUserId,
-        user2_id: targetUserId
-      })
-
-      if (countError) throw countError
-      setMutualFriendsCount(countData || 0)
-
-      // Get mutual friends list (limit to 6 for display)
-      const { data: friendsData, error: friendsError } = await supabase.rpc('get_mutual_friends', {
-        user1_id: currentUserId,
-        user2_id: targetUserId,
-        limit_count: 6
-      })
-
-      if (friendsError) throw friendsError
-      setMutualFriends(friendsData || [])
-    } catch (error) {
-      console.error('Error fetching mutual friends:', error)
-    }
+      const res = await apiClient.get<{ count: number; data: MutualFriend[] }>(`/api/friends/mutual/${tid}`, { limit: 6 })
+      setMutualFriendsCount(res.count || 0)
+      setMutualFriends(res.data || [])
+    } catch (e) { console.error('Mutual friends error:', e) }
   }
 
   const checkFollowStatus = async () => {
     if (!user || !profile) return
-    
-    try {
-      const following = await checkIsFollowing(user.id, profile.id)
-      setIsFollowing(following)
-    } catch (error) {
-      console.error('Error checking follow status:', error)
-    }
+    try { setIsFollowing(await checkIsFollowing(user.id, profile.id)) } catch (e) { console.error(e) }
   }
 
   const handleFollow = async () => {
     if (!user || !profile) return
-    
+    setFollowLoading(true)
     try {
-      setFollowLoading(true)
-      
       if (isFollowing) {
-        const success = await unfollowUser(user.id, profile.id)
-        if (success) {
+        if (await unfollowUser(user.id, profile.id)) {
           setIsFollowing(false)
-          setProfile(prev => prev ? { ...prev, followers_count: prev.followers_count - 1 } : null)
+          setProfile((p) => p ? { ...p, followers_count: p.followers_count - 1 } : null)
           toast.success(`Untapped from ${profile.full_name}`)
-        } else {
-          toast.error('Failed to untap')
-        }
+        } else toast.error('Failed to untap')
       } else {
-        const success = await followUser(user.id, profile.id)
-        if (success) {
+        if (await followUser(user.id, profile.id)) {
           setIsFollowing(true)
-          setProfile(prev => prev ? { ...prev, followers_count: prev.followers_count + 1 } : null)
+          setProfile((p) => p ? { ...p, followers_count: p.followers_count + 1 } : null)
           toast.success(`Tapped in to ${profile.full_name}`)
         } else {
-          // Check if already following (failed because duplicate)
-          const stillFollowing = await checkIsFollowing(user.id, profile.id)
-          if (stillFollowing) {
-            setIsFollowing(true)
-            toast.success('Already tapped in!')
-          } else {
-            toast.error('Failed to tap in')
-          }
+          if (await checkIsFollowing(user.id, profile.id)) { setIsFollowing(true); toast.success('Already tapped in!') }
+          else toast.error('Failed to tap in')
         }
       }
-    } catch (error: any) {
-      console.error('Error tapping in/out:', error)
-      toast.error(error.message || 'Something went wrong')
-    } finally {
-      setFollowLoading(false)
-    }
+    } catch (e: any) { toast.error(e.message || 'Something went wrong') }
+    finally { setFollowLoading(false) }
+  }
+
+  const handleFriendRequest = async () => {
+    if (!profile || !user) return
+    setFriendLoading(true)
+    try {
+      if (friendshipStatus === 'none') {
+        const r = await friendRequestService.sendFriendRequest(profile.id)
+        if (r.success) {
+          setFriendshipStatus('pending_sent')
+          const statusRes = await apiClient.get<{ status: string; request_id: string | null }>(`/api/friends/status/${profile.id}`)
+          if (statusRes.request_id) setFriendRequestId(statusRes.request_id)
+          toast.success(`Friend request sent to ${profile.full_name}`)
+        } else if (r.error === 'Already friends') { setFriendshipStatus('friends'); toast.success('You are already friends!') }
+        else if (r.error === 'Friend request already sent') { setFriendshipStatus('pending_sent'); toast.success('Friend request already sent') }
+        else toast.error(r.error || 'Failed to send friend request')
+      } else if (friendshipStatus === 'pending_sent' && friendRequestId) {
+        const r = await friendRequestService.cancelFriendRequest(friendRequestId)
+        if (r.success) { setFriendshipStatus('none'); setFriendRequestId(null); toast.success('Friend request cancelled') }
+        else toast.error(r.error || 'Failed to cancel request')
+      } else if (friendshipStatus === 'pending_received' && friendRequestId) {
+        const r = await friendRequestService.acceptFriendRequest(friendRequestId)
+        if (r.success) { setFriendshipStatus('friends'); setFriendRequestId(null); toast.success(`You and ${profile.full_name} are now friends!`) }
+        else toast.error(r.error || 'Failed to accept request')
+      } else if (friendshipStatus === 'friends') {
+        const r = await friendRequestService.removeFriend(profile.id)
+        if (r.success) { setFriendshipStatus('none'); toast.success(`Removed ${profile.full_name} from friends`) }
+        else toast.error(r.error || 'Failed to remove friend')
+      }
+    } catch { toast.error('Something went wrong') }
+    finally { setFriendLoading(false) }
   }
 
   const handleStartChat = async () => {
     if (!profile || !user) return
-    
     try {
-      const chatParticipant = {
-        id: profile.id,
-        name: profile.full_name,
-        avatarUrl: profile.avatar_url || undefined
-      }
-      
-      const threadId = await startChatWithMembers([chatParticipant], { 
-        participant_ids: [profile.id], 
-        openInDock: true 
-      })
-      
-      if (threadId) {
-        openThread(threadId)
-        toast.success(`Chat opened with ${profile.full_name}`)
-      }
-    } catch (error) {
-      console.error('Error starting chat:', error)
-      toast.error('Failed to start chat')
-    }
+      const tid = await startChatWithMembers([{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }], { participant_ids: [profile.id], openInDock: true })
+      if (tid) { openThread(tid); toast.success(`Chat opened with ${profile.full_name}`) }
+    } catch { toast.error('Failed to start chat') }
   }
 
-  const handleCall = async (isVideoCall: boolean = false) => {
+  const handleCall = async (isVideoCall = false) => {
     if (!profile || !user) return
-    
     try {
-      // First create a chat thread, then start the call
-      const chatParticipant = {
-        id: profile.id,
-        name: profile.full_name,
-        avatarUrl: profile.avatar_url || undefined
-      }
-      
-      const threadId = await startChatWithMembers([chatParticipant], { 
-        participant_ids: [profile.id], 
-        openInDock: true 
-      })
-      
-      if (threadId) {
-        await startCall(threadId, isVideoCall ? 'video' : 'audio')
-        toast.success(`${isVideoCall ? 'Video' : 'Audio'} call started with ${profile.full_name}`)
-      } else {
-        toast.error('Failed to create chat thread for call')
-      }
-    } catch (error) {
-      console.error('Error starting call:', error)
-      toast.error('Failed to start call. Please try again.')
-    }
+      const tid = await startChatWithMembers([{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }], { participant_ids: [profile.id], openInDock: true })
+      if (tid) { await startCall(tid, isVideoCall ? 'video' : 'audio'); toast.success(`${isVideoCall ? 'Video' : 'Audio'} call started`) }
+      else toast.error('Failed to create chat thread')
+    } catch { toast.error('Failed to start call') }
   }
 
-  const updatePostInList = useCallback((postId: string, updater: (p: PostWithAuthor) => PostWithAuthor) => {
-    setPosts((prev) => prev.map((p) => (p.id === postId ? updater(p) : p)))
+  const updatePost = useCallback((id: string, fn: (p: PostWithAuthor) => PostWithAuthor) => {
+    setPosts((prev) => prev.map((p) => (p.id === id ? fn(p) : p)))
   }, [])
+
+  const handleUserLikesCountChange = useCallback((postId: string, delta: number) => {
+    updatePost(postId, (p) => ({ ...p, likes_count: Math.max(0, (p.likes_count || 0) + delta) }))
+  }, [updatePost])
+  const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: handleUserLikesCountChange })
 
   const handleLike = useCallback(async (postId: string) => {
-    if (!user) {
-      toast.error('Please sign in to like posts')
-      return
-    }
+    if (!user) { toast.error('Please sign in to like posts'); return }
     const post = posts.find((p) => p.id === postId)
     if (!post) return
+    const wasLiked = post.isLiked
+    updatePost(postId, (p) => ({ ...p, isLiked: !wasLiked, likes_count: wasLiked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1 }))
     try {
-      if (post.isLiked) {
-        await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', user.id)
-        updatePostInList(postId, (p) => ({ ...p, isLiked: false, likes_count: Math.max(0, p.likes_count - 1) }))
-      } else {
-        await supabase.from('likes').insert({ post_id: postId, user_id: user.id })
-        updatePostInList(postId, (p) => ({ ...p, isLiked: true, likes_count: p.likes_count + 1 }))
-      }
-    } catch (e: any) {
-      console.error('Error toggling like:', e)
+      const res = await apiClient.post<{ liked: boolean; likes_count: number }>(`/api/posts/${postId}/like`)
+      updatePost(postId, (p) => ({ ...p, isLiked: res.liked, likes_count: res.likes_count }))
+    } catch {
+      updatePost(postId, (p) => ({ ...p, isLiked: wasLiked, likes_count: wasLiked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1) }))
       toast.error('Failed to update like')
     }
-  }, [user, posts, updatePostInList])
+  }, [user, posts, updatePost])
 
-  const handleComment = useCallback((postId: string) => {
-    setShowCommentsFor((prev) => (prev === postId ? null : postId))
-  }, [])
-
-  const handleShare = useCallback((postId: string) => {
-    setShareModalState({ open: true, postId })
-  }, [])
+  const handleComment = useCallback((id: string) => setShowCommentsFor((p) => (p === id ? null : id)), [])
+  const handleShare = useCallback((id: string) => setShareModalState({ open: true, postId: id }), [])
 
   const handleDelete = useCallback(async (postId: string) => {
     if (!user || !profile || profile.id !== user.id) return
-    try {
-      await supabase.from('posts').update({ is_deleted: true }).eq('id', postId).eq('author_id', user.id)
-      setPosts((prev) => prev.filter((p) => p.id !== postId))
-      toast.success('Post deleted')
-    } catch (e: any) {
-      console.error('Error deleting post:', e)
-      toast.error('Failed to delete post')
-    }
+    try { await apiClient.delete(`/api/posts/${postId}`); setPosts((p) => p.filter((x) => x.id !== postId)); toast.success('Post deleted') }
+    catch { toast.error('Failed to delete post') }
   }, [user, profile])
 
-  const handleEdit = useCallback(async (postId: string, newContent: string) => {
-    try {
-      await supabase.from('posts').update({ content: newContent, updated_at: new Date().toISOString() }).eq('id', postId)
-      updatePostInList(postId, (p) => ({ ...p, content: newContent }))
-      toast.success('Post updated')
-    } catch (e: any) {
-      console.error('Error updating post:', e)
-      toast.error('Failed to update post')
-    }
-  }, [updatePostInList])
-
-  const handleEmojiReaction = useCallback(async (postId: string, emoji: string) => {
-    if (!user) {
-      toast.error('Please sign in to react')
-      return
-    }
-    const reactionType = getReactionTypeFromEmoji(emoji)
-    try {
-      const { data: existingReaction, error: checkError } = await supabase
-        .from('post_reactions')
-        .select('id, reaction_type')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .single()
-      if (checkError && checkError.code !== 'PGRST116') {
-        toast.error('Failed to check reaction')
-        return
-      }
-      if (existingReaction && existingReaction.reaction_type === reactionType) {
-        await supabase.from('post_reactions').delete().eq('post_id', postId).eq('user_id', user.id).eq('reaction_type', reactionType)
-        updatePostInList(postId, (p) => ({ ...p, likes_count: Math.max(0, p.likes_count - 1) }))
-        toast.success('Reaction removed')
-        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
-        return
-      }
-      if (existingReaction) {
-        await supabase.from('post_reactions').update({ reaction_type: reactionType }).eq('post_id', postId).eq('user_id', user.id)
-        toast.success('Reaction updated')
-        window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
-        return
-      }
-      await supabase.from('post_reactions').insert({ post_id: postId, user_id: user.id, reaction_type: reactionType })
-      const { data: currentPost } = await supabase.from('posts').select('likes_count').eq('id', postId).single()
-      const newCount = currentPost ? (currentPost.likes_count || 0) + 1 : 1
-      await supabase.from('posts').update({ likes_count: newCount }).eq('id', postId)
-      updatePostInList(postId, (p) => ({ ...p, likes_count: newCount }))
-      toast.success('Reaction saved!')
-      window.dispatchEvent(new CustomEvent('reaction-updated', { detail: { postId } }))
-    } catch (e: any) {
-      console.error('Error handling emoji reaction:', e)
-      toast.error('Something went wrong')
-    }
-  }, [user, updatePostInList])
+  const handleEdit = useCallback(async (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+    // PostCard already saves to DB; just update local state
+    updatePost(postId, (p: any) => ({ ...p, ...updates }))
+  }, [updatePost])
 
   const handleSendToMembers = useCallback(async (memberIds: string[], message: string) => {
-    if (!memberIds.length) {
-      toast.success('No members selected')
-      return
-    }
-    toast.success(`Shared with ${memberIds.length} member${memberIds.length === 1 ? '' : 's'}`)
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <span className="text-lg text-gray-600 font-semibold">Loading profile...</span>
-          </div>
-        </div>
-      </div>
+    if (!memberIds.length) { toast.success('No members selected'); return }
+    const name = user?.user_metadata?.full_name || user?.email || 'Someone'
+    const pid = shareModalState.postId
+    const results = await Promise.allSettled(
+      memberIds.map((mid) => sendNotification({ user_id: mid, title: 'Post Shared With You', body: message ? `${name} shared a post with you: "${message}"` : `${name} shared a post with you`, notification_type: 'post_share', data: { type: 'post_share', post_id: pid || '', sender_id: user?.id || '', sender_name: name, message, url: `/post/${pid}` } }))
     )
-  }
+    const ok = results.filter((r) => r.status === 'fulfilled' && (r as PromiseFulfilledResult<any>).value.success).length
+    ok > 0 ? toast.success(`Shared with ${ok} member${ok === 1 ? '' : 's'}`) : toast.error('Failed to send notifications')
+  }, [user, shareModalState.postId])
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">User not found</h1>
-            <p className="text-gray-600 mb-4">The user you're looking for doesn't exist.</p>
-            <button
-              onClick={() => router.push('/feed')}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Back to Feed
-            </button>
-          </div>
+  if (loading) return <ProfileSkeleton />
+
+  if (!profile) return (
+    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-sm p-8 max-w-md text-center">
+        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
+          <Users className="w-10 h-10 text-gray-300" />
         </div>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">User not found</h1>
+        <p className="text-gray-500 mb-6">The user you&apos;re looking for doesn&apos;t exist or may have been removed.</p>
+        <button onClick={() => router.push('/feed')} className="h-10 px-6 bg-[#F97316] text-white text-sm font-semibold rounded-lg hover:bg-[#ea580c] transition">Back to Feed</button>
       </div>
-    )
-  }
+    </div>
+  )
 
   const isOwnProfile = user && user.id === profile.id
   const viewerId = user?.id ?? null
@@ -454,266 +360,258 @@ const UserProfilePage: React.FC = () => {
   const showFollowBtn = canFollow(viewerId, profile.id, profile.allow_follows || 'everyone', isMutual)
   const showMessageBtn = canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)
   const visibleFields = getVisibleProfileFields(profile as VisibleProfileFieldsInput, Boolean(isOwnProfile), Boolean(isMutual))
-  const allowComments = profile.allow_comments ?? 'everyone'
-  const canCommentOnPost = (authorId: string) =>
-    isOwnProfile || canComment(viewerId, authorId, allowComments, isMutual)
+  const canCommentOnPost = (authorId: string) => isOwnProfile || canComment(viewerId, authorId, profile.allow_comments ?? 'everyone', isMutual)
 
-  if (!canView) {
-    return (
-      <div className="min-h-screen bg-[#eef0f4] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md text-center">
-          <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-6">
-            <span className="text-4xl font-bold text-gray-400">
-              {profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}
-            </span>
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">This content isn&apos;t available</h1>
-          <p className="text-gray-600 mb-6">
-            The person who shared this content only shares it with a small group of people or the link may be broken.
-          </p>
-          <button
-            onClick={() => router.push('/feed')}
-            className="px-5 py-2.5 bg-primary-600 text-white rounded-full font-semibold hover:bg-primary-700 transition-colors"
-          >
-            Go to Feed
-          </button>
+  if (!canView) return (
+    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md text-center">
+        <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl font-bold text-gray-400">{profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}</span>
         </div>
+        <h1 className="text-xl font-bold text-gray-900 mb-2">This content isn&apos;t available</h1>
+        <p className="text-gray-600 mb-6">This person only shares content with a small group of people, or the link may be broken.</p>
+        <button onClick={() => router.push('/feed')} className="px-5 py-2.5 bg-[#F97316] text-white rounded-full font-semibold hover:bg-[#ea580c] transition">Go to Feed</button>
       </div>
-    )
+    </div>
+  )
+
+  const friendBtnConfig: Record<FriendStatus, { label: string; icon: React.ElementType; cls: string }> = {
+    friends: { label: 'Friends', icon: UserCheck, cls: 'bg-green-100 text-green-800 hover:bg-green-200' },
+    pending_sent: { label: 'Request Sent', icon: UserCheck, cls: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
+    pending_received: { label: 'Accept Request', icon: UserPlus, cls: 'bg-[#1b74e4] text-white hover:bg-[#1a6ed8]' },
+    none: { label: 'Add Friend', icon: UserPlus, cls: 'bg-[#e4e6eb] text-gray-900 hover:bg-[#d8dadf]' },
   }
+  const fb = friendBtnConfig[friendshipStatus]
+
+  const btnBase = 'inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-semibold transition-colors'
+  const btnGray = `${btnBase} bg-[#e4e6eb] text-gray-900 hover:bg-[#d8dadf]`
 
   return (
-    <div className="min-h-screen bg-[#eef0f4] pb-24 sm:pb-8">
-      <div className="max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-8">
-        {/* Profile card */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5 sm:mb-6">
-          {/* Hero: centered avatar on mobile, row on desktop */}
-          <div className="pt-8 sm:pt-10 pb-6 sm:pb-8 px-6 sm:px-8">
-            <div className="flex flex-col items-center sm:flex-row sm:items-start gap-5 sm:gap-6">
-              <div className="relative flex-shrink-0">
-                {profile.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.full_name}
-                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover ring-4 ring-white shadow-lg"
-                  />
-                ) : (
-                  <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center ring-4 ring-white shadow-lg">
-                    <span className="text-4xl sm:text-5xl font-bold text-gray-500">
-                      {profile.full_name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
-                {profile.is_verified && (
-                  <div className="absolute bottom-0 right-0 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white shadow">
-                    <span className="text-white text-xs font-bold">✓</span>
-                  </div>
-                )}
+    <div className="min-h-screen bg-[#f0f2f5] pb-20 sm:pb-8">
+      <div className="max-w-[940px] mx-auto bg-white shadow-sm">
+        <div className="px-4 sm:px-6 pt-4 pb-3 sm:py-5">
+          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
+            <div className="flex-shrink-0">
+              <div className="rounded-full p-[3px] bg-gradient-to-tr from-[#F97316] via-[#16a34a] to-[#F97316]">
+                <div className="border-[3px] border-white rounded-full">
+                  <Avatar src={profile.avatar_url} name={profile.full_name} size="lg" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex flex-wrap items-baseline gap-x-2 justify-center sm:justify-start">
+                <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-bold text-gray-900 leading-tight">{profile.full_name}</h1>
+                <div className="flex items-center gap-1">
+                  {profile.is_verified && (
+                    <div className="w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-[9px] font-bold">{'\u2713'}</span>
+                    </div>
+                  )}
+                  <span className="text-gray-500 text-sm sm:text-base">@{profile.username}</span>
+                </div>
               </div>
 
-              <div className="flex-1 w-full sm:w-auto text-center sm:text-left min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
-                  {profile.full_name}
-                </h1>
-                <p className="text-gray-500 text-sm mt-1">@{profile.username}</p>
-                <div className="flex flex-wrap justify-center sm:justify-start items-center gap-x-4 gap-y-1 mt-3 text-sm text-gray-500">
-                  {visibleFields.followersCount && (
-                    <>
-                      <span><span className="font-semibold text-gray-900">{profile.followers_count}</span> tapped in</span>
-                      <span className="hidden sm:inline text-gray-300">·</span>
-                    </>
-                  )}
-                  <span><span className="font-semibold text-gray-900">{profile.following_count}</span> tapping in</span>
-                  <span className="hidden sm:inline text-gray-300">·</span>
-                  <span><span className="font-semibold text-gray-900">{profile.posts_count}</span> posts</span>
-                </div>
+              <p className="mt-0.5 text-[14px] sm:text-[15px] text-gray-600">
+                <span className="font-semibold text-gray-900">{fmt(profile.following_count)}</span> tapping in
+              </p>
 
-                {!isOwnProfile && (showFollowBtn || showMessageBtn) && (
-                  <div className="flex flex-wrap justify-center sm:justify-start items-center gap-3 mt-5">
-                    {showFollowBtn && (
-                      <button
-                        onClick={handleFollow}
-                        disabled={followLoading}
-                        className={`min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all disabled:opacity-50 active:scale-[0.98] ${
-                          isFollowing
-                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                            : 'bg-[#F97316] text-white hover:bg-[#ea580c] shadow-sm'
-                        }`}
-                      >
-                        {followLoading ? (
-                          <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        ) : isFollowing ? (
-                          <UserCheck className="w-4 h-4" />
-                        ) : (
-                          <UserPlus className="w-4 h-4" />
-                        )}
-                        {isFollowing ? 'Tapped In' : 'Tap In'}
-                      </button>
-                    )}
-                    {showMessageBtn && (
-                      <button
-                        onClick={handleStartChat}
-                        className="min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200 transition-all active:scale-[0.98]"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        Message
-                      </button>
-                    )}
-                    {(showFollowBtn || showMessageBtn) && (
-                      <div className="relative">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }}
-                          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200 transition-all active:scale-[0.98]"
-                          aria-label="More"
-                        >
-                          <MoreHorizontal className="w-5 h-5" />
-                        </button>
-                        {showMenu && showMessageBtn && (
-                          <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-50">
-                            <button
-                              onClick={() => { handleCall(false); setShowMenu(false) }}
-                              className="w-full px-4 py-3 text-left text-gray-800 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium"
-                            >
-                              <Phone className="w-4 h-4 text-gray-500" />
-                              Call
-                            </button>
-                            <button
-                              onClick={() => { handleCall(true); setShowMenu(false) }}
-                              className="w-full px-4 py-3 text-left text-gray-800 hover:bg-gray-50 flex items-center gap-3 text-sm font-medium"
-                            >
-                              <Video className="w-4 h-4 text-gray-500" />
-                              Video Call
-                            </button>
-                          </div>
-                        )}
+              {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-gray-700 leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
+
+              {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
+                <div className="flex items-center justify-center sm:justify-start mt-1.5 gap-2">
+                  <div className="flex -space-x-1.5">
+                    {mutualFriends.slice(0, 3).map((f) => (
+                      <div key={f.user_id} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-white overflow-hidden">
+                        {f.avatar_url
+                          ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
+                          : <div className="w-full h-full bg-gray-300 flex items-center justify-center"><span className="text-[9px] font-semibold text-gray-600">{f.full_name.charAt(0).toUpperCase()}</span></div>
+                        }
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-[12px] sm:text-[13px] text-gray-500">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 mt-3 sm:hidden">
+            {isOwnProfile ? (
+              <button onClick={() => router.push('/profile')} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-gray-900 active:bg-[#d8dadf] transition">Edit Profile</button>
+            ) : (
+              <>
+                {showMessageBtn && (
+                  <button onClick={handleStartChat} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-gray-900 active:bg-[#d8dadf] transition">
+                    <MessageCircle className="w-3.5 h-3.5" />Message
+                  </button>
+                )}
+                {showFollowBtn && (
+                  <button onClick={handleFollow} disabled={followLoading} className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap disabled:opacity-50 transition ${isFollowing ? 'bg-[#e4e6eb] text-gray-900 active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
+                    {followLoading ? <Spinner className="w-3.5 h-3.5" /> : isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                    {isFollowing ? 'Tapped In' : 'Tap In'}
+                  </button>
+                )}
+                <button onClick={handleFriendRequest} disabled={friendLoading} className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap disabled:opacity-50 transition ${fb.cls}`}>
+                  {friendLoading ? <Spinner className="w-3.5 h-3.5" /> : <fb.icon className="w-3.5 h-3.5" />}{fb.label}
+                </button>
+                {showMessageBtn && (
+                  <div className="relative flex-shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-gray-600 active:bg-[#d8dadf] transition" aria-label="More">
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                    {showMenu && (
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-gray-500" />Call</button>
+                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-gray-500" />Video Call</button>
                       </div>
                     )}
                   </div>
                 )}
+              </>
+            )}
+          </div>
+        </div>
 
-                {isOwnProfile && (
-                  <div className="mt-5">
-                    <button
-                      onClick={() => router.push('/profile')}
-                      className="min-h-[44px] inline-flex items-center justify-center px-5 py-2.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200 transition-all active:scale-[0.98]"
-                    >
-                      Edit Profile
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+        <hr className="border-gray-200" />
+
+        <div className="flex items-center justify-between px-2 sm:px-4">
+          <div className="flex items-center overflow-x-auto scrollbar-hide flex-1">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 sm:px-4 py-3 text-[13px] sm:text-[15px] font-semibold border-b-[3px] transition-colors whitespace-nowrap ${
+                  activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-gray-500 border-transparent hover:bg-gray-50 rounded-t-md'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          {/* Intro block: bio, location, joined - subtle background */}
-          <div className="bg-[#f7f8fa] border-t border-gray-100 px-6 sm:px-8 py-5 space-y-4">
-            {profile.bio && (
-              <p className="text-gray-800 text-[15px] leading-relaxed">{profile.bio}</p>
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0 py-1.5">
+            {isOwnProfile ? (
+              <button onClick={() => router.push('/profile')} className={btnGray}>Edit Profile</button>
+            ) : (
+              <>
+                {showMessageBtn && <button onClick={handleStartChat} className={btnGray}><MessageCircle className="w-4 h-4" />Message</button>}
+                {showFollowBtn && (
+                  <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-gray-900 hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
+                    {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                    {isFollowing ? 'Tapped In' : 'Tap In'}
+                  </button>
+                )}
+                <button onClick={handleFriendRequest} disabled={friendLoading} className={`${btnBase} disabled:opacity-50 ${fb.cls}`}>
+                  {friendLoading ? <Spinner /> : <fb.icon className="w-4 h-4" />}{fb.label}
+                </button>
+                {showMessageBtn && (
+                  <div className="relative flex-shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-gray-600 hover:bg-[#d8dadf] transition" aria-label="More">
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                    {showMenu && (
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
+                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-gray-500" />Call</button>
+                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-gray-500" />Video Call</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-              {visibleFields.country && profile.country && (
-                <span className="inline-flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  {profile.country}
-                </span>
-              )}
-              {visibleFields.location && (profile as UserProfileWithVisibility).location && (
-                <span className="inline-flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  {(profile as UserProfileWithVisibility).location}
-                </span>
-              )}
-              <span className="inline-flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}
-              </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-[940px] mx-auto mt-3 sm:mt-4">
+        <div className="flex flex-col lg:flex-row gap-0 sm:gap-4">
+
+          <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-4 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
+            <div className="bg-white sm:rounded-lg shadow-sm p-4">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3">Personal details</h2>
+              {profile.bio && <p className="text-sm text-gray-700 text-center leading-relaxed mb-3 pb-3 border-b border-gray-200">{profile.bio}</p>}
+              <div className="space-y-2.5">
+                {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
+                {visibleFields.location && (profile as UserProfileWithVisibility).location && <DetailRow icon={MapPin}>Lives in <span className="font-semibold">{(profile as UserProfileWithVisibility).location}</span></DetailRow>}
+                <DetailRow icon={Calendar}><span suppressHydrationWarning>Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}</span></DetailRow>
+                <DetailRow icon={Users}><span className="font-semibold">{profile.posts_count}</span> posts</DetailRow>
+              </div>
+              <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-gray-600 bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
             </div>
 
             {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-              <div className="pt-1">
-                <p className="text-sm font-medium text-gray-700 mb-3">
-                  {mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}
-                </p>
-                <div className="flex items-center gap-1">
-                  {mutualFriends.slice(0, 6).map((friend) => (
-                    <button
-                      key={friend.user_id}
-                      type="button"
-                      onClick={() => router.push(`/user/${friend.username}`)}
-                      className="relative w-10 h-10 rounded-full ring-2 ring-[#f7f8fa] overflow-hidden hover:z-10 focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:ring-offset-2 transition-transform hover:scale-110 flex-shrink-0"
-                      title={friend.full_name}
-                    >
-                      {friend.avatar_url ? (
-                        <img
-                          src={friend.avatar_url}
-                          alt={friend.full_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                          <span className="text-sm font-semibold text-gray-600">
-                            {friend.full_name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                      )}
+              <div className="bg-white sm:rounded-lg shadow-sm p-4">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">Friends</h2>
+                <p className="text-[13px] text-gray-500 mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {mutualFriends.slice(0, 6).map((f) => (
+                    <button key={f.user_id} onClick={() => router.push(`/user/${f.username}`)} className="text-left group focus:outline-none">
+                      <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                        {f.avatar_url
+                          ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover group-hover:brightness-95 transition" />
+                          : <div className="w-full h-full flex items-center justify-center bg-gray-200 group-hover:bg-gray-300 transition"><span className="text-lg font-semibold text-gray-500">{f.full_name.charAt(0).toUpperCase()}</span></div>
+                        }
+                      </div>
+                      <p className="text-[12px] sm:text-[13px] font-medium text-gray-900 truncate mt-1 group-hover:underline">{f.full_name}</p>
                     </button>
                   ))}
-                  {mutualFriendsCount > 6 && (
-                    <div className="w-10 h-10 rounded-full ring-2 ring-[#f7f8fa] bg-gray-200 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-gray-600">
-                      +{mutualFriendsCount - 6}
+                </div>
+                {mutualFriendsCount > 6 && <p onClick={() => setActiveTab('friends')} className="text-sm text-[#F97316] text-center mt-3 hover:underline cursor-pointer">See all mutual friends</p>}
+              </div>
+            )}
+
+            {allPhotos.length > 0 && (
+              <div className="bg-white sm:rounded-lg shadow-sm p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900">Photos</h2>
+                  <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
+                </div>
+                <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
+                  {allPhotos.slice(0, 9).map((p, i) => (
+                    <div key={`sp-${p.postId}-${i}`} className="aspect-square bg-gray-100 cursor-pointer hover:brightness-90 transition overflow-hidden" onClick={() => setActiveTab('photos')}>
+                      <img src={p.url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Posts section */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-6 sm:px-8 py-4 border-b border-gray-100">
-            <h2 className="text-lg font-bold text-gray-900">Posts</h2>
-          </div>
-          <div className="p-4 sm:p-6">
-            {posts.length === 0 ? (
-              <div className="text-center py-14 sm:py-20">
-                <div className="w-16 h-16 rounded-full bg-[#f7f8fa] flex items-center justify-center mx-auto mb-5">
-                  <MessageSquare className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-700 font-medium text-base">No posts yet</p>
-                <p className="text-sm text-gray-500 mt-1.5 max-w-xs mx-auto">
-                  {isOwnProfile ? 'Share your first post from the feed.' : "This profile doesn't have any posts yet."}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-5">
-                {posts.map((post) => (
-                  <React.Fragment key={post.id}>
-                    <PostCard
-                      post={post as Parameters<typeof PostCard>[0]['post']}
-                      onLike={handleLike}
-                      onComment={handleComment}
-                      onShare={handleShare}
-                      onDelete={user?.id === profile.id ? handleDelete : undefined}
-                      onEdit={user?.id === profile.id ? handleEdit : undefined}
-                      onEmojiReaction={handleEmojiReaction}
-                      isPostLiked={post.isLiked}
-                      canComment={canCommentOnPost(post.author_id)}
-                      canFollow={showFollowBtn}
-                    />
-                    {showCommentsFor === post.id && (
-                      <div className="mt-2">
-                        <CommentsSection
-                          postId={post.id}
-                          isOpen={true}
-                          onClose={() => setShowCommentsFor(null)}
-                          canComment={canCommentOnPost(post.author_id)}
-                        />
-                      </div>
-                    )}
-                  </React.Fragment>
-                ))}
-              </div>
+          <div className="flex-1 min-w-0">
+            {activeTab === 'posts' && (
+              <PostsTab
+                posts={posts}
+                isOwnProfile={Boolean(isOwnProfile)}
+                userId={user?.id}
+                profileId={profile.id}
+                showCommentsFor={showCommentsFor}
+                canCommentOnPost={canCommentOnPost}
+                canFollow={showFollowBtn}
+                onLike={handleLike}
+                onComment={handleComment}
+                onShare={handleShare}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                onEmojiReaction={handleEmojiReaction}
+                onCloseComments={() => setShowCommentsFor(null)}
+              />
+            )}
+
+            {activeTab === 'about' && (
+              <AboutTab profile={profile} visibleFields={visibleFields} />
+            )}
+
+            {activeTab === 'photos' && (
+              <PhotosTab photos={allPhotos} isOwnProfile={Boolean(isOwnProfile)} />
+            )}
+
+            {activeTab === 'friends' && (
+              <FriendsTab friends={userFriends} isOwnProfile={Boolean(isOwnProfile)} />
+            )}
+
+            {activeTab === 'reels' && (
+              <ReelsTab videos={allVideos} isOwnProfile={Boolean(isOwnProfile)} />
             )}
           </div>
         </div>
@@ -734,4 +632,3 @@ const UserProfilePage: React.FC = () => {
 }
 
 export default UserProfilePage
-

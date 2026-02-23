@@ -14,7 +14,7 @@ interface ReelCommentsProps {
 
 const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) => {
   const { user } = useAuth()
-  const { comments, loading, addComment, deleteComment, refresh } = useReelComments(reelId)
+  const { comments, loading, addComment, deleteComment, refresh } = useReelComments(reelId, isOpen)
   
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)

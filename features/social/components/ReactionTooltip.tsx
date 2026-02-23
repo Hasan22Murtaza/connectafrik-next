@@ -5,7 +5,7 @@ import Link from "next/link";
 
 interface User {
   id: string;
-  username: string;
+  username?: string;
   full_name?: string;
 }
 
@@ -24,12 +24,18 @@ const ReactionTooltip: React.FC<ReactionTooltipProps> = ({ users, isVisible }) =
       <ul className="space-y-1">
         {users.map((user) => (
           <li key={user.id}>
-            <Link
-              href={`/user/${user.username}`}
-              className="hover:underline cursor-pointer block"
-            >
-              {user.full_name || user.username}
-            </Link>
+            {user.username ? (
+              <Link
+                href={`/user/${user.username}`}
+                className="hover:underline cursor-pointer block"
+              >
+                {user.full_name || user.username}
+              </Link>
+            ) : (
+              <span className="block">
+                {user.full_name || "Unknown user"}
+              </span>
+            )}
           </li>
         ))}
       </ul>

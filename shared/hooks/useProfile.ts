@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Profile } from '@/shared/types'
 
@@ -10,25 +10,19 @@ export const useProfile = () => {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchProfile()
     } else {
       setProfile(null)
       setLoading(false)
     }
-  }, [user])
+  }, [user?.id])
 
   const fetchProfile = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .single()
-
-      if (error) throw error
-      setProfile(data)
+      const res = await apiClient.get<{ data: Profile }>('/api/users/me')
+      setProfile(res.data)
     } catch (error: any) {
       setError(error.message)
     } finally {
@@ -40,14 +34,7 @@ export const useProfile = () => {
     try {
       if (!user) throw new Error('No user found')
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
-
-      if (error) throw error
-      
-      // Refresh profile data
+      await apiClient.patch<{ data: Profile }>('/api/users/me', updates)
       await fetchProfile()
       return { error: null }
     } catch (error: any) {

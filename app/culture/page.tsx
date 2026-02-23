@@ -6,8 +6,9 @@ import { PostCard } from '@/features/social/components/PostCard'
 import CommentsSection from '@/features/social/components/CommentsSection'
 import { useCultureStats } from '@/shared/hooks/useCultureStats'
 import { usePosts } from '@/shared/hooks/usePosts'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import { Camera, Globe, Heart, Plus, Users } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 
 const CulturePage: React.FC = () => {
@@ -16,9 +17,30 @@ const CulturePage: React.FC = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const { totalPosts, enthusiastsCount, categoryCounts, featuredThisWeek, loading: statsLoading, error: statsError, refetch: refetchStats } = useCultureStats()
-  const { posts, loading: postsLoading, createPost, toggleLike, sharePost, refetch } = usePosts('culture', {
+  const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, toggleLike, sharePost, refetch, updatePostLikesCount } = usePosts('culture', {
     cultureSubcategory: selectedSubcategory ?? undefined
   })
+  const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: updatePostLikesCount, trackEngagement: true })
+
+  // Infinite scroll observer
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !postsLoading && !loadingMore) {
+          loadMore()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, postsLoading, loadingMore, loadMore])
 
   const handleCreatePost = async (postData: any) => {
     const { error } = await createPost({ ...postData, category: 'culture' })
@@ -287,6 +309,7 @@ const CulturePage: React.FC = () => {
                         onLike={handleLike}
                         onShare={handleShare}
                         onComment={handleComment}
+                        onEmojiReaction={handleEmojiReaction}
                         canComment={(post as { canComment?: boolean }).canComment ?? true}
                       />
                       {showCommentsFor === post.id && (
@@ -301,6 +324,43 @@ const CulturePage: React.FC = () => {
                       )}
                     </React.Fragment>
                   ))}
+
+                  {/* Infinite scroll sentinel */}
+                  <div ref={loadMoreRef} className="h-1" />
+
+                  {/* Shimmer loading skeleton for more posts */}
+                  {loadingMore && (
+                    <div className="space-y-6">
+                      {Array.from({ length: 2 }).map((_, idx) => (
+                        <div key={idx} className="card animate-pulse">
+                          <div className="flex space-x-3 mb-4">
+                            <div className="w-10 h-10 bg-gray-300 rounded-full" />
+                            <div className="flex-1">
+                              <div className="h-4 bg-gray-300 rounded w-1/4 mb-2" />
+                              <div className="h-3 bg-gray-300 rounded w-1/3" />
+                            </div>
+                          </div>
+                          <div className="space-y-2 mb-4">
+                            <div className="h-4 bg-gray-300 rounded" />
+                            <div className="h-4 bg-gray-300 rounded w-3/4" />
+                          </div>
+                          <div className="h-32 bg-gray-300 rounded mb-4" />
+                          <div className="flex space-x-4">
+                            <div className="h-8 bg-gray-300 rounded w-16" />
+                            <div className="h-8 bg-gray-300 rounded w-16" />
+                            <div className="h-8 bg-gray-300 rounded w-16" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* End of feed message — only show if more than one page was loaded */}
+                  {!hasMore && posts.length >= 10 && (
+                    <div className="py-6 text-center text-sm text-gray-400">
+                      You&apos;ve reached the end of cultural posts
+                    </div>
+                  )}
                 </div>
               )}
             </div>

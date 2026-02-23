@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import type { PresenceStatus } from '@/shared/types/chat'
 
 export interface Member {
@@ -26,19 +26,11 @@ export function useMembers() {
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url, status, last_seen')
-          .order('username', { ascending: true })
-
-        if (error) {
-          console.error('Failed to load members:', error)
-          setMembers([])
-          return
-        }
+        const res = await apiClient.get<{ data: any[] }>('/api/users/members')
+        const data = res?.data || []
 
         setMembers(
-          (data ?? []).map((profile: any) => ({
+          data.map((profile: any) => ({
             id: profile.id,
             name: normalizedName(profile.full_name, profile.username),
             avatar_url: profile.avatar_url ?? undefined,

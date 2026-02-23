@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { verifyPaystackTransaction } from '@/features/marketplace/services/paystackService'
 import { sendNewOrderNotificationEmail } from '@/shared/services/emailService'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+async function verifyWithPaystack(reference: string) {
+    const { data, error } = await supabase.functions.invoke('paystack-verify', {
+        body: { reference },
+    })
+    if (error) throw error
+    const responseData = data?.data || data
+    return {
+        success: responseData?.status === 'success',
+        status: responseData?.status || 'unknown',
+        amount: responseData?.amount ? responseData.amount / 100 : undefined,
+        currency: responseData?.currency?.toUpperCase(),
+        data: responseData,
+    }
+}
 
 export async function GET(request: NextRequest) {
     console.log('Received GET request for Paystack verification')
@@ -17,7 +31,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(new URL('/marketplace?payment=error&message=Missing+reference', request.url))
         }
 
-        const verification = await verifyPaystackTransaction(reference)
+        const verification = await verifyWithPaystack(reference)
         
         if (!verification.success) {
             return NextResponse.redirect(new URL('/marketplace?payment=error&message=Verification+failed', request.url))

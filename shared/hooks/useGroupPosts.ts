@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -44,67 +44,22 @@ export const useGroupPosts = (groupId: string) => {
       setLoading(true)
       setError(null)
 
-      // Fetch posts
-      const { data: postsData, error: postsError } = await supabase
-        .from('group_posts')
-        .select('*')
-        .eq('group_id', groupId)
-        .eq('is_deleted', false)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
+      const res = await apiClient.get<{ data: GroupPost[] }>(`/api/groups/${groupId}/posts`)
+      const postsData = res.data || []
 
-      if (postsError) throw postsError
-
-      if (!postsData || postsData.length === 0) {
-        setPosts([])
-        setLoading(false)
-        return
-      }
-
-      // Fetch author profiles
-      const authorIds = [...new Set(postsData.map(p => p.author_id))]
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url, country')
-        .in('id', authorIds)
-
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError)
-      }
-
-      // Create a map of author profiles
-      const profilesMap = new Map(
-        (profilesData || []).map(profile => [profile.id, profile])
+      setPosts(
+        postsData.map((p: GroupPost) => ({
+          ...p,
+          author: p.author ?? {
+            id: p.author_id,
+            username: 'Unknown',
+            full_name: 'Unknown User',
+            avatar_url: null,
+            country: null
+          },
+          isLiked: p.isLiked ?? false
+        }))
       )
-
-      // Check which posts the current user has liked
-      let likesData: any[] = []
-      if (user) {
-        const { data, error: likesError } = await supabase
-          .from('likes')
-          .select('post_id')
-          .eq('user_id', user.id)
-          .in('post_id', postsData.map(p => p.id))
-
-        if (!likesError) {
-          likesData = data || []
-        }
-      }
-
-      // Combine posts with author profiles
-      const postsWithAuthors = postsData.map(post => ({
-        ...post,
-        author: profilesMap.get(post.author_id) || {
-          id: post.author_id,
-          username: 'Unknown',
-          full_name: 'Unknown User',
-          avatar_url: null,
-          country: null
-        },
-        isLiked: likesData.some(like => like.post_id === post.id)
-      }))
-
-      setPosts(postsWithAuthors)
     } catch (err: any) {
       console.error('Error fetching group posts:', err)
       setError(err.message)
@@ -123,37 +78,16 @@ export const useGroupPosts = (groupId: string) => {
     if (!user) throw new Error('Must be logged in to create a post')
 
     try {
-      const { data, error } = await supabase
-        .from('group_posts')
-        .insert([
-          {
-            group_id: groupId,
-            author_id: user.id,
-            title: postData.title,
-            content: postData.content,
-            post_type: postData.post_type || 'discussion',
-            media_urls: postData.media_urls || [],
-            likes_count: 0,
-            comments_count: 0,
-            is_pinned: false,
-            is_deleted: false
-          }
-        ])
-        .select('*')
-        .single()
-
-      if (error) throw error
-
-      // Fetch author profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url, country')
-        .eq('id', user.id)
-        .single()
+      const res = await apiClient.post<{ data: GroupPost }>(`/api/groups/${groupId}/posts`, {
+        title: postData.title,
+        content: postData.content,
+        post_type: postData.post_type || 'discussion',
+        media_urls: postData.media_urls || []
+      })
 
       const newPost: GroupPost = {
-        ...data,
-        author: profileData || {
+        ...res.data,
+        author: res.data.author ?? {
           id: user.id,
           username: 'Unknown',
           full_name: 'Unknown User',
@@ -175,67 +109,46 @@ export const useGroupPosts = (groupId: string) => {
 
   const toggleLike = async (postId: string) => {
     if (!user) {
-      toast.error('You must be logged in to like posts')
+      toast.error('You must be logged in to react to posts')
       return
     }
 
+    const currentPost = posts.find(p => p.id === postId)
+    const wasLiked = currentPost?.isLiked ?? false
+    const prevCount = currentPost?.likes_count ?? 0
+
+    setPosts(prev =>
+      prev.map(post =>
+        post.id === postId
+          ? {
+              ...post,
+              likes_count: wasLiked ? Math.max(0, post.likes_count - 1) : post.likes_count + 1,
+              isLiked: !wasLiked
+            }
+          : post
+      )
+    )
+
     try {
-      // Check if already liked
-      const { data: existingLike } = await supabase
-        .from('likes')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .single()
+      const res = await apiClient.post<{ liked: boolean; likes_count: number }>(
+        `/api/groups/${groupId}/posts/${postId}/like`
+      )
 
-      if (existingLike) {
-        // Unlike
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .eq('id', existingLike.id)
+      setPosts(prev =>
+        prev.map(post =>
+          post.id === postId ? { ...post, isLiked: res.liked, likes_count: res.likes_count } : post
+        )
+      )
 
-        if (error) throw error
-
-        // Update local state
-        setPosts(prev => prev.map(post => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              likes_count: Math.max(0, post.likes_count - 1),
-              isLiked: false
-            }
-          }
-          return post
-        }))
-      } else {
-        // Like
-        const { error } = await supabase
-          .from('likes')
-          .insert([
-            {
-              post_id: postId,
-              user_id: user.id
-            }
-          ])
-
-        if (error) throw error
-
-        // Update local state
-        setPosts(prev => prev.map(post => {
-          if (post.id === postId) {
-            return {
-              ...post,
-              likes_count: post.likes_count + 1,
-              isLiked: true
-            }
-          }
-          return post
-        }))
-      }
+      window.dispatchEvent(new CustomEvent('group-reaction-updated', { detail: { postId } }))
     } catch (err: any) {
-      console.error('Error toggling like:', err)
-      toast.error('Failed to update like')
+      setPosts(prev =>
+        prev.map(post =>
+          post.id === postId ? { ...post, isLiked: wasLiked, likes_count: prevCount } : post
+        )
+      )
+      console.error('Error toggling reaction:', err)
+      toast.error('Failed to update reaction')
     }
   }
 
@@ -243,13 +156,7 @@ export const useGroupPosts = (groupId: string) => {
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('group_posts')
-        .update({ is_deleted: true })
-        .eq('id', postId)
-        .eq('author_id', user.id) // Only allow author to delete
-
-      if (error) throw error
+      await apiClient.delete(`/api/groups/${groupId}/posts/${postId}`)
 
       setPosts(prev => prev.filter(post => post.id !== postId))
       toast.success('Post deleted successfully')
@@ -264,23 +171,11 @@ export const useGroupPosts = (groupId: string) => {
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('group_posts')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', postId)
-        .eq('author_id', user.id) // Only allow author to update
+      const res = await apiClient.patch<{ data: any }>(`/api/groups/${groupId}/posts/${postId}`, updates)
 
-      if (error) throw error
-
-      setPosts(prev => prev.map(post => {
-        if (post.id === postId) {
-          return { ...post, ...updates }
-        }
-        return post
-      }))
+      setPosts(prev =>
+        prev.map(post => (post.id === postId ? { ...post, ...res.data } : post))
+      )
 
       toast.success('Post updated successfully')
     } catch (err: any) {
@@ -291,8 +186,6 @@ export const useGroupPosts = (groupId: string) => {
   }
 
   const recordView = async (postId: string) => {
-    // You can implement view tracking here if needed
-    // For now, we'll just log it
     console.log('Post viewed:', postId)
   }
 
@@ -308,4 +201,3 @@ export const useGroupPosts = (groupId: string) => {
     refetch: fetchGroupPosts
   }
 }
-

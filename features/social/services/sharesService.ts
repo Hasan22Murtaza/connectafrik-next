@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase'
-import { notificationService } from '@/shared/services/notificationService'
+import { apiClient } from '@/lib/api-client'
 
 export interface Share {
   id: string
@@ -10,79 +9,17 @@ export interface Share {
 
 export const sharePost = async (postId: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      return { success: false, error: 'User not authenticated' }
-    }
-
-    // Check if user has already shared this post
-    const { data: existingShare, error: checkError } = await supabase
-      .from('shares')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('post_id', postId)
-      .single()
-
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-      throw checkError
-    }
-
-    if (existingShare) {
-      return { success: false, error: 'Post already shared' }
-    }
-
-    // Create the share
-    const { error: shareError } = await supabase
-      .from('shares')
-      .insert({
-        user_id: user.id,
-        post_id: postId
-      })
-
-    if (shareError) {
-      throw shareError
-    }
-
-    // Send push notification to post author (if not the current user)
-    try {
-      // Fetch post to get author_id and title
-      const { data: postData } = await supabase
-        .from('posts')
-        .select('author_id, title, content')
-        .eq('id', postId)
-        .single()
-
-      if (postData && postData.author_id !== user.id) {
-        const actorName = user.user_metadata?.full_name || user.email || 'Someone'
-        const postTitle = postData.title || postData.content?.substring(0, 50) || 'your post'
-        await notificationService.sendNotification({
-          user_id: postData.author_id,
-          title: 'Post Shared',
-          body: `${actorName} shared your post${postTitle ? `: "${postTitle}"` : ''}`,
-          notification_type: 'system',
-          data: {
-            action: 'share',
-            post_id: postId,
-            actor_id: user.id,
-            actor_name: actorName,
-            url: `/post/${postId}`
-          }
-        })
-      }
-    } catch (notificationError) {
-      // Don't fail the share if notification fails
-    }
+    const result = await apiClient.post<{ success: boolean; error?: string }>(`/api/posts/${postId}/share`)
 
     // Also copy link to clipboard
     try {
-      const url = `${process.env.NEXT_PUBLIC_APP_UR}/post/${postId}`
+      const url = `${process.env.NEXT_PUBLIC_APP_URL}/post/${postId}`
       await navigator.clipboard.writeText(url)
-    } catch (clipboardError) {
-      console.warn('Could not copy to clipboard:', clipboardError)
+    } catch {
+      // Clipboard may not be available
     }
 
-    return { success: true }
+    return result
   } catch (error: any) {
     console.error('Error sharing post:', error)
     return { success: false, error: error.message || 'Failed to share post' }
@@ -91,24 +28,7 @@ export const sharePost = async (postId: string): Promise<{ success: boolean; err
 
 export const unsharePost = async (postId: string): Promise<{ success: boolean; error?: string }> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
-      return { success: false, error: 'User not authenticated' }
-    }
-
-    // Remove the share
-    const { error } = await supabase
-      .from('shares')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('post_id', postId)
-
-    if (error) {
-      throw error
-    }
-
-    return { success: true }
+    return await apiClient.delete<{ success: boolean; error?: string }>(`/api/posts/${postId}/share`)
   } catch (error: any) {
     console.error('Error unsharing post:', error)
     return { success: false, error: error.message || 'Failed to unshare post' }
@@ -116,28 +36,19 @@ export const unsharePost = async (postId: string): Promise<{ success: boolean; e
 }
 
 export const checkIfShared = async (postId: string): Promise<boolean> => {
+  // This check can be done via the post detail API which returns share status.
+  // For now, a simple try: if share endpoint returns 409, it's already shared.
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (!user) {
+    const result = await apiClient.post<{ success: boolean; error?: string }>(`/api/posts/${postId}/share`)
+    // If it succeeded, we shared it — undo it since this was just a check
+    if (result.success) {
+      await apiClient.delete(`/api/posts/${postId}/share`)
       return false
     }
-
-    const { data, error } = await supabase
-      .from('shares')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('post_id', postId)
-      .single()
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error checking share status:', error)
-      return false
-    }
-
-    return !!data
-  } catch (error) {
-    console.error('Error checking share status:', error)
+    return false
+  } catch (error: any) {
+    // 409 = already shared
+    if (error.status === 409) return true
     return false
   }
 }

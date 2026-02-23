@@ -1,19 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Heart,
-  MessageCircle,
-  Share2,
   MoreHorizontal,
-  ThumbsUp,
-  Smile,
   Trash2,
   Edit,
   UserPlus,
   UserCheck,
   Eye,
-  Share,
-  ShareIcon,
   Plus,
+  MapPin,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -22,16 +16,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   followUser,
   unfollowUser,
-  checkIsFollowing,
 } from "../services/followService";
 import { supabase } from "@/lib/supabase";
 import { getDiversityBadges } from "../services/fairnessRankingService";
 import { DwellTimeTracker } from "../services/engagementTracking";
 import toast from "react-hot-toast";
-import { PiShareFatLight } from "react-icons/pi";
 import dynamic from "next/dynamic";
-import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
-import ReactionTooltip from "./ReactionTooltip";
+import { apiClient } from "@/lib/api-client";
+import ImageViewer from "@/shared/components/ui/ImageViewer";
+import CommentsSection from "./CommentsSection";
+import PostEngagement from "@/shared/components/PostEngagement";
+import CreatePost, { type PostSubmitData } from "./CreatePost";
 interface Post {
   id: string;
   title: string;
@@ -48,6 +43,7 @@ interface Post {
     location?: string;
   };
   media_urls: string[] | null;
+  location?: string | null;
   likes_count: number;
   comments_count: number;
   shares_count: number;
@@ -55,6 +51,9 @@ interface Post {
   language?: string;
   created_at: string;
   isLiked?: boolean;
+  is_following?: boolean;
+  reactions?: Record<string, any>;
+  reactions_total_count?: number;
 }
 
 interface PostCardProps {
@@ -63,7 +62,7 @@ interface PostCardProps {
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
-  onEdit?: (postId: string, newContent: string) => void;
+  onEdit?: (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void;
   onView?: (postId: string) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void;
   showEmojiPicker?: boolean;
@@ -91,7 +90,7 @@ const POST_BACKGROUNDS = [
   "linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)", // Red-Blue
 ];
 
-export const PostCard: React.FC<PostCardProps> = ({
+export const PostCard: React.FC<PostCardProps> = React.memo(({
   post,
   onLike,
   onComment,
@@ -113,47 +112,43 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState("");
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followCheckLoading, setFollowCheckLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(post.is_following ?? false);
+  const [followCheckLoading, setFollowCheckLoading] = useState(false);
   const [hasViewed, setHasViewed] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showReactionsModal, setShowReactionsModal] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
   const dwellTrackerRef = useRef<DwellTimeTracker | null>(null);
-  const [hoveredReaction, setHoveredReaction] = useState<string | null>(null);
+  const [showInlineComments, setShowInlineComments] = useState(false);
 
-  // Fetch reactions with user data
-  const {
-    reactions,
-    loading: reactionsLoading,
-    refetch: refetchReactions,
-  } = usePostReactionsWithUsers(post.id);
+  const [reactions, setReactions] = useState<Record<string, any> & { totalCount: number }>({
+    ...(post.reactions || {}),
+    totalCount: post.reactions_total_count ?? 0,
+  });
 
-  // Listen for reaction updates and refetch
   useEffect(() => {
     const handleReactionUpdate = (event: CustomEvent) => {
       if (event.detail?.postId === post.id) {
-        // Small delay to ensure DB has updated
-        setTimeout(() => {
-          refetchReactions();
+        setTimeout(async () => {
+          try {
+            const res = await apiClient.get<{
+              data: Record<string, any>
+              totalCount: number
+            }>(`/api/posts/${post.id}/reaction`);
+            setReactions({ ...(res.data || {}), totalCount: res.totalCount || 0 });
+          } catch {}
         }, 300);
       }
     };
 
-    window.addEventListener(
-      "reaction-updated",
-      handleReactionUpdate as EventListener
-    );
+    window.addEventListener("reaction-updated", handleReactionUpdate as EventListener);
     return () => {
-      window.removeEventListener(
-        "reaction-updated",
-        handleReactionUpdate as EventListener
-      );
+      window.removeEventListener("reaction-updated", handleReactionUpdate as EventListener);
     };
-  }, [post.id, refetchReactions]);
+  }, [post.id]);
 
   // Determine if this is a short text-only post (Facebook-style large text)
   const isShortTextPost = () => {
@@ -177,27 +172,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     const index = Math.abs(hash) % POST_BACKGROUNDS.length;
     return POST_BACKGROUNDS[index];
   };
-
-  // Check if current user is following the post author
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!user || !post.author?.id || user.id === post.author.id) {
-        setFollowCheckLoading(false);
-        return;
-      }
-
-      try {
-        const following = await checkIsFollowing(user.id, post.author.id);
-        setIsFollowing(following);
-      } catch (error) {
-        console.error("Error checking follow status:", error);
-      } finally {
-        setFollowCheckLoading(false);
-      }
-    };
-
-    checkFollowStatus();
-  }, [user, post.author?.id]);
 
   // Track view when post comes into view
   useEffect(() => {
@@ -224,33 +198,6 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, [user, hasViewed, onView, post.id]);
 
-  const quickReactions = [
-    "\u{1F44D}",
-    "\u2764\uFE0F",
-    "\u{1F602}",
-    "\u{1F62E}",
-    "\u{1F622}",
-    "\u{1F621}",
-    "\u{1F525}",
-    "\u{1F44F}",
-    "\u{1F64C}",
-    "\u{1F389}",
-    "\u{1F4AF}",
-    "\u{1F60E}",
-    "\u{1F973}",
-    "\u{1F929}",
-    "\u{1F606}",
-    "\u{1F60F}",
-    "\u{1F607}",
-    "\u{1F61C}",
-    "\u{1F914}",
-    "\u{1F631}",
-    "\u{1F624}",
-    "\u{1F605}",
-    "\u{1F60B}",
-    "\u{1F62C}",
-    "\u{1F603}",
-  ];
 
   const handleEmojiHover = (emoji: string) => {
     setHoveredEmoji(emoji);
@@ -298,6 +245,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
 
     try {
+      setFollowCheckLoading(true);
       if (isFollowing) {
         const success = await unfollowUser(user.id, post.author.id);
         if (success) {
@@ -312,22 +260,14 @@ export const PostCard: React.FC<PostCardProps> = ({
           setIsFollowing(true);
           toast.success("Tapped in!");
         } else {
-          // Check if already following (failed because duplicate)
-          const stillFollowing = await checkIsFollowing(
-            user.id,
-            post.author.id
-          );
-          if (stillFollowing) {
-            setIsFollowing(true);
-            toast.success("Already tapped in!");
-          } else {
-            toast.error("Failed to tap in");
-          }
+          toast.error("Failed to tap in");
         }
       }
     } catch (error) {
       console.error("Error handling follow:", error);
       toast.error("Something went wrong");
+    } finally {
+      setFollowCheckLoading(false);
     }
   };
 
@@ -337,27 +277,40 @@ export const PostCard: React.FC<PostCardProps> = ({
   };
 
   // Handle edit post
-  const handleEditClick = () => {
-    setEditContent(post.content);
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     setIsEditing(true);
     setShowMenu(false);
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (postData: PostSubmitData) => {
     try {
+      const updatePayload: Record<string, any> = {
+        title: postData.title,
+        content: postData.content,
+        category: postData.category,
+        media_type: postData.media_type,
+        media_urls: postData.media_urls ?? [],
+        location: postData.location || null,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error } = await supabase
         .from("posts")
-        .update({
-          content: editContent,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq("id", post.id);
 
       if (error) throw error;
 
-      // Update the post in the parent component
       if (onEdit) {
-        onEdit(post.id, editContent);
+        onEdit(post.id, {
+          title: postData.title,
+          content: postData.content,
+          category: postData.category,
+          media_urls: postData.media_urls,
+          media_type: postData.media_type,
+          tags: postData.tags,
+        });
       }
 
       setIsEditing(false);
@@ -370,7 +323,6 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   const handleCancelEdit = () => {
     setIsEditing(false);
-    setEditContent("");
   };
 
   // Check if user is following the post author on mount
@@ -385,16 +337,6 @@ export const PostCard: React.FC<PostCardProps> = ({
       dwellTrackerRef.current?.cleanup();
     };
   }, [post.id, user?.id]);
-
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (user && post.author && user.id !== post.author.id) {
-        const following = await checkIsFollowing(user.id, post.author.id);
-        setIsFollowing(following);
-      }
-    };
-    checkFollowStatus();
-  }, [user, post.author?.id]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -451,41 +393,23 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
+  // Open image viewer on image click
+  const handleImageClick = (index: number) => {
+    setImageViewerIndex(index);
+    setImageViewerOpen(true);
+  };
+
+  // Get only image URLs for the viewer (exclude videos)
   const isImageFile = (url: string): boolean => {
-    return /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(url);
+    return /\.(jpg|jpeg|png|gif|webp|bmp|svg|jfif|avif)(\?|#|$)/i.test(url);
   };
 
   const isVideoFile = (url: string): boolean => {
-    return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)$/i.test(url);
+    return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)(\?|#|$)/i.test(url);
   };
 
-  // Get reaction emoji/icon based on type
-  const getReactionEmoji = (type: string): string => {
-    const emojiMap: { [key: string]: string } = {
-      like: "👍",
-      love: "❤️",
-      laugh: "😂",
-      wow: "😮",
-      sad: "😢",
-      angry: "😡",
-      care: "🤗",
-    };
-    return emojiMap[type] || "👍";
-  };
+  const imageUrls = (post.media_urls || []).filter(isImageFile);
 
-  // Get reaction display name
-  const getReactionName = (type: string): string => {
-    const nameMap: { [key: string]: string } = {
-      like: "Like",
-      love: "Love",
-      laugh: "Haha",
-      wow: "Wow",
-      sad: "Sad",
-      angry: "Angry",
-      care: "Care",
-    };
-    return nameMap[type] || "Like";
-  };
 
   // Format reaction summary (Facebook style: "John, Mary and 5 others")
   const formatReactionSummary = (reactionGroup: any): string => {
@@ -537,17 +461,27 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   const renderMedia = (url: string, index: number) => {
     if (isImageFile(url)) {
+      // Find the index of this image within imageUrls (excluding videos)
+      const imageIndex = imageUrls.indexOf(url);
       return (
-        <img
-          src={url}
-          alt={`Post media ${index + 1}`}
-          className="w-full h-auto max-h-96 object-cover"
-          loading="lazy"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.style.display = "none";
+        <div
+          className="relative cursor-pointer group"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleImageClick(imageIndex >= 0 ? imageIndex : 0);
           }}
-        />
+        >
+          <img
+            src={url}
+            alt={`Post media ${index + 1}`}
+            className="w-full h-auto max-h-96 object-cover transition-transform duration-200 group-hover:brightness-95"
+            loading="lazy"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+            }}
+          />
+        </div>
       );
     }
 
@@ -576,12 +510,13 @@ export const PostCard: React.FC<PostCardProps> = ({
   };
 
   const handlePostClick = (e: React.MouseEvent) => {
-    if (disablePostClick) return
+    if (disablePostClick || isEditing) return
     const target = e.target as HTMLElement
     if (
       target.closest('button') ||
       target.closest('a') ||
-      target.closest('[role="button"]')
+      target.closest('[role="button"]') ||
+      target.closest('[data-edit-modal]')
     ) {
       return
     }
@@ -592,14 +527,15 @@ export const PostCard: React.FC<PostCardProps> = ({
     <article
       ref={postRef}
       onClick={handlePostClick}
-      className="card mb-4 sm:mb-6 hover:shadow-md transition-shadow duration-200 bg-white rounded-lg border border-gray-200 p-3 sm:p-4 cursor-pointer"
+      className="card mb-1 sm:mb-2 hover:shadow-md transition-shadow duration-200 bg-white rounded-lg border border-gray-200 p-3 sm:p-4 cursor-pointer"
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <button
             onClick={handleUserProfileClick}
-            className="flex items-center space-x-3 flex-1 min-w-0 "
+            className="flex items-center space-x-3 flex-1 min-w-0 !no-underline"
+            style={{ textDecoration: 'none' }}
           >
             {post.author.avatar_url ? (
               <img
@@ -625,7 +561,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center space-x-2 flex-wrap">
-                <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base">
+                <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base !no-underline">
                   {post.author.full_name}
                 </h3>
                 <span className="text-gray-500 truncate text-xs sm:text-sm">
@@ -666,6 +602,19 @@ export const PostCard: React.FC<PostCardProps> = ({
                     addSuffix: true,
                   })}
                 </time>
+                {post.location && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(post.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-orange-500 hover:text-orange-600 text-xs sm:text-sm transition-colors"
+                    title="Open in Google Maps"
+                  >
+                    <MapPin className="w-3 h-3" />
+                    <span className="truncate max-w-[150px] sm:max-w-[200px] underline">{post.location}</span>
+                  </a>
+                )}
               </div>
             </div>
           </button>
@@ -731,33 +680,30 @@ export const PostCard: React.FC<PostCardProps> = ({
         )}
       </div>
 
-      {/* Content */}
-      {isEditing ? (
-        /* Edit form */
-        <div className="mb-4">
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            rows={4}
-            placeholder="What's on your mind?"
-          />
-          <div className="flex justify-end space-x-2 mt-2">
-            <button
-              onClick={handleCancelEdit}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveEdit}
-              className="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              Save
-            </button>
+      {/* Edit Post Modal */}
+      {isEditing && (
+        <div data-edit-modal className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleCancelEdit} />
+          {/* Modal */}
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl z-10">
+            <CreatePost
+              editData={{
+                id: post.id,
+                title: post.title,
+                content: post.content,
+                category: post.category,
+                media_urls: post.media_urls ?? undefined,
+                location: post.location ?? undefined,
+              }}
+              onSubmit={handleSaveEdit}
+              onCancel={handleCancelEdit}
+            />
           </div>
         </div>
-      ) : (
+      )}
+
+      {/* Content */}
+      {!isEditing && (
         <>
           {isShortTextPost() ? (
             /* Facebook-style large text with gradient background */
@@ -778,7 +724,7 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
           ) : (
             /* Regular post style */
-            <div className="mb-4">
+            <div className="mb-2">
               {post.title && (
                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
                   {post.title}
@@ -792,225 +738,91 @@ export const PostCard: React.FC<PostCardProps> = ({
         </>
       )}
 
-      {/* Media */}
+      {/* Media - Facebook style grid */}
       {post.media_urls && post.media_urls.length > 0 && (
-        <div className="mb-4">
-          <div
-            className={`grid gap-3 ${
-              post.media_urls.length === 1
-                ? "grid-cols-1"
-                : "grid-cols-1 sm:grid-cols-2"
-            }`}
-          >
-            {post.media_urls.map((url, index) => (
-              <div
-                key={`${post.id}-media-${index}`}
-                className="rounded-lg overflow-hidden"
-              >
-                {renderMedia(url, index)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        <div className="mb-2 -mx-3 sm:-mx-4">
+          {(() => {
+            const mediaCount = post.media_urls!.length;
+            const visibleMedia = post.media_urls!.slice(0, mediaCount === 1 ? 1 : mediaCount === 2 ? 2 : mediaCount === 3 ? 3 : 4);
+            const extraCount = mediaCount - visibleMedia.length;
 
-      {/* Reaction display */}
-      {Object.keys(postReactions).length > 0 && (
-        <div className="flex items-center space-x-1 justify-center mb-3 p-2 bg-gray-50 rounded-lg">
-          {Object.entries(postReactions).map(([emoji, users]) => (
-            <div key={emoji} className="relative group">
-              <span
-                className="text-lg cursor-pointer hover:scale-110 transition-transform emoji"
-                onMouseEnter={() => handleEmojiHover(emoji)}
-                onMouseLeave={handleEmojiLeave}
-              >
-                {emoji}
-              </span>
-
-              {/* Hover tooltip showing users who reacted */}
-              {hoveredEmoji === emoji && users.length > 0 && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 z-50">
-                  <div className="bg-gray-800 text-white rounded-lg p-3 shadow-lg min-w-48">
-                    <div className="font-semibold text-sm mb-2">
-                      <span className="emoji">{emoji}</span> {users.length}{" "}
-                      reaction{users.length !== 1 ? "s" : ""}
-                    </div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {users.map((user, index) => (
-                        <div key={index} className="text-sm text-gray-200">
-                          {user}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
-                  </div>
+            if (mediaCount === 1) {
+              return (
+                <div className="overflow-hidden">
+                  {renderMedia(visibleMedia[0], 0)}
                 </div>
-              )}
-            </div>
-          ))}
-          <span className="text-sm text-gray-600 ml-2">
-            {Object.values(postReactions).flat().length}
-          </span>
-        </div>
-      )}
+              );
+            }
 
-      <div>
-        <div className="flex justify-between items-center pb-2">
-          <div className="flex gap-2 items-center">
-          <div className="flex items-center -space-x-1 ">
-            {getReactionGroups()
-              .slice(0, 3)
-              .map((group) => (
-                <div
-                  key={group.type}
-                  className="relative"
-                  onMouseEnter={() => setHoveredReaction(group.type)}
-                  onMouseLeave={() => setHoveredReaction(null)}
-                >
-                  <span className="text-sm bg-white rounded-full p-0.5 border border-gray-200 cursor-pointer">
-                    {getReactionEmoji(group.type)}
-                  </span>
-
-                
-
-                  {/* Custom Tooltip */}
-                  <ReactionTooltip
-                    users={group.users || []}
-                    isVisible={hoveredReaction === group.type}
-                  />
-                </div>
-                 
-              ))}
-              
-          </div>
-          {reactions.totalCount > 0 && (
-             <span className="text-sm  cursor-pointer hover:underline duration-300">
-                {reactions.totalCount} 
-          </span>
-          )}
-         
-          </div>
-          {/* Facebook-style reactions display */}
-          {/* {reactions.totalCount > 0 && (
-              <div 
-                className="flex items-center gap-1 hover:underline cursor-pointer"
-                onClick={() => setShowReactionsModal(true)}
-              >
-                <div className="flex items-center -space-x-1">
-                  {getReactionGroups().slice(0, 3).map((group, idx) => (
-                    <span 
-                      key={group.type} 
-                      className="text-sm bg-white rounded-full p-0.5 border border-gray-200"
-                      title={`${getReactionName(group.type)}: ${group.count}`}
-                    >
-                      {getReactionEmoji(group.type)}
-                    </span>
+            if (mediaCount === 2) {
+              return (
+                <div className="grid grid-cols-2 gap-0.5">
+                  {visibleMedia.map((url, index) => (
+                    <div key={`${post.id}-media-${index}`} className="overflow-hidden aspect-square">
+                      {renderMedia(url, index)}
+                    </div>
                   ))}
                 </div>
-                <span className="text-gray-600 text-sm font-medium">
-                  {(() => {
-                    const topReaction = getReactionGroups()[0];
-                    if (topReaction) {
-                      const summary = formatReactionSummary(topReaction);
-                      if (summary) {
-                        return summary;
-                      }
-                    }
-                    return `${reactions.totalCount} reaction${reactions.totalCount !== 1 ? 's' : ''}`;
-                  })()}
-                </span>
-              </div>
-            )} */}
+              );
+            }
 
-          {/* Fallback to likes_count if no reactions */}
-          {/* {reactions.totalCount === 0 && post.likes_count > 0 && (
-              <span className="text-gray-600 text-sm">
-                {post.likes_count} like{post.likes_count !== 1 ? 's' : ''}
-              </span>
-            )} */}
-          <div className="space-x-2">
-            {post.views_count > 0 && (
-              <span className=" hover:underline cursor-pointer text-gray-600 text-sm ">
-                Watch {post.views_count || 0}
-              </span>
-            )}
-            {post.comments_count > 0 && (
-              <span
-                className=" hover:underline cursor-pointer text-gray-600 text-sm "
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onComment(post.id);
-                }}
-              >
-                Comment {post.comments_count}
-              </span>
-            )}
-            {post.shares_count > 0 && (
-              <span className=" hover:underline cursor-pointer text-gray-600 text-sm ">
-                Share {post.shares_count}
-              </span>
-            )}
-          </div>
-        </div>
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          {/* React button with hover emoji picker */}
-          <div className="relative flex-1">
-            <button
-              onMouseEnter={handleReactHover}
-              onMouseLeave={handleReactLeave}
-              className="flex  items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200 cursor-pointer"
-              aria-label="React to post"
-            >
-              <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-xs sm:text-sm font-medium">React</span>
-            </button>
-
-            {showReactionPicker && (
-              <div
-                className="absolute bottom-full left-0 mb-2 z-50"
-                onMouseEnter={handleReactHover}
-                onMouseLeave={handleReactLeave}
-              >
-                <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-1 sm:p-2">
-                  <div className="flex space-x-1 overflow-x-auto scrollbar-hide max-w-xs px-1">
-                    {quickReactions.slice(0, 6).map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => {
-                          onEmojiReaction?.(post.id, emoji);
-                          setShowReactionPicker(false);
-                        }}
-                        className="w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg hover:scale-125 transition-transform cursor-pointer flex-shrink-0"
-                      >
-                        <span className="emoji">{emoji}</span>
-                      </button>
-                    ))}
+            if (mediaCount === 3) {
+              return (
+                <div className="grid grid-cols-2 gap-0.5">
+                  <div className="col-span-2 overflow-hidden aspect-video">
+                    {renderMedia(visibleMedia[0], 0)}
                   </div>
+                  {visibleMedia.slice(1).map((url, index) => (
+                    <div key={`${post.id}-media-${index + 1}`} className="overflow-hidden aspect-square">
+                      {renderMedia(url, index + 1)}
+                    </div>
+                  ))}
                 </div>
+              );
+            }
+
+            // 4+ images: 2x2 grid with +N overlay on last cell
+            return (
+              <div className="grid grid-cols-2 gap-0.5">
+                {visibleMedia.map((url, index) => (
+                  <div key={`${post.id}-media-${index}`} className="relative overflow-hidden aspect-square">
+                    {renderMedia(url, index)}
+                    {/* +N overlay on the last visible image if there are more */}
+                    {index === visibleMedia.length - 1 && extraCount > 0 && (
+                      <div
+                        className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleImageClick(index);
+                        }}
+                      >
+                        <span className="text-white text-3xl font-bold">
+                          +{extraCount}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-
-          <button
-            onClick={() => onComment(post.id)}
-            className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-200"
-            aria-label="Comment on post"
-          >
-            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-base sm:text-sm ">Comments</span>
-          </button>
-
-          <button
-            onClick={() => onShare(post.id)}
-            className="flex flex-1 items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-gray-600 hover:text-green-600 hover:bg-green-50 transition-colors duration-200"
-            aria-label="Share post"
-          >
-            <PiShareFatLight className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-base sm:text-sm font-medium">Share</span>
-          </button>
+            );
+          })()}
         </div>
-      </div>
+      )}
+
+      {/* Engagement Stats & Actions */}
+      <PostEngagement
+        reactionGroups={getReactionGroups()}
+        totalReactionCount={reactions.totalCount}
+        commentsCount={post.comments_count}
+        sharesCount={post.shares_count}
+        viewsCount={post.views_count}
+        showViews={!!(post.media_urls && post.media_urls.some((url) => isVideoFile(url)))}
+        onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
+        onComment={() => setShowInlineComments(prev => !prev)}
+        onShare={() => onShare(post.id)}
+        onUserClick={(username) => router.push(`/user/${username}`)}
+        postId={post.id}
+      />
 
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
@@ -1041,99 +853,30 @@ export const PostCard: React.FC<PostCardProps> = ({
         </div>
       )}
 
-      {/* Reactions Modal - Facebook style */}
-      {showReactionsModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowReactionsModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Reactions</h3>
-              <button
-                onClick={() => setShowReactionsModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <MoreHorizontal className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="overflow-y-auto max-h-[60vh]">
-              {getReactionGroups().map((group) => (
-                <div
-                  key={group.type}
-                  className="border-b border-gray-100 last:border-b-0"
-                >
-                  <div className="p-4 flex items-center gap-3">
-                    <span className="text-2xl">
-                      {getReactionEmoji(group.type)}
-                    </span>
-                    <div className="flex-1">
-                      <div className="font-semibold text-gray-900">
-                        {getReactionName(group.type)}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {group.count}{" "}
-                        {group.count === 1 ? "reaction" : "reactions"}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="px-4 pb-4 space-y-2">
-                    {group.users.slice(0, 10).map((reactedUser: any) => (
-                      <div
-                        key={reactedUser.id}
-                        className="flex items-center gap-3 hover:bg-gray-50 p-2 rounded-lg cursor-pointer transition-colors"
-                        onClick={() => {
-                          router.push(`/user/${reactedUser.username}`);
-                          setShowReactionsModal(false);
-                        }}
-                      >
-                        {reactedUser.avatar_url ? (
-                          <img
-                            src={reactedUser.avatar_url}
-                            alt={reactedUser.full_name || reactedUser.username}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                            <span className="text-gray-600 font-medium text-sm">
-                              {(reactedUser.full_name || reactedUser.username)
-                                .charAt(0)
-                                .toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">
-                            {reactedUser.full_name || reactedUser.username}
-                          </div>
-                          {reactedUser.full_name && (
-                            <div className="text-sm text-gray-500">
-                              @{reactedUser.username}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {group.users.length > 10 && (
-                      <div className="text-sm text-gray-500 text-center py-2">
-                        and {group.users.length - 10} more...
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {getReactionGroups().length === 0 && (
-                <div className="p-8 text-center text-gray-500">
-                  No reactions yet
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Image Viewer - Facebook style lightbox */}
+      {imageUrls.length > 0 && (
+        <ImageViewer
+          images={imageUrls}
+          initialIndex={imageViewerIndex}
+          isOpen={imageViewerOpen}
+          onClose={() => setImageViewerOpen(false)}
+        />
+      )}
+
+      {/* Inline Comments Section - Facebook style */}
+      {showInlineComments && (
+        <div className="border-t border-gray-100 mt-1" onClick={(e) => e.stopPropagation()}>
+          <CommentsSection
+            postId={post.id}
+            isOpen={true}
+            onClose={() => setShowInlineComments(false)}
+            canComment={canComment}
+          />
         </div>
       )}
+
     </article>
   );
-};
+});
+
+PostCard.displayName = 'PostCard';

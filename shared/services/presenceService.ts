@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { apiClient } from '@/lib/api-client'
 
 export type PresenceStatusType = 'online' | 'away' | 'busy' | 'offline'
 
@@ -79,13 +80,10 @@ const updateDatabasePresence = async (
   status: PresenceStatusType
 ): Promise<void> => {
   try {
-    await supabase
-      .from('profiles')
-      .update({
-        status,
-        last_seen: new Date().toISOString(),
-      })
-      .eq('id', userId)
+    await apiClient.patch('/api/users/me/presence', {
+      status,
+      last_seen: new Date().toISOString(),
+    })
   } catch (error) {
     console.error('Failed to update database presence:', error)
   }

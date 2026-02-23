@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface ReactionUser {
@@ -47,69 +47,14 @@ export const usePostReactionsWithUsers = (postId: string) => {
     try {
       setLoading(true)
 
-      // Fetch all reactions
-      const { data: reactionsData, error: reactionsError } = await supabase
-        .from('post_reactions')
-        .select('id, post_id, user_id, reaction_type, created_at')
-        .eq('post_id', postId)
-        .order('created_at', { ascending: false })
-
-      if (reactionsError) throw reactionsError
-
-      // Get unique user IDs
-      const userIds = [...new Set(reactionsData?.map((r: any) => r.user_id) || [])]
-
-      // Fetch user profiles
-      let userProfiles: { [key: string]: ReactionUser } = {}
-      if (userIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url')
-          .in('id', userIds)
-
-        if (!profilesError && profilesData) {
-          profilesData.forEach((profile: any) => {
-            userProfiles[profile.id] = profile
-          })
-        }
-      }
-
-      // Group reactions by type
-      const groupedReactions: { [key: string]: ReactionGroup } = {}
-      let totalCount = 0
-
-      reactionsData?.forEach((reaction: any) => {
-        const reactionType = reaction.reaction_type
-        const reactionUser = userProfiles[reaction.user_id]
-
-        if (!groupedReactions[reactionType]) {
-          groupedReactions[reactionType] = {
-            type: reactionType,
-            count: 0,
-            users: [],
-            currentUserReacted: false
-          }
-        }
-
-        groupedReactions[reactionType].count++
-        if (reactionUser) {
-          // Avoid duplicates
-          if (!groupedReactions[reactionType].users.find(u => u.id === reactionUser.id)) {
-            groupedReactions[reactionType].users.push(reactionUser)
-          }
-        }
-
-        // Check if current user reacted with this type
-        if (user && reaction.user_id === user.id) {
-          groupedReactions[reactionType].currentUserReacted = true
-        }
-
-        totalCount++
-      })
+      const res = await apiClient.get<{
+        data: Record<string, ReactionGroup>
+        totalCount: number
+      }>(`/api/posts/${postId}/reaction`)
 
       setReactions({
-        ...groupedReactions,
-        totalCount
+        ...(res.data || {}),
+        totalCount: res.totalCount || 0,
       })
     } catch (error: any) {
       console.error('Error fetching reactions with users:', error.message)
@@ -125,4 +70,3 @@ export const usePostReactionsWithUsers = (postId: string) => {
     refetch: fetchReactions
   }
 }
-

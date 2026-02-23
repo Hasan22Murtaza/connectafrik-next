@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { calculateStripeFees } from './stripeService'
 
 export interface CommissionCalculation {
@@ -132,21 +132,11 @@ export async function confirmDelivery(
   trackingNumber?: string
 ): Promise<{ success: boolean; order_id: string; seller_payout: number; status: string }> {
   try {
-    // Use auto-payout function if enabled, otherwise use manual confirm_delivery
-    const useAutoPayout = process.env.NEXT_PUBLIC_ENABLE_AUTO_PAYOUTS === 'true'
-
-    const { data, error } = await supabase.rpc(
-      useAutoPayout ? 'confirm_delivery_with_auto_payout' : 'confirm_delivery',
-      {
-        p_order_id: orderId,
-        p_confirmed_by: confirmedBy,
-        p_tracking_number: trackingNumber
-      }
+    const result = await apiClient.post<{ data: any }>(
+      `/api/marketplace/orders/${orderId}/confirm-delivery`,
+      { tracking_number: trackingNumber }
     )
-
-    if (error) throw error
-
-    return data
+    return result.data
   } catch (error) {
     console.error('Error confirming delivery:', error)
     throw error
@@ -163,15 +153,11 @@ export async function processSellerPayout(
   notes?: string
 ): Promise<{ success: boolean; payout_id: string; status: string }> {
   try {
-    const { data, error } = await supabase.rpc('process_seller_payout', {
-      p_payout_id: payoutId,
-      p_payout_reference: payoutReference,
-      p_notes: notes
-    })
-
-    if (error) throw error
-
-    return data
+    const result = await apiClient.post<{ data: any }>(
+      `/api/marketplace/payouts/${payoutId}/process`,
+      { payout_reference: payoutReference, notes }
+    )
+    return result.data
   } catch (error) {
     console.error('Error processing payout:', error)
     throw error
@@ -183,15 +169,8 @@ export async function processSellerPayout(
  */
 export async function getSellerEarnings(sellerId: string): Promise<SellerEarnings | null> {
   try {
-    const { data, error } = await supabase
-      .from('seller_earnings_summary')
-      .select('*')
-      .eq('seller_id', sellerId)
-      .single()
-
-    if (error) throw error
-
-    return data
+    const result = await apiClient.get<{ data: SellerEarnings }>('/api/marketplace/earnings')
+    return result.data
   } catch (error) {
     console.error('Error fetching seller earnings:', error)
     return null
@@ -206,21 +185,11 @@ export async function getSellerPayouts(
   status?: SellerPayout['status']
 ): Promise<SellerPayout[]> {
   try {
-    let query = supabase
-      .from('seller_payouts')
-      .select('*')
-      .eq('seller_id', sellerId)
-      .order('created_at', { ascending: false })
-
-    if (status) {
-      query = query.eq('status', status)
-    }
-
-    const { data, error } = await query
-
-    if (error) throw error
-
-    return data || []
+    const url = status
+      ? `/api/marketplace/payouts?status=${encodeURIComponent(status)}`
+      : '/api/marketplace/payouts'
+    const result = await apiClient.get<{ data: SellerPayout[] }>(url)
+    return result.data || []
   } catch (error) {
     console.error('Error fetching seller payouts:', error)
     return []
@@ -232,15 +201,8 @@ export async function getSellerPayouts(
  */
 export async function getPendingPayouts(): Promise<SellerPayout[]> {
   try {
-    const { data, error } = await supabase
-      .from('seller_payouts')
-      .select('*')
-      .eq('status', 'pending')
-      .order('requested_at', { ascending: true })
-
-    if (error) throw error
-
-    return data || []
+    const result = await apiClient.get<{ data: SellerPayout[] }>('/api/marketplace/admin/pending-payouts')
+    return result.data || []
   } catch (error) {
     console.error('Error fetching pending payouts:', error)
     return []
@@ -261,14 +223,8 @@ export async function getPlatformRevenue(): Promise<{
   active_buyers: number
 } | null> {
   try {
-    const { data, error } = await supabase
-      .from('platform_revenue_summary')
-      .select('*')
-      .single()
-
-    if (error) throw error
-
-    return data
+    const result = await apiClient.get<{ data: any }>('/api/marketplace/admin/revenue')
+    return result.data
   } catch (error) {
     console.error('Error fetching platform revenue:', error)
     return null

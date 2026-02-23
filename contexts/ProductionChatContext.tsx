@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
+import { apiClient } from '@/lib/api-client'
 import { supabase } from '@/lib/supabase'
 import {
   initializePresence,
@@ -364,11 +365,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (typeof window !== 'undefined') {
         const { openCallWindow } = await import('@/shared/utils/callWindow')
         
-        // Get recipient name from thread
+        // Get recipient/group name from thread
         const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
         const thread = userThreads.find(t => t.id === threadId)
-        const recipient = thread?.participants?.find((p: any) => p.id !== currentUser?.id)
-        const recipientName = recipient?.name || 'Unknown'
+        const isGroupCall = (thread?.participants?.length || 0) > 2
+        const recipientName = isGroupCall
+          ? (thread?.name || 'Group Call')
+          : (thread?.participants?.find((p: any) => p.id !== currentUser?.id)?.name || 'Unknown')
 
         openCallWindow({
           roomId,
@@ -578,26 +581,29 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     if (!currentUser) return
 
-    const unsubscribeCallbacks: (() => void)[] = []
-    const subscribedThreadIds = new Set<string>()
+    const channel = supabase
+      .channel('global-call-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: 'message_type=eq.call_request'
+        },
+        (payload) => {
+          const msg = payload.new as any
+          if (msg.sender_id === currentUser.id) return
 
-    const subscribeToThreadForCalls = (threadId: string) => {
-      if (subscribedThreadIds.has(threadId)) {
-        return
-      }
-
-      subscribedThreadIds.add(threadId)
-      const messageUnsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
-        if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
-          const metadata = message.metadata as any
+          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
           if (metadata?.roomId && metadata?.callType) {
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('incomingCall', {
                 detail: {
-                  threadId: threadId,
+                  threadId: msg.thread_id,
                   type: metadata.callType,
-                  callerId: message.sender_id,
-                  callerName: message.sender?.name || metadata?.callerName || 'Unknown',
+                  callerId: msg.sender_id,
+                  callerName: metadata.callerName || 'Unknown',
                   roomId: metadata.roomId,
                   token: metadata.token
                 }
@@ -605,31 +611,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             }
           }
         }
-      })
-      unsubscribeCallbacks.push(messageUnsubscribe)
-    }
-
-    const setupGlobalCallListener = async () => {
-      try {
-        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
-        userThreads.forEach(thread => {
-          subscribeToThreadForCalls(thread.id)
-        })
-      } catch (error) {
-        console.error('Error setting up global call listener:', error)
-      }
-    }
-
-    const threadUnsubscribe = supabaseMessagingService.subscribeToUserThreads(currentUser, (thread) => {
-      subscribeToThreadForCalls(thread.id)
-    })
-    unsubscribeCallbacks.push(threadUnsubscribe)
-
-    setupGlobalCallListener()
+      )
+      .subscribe()
 
     return () => {
-      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
-      subscribedThreadIds.clear()
+      supabase.removeChannel(channel)
     }
   }, [currentUser])
 
@@ -638,27 +624,15 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
     const loadAndUpdatePresence = async () => {
       try {
-        const { data: friendsData } = await supabase
-          .from('friend_requests')
-          .select(`
-            sender_id,
-            receiver_id,
-            sender:profiles!friend_requests_sender_id_profiles_fkey(id, status, last_seen),
-            receiver:profiles!friend_requests_receiver_id_profiles_fkey(id, status, last_seen)
-          `)
-          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-          .eq('status', 'accepted')
+        const res = await apiClient.get<{ data: any[] }>('/api/friends')
+        const friends = res.data || []
 
-        if (friendsData) {
-          friendsData.forEach((req: any) => {
-            const friend = req.sender_id === user.id ? req.receiver : req.sender
-            const friendData = Array.isArray(friend) ? friend[0] : friend
-            if (friendData?.id) {
-              const calculatedStatus = calculateStatusFromLastSeen(friendData.last_seen)
-              updatePresence(friendData.id, calculatedStatus)
-            }
-          })
-        }
+        friends.forEach((friend: any) => {
+          if (friend?.id) {
+            const calculatedStatus = calculateStatusFromLastSeen(friend.last_seen)
+            updatePresence(friend.id, calculatedStatus)
+          }
+        })
       } catch (error) {
         console.error('Failed to load initial presence:', error)
       }

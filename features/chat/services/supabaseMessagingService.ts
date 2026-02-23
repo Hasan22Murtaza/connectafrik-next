@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import type { ChatParticipant as BaseParticipant } from "@/shared/types/chat"
 import { notificationService } from '@/shared/services/notificationService'
 
@@ -95,17 +96,19 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
   }
 
   // Send push notification for new messages (not call requests). Skip when skipPush is true
-  // (e.g. from sendMessage path) so we only send push once from the realtime handler.
+  // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
   if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted' && message.message_type !== 'call_ended') {
     try {
-      // Get thread participants to send notifications to
-      const { data: participants } = await supabase
-        .from('chat_participants')
-        .select('user_id')
-        .eq('thread_id', message.thread_id)
-        .neq('user_id', message.sender_id) // Don't notify the sender
+      const res = await apiClient.get<{ data: { user_id: string }[] }>(
+        `/api/chat/threads/${message.thread_id}/participants`,
+        { exclude_user_id: message.sender_id }
+      )
+      const participants = res?.data ?? []
 
-      if (participants && participants.length > 0) {
+      if (participants.length > 0) {
+        // Deduplicate participant user_ids to avoid sending multiple notifications to the same user
+        const uniqueUserIds = [...new Set(participants.map(p => p.user_id))]
+
         // Get sender name from message or fetch from profile
         const senderName = message.sender?.name || 
                           (message as any).sender?.full_name || 
@@ -119,11 +122,12 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
                                 ? 'Shared an attachment' 
                                 : 'Sent a message')
 
-        // Send push notification to each participant
-        for (const participant of participants) {
+        // Send ONE push notification per unique participant (saves 1 DB record + pushes to all their devices)
+        for (const userId of uniqueUserIds) {
+          console.log('Sending push notification to participant:', userId)
           try {
             await notificationService.sendNotification({
-              user_id: participant.user_id,
+              user_id: userId,
               title: senderName,
               body: messagePreview,
               notification_type: 'chat_message',
@@ -131,7 +135,6 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
                 thread_id: message.thread_id,
                 sender_id: message.sender_id,
                 sender_name: senderName,
-                url: '/chat'
               }
             })
           } catch (notificationError) {
@@ -371,25 +374,20 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
         table: 'chat_threads',
       },
       async (payload) => {
-        // Fetch updated thread data
-        const { data: thread } = await supabase
-          .from('chat_threads')
-          .select(`
-            *,
-            chat_participants!inner(
-              user_id,
-              user:profiles!inner(id, username, full_name, avatar_url)
-            )
-          `)
-          .eq('id', (payload.new as any)?.id)
-          .single()
-
-        if (thread) {
-          const formattedThread = await formatThread(thread, currentUser.id)
-          if (!formattedThread.participants.some((participant) => participant.id === currentUser.id)) {
-            return
+        const threadId = (payload.new as any)?.id
+        if (!threadId) return
+        try {
+          const res = await apiClient.get<{ data: any }>(`/api/chat/threads/${threadId}`)
+          const thread = (res as any)?.data
+          if (thread) {
+            const formattedThread = await formatThread(thread, currentUser.id)
+            if (!formattedThread.participants.some((participant) => participant.id === currentUser.id)) {
+              return
+            }
+            notifyThreadSubscribers(formattedThread)
           }
-          notifyThreadSubscribers(formattedThread)
+        } catch {
+          // Thread may be inaccessible; ignore
         }
       }
     )
@@ -408,34 +406,15 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
       async (payload) => {
         const message = payload.new as any
 
-        // Check if current user is a participant in this thread
-        // Use .maybeSingle() or check array length instead of .single() to avoid 406 errors
-        const { data: participants, error: participantError } = await supabase
-          .from('chat_participants')
-          .select('user_id')
-          .eq('thread_id', message.thread_id)
-          .eq('user_id', currentUser.id)
-          .limit(1)
-
-        // Only process messages from threads the user is part of
-        if (participantError) {
-          // If it's a 406 or RLS error, we might still want to process call messages
-          // as it could be a false negative. Continue for call messages.
-          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected' || message.message_type === 'call_ended') {
-            // Continue processing for call messages even if participant check fails
-          } else {
-            return
-          }
-        } else if (!participants || participants.length === 0) {
-          // User is not a participant - but still process call messages as they're critical
-          if (message.message_type === 'call_request' || message.message_type === 'call_accepted' || message.message_type === 'call_rejected' || message.message_type === 'call_ended') {
-            // Continue processing for call messages
-          } else {
-            return
-          }
+        // Check if current user is a participant via API (404/error => skip unless call message)
+        try {
+          await apiClient.get<{ data: unknown }>(`/api/chat/threads/${message.thread_id}`)
+        } catch {
+          const isCallMessage = ['call_request', 'call_accepted', 'call_rejected', 'call_ended'].includes(message.message_type)
+          if (!isCallMessage) return
         }
 
-        // Fetch full message with sender info
+        // Fetch full message with sender info (no single-message API; use Supabase for realtime)
         const { data: fullMessage } = await supabase
           .from('chat_messages')
           .select(`
@@ -447,16 +426,7 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
 
         if (fullMessage) {
           const formattedMessage = await formatMessage(fullMessage)
-
-          // For call messages, notify only the specific thread subscribers
-          // This prevents call flooding to all users
-          if (formattedMessage.message_type === 'call_request' || formattedMessage.message_type === 'call_accepted' || formattedMessage.message_type === 'call_rejected' || formattedMessage.message_type === 'call_ended') {
-            // Notify only the specific thread subscribers (not all users)
-            notifyMessageSubscribers(formattedMessage)
-          } else {
-            // Regular messages - notify specific thread subscribers only
-            notifyMessageSubscribers(formattedMessage)
-          }
+          notifyMessageSubscribers(formattedMessage, { skipPush: true })
         }
       }
     )
@@ -625,6 +595,50 @@ const loadThreadsViaRpc = async (
   }
 }
 
+// Map API message response (already has read_by, attachments) to ChatMessage
+const mapApiMessageToChatMessage = (message: any): ChatMessage => {
+  const sender = message.sender ?? message.sender_id
+  const senderProfile = typeof sender === 'object' ? sender : null
+  const attachmentsRaw = message.attachments ?? []
+  const attachments: ChatAttachment[] = Array.isArray(attachmentsRaw)
+    ? attachmentsRaw.map((att: any) => ({
+        id: att.id,
+        name: att.file_name ?? att.name,
+        url: att.file_url ?? att.url,
+        type: (att.file_type ?? att.mimeType ?? '').startsWith('image/') ? 'image' as const :
+              (att.file_type ?? att.mimeType ?? '').startsWith('video/') ? 'video' as const : 'file' as const,
+        size: att.file_size ?? att.size ?? 0,
+        mimeType: att.file_type ?? att.mimeType ?? '',
+      }))
+    : []
+
+  return {
+    id: message.id,
+    thread_id: message.thread_id,
+    sender_id: message.sender_id,
+    content: message.content ?? '',
+    created_at: message.created_at,
+    updated_at: message.updated_at,
+    message_type: message.message_type,
+    metadata: message.metadata,
+    read_by: Array.isArray(message.read_by) ? message.read_by : [],
+    is_deleted: message.is_deleted,
+    deleted_for: message.deleted_for ?? [],
+    deleted_at: message.deleted_at,
+    attachments,
+    sender: senderProfile ? {
+      id: senderProfile.id,
+      name: senderProfile.full_name || senderProfile.username || 'Loading...',
+      avatarUrl: senderProfile.avatar_url ?? undefined,
+    } : {
+      id: message.sender_id,
+      name: 'Loading...',
+      avatarUrl: undefined,
+    },
+    reply_to_id: message.reply_to_id,
+  }
+}
+
 // Format message data from Supabase
 const formatMessage = async (message: any): Promise<ChatMessage> => {
   // Get read receipts
@@ -681,18 +695,15 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
 // Function to fetch sender information for messages
 const fetchSenderInfo = async (senderId: string) => {
   try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, avatar_url')
-      .eq('id', senderId)
-      .single()
-
-    if (error) throw error
-
+    const res = await apiClient.get<{ data: { id: string; full_name?: string; username?: string; avatar_url?: string } }>(
+      `/api/users/${senderId}`
+    )
+    const data = (res as any)?.data
+    if (!data) throw new Error('No profile')
     return {
       id: data.id,
       name: data.full_name || data.username || 'Unknown User',
-      avatarUrl: data.avatar_url
+      avatarUrl: data.avatar_url ?? null
     }
   } catch (error) {
     console.error('Error fetching sender info:', error)
@@ -705,110 +716,56 @@ const fetchSenderInfo = async (senderId: string) => {
 }
 
 export const supabaseMessagingService = {
-  async getUserThreads(currentUser?: ChatParticipant | null): Promise<ChatThread[]> {
+  async getUserThreads(currentUser?: ChatParticipant | null, options?: { limit?: number; offset?: number }): Promise<ChatThread[]> {
     if (!currentUser) {
       return []
     }
 
+    const limit = options?.limit ?? 20
+    const offset = options?.offset ?? 0
+
     const sortThreads = (threads: ChatThread[]) =>
       [...threads].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
 
-    if (fallbackEnabled) {
-      return sortThreads(getLocalThreadsForUser(currentUser.id))
-    }
-
     try {
-      const { data: memberships, error: membershipError } = await supabase
-        .from('chat_participants')
-        .select('thread_id')
-        .eq('user_id', currentUser.id)
-
-      if (membershipError) {
-        console.error('Error fetching thread memberships:', membershipError)
-        if (isPolicyRecursionError(membershipError)) {
-          return loadThreadsViaRpc(currentUser.id, sortThreads)
-        }
-        activateFallback(membershipError)
-        return sortThreads(getLocalThreadsForUser(currentUser.id))
-      }
-
-      const threadIds = Array.from(
-        new Set((memberships ?? []).map((item: any) => item.thread_id).filter(Boolean))
+      const res = await apiClient.get<{ data: any[]; limit: number; offset: number }>(
+        '/api/chat/threads',
+        { limit, offset }
       )
-
-      if (!threadIds.length) {
+      const threads = res?.data ?? []
+      if (fallbackEnabled) {
+        fallbackEnabled = false
+      }
+      if (!threads.length) {
         return []
       }
-
-      const { data: threads, error: threadError } = await supabase
-        .from('chat_threads')
-        .select(`
-          *,
-          chat_participants(
-            user_id,
-            user:profiles!user_id(id, username, full_name, avatar_url)
-          )
-        `)
-        .in('id', threadIds)
-        .order('last_message_at', { ascending: false })
-
-      if (threadError) {
-        console.error('Error fetching threads:', threadError)
-        if (isPolicyRecursionError(threadError)) {
-          return loadThreadsViaRpc(currentUser.id, sortThreads)
-        }
-        activateFallback(threadError)
-        return sortThreads(getLocalThreadsForUser(currentUser.id))
-      }
-
-      if (!threads) {
-        return []
-      }
-
       const formattedThreads = await Promise.all(
         threads.map((thread: any) => formatThread(thread, currentUser.id))
       )
-
       formattedThreads.sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
-
       return formattedThreads
-    } catch (error) {
-      if (isPolicyRecursionError(error)) {
+    } catch (error: any) {
+      const details = error?.details ?? error?.message
+      if (isPolicyRecursionError(details ?? error)) {
         return loadThreadsViaRpc(currentUser.id, sortThreads)
       }
       console.error('Error in getUserThreads:', error)
       activateFallback(error)
-      return sortThreads(getLocalThreadsForUser(currentUser.id))
+      const all = sortThreads(getLocalThreadsForUser(currentUser.id))
+      return all.slice(offset, offset + limit)
     }
   },
 
   async getThreadMessages(threadId: string): Promise<ChatMessage[]> {
-    if (fallbackEnabled) {
-      return localMessages.get(threadId) ?? []
-    }
-
     try {
-      const { data: messages, error } = await supabase
-        .from('chat_messages')
-        .select(`
-          *,
-          sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
-        `)
-        .eq('thread_id', threadId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching messages:', error)
-        activateFallback(error)
-        return localMessages.get(threadId) ?? []
-      }
-
-      const formattedMessages = await Promise.all(
-        (messages ?? []).map((message) => formatMessage(message))
+      const res = await apiClient.get<{ data: any[] }>(
+        `/api/chat/threads/${threadId}/messages`
       )
-
-      return formattedMessages
+      const messages = res?.data ?? []
+      if (fallbackEnabled) {
+        fallbackEnabled = false
+      }
+      return messages.map((m: any) => mapApiMessageToChatMessage(m))
     } catch (error) {
       console.error('Error in getThreadMessages:', error)
       activateFallback(error)
@@ -816,45 +773,22 @@ export const supabaseMessagingService = {
     }
   },
 
-  async getRecentCalls(currentUserId: string, limit = 50): Promise<RecentCallEntry[]> {
+  async getRecentCalls(currentUserId: string, _limit = 50, _offset = 0): Promise<RecentCallEntry[]> {
     if (!currentUserId) return []
 
     try {
-      const { data: memberships, error: membershipError } = await supabase
-        .from('chat_participants')
-        .select('thread_id')
-        .eq('user_id', currentUserId)
-
-      if (membershipError || !memberships?.length) return []
-
-      const threadIds = [...new Set((memberships ?? []).map((m: { thread_id: string }) => m.thread_id).filter(Boolean))]
-
-      const { data: messages, error } = await supabase
-        .from('chat_messages')
-        .select('id, thread_id, created_at, message_type, metadata')
-        .in('thread_id', threadIds)
-        .in('message_type', ['call_request', 'call_accepted', 'call_ended', 'call_rejected'])
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: false })
-        .limit(limit)
-
-      if (error || !messages?.length) return []
-
-      const seenThreads = new Set<string>()
-      const entries: RecentCallEntry[] = []
-      for (const m of messages) {
-        if (seenThreads.has(m.thread_id)) continue
-        seenThreads.add(m.thread_id)
-        const meta = (m.metadata ?? {}) as Record<string, unknown>
-        entries.push({
-          thread_id: m.thread_id,
-          created_at: m.created_at,
-          message_type: m.message_type,
+      const res = await apiClient.get<{ data: any[] }>('/api/chat/calls/recent')
+      const list = res?.data ?? []
+      return list.map((r: any) => {
+        const meta = (r.metadata ?? {}) as Record<string, unknown>
+        return {
+          thread_id: r.thread_id,
+          created_at: r.created_at,
+          message_type: r.message_type,
           call_type: (meta.callType === 'video' ? 'video' : 'audio') as 'audio' | 'video',
           metadata: meta,
-        })
-      }
-      return entries
+        }
+      })
     } catch (err) {
       console.error('Error fetching recent calls:', err)
       return []
@@ -862,71 +796,18 @@ export const supabaseMessagingService = {
   },
 
   async createThread(currentUser: ChatParticipant, options: CreateThreadOptions): Promise<string> {
-    if (fallbackEnabled) {
-      const thread = createLocalThread(currentUser, options)
-      return thread.id
-    }
-
     try {
       const participantIds = Array.from(new Set([currentUser.id, ...options.participant_ids]))
       const resolvedType = options.type ?? (participantIds.length > 2 ? 'group' : 'direct')
-
-      if (resolvedType === 'direct' && participantIds.length === 2) {
-        const { data: existingThreads, error: existingError } = await supabase
-          .from('chat_threads')
-          .select(`
-            id,
-            chat_participants(user_id)
-          `)
-          .eq('type', 'direct')
-
-        if (existingError) {
-          console.error('Error checking existing direct thread:', existingError)
-        }
-
-        if (existingThreads && existingThreads.length > 0) {
-          const desiredIds = new Set(participantIds)
-          for (const thread of existingThreads as any[]) {
-            const participantList = thread.chat_participants ?? []
-            const threadIds = new Set(participantList.map((item: any) => item.user_id))
-            if (threadIds.size === desiredIds.size && participantIds.every((id) => threadIds.has(id))) {
-              return thread.id
-            }
-          }
-        }
-      }
-
-
-      const { data: thread, error: threadError } = await supabase
-        .from('chat_threads')
-        .insert({
-          type: resolvedType,
-          title: options.title,
-          name: options.title,
-          created_by: currentUser.id
-        })
-        .select()
-        .single()
-
-      if (threadError) {
-        throw threadError
-      }
-
-      const participants = participantIds.map((userId) => ({
-        thread_id: thread.id,
-        user_id: userId,
-        role: userId === currentUser.id ? 'admin' : 'member'
-      }))
-
-      const { error: participantsError } = await supabase
-        .from('chat_participants')
-        .insert(participants)
-
-      if (participantsError) {
-        throw participantsError
-      }
-
-      return thread.id
+      const res = await apiClient.post<{ data: { id: string } }>('/api/chat/threads', {
+        participant_ids: options.participant_ids,
+        type: resolvedType,
+        title: options.title ?? undefined,
+        name: options.name ?? options.title ?? undefined,
+      })
+      const id = (res as any)?.data?.id
+      if (!id) throw new Error('No thread id returned')
+      return id
     } catch (error) {
       console.error('Error creating thread:', error)
       activateFallback(error)
@@ -936,156 +817,75 @@ export const supabaseMessagingService = {
   },
 
   async sendMessage(threadId: string, payload: SendMessageOptions, currentUser: ChatParticipant): Promise<ChatMessage> {
-    if (fallbackEnabled) {
-      return createLocalMessage(threadId, payload, currentUser)
-    }
-
     try {
-      // Insert message
-      const { data: message, error: messageError } = await supabase
-        .from('chat_messages')
-        .insert({
-          thread_id: threadId,
-          sender_id: currentUser.id,
+      const res = await apiClient.post<{ data: any }>(
+        `/api/chat/threads/${threadId}/messages`,
+        {
           content: payload.content,
-          message_type: payload.message_type || 'text',
+          message_type: payload.message_type ?? 'text',
           metadata: payload.metadata,
-          reply_to_id: payload.reply_to_id
-        })
-        .select()
-        .single()
-
-      if (messageError) {
-        throw messageError
-      }
-
-      // Insert attachments if any
-      if (payload.attachments && payload.attachments.length > 0) {
-        const attachments = payload.attachments.map((att) => ({
-          message_id: message.id,
-          file_name: att.name,
-          file_size: att.size,
-          file_type: att.mimeType,
-          file_url: att.url
-        }))
-
-        const { error: attachmentsError } = await supabase
-          .from('message_attachments')
-          .insert(attachments)
-
-        if (attachmentsError) {
-          console.error('Error inserting attachments:', attachmentsError)
+          attachments: payload.attachments,
+          reply_to_id: payload.reply_to_id,
         }
-      }
+      )
+      const rawMessage = (res as any)?.data
+      if (!rawMessage) throw new Error('No message returned')
+      const formattedMessage = mapApiMessageToChatMessage(rawMessage)
 
-      // Mark as read by sender
-      await supabase
-        .from('message_reads')
-        .insert({
-          message_id: message.id,
-          user_id: currentUser.id
-        })
+      // Send push notification for call requests immediately (works even when offline)
+      if (payload.message_type === 'call_request') {
+        try {
+          const callParticipantsRes = await apiClient.get<{ data: { user_id: string }[] }>(
+            `/api/chat/threads/${threadId}/participants`,
+            { exclude_user_id: currentUser.id }
+          )
+          const participants = callParticipantsRes?.data ?? []
 
-      // Update thread last message info
-      await supabase
-        .from('chat_threads')
-        .update({
-          last_message_preview: payload.content,
-          last_message_at: new Date().toISOString(),
-          last_activity_at: new Date().toISOString()
-        })
-        .eq('id', threadId)
+          if (participants.length > 0) {
+            const metadata = payload.metadata as any
+            const callType = metadata?.callType || 'audio'
+            const roomId = metadata?.roomId
+            const token = metadata?.token
+            const callerId = currentUser.id
+            const callerName = currentUser.name || metadata?.callerName || 'Someone'
 
-      // Fetch full message with sender info
-      const { data: fullMessage } = await supabase
-        .from('chat_messages')
-        .select(`
-          *,
-          sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
-        `)
-        .eq('id', message.id)
-        .single()
-
-      if (fullMessage) {
-        const formattedMessage = await formatMessage(fullMessage)
-        
-        // Send push notification for call requests immediately (works even when offline)
-        if (payload.message_type === 'call_request') {
-          try {
-            // Get thread participants to send notifications to
-            const { data: participants } = await supabase
-              .from('chat_participants')
-              .select('user_id')
-              .eq('thread_id', threadId)
-              .neq('user_id', currentUser.id) // Don't notify the sender
-
-            if (participants && participants.length > 0) {
-              const metadata = payload.metadata as any
-              const callType = metadata?.callType || 'audio'
-              const roomId = metadata?.roomId
-              const token = metadata?.token
-              const callerId = currentUser.id
-              const callerName = currentUser.name || metadata?.callerName || 'Someone'
-
-              // Fetch caller's profile image
-              let callerImage: string | undefined
+            for (const participant of participants) {
               try {
-                const { data: callerProfile } = await supabase
-                  .from('profiles')
-                  .select('avatar_url')
-                  .eq('id', callerId)
-                  .single()
-                callerImage = callerProfile?.avatar_url || undefined
-              } catch {
-                // Continue without image if fetch fails
-              }
-
-              // Send push notification to each participant
-              for (const participant of participants) {
-                try {
-                  if (roomId && token && callerId) {
-                    // Send via the existing push notification API
-                    await notificationService.sendNotification({
-                      user_id: participant.user_id,
-                      title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
-                      body: `${callerName} is calling you...`,
-                      notification_type: 'system',
-                      skip_db: true, // Don't store incoming calls, only missed calls
-                      tag: `incoming-call-${threadId}`,
-                      image: callerImage, // Caller's profile image
-                      requireInteraction: true,
-                      vibrate: [200, 100, 200, 100, 200, 100, 200],
-                      data: {
-                        type: 'incoming_call',
-                        call_type: callType,
-                        room_id: roomId,
-                        thread_id: threadId,
-                        token: token,
-                        caller_id: callerId,
-                        caller_name: callerName,
-                        caller_image: callerImage || '',
-                        url: `/call/${roomId}`
-                      }
-                    })
-                    console.log(`📞 Sent incoming call push notification to ${participant.user_id}`)
-                  }
-                } catch (notificationError) {
-                  console.error('Error sending call notification:', notificationError)
-                  // Don't fail the message if notification fails
+                if (roomId && token && callerId) {
+                  await notificationService.sendNotification({
+                    user_id: participant.user_id,
+                    title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
+                    body: `${callerName} is calling you...`,
+                    notification_type: 'system',
+                    skip_db: true,
+                    tag: `incoming-call-${threadId}`,
+                    requireInteraction: true,
+                    vibrate: [200, 100, 200, 100, 200, 100, 200],
+                    data: {
+                      type: 'incoming_call',
+                      call_type: callType,
+                      room_id: roomId,
+                      thread_id: threadId,
+                      token: token,
+                      caller_id: callerId,
+                      caller_name: callerName,
+                      url: `/call/${roomId}`
+                    }
+                  })
+                  console.log(`📞 Sent incoming call push notification to ${participant.user_id}`)
                 }
+              } catch (notificationError) {
+                console.error('Error sending call notification:', notificationError)
               }
             }
-          } catch (error) {
-            console.error('Error processing call request notification:', error)
-            // Don't fail the message if notification fails
           }
+        } catch (error) {
+          console.error('Error processing call request notification:', error)
         }
-        
-        notifyMessageSubscribers(formattedMessage, { skipPush: true })
-        return formattedMessage
       }
 
-      throw new Error('Failed to fetch created message')
+      notifyMessageSubscribers(formattedMessage)
+      return formattedMessage
     } catch (error) {
       console.error('Error sending message:', error)
       activateFallback(error)
@@ -1096,29 +896,10 @@ export const supabaseMessagingService = {
   async markMessagesAsRead(threadId: string, messageIds: string[], userId: string): Promise<void> {
     if (!userId || !messageIds.length) return
 
-    if (fallbackEnabled) {
-      markLocalMessagesAsRead(threadId, userId)
-      return
-    }
-
     try {
-      const reads = messageIds.map((messageId) => ({
-        message_id: messageId,
-        user_id: userId
-      }))
-
-      const { error } = await supabase
-        .from('message_reads')
-        .upsert(reads, { onConflict: 'message_id,user_id' })
-
-      if (error) {
-        console.error('Error marking messages as read:', error)
-        activateFallback(error)
-        markLocalMessagesAsRead(threadId, userId)
-      }
+      await apiClient.post(`/api/chat/threads/${threadId}/read`, { message_ids: messageIds })
     } catch (error) {
       console.error('Error in markMessagesAsRead:', error)
-      activateFallback(error)
       markLocalMessagesAsRead(threadId, userId)
     }
   },
@@ -1216,40 +997,11 @@ export const supabaseMessagingService = {
     }
 
     try {
-      let queryBuilder = supabase
-        .from('chat_messages')
-        .select(`
-          *,
-          profiles!inner(id, username, full_name, avatar_url),
-          chat_threads!inner(
-            chat_participants!inner(user_id)
-          )
-        `)
-        .eq('is_deleted', false)
-        .ilike('content', `%${query}%`)
-
-      if (threadId) {
-        queryBuilder = queryBuilder.eq('thread_id', threadId)
-      } else {
-        // Only search in threads where user is a participant
-        queryBuilder = queryBuilder.eq('chat_threads.chat_participants.user_id', userId)
-      }
-
-      const { data: messages, error } = await queryBuilder
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (error) {
-        console.error('Error searching messages:', error)
-        activateFallback(error)
-        return searchLocalMessages(query, userId, threadId)
-      }
-
-      const formattedMessages = await Promise.all(
-        (messages ?? []).map((message) => formatMessage(message))
-      )
-
-      return formattedMessages
+      const params: Record<string, string> = { q: query }
+      if (threadId) params.thread_id = threadId
+      const res = await apiClient.get<{ data: any[] }>('/api/chat/messages/search', params)
+      const messages = res?.data ?? []
+      return messages.map((m: any) => mapApiMessageToChatMessage(m))
     } catch (error) {
       console.error('Error in searchMessages:', error)
       activateFallback(error)

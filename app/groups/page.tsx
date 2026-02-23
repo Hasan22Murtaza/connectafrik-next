@@ -10,20 +10,23 @@ import {
   Plus,
   Search,
   Users,
-  Settings,
   FileText,
   ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import toast from "react-hot-toast";
+import { getReactionTypeFromEmoji } from "@/shared/utils/reactionUtils";
 import {
   useShimmerCount,
   GroupsFeedShimmer,
   GroupsGridShimmer,
 } from "@/shared/components/ui/ShimmerLoaders";
+import ShareModal from "@/features/social/components/ShareModal";
+import { useMembers } from "@/shared/hooks/useMembers";
+import { sendNotification } from "@/shared/services/notificationService";
 
 const GroupsPage: React.FC = () => {
   const { user } = useAuth();
@@ -38,17 +41,18 @@ const GroupsPage: React.FC = () => {
   } = useGroups();
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState<"feed" | "discover" | "my-groups">("feed");
-  const [filteredGroups, setFilteredGroups] = useState<Group[]>([]);
   const [managedGroups, setManagedGroups] = useState<Group[]>([]);
-  const [joinedGroups, setJoinedGroups] = useState<Group[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
   const [showAllJoined, setShowAllJoined] = useState(false);
+  const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
+  const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null; groupId: string | null }>({ open: false, postId: null, groupId: null });
+  const { members } = useMembers();
   const shimmerCount = useShimmerCount();
 
   // Fetch managed and joined groups separately
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       const loadGroups = async () => {
         await fetchMyGroups();
         const managed = await fetchManagedGroups();
@@ -56,19 +60,17 @@ const GroupsPage: React.FC = () => {
       };
       loadGroups();
     }
-  }, [user]);
+  }, [user?.id]);
 
-  // Separate joined groups from managed groups
-  useEffect(() => {
-    if (groups.length > 0 && user) {
-      const joined = groups.filter(
-        (g: Group) =>
-          g.membership &&
-          g.membership.status === "active" &&
-          !managedGroups.some((mg) => mg.id === g.id),
-      );
-      setJoinedGroups(joined);
-    }
+  // Derive joined groups synchronously — no extra render cycle
+  const joinedGroups = useMemo(() => {
+    if (!user || groups.length === 0) return [];
+    return groups.filter(
+      (g: Group) =>
+        g.membership &&
+        g.membership.status === "active" &&
+        !managedGroups.some((mg) => mg.id === g.id),
+    );
   }, [groups, managedGroups, user]);
 
   // Fetch recent activity
@@ -84,26 +86,21 @@ const GroupsPage: React.FC = () => {
     }
   }, [user, view]);
 
-  // Filter groups based on search
-  useEffect(() => {
-    let filtered = groups;
-
-    if (searchTerm) {
-      const lowercaseSearch = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (group) =>
-          group.name.toLowerCase().includes(lowercaseSearch) ||
-          group.description.toLowerCase().includes(lowercaseSearch) ||
-          group.tags.some((tag) =>
-            tag.toLowerCase().includes(lowercaseSearch),
-          ) ||
-          group.goals.some((goal) =>
-            goal.toLowerCase().includes(lowercaseSearch),
-          ),
-      );
-    }
-
-    setFilteredGroups(filtered);
+  // Derive filtered groups synchronously — no extra render cycle
+  const filteredGroups = useMemo(() => {
+    if (!searchTerm) return groups;
+    const lowercaseSearch = searchTerm.toLowerCase();
+    return groups.filter(
+      (group) =>
+        group.name.toLowerCase().includes(lowercaseSearch) ||
+        group.description.toLowerCase().includes(lowercaseSearch) ||
+        group.tags.some((tag) =>
+          tag.toLowerCase().includes(lowercaseSearch),
+        ) ||
+        group.goals.some((goal) =>
+          goal.toLowerCase().includes(lowercaseSearch),
+        ),
+    );
   }, [groups, searchTerm]);
 
   const handleViewChange = (newView: "feed" | "discover" | "my-groups") => {
@@ -142,88 +139,196 @@ const GroupsPage: React.FC = () => {
     router.push(`/groups/${groupId}`);
   };
 
-  const displayedJoinedGroups = showAllJoined
-    ? joinedGroups
-    : joinedGroups.slice(0, 5);
+  const displayedJoinedGroups = useMemo(
+    () => (showAllJoined ? joinedGroups : joinedGroups.slice(0, 5)),
+    [joinedGroups, showAllJoined],
+  );
 
   const handlePostLike = async (postId: string) => {
+    // Default like reaction via the React button fallback
+    handlePostEmojiReaction(postId, '\u{1F44D}');
+  };
+
+  const handlePostEmojiReaction = useCallback(async (postId: string, emoji: string) => {
     if (!user) {
-      toast.error("You must be logged in to like posts");
+      toast.error("You must be logged in to react to posts");
       return;
     }
 
     try {
-      const post = recentActivity.find((p: any) => p.id === postId);
-      if (!post) return;
+      const reactionType = getReactionTypeFromEmoji(emoji);
 
-      // Check if already liked
-      const { data: existingLike } = await supabase
-        .from("likes")
-        .select("id")
-        .eq("post_id", postId)
+      // Check if user already has a reaction for this post
+      const { data: existingReaction, error: checkError } = await supabase
+        .from("group_post_reactions")
+        .select("id, reaction_type")
+        .eq("group_post_id", postId)
         .eq("user_id", user.id)
         .single();
 
-      if (existingLike) {
-        // Unlike
-        await supabase.from("likes").delete().eq("id", existingLike.id);
-
-        setRecentActivity((prev: any[]) =>
-          prev.map((p: any) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  likes_count: Math.max(0, p.likes_count - 1),
-                  isLiked: false,
-                }
-              : p,
-          ),
-        );
-      } else {
-        // Like
-        await supabase
-          .from("likes")
-          .insert([{ post_id: postId, user_id: user.id }]);
-
-        setRecentActivity((prev: any[]) =>
-          prev.map((p: any) =>
-            p.id === postId
-              ? { ...p, likes_count: p.likes_count + 1, isLiked: true }
-              : p,
-          ),
-        );
+      if (checkError && checkError.code !== "PGRST116") {
+        console.error("Error checking existing reaction:", checkError);
+        toast.error("Failed to check reaction");
+        return;
       }
+
+      // If user already reacted with the same type, remove it (toggle off)
+      if (existingReaction && existingReaction.reaction_type === reactionType) {
+        await supabase
+          .from("group_post_reactions")
+          .delete()
+          .eq("group_post_id", postId)
+          .eq("user_id", user.id)
+          .eq("reaction_type", reactionType);
+
+        // Decrement likes_count
+        const { data: currentPost } = await supabase
+          .from("group_posts")
+          .select("likes_count")
+          .eq("id", postId)
+          .single();
+
+        if (currentPost) {
+          await supabase
+            .from("group_posts")
+            .update({ likes_count: Math.max(0, (currentPost.likes_count || 0) - 1) })
+            .eq("id", postId);
+        }
+
+        setRecentActivity((prev: any[]) =>
+          prev.map((p: any) =>
+            p.id === postId
+              ? { ...p, likes_count: Math.max(0, p.likes_count - 1), isLiked: false }
+              : p,
+          ),
+        );
+
+        toast.success("Reaction removed");
+        window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
+        return;
+      }
+
+      // If user has a different reaction, update it (no count change)
+      if (existingReaction) {
+        await supabase
+          .from("group_post_reactions")
+          .update({ reaction_type: reactionType })
+          .eq("group_post_id", postId)
+          .eq("user_id", user.id);
+
+        toast.success("Reaction updated");
+        window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
+        return;
+      }
+
+      // Insert new reaction
+      const { error: insertError } = await supabase
+        .from("group_post_reactions")
+        .insert({
+          group_post_id: postId,
+          user_id: user.id,
+          reaction_type: reactionType,
+        });
+
+      if (insertError) {
+        console.error("Error inserting reaction:", insertError);
+        toast.error("Failed to save reaction");
+        return;
+      }
+
+      // Increment likes_count
+      const { data: currentPost } = await supabase
+        .from("group_posts")
+        .select("likes_count")
+        .eq("id", postId)
+        .single();
+
+      if (currentPost) {
+        await supabase
+          .from("group_posts")
+          .update({ likes_count: (currentPost.likes_count || 0) + 1 })
+          .eq("id", postId);
+      }
+
+      setRecentActivity((prev: any[]) =>
+        prev.map((p: any) =>
+          p.id === postId
+            ? { ...p, likes_count: p.likes_count + 1, isLiked: true }
+            : p,
+        ),
+      );
+
+      toast.success("Reaction saved!");
+      window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
     } catch (err: any) {
-      console.error("Error toggling like:", err);
-      toast.error("Failed to update like");
+      console.error("Error handling emoji reaction:", err);
+      toast.error("Something went wrong");
     }
-  };
+  }, [user?.id]);
 
   const handlePostComment = (postId: string) => {
-    // Navigate to group post detail or open comment modal
-    const post = recentActivity.find((p: any) => p.id === postId);
-    if (post) {
-      router.push(`/groups/${post.group_id}?post=${postId}`);
-    }
+    setShowCommentsFor(showCommentsFor === postId ? null : postId);
   };
 
   const handlePostShare = (postId: string) => {
-    // Implement share functionality
-    toast.success("Share functionality coming soon!");
+    const post = recentActivity.find((p: any) => p.id === postId);
+    setShareModalState({ open: true, postId, groupId: post?.group_id || null });
   };
 
-  // Sidebar content component
-  const SidebarContent = () => (
+  const handleSendToMembers = async (memberIds: string[], message: string) => {
+    if (!memberIds.length) {
+      toast.success('No members selected');
+      return;
+    }
+
+    const senderName = user?.user_metadata?.full_name || user?.email || 'Someone';
+    const postId = shareModalState.postId;
+    const groupId = shareModalState.groupId;
+
+    const results = await Promise.allSettled(
+      memberIds.map((memberId) =>
+        sendNotification({
+          user_id: memberId,
+          title: 'Post Shared With You',
+          body: message
+            ? `${senderName} shared a group post with you: "${message}"`
+            : `${senderName} shared a group post with you`,
+          notification_type: 'post_share',
+          data: {
+            type: 'post_share',
+            post_id: postId || '',
+            group_id: groupId || '',
+            sender_id: user?.id || '',
+            sender_name: senderName,
+            message,
+            url: `/groups/${groupId || ''}?post=${postId}`,
+          },
+        })
+      )
+    );
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;
+    if (succeeded > 0) {
+      toast.success(`Shared with ${succeeded} member${succeeded === 1 ? '' : 's'}`);
+    } else {
+      toast.error('Failed to send notifications');
+    }
+  };
+
+  const shareUrl = useMemo(() => {
+    if (!shareModalState.postId) return '';
+    if (typeof window === 'undefined') return `/groups/${shareModalState.groupId || ''}?post=${shareModalState.postId}`;
+    return `${window.location.origin}/groups/${shareModalState.groupId || ''}?post=${shareModalState.postId}`;
+  }, [shareModalState.postId, shareModalState.groupId]);
+
+  // Sidebar content as plain JSX — avoids recreating a component type every
+  // render which would cause React to fully unmount/remount the sidebar DOM.
+  const sidebarContent = (
     <div className="space-y-4">
       {/* Groups Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-gray-900">Groups</h2>
-        <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <Settings className="w-5 h-5 text-gray-600" />
-          </button>
-         
-        </div>
+      
       </div>
 
       {/* Search Bar */}
@@ -499,7 +604,7 @@ const GroupsPage: React.FC = () => {
           {/* Left Sidebar - Desktop */}
           <div className="hidden lg:block w-80 shrink-0">
             <div className="sticky top-4 space-y-4">
-              <SidebarContent />
+              {sidebarContent}
             </div>
           </div>
 
@@ -567,7 +672,10 @@ const GroupsPage: React.FC = () => {
                           onLike={() => handlePostLike(post.id)}
                           onComment={() => handlePostComment(post.id)}
                           onShare={() => handlePostShare(post.id)}
+                          onEmojiReaction={handlePostEmojiReaction}
                           isPostLiked={post.isLiked}
+                          showCommentsFor={showCommentsFor === post.id}
+                          onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}
                         />
                       </div>
                     ))}
@@ -668,6 +776,18 @@ const GroupsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {shareModalState.postId && (
+        <ShareModal
+          isOpen={shareModalState.open}
+          onClose={() => setShareModalState({ open: false, postId: null, groupId: null })}
+          postUrl={shareUrl}
+          postId={shareModalState.postId}
+          members={members}
+          onSendToMembers={handleSendToMembers}
+        />
+      )}
     </div>
   );
 };

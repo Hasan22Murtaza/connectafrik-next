@@ -106,6 +106,7 @@ export interface Friend {
   country?: string
   bio?: string
   friendship_date?: string
+  birthday?: string
 }
 
 export interface FriendRequest {

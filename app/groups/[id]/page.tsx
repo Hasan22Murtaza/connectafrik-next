@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   Users,
   MessageCircle,
@@ -28,6 +28,7 @@ import { useGroupPosts } from '@/shared/hooks/useGroupPosts'
 import { Group } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import GroupMembersList from '@/features/groups/components/GroupMembersList'
 import InviteFriendsModal from '@/features/groups/components/InviteFriendsModal'
 import CreateGroupPost from '@/features/groups/components/CreateGroupPost'
@@ -36,6 +37,9 @@ import CreateGroupEventModal from '@/features/groups/components/CreateGroupEvent
 import GroupEventsList from '@/features/groups/components/GroupEventsList'
 import GroupMediaGallery from '@/features/groups/components/GroupMediaGallery'
 import GroupFilesList from '@/features/groups/components/GroupFilesList'
+import ShareModal from '@/features/social/components/ShareModal'
+import { useMembers } from '@/shared/hooks/useMembers'
+import { sendNotification } from '@/shared/services/notificationService'
 import { useGroupEvents } from '@/shared/hooks/useGroupEvents'
 import { getCategoryInfoLarge } from '@/shared/utils/groupUtils'
 import { CiViewTable } from "react-icons/ci";
@@ -48,7 +52,9 @@ import {
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const groupId = params?.id as string
+  const postQueryParam = searchParams?.get('post')
   const { user, loading: authLoading } = useAuth()
   const { fetchGroupById, joinGroup, leaveGroup } = useGroups()
   const { openGroupChat } = useGroupChat()
@@ -70,6 +76,8 @@ const GroupDetailPage: React.FC = () => {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [isSticky, setIsSticky] = useState(false)
+  const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
+  const { members } = useMembers()
   const feedShimmerCount = useFeedShimmerCount()
 
   const {
@@ -86,6 +94,14 @@ const GroupDetailPage: React.FC = () => {
       fetchGroup()
     }
   }, [groupId, user, authLoading])
+
+  // Auto-open comments when ?post= query param is present
+  useEffect(() => {
+    if (postQueryParam && !postsLoading && groupPosts.length > 0) {
+      setShowCommentsFor(postQueryParam)
+      setActiveTab('posts')
+    }
+  }, [postQueryParam, postsLoading, groupPosts.length])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -168,22 +184,86 @@ const GroupDetailPage: React.FC = () => {
   }
 
   const handleShare = (postId: string) => {
-    const shareUrl = `${window.location.origin}/posts/${postId}`
-    if (navigator.share) {
-      navigator.share({ url: shareUrl })
+    setShareModalState({ open: true, postId })
+  }
+
+  const handleSendToMembers = async (memberIds: string[], message: string) => {
+    if (!memberIds.length) {
+      toast.success('No members selected')
+      return
+    }
+
+    const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
+    const postId = shareModalState.postId
+
+    const results = await Promise.allSettled(
+      memberIds.map((memberId) =>
+        sendNotification({
+          user_id: memberId,
+          title: 'Post Shared With You',
+          body: message
+            ? `${senderName} shared a group post with you: "${message}"`
+            : `${senderName} shared a group post with you`,
+          notification_type: 'post_share',
+          data: {
+            type: 'post_share',
+            post_id: postId || '',
+            group_id: groupId,
+            sender_id: user?.id || '',
+            sender_name: senderName,
+            message,
+            url: `/groups/${groupId}?post=${postId}`,
+          },
+        })
+      )
+    )
+
+    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length
+    if (succeeded > 0) {
+      toast.success(`Shared with ${succeeded} member${succeeded === 1 ? '' : 's'}`)
     } else {
-      navigator.clipboard.writeText(shareUrl)
-      toast.success('Link copied to clipboard!')
+      toast.error('Failed to send notifications')
     }
   }
 
-  const handleShareGroup = (groupid: string) => {
+  const shareUrl = useMemo(() => {
+    if (!shareModalState.postId) return ''
+    if (typeof window === 'undefined') return `/groups/${groupId}?post=${shareModalState.postId}`
+    return `${window.location.origin}/groups/${groupId}?post=${shareModalState.postId}`
+  }, [shareModalState.postId, groupId])
+
+  const handleEmojiReaction = useEmojiReaction({
+    reactionsTable: 'group_post_reactions',
+    postIdColumn: 'group_post_id',
+    postsTable: 'group_posts',
+    eventName: 'group-reaction-updated',
+  })
+
+  const handleShareGroup = async (groupid: string) => {
     const shareUrl = `${window.location.origin}/groups/${groupid}`
-    if (navigator.share) {
-      navigator.share({ url: shareUrl })
-    } else {
-      navigator.clipboard.writeText(shareUrl)
-      toast.success('Link copied to clipboard!')
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: group?.name || 'Group', url: shareUrl })
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        toast.success('Link copied to clipboard!')
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        try {
+          const textarea = document.createElement('textarea')
+          textarea.value = shareUrl
+          textarea.style.position = 'fixed'
+          textarea.style.opacity = '0'
+          document.body.appendChild(textarea)
+          textarea.select()
+          document.execCommand('copy')
+          document.body.removeChild(textarea)
+          toast.success('Link copied to clipboard!')
+        } catch {
+          toast.error('Failed to copy link')
+        }
+      }
     }
   }
 
@@ -432,6 +512,7 @@ const GroupDetailPage: React.FC = () => {
                         onDelete={() => deletePost(post.id)}
                         onEdit={(title, content) => updatePost(post.id, { title, content })}
                         onView={() => recordView(post.id)}
+                        onEmojiReaction={handleEmojiReaction}
                         isPostLiked={post.isLiked}
                         showCommentsFor={showCommentsFor === post.id}
                         onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}
@@ -666,6 +747,18 @@ const GroupDetailPage: React.FC = () => {
           onSubmit={async (eventData) => {
             await createEvent(eventData)
           }}
+        />
+      )}
+
+      {/* Share Modal */}
+      {shareModalState.postId && (
+        <ShareModal
+          isOpen={shareModalState.open}
+          onClose={() => setShareModalState({ open: false, postId: null })}
+          postUrl={shareUrl}
+          postId={shareModalState.postId}
+          members={members}
+          onSendToMembers={handleSendToMembers}
         />
       )}
     </div>

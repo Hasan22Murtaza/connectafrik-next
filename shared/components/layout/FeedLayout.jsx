@@ -86,11 +86,17 @@ const FeedLayout = ({ children }) => {
     }
   }, [updatePresence])
 
-  // Check for upcoming birthdays and send notifications (daily check)
+  // Check for upcoming birthdays and send notifications (dedup handled in service)
   useEffect(() => {
     if (!user?.id) return
 
+    let didRun = false
+
     const checkBirthdays = async () => {
+      // Guard against React strict-mode double-mount
+      if (didRun) return
+      didRun = true
+
       try {
         await checkUpcomingBirthdays(user.id)
       } catch (error) {
@@ -98,13 +104,7 @@ const FeedLayout = ({ children }) => {
       }
     }
 
-    // Check on mount
     checkBirthdays()
-
-    // Check daily (every 24 hours)
-    const interval = setInterval(checkBirthdays, 24 * 60 * 60 * 1000)
-
-    return () => clearInterval(interval)
   }, [user?.id])
 
   // Format friends for display (with presence status)

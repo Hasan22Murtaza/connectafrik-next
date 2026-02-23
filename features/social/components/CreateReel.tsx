@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { X, Upload, Play, Pause, Volume2, VolumeX, Settings, Tag, Globe, Lock, Camera, Square, RotateCcw } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCreateReel } from '@/shared/hooks/useReels'
@@ -6,6 +6,14 @@ import { REEL_CATEGORIES, REEL_ASPECT_RATIOS, MAX_REEL_DURATION, MAX_REEL_TITLE_
 import { ReelCategory } from '@/shared/types/reels'
 import toast from 'react-hot-toast'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
+
+// Aspect ratio to CSS dimensions mapping for preview
+const ASPECT_RATIO_STYLES: Record<string, { containerClass: string; width: string; height: string; cameraWidth: number; cameraHeight: number }> = {
+  '9:16': { containerClass: 'max-w-[280px]', width: '280px', height: '498px', cameraWidth: 1080, cameraHeight: 1920 },
+  '16:9': { containerClass: 'max-w-full', width: '100%', height: '280px', cameraWidth: 1920, cameraHeight: 1080 },
+  '1:1': { containerClass: 'max-w-[360px]', width: '360px', height: '360px', cameraWidth: 1080, cameraHeight: 1080 },
+  '4:3': { containerClass: 'max-w-[420px]', width: '420px', height: '315px', cameraWidth: 1440, cameraHeight: 1080 },
+}
 
 interface CreateReelProps {
   onSuccess?: (createdReel: any) => void
@@ -25,6 +33,9 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
   const [isPublic, setIsPublic] = useState(true)
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1' | '4:3'>('9:16')
   
+  // Aspect ratio style for preview
+  const previewStyle = useMemo(() => ASPECT_RATIO_STYLES[aspectRatio] || ASPECT_RATIO_STYLES['9:16'], [aspectRatio])
+
   // Video state
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [videoUrl, setVideoUrl] = useState<string>('')
@@ -186,11 +197,12 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
         mediaStream.getTracks().forEach(track => track.stop())
       }
       
-      // Try high resolution first, then fallback to basic constraints
+      // Use aspect ratio style mapping for camera resolution
+      const ratioConfig = ASPECT_RATIO_STYLES[aspectRatio] || ASPECT_RATIO_STYLES['9:16']
       const constraints: MediaStreamConstraints = {
         video: {
-          width: { ideal: aspectRatio === '9:16' ? 1080 : 1920 },
-          height: { ideal: aspectRatio === '9:16' ? 1920 : 1080 },
+          width: { ideal: ratioConfig.cameraWidth },
+          height: { ideal: ratioConfig.cameraHeight },
           facingMode: facingMode
         },
         audio: true
@@ -571,73 +583,96 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
               </div>
             ) : recordingMode === 'record' && !videoFile ? (
               <div className="space-y-4">
-                {/* Camera Preview */}
-                <div className="relative bg-black rounded-lg overflow-hidden">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    playsInline
-                    className="w-full h-64 object-cover scale-110"
-                    style={{ transform: 'scale(1.1)' }}
-                  />
-                  
-                  {/* Camera Flip Button */}
-                  <button
-                    type="button"
-                    onClick={flipCamera}
-                    className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
-                    title={`Switch to ${cameraFacing === 'user' ? 'back' : 'front'} camera`}
+                {/* Camera Preview — aspect-ratio-aware */}
+                <div className="flex justify-center">
+                  <div
+                    className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
+                    style={{ width: previewStyle.width, height: previewStyle.height, maxHeight: '500px' }}
                   >
-                    <RotateCcw className="w-5 h-5" />
-                  </button>
-                  
-                  {/* Recording Controls */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                    <div className="flex items-center justify-center space-x-4">
-                      {!isRecording ? (
-                        <button
-                          type="button"
-                          onClick={startRecording}
-                          className="bg-red-600 hover:bg-red-700 text-white rounded-full p-4 transition-colors"
-                        >
-                          <Camera className="w-6 h-6" />
-                        </button>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <button
-                            type="button"
-                            onClick={isPaused ? resumeRecording : pauseRecording}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-full p-3 transition-colors"
-                          >
-                            {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={stopRecording}
-                            className="bg-red-600 hover:bg-red-700 text-white rounded-full p-3 transition-colors"
-                          >
-                            <Square className="w-5 h-5" />
-                          </button>
-                        </div>
-                      )}
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+
+                    {/* Aspect Ratio Badge */}
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                      <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
+                      <span>{aspectRatio}</span>
                     </div>
                     
-                    {/* Recording Timer */}
-                    {isRecording && (
-                      <div className="text-center mt-2">
-                        <div className="text-white text-sm font-medium">
-                          {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                        </div>
-                        <div className="text-white/70 text-xs">
-                          {isPaused ? 'Paused' : 'Recording...'}
+                    {/* Camera Flip Button */}
+                    <button
+                      type="button"
+                      onClick={flipCamera}
+                      className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white rounded-full p-2.5 transition-colors backdrop-blur-sm"
+                      title={`Switch to ${cameraFacing === 'user' ? 'back' : 'front'} camera`}
+                    >
+                      <RotateCcw className="w-5 h-5" />
+                    </button>
+
+                    {/* Camera Indicator */}
+                    <div className="absolute top-12 right-3 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[10px]">
+                      {cameraFacing === 'user' ? 'Front' : 'Back'}
+                    </div>
+                    
+                    {/* Recording indicator dot */}
+                    {isRecording && !isPaused && (
+                      <div className="absolute top-3 left-1/2 -translate-x-1/2">
+                        <div className="flex items-center gap-1.5 bg-red-600/90 backdrop-blur-sm px-3 py-1 rounded-full">
+                          <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                          <span className="text-white text-xs font-medium">REC</span>
                         </div>
                       </div>
                     )}
-                    
-                    {/* Camera Indicator */}
-                    <div className="absolute top-4 left-4 bg-black/50 text-white px-2 py-1 rounded text-xs">
-                      {cameraFacing === 'user' ? 'Front Camera' : 'Back Camera'}
+
+                    {/* Recording Controls */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10">
+                      {/* Recording Timer */}
+                      {isRecording && (
+                        <div className="text-center mb-3">
+                          <div className="inline-flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                            <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-400' : 'bg-red-500 animate-pulse'}`} />
+                            <span className="text-white text-sm font-mono font-medium">
+                              {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                            </span>
+                          </div>
+                          <div className="text-white/60 text-[10px] mt-1">
+                            {isPaused ? 'Paused' : 'Recording...'}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-center space-x-4">
+                        {!isRecording ? (
+                          <button
+                            type="button"
+                            onClick={startRecording}
+                            className="bg-red-600 hover:bg-red-700 text-white rounded-full p-4 transition-all shadow-lg shadow-red-600/30 hover:scale-105 active:scale-95"
+                          >
+                            <Camera className="w-6 h-6" />
+                          </button>
+                        ) : (
+                          <div className="flex items-center space-x-3">
+                            <button
+                              type="button"
+                              onClick={isPaused ? resumeRecording : pauseRecording}
+                              className="bg-yellow-500 hover:bg-yellow-600 text-white rounded-full p-3 transition-all hover:scale-105 active:scale-95"
+                            >
+                              {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={stopRecording}
+                              className="bg-white hover:bg-gray-100 text-red-600 rounded-full p-3 transition-all hover:scale-105 active:scale-95 ring-2 ring-red-400"
+                            >
+                              <Square className="w-5 h-5 fill-current" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -673,59 +708,70 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Video Preview */}
-                <div className="relative bg-black rounded-lg overflow-hidden">
-                  <video
-                    ref={videoRef}
-                    src={videoUrl}
-                    className="w-full h-64 object-contain"
-                    onTimeUpdate={handleTimeUpdate}
-                    onEnded={() => setIsPlaying(false)}
-                  />
-                  
-                  {/* Video Controls */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                    <div className="flex items-center space-x-4">
-                      <button
-                        type="button"
-                        onClick={handlePlayPause}
-                        className="text-white hover:text-gray-300 transition-colors"
-                      >
-                        {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-                      </button>
-                      
-                      <div className="flex-1">
-                        <input
-                          type="range"
-                          min="0"
-                          max={videoDuration}
-                          value={currentTime}
-                          onChange={handleSeek}
-                          className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-xs text-white mt-1">
-                          <span>{formatTime(currentTime)}</span>
-                          <span>{formatTime(videoDuration)}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
+                {/* Video Preview — aspect-ratio-aware */}
+                <div className="flex justify-center">
+                  <div
+                    className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
+                    style={{ width: previewStyle.width, height: previewStyle.height, maxHeight: '500px' }}
+                  >
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      className="w-full h-full object-contain"
+                      onTimeUpdate={handleTimeUpdate}
+                      onEnded={() => setIsPlaying(false)}
+                    />
+
+                    {/* Aspect Ratio Badge */}
+                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                      <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
+                      <span>{aspectRatio}</span>
+                    </div>
+
+                    {/* Video Controls */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10">
+                      <div className="flex items-center space-x-3">
                         <button
                           type="button"
-                          onClick={handleMuteToggle}
-                          className="text-white hover:text-gray-300 transition-colors"
+                          onClick={handlePlayPause}
+                          className="text-white hover:text-gray-300 transition-colors flex-shrink-0"
                         >
-                          {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                         </button>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.1"
-                          value={volume}
-                          onChange={handleVolumeChange}
-                          className="w-16 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                        />
+                        
+                        <div className="flex-1 min-w-0">
+                          <input
+                            type="range"
+                            min="0"
+                            max={videoDuration}
+                            value={currentTime}
+                            onChange={handleSeek}
+                            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+                          />
+                          <div className="flex justify-between text-[10px] text-white/80 mt-0.5">
+                            <span>{formatTime(currentTime)}</span>
+                            <span>{formatTime(videoDuration)}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-1.5 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={handleMuteToggle}
+                            className="text-white hover:text-gray-300 transition-colors"
+                          >
+                            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                          </button>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={volume}
+                            onChange={handleVolumeChange}
+                            className="w-12 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -815,10 +861,10 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                       key={ratio.value}
                       type="button"
                       onClick={() => setAspectRatio(ratio.value as '9:16' | '16:9' | '1:1' | '4:3')}
-                      className={` sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-colors ${
+                      className={`sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-all duration-200 ${
                         aspectRatio === ratio.value
-                          ? 'border-orange-500 bg-primary-50 text-primary-700'
-                          : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                          ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-300 shadow-sm'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <div className="flex items-center space-x-1">
@@ -924,11 +970,27 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
               {videoFile && (
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Video Information</h4>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <div>File: {videoFile.name}</div>
-                    <div>Size: {(videoFile.size / (1024 * 1024)).toFixed(1)} MB</div>
-                    <div>Duration: {formatTime(videoDuration)}</div>
-                    <div>Type: {videoFile.type}</div>
+                  <div className="space-y-1.5 text-sm text-gray-600">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">File:</span>
+                      <span className="font-medium text-gray-700 truncate ml-2 max-w-[180px]">{videoFile.name}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">Size:</span>
+                      <span className="font-medium text-gray-700">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">Duration:</span>
+                      <span className="font-medium text-gray-700">{formatTime(videoDuration)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">Type:</span>
+                      <span className="font-medium text-gray-700">{videoFile.type}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500">Aspect Ratio:</span>
+                      <span className="font-medium text-gray-700">{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.label || aspectRatio}</span>
+                    </div>
                   </div>
                 </div>
               )}

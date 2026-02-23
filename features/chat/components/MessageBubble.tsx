@@ -1,10 +1,46 @@
 import MessageStatusIndicator from "@/features/chat/components/MessageStatusIndicator";
-import type { ChatMessage } from "@/features/chat/services/supabaseMessagingService";
+import type { ChatMessage, ChatAttachment } from "@/features/chat/services/supabaseMessagingService";
 import { formatDistanceToNow } from "date-fns";
-import { MoreVertical, UserCircle } from "lucide-react";
-import React, { useState } from "react";
+import { Download, FileText, MoreVertical, UserCircle } from "lucide-react";
+import React, { useState, useMemo } from "react";
 import { BsReply } from "react-icons/bs";
 import { RiShareForwardLine } from "react-icons/ri";
+
+const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<]+/gi;
+
+function linkifyContent(text: string, isOwn: boolean): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const regex = new RegExp(URL_REGEX.source, 'gi');
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    const url = match[0];
+    const href = url.startsWith('http') ? url : `https://${url}`;
+    parts.push(
+      <a
+        key={match.index}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`underline break-all ${isOwn ? 'text-white hover:text-orange-100' : 'text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {url}
+      </a>
+    );
+    lastIndex = match.index + url.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -218,7 +254,80 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               🚫 This message was deleted
             </p>
           ) : (
-            <p className="text-sm break-words">{message.content}</p>
+            <>
+              {/* Attachments */}
+              {message.attachments && message.attachments.length > 0 && (
+                <div className="mb-1 space-y-2">
+                  {message.attachments.map((att: ChatAttachment) => {
+                    if (att.type === "image") {
+                      return (
+                        <a
+                          key={att.id}
+                          href={att.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <img
+                            src={att.url}
+                            alt={att.name}
+                            className="max-w-full rounded-lg max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                            loading="lazy"
+                          />
+                        </a>
+                      );
+                    }
+
+                    if (att.type === "video") {
+                      return (
+                        <video
+                          key={att.id}
+                          src={att.url}
+                          controls
+                          preload="metadata"
+                          className="max-w-full rounded-lg max-h-48"
+                        />
+                      );
+                    }
+
+                    // Generic file attachment
+                    return (
+                      <a
+                        key={att.id}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-2 rounded-lg p-2 transition-colors ${
+                          isOwnMessage
+                            ? "bg-orange-600/30 hover:bg-orange-600/50"
+                            : "bg-gray-300/50 hover:bg-gray-300/70 dark:bg-gray-600/50 dark:hover:bg-gray-600/70"
+                        }`}
+                      >
+                        <FileText className="h-5 w-5 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium truncate">
+                            {att.name}
+                          </p>
+                          <p className="text-[10px] opacity-70">
+                            {att.size < 1024
+                              ? `${att.size} B`
+                              : att.size < 1048576
+                              ? `${(att.size / 1024).toFixed(1)} KB`
+                              : `${(att.size / 1048576).toFixed(1)} MB`}
+                          </p>
+                        </div>
+                        <Download className="h-4 w-4 flex-shrink-0 opacity-70" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Text content */}
+              {message.content && (
+                <p className="text-sm break-words">{linkifyContent(message.content, isOwnMessage)}</p>
+              )}
+            </>
           )}
 
           {/* Timestamp and Status */}

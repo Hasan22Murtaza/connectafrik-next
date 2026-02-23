@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
-import { 
-  Reel, 
-  CreateReelData, 
-  UpdateReelData, 
-  ReelFilters, 
+import {
+  Reel,
+  CreateReelData,
+  UpdateReelData,
+  ReelFilters,
   ReelSortOptions,
   ReelComment,
   ReelInteractionState,
-  ReelCategory
 } from '../types/reels'
 
 export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions = { field: 'created_at', order: 'desc' }) => {
@@ -23,68 +22,28 @@ export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions
 
   const fetchReels = useCallback(async (pageNum: number = 0, append: boolean = false, currentFilters = filters, currentSortOptions = sortOptions) => {
     try {
-      console.log('Fetching reels...', { pageNum, append, currentFilters, currentSortOptions })
       setLoading(true)
       setError(null)
 
-      let query = supabase
-        .from('reels')
-        .select(`
-          *,
-          profiles:profiles!reels_author_id_fkey (
-            username,
-            full_name,
-            avatar_url
-          )
-        `)
-        .eq('is_deleted', false)
-        .eq('is_public', true)
-
-      // Apply filters
-      if (currentFilters?.category) {
-        query = query.eq('category', currentFilters.category)
-      }
-      if (currentFilters?.author_id) {
-        query = query.eq('author_id', currentFilters.author_id)
-      }
-      if (currentFilters?.is_featured) {
-        query = query.eq('is_featured', true)
-      }
-      if (currentFilters?.min_duration) {
-        query = query.gte('duration', currentFilters.min_duration)
-      }
-      if (currentFilters?.max_duration) {
-        query = query.lte('duration', currentFilters.max_duration)
-      }
-      if (currentFilters?.tags && currentFilters.tags.length > 0) {
-        query = query.overlaps('tags', currentFilters.tags)
-      }
-      if (currentFilters?.search) {
-        query = query.or(`title.ilike.%${currentFilters.search}%,description.ilike.%${currentFilters.search}%`)
-      }
-
-      // Apply sorting
       const sortField = currentSortOptions?.field || 'created_at'
       const sortOrder = currentSortOptions?.order || 'desc'
-      query = query.order(sortField, { ascending: sortOrder === 'asc' })
-
-      // Apply pagination
-      const from = pageNum * pageSize
-      const to = from + pageSize - 1
-      query = query.range(from, to)
-
-      const { data, error: fetchError, count } = await query
-
-      console.log('Query result:', { data, error: fetchError, count, dataLength: data?.length })
-
-      if (fetchError) {
-        console.error('Fetch error:', fetchError)
-        throw fetchError
+      const params: Record<string, string | number | boolean | undefined> = {
+        limit: pageSize,
+        offset: pageNum * pageSize,
+        sort_field: sortField,
+        sort_order: sortOrder,
       }
+      if (currentFilters?.category) params.category = currentFilters.category
+      if (currentFilters?.author_id) params.author_id = currentFilters.author_id
+      if (currentFilters?.is_featured) params.is_featured = true
+      if (currentFilters?.min_duration != null) params.min_duration = currentFilters.min_duration
+      if (currentFilters?.max_duration != null) params.max_duration = currentFilters.max_duration
+      if (currentFilters?.tags?.length) params.tags = currentFilters.tags.join(',')
+      if (currentFilters?.search) params.search = currentFilters.search
 
-      const newReels = data || []
-      console.log('New reels:', newReels.length)
-      
+      const res = await apiClient.get<{ data: Reel[] }>('/api/memories', params)
+      const newReels = res?.data ?? []
+
       if (append) {
         setReels(prev => [...prev, ...newReels])
       } else {
@@ -95,11 +54,6 @@ export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions
       setPage(pageNum)
     } catch (err) {
       console.error('Error fetching reels:', err)
-      console.error('Error details:', {
-        message: err instanceof Error ? err.message : 'Unknown error',
-        stack: err instanceof Error ? err.stack : undefined,
-        cause: (err as any)?.cause
-      })
       setError(err instanceof Error ? err.message : 'Failed to fetch reels')
     } finally {
       setLoading(false)
@@ -130,8 +84,11 @@ export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions
   }
 }
 
+interface ReelWithInteractionState extends Reel {
+  interaction_state?: ReelInteractionState
+}
+
 export const useReel = (reelId: string) => {
-  const { user } = useAuth()
   const [reel, setReel] = useState<Reel | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -149,25 +106,13 @@ export const useReel = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .from('reels')
-        .select(`
-          *,
-          profiles!reels_author_id_fkey(username, full_name, avatar_url)
-        `)
-        .eq('id', reelId)
-        .eq('is_deleted', false)
-        .single()
-
-      if (fetchError) {
-        throw fetchError
-      }
-
-      setReel(data)
-
-      // Fetch interaction state if user is logged in
-      if (user) {
-        await fetchInteractionState(reelId)
+      const res = await apiClient.get<{ data: ReelWithInteractionState }>(`/api/memories/${reelId}`)
+      const payload = res?.data
+      if (payload) {
+        setReel(payload)
+        if (payload.interaction_state) {
+          setInteractionState(payload.interaction_state)
+        }
       }
     } catch (err) {
       console.error('Error fetching reel:', err)
@@ -175,55 +120,7 @@ export const useReel = (reelId: string) => {
     } finally {
       setLoading(false)
     }
-  }, [reelId, user])
-
-  const fetchInteractionState = useCallback(async (reelId: string) => {
-    if (!user) return
-
-    try {
-      // Check if user liked the reel
-      const { data: likeData } = await supabase
-        .from('reel_likes')
-        .select('id')
-        .eq('reel_id', reelId)
-        .eq('user_id', user.id)
-        .single()
-
-      // Check if user saved the reel
-      const { data: saveData } = await supabase
-        .from('reel_saves')
-        .select('id')
-        .eq('reel_id', reelId)
-        .eq('user_id', user.id)
-        .single()
-
-      // Check if user is following the author
-      const { data: followData } = await supabase
-        .from('follows')
-        .select('id')
-        .eq('follower_id', user.id)
-        .eq('following_id', reel?.author_id)
-        .single()
-
-      // Check if user has viewed the reel
-      const { data: viewData } = await supabase
-        .from('reel_views')
-        .select('id')
-        .eq('reel_id', reelId)
-        .eq('user_id', user.id)
-        .single()
-
-      setInteractionState({
-        isLiked: !!likeData,
-        isSaved: !!saveData,
-        isFollowing: !!followData,
-        hasViewed: !!viewData
-      })
-    } catch (err) {
-      // These queries will fail if no records exist, which is expected
-      console.log('Interaction state check completed')
-    }
-  }, [user, reel?.author_id])
+  }, [reelId])
 
   useEffect(() => {
     fetchReel()
@@ -252,23 +149,15 @@ export const useCreateReel = () => {
       setLoading(true)
       setError(null)
 
-      const { data, error: createError } = await supabase
-        .from('reels')
-        .insert({
-          ...reelData,
-          author_id: user.id,
-          aspect_ratio: reelData.aspect_ratio || '9:16',
-          category: reelData.category || 'entertainment',
-          tags: reelData.tags || [],
-          is_public: reelData.is_public ?? true
-        })
-        .select()
-        .single()
+      const res = await apiClient.post<{ data: Reel }>('/api/memories', {
+        ...reelData,
+        aspect_ratio: reelData.aspect_ratio || '9:16',
+        category: reelData.category || 'entertainment',
+        tags: reelData.tags || [],
+        is_public: reelData.is_public ?? true
+      })
 
-      if (createError) {
-        throw createError
-      }
-
+      const data = res?.data ?? null
       return { data, error: null }
     } catch (err) {
       console.error('Error creating reel:', err)
@@ -282,6 +171,77 @@ export const useCreateReel = () => {
 
   return {
     createReel,
+    loading,
+    error
+  }
+}
+
+export const useUpdateReel = () => {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const updateReel = useCallback(async (reelId: string, updateData: UpdateReelData) => {
+    if (!user) {
+      throw new Error('User must be logged in to update a reel')
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      const res = await apiClient.patch<{ data: Reel }>(`/api/memories/${reelId}`, {
+        ...updateData,
+        updated_at: new Date().toISOString()
+      })
+
+      const data = res?.data ?? null
+      return { data, error: null }
+    } catch (err) {
+      console.error('Error updating reel:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update reel'
+      setError(errorMessage)
+      return { data: null, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  return {
+    updateReel,
+    loading,
+    error
+  }
+}
+
+export const useDeleteReel = () => {
+  const { user } = useAuth()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteReel = useCallback(async (reelId: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to delete a reel')
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      await apiClient.delete<{ success: boolean }>(`/api/memories/${reelId}`)
+      return { success: true, error: null }
+    } catch (err) {
+      console.error('Error deleting reel:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete reel'
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  return {
+    deleteReel,
     loading,
     error
   }
@@ -301,35 +261,7 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      // Check if already liked
-      const { data: existingLike } = await supabase
-        .from('reel_likes')
-        .select('id')
-        .eq('reel_id', reelId)
-        .eq('user_id', user.id)
-        .single()
-
-      if (existingLike) {
-        // Unlike
-        const { error: unlikeError } = await supabase
-          .from('reel_likes')
-          .delete()
-          .eq('reel_id', reelId)
-          .eq('user_id', user.id)
-
-        if (unlikeError) throw unlikeError
-      } else {
-        // Like
-        const { error: likeError } = await supabase
-          .from('reel_likes')
-          .insert({
-            reel_id: reelId,
-            user_id: user.id
-          })
-
-        if (likeError) throw likeError
-      }
-
+      await apiClient.post<{ data: { liked: boolean } }>(`/api/memories/${reelId}/like`)
       return { success: true, error: null }
     } catch (err) {
       console.error('Error toggling reel like:', err)
@@ -350,35 +282,7 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      // Check if already saved
-      const { data: existingSave } = await supabase
-        .from('reel_saves')
-        .select('id')
-        .eq('reel_id', reelId)
-        .eq('user_id', user.id)
-        .single()
-
-      if (existingSave) {
-        // Unsave
-        const { error: unsaveError } = await supabase
-          .from('reel_saves')
-          .delete()
-          .eq('reel_id', reelId)
-          .eq('user_id', user.id)
-
-        if (unsaveError) throw unsaveError
-      } else {
-        // Save
-        const { error: saveError } = await supabase
-          .from('reel_saves')
-          .insert({
-            reel_id: reelId,
-            user_id: user.id
-          })
-
-        if (saveError) throw saveError
-      }
-
+      await apiClient.post<{ data: { saved: boolean } }>(`/api/memories/${reelId}/save`)
       return { success: true, error: null }
     } catch (err) {
       console.error('Error toggling reel save:', err)
@@ -394,14 +298,10 @@ export const useReelInteractions = (reelId: string) => {
     if (!user) return
 
     try {
-      await supabase
-        .from('reel_views')
-        .insert({
-          reel_id: reelId,
-          user_id: user.id,
-          view_duration: viewDuration,
-          completion_rate: completionRate
-        })
+      await apiClient.post(`/api/memories/${reelId}/view`, {
+        view_duration: viewDuration,
+        completion_rate: completionRate
+      })
     } catch (err) {
       console.error('Error recording reel view:', err)
     }
@@ -416,17 +316,7 @@ export const useReelInteractions = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      const { error: shareError } = await supabase
-        .from('reel_shares')
-        .insert({
-          reel_id: reelId,
-          user_id: user.id,
-          share_type: shareType,
-          platform
-        })
-
-      if (shareError) throw shareError
-
+      await apiClient.post(`/api/memories/${reelId}/share`, { share_type: shareType, platform })
       return { success: true, error: null }
     } catch (err) {
       console.error('Error sharing reel:', err)
@@ -448,10 +338,10 @@ export const useReelInteractions = (reelId: string) => {
   }
 }
 
-export const useReelComments = (reelId: string) => {
+export const useReelComments = (reelId: string, enabled: boolean = false) => {
   const { user } = useAuth()
   const [comments, setComments] = useState<ReelComment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchComments = useCallback(async () => {
@@ -459,42 +349,8 @@ export const useReelComments = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
-        .from('reel_comments')
-        .select(`
-          *,
-          profiles!reel_comments_user_id_fkey(username, full_name, avatar_url)
-        `)
-        .eq('reel_id', reelId)
-        .eq('is_deleted', false)
-        .is('parent_id', null) // Only top-level comments
-        .order('created_at', { ascending: false })
-
-      if (fetchError) {
-        throw fetchError
-      }
-
-      // Fetch replies for each comment
-      const commentsWithReplies = await Promise.all(
-        (data || []).map(async (comment) => {
-          const { data: replies } = await supabase
-            .from('reel_comments')
-            .select(`
-              *,
-              profiles!reel_comments_user_id_fkey(username, full_name, avatar_url)
-            `)
-            .eq('parent_id', comment.id)
-            .eq('is_deleted', false)
-            .order('created_at', { ascending: true })
-
-          return {
-            ...comment,
-            replies: replies || []
-          }
-        })
-      )
-
-      setComments(commentsWithReplies)
+      const res = await apiClient.get<{ data: ReelComment[] }>(`/api/memories/${reelId}/comments`)
+      setComments(res?.data ?? [])
     } catch (err) {
       console.error('Error fetching reel comments:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch comments')
@@ -512,27 +368,13 @@ export const useReelComments = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      const { data, error: addError } = await supabase
-        .from('reel_comments')
-        .insert({
-          reel_id: reelId,
-          user_id: user.id,
-          content,
-          parent_id: parentId
-        })
-        .select(`
-          *,
-          profiles!reel_comments_user_id_fkey(username, full_name, avatar_url)
-        `)
-        .single()
+      const res = await apiClient.post<{ data: ReelComment }>(`/api/memories/${reelId}/comments`, {
+        content,
+        parent_id: parentId
+      })
 
-      if (addError) {
-        throw addError
-      }
-
-      // Refresh comments
+      const data = res?.data ?? null
       await fetchComments()
-
       return { data, error: null }
     } catch (err) {
       console.error('Error adding reel comment:', err)
@@ -553,19 +395,8 @@ export const useReelComments = (reelId: string) => {
       setLoading(true)
       setError(null)
 
-      const { error: deleteError } = await supabase
-        .from('reel_comments')
-        .update({ is_deleted: true })
-        .eq('id', commentId)
-        .eq('user_id', user.id)
-
-      if (deleteError) {
-        throw deleteError
-      }
-
-      // Refresh comments
+      await apiClient.delete(`/api/memories/${reelId}/comments/${commentId}`)
       await fetchComments()
-
       return { success: true, error: null }
     } catch (err) {
       console.error('Error deleting reel comment:', err)
@@ -575,11 +406,13 @@ export const useReelComments = (reelId: string) => {
     } finally {
       setLoading(false)
     }
-  }, [user, fetchComments])
+  }, [user, reelId, fetchComments])
 
   useEffect(() => {
-    fetchComments()
-  }, [fetchComments])
+    if (enabled) {
+      fetchComments()
+    }
+  }, [fetchComments, enabled])
 
   return {
     comments,

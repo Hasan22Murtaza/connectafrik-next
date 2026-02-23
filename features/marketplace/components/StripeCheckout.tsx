@@ -5,7 +5,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import type { Stripe, StripeElements } from '@stripe/stripe-js'
 import { X, ShoppingCart, MapPin, Phone, Info } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { Product } from '@/shared/types'
 import { getStripe, createStripePaymentIntent, calculateStripeFees } from '@/features/marketplace/services/stripeService'
 import PhoneInput from 'react-phone-number-input'
@@ -106,63 +106,29 @@ const CheckoutForm: React.FC<{
       }
 
       if (paymentIntent?.status === 'succeeded') {
-        // Create order in database
-        const buyerEmail = user?.user_metadata?.email || user?.id || 'customer@connectafrik.com'
-        const orderData = {
-          buyer_id: user.id,
-          buyer_email: buyerEmail,
-          buyer_phone: buyerPhone || null,
-          seller_id: product.seller_id,
+        const result = await apiClient.post<{ data: any }>('/api/marketplace/checkout/stripe/complete', {
+          payment_reference: paymentIntent.id,
           product_id: product.id,
           product_title: product.title,
           product_image: product.images?.[0] || null,
+          seller_id: product.seller_id,
           quantity,
           unit_price: product.price,
           total_amount: totalAmount,
           currency: product.currency || 'USD',
-          payment_status: 'completed',
-          payment_method: 'stripe',
-          payment_reference: paymentIntent.id,
-          paid_at: new Date().toISOString(),
           shipping_address: shippingAddress.street ? shippingAddress : null,
+          buyer_phone: buyerPhone || null,
           notes: notes || null,
-          status: 'confirmed'
-        }
+        })
 
-        const { data: order, error: orderError } = await supabase
-          .from('orders')
-          .insert(orderData)
-          .select()
-          .single()
-        // if (orderError) throw orderError
+        const order = result.data
 
-        // Create payment transaction record
-        await supabase
-          .from('payment_transactions')
-          .insert({
-            order_id: order.id,
-            transaction_reference: paymentIntent.id,
-            amount: totalAmount,
-            currency: product.currency || 'USD',
-            status: 'success',
-            verified_at: new Date().toISOString()
-          })
-
-        // Update product stock if available
-        if (product.stock_quantity !== null && product.stock_quantity !== undefined) {
-          await supabase
-            .from('products')
-            .update({ stock_quantity: Math.max(0, product.stock_quantity - quantity) })
-            .eq('id', product.id)
-        }
-
-        // Send confirmation emails (non-blocking)
+        const buyerEmail = user?.user_metadata?.email || user?.email || 'support@connectafrik.com'
         const buyerName = user?.user_metadata?.full_name || user?.id || 'Customer'
         const sellerName = product.seller?.full_name || product.seller?.id || 'Seller'
-        const buyerEmailConfirm = (buyerEmail || 'support@connectafrik.com') as string
 
-        sendOrderConfirmationEmail(buyerEmailConfirm, {
-          orderNumber: order.order_number,
+        sendOrderConfirmationEmail(buyerEmail, {
+          orderNumber: order?.order_number,
           productTitle: product.title,
           quantity,
           totalAmount,
@@ -170,10 +136,9 @@ const CheckoutForm: React.FC<{
           buyerName,
         }).catch(err => console.error('Failed to send buyer confirmation:', err))
 
-        // Send notification to seller (using seller_id to fetch email server-side)
         if (product.seller_id) {
           sendNewOrderNotificationEmail('', {
-            orderNumber: order.order_number,
+            orderNumber: order?.order_number,
             productTitle: product.title,
             quantity,
             totalAmount,

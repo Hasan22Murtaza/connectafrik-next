@@ -7,6 +7,7 @@ import {
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
 import { useMembers } from "@/shared/hooks/useMembers";
+import { useTypingIndicator } from "@/shared/hooks/useTypingIndicator";
 import {
   FileUploadResult,
   fileUploadService,
@@ -31,6 +32,7 @@ import { toast } from "react-hot-toast";
 import FileAttachment from "./FileAttachment";
 import FilePreview from "./FilePreview";
 import { MessageBubble } from "./MessageBubble";
+import TypingIndicator from "./TypingIndicator";
 
 interface ChatWindowProps {
   threadId: string;
@@ -86,6 +88,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return map;
   }, [members]);
 
+  // Typing indicator
+  const { typingUserIds, handleTyping, stopTyping } = useTypingIndicator(
+    threadId,
+    currentUser?.id ?? null
+  );
+
   const thread = getThreadById(threadId);
   const messages = getMessagesForThread(threadId);
   const visibleMessages = useMemo(() => {
@@ -109,7 +117,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   );
   const primaryParticipant = otherParticipants[0];
 
-  // Check if this is a self-chat (user chatting with themselves)
   const isSelfChat = useMemo(() => {
     return (
       thread?.participants?.length === 1 &&
@@ -117,15 +124,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   }, [thread?.participants, currentUser?.id]);
 
-  // Computed thread name
+  const isGroupThread = (thread?.participants?.length ?? 0) > 2 || (thread as any)?.isGroup;
+
   const displayThreadName = useMemo(() => {
     if (isSelfChat) {
       return `${currentUser?.name || "You"} (Notes)`;
     }
+    // For group threads, prefer the thread/group name over a participant's name
+    if (isGroupThread && thread?.name) {
+      return thread.name;
+    }
     return primaryParticipant?.name || thread?.name || "Chat";
-  }, [isSelfChat, primaryParticipant?.name, thread?.name, currentUser?.name]);
+  }, [isSelfChat, isGroupThread, primaryParticipant?.name, thread?.name, currentUser?.name]);
 
-  // Header avatar handling: show profile image when available, otherwise initial
   const [headerImageFailed, setHeaderImageFailed] = useState(false);
 
   const headerAvatarUrl = useMemo(() => {
@@ -138,16 +149,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [isSelfChat, thread?.participants, primaryParticipant]);
 
   useEffect(() => {
-    // Reset image error state when avatar url changes
     setHeaderImageFailed(false);
   }, [headerAvatarUrl]);
 
   const headerAvatarAvailable = Boolean(headerAvatarUrl) && !headerImageFailed;
 
   const headerInitial = useMemo(() => {
-    const name = isSelfChat ? currentUser?.name || "You" : primaryParticipant?.name || thread?.name || "U";
+    if (isSelfChat) return (currentUser?.name || "You").charAt(0).toUpperCase();
+    if (isGroupThread && thread?.name) return thread.name.charAt(0).toUpperCase();
+    const name = primaryParticipant?.name || thread?.name || "U";
     return name.charAt(0).toUpperCase();
-  }, [isSelfChat, currentUser?.name, primaryParticipant?.name, thread?.name]);
+  }, [isSelfChat, isGroupThread, currentUser?.name, primaryParticipant?.name, thread?.name]);
 
   const participantStatuses = useMemo<PresenceStatus[]>(
     () =>
@@ -173,17 +185,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [isFileAttachmentOpen, setIsFileAttachmentOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
-  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null); // Track message being replied to
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [deleteStates, setDeleteStates] = useState<Map<string, boolean>>(
     new Map()
-  ); // Track which messages can be deleted for everyone
-  const [showOptionsMenu, setShowOptionsMenu] = useState(false); // Track options menu visibility
-  const userInitiatedCall = useRef(false); // Track if user started the call
-  const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map()); // Cache for delete permissions
-  const processedMessageIdsRef = useRef<Set<string>>(new Set()); // Track already processed message IDs
+  );
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const userInitiatedCall = useRef(false);
+  const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map());
+  const processedMessageIdsRef = useRef<Set<string>>(new Set());
   const messagesScrollRef = useRef<HTMLDivElement>(null);
 
-  // Check delete permissions for each message (only when message list actually changes)
   useEffect(() => {
     if (!currentUser) return;
 
@@ -194,7 +205,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       let hasNewMessages = false;
 
       for (const message of messagesToCheck) {
-        // Only check if not already processed
         if (!processedMessageIdsRef.current.has(message.id)) {
           const canDelete = await supabaseMessagingService.canDeleteForEveryone(
             message.id,
@@ -206,7 +216,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }
       }
 
-      // Only update state if we processed new messages
       if (hasNewMessages) {
         setDeleteStates(new Map(deleteStatesCacheRef.current));
       }
@@ -260,18 +269,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     currentUserId,
   ]);
 
-
-  // Subscribe to real-time messages for this thread
   useEffect(() => {
     if (!threadId || !currentUser) return
 
     const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
       const currentMessages = getMessagesForThread(threadId)
-      // Check if message already exists to avoid duplicates
       if (currentMessages.some((m: ChatMessage) => m.id === message.id)) {
         return
       }
-      // Add new message to the list
       setMessagesForThread(threadId, [...currentMessages, message])
     })
 
@@ -280,7 +285,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [threadId, currentUser, getMessagesForThread, setMessagesForThread])
 
-  // Mark thread as read when messages are viewed or when thread opens
   useEffect(() => {
     if (
       thread &&
@@ -291,7 +295,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [threadId, thread, minimizedThreadIds, messages.length, markThreadRead]);
 
-  // Scroll to bottom so latest messages show first; scroll up to see history
   useEffect(() => {
     const el = messagesScrollRef.current;
     if (!el || visibleMessages.length === 0) return;
@@ -304,26 +307,55 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   if (!thread) return null;
 
+  const [isSending, setIsSending] = useState(false);
+
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
     const text = draft.trim();
     if (!text && pendingFiles.length === 0) return;
+    if (isSending) return;
 
-    await sendMessage(threadId, text, {
-      content: text,
-      attachments: pendingFiles,
-      reply_to_id: replyingTo?.id, // Include reply reference if replying
-    });
+    setIsSending(true);
+    try {
+      let uploadedAttachments = pendingFiles;
 
-    fileUploadService.revokePreviews(pendingFiles);
-    setDraft("");
-    setPendingFiles([]);
-    setReplyingTo(null); // Clear reply state after sending
+      if (pendingFiles.length > 0) {
+        try {
+          uploadedAttachments = await fileUploadService.uploadFiles(pendingFiles);
+        } catch (uploadError: any) {
+          toast.error(uploadError.message || "Failed to upload files");
+          setIsSending(false);
+          return;
+        }
+      }
+
+      await sendMessage(threadId, text, {
+        content: text,
+        attachments: uploadedAttachments.map((f) => ({
+          id: f.id,
+          name: f.name,
+          url: f.url,
+          type: f.type,
+          size: f.size,
+          mimeType: f.mimeType,
+        })),
+        reply_to_id: replyingTo?.id,
+      });
+
+      fileUploadService.revokePreviews(pendingFiles);
+      setDraft("");
+      setPendingFiles([]);
+      setReplyingTo(null);
+      stopTyping();
+    } catch (error: any) {
+      toast.error("Failed to send message");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleReply = (message: ChatMessage) => {
     setReplyingTo(message);
-    // Focus input (will be handled by input ref)
   };
 
   const handleDelete = async (
@@ -334,7 +366,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     try {
       if (deleteForEveryone) {
-        // Check if user can delete for everyone (15 min limit)
         const canDelete = await supabaseMessagingService.canDeleteForEveryone(
           messageId,
           currentUser.id
@@ -377,12 +408,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     let prevMessagesForThread: ChatMessage[] | null = null
     try {
-      // Take a snapshot to allow revert on error
       prevMessagesForThread = getMessagesForThread(threadId);
-      // Only delete visible (not already deleted) messages
       const messagesToDelete = visibleMessages;
 
-      // Optimistically update local state so messages disappear immediately
       clearMessagesForUser(threadId, currentUser.id);
 
       for (const message of messagesToDelete) {
@@ -395,7 +423,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       toast.success("All messages cleared");
       setShowOptionsMenu(false);
     } catch (error) {
-      // Revert optimistic update by restoring previous messages
       if (prevMessagesForThread) {
         setMessagesForThread(threadId, prevMessagesForThread);
       }
@@ -405,13 +432,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleStartCall = async (type: "audio" | "video") => {
     try {
-      userInitiatedCall.current = true; // Mark that user started this call
-
-      // The startCall function handles token fetching and room creation
-      // State will be set via the pendingCall state from context (handled by useEffect)
+      userInitiatedCall.current = true;
       await startCall(threadId, type);
     } catch (error) {
-      // Reset state on error
       setIsCallOpen(false);
       setIsIncomingCall(false);
       setActiveRoomId(null);
@@ -424,8 +447,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setIsIncomingCall(false);
     setCurrentCallType("video");
     setActiveRoomId(null);
-    userInitiatedCall.current = false; // Reset the flag
-    // Clear the call request when call actually ends
+    userInitiatedCall.current = false;
     clearCallRequest(threadId);
   };
 
@@ -477,8 +499,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <div className="text-xs text-gray-500">
               {isSelfChat
                 ? "Save messages to yourself"
-                : otherParticipants.length > 1
-                ? `${otherParticipants.length} participants`
+                : (thread?.participants?.length ?? 0) > 2
+                ? `${thread?.participants?.length} participants`
                 : formatPresenceLabel(presenceStatus)}
             </div>
           </div>
@@ -561,7 +583,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               const canDeleteForEveryone =
                 deleteStates.get(message.id) ?? false;
 
-              // Create presence map for participants
               const participantPresenceMap: Record<string, 'online' | 'away' | 'busy' | 'offline'> = {};
               thread?.participants?.forEach((p: any) => {
                 participantPresenceMap[p.id] = presence[p.id] || 'offline';
@@ -587,6 +608,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <div aria-hidden="true" />
       </div>
 
+      {/* WhatsApp-style typing indicator */}
+      <TypingIndicator isTyping={typingUserIds.length > 0} />
+
       {pendingFiles.length > 0 && (
         <div className="border-t border-gray-100 px-4 pb-3">
           <FilePreview files={pendingFiles} onRemove={removePendingFile} />
@@ -597,7 +621,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onSubmit={handleSend}
         className="border-t border-gray-200 bg-white px-2 sm:px-3 py-2 sm:py-3"
       >
-        {/* Reply Preview */}
         {replyingTo && (
           <div className="mb-2 flex items-start gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-2 border-l-4 border-orange-500">
             <div className="flex-1 min-w-0">
@@ -632,16 +655,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
           <input
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              handleTyping();
+            }}
             placeholder="Message..."
             className=" w-full px-3 py-2 border border-gray-300 rounded-full text-gray-800 text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
           />
           <button
             type="submit"
-            className="flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800"
+            disabled={isSending}
+            className="flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Send message"
           >
-            <Send className="h-5 w-5 sm:h-4 sm:w-4" />
+            {isSending ? (
+              <svg className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <Send className="h-5 w-5 sm:h-4 sm:w-4" />
+            )}
           </button>
         </div>
       </form>
@@ -651,8 +685,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onClose={() => setIsFileAttachmentOpen(false)}
         onFilesSelected={handleFilesSelected}
       />
-
-      {/* Call modal removed - calls now open in new windows (like Facebook) */}
     </div>
   );
 };

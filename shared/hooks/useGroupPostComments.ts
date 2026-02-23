@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 
@@ -23,120 +23,47 @@ export interface GroupPostComment {
   isLiked?: boolean
 }
 
-export const useGroupPostComments = (groupPostId: string) => {
+export const useGroupPostComments = (groupId: string, groupPostId: string) => {
   const { user } = useAuth()
   const [comments, setComments] = useState<GroupPostComment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const fetchComments = useCallback(async () => {
-    if (!groupPostId) return
+    if (!groupPostId || !groupId) return
 
     try {
       setLoading(true)
       setError(null)
 
-      // Fetch all comments for this group post
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('group_post_comments')
-        .select('*')
-        .eq('group_post_id', groupPostId)
-        .is('parent_id', null)
-        .order('created_at', { ascending: true })
-
-      if (commentsError) throw commentsError
-
-      if (!commentsData || commentsData.length === 0) {
-        setComments([])
-        setLoading(false)
-        return
-      }
-
-      // Fetch author profiles
-      const authorIds = [...new Set(commentsData.map(c => c.author_id))]
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url, country')
-        .in('id', authorIds)
-
-      const profilesMap = new Map(
-        (profilesData || []).map(profile => [profile.id, profile])
+      const res = await apiClient.get<{ data: GroupPostComment[] }>(
+        `/api/groups/${groupId}/posts/${groupPostId}/comments`
       )
+      const commentsData = res.data || []
 
-      // Fetch replies for each comment
-      const commentIds = commentsData.map(c => c.id)
-      const { data: repliesData } = await supabase
-        .from('group_post_comments')
-        .select('*')
-        .in('parent_id', commentIds)
-        .order('created_at', { ascending: true })
-
-      // Fetch reply author profiles
-      if (repliesData && repliesData.length > 0) {
-        const replyAuthorIds = [...new Set(repliesData.map(r => r.author_id))]
-        const { data: replyProfilesData } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url, country')
-          .in('id', replyAuthorIds)
-
-        replyProfilesData?.forEach(profile => {
-          profilesMap.set(profile.id, profile)
-        })
-      }
-
-      // Check which comments the current user has liked
-      let likesData: any[] = []
-      if (user) {
-        const allCommentIds = [
-          ...commentsData.map(c => c.id),
-          ...(repliesData || []).map(r => r.id)
-        ]
-        
-        if (allCommentIds.length > 0) {
-          const { data } = await supabase
-            .from('comment_likes')
-            .select('comment_id')
-            .eq('user_id', user.id)
-            .in('comment_id', allCommentIds)
-
-          if (data) {
-            likesData = data
-          }
-        }
-      }
-
-      // Organize comments with replies
-      const commentsWithReplies = commentsData.map(comment => {
-        const commentReplies = (repliesData || [])
-          .filter(reply => reply.parent_id === comment.id)
-          .map(reply => ({
-            ...reply,
-            author: profilesMap.get(reply.author_id) || {
-              id: reply.author_id,
-              username: 'Unknown',
-              full_name: 'Unknown User',
-              avatar_url: null,
-              country: null
-            },
-            isLiked: likesData.some(like => like.comment_id === reply.id),
-            replies: []
-          }))
-
-        return {
-          ...comment,
-          author: profilesMap.get(comment.author_id) || {
-            id: comment.author_id,
+      setComments(
+        commentsData.map((c: GroupPostComment) => ({
+          ...c,
+          author: c.author ?? {
+            id: c.author_id,
             username: 'Unknown',
             full_name: 'Unknown User',
             avatar_url: null,
             country: null
           },
-          replies: commentReplies,
-          isLiked: likesData.some(like => like.comment_id === comment.id)
-        }
-      })
-
-      setComments(commentsWithReplies)
+          replies: (c.replies || []).map((r: GroupPostComment) => ({
+            ...r,
+            author: r.author ?? {
+              id: r.author_id,
+              username: 'Unknown',
+              full_name: 'Unknown User',
+              avatar_url: null,
+              country: null
+            },
+            replies: []
+          }))
+        }))
+      )
     } catch (err: any) {
       console.error('Error fetching group post comments:', err)
       setError(err.message)
@@ -144,7 +71,7 @@ export const useGroupPostComments = (groupPostId: string) => {
     } finally {
       setLoading(false)
     }
-  }, [groupPostId, user?.id])
+  }, [groupId, groupPostId, user?.id])
 
   useEffect(() => {
     fetchComments()
@@ -162,30 +89,14 @@ export const useGroupPostComments = (groupPostId: string) => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('group_post_comments')
-        .insert({
-          group_post_id: groupPostId,
-          author_id: user.id,
-          content: content.trim(),
-          parent_id: parentId || null,
-          likes_count: 0
-        })
-        .select('*')
-        .single()
-
-      if (error) throw error
-
-      // Fetch author profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url, country')
-        .eq('id', user.id)
-        .single()
+      const res = await apiClient.post<{ data: GroupPostComment }>(
+        `/api/groups/${groupId}/posts/${groupPostId}/comments`,
+        { content: content.trim(), parent_id: parentId || null }
+      )
 
       const newComment: GroupPostComment = {
-        ...data,
-        author: profileData || {
+        ...res.data,
+        author: res.data.author ?? {
           id: user.id,
           username: 'Unknown',
           full_name: 'Unknown User',
@@ -196,59 +107,15 @@ export const useGroupPostComments = (groupPostId: string) => {
         isLiked: false
       }
 
-      // Update comments count on the post
-      try {
-        const { error: rpcError } = await supabase.rpc('increment', {
-          table_name: 'group_posts',
-          column_name: 'comments_count',
-          row_id: groupPostId,
-          increment_value: 1
-        })
-        
-        if (rpcError) {
-          // Fallback if RPC doesn't exist
-          const { data: postData } = await supabase
-            .from('group_posts')
-            .select('comments_count')
-            .eq('id', groupPostId)
-            .single()
-            
-          if (postData) {
-            await supabase
-              .from('group_posts')
-              .update({ comments_count: (postData.comments_count || 0) + 1 })
-              .eq('id', groupPostId)
-          }
-        }
-      } catch (rpcErr) {
-        // Fallback if RPC doesn't exist
-        const { data: postData } = await supabase
-          .from('group_posts')
-          .select('comments_count')
-          .eq('id', groupPostId)
-          .single()
-          
-        if (postData) {
-          await supabase
-            .from('group_posts')
-            .update({ comments_count: (postData.comments_count || 0) + 1 })
-            .eq('id', groupPostId)
-        }
-      }
-
       if (parentId) {
-        // Add as reply to parent comment
-        setComments(prev => prev.map(comment => {
-          if (comment.id === parentId) {
-            return {
-              ...comment,
-              replies: [...(comment.replies || []), newComment]
-            }
-          }
-          return comment
-        }))
+        setComments(prev =>
+          prev.map(comment =>
+            comment.id === parentId
+              ? { ...comment, replies: [...(comment.replies || []), newComment] }
+              : comment
+          )
+        )
       } else {
-        // Add as top-level comment
         setComments(prev => [...prev, newComment])
       }
 
@@ -261,59 +128,15 @@ export const useGroupPostComments = (groupPostId: string) => {
     }
   }
 
-  const toggleLike = async (commentId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to like comments')
-      return
-    }
-
-    try {
-      // Check if already liked
-      const { data: existingLike } = await supabase
-        .from('comment_likes')
-        .select('id')
-        .eq('comment_id', commentId)
-        .eq('user_id', user.id)
-        .single()
-
-      if (existingLike) {
-        // Unlike
-        await supabase
-          .from('comment_likes')
-          .delete()
-          .eq('id', existingLike.id)
-
-        setComments(prev => updateCommentLikes(prev, commentId, -1, false))
-      } else {
-        // Like
-        await supabase
-          .from('comment_likes')
-          .insert({
-            comment_id: commentId,
-            user_id: user.id
-          })
-
-        setComments(prev => updateCommentLikes(prev, commentId, 1, true))
-      }
-    } catch (err: any) {
-      console.error('Error toggling like:', err)
-      toast.error('Failed to update like')
-    }
-  }
-
   const updateCommentLikes = (
-    comments: GroupPostComment[],
+    commentsList: GroupPostComment[],
     commentId: string,
     increment: number,
     isLiked: boolean
   ): GroupPostComment[] => {
-    return comments.map(comment => {
+    return commentsList.map(comment => {
       if (comment.id === commentId) {
-        return {
-          ...comment,
-          likes_count: Math.max(0, comment.likes_count + increment),
-          isLiked
-        }
+        return { ...comment, likes_count: Math.max(0, comment.likes_count + increment), isLiked }
       }
       if (comment.replies && comment.replies.length > 0) {
         return {
@@ -325,62 +148,40 @@ export const useGroupPostComments = (groupPostId: string) => {
     })
   }
 
+  const toggleLike = async (commentId: string) => {
+    if (!user) {
+      toast.error('You must be logged in to like comments')
+      return
+    }
+
+    try {
+      const res = await apiClient.post<{ liked: boolean }>(
+        `/api/groups/${groupId}/posts/${groupPostId}/comments/${commentId}/like`
+      )
+
+      setComments(prev =>
+        updateCommentLikes(prev, commentId, res.liked ? 1 : -1, res.liked)
+      )
+    } catch (err: any) {
+      console.error('Error toggling like:', err)
+      toast.error('Failed to update like')
+    }
+  }
+
   const deleteComment = async (commentId: string) => {
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('group_post_comments')
-        .delete()
-        .eq('id', commentId)
-        .eq('author_id', user.id)
+      await apiClient.delete(`/api/groups/${groupId}/posts/${groupPostId}/comments/${commentId}`)
 
-      if (error) throw error
-
-      // Update comments count on the post
-      try {
-        const { error: rpcError } = await supabase.rpc('increment', {
-          table_name: 'group_posts',
-          column_name: 'comments_count',
-          row_id: groupPostId,
-          increment_value: -1
-        })
-        
-        if (rpcError) {
-          // Fallback if RPC doesn't exist
-          const { data: postData } = await supabase
-            .from('group_posts')
-            .select('comments_count')
-            .eq('id', groupPostId)
-            .single()
-            
-          if (postData) {
-            await supabase
-              .from('group_posts')
-              .update({ comments_count: Math.max(0, (postData.comments_count || 0) - 1) })
-              .eq('id', groupPostId)
-          }
-        }
-      } catch (rpcErr) {
-        // Fallback if RPC doesn't exist
-        const { data: postData } = await supabase
-          .from('group_posts')
-          .select('comments_count')
-          .eq('id', groupPostId)
-          .single()
-          
-        if (postData) {
-          await supabase
-            .from('group_posts')
-            .update({ comments_count: Math.max(0, (postData.comments_count || 0) - 1) })
-            .eq('id', groupPostId)
-        }
-      }
-
-      setComments(prev => prev.filter(c => c.id !== commentId).map(comment => ({
-        ...comment,
-        replies: comment.replies?.filter(r => r.id !== commentId)
-      })))
+      setComments(prev =>
+        prev
+          .filter(c => c.id !== commentId)
+          .map(comment => ({
+            ...comment,
+            replies: comment.replies?.filter(r => r.id !== commentId)
+          }))
+      )
 
       toast.success('Comment deleted')
     } catch (err: any) {
@@ -399,4 +200,3 @@ export const useGroupPostComments = (groupPostId: string) => {
     refetch: fetchComments
   }
 }
-

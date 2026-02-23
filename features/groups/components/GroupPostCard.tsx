@@ -1,14 +1,15 @@
 'use client'
 
-import React, { useState } from 'react'
-import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, Edit, Eye } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { MoreHorizontal, Trash2, Edit, Eye } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { GroupPost } from '@/shared/hooks/useGroupPosts'
 import GroupPostCommentsSection from '@/features/groups/components/GroupPostCommentsSection'
+import { useGroupPostReactions, GroupReactionGroup } from '@/shared/hooks/useGroupPostReactions'
 import toast from 'react-hot-toast'
-import { PiShareFat } from 'react-icons/pi'
+import PostEngagement from '@/shared/components/PostEngagement'
 
 interface GroupPostCardProps {
   post: GroupPost
@@ -18,6 +19,7 @@ interface GroupPostCardProps {
   onDelete?: () => void
   onEdit?: (title: string, content: string) => void
   onView?: () => void
+  onEmojiReaction?: (postId: string, emoji: string) => void
   isPostLiked?: boolean
   showCommentsFor?: boolean
   onToggleComments?: () => void
@@ -39,6 +41,8 @@ const POST_TYPE_COLORS = {
   resource: 'bg-orange-100 text-orange-700'
 }
 
+
+
 const GroupPostCard: React.FC<GroupPostCardProps> = ({
   post,
   onLike,
@@ -47,6 +51,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   onDelete,
   onEdit,
   onView,
+  onEmojiReaction,
   isPostLiked = false,
   showCommentsFor = false,
   onToggleComments
@@ -57,6 +62,13 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(post.title)
   const [editContent, setEditContent] = useState(post.content)
+
+  // Fetch reactions with user data
+  const {
+    reactions,
+    loading: reactionsLoading,
+    refetch: refetchReactions,
+  } = useGroupPostReactions(post.group_id, post.id)
 
   const isAuthor = user?.id === post.author_id
 
@@ -71,6 +83,20 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
     if (confirm('Are you sure you want to delete this post?')) {
       onDelete?.()
     }
+  }
+
+  // Get all reaction groups sorted by count
+  const getReactionGroups = () => {
+    const groups: GroupReactionGroup[] = []
+    Object.keys(reactions).forEach((key) => {
+      if (key !== 'totalCount') {
+        const reaction = reactions[key]
+        if (reaction && typeof reaction === 'object' && 'count' in reaction && reaction.count > 0) {
+          groups.push(reaction as GroupReactionGroup)
+        }
+      }
+    })
+    return groups.sort((a, b) => b.count - a.count)
   }
 
   return (
@@ -96,7 +122,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
           {/* Author Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h4 className="font-semibold text-gray-900">
+              <h4 className="font-semibold text-gray-900 !no-underline">
                 {post.author?.full_name || post.author?.username || 'Unknown'}
               </h4>
               {post.is_pinned && (
@@ -207,38 +233,24 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         </>
       )}
 
-      {/* Actions */}
-        <div className="flex items-center gap-6 justify-between pt-3 border-t border-gray-200">
-          <button
-            onClick={onLike}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-              isPostLiked
-                ? 'bg-red-50 text-red-600'
-                : 'hover:bg-gray-100 text-gray-600'
-            }`}
-          >
-            <Heart className={`w-5 h-5 ${isPostLiked ? 'fill-current' : ''}`} />
-            <span className="text-sm font-medium">{post.likes_count}</span>
-          </button>
-          <button
-            onClick={onToggleComments || onComment}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
-          >
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-sm font-medium">{post.comments_count}</span>
-          </button>
-          <button
-            onClick={onShare}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
-          >
-            <PiShareFat className="w-5 h-5" />
-            <span className="text-sm font-medium">Share</span>
-          </button>
-        </div>
+      {/* Engagement Stats & Actions */}
+      <PostEngagement
+        reactionGroups={getReactionGroups()}
+        totalReactionCount={reactions.totalCount}
+        commentsCount={post.comments_count}
+        onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
+        onComment={() => onToggleComments ? onToggleComments() : onComment()}
+        onShare={onShare}
+        onUserClick={(username) => router.push(`/user/${username}`)}
+        postId={post.id}
+        reactionsTable="group_post_reactions"
+        postIdColumn="group_post_id"
+      />
 
       {/* Comments Section */}
       {showCommentsFor && (
         <GroupPostCommentsSection
+          groupId={post.group_id}
           groupPostId={post.id}
           isOpen={true}
           onClose={() => onToggleComments?.()}
@@ -249,4 +261,3 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
 }
 
 export default GroupPostCard
-

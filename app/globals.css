@@ -156,8 +156,14 @@ body {
 .bg-primary-200 {
   background-color: #fed7aa;
 }
+.bg-primary-500 {
+  background-color: #f97316;
+}
 .bg-primary-600 {
-  background: #f97316 ;
+  background-color: #ea580c;
+}
+.hover\:bg-primary-600:hover {
+  background-color: #ea580c;
 }
 
 
@@ -250,4 +256,78 @@ button{
   animation: shimmer 1.5s ease-in-out infinite;
 }
 
+/* Slow spin animation for music icon */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Custom scrollbar for story components */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #374151;
+  border-radius: 3px;
+}
+.scrollbar-thumb-gray-700::-webkit-scrollbar-thumb {
+  background-color: #374151;
+}
+
+/* Story card slide-in animation */
+@keyframes fade-in-card {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.animate-fade-in-card {
+  animation: fade-in-card 0.35s ease-out both;
+}
+
+/* Screen share smooth transitions */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 

@@ -13,7 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import toast from "react-hot-toast";
 import {
   useShimmerCountMd,
@@ -57,10 +57,10 @@ const MyOrders: React.FC = () => {
   const shimmerCount = useShimmerCountMd();
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchOrders();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchOrders = async () => {
     if (!user) return;
@@ -68,45 +68,13 @@ const MyOrders: React.FC = () => {
     try {
       setLoading(true);
 
-      // Fetch purchases (orders where user is buyer)
-      const { data: purchasesData, error: purchasesError } = await supabase
-        .from("order_with_parties")
-        .select("*")
-        .eq("buyer_id", user.id)
-        .order("created_at", { ascending: false });
+      const [purchasesRes, salesRes] = await Promise.all([
+        apiClient.get<{ data: Order[] }>('/api/orders', { type: 'purchases' }),
+        apiClient.get<{ data: Order[] }>('/api/orders', { type: 'sales' }),
+      ]);
 
-      if (purchasesError) throw purchasesError;
-
-      // Fetch sales (orders where user is seller)
-      const { data: salesData, error: salesError } = await supabase
-        .from("order_with_parties")
-        .select("*")
-        .eq("seller_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (salesError) throw salesError;
-
-      // Transform the flat view data to match the Order interface structure
-      const transformOrder = (order: any): Order => ({
-        ...order,
-        seller: order.seller_id_profile
-          ? {
-              username: order.seller_username,
-              full_name: order.seller_full_name,
-              avatar_url: order.seller_avatar_url,
-            }
-          : undefined,
-        buyer: order.buyer_id_profile
-          ? {
-              username: order.buyer_username,
-              full_name: order.buyer_full_name,
-              avatar_url: order.buyer_avatar_url,
-            }
-          : undefined,
-      });
-
-      setPurchases((purchasesData || []).map(transformOrder));
-      setSales((salesData || []).map(transformOrder));
+      setPurchases(purchasesRes.data || []);
+      setSales(salesRes.data || []);
     } catch (error: any) {
       console.error("Error fetching orders:", error);
       toast.error("Failed to load orders");
@@ -172,28 +140,8 @@ const MyOrders: React.FC = () => {
     try {
       setUpdatingOrderId(orderId);
 
-      // Determine the next delivery status based on order status
-      let deliveryStatus = 'pending';
-      if (newStatus === 'processing') {
-        deliveryStatus = 'processing';
-      } else if (newStatus === 'shipped') {
-        deliveryStatus = 'shipped';
-      } else if (newStatus === 'completed') {
-        deliveryStatus = 'delivered';
-      }
+      await apiClient.patch(`/api/orders/${orderId}/status`, { status: newStatus });
 
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: newStatus,
-          delivery_status: deliveryStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Refresh orders
       await fetchOrders();
       toast.success(`Order status updated to ${newStatus}`);
     } catch (error: any) {

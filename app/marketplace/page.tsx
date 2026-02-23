@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import CreateProductModal from "@/features/marketplace/components/CreateProductModal-v2";
 import ProductCard from "@/features/marketplace/components/ProductCard";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import { Product } from "@/shared/types";
 import {
   ArrowLeft,
@@ -14,7 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 import {
   useShimmerCount,
@@ -73,33 +73,30 @@ const MarketplacePage: React.FC = () => {
     filterProducts();
   }, [products, searchTerm, selectedCategory, selectedCurrency]);
 
-  // Handle payment success/error messages from query params
+  const paymentHandledRef = useRef(false);
+
   useEffect(() => {
+    if (paymentHandledRef.current) return;
+
     const paymentStatus = searchParams.get('payment');
     const message = searchParams.get('message');
 
     if (paymentStatus === 'success') {
+      paymentHandledRef.current = true;
       toast.success('Payment successful! Your order has been created.');
-      // Clean up URL by removing query params
       router.replace('/marketplace');
     } else if (paymentStatus === 'error') {
+      paymentHandledRef.current = true;
       toast.error(message ? decodeURIComponent(message) : 'Payment failed. Please try again.');
-      // Clean up URL by removing query params
       router.replace('/marketplace');
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .eq("is_available", true)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setProducts(data || []);
+      const res = await apiClient.get<{ data: Product[] }>("/api/marketplace");
+      setProducts(res.data || []);
     } catch {
       toast.error("Failed to load products");
     } finally {
@@ -142,31 +139,12 @@ const MarketplacePage: React.FC = () => {
       try {
         const product = products.find(p => p.id === productId)
         if (!product) return
-  
-        if (product.is_saved) {
-          // Unsave
-          await supabase
-            .from('product_saves')
-            .delete()
-            .eq('product_id', productId)
-            .eq('user_id', user.id)
-  
-          toast.success('Product removed from saved items')
-        } else {
-          // Save
-          await supabase
-            .from('product_saves')
-            .insert({
-              product_id: productId,
-              user_id: user.id
-            })
-  
-          toast.success('Product saved!')
-        }
-  
-        // Update local state
+
+        const res = await apiClient.post<{ saved: boolean }>(`/api/marketplace/${productId}/save`)
+        toast.success(res.saved ? 'Product saved!' : 'Product removed from saved items')
+
         setProducts(products.map(p =>
-          p.id === productId ? { ...p, is_saved: !p.is_saved } : p
+          p.id === productId ? { ...p, is_saved: res.saved } : p
         ))
       } catch (error: any) {
         console.error('Error saving product:', error)

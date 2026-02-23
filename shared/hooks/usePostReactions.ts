@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface PostReaction {
@@ -9,7 +9,7 @@ export interface PostReaction {
 }
 
 export interface PostReactions {
-  [key: string]: PostReaction // key is reaction type
+  [key: string]: PostReaction
 }
 
 export const usePostReactions = (postId: string) => {
@@ -27,62 +27,27 @@ export const usePostReactions = (postId: string) => {
     try {
       setLoading(true)
 
-      // Fetch reaction counts using a more compatible query
-      const { data: reactionCounts, error: countsError } = await supabase
-        .from('post_reactions')
-        .select('reaction_type')
-        .eq('post_id', postId)
+      const res = await apiClient.get<{
+        data: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }>
+        totalCount: number
+      }>(`/api/posts/${postId}/reaction`)
 
-      if (countsError) throw countsError
-
-      // Fetch user's reactions
-      let userReactions: any[] = []
-      if (user) {
-        const { data, error: userError } = await supabase
-          .from('post_reactions')
-          .select('reaction_type')
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
-
-        if (!userError) {
-          userReactions = data || []
-        }
-      }
-
-      // Process reactions
       const processedReactions: PostReactions = {}
-      
-      // Initialize default reactions
+
       const defaultReactions = ['like', 'love'] as const
       defaultReactions.forEach(type => {
-        processedReactions[type] = {
-          type,
-          count: 0,
-          userReacted: false
-        }
+        processedReactions[type] = { type, count: 0, userReacted: false }
       })
 
-      // Count reactions by type
-      const reactionTypeCounts: { [key: string]: number } = {}
-      reactionCounts?.forEach((reaction: any) => {
-        reactionTypeCounts[reaction.reaction_type] = (reactionTypeCounts[reaction.reaction_type] || 0) + 1
-      })
-
-      // Update with actual counts
-      Object.entries(reactionTypeCounts).forEach(([reactionType, count]) => {
-        processedReactions[reactionType] = {
-          type: reactionType as 'like' | 'love',
-          count: count,
-          userReacted: userReactions.some(ur => ur.reaction_type === reactionType)
-        }
-      })
-
-      // Update user reactions
-      userReactions.forEach(userReaction => {
-        if (processedReactions[userReaction.reaction_type]) {
-          processedReactions[userReaction.reaction_type].userReacted = true
-        }
-      })
+      if (res.data) {
+        Object.entries(res.data).forEach(([reactionType, group]) => {
+          processedReactions[reactionType] = {
+            type: reactionType as PostReaction['type'],
+            count: group.count,
+            userReacted: group.currentUserReacted,
+          }
+        })
+      }
 
       setReactions(processedReactions)
     } catch (error: any) {
@@ -96,25 +61,26 @@ export const usePostReactions = (postId: string) => {
     try {
       if (!user) throw new Error('User not authenticated')
 
-      const { data, error } = await supabase
-        .rpc('toggle_post_reaction', {
-          post_id_param: postId,
-          reaction_type_param: reactionType
-        })
+      const res = await apiClient.post<{ action: string; reaction_type: string }>(
+        `/api/posts/${postId}/reaction`,
+        { reaction_type: reactionType }
+      )
 
-      if (error) throw error
-
-      const result = data?.[0]
-      if (result) {
-        setReactions(prev => ({
+      setReactions(prev => {
+        const current = prev[reactionType] || { type: reactionType, count: 0, userReacted: false }
+        return {
           ...prev,
           [reactionType]: {
             type: reactionType,
-            count: result.new_count,
-            userReacted: result.action === 'added'
-          }
-        }))
-      }
+            count: res.action === 'removed'
+              ? Math.max(0, current.count - 1)
+              : res.action === 'added'
+                ? current.count + 1
+                : current.count,
+            userReacted: res.action !== 'removed',
+          },
+        }
+      })
 
       return { error: null }
     } catch (error: any) {

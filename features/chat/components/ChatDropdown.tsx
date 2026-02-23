@@ -1,11 +1,13 @@
-import React, { useMemo, useEffect, useState, useRef } from 'react'
+import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { MessageCircle, Phone, Video, Circle } from 'lucide-react'
+import { MessageCircle, Phone, Video, Circle, Loader2 } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { PresenceStatus, ChatParticipant } from '@/shared/types/chat'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'
 import { ChatDropdownShimmer } from '@/shared/components/ui/ShimmerLoaders'
+
+const PAGE_SIZE = 15
 
 interface ChatDropdownProps {
   onClose: () => void
@@ -26,7 +28,13 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
   const [recentCallEntries, setRecentCallEntries] = useState<RecentCallEntry[]>([])
   const [threadsLoading, setThreadsLoading] = useState(true)
   const [recentCallsLoading, setRecentCallsLoading] = useState(true)
+  const [threadsLoadingMore, setThreadsLoadingMore] = useState(false)
+  const [callsLoadingMore, setCallsLoadingMore] = useState(false)
+  const [threadsHasMore, setThreadsHasMore] = useState(true)
+  const [callsHasMore, setCallsHasMore] = useState(true)
+  const [contactsVisible, setContactsVisible] = useState(PAGE_SIZE)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,11 +54,12 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
       }
       setThreadsLoading(true)
       try {
-        const userThreads = await supabaseMessagingService.getUserThreads({
-          id: currentUser.id,
-          name: currentUser.name || '',
-        })
+        const userThreads = await supabaseMessagingService.getUserThreads(
+          { id: currentUser.id, name: currentUser.name || '' },
+          { limit: PAGE_SIZE, offset: 0 }
+        )
         setThreads(userThreads)
+        setThreadsHasMore(userThreads.length >= PAGE_SIZE)
       } finally {
         setThreadsLoading(false)
       }
@@ -66,14 +75,69 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
       }
       setRecentCallsLoading(true)
       try {
-        const entries = await supabaseMessagingService.getRecentCalls(currentUser.id)
+        const entries = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, 0)
         setRecentCallEntries(entries)
+        setCallsHasMore(entries.length >= PAGE_SIZE)
       } finally {
         setRecentCallsLoading(false)
       }
     }
     loadRecentCalls()
   }, [currentUser?.id])
+
+  const loadMoreThreads = useCallback(async () => {
+    if (!currentUser || threadsLoadingMore || !threadsHasMore) return
+    setThreadsLoadingMore(true)
+    try {
+      const moreThreads = await supabaseMessagingService.getUserThreads(
+        { id: currentUser.id, name: currentUser.name || '' },
+        { limit: PAGE_SIZE, offset: threads.length }
+      )
+      if (moreThreads.length < PAGE_SIZE) setThreadsHasMore(false)
+      setThreads(prev => {
+        const existingIds = new Set(prev.map(t => t.id))
+        const deduped = moreThreads.filter(t => !existingIds.has(t.id))
+        return [...prev, ...deduped]
+      })
+    } finally {
+      setThreadsLoadingMore(false)
+    }
+  }, [currentUser, threads.length, threadsLoadingMore, threadsHasMore])
+
+  const loadMoreCalls = useCallback(async () => {
+    if (!currentUser?.id || callsLoadingMore || !callsHasMore) return
+    setCallsLoadingMore(true)
+    try {
+      const moreCalls = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, recentCallEntries.length)
+      if (moreCalls.length < PAGE_SIZE) setCallsHasMore(false)
+      setRecentCallEntries(prev => {
+        const existingIds = new Set(prev.map(c => c.thread_id))
+        const deduped = moreCalls.filter(c => !existingIds.has(c.thread_id))
+        return [...prev, ...deduped]
+      })
+    } finally {
+      setCallsLoadingMore(false)
+    }
+  }, [currentUser?.id, recentCallEntries.length, callsLoadingMore, callsHasMore])
+
+  const loadMoreContacts = useCallback(() => {
+    setContactsVisible(prev => prev + PAGE_SIZE)
+  }, [])
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+    if (scrollHeight - scrollTop - clientHeight < 80) {
+      if (mode === 'chat') {
+        loadMoreThreads()
+      } else {
+        if (callsHasMore) {
+          loadMoreCalls()
+        } else {
+          loadMoreContacts()
+        }
+      }
+    }
+  }, [mode, loadMoreThreads, loadMoreCalls, loadMoreContacts, callsHasMore])
 
   const sortedThreads = useMemo(() => {
     return [...threads].sort((a, b) => {
@@ -94,6 +158,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
       }))
   }, [members, currentUser, presence])
 
+  const visibleContacts = useMemo(() => availableContacts.slice(0, contactsVisible), [availableContacts, contactsVisible])
+  const contactsHasMore = contactsVisible < availableContacts.length
+
   const sortedRecentCalls = useMemo(() => {
     const allThreads = [...threads, ...contextThreads]
     return recentCallEntries
@@ -105,10 +172,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
         )
         const primary = otherParticipants[0] ?? thread.participants[0]
         if (!primary) return null
+        const isGroup = otherParticipants.length > 1 || (thread as any).isGroup
         return {
           ...entry,
-          name: primary.name || thread.name || 'Unknown',
-          avatarUrl: primary.avatarUrl,
+          name: (isGroup && thread.name) ? thread.name : (primary.name || thread.name || 'Unknown'),
+          avatarUrl: isGroup ? undefined : primary.avatarUrl,
           id: primary.id,
         }
       })
@@ -166,7 +234,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
 
       {mode === 'call' ? (
         // Call mode: Show latest calls (Facebook-style) then contacts
-        <div className="space-y-4 max-h-64 sm:max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-4 max-h-64 sm:max-h-80 overflow-y-auto pr-1 custom-scrollbar" onScroll={handleScroll}>
           {recentCallsLoading || membersLoading ? (
             <>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent</p>
@@ -243,7 +311,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               </div>
             ) : (
               <div className="space-y-2 sm:space-y-3">
-                {availableContacts.map((contact) => (
+                {visibleContacts.map((contact) => (
                   <div
                     key={contact.id}
                     className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors"
@@ -292,6 +360,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               </div>
             )}
           </div>
+          {callsLoadingMore && (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            </div>
+          )}
           </>
           )}
         </div>
@@ -304,7 +377,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
             No conversations yet. Start a chat from the feed or contacts.
           </div>
         ) : (
-          <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto  custom-scrollbar scrollbar-hide">
+          <div ref={scrollContainerRef} onScroll={handleScroll} className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto custom-scrollbar scrollbar-hide">
             {sortedThreads.map((thread) => {
               const otherParticipants = thread.participants.filter(
                 (participant: ChatParticipant) => participant.id !== currentUser?.id
@@ -312,6 +385,8 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               const primary = otherParticipants[0] ?? thread.participants[0]
               const status = presence[primary?.id ?? ''] || 'offline'
               const lastActive = thread.last_message_at
+              const isGroup = otherParticipants.length > 1 || (thread as any).isGroup
+              const threadDisplayName = (isGroup && thread.name) ? thread.name : (primary?.name || thread.name || 'Conversation')
 
               return (
                 <div
@@ -324,7 +399,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                   >
                     <div className="relative w-8 h-8 sm:w-10 sm:h-10">
                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
-                        {(primary?.name || thread.name).charAt(0).toUpperCase()}
+                        {threadDisplayName.charAt(0).toUpperCase()}
                       </div>
                       <Circle
                         className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[status as PresenceStatus]}`}
@@ -333,7 +408,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
-                        {primary?.name || thread.name || 'Conversation'}
+                        {threadDisplayName}
                       </p>
                       <p className="text-xs text-gray-500">
                         {thread.last_message_preview
@@ -358,6 +433,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                 </div>
               )
             })}
+            {threadsLoadingMore && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+            )}
           </div>
         )
       )}
