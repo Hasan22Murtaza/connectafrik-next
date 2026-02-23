@@ -185,10 +185,6 @@ export const useGroupPosts = (groupId: string) => {
     }
   }
 
-  const recordView = async (postId: string) => {
-    console.log('Post viewed:', postId)
-  }
-
   return {
     posts,
     loading,
@@ -197,7 +193,6 @@ export const useGroupPosts = (groupId: string) => {
     toggleLike,
     deletePost,
     updatePost,
-    recordView,
     refetch: fetchGroupPosts
   }
 }

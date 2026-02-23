@@ -19,7 +19,7 @@ import {
 } from "../services/followService";
 import { supabase } from "@/lib/supabase";
 import { getDiversityBadges } from "../services/fairnessRankingService";
-import { DwellTimeTracker } from "../services/engagementTracking";
+import { logEngagementEvent } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
 import { apiClient } from "@/lib/api-client";
@@ -63,7 +63,6 @@ interface PostCardProps {
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
   onEdit?: (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void;
-  onView?: (postId: string) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void;
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
@@ -97,7 +96,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   onShare,
   onDelete,
   onEdit,
-  onView,
   onEmojiReaction,
   postReactions = {},
   isPostLiked = false,
@@ -121,7 +119,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
-  const dwellTrackerRef = useRef<DwellTimeTracker | null>(null);
   const [showInlineComments, setShowInlineComments] = useState(false);
 
   const [reactions, setReactions] = useState<Record<string, any> & { totalCount: number }>({
@@ -175,18 +172,22 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
   // Track view when post comes into view
   useEffect(() => {
-    if (!user || hasViewed || !onView) return;
+    if (!user || hasViewed) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !hasViewed) {
             setHasViewed(true);
-            onView(post.id);
+            logEngagementEvent({
+              userId: user.id,
+              postId: post.id,
+              type: 'view',
+            });
           }
         });
       },
-      { threshold: 0.5 } // Trigger when 50% of post is visible
+      { threshold: 0.5 }
     );
 
     if (postRef.current) {
@@ -196,7 +197,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     return () => {
       observer.disconnect();
     };
-  }, [user, hasViewed, onView, post.id]);
+  }, [user, hasViewed, post.id]);
 
 
   const handleEmojiHover = (emoji: string) => {
@@ -324,19 +325,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const handleCancelEdit = () => {
     setIsEditing(false);
   };
-
-  // Check if user is following the post author on mount
-  // Track dwell time for engagement
-  useEffect(() => {
-    if (user?.id && post.id) {
-      dwellTrackerRef.current = new DwellTimeTracker(post.id, user.id);
-      dwellTrackerRef.current.start();
-    }
-
-    return () => {
-      dwellTrackerRef.current?.cleanup();
-    };
-  }, [post.id, user?.id]);
 
   // Close menu when clicking outside
   useEffect(() => {

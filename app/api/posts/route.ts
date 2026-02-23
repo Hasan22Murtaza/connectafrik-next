@@ -172,8 +172,27 @@ export async function GET(request: NextRequest) {
       const postReactions = reactionsMap.get(post.id)
 
       return {
-        ...post,
+        id: post.id,
+        author_id: post.author_id,
+        title: post.title,
+        content: post.content,
+        category: post.category,
+        tags: post.tags,
+        media_urls: post.media_urls,
+        media_type: post.media_type,
+        likes_count: post.likes_count,
         comments_count: realCommentCount,
+        shares_count: post.shares_count,
+        views_count: post.views_count,
+        location: post.location,
+        created_at: post.created_at,
+        author: post.author ? {
+          id: post.author.id,
+          username: post.author.username,
+          full_name: post.author.full_name,
+          avatar_url: post.author.avatar_url,
+          country: post.author.country,
+        } : null,
         isLiked: likedPostIds.has(post.id),
         is_following: userId && userId !== post.author_id ? followingSet.has(post.author_id) : false,
         reactions: postReactions?.groups ?? {},
@@ -229,7 +248,32 @@ export async function POST(request: NextRequest) {
     // Fire-and-forget: notify followers and friends
     notifyFollowersAndFriends(supabase, user, post).catch(() => {})
 
-    return jsonResponse({ data: { ...post, isLiked: false } }, 201)
+    return jsonResponse({
+      data: {
+        id: post.id,
+        author_id: post.author_id,
+        title: post.title,
+        content: post.content,
+        category: post.category,
+        tags: post.tags,
+        media_urls: post.media_urls,
+        media_type: post.media_type,
+        likes_count: post.likes_count ?? 0,
+        comments_count: post.comments_count ?? 0,
+        shares_count: post.shares_count ?? 0,
+        views_count: post.views_count ?? 0,
+        location: post.location,
+        created_at: post.created_at,
+        author: post.author ? {
+          id: post.author.id,
+          username: post.author.username,
+          full_name: post.author.full_name,
+          avatar_url: post.author.avatar_url,
+          country: post.author.country,
+        } : null,
+        isLiked: false,
+      },
+    }, 201)
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

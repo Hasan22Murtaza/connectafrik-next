@@ -10,6 +10,7 @@ import {
   updatePresence as updatePresenceStatus,
   subscribeToPresenceChanges,
   calculateStatusFromLastSeen,
+  cleanup as cleanupPresence,
 } from '@/shared/services/presenceService'
 
 interface ChatParticipant {
@@ -658,10 +659,14 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [user?.id, updatePresence])
 
   useEffect(() => {
-    if (user?.id) {
-      initializePresence(user.id).then(() => {
-        updatePresence(user.id, 'online')
-      })
+    if (!user?.id) return
+
+    initializePresence(user.id).then(() => {
+      updatePresence(user.id, 'online')
+    })
+
+    return () => {
+      cleanupPresence(user.id)
     }
   }, [user?.id, updatePresence])
 

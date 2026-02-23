@@ -227,22 +227,6 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     }
   }
 
-  const recordView = async (postId: string) => {
-    try {
-      if (!user) return
-
-      await apiClient.post(`/api/posts/${postId}/view`)
-
-      setPosts(prev => prev.map(p =>
-        p.id === postId
-          ? { ...p, views_count: p.views_count + 1 }
-          : p
-      ))
-    } catch (error: any) {
-      console.error('Error recording post view:', error)
-    }
-  }
-
   const updatePost = (postId: string, updates: string | { title?: string; content?: string; category?: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; location?: string }) => {
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p
@@ -273,7 +257,6 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     sharePost,
     deletePost,
     updatePost,
-    recordView,
     updatePostLikesCount,
     refetch: () => { pageRef.current = 0; setHasMore(true); fetchPosts(0, false) }
   }

@@ -65,7 +65,6 @@ const GroupDetailPage: React.FC = () => {
     toggleLike, 
     deletePost, 
     updatePost, 
-    recordView 
   } = useGroupPosts(groupId || '')
   
   const [group, setGroup] = useState<Group | null>(null)
@@ -511,7 +510,6 @@ const GroupDetailPage: React.FC = () => {
                         onShare={() => handleShare(post.id)}
                         onDelete={() => deletePost(post.id)}
                         onEdit={(title, content) => updatePost(post.id, { title, content })}
-                        onView={() => recordView(post.id)}
                         onEmojiReaction={handleEmojiReaction}
                         isPostLiked={post.isLiked}
                         showCommentsFor={showCommentsFor === post.id}
