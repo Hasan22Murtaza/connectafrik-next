@@ -35,20 +35,25 @@ function buildUrl(endpoint: string, params?: Record<string, string | number | bo
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    let errorBody: any
-    try {
-      errorBody = await response.json()
-    } catch {
-      errorBody = { error: `${response.status} ${response.statusText}` }
-    }
+  let body: any
+  try {
+    body = await response.json()
+  } catch {
     throw new ApiError(
-      errorBody?.error || `Request failed with status ${response.status}`,
-      response.status,
-      errorBody
+      `${response.status} ${response.statusText}`,
+      response.status
     )
   }
-  return response.json()
+
+  if (!response.ok || body.success === false) {
+    throw new ApiError(
+      body?.message || `Request failed with status ${response.status}`,
+      response.status,
+      body
+    )
+  }
+
+  return body.data as T
 }
 
 export const apiClient = {
