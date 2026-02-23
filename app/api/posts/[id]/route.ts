@@ -1,13 +1,14 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const POST_SELECT = `
   *,
   author:profiles!posts_author_id_fkey(
     id, username, full_name, avatar_url, country
-  )
+  ),
+  comments(count)
 `
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -52,7 +53,85 @@ export async function GET(request: NextRequest, context: RouteContext) {
       isLiked = !!likeData
     }
 
-    return jsonResponse({ data: { ...post, isLiked } })
+    const reactions: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }> = {}
+    let reactionsTotalCount = 0
+
+    const { data: reactionsData } = await supabase
+      .from('post_reactions')
+      .select('user_id, reaction_type')
+      .eq('post_id', postId)
+
+    if (reactionsData && reactionsData.length > 0) {
+      const reactingUserIds = [...new Set(reactionsData.map((r: any) => r.user_id))]
+      let profileMap = new Map<string, any>()
+      if (reactingUserIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', reactingUserIds)
+        if (profiles) {
+          profileMap = new Map(profiles.map((p: any) => [p.id, p]))
+        }
+      }
+
+      for (const r of reactionsData) {
+        if (!reactions[r.reaction_type]) {
+          reactions[r.reaction_type] = { type: r.reaction_type, count: 0, users: [], currentUserReacted: false }
+        }
+        const group = reactions[r.reaction_type]
+        group.count++
+        reactionsTotalCount++
+        const profile = profileMap.get(r.user_id)
+        if (profile && !group.users.find((u: any) => u.id === profile.id)) {
+          group.users.push(profile)
+        }
+        if (userId && r.user_id === userId) {
+          group.currentUserReacted = true
+        }
+      }
+    }
+
+    // Increment view count (non-blocking, skip for post author)
+    if (userId && userId !== post.author_id) {
+      const svc = createServiceClient()
+      svc.from('posts')
+        .update({ views_count: (post.views_count || 0) + 1 })
+        .eq('id', postId)
+        .then(({ error: viewErr }) => {
+          if (viewErr) console.error('Failed to increment views:', viewErr.message)
+        })
+    }
+
+    return jsonResponse({
+      data: {
+        id: post.id,
+        author_id: post.author_id,
+        title: post.title,
+        content: post.content,
+        category: post.category,
+        tags: post.tags,
+        media_urls: post.media_urls,
+        media_type: post.media_type,
+        likes_count: post.likes_count,
+        comments_count: Array.isArray(post.comments) && post.comments.length > 0
+          ? post.comments[0].count
+          : post.comments_count,
+        shares_count: post.shares_count,
+        views_count: post.views_count + (userId && userId !== post.author_id ? 1 : 0),
+        location: post.location,
+        created_at: post.created_at,
+        author: post.author ? {
+          id: post.author.id,
+          username: post.author.username,
+          full_name: post.author.full_name,
+          avatar_url: post.author.avatar_url,
+          country: post.author.country,
+        } : null,
+        isLiked,
+        reactions,
+        reactions_total_count: reactionsTotalCount,
+      },
+    })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch post', 500)
   }
@@ -92,7 +171,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('Post not found or you are not the author', 404)
     }
 
-    return jsonResponse({ data: post })
+    return jsonResponse({
+      data: {
+        id: post.id,
+        author_id: post.author_id,
+        title: post.title,
+        content: post.content,
+        category: post.category,
+        tags: post.tags,
+        media_urls: post.media_urls,
+        media_type: post.media_type,
+        likes_count: post.likes_count,
+        comments_count: Array.isArray(post.comments) && post.comments.length > 0
+          ? post.comments[0].count
+          : post.comments_count,
+        shares_count: post.shares_count,
+        views_count: post.views_count,
+        location: post.location,
+        created_at: post.created_at,
+        author: post.author ? {
+          id: post.author.id,
+          username: post.author.username,
+          full_name: post.author.full_name,
+          avatar_url: post.author.avatar_url,
+          country: post.author.country,
+        } : null,
+      },
+    })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

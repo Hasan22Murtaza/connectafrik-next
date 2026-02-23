@@ -29,6 +29,7 @@ let presenceChannel: RealtimeChannel | null = null
 let statusUpdateInterval: ReturnType<typeof setInterval> | null = null
 let idleTimeout: ReturnType<typeof setTimeout> | null = null
 let lastActivityTime = Date.now()
+let initialized = false
 const activityListeners: Array<() => void> = []
 const presenceCallbacks = new Set<PresenceChangeCallback>()
 
@@ -158,7 +159,10 @@ const startActivityTracking = (userId: string): void => {
  * Initialize presence tracking for a user
  */
 export const initializePresence = async (userId: string): Promise<void> => {
+  if (initialized) return
+
   try {
+    initialized = true
     presenceChannel = supabase.channel('presence', {
       config: {
         presence: {
@@ -376,6 +380,8 @@ export const setBusy = (userId: string): Promise<void> => {
  * Clean up presence tracking
  */
 export const cleanup = async (userId?: string): Promise<void> => {
+  initialized = false
+
   // Clear activity listeners
   activityListeners.forEach((removeListener) => removeListener())
   activityListeners.length = 0

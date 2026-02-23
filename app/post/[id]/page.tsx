@@ -60,7 +60,6 @@ const PostDetailPage: React.FC = () => {
   useEffect(() => {
     if (postId) {
       fetchPost()
-      recordView()
     }
   }, [postId, user])
 
@@ -85,16 +84,6 @@ const PostDetailPage: React.FC = () => {
       router.push('/feed')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const recordView = async () => {
-    if (!user || !postId) return
-
-    try {
-      await apiClient.post(`/api/posts/${postId}/view`)
-    } catch (error) {
-      console.error('Error recording view:', error)
     }
   }
 

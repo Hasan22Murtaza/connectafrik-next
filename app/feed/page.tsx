@@ -35,7 +35,7 @@ const FeedPage: React.FC = () => {
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [explorationBoost, setExplorationBoost] = useState(false)
 
-  const { posts, loading, loadingMore, hasMore, loadMore, createPost, toggleLike, deletePost, updatePost, recordView, updatePostLikesCount } = usePosts(activeCategory)
+  const { posts, loading, loadingMore, hasMore, loadMore, createPost, toggleLike, deletePost, updatePost, updatePostLikesCount } = usePosts(activeCategory)
   const { members } = useMembers()
   const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: updatePostLikesCount, trackEngagement: true })
 
@@ -239,7 +239,6 @@ const FeedPage: React.FC = () => {
               onShare={handleShare}
               onDelete={handleDelete}
               onEdit={handleEdit}
-              onView={recordView}
               onEmojiReaction={handleEmojiReaction}
               isPostLiked={post.isLiked}
               canComment={post.canComment}

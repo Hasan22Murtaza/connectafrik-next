@@ -14,18 +14,35 @@ interface EventData {
   percentViewed?: number
 }
 
-export async function logEngagementEvent(event: EventData): Promise<void> {
-  try {
-    await apiClient.post('/api/engagement', {
-      post_id: event.postId,
-      event_type: event.type,
-      content_type: event.contentType ?? 'post',
-      dwell_ms: event.dwellMs ?? null,
-      percent_viewed: event.percentViewed ?? null,
-    })
-  } catch (e) {
-    console.error('Failed to log engagement event:', e)
-  }
+let pendingEvents: EventData[] = []
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+const FLUSH_DELAY_MS = 50
+
+function flushPendingEvents(): void {
+  if (pendingEvents.length === 0) return
+
+  const batch = pendingEvents
+  pendingEvents = []
+  flushTimer = null
+
+  apiClient.post('/api/engagement', {
+    events: batch.map(e => ({
+      post_id: e.postId,
+      event_type: e.type,
+      content_type: e.contentType ?? 'post',
+      dwell_ms: e.dwellMs ?? null,
+      percent_viewed: e.percentViewed ?? null,
+    }))
+  }).catch(err => {
+    console.error('Failed to flush engagement events:', err)
+  })
+}
+
+export function logEngagementEvent(event: EventData): void {
+  pendingEvents.push(event)
+
+  if (flushTimer) clearTimeout(flushTimer)
+  flushTimer = setTimeout(flushPendingEvents, FLUSH_DELAY_MS)
 }
 
 /**
@@ -69,20 +86,19 @@ export class DwellTimeTracker {
    * Log view event with dwell time
    * Only logs if user spent at least minDwellMs
    */
-  async logView(): Promise<void> {
+  logView(): void {
     if (this.logged) return
 
     const dwellMs = this.getDwellTime()
 
-    // Only log if user spent enough time (prevent accidental scrolls)
     if (dwellMs >= this.minDwellMs) {
-      await logEngagementEvent({
+      this.logged = true
+      logEngagementEvent({
         userId: this.userId,
         postId: this.postId,
         type: 'view',
         dwellMs
       })
-      this.logged = true
     }
   }
 
@@ -90,8 +106,8 @@ export class DwellTimeTracker {
    * Cleanup - call when component unmounts
    * Logs view if not already logged
    */
-  async cleanup(): Promise<void> {
-    await this.logView()
+  cleanup(): void {
+    this.logView()
   }
 }
 
@@ -125,22 +141,21 @@ export class VideoWatchTracker {
    * Update watch progress
    * Logs when user reaches 50% or completes video
    */
-  async updateProgress(currentTime: number): Promise<void> {
+  updateProgress(currentTime: number): void {
     if (this.logged || this.videoDuration <= 0) return
 
     this.lastProgress = currentTime
     const percentViewed = Math.min(currentTime / this.videoDuration, 1.0)
 
-    // Log when user reaches 50% milestone
     if (percentViewed >= 0.5) {
-      await logEngagementEvent({
+      this.logged = true
+      logEngagementEvent({
         userId: this.userId,
         postId: this.postId,
         type: 'watch',
         percentViewed,
         contentType: this.contentType
       })
-      this.logged = true
     }
   }
 
@@ -148,22 +163,21 @@ export class VideoWatchTracker {
    * Cleanup - call when video ends or component unmounts
    * Logs watch event if user watched at least 10%
    */
-  async cleanup(currentTime?: number): Promise<void> {
+  cleanup(currentTime?: number): void {
     if (this.logged || this.videoDuration <= 0) return
 
     const finalTime = currentTime ?? this.lastProgress
     const percentViewed = Math.min(finalTime / this.videoDuration, 1.0)
 
-    // Log if user watched at least 10% (shows some interest)
     if (percentViewed >= 0.1) {
-      await logEngagementEvent({
+      this.logged = true
+      logEngagementEvent({
         userId: this.userId,
         postId: this.postId,
         type: 'watch',
         percentViewed,
         contentType: this.contentType
       })
-      this.logged = true
     }
   }
 }
