@@ -101,20 +101,17 @@ const FeedPage: React.FC = () => {
     if (user?.id) {
       trackEvent.like(user.id, postId)
     }
-  }, [posts, toggleLike, user])
+  }, [posts, toggleLike, user?.id])
 
   const handleComment = useCallback((postId: string) => {
     const post = posts.find(p => p.id === postId)
     if (post?.author_id) {
       updateEngagementReward(post.author_id, 'comment')
     }
-    // Track engagement event
     if (user?.id) {
       trackEvent.comment(user.id, postId)
     }
-  }, [posts, user])
-
-
+  }, [posts, user?.id])
 
   const handleShare = useCallback((postId: string) => {
     const post = posts.find(p => p.id === postId)
@@ -123,11 +120,10 @@ const FeedPage: React.FC = () => {
     }
     setShareModalState({ open: true, postId })
 
-    // Track engagement event
     if (user?.id) {
       trackEvent.share(user.id, postId)
     }
-  }, [posts, user])
+  }, [posts, user?.id])
 
   const handleDelete = useCallback(async (postId: string) => {
     try {
@@ -184,7 +180,7 @@ const FeedPage: React.FC = () => {
     } else {
       toast.error('Failed to send notifications')
     }
-  }, [user, shareModalState.postId])
+  }, [user?.id, shareModalState.postId])
 
 
 

@@ -156,7 +156,7 @@ const UserProfilePage: React.FC = () => {
   )
 
   useEffect(() => { if (username) fetchUserProfile() }, [username])
-  useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile, user])
+  useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
 
   const fetchUserProfile = async () => {
     try {

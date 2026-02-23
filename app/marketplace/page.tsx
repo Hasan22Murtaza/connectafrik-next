@@ -14,7 +14,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useRef, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 import {
   useShimmerCount,
@@ -73,21 +73,24 @@ const MarketplacePage: React.FC = () => {
     filterProducts();
   }, [products, searchTerm, selectedCategory, selectedCurrency]);
 
-  // Handle payment success/error messages from query params
+  const paymentHandledRef = useRef(false);
+
   useEffect(() => {
+    if (paymentHandledRef.current) return;
+
     const paymentStatus = searchParams.get('payment');
     const message = searchParams.get('message');
 
     if (paymentStatus === 'success') {
+      paymentHandledRef.current = true;
       toast.success('Payment successful! Your order has been created.');
-      // Clean up URL by removing query params
       router.replace('/marketplace');
     } else if (paymentStatus === 'error') {
+      paymentHandledRef.current = true;
       toast.error(message ? decodeURIComponent(message) : 'Payment failed. Please try again.');
-      // Clean up URL by removing query params
       router.replace('/marketplace');
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const fetchProducts = async () => {
     try {

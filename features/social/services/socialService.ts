@@ -107,10 +107,14 @@ export const socialService = {
     channel.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         channel.track({ last_seen: new Date().toISOString() });
-        await supabase
-          .from("profiles")
-          .update({ last_seen_at: new Date().toISOString() })
-          .eq("id", userId);
+        try {
+          await apiClient.patch('/api/users/me/presence', {
+            status: 'online',
+            last_seen: new Date().toISOString(),
+          });
+        } catch {
+          // Non-blocking
+        }
       }
     });
 

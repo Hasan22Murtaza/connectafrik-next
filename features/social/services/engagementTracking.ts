@@ -3,37 +3,26 @@
  * Logs user interactions for the recommendation engine
  */
 
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 
 interface EventData {
   userId: string
   postId: string
   type: 'view' | 'like' | 'comment' | 'share' | 'save' | 'watch'
-  contentType?: 'post' | 'reel' // NEW: Distinguish between posts and reels
+  contentType?: 'post' | 'reel'
   dwellMs?: number
   percentViewed?: number
 }
 
-/**
- * Log engagement event to database
- * Non-blocking - errors logged but don't interrupt user experience
- */
 export async function logEngagementEvent(event: EventData): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('user_events')
-      .insert({
-        user_id: event.userId,
-        post_id: event.postId,
-        event_type: event.type,
-        content_type: event.contentType ?? 'post', // Default to 'post' for backward compatibility
-        dwell_ms: event.dwellMs ?? null,
-        percent_viewed: event.percentViewed ?? null
-      })
-
-    if (error) {
-      console.error('Event tracking error:', error)
-    }
+    await apiClient.post('/api/engagement', {
+      post_id: event.postId,
+      event_type: event.type,
+      content_type: event.contentType ?? 'post',
+      dwell_ms: event.dwellMs ?? null,
+      percent_viewed: event.percentViewed ?? null,
+    })
   } catch (e) {
     console.error('Failed to log engagement event:', e)
   }
@@ -219,26 +208,17 @@ export class BatchEventLogger {
     this.events = []
 
     try {
-      const { error } = await supabase
-        .from('user_events')
-        .insert(
-          batch.map(e => ({
-            user_id: e.userId,
-            post_id: e.postId,
-            event_type: e.type,
-            dwell_ms: e.dwellMs ?? null,
-            percent_viewed: e.percentViewed ?? null
-          }))
-        )
-
-      if (error) {
-        console.error('Batch event tracking error:', error)
-        // Re-add failed events to retry
-        this.events.push(...batch)
-      }
+      await apiClient.post('/api/engagement', {
+        events: batch.map(e => ({
+          post_id: e.postId,
+          event_type: e.type,
+          content_type: e.contentType ?? 'post',
+          dwell_ms: e.dwellMs ?? null,
+          percent_viewed: e.percentViewed ?? null,
+        }))
+      })
     } catch (e) {
       console.error('Failed to flush event batch:', e)
-      // Re-add failed events to retry
       this.events.push(...batch)
     }
   }
