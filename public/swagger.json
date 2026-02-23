@@ -1819,6 +1819,8 @@
       "get": {
         "tags": ["Posts"],
         "summary": "Get post feed",
+        "description": "Returns the post feed. Authentication is optional — authenticated users get personalized results (like status, follow info, visibility filtering).",
+        "security": [{ "BearerAuth": [] }, {}],
         "parameters": [
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Page number (0-indexed)" },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 }, "description": "Number of posts per page (1-50)" },
@@ -1849,9 +1851,13 @@
       "get": {
         "tags": ["Posts"],
         "summary": "Get post statistics by category",
-        "parameters": [{ "name": "category", "in": "query", "schema": { "type": "string", "enum": ["culture", "politics"] } }],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "category", "in": "query", "required": true, "schema": { "type": "string", "enum": ["culture", "politics"] }, "description": "Category to get stats for" }],
         "responses": {
-          "200": { "description": "Post stats", "content": { "application/json": { "schema": { "type": "object" } } } }
+          "200": { "description": "Post stats", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
         }
       }
     },

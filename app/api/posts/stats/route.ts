@@ -1,20 +1,17 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { jsonResponse, errorResponse } from '@/lib/api-utils'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
+    const { supabase } = await getAuthenticatedUser(request)
+
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
 
     if (!category || !['culture', 'politics'].includes(category)) {
       return errorResponse('category query param must be "culture" or "politics"', 400)
     }
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
     let countRes = await supabase
       .from('posts')
@@ -111,6 +108,9 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (err: any) {
+    if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
+      return unauthorizedResponse()
+    }
     console.error('GET /api/posts/stats error:', err)
     return errorResponse(err.message || 'Failed to fetch stats', 500)
   }

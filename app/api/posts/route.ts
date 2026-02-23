@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
       userId = auth.user.id
       supabase = auth.supabase
     } catch {
-      // Anonymous access for public feed
       supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
