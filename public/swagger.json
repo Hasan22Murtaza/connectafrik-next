@@ -1,0 +1,2326 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ConnectAfrik API",
+    "description": "Complete API documentation for the ConnectAfrik platform — a social network with marketplace, messaging, groups, stories, and more.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "ConnectAfrik Team"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Default API server"
+    }
+  ],
+  "tags": [
+    { "name": "Chat", "description": "Messaging threads, messages, calls" },
+    { "name": "Email", "description": "Transactional email notifications" },
+    { "name": "Engagement", "description": "Post engagement tracking" },
+    { "name": "Follow", "description": "Follow/unfollow users and stats" },
+    { "name": "Friends", "description": "Friend requests, suggestions, and management" },
+    { "name": "Groups", "description": "Community groups and membership" },
+    { "name": "Group Events", "description": "Events within groups" },
+    { "name": "Group Posts", "description": "Posts within groups" },
+    { "name": "Marketplace", "description": "Product listings and saved items" },
+    { "name": "Marketplace Admin", "description": "Admin revenue and payout management" },
+    { "name": "Checkout - Stripe", "description": "Stripe payment processing" },
+    { "name": "Checkout - Paystack", "description": "Paystack payment processing" },
+    { "name": "Memories", "description": "Short video reels/memories" },
+    { "name": "Notifications", "description": "User notifications" },
+    { "name": "Orders", "description": "Marketplace order management" },
+    { "name": "Paystack", "description": "Paystack verification callbacks" },
+    { "name": "Posts", "description": "Social feed posts" },
+    { "name": "Push Notifications", "description": "Push notification delivery" },
+    { "name": "Stories", "description": "Ephemeral stories" },
+    { "name": "Users", "description": "User profiles and search" },
+    { "name": "VideoSDK", "description": "Video calling tokens and rooms" },
+    { "name": "FCM", "description": "Firebase Cloud Messaging token management" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Supabase JWT token from authenticated session"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" }
+        }
+      },
+      "Success": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "username": { "type": "string" },
+          "full_name": { "type": "string" },
+          "avatar_url": { "type": "string", "nullable": true },
+          "bio": { "type": "string", "nullable": true },
+          "country": { "type": "string", "nullable": true },
+          "birthday": { "type": "string", "format": "date", "nullable": true }
+        }
+      },
+      "Thread": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string", "enum": ["direct", "group"] },
+          "title": { "type": "string", "nullable": true },
+          "name": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "chat_participants": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Participant" }
+          },
+          "unread_count": { "type": "integer" }
+        }
+      },
+      "Participant": {
+        "type": "object",
+        "properties": {
+          "thread_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "display_name": { "type": "string", "nullable": true },
+          "user": { "$ref": "#/components/schemas/UserProfile" }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "thread_id": { "type": "string", "format": "uuid" },
+          "sender_id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "message_type": { "type": "string" },
+          "metadata": { "type": "object" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "sender": { "$ref": "#/components/schemas/UserProfile" },
+          "read_by": { "type": "array", "items": { "type": "string" } },
+          "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/Attachment" } }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "size": { "type": "integer" },
+          "mimeType": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      },
+      "Post": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "category": { "type": "string", "nullable": true },
+          "subcategory": { "type": "string", "nullable": true },
+          "media_urls": { "type": "array", "items": { "type": "string" } },
+          "likes_count": { "type": "integer" },
+          "comments_count": { "type": "integer" },
+          "shares_count": { "type": "integer" },
+          "views_count": { "type": "integer" },
+          "is_active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "author": { "$ref": "#/components/schemas/UserProfile" }
+        }
+      },
+      "Group": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "category": { "type": "string", "nullable": true },
+          "is_public": { "type": "boolean" },
+          "max_members": { "type": "integer", "nullable": true },
+          "location": { "type": "string", "nullable": true },
+          "country": { "type": "string", "nullable": true },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "rules": { "type": "string", "nullable": true },
+          "avatar_url": { "type": "string", "nullable": true },
+          "banner_url": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "creator": { "$ref": "#/components/schemas/UserProfile" },
+          "member_count": { "type": "integer" },
+          "membership": { "type": "object", "nullable": true }
+        }
+      },
+      "GroupEvent": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "group_id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "event_type": { "type": "string" },
+          "start_time": { "type": "string", "format": "date-time" },
+          "end_time": { "type": "string", "format": "date-time", "nullable": true },
+          "location": { "type": "string", "nullable": true },
+          "is_virtual": { "type": "boolean" },
+          "max_attendees": { "type": "integer", "nullable": true },
+          "is_public": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "creator": { "$ref": "#/components/schemas/UserProfile" },
+          "isAttending": { "type": "boolean" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "seller_id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "price": { "type": "number" },
+          "currency": { "type": "string" },
+          "category": { "type": "string" },
+          "condition": { "type": "string" },
+          "location": { "type": "string", "nullable": true },
+          "country": { "type": "string", "nullable": true },
+          "images": { "type": "array", "items": { "type": "string" } },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "stock_quantity": { "type": "integer" },
+          "is_available": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "seller": { "$ref": "#/components/schemas/UserProfile" },
+          "is_saved": { "type": "boolean" }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "buyer_id": { "type": "string", "format": "uuid" },
+          "seller_id": { "type": "string", "format": "uuid" },
+          "product_id": { "type": "string", "format": "uuid" },
+          "product_title": { "type": "string" },
+          "quantity": { "type": "integer" },
+          "unit_price": { "type": "number" },
+          "total_amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "status": { "type": "string" },
+          "payment_reference": { "type": "string" },
+          "shipping_address": { "type": "object", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Memory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "video_url": { "type": "string" },
+          "thumbnail_url": { "type": "string", "nullable": true },
+          "duration": { "type": "number" },
+          "category": { "type": "string", "nullable": true },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "is_public": { "type": "boolean" },
+          "views_count": { "type": "integer" },
+          "likes_count": { "type": "integer" },
+          "comments_count": { "type": "integer" },
+          "shares_count": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "author": { "$ref": "#/components/schemas/UserProfile" }
+        }
+      },
+      "Story": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "media_url": { "type": "string" },
+          "media_type": { "type": "string", "enum": ["image", "video"] },
+          "caption": { "type": "string", "nullable": true },
+          "background_color": { "type": "string", "nullable": true },
+          "text_content": { "type": "string", "nullable": true },
+          "font_style": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "expires_at": { "type": "string", "format": "date-time" },
+          "user": { "$ref": "#/components/schemas/UserProfile" }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "type": { "type": "string" },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "data": { "type": "object" },
+          "read": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "product_id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "review_text": { "type": "string" },
+          "is_helpful": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "user": { "$ref": "#/components/schemas/UserProfile" }
+        }
+      },
+      "FriendRequest": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "requester_id": { "type": "string", "format": "uuid" },
+          "receiver_id": { "type": "string", "format": "uuid" },
+          "status": { "type": "string", "enum": ["pending", "accepted", "declined", "blocked"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "author": { "$ref": "#/components/schemas/UserProfile" },
+          "replies": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } },
+          "isLiked": { "type": "boolean" }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Authentication required",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" }, "example": { "error": "Unauthorized" } } }
+      },
+      "BadRequest": {
+        "description": "Invalid request",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "ServerError": {
+        "description": "Internal server error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    }
+  },
+  "paths": {
+    "/chat/calls/recent": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "Get recent calls",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of recent calls",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "thread_id": { "type": "string" }, "sender_id": { "type": "string" }, "message_type": { "type": "string" }, "metadata": { "type": "object" }, "created_at": { "type": "string", "format": "date-time" }, "thread": { "$ref": "#/components/schemas/Thread" }, "participants": { "type": "array", "items": { "$ref": "#/components/schemas/Participant" } } } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/chat/messages/search": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "Search messages",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Search term" },
+          { "name": "thread_id", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Scope search to a specific thread" }
+        ],
+        "responses": {
+          "200": { "description": "Search results (max 50)", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/chat/threads": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "List chat threads",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated thread list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Thread" } }, "limit": { "type": "integer" }, "offset": { "type": "integer" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Create a chat thread",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["participant_ids"], "properties": { "participant_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }, "type": { "type": "string", "enum": ["direct", "group"] }, "title": { "type": "string" }, "name": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Thread created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "properties": { "id": { "type": "string", "format": "uuid" } } } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "Get thread details",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Thread details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Thread" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/read": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Mark messages as read",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["message_ids"], "properties": { "message_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } } } } } }
+        },
+        "responses": {
+          "200": { "description": "Messages marked as read", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/participants": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "Get thread participants",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "exclude_user_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Participant list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "user_id": { "type": "string" } } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/messages": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "List thread messages",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Paginated messages", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } }, "limit": { "type": "integer" }, "offset": { "type": "integer" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Send a message",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" }, "message_type": { "type": "string" }, "metadata": { "type": "object" }, "attachments": { "type": "array", "items": { "$ref": "#/components/schemas/Attachment" } }, "reply_to_id": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Message sent", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Message" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/messages/{messageId}": {
+      "get": {
+        "tags": ["Chat"],
+        "summary": "Get message deletion info",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "messageId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Message info", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "properties": { "can_delete_for_everyone": { "type": "boolean" } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Chat"],
+        "summary": "Delete message (soft)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "messageId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["action"], "properties": { "action": { "type": "string", "enum": ["delete_for_me", "delete_for_everyone"] } } } } }
+        },
+        "responses": {
+          "200": { "description": "Message deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Chat"],
+        "summary": "Hard-delete message (sender only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "messageId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Only sender can delete", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/email/order-confirmation": {
+      "post": {
+        "tags": ["Email"],
+        "summary": "Send order confirmation email",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["buyerEmail", "orderDetails"], "properties": { "buyerEmail": { "type": "string", "format": "email" }, "orderDetails": { "type": "object" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Email sent", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/email/order-notification": {
+      "post": {
+        "tags": ["Email"],
+        "summary": "Send order notification to seller",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["orderDetails"], "properties": { "sellerId": { "type": "string", "format": "uuid" }, "sellerEmail": { "type": "string", "format": "email" }, "orderDetails": { "type": "object" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Email sent", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/engagement": {
+      "post": {
+        "tags": ["Engagement"],
+        "summary": "Record engagement events",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "oneOf": [
+            { "type": "object", "properties": { "post_id": { "type": "string" }, "event_type": { "type": "string" }, "content_type": { "type": "string", "default": "post" }, "dwell_ms": { "type": "integer" }, "percent_viewed": { "type": "number" } } },
+            { "type": "object", "properties": { "events": { "type": "array", "items": { "type": "object", "properties": { "post_id": { "type": "string" }, "event_type": { "type": "string" }, "content_type": { "type": "string" }, "dwell_ms": { "type": "integer" }, "percent_viewed": { "type": "number" } } } } } }
+          ] } } }
+        },
+        "responses": {
+          "200": { "description": "Events recorded", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "count": { "type": "integer" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/follow": {
+      "post": {
+        "tags": ["Follow"],
+        "summary": "Follow a user",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["following_id"], "properties": { "following_id": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Followed", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "followed": { "type": "boolean" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Follow"],
+        "summary": "Unfollow a user",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["following_id"], "properties": { "following_id": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Unfollowed", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "unfollowed": { "type": "boolean" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/follow/{userId}": {
+      "get": {
+        "tags": ["Follow"],
+        "summary": "Check if following a user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Follow status", "content": { "application/json": { "schema": { "type": "object", "properties": { "is_following": { "type": "boolean" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/follow/{userId}/followers": {
+      "get": {
+        "tags": ["Follow"],
+        "summary": "Get user's followers",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Follower list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "follower_id": { "type": "string" }, "created_at": { "type": "string" }, "follower": { "$ref": "#/components/schemas/UserProfile" } } } } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/follow/{userId}/following": {
+      "get": {
+        "tags": ["Follow"],
+        "summary": "Get users that a user follows",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "Following list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "following_id": { "type": "string" }, "created_at": { "type": "string" }, "following": { "$ref": "#/components/schemas/UserProfile" } } } } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/follow/stats/{userId}": {
+      "get": {
+        "tags": ["Follow"],
+        "summary": "Get follow stats for a user",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Follow statistics", "content": { "application/json": { "schema": { "type": "object", "properties": { "follower_count": { "type": "integer" }, "following_count": { "type": "integer" }, "is_following": { "type": "boolean" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/friends": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "List all friends",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Friend list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Friends"],
+        "summary": "Send a friend request",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["receiver_id"], "properties": { "receiver_id": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Friend request sent", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FriendRequest" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/friends/birthdays": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "Get friends with upcoming birthdays",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Birthday list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/friends/mutual/{userId}": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "Get mutual friends with a user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 6, "maximum": 50 } }
+        ],
+        "responses": {
+          "200": { "description": "Mutual friends", "content": { "application/json": { "schema": { "type": "object", "properties": { "count": { "type": "integer" }, "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/friends/requests": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "Get incoming friend requests",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Pending requests with requester profiles", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "allOf": [{ "$ref": "#/components/schemas/FriendRequest" }, { "type": "object", "properties": { "requester": { "$ref": "#/components/schemas/UserProfile" }, "mutualFriendsCount": { "type": "integer" } } }] } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/friends/requests/sent": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "Get sent friend requests",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Sent requests with receiver profiles", "content": { "application/json": { "schema": { "type": "array", "items": { "allOf": [{ "$ref": "#/components/schemas/FriendRequest" }, { "type": "object", "properties": { "receiver": { "$ref": "#/components/schemas/UserProfile" } } }] } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/friends/requests/{id}": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "Get a friend request by ID",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Friend request details", "content": { "application/json": { "schema": { "allOf": [{ "$ref": "#/components/schemas/FriendRequest" }, { "type": "object", "properties": { "sender": { "$ref": "#/components/schemas/UserProfile" } } }] } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Friends"],
+        "summary": "Respond to a friend request",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "properties": { "status": { "type": "string", "enum": ["accepted", "declined", "blocked"] } } } } }
+        },
+        "responses": {
+          "200": { "description": "Request updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FriendRequest" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Not the receiver", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Friends"],
+        "summary": "Cancel a friend request",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Request cancelled", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Not the sender", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/friends/status/{userId}": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "Get friendship status with a user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Friendship status", "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "enum": ["friends", "pending_sent", "pending_received", "none"] }, "request_id": { "type": "string", "format": "uuid", "nullable": true } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/friends/suggestions": {
+      "get": {
+        "tags": ["Friends"],
+        "summary": "Get friend suggestions",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }],
+        "responses": {
+          "200": { "description": "Suggested friends", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/friends/{userId}": {
+      "delete": {
+        "tags": ["Friends"],
+        "summary": "Unfriend a user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Unfriended", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/groups": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "List groups",
+        "parameters": [
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "country", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": { "description": "Group list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Groups"],
+        "summary": "Create a group",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["name", "description"], "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "category": { "type": "string" }, "goals": { "type": "string" }, "is_public": { "type": "boolean" }, "max_members": { "type": "integer" }, "location": { "type": "string" }, "country": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "rules": { "type": "string" }, "avatar_url": { "type": "string" }, "banner_url": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Group created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Group" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/activity": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "Get activity feed from joined groups",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } }],
+        "responses": {
+          "200": { "description": "Group activity posts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/managed": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "Get groups managed by current user",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Managed groups", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/mine": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "Get groups current user has joined",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Joined groups", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "Get group details",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Group details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Group" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Groups"],
+        "summary": "Update a group (creator only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "category": { "type": "string" }, "goals": { "type": "string" }, "is_public": { "type": "boolean" }, "max_members": { "type": "integer" }, "location": { "type": "string" }, "country": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "rules": { "type": "string" }, "avatar_url": { "type": "string" }, "banner_url": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Group updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Group" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Groups"],
+        "summary": "Delete a group (creator only, soft delete)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/groups/{id}/join": {
+      "post": {
+        "tags": ["Groups"],
+        "summary": "Join a group",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Joined", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "properties": { "membership": { "type": "object" }, "member_count": { "type": "integer" }, "alreadyMember": { "type": "boolean" } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/leave": {
+      "post": {
+        "tags": ["Groups"],
+        "summary": "Leave a group",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Left group", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/events": {
+      "get": {
+        "tags": ["Group Events"],
+        "summary": "List group events",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Event list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/GroupEvent" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Group Events"],
+        "summary": "Create a group event",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["title", "event_type", "start_time"], "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "event_type": { "type": "string" }, "start_time": { "type": "string", "format": "date-time" }, "end_time": { "type": "string", "format": "date-time" }, "location": { "type": "string" }, "is_virtual": { "type": "boolean" }, "max_attendees": { "type": "integer" }, "is_public": { "type": "boolean" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Event created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/GroupEvent" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/events/{eventId}": {
+      "delete": {
+        "tags": ["Group Events"],
+        "summary": "Delete a group event (creator only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "eventId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/events/{eventId}/attend": {
+      "post": {
+        "tags": ["Group Events"],
+        "summary": "Toggle event attendance",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "eventId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Attendance toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "attending": { "type": "boolean" }, "attendee_count": { "type": "integer" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/posts": {
+      "get": {
+        "tags": ["Group Posts"],
+        "summary": "List group posts",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Post list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Group Posts"],
+        "summary": "Create a group post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" }, "title": { "type": "string" }, "post_type": { "type": "string" }, "media_urls": { "type": "array", "items": { "type": "string" } } } } } }
+        },
+        "responses": {
+          "201": { "description": "Post created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Post" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/posts/{postId}": {
+      "patch": {
+        "tags": ["Group Posts"],
+        "summary": "Update a group post (author only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Post updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Post" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Group Posts"],
+        "summary": "Delete a group post (author only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Post deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/posts/{postId}/like": {
+      "post": {
+        "tags": ["Group Posts"],
+        "summary": "Toggle like on group post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Like toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "liked": { "type": "boolean" }, "likes_count": { "type": "integer" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/posts/{postId}/reactions": {
+      "get": {
+        "tags": ["Group Posts"],
+        "summary": "Get reactions on a group post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Reaction summary", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "additionalProperties": { "type": "object", "properties": { "type": { "type": "string" }, "count": { "type": "integer" }, "users": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } }, "currentUserReacted": { "type": "boolean" } } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/posts/{postId}/comments": {
+      "get": {
+        "tags": ["Group Posts"],
+        "summary": "List comments on a group post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Comments with replies", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Group Posts"],
+        "summary": "Add a comment to a group post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" }, "parent_id": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Comment created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Comment" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/posts/{postId}/comments/{commentId}": {
+      "delete": {
+        "tags": ["Group Posts"],
+        "summary": "Delete a comment (author only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/posts/{postId}/comments/{commentId}/like": {
+      "post": {
+        "tags": ["Group Posts"],
+        "summary": "Toggle like on a comment",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Like toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "liked": { "type": "boolean" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace": {
+      "get": {
+        "tags": ["Marketplace"],
+        "summary": "List marketplace products",
+        "parameters": [
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "currency", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "seller_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Product list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Marketplace"],
+        "summary": "Create a product listing",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["title", "description", "price", "currency", "category", "condition"], "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "price": { "type": "number" }, "currency": { "type": "string" }, "category": { "type": "string" }, "condition": { "type": "string" }, "location": { "type": "string" }, "country": { "type": "string" }, "images": { "type": "array", "items": { "type": "string" } }, "tags": { "type": "array", "items": { "type": "string" } }, "stock_quantity": { "type": "integer", "default": 1 } } } } }
+        },
+        "responses": {
+          "201": { "description": "Product created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Product" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/marketplace/saved": {
+      "get": {
+        "tags": ["Marketplace"],
+        "summary": "Get saved products",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Saved products", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/earnings": {
+      "get": {
+        "tags": ["Marketplace"],
+        "summary": "Get seller earnings summary",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Earnings summary", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/payouts": {
+      "get": {
+        "tags": ["Marketplace"],
+        "summary": "Get seller payouts",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by payout status" }],
+        "responses": {
+          "200": { "description": "Payout list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/payouts/{payoutId}/process": {
+      "post": {
+        "tags": ["Marketplace"],
+        "summary": "Process a seller payout",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "payoutId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["payout_reference"], "properties": { "payout_reference": { "type": "string" }, "notes": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Payout processed", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/orders/{orderId}/confirm-delivery": {
+      "post": {
+        "tags": ["Marketplace"],
+        "summary": "Confirm order delivery",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "orderId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "tracking_number": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Delivery confirmed", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/admin/revenue": {
+      "get": {
+        "tags": ["Marketplace Admin"],
+        "summary": "Get platform revenue summary (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Revenue summary", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/admin/pending-payouts": {
+      "get": {
+        "tags": ["Marketplace Admin"],
+        "summary": "Get pending seller payouts (admin only)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Pending payouts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/payout/process": {
+      "post": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Process payout via Paystack transfer",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["payout_id", "seller_id", "amount", "order_id"], "properties": { "payout_id": { "type": "string" }, "seller_id": { "type": "string" }, "amount": { "type": "number" }, "order_id": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Transfer initiated", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "transfer_code": { "type": "string" }, "reference": { "type": "string" }, "status": { "type": "string" }, "method": { "type": "string" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/marketplace/checkout/stripe/intent": {
+      "post": {
+        "tags": ["Checkout - Stripe"],
+        "summary": "Create a Stripe payment intent",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["amount", "currency"], "properties": { "amount": { "type": "number" }, "currency": { "type": "string" }, "metadata": { "type": "object" }, "callback_url": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Payment intent created", "content": { "application/json": { "schema": { "type": "object", "properties": { "clientSecret": { "type": "string" }, "paymentIntentId": { "type": "string" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/stripe/verify": {
+      "post": {
+        "tags": ["Checkout - Stripe"],
+        "summary": "Verify a Stripe payment",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["paymentIntentId"], "properties": { "paymentIntentId": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Verification result", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "status": { "type": "string" }, "amount": { "type": "number" }, "currency": { "type": "string" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/stripe/complete": {
+      "post": {
+        "tags": ["Checkout - Stripe"],
+        "summary": "Complete a Stripe order",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["payment_reference", "product_id", "seller_id"], "properties": { "payment_reference": { "type": "string" }, "product_id": { "type": "string" }, "seller_id": { "type": "string" }, "product_title": { "type": "string" }, "product_image": { "type": "string" }, "quantity": { "type": "integer" }, "unit_price": { "type": "number" }, "total_amount": { "type": "number" }, "currency": { "type": "string" }, "shipping_address": { "type": "object" }, "buyer_phone": { "type": "string" }, "notes": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Order created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Order" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/stripe/payout": {
+      "post": {
+        "tags": ["Checkout - Stripe"],
+        "summary": "Initiate a Stripe payout to seller",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["sellerId", "amount", "currency", "destination"], "properties": { "sellerId": { "type": "string" }, "amount": { "type": "number" }, "currency": { "type": "string" }, "destination": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Payout initiated", "content": { "application/json": { "schema": { "type": "object", "properties": { "payoutId": { "type": "string" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/paystack/initialize": {
+      "post": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Initialize a Paystack payment",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["amount", "currency"], "properties": { "amount": { "type": "number" }, "currency": { "type": "string" }, "email": { "type": "string", "format": "email" }, "metadata": { "type": "object" }, "callback_url": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Payment initialized", "content": { "application/json": { "schema": { "type": "object", "properties": { "authorization_url": { "type": "string" }, "reference": { "type": "string" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/paystack/banks": {
+      "get": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Get bank list from Paystack",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "country", "in": "query", "schema": { "type": "string", "default": "nigeria" } }],
+        "responses": {
+          "200": { "description": "Bank list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/paystack/resolve-account": {
+      "post": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Resolve bank account details",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["account_number", "bank_code"], "properties": { "account_number": { "type": "string" }, "bank_code": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Account resolved", "content": { "application/json": { "schema": { "type": "object", "properties": { "account_name": { "type": "string" }, "account_number": { "type": "string" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/marketplace/checkout/paystack/verify": {
+      "post": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Verify a Paystack payment",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["reference"], "properties": { "reference": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Verification result", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "status": { "type": "string" }, "amount": { "type": "number" }, "currency": { "type": "string" }, "data": { "type": "object" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/paystack/verify-momo": {
+      "post": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Verify a mobile money number",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["phone", "provider"], "properties": { "phone": { "type": "string" }, "provider": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "MoMo verified", "content": { "application/json": { "schema": { "type": "object", "properties": { "account_name": { "type": "string" }, "phone": { "type": "string" }, "provider": { "type": "string" }, "is_registered": { "type": "boolean" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/marketplace/checkout/paystack/create-recipient": {
+      "post": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Create a Paystack transfer recipient",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["type", "name"], "properties": { "type": { "type": "string" }, "name": { "type": "string" }, "account_number": { "type": "string" }, "bank_code": { "type": "string" }, "currency": { "type": "string" }, "email": { "type": "string" }, "phone": { "type": "string" }, "provider": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Recipient created", "content": { "application/json": { "schema": { "type": "object", "properties": { "recipient_code": { "type": "string" }, "details": { "type": "object" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/checkout/paystack/transfer": {
+      "post": {
+        "tags": ["Checkout - Paystack"],
+        "summary": "Initiate a Paystack transfer",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["amount", "recipient"], "properties": { "amount": { "type": "number" }, "recipient": { "type": "string" }, "source": { "type": "string", "default": "balance" }, "reason": { "type": "string" }, "reference": { "type": "string" }, "currency": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Transfer initiated", "content": { "application/json": { "schema": { "type": "object", "properties": { "transfer_code": { "type": "string" }, "reference": { "type": "string" }, "status": { "type": "string" }, "details": { "type": "object" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/{id}": {
+      "get": {
+        "tags": ["Marketplace"],
+        "summary": "Get product details",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Product details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Product" } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "patch": {
+        "tags": ["Marketplace"],
+        "summary": "Update a product (seller only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "price": { "type": "number" }, "currency": { "type": "string" }, "category": { "type": "string" }, "condition": { "type": "string" }, "images": { "type": "array", "items": { "type": "string" } }, "tags": { "type": "array", "items": { "type": "string" } } } } } }
+        },
+        "responses": {
+          "200": { "description": "Product updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Product" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Only seller can update", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Marketplace"],
+        "summary": "Delete a product (seller only, soft delete)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Product deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Only seller can delete", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/marketplace/{id}/save": {
+      "post": {
+        "tags": ["Marketplace"],
+        "summary": "Toggle save/unsave a product",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Save toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "saved": { "type": "boolean" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/{id}/view": {
+      "post": {
+        "tags": ["Marketplace"],
+        "summary": "Record a product view",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "View recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/marketplace/{id}/reviews": {
+      "get": {
+        "tags": ["Marketplace"],
+        "summary": "Get product reviews",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Reviews list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } }, "userReview": { "nullable": true, "allOf": [{ "$ref": "#/components/schemas/Review" }] } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Marketplace"],
+        "summary": "Add or update a product review",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["rating", "review_text"], "properties": { "rating": { "type": "integer", "minimum": 1, "maximum": 5 }, "review_text": { "type": "string" }, "reviewId": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Review created", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "created": { "type": "boolean" } } } } } },
+          "200": { "description": "Review updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "updated": { "type": "boolean" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/marketplace/{id}/reviews/{reviewId}/helpful": {
+      "post": {
+        "tags": ["Marketplace"],
+        "summary": "Toggle review helpful",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "reviewId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Helpful toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "helpful": { "type": "boolean" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/memories": {
+      "get": {
+        "tags": ["Memories"],
+        "summary": "List memories/reels",
+        "parameters": [
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "author_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
+          { "name": "tags", "in": "query", "schema": { "type": "string" } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "sort", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Memories list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Memory" } } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Memories"],
+        "summary": "Create a memory",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["title", "video_url", "duration"], "properties": { "title": { "type": "string" }, "video_url": { "type": "string" }, "duration": { "type": "number" }, "description": { "type": "string" }, "thumbnail_url": { "type": "string" }, "category": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "is_public": { "type": "boolean" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Memory created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Memory" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/memories/{id}": {
+      "get": {
+        "tags": ["Memories"],
+        "summary": "Get memory details",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Memory details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Memory" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Memories"],
+        "summary": "Update a memory (author only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "category": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "is_public": { "type": "boolean" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Memory updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Memory" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Memories"],
+        "summary": "Delete a memory (author only, soft delete)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/memories/{id}/save": {
+      "post": {
+        "tags": ["Memories"],
+        "summary": "Toggle save a memory",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Save toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "properties": { "saved": { "type": "boolean" } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/memories/{id}/view": {
+      "post": {
+        "tags": ["Memories"],
+        "summary": "Record a memory view",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "view_duration": { "type": "number" }, "completion_rate": { "type": "number" } } } } }
+        },
+        "responses": {
+          "200": { "description": "View recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/memories/{id}/share": {
+      "post": {
+        "tags": ["Memories"],
+        "summary": "Record a memory share",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["share_type"], "properties": { "share_type": { "type": "string" }, "platform": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Share recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/memories/{id}/like": {
+      "post": {
+        "tags": ["Memories"],
+        "summary": "Toggle like on a memory",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Like toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "properties": { "liked": { "type": "boolean" } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/memories/{id}/comments": {
+      "get": {
+        "tags": ["Memories"],
+        "summary": "List memory comments",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Comments with nested replies", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Comment" } } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Memories"],
+        "summary": "Add a memory comment",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" }, "parent_id": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Comment created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Comment" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/memories/{id}/comments/{commentId}": {
+      "delete": {
+        "tags": ["Memories"],
+        "summary": "Delete a memory comment (author only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/notifications": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "List notifications",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer" } }],
+        "responses": {
+          "200": { "description": "Notification list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Notification" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/notifications/unread-count": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get unread notification count",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Unread count", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "object", "properties": { "unread_count": { "type": "integer" } } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/notifications/read-all": {
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Mark all notifications as read",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "All marked read", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "patch": {
+        "tags": ["Notifications"],
+        "summary": "Mark a notification as read",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Marked read", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "List orders",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "type", "in": "query", "schema": { "type": "string", "enum": ["purchases", "sales"] } }],
+        "responses": {
+          "200": { "description": "Order list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Get order details (buyer or seller)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Order details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Order" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/orders/{id}/status": {
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Update order status (seller only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["status"], "properties": { "status": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Status updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "description": "Only seller can update", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/paystack/verify": {
+      "get": {
+        "tags": ["Paystack"],
+        "summary": "Verify Paystack payment (callback redirect)",
+        "parameters": [{ "name": "reference", "in": "query", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "302": { "description": "Redirects to marketplace with payment result" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/posts": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get post feed",
+        "description": "Returns the post feed. Authentication is optional — authenticated users get personalized results (like status, follow info, visibility filtering).",
+        "security": [{ "BearerAuth": [] }, {}],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Page number (0-indexed)" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 }, "description": "Number of posts per page (1-50)" },
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Filter by category (e.g. culture, politics, general)" },
+          { "name": "subcategory", "in": "query", "schema": { "type": "string" }, "description": "Filter by subcategory tag (for culture/politics)" }
+        ],
+        "responses": {
+          "200": { "description": "Post feed", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Create a post",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" }, "category": { "type": "string" }, "subcategory": { "type": "string" }, "media_urls": { "type": "array", "items": { "type": "string" } }, "location": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } } } } } }
+        },
+        "responses": {
+          "201": { "description": "Post created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Post" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/posts/stats": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get post statistics by category",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "category", "in": "query", "required": true, "schema": { "type": "string", "enum": ["culture", "politics"] }, "description": "Category to get stats for" }],
+        "responses": {
+          "200": { "description": "Post stats", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/posts/{id}": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get post details",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Post details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Post" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Posts"],
+        "summary": "Update a post (author only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "content": { "type": "string" }, "category": { "type": "string" }, "subcategory": { "type": "string" }, "media_urls": { "type": "array", "items": { "type": "string" } } } } } }
+        },
+        "responses": {
+          "200": { "description": "Post updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Post" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Posts"],
+        "summary": "Delete a post (author only, soft delete)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Post deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/posts/{id}/like": {
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Toggle like on a post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Like toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "liked": { "type": "boolean" }, "likes_count": { "type": "integer" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/posts/{id}/view": {
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Record a post view",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "View recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/posts/{id}/share": {
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Share a post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Post shared", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "description": "Already shared", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Posts"],
+        "summary": "Unshare a post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Post unshared", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/posts/{id}/reaction": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get reactions on a post",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Reactions", "content": { "application/json": { "schema": { "type": "object" } } } }
+        }
+      },
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Add/update/remove a reaction on a post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["reaction_type"], "properties": { "reaction_type": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Reaction updated", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/push-notifications": {
+      "post": {
+        "tags": ["Push Notifications"],
+        "summary": "Send a push notification",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["user_id", "title", "body"], "properties": { "user_id": { "type": "string", "format": "uuid" }, "title": { "type": "string" }, "body": { "type": "string" }, "notification_type": { "type": "string" }, "skip_db": { "type": "boolean" }, "data": { "type": "object" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Notification sent", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/stories": {
+      "get": {
+        "tags": ["Stories"],
+        "summary": "Get story recommendations",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Story feed", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Stories"],
+        "summary": "Create a story",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["media_url", "media_type"], "properties": { "media_url": { "type": "string" }, "media_type": { "type": "string", "enum": ["image", "video"] }, "caption": { "type": "string" }, "background_color": { "type": "string" }, "text_content": { "type": "string" }, "font_style": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Story created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Story" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/mine": {
+      "get": {
+        "tags": ["Stories"],
+        "summary": "Get current user's stories",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "User's stories", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/analytics": {
+      "get": {
+        "tags": ["Stories"],
+        "summary": "Get story analytics",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Story analytics aggregates", "content": { "application/json": { "schema": { "type": "object", "properties": { "totalStories": { "type": "integer" }, "totalViews": { "type": "integer" }, "totalReactions": { "type": "integer" }, "totalReplies": { "type": "integer" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/user/{userId}": {
+      "get": {
+        "tags": ["Stories"],
+        "summary": "Get stories by user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "User's stories", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/{id}": {
+      "delete": {
+        "tags": ["Stories"],
+        "summary": "Delete a story (author only)",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Story deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/{id}/view": {
+      "post": {
+        "tags": ["Stories"],
+        "summary": "Record a story view",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "View recorded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/{id}/viewers": {
+      "get": {
+        "tags": ["Stories"],
+        "summary": "Get story viewers",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Viewer list with profiles", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/{id}/reaction": {
+      "get": {
+        "tags": ["Stories"],
+        "summary": "Get reactions on a story",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Reactions list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Stories"],
+        "summary": "Add/update a reaction on a story",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["reaction_type"], "properties": { "reaction_type": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Reaction upserted", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Stories"],
+        "summary": "Remove a reaction from a story",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Reaction removed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/stories/{id}/replies": {
+      "get": {
+        "tags": ["Stories"],
+        "summary": "Get story replies",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Reply list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Stories"],
+        "summary": "Add a reply to a story",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "description": "Reply created", "content": { "application/json": { "schema": { "type": "object" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Stories"],
+        "summary": "Delete a story reply",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "replyId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Reply deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/members": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "List all members",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Member list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/search": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Search for users",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Search results", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/me/presence": {
+      "patch": {
+        "tags": ["Users"],
+        "summary": "Update presence status",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string" }, "last_seen": { "type": "string", "format": "date-time" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Presence updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/me/export": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Export user data (profile, posts, comments)",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Exported data", "content": { "application/json": { "schema": { "type": "object", "properties": { "profile": { "$ref": "#/components/schemas/UserProfile" }, "posts": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } }, "comments": { "type": "array", "items": { "type": "object" } } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/{identifier}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user profile by ID, username, or 'me'",
+        "parameters": [{ "name": "identifier", "in": "path", "required": true, "schema": { "type": "string" }, "description": "UUID, username, or 'me'" }],
+        "responses": {
+          "200": { "description": "User profile", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserProfile" } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "tags": ["Users"],
+        "summary": "Update own profile",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "identifier", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "full_name": { "type": "string" }, "username": { "type": "string" }, "bio": { "type": "string" }, "avatar_url": { "type": "string" }, "country": { "type": "string" }, "birthday": { "type": "string", "format": "date" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Profile updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/UserProfile" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/{identifier}/posts": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get posts by a user",
+        "parameters": [
+          { "name": "identifier", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer" } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "User's posts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/users/{identifier}/connections": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user connections (friends + mutual follows)",
+        "parameters": [{ "name": "identifier", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Connection list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/videosdk/token": {
+      "get": {
+        "tags": ["VideoSDK"],
+        "summary": "Get VideoSDK JWT token",
+        "parameters": [
+          { "name": "roomId", "in": "query", "schema": { "type": "string" } },
+          { "name": "userId", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "JWT token", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "tags": ["VideoSDK"],
+        "summary": "Generate VideoSDK JWT token",
+        "requestBody": {
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "roomId": { "type": "string" }, "userId": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "JWT token", "content": { "application/json": { "schema": { "type": "object", "properties": { "token": { "type": "string" } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/videosdk/room": {
+      "post": {
+        "tags": ["VideoSDK"],
+        "summary": "Create a VideoSDK room",
+        "responses": {
+          "200": { "description": "Room created", "content": { "application/json": { "schema": { "type": "object", "properties": { "roomId": { "type": "string" } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/fcm/register": {
+      "post": {
+        "tags": ["FCM"],
+        "summary": "Register an FCM device token",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["fcm_token", "device_type", "device_id"], "properties": { "fcm_token": { "type": "string" }, "device_type": { "type": "string" }, "device_id": { "type": "string" }, "user_id": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Token registered", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/fcm/token": {
+      "get": {
+        "tags": ["FCM"],
+        "summary": "Get FCM tokens for a user",
+        "parameters": [{ "name": "user_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "description": "Token list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "delete": {
+        "tags": ["FCM"],
+        "summary": "Deactivate FCM token(s)",
+        "parameters": [{ "name": "device_id", "in": "query", "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Tokens deactivated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    }
+  }
+}
