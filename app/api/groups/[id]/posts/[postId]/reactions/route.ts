@@ -52,7 +52,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       byType[type].count += 1
       totalCount += 1
       const profile = profileMap.get(r.user_id)
-      if (profile && !byType[type].users.some((u: { id: string }) => u.id === profile.id)) {
+      if (profile && !(byType[type].users as { id: string }[]).some((u) => u.id === profile.id)) {
         byType[type].users.push(profile)
       }
       if (r.user_id === user.id) {
