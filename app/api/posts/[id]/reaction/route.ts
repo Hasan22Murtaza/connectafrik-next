@@ -22,6 +22,53 @@ export async function GET(request: NextRequest, context: RouteContext) {
       )
     }
 
+    const { searchParams } = new URL(request.url)
+    const limitParam = searchParams.get('limit')
+
+    if (limitParam) {
+      const limit = Math.min(Math.max(parseInt(limitParam, 10) || 20, 1), 50)
+      const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0)
+      const reactionType = searchParams.get('reaction_type')
+
+      let query = supabase
+        .from('post_reactions')
+        .select('user_id, reaction_type, created_at')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false })
+
+      if (reactionType) {
+        query = query.eq('reaction_type', reactionType)
+      }
+
+      query = query.range(offset, offset + limit - 1)
+
+      const { data: reactionsData, error } = await query
+      if (error) return errorResponse(error.message, 400)
+
+      const rows = reactionsData || []
+      const userIds = [...new Set(rows.map((r: any) => r.user_id))]
+
+      let profileMap = new Map<string, any>()
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', userIds)
+        if (profiles) {
+          profileMap = new Map(profiles.map((p: any) => [p.id, p]))
+        }
+      }
+
+      const items = rows
+        .filter((r: any) => profileMap.has(r.user_id))
+        .map((r: any) => ({
+          reaction_type: r.reaction_type,
+          user: profileMap.get(r.user_id),
+        }))
+
+      return jsonResponse({ data: items, hasMore: rows.length >= limit })
+    }
+
     const { data: reactionsData, error } = await supabase
       .from('post_reactions')
       .select('id, post_id, user_id, reaction_type, created_at')

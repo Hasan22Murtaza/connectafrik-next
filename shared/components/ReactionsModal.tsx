@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import ReactionIcon from './ReactionIcon'
 
 export interface ReactionsModalUser {
@@ -23,11 +23,8 @@ export interface ReactionsModalProps {
   onClose: () => void
   reactionGroups: ReactionsModalGroup[]
   onUserClick?: (username: string) => void
-  postId?: string
-  /** Table to query: 'post_reactions' or 'group_post_reactions'. Defaults to 'post_reactions'. */
-  reactionsTable?: string
-  /** Column name for the post ID in the reactions table. Defaults to 'post_id'. */
-  postIdColumn?: string
+  /** API endpoint for paginated reactions, e.g. '/api/posts/{id}/reaction' */
+  reactionsEndpoint?: string
 }
 
 const PAGE_SIZE = 20
@@ -37,9 +34,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
   onClose,
   reactionGroups,
   onUserClick,
-  postId,
-  reactionsTable = 'post_reactions',
-  postIdColumn = 'post_id',
+  reactionsEndpoint,
 }) => {
   const [activeTab, setActiveTab] = useState<string>('all')
   const [paginatedUsers, setPaginatedUsers] = useState<Array<ReactionsModalUser & { reaction_type: string }>>([])
@@ -58,64 +53,48 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
   }, [activeTab, reactionGroups])
 
   const fetchPage = useCallback(async (tab: string, pageOffset: number, replace: boolean) => {
-    if (!postId) return
+    if (!reactionsEndpoint) return
     setLoading(true)
     try {
-      let query = supabase
-        .from(reactionsTable)
-        .select('user_id, reaction_type, created_at')
-        .eq(postIdColumn, postId)
-        .order('created_at', { ascending: false })
-
+      const params: Record<string, string | number> = {
+        offset: pageOffset,
+        limit: PAGE_SIZE,
+      }
       if (tab !== 'all') {
-        query = query.eq('reaction_type', tab)
+        params.reaction_type = tab
       }
 
-      query = query.range(pageOffset, pageOffset + PAGE_SIZE - 1)
+      const res = await apiClient.get<{ data: Array<{ reaction_type: string; user: ReactionsModalUser }>; hasMore: boolean }>(
+        reactionsEndpoint,
+        params
+      )
 
-      const { data: reactionsData, error } = await query
-      if (error) throw error
-
-      const userIds = [...new Set((reactionsData || []).map((r: any) => r.user_id))]
-      let profiles: Record<string, ReactionsModalUser> = {}
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url')
-          .in('id', userIds)
-        if (profilesData) {
-          profilesData.forEach((p: any) => { profiles[p.id] = p })
-        }
-      }
-
-      const newUsers = (reactionsData || [])
-        .filter((r: any) => profiles[r.user_id])
-        .map((r: any) => ({
-          ...profiles[r.user_id],
-          reaction_type: r.reaction_type,
-        }))
+      const newUsers = (res?.data || []).map((item) => ({
+        ...item.user,
+        reaction_type: item.reaction_type,
+      }))
 
       if (replace) {
         setPaginatedUsers(newUsers)
       } else {
         setPaginatedUsers((prev) => {
           const existingIds = new Set(prev.map((u) => u.id + u.reaction_type))
-          const unique = newUsers.filter((u: any) => !existingIds.has(u.id + u.reaction_type))
+          const unique = newUsers.filter((u) => !existingIds.has(u.id + u.reaction_type))
           return [...prev, ...unique]
         })
       }
 
-      setHasMore((reactionsData?.length ?? 0) >= PAGE_SIZE)
+      setHasMore(res?.hasMore ?? false)
       setOffset(pageOffset + PAGE_SIZE)
     } catch {
       setHasMore(false)
     } finally {
       setLoading(false)
     }
-  }, [postId, reactionsTable, postIdColumn])
+  }, [reactionsEndpoint])
 
   useEffect(() => {
-    if (isOpen && postId && (!prevOpenRef.current || activeTab !== prevTabRef.current)) {
+    if (isOpen && reactionsEndpoint && (!prevOpenRef.current || activeTab !== prevTabRef.current)) {
       setPaginatedUsers([])
       setOffset(0)
       setHasMore(true)
@@ -123,7 +102,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     }
     prevTabRef.current = activeTab
     prevOpenRef.current = isOpen
-  }, [isOpen, activeTab, postId, fetchPage])
+  }, [isOpen, activeTab, reactionsEndpoint, fetchPage])
 
   useEffect(() => {
     if (!isOpen) {
@@ -142,7 +121,6 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     }
   }, [loading, hasMore, activeTab, offset, fetchPage])
 
-  // Build the user-to-reaction map from paginated data
   const userReactionMap = useMemo(() => {
     const map = new Map<string, string>()
     paginatedUsers.forEach((u) => {
@@ -151,7 +129,6 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     return map
   }, [paginatedUsers])
 
-  // Deduplicate users (a user could appear twice if they have multiple reaction types, though unlikely)
   const displayUsers = useMemo(() => {
     const seen = new Set<string>()
     return paginatedUsers.filter((u) => {
@@ -161,7 +138,6 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     })
   }, [paginatedUsers])
 
-  // Fallback: if no postId, use the static data from reactionGroups
   const fallbackUsers = useMemo(() => {
     if (activeTab === 'all') {
       const seen = new Set<string>()
@@ -189,7 +165,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     return map
   }, [reactionGroups])
 
-  const usePaginated = !!postId
+  const usePaginated = !!reactionsEndpoint
   const users = usePaginated ? displayUsers : fallbackUsers
   const reactionMap = usePaginated ? userReactionMap : fallbackReactionMap
 

@@ -243,8 +243,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         onShare={onShare}
         onUserClick={(username) => router.push(`/user/${username}`)}
         postId={post.id}
-        reactionsTable="group_post_reactions"
-        postIdColumn="group_post_id"
+        reactionsEndpoint={`/api/groups/${post.group_id}/posts/${post.id}/reactions`}
       />
 
       {/* Comments Section */}
