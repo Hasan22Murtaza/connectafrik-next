@@ -159,6 +159,13 @@ export async function middleware(request: NextRequest) {
     return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))
   }
 
+  // If user is authenticated and lands on home page, send them to feed
+  if (session && pathname === '/') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/feed'
+    return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))
+  }
+
   // If user is not authenticated and tries to access protected routes, redirect to signin
   if (!session && isProtectedRoute) {
     const url = request.nextUrl.clone()
