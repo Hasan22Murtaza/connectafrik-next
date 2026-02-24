@@ -2,9 +2,11 @@
 
 import { usePathname } from 'next/navigation'
 import Footer from '@/shared/components/layout/FooterNext'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function ConditionalFooter() {
   const pathname = usePathname()
+  const { user, loading } = useAuth()
   
   // Hide footer on these auth pages and call pages
   const hideFooterPaths = [
@@ -20,6 +22,11 @@ export default function ConditionalFooter() {
   }
   
   if (hideFooterPaths.includes(pathname)) {
+    return null
+  }
+
+  // Hide footer for authenticated users
+  if (loading || user) {
     return null
   }
   
