@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     // Batch-fetch reactions for all posts
     const postIds = filtered.map((p: any) => p.id)
-    const reactionsMap = new Map<string, any>()
+    const reactionsMap = new Map<string, { groups: Record<string, any>; totalCount: number }>()
     if (postIds.length > 0) {
       const { data: reactionsData } = await supabase
         .from('post_reactions')
@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         if (reactingUserIds.length > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
-            .select('id, username, full_name, avatar_url')
+            .select('id, full_name')
             .in('id', reactingUserIds)
           if (profiles) {
             profileMap = new Map(profiles.map((p: any) => [p.id, p]))
@@ -170,6 +170,9 @@ export async function GET(request: NextRequest) {
           : post.comments_count
 
       const postReactions = reactionsMap.get(post.id)
+      const reactionGroupsArray = postReactions
+        ? Object.values(postReactions.groups).sort((a: any, b: any) => b.count - a.count)
+        : []
 
       return {
         id: post.id,
@@ -195,7 +198,7 @@ export async function GET(request: NextRequest) {
         } : null,
         isLiked: likedPostIds.has(post.id),
         is_following: userId && userId !== post.author_id ? followingSet.has(post.author_id) : false,
-        reactions: postReactions?.groups ?? {},
+        reactions: reactionGroupsArray,
         reactions_total_count: postReactions?.totalCount ?? 0,
         canComment: computePermission(userId, post.author_id, allowComments, isMutual),
         canFollow: userId && userId !== post.author_id

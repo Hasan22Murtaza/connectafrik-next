@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, full_name, avatar_url')
+          .select('id, full_name')
           .in('id', userIds)
         if (profiles) {
           profileMap = new Map(profiles.map((p: any) => [p.id, p]))
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url')
+        .select('id, full_name')
         .in('id', userIds)
 
       if (profiles) {
@@ -116,7 +116,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
     })
 
-    return jsonResponse({ data: groups, totalCount })
+    const groupedArray = Object.values(groups).sort((a, b) => b.count - a.count)
+    return jsonResponse({ data: groupedArray, totalCount })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch reactions', 500)
   }
