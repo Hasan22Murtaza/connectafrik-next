@@ -42,6 +42,7 @@ const FriendsPage: React.FC = () => {
   const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
   const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
   const [activeSection, setActiveSection] = useState<"home" | "requests" | "suggestions" | "all" | "birthdays" | "custom">("home");
+  const [hasLoadedSuggestions, setHasLoadedSuggestions] = useState(false);
   const [birthdayDisplayLimit, setBirthdayDisplayLimit] = useState(10);
   const birthdaySentinelRef = useRef<HTMLDivElement>(null);
   const shimmerCount = useShimmerCount();
@@ -138,19 +139,27 @@ const FriendsPage: React.FC = () => {
   }, [activeSection, hasMoreBirthdays]);
 
   useEffect(() => {
-    if (user) {
-      fetchFriends();
-      fetchFriendRequests();
-      if (activeSection === "suggestions" || activeSection === "home") {
-        fetchSuggestions();
-      }
-      // Reset display limits when switching sections
-      if (activeSection === "home") {
-        setRequestsDisplayLimit(20);
-        setSuggestionsDisplayLimit(20);
-      }
+    if (!user) return;
+    fetchFriends();
+    fetchFriendRequests();
+    setHasLoadedSuggestions(false);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (hasLoadedSuggestions) return;
+    if (activeSection === "suggestions" || activeSection === "home") {
+      fetchSuggestions();
+      setHasLoadedSuggestions(true);
     }
-  }, [user, activeSection]);
+  }, [user, activeSection, hasLoadedSuggestions]);
+
+  useEffect(() => {
+    if (activeSection === "home") {
+      setRequestsDisplayLimit(20);
+      setSuggestionsDisplayLimit(20);
+    }
+  }, [activeSection]);
 
   const fetchFriends = async () => {
     try {

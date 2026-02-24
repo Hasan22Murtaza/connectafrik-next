@@ -3,12 +3,47 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const THREAD_SELECT = `
-  *,
+  id,
+  type,
+  title,
+  name,
+  last_message_preview,
+  last_message_at,
+  last_activity_at,
+  created_at,
+  updated_at,
   chat_participants(
-    user_id,
     user:profiles!user_id(id, username, full_name, avatar_url)
   )
 `
+
+const mapRpcRowsToThreadShape = (rows: any[]) => {
+  return rows.map((row: any) => {
+    const lastTimestamp = row.last_message_at ?? new Date().toISOString()
+    return {
+      id: row.thread_id,
+      type: row.thread_type,
+      title: row.thread_name,
+      name: row.thread_name,
+      last_message_preview: row.last_message_content,
+      last_message_at: lastTimestamp,
+      last_activity_at: lastTimestamp,
+      created_at: lastTimestamp,
+      updated_at: lastTimestamp,
+      unread_count: typeof row.unread_count === 'number' ? row.unread_count : 0,
+      chat_participants: Array.isArray(row.participants)
+        ? row.participants.map((participant: any) => ({
+            user: {
+              id: participant.id,
+              username: participant.name ?? null,
+              full_name: participant.name ?? null,
+              avatar_url: participant.avatar_url ?? null,
+            },
+          }))
+        : [],
+    }
+  })
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,18 +71,24 @@ export async function GET(request: NextRequest) {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_threads', { user_uuid: user.id })
         if (rpcError) return errorResponse(rpcError.message, 400)
         const rows = Array.isArray(rpcData) ? rpcData : []
+        const normalized = mapRpcRowsToThreadShape(rows)
         return jsonResponse({
-          data: rows.slice(from, to + 1),
-          page,
-          pageSize: limit,
-          hasMore: rows.length > to + 1,
+          data: normalized.slice(from, to + 1),
+          meta: {
+            page,
+            pageSize: limit,
+            hasMore: normalized.length > to + 1,
+          },
         })
       }
       return errorResponse(partError.message, 400)
     }
 
     if (!participantRows || participantRows.length === 0) {
-      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      return jsonResponse({
+        data: [],
+        meta: { page, pageSize: limit, hasMore: false },
+      })
     }
 
     const threadIds = [...new Set(participantRows.map((p: any) => p.thread_id))]
@@ -61,7 +102,10 @@ export async function GET(request: NextRequest) {
 
     if (threadError) return errorResponse(threadError.message, 400)
     if (!threads || threads.length === 0) {
-      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      return jsonResponse({
+        data: [],
+        meta: { page, pageSize: limit, hasMore: false },
+      })
     }
 
     const fetchedThreadIds = threads.map((t: any) => t.id)
@@ -97,9 +141,11 @@ export async function GET(request: NextRequest) {
 
     return jsonResponse({
       data: result,
-      page,
-      pageSize: limit,
-      hasMore: result.length === limit,
+      meta: {
+        page,
+        pageSize: limit,
+        hasMore: result.length === limit,
+      },
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

@@ -23,12 +23,15 @@ export async function GET(request: NextRequest) {
 
     const threadIds = participantRows ? participantRows.map((p: any) => p.thread_id) : []
     if (threadIds.length === 0) {
-      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      return jsonResponse({
+        data: [],
+        meta: { page, pageSize: limit, hasMore: false },
+      })
     }
 
     const { data: callMessages, error } = await serviceClient
       .from('chat_messages')
-      .select('id, thread_id, sender_id, message_type, metadata, created_at')
+      .select('thread_id, message_type, metadata, created_at')
       .in('thread_id', threadIds)
       .in('message_type', CALL_TYPES)
       .eq('is_deleted', false)
@@ -47,10 +50,13 @@ export async function GET(request: NextRequest) {
     const recent = recentAll.slice(from, to + 1)
 
     if (recent.length === 0) {
-      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      return jsonResponse({
+        data: [],
+        meta: { page, pageSize: limit, hasMore: false },
+      })
     }
 
-    const threadIdsToFetch = recent.map((r: any) => r.thread_id)
+    const threadIdsToFetch = [...new Set(recent.map((r: any) => r.thread_id))]
     const { data: threads } = await serviceClient
       .from('chat_threads')
       .select('id, type, title, name')
@@ -58,38 +64,57 @@ export async function GET(request: NextRequest) {
 
     const { data: participants } = await serviceClient
       .from('chat_participants')
-      .select('thread_id, user_id, display_name')
+      .select('thread_id, user_id')
       .in('thread_id', threadIdsToFetch)
 
     const participantUserIds = [...new Set((participants || []).map((p: any) => p.user_id))]
-    const { data: profiles } = await serviceClient
-      .from('profiles')
-      .select('id, username, full_name, avatar_url')
-      .in('id', participantUserIds)
+    const { data: profiles } = participantUserIds.length
+      ? await serviceClient
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', participantUserIds)
+      : { data: [] as any[] }
 
-    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
-    const participantsByThread = new Map<string, any[]>()
+    const threadMap = new Map((threads || []).map((t: any) => [t.id, t]))
+    const participantsByThread = new Map<string, string[]>()
     for (const p of participants || []) {
       const arr = participantsByThread.get(p.thread_id) || []
-      arr.push({
-        ...p,
-        user: profileMap.get(p.user_id),
-      })
+      arr.push(p.user_id)
       participantsByThread.set(p.thread_id, arr)
     }
-    const threadMap = new Map((threads || []).map((t: any) => [t.id, t]))
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
-    const result = recent.map((r: any) => ({
-      ...r,
-      thread: threadMap.get(r.thread_id),
-      participants: participantsByThread.get(r.thread_id) || [],
-    }))
+    const result = recent.map((r: any) => {
+      const thread = threadMap.get(r.thread_id)
+      const participantIds = participantsByThread.get(r.thread_id) || []
+      const otherId = participantIds.find((id) => id !== user.id) || null
+      const otherProfile = otherId ? profileMap.get(otherId) : null
+      const contactName =
+        otherProfile?.full_name ||
+        otherProfile?.username ||
+        thread?.title ||
+        thread?.name ||
+        'Unknown'
+
+      return {
+        thread_id: r.thread_id,
+        created_at: r.created_at,
+        message_type: r.message_type,
+        metadata: r.metadata || {},
+        thread_name: thread?.title || thread?.name || null,
+        contact_id: otherId,
+        contact_name: contactName,
+        contact_avatar_url: otherProfile?.avatar_url || null,
+      }
+    })
 
     return jsonResponse({
       data: result,
-      page,
-      pageSize: limit,
-      hasMore: recentAll.length > to + 1,
+      meta: {
+        page,
+        pageSize: limit,
+        hasMore: recentAll.length > to + 1,
+      },
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

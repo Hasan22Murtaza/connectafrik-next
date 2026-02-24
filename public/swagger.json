@@ -329,10 +329,47 @@
         "tags": ["Chat"],
         "summary": "Get recent calls",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
           "200": {
             "description": "List of recent calls",
-            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "thread_id": { "type": "string" }, "sender_id": { "type": "string" }, "message_type": { "type": "string" }, "metadata": { "type": "object" }, "created_at": { "type": "string", "format": "date-time" }, "thread": { "$ref": "#/components/schemas/Thread" }, "participants": { "type": "array", "items": { "$ref": "#/components/schemas/Participant" } } } } } } } } } },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "thread_id": { "type": "string", "format": "uuid" },
+                          "created_at": { "type": "string", "format": "date-time" },
+                          "message_type": { "type": "string" },
+                          "metadata": { "type": "object" },
+                          "thread_name": { "type": "string", "nullable": true },
+                          "contact_id": { "type": "string", "format": "uuid", "nullable": true },
+                          "contact_name": { "type": "string", "nullable": true },
+                          "contact_avatar_url": { "type": "string", "nullable": true }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "pageSize": { "type": "integer" },
+                        "hasMore": { "type": "boolean" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
@@ -365,7 +402,7 @@
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Paginated thread list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Thread" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
+          "200": { "description": "Paginated thread list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Thread" } }, "meta": { "type": "object", "properties": { "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
