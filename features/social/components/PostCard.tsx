@@ -52,7 +52,12 @@ interface Post {
   created_at: string;
   isLiked?: boolean;
   is_following?: boolean;
-  reactions?: Record<string, any>;
+  reactions?: Array<{
+    type: string;
+    count: number;
+    users: Array<{ id: string; username?: string; full_name?: string; avatar_url?: string | null }>;
+    currentUserReacted?: boolean;
+  }>;
   reactions_total_count?: number;
 }
 
@@ -130,8 +135,16 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
   const [showInlineComments, setShowInlineComments] = useState(shouldAutoOpenComments);
 
-  const [reactions, setReactions] = useState<Record<string, any> & { totalCount: number }>({
-    ...(post.reactions || {}),
+  const [reactions, setReactions] = useState<{
+    groups: Array<{
+      type: string;
+      count: number;
+      users: Array<{ id: string; username?: string; full_name?: string; avatar_url?: string | null }>;
+      currentUserReacted?: boolean;
+    }>;
+    totalCount: number;
+  }>({
+    groups: post.reactions || [],
     totalCount: post.reactions_total_count ?? 0,
   });
 
@@ -141,10 +154,15 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         setTimeout(async () => {
           try {
             const res = await apiClient.get<{
-              data: Record<string, any>
+              data: Array<{
+                type: string;
+                count: number;
+                users: Array<{ id: string; username?: string; full_name?: string; avatar_url?: string | null }>;
+                currentUserReacted?: boolean;
+              }>
               totalCount: number
             }>(`/api/posts/${post.id}/reaction`);
-            setReactions({ ...(res.data || {}), totalCount: res.totalCount || 0 });
+            setReactions({ groups: res.data || [], totalCount: res.totalCount || 0 });
           } catch {}
         }, 300);
       }
@@ -443,17 +461,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
   // Get all reaction groups sorted by count
   const getReactionGroups = () => {
-    const groups: any[] = [];
-    Object.keys(reactions).forEach((key) => {
-      if (key !== "totalCount") {
-        const reaction = reactions[key];
-        // Type guard: check if it's a ReactionGroup (has count property) and not a number
-        if (reaction && typeof reaction === "object" && "count" in reaction && reaction.count > 0) {
-          groups.push(reaction);
-        }
-      }
-    });
-    return groups.sort((a, b) => b.count - a.count);
+    return (reactions.groups || [])
+      .filter((reaction) => reaction && reaction.count > 0)
+      .sort((a, b) => b.count - a.count);
   };
 
   const renderMedia = (url: string, index: number) => {

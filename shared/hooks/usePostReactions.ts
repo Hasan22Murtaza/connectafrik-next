@@ -28,7 +28,7 @@ export const usePostReactions = (postId: string) => {
       setLoading(true)
 
       const res = await apiClient.get<{
-        data: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }>
+        data: Array<{ type: string; count: number; users: any[]; currentUserReacted: boolean }>
         totalCount: number
       }>(`/api/posts/${postId}/reaction`)
 
@@ -40,7 +40,8 @@ export const usePostReactions = (postId: string) => {
       })
 
       if (res.data) {
-        Object.entries(res.data).forEach(([reactionType, group]) => {
+        res.data.forEach((group) => {
+          const reactionType = group.type
           processedReactions[reactionType] = {
             type: reactionType as PostReaction['type'],
             count: group.count,

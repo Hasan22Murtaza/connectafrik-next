@@ -48,12 +48,17 @@ export const usePostReactionsWithUsers = (postId: string) => {
       setLoading(true)
 
       const res = await apiClient.get<{
-        data: Record<string, ReactionGroup>
+        data: ReactionGroup[]
         totalCount: number
       }>(`/api/posts/${postId}/reaction`)
 
+      const groupsByType: Record<string, ReactionGroup> = {}
+      ;(res.data || []).forEach((group) => {
+        groupsByType[group.type] = group
+      })
+
       setReactions({
-        ...(res.data || {}),
+        ...groupsByType,
         totalCount: res.totalCount || 0,
       })
     } catch (error: any) {

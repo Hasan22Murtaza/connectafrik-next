@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       isLiked = !!likeData
     }
 
-    const reactions: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }> = {}
+    const reactionsByType: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }> = {}
     let reactionsTotalCount = 0
 
     const { data: reactionsData } = await supabase
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       if (reactingUserIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, full_name, avatar_url')
+          .select('id, full_name')
           .in('id', reactingUserIds)
         if (profiles) {
           profileMap = new Map(profiles.map((p: any) => [p.id, p]))
@@ -75,10 +75,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
 
       for (const r of reactionsData) {
-        if (!reactions[r.reaction_type]) {
-          reactions[r.reaction_type] = { type: r.reaction_type, count: 0, users: [], currentUserReacted: false }
+        if (!reactionsByType[r.reaction_type]) {
+          reactionsByType[r.reaction_type] = { type: r.reaction_type, count: 0, users: [], currentUserReacted: false }
         }
-        const group = reactions[r.reaction_type]
+        const group = reactionsByType[r.reaction_type]
         group.count++
         reactionsTotalCount++
         const profile = profileMap.get(r.user_id)
@@ -90,6 +90,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         }
       }
     }
+
+    const reactions = Object.values(reactionsByType).sort((a, b) => b.count - a.count)
 
     // Increment view count (non-blocking, skip for post author)
     if (userId && userId !== post.author_id) {
