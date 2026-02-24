@@ -119,7 +119,16 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
-  const [showInlineComments, setShowInlineComments] = useState(false);
+  // Auto-open comments for a random subset of posts with exactly 2 comments
+  const shouldAutoOpenComments = (() => {
+    if ((post.comments_count || 0) !== 2) return false;
+    const hash = post.id.split("").reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    return Math.abs(hash) % 3 === 0; // ~33% of eligible posts
+  })();
+
+  const [showInlineComments, setShowInlineComments] = useState(shouldAutoOpenComments);
 
   const [reactions, setReactions] = useState<Record<string, any> & { totalCount: number }>({
     ...(post.reactions || {}),
