@@ -27,7 +27,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (limitParam) {
       const limit = Math.min(Math.max(parseInt(limitParam, 10) || 20, 1), 50)
-      const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0)
+      const page = Math.max(parseInt(searchParams.get('page') || '0', 10) || 0, 0)
+      const from = page * limit
+      const to = from + limit - 1
       const reactionType = searchParams.get('reaction_type')
 
       let query = supabase
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         query = query.eq('reaction_type', reactionType)
       }
 
-      query = query.range(offset, offset + limit - 1)
+      query = query.range(from, to)
 
       const { data: reactionsData, error } = await query
       if (error) return errorResponse(error.message, 400)
@@ -66,7 +68,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           user: profileMap.get(r.user_id),
         }))
 
-      return jsonResponse({ data: items, hasMore: rows.length >= limit })
+      return jsonResponse({ data: items, page, pageSize: limit, hasMore: rows.length === limit })
     }
 
     const { data: reactionsData, error } = await supabase

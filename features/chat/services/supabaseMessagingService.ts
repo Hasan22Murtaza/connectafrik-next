@@ -716,21 +716,21 @@ const fetchSenderInfo = async (senderId: string) => {
 }
 
 export const supabaseMessagingService = {
-  async getUserThreads(currentUser?: ChatParticipant | null, options?: { limit?: number; offset?: number }): Promise<ChatThread[]> {
+  async getUserThreads(currentUser?: ChatParticipant | null, options?: { limit?: number; page?: number }): Promise<ChatThread[]> {
     if (!currentUser) {
       return []
     }
 
     const limit = options?.limit ?? 20
-    const offset = options?.offset ?? 0
+    const page = options?.page ?? 0
 
     const sortThreads = (threads: ChatThread[]) =>
       [...threads].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
 
     try {
-      const res = await apiClient.get<{ data: any[]; limit: number; offset: number }>(
+      const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
         '/api/chat/threads',
-        { limit, offset }
+        { limit, page }
       )
       const threads = res?.data ?? []
       if (fallbackEnabled) {
@@ -752,7 +752,8 @@ export const supabaseMessagingService = {
       console.error('Error in getUserThreads:', error)
       activateFallback(error)
       const all = sortThreads(getLocalThreadsForUser(currentUser.id))
-      return all.slice(offset, offset + limit)
+      const from = page * limit
+      return all.slice(from, from + limit)
     }
   },
 
@@ -773,11 +774,14 @@ export const supabaseMessagingService = {
     }
   },
 
-  async getRecentCalls(currentUserId: string, _limit = 50, _offset = 0): Promise<RecentCallEntry[]> {
+  async getRecentCalls(currentUserId: string, limit = 10, page = 0): Promise<RecentCallEntry[]> {
     if (!currentUserId) return []
 
     try {
-      const res = await apiClient.get<{ data: any[] }>('/api/chat/calls/recent')
+      const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
+        '/api/chat/calls/recent',
+        { limit, page }
+      )
       const list = res?.data ?? []
       return list.map((r: any) => {
         const meta = (r.metadata ?? {}) as Record<string, unknown>

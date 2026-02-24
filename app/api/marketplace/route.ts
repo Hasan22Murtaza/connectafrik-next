@@ -12,8 +12,12 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
     const currency = searchParams.get('currency')
     const search = searchParams.get('search')
-    const limit = searchParams.get('limit')
-    const offset = searchParams.get('offset')
+    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
+    const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100)
+    const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const from = page * limit
+    const to = from + limit - 1
     const seller_id = searchParams.get('seller_id')
 
     let userId: string | null = null
@@ -37,8 +41,7 @@ export async function GET(request: NextRequest) {
     if (currency) query = query.eq('currency', currency)
     if (seller_id) query = query.eq('seller_id', seller_id)
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
-    if (limit) query = query.limit(parseInt(limit))
-    if (offset) query = query.range(parseInt(offset), parseInt(offset) + parseInt(limit || '20') - 1)
+    query = query.range(from, to)
 
     const { data: products, error } = await query
 
@@ -71,7 +74,12 @@ export async function GET(request: NextRequest) {
       is_saved: savedIds.has(p.id),
     }))
 
-    return jsonResponse({ data: result })
+    return jsonResponse({
+      data: result,
+      page,
+      pageSize: limit,
+      hasMore: result.length === limit,
+    })
   } catch (err: any) {
     console.error('GET /api/marketplace error:', err)
     return errorResponse(err.message || 'Failed to fetch products', 500)

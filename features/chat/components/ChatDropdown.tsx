@@ -7,7 +7,7 @@ import { useMembers } from '@/shared/hooks/useMembers'
 import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'
 import { ChatDropdownShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
-const PAGE_SIZE = 15
+const PAGE_SIZE = 10
 
 interface ChatDropdownProps {
   onClose: () => void
@@ -32,6 +32,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
   const [callsLoadingMore, setCallsLoadingMore] = useState(false)
   const [threadsHasMore, setThreadsHasMore] = useState(true)
   const [callsHasMore, setCallsHasMore] = useState(true)
+  const [callsPage, setCallsPage] = useState(0)
   const [contactsVisible, setContactsVisible] = useState(PAGE_SIZE)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -56,7 +57,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
       try {
         const userThreads = await supabaseMessagingService.getUserThreads(
           { id: currentUser.id, name: currentUser.name || '' },
-          { limit: PAGE_SIZE, offset: 0 }
+          { limit: PAGE_SIZE, page: 0 }
         )
         setThreads(userThreads)
         setThreadsHasMore(userThreads.length >= PAGE_SIZE)
@@ -77,6 +78,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
       try {
         const entries = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, 0)
         setRecentCallEntries(entries)
+        setCallsPage(0)
         setCallsHasMore(entries.length >= PAGE_SIZE)
       } finally {
         setRecentCallsLoading(false)
@@ -91,7 +93,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     try {
       const moreThreads = await supabaseMessagingService.getUserThreads(
         { id: currentUser.id, name: currentUser.name || '' },
-        { limit: PAGE_SIZE, offset: threads.length }
+        { limit: PAGE_SIZE, page: Math.floor(threads.length / PAGE_SIZE) }
       )
       if (moreThreads.length < PAGE_SIZE) setThreadsHasMore(false)
       setThreads(prev => {
@@ -108,17 +110,19 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     if (!currentUser?.id || callsLoadingMore || !callsHasMore) return
     setCallsLoadingMore(true)
     try {
-      const moreCalls = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, recentCallEntries.length)
+      const nextPage = callsPage + 1
+      const moreCalls = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, nextPage)
       if (moreCalls.length < PAGE_SIZE) setCallsHasMore(false)
       setRecentCallEntries(prev => {
         const existingIds = new Set(prev.map(c => c.thread_id))
         const deduped = moreCalls.filter(c => !existingIds.has(c.thread_id))
         return [...prev, ...deduped]
       })
+      setCallsPage(nextPage)
     } finally {
       setCallsLoadingMore(false)
     }
-  }, [currentUser?.id, recentCallEntries.length, callsLoadingMore, callsHasMore])
+  }, [currentUser?.id, callsLoadingMore, callsHasMore, callsPage])
 
   const loadMoreContacts = useCallback(() => {
     setContactsVisible(prev => prev + PAGE_SIZE)
@@ -398,9 +402,17 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                     className="flex items-center space-x-2 sm:space-x-3 text-left"
                   >
                     <div className="relative w-8 h-8 sm:w-10 sm:h-10">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
-                        {threadDisplayName.charAt(0).toUpperCase()}
-                      </div>
+                      {primary?.avatarUrl ? (
+                        <img
+                          src={primary.avatarUrl}
+                          alt={threadDisplayName}
+                          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
+                          {threadDisplayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <Circle
                         className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[status as PresenceStatus]}`}
                         fill="currentColor"

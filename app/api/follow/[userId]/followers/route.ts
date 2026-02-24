@@ -22,22 +22,26 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100)
-    const offset = parseInt(searchParams.get('offset') || '0', 10)
+    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
+    const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100)
+    const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: rows, error } = await supabase
       .from('follows')
       .select('follower_id, created_at')
       .eq('following_id', userId)
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+      .range(from, to)
 
     if (error) {
       return errorResponse(error.message, 400)
     }
 
     if (!rows?.length) {
-      return jsonResponse({ data: [] })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const ids = [...new Set(rows.map((r: any) => r.follower_id))]
@@ -53,7 +57,12 @@ export async function GET(
       follower: profileMap.get(r.follower_id) ?? null,
     }))
 
-    return jsonResponse({ data: result })
+    return jsonResponse({
+      data: result,
+      page,
+      pageSize: limit,
+      hasMore: result.length === limit,
+    })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch followers', 500)
   }

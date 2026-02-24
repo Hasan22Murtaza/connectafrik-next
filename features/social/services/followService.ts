@@ -142,9 +142,9 @@ export const getFollowStats = async (
   }
 }
 
-export const getFollowers = async (userId: string, limit = 20, offset = 0) => {
+export const getFollowers = async (userId: string, limit = 20, page = 0) => {
   try {
-    const res = await apiClient.get<{ data: any[] }>(`/api/follow/${userId}/followers`, { limit, offset })
+    const res = await apiClient.get<{ data: any[] }>(`/api/follow/${userId}/followers`, { limit, page })
     return res.data || []
   } catch (error) {
     if (error instanceof ApiError) return []
@@ -153,9 +153,9 @@ export const getFollowers = async (userId: string, limit = 20, offset = 0) => {
   }
 }
 
-export const getFollowing = async (userId: string, limit = 20, offset = 0) => {
+export const getFollowing = async (userId: string, limit = 20, page = 0) => {
   try {
-    const res = await apiClient.get<{ data: any[] }>(`/api/follow/${userId}/following`, { limit, offset })
+    const res = await apiClient.get<{ data: any[] }>(`/api/follow/${userId}/following`, { limit, page })
     return res.data || []
   } catch (error) {
     if (error instanceof ApiError) return []
