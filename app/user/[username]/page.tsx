@@ -125,7 +125,7 @@ const UserProfilePage: React.FC = () => {
   const username = params?.username as string
   const { user } = useAuth()
   const { startChatWithMembers, openThread, startCall } = useProductionChat()
-  const { members } = useMembers()
+  const { members } = useMembers(false)
 
   const [profile, setProfile] = useState<UserProfileWithVisibility | null>(null)
   const [posts, setPosts] = useState<PostWithAuthor[]>([])

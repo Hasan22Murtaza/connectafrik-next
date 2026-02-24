@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 import { apiClient } from '@/lib/api-client'
@@ -68,6 +69,7 @@ export const useProductionChat = () => {
 }
 
 export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pathname = usePathname()
   const { user } = useAuth()
   const [presence, setPresence] = useState<Record<string, 'online' | 'away' | 'busy' | 'offline'>>({})
   const [callRequests, setCallRequests] = useState<Record<string, CallRequest>>({})
@@ -622,6 +624,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   useEffect(() => {
     if (!user?.id) return
+    if (pathname?.startsWith('/user/')) return
 
     const loadAndUpdatePresence = async () => {
       try {
@@ -644,7 +647,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     const interval = setInterval(loadAndUpdatePresence, 30000)
 
     return () => clearInterval(interval)
-  }, [user?.id, updatePresence])
+  }, [user?.id, updatePresence, pathname])
 
   useEffect(() => {
     if (!user?.id) return
