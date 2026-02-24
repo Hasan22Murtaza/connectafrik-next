@@ -324,10 +324,7 @@ const Signup: React.FC = () => {
                   className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter your email (user@example.com) or phone number
-                  (+1234567890)
-                </p>
+              
               </div>
 
               {/* Password */}
@@ -358,12 +355,7 @@ const Signup: React.FC = () => {
               <div>
                 <label className="flex items-center text-xs text-gray-600 mb-1">
                   Birthday
-                  <span
-                    className="ml-1 text-gray-400 cursor-help"
-                    title="Provide your date of birth"
-                  >
-                    ⓘ
-                  </span>
+                 
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <select
@@ -415,12 +407,7 @@ const Signup: React.FC = () => {
               <div>
                 <label className="flex items-center text-xs text-gray-600 mb-1">
                   Gender
-                  <span
-                    className="ml-1 text-gray-400 cursor-help"
-                    title="Select your gender"
-                  >
-                    ⓘ
-                  </span>
+                 
                 </label>
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">

@@ -2207,6 +2207,44 @@
         }
       }
     },
+    "/search/global": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Global search across users, posts, groups, and products",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string", "minLength": 2 }, "description": "Search text (minimum 2 characters)" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 5, "minimum": 1, "maximum": 20 }, "description": "Maximum items per section" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Global search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "users": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } },
+                        "posts": { "type": "array", "items": { "type": "object" } },
+                        "groups": { "type": "array", "items": { "type": "object" } },
+                        "products": { "type": "array", "items": { "type": "object" } }
+                      }
+                    },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid query" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
     "/users/me/presence": {
       "patch": {
         "tags": ["Users"],
