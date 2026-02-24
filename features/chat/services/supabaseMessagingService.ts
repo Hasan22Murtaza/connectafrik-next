@@ -68,6 +68,10 @@ export interface RecentCallEntry {
   message_type: string
   call_type: 'audio' | 'video'
   metadata?: Record<string, unknown>
+  thread_name?: string | null
+  contact_id?: string | null
+  contact_name?: string | null
+  contact_avatar_url?: string | null
 }
 
 type ThreadSubscriber = (thread: ChatThread) => void
@@ -728,7 +732,7 @@ export const supabaseMessagingService = {
       [...threads].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
 
     try {
-      const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
+      const res = await apiClient.get<{ data: any[]; meta?: { page: number; pageSize: number; hasMore: boolean } }>(
         '/api/chat/threads',
         { limit, page }
       )
@@ -778,7 +782,7 @@ export const supabaseMessagingService = {
     if (!currentUserId) return []
 
     try {
-      const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
+      const res = await apiClient.get<{ data: any[]; meta?: { page: number; pageSize: number; hasMore: boolean } }>(
         '/api/chat/calls/recent',
         { limit, page }
       )
@@ -791,6 +795,10 @@ export const supabaseMessagingService = {
           message_type: r.message_type,
           call_type: (meta.callType === 'video' ? 'video' : 'audio') as 'audio' | 'video',
           metadata: meta,
+          thread_name: r.thread_name ?? null,
+          contact_id: r.contact_id ?? null,
+          contact_name: r.contact_name ?? null,
+          contact_avatar_url: r.contact_avatar_url ?? null,
         }
       })
     } catch (err) {
