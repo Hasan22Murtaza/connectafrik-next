@@ -17,20 +17,44 @@ interface NotificationDropdownProps {
 }
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose, onUnreadCountChange }) => {
+  const PAGE_SIZE = 10
   const { user } = useAuth()
   const router = useRouter()
   const { startChatWithMembers, openThread } = useProductionChat()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [stats, setStats] = useState({ unread: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
-  const fetchNotifications = async () => {
+  const fetchUnreadCount = async () => {
+    if (!user) return
+    try {
+      const res = await apiClient.get<{ data: { unread_count: number } }>('/api/notifications/unread-count')
+      const unreadCount = res?.data?.unread_count ?? 0
+      setStats({ unread: unreadCount })
+      onUnreadCountChange?.(unreadCount)
+    } catch (error) {
+      console.error('Error fetching unread count:', error)
+    }
+  }
+
+  const fetchNotifications = async (targetPage = 0, append = false) => {
     if (!user) return
 
     try {
-      setLoading(true)
-      const res = await apiClient.get<{ data: any[] }>('/api/notifications', { limit: 50 })
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+      const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
+        '/api/notifications',
+        { page: targetPage, limit: PAGE_SIZE }
+      )
       const data = res?.data ?? []
 
       const transformedNotifications: Notification[] = data.map((record: any) => {
@@ -48,17 +72,30 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         }
       })
 
-      setNotifications(transformedNotifications)
-      
-      const unreadCount = transformedNotifications.filter(n => !n.is_read).length
-      setStats({ unread: unreadCount })
-      onUnreadCountChange?.(unreadCount)
+      setNotifications((prev) => {
+        if (!append) return transformedNotifications
+        const existingIds = new Set(prev.map((n) => n.id))
+        const uniqueNew = transformedNotifications.filter((n) => !existingIds.has(n.id))
+        return [...prev, ...uniqueNew]
+      })
+      setPage(targetPage)
+      setHasMore(typeof res?.hasMore === 'boolean' ? res.hasMore : transformedNotifications.length === PAGE_SIZE)
+      await fetchUnreadCount()
     } catch (error) {
       console.error('Error fetching notifications:', error)
       toast.error('Failed to load notifications')
     } finally {
-      setLoading(false)
+      if (append) {
+        setLoadingMore(false)
+      } else {
+        setLoading(false)
+      }
     }
+  }
+
+  const loadMoreNotifications = async () => {
+    if (!user || loading || loadingMore || !hasMore) return
+    await fetchNotifications(page + 1, true)
   }
 
   const getDefaultTitle = (type: string): string => {
@@ -162,16 +199,6 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   }
 
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!user) return
-      try {
-        const res = await apiClient.get<{ data: { unread_count: number } }>('/api/notifications/unread-count')
-        onUnreadCountChange?.(res?.data?.unread_count ?? 0)
-      } catch (error) {
-        console.error('Error fetching unread count:', error)
-      }
-    }
-
     if (user) {
       fetchUnreadCount()
     }
@@ -179,7 +206,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
   useEffect(() => {
     if (isOpen && user) {
-      fetchNotifications()
+      fetchNotifications(0, false)
 
       const channel = supabase
         .channel('notifications-changes')
@@ -192,12 +219,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            fetchNotifications()
-            apiClient.get<{ data: { unread_count: number } }>('/api/notifications/unread-count')
-              .then((res) => {
-                onUnreadCountChange?.(res?.data?.unread_count ?? 0)
-              })
-              .catch(() => {})
+            fetchNotifications(0, false)
+            fetchUnreadCount()
           }
         )
         .subscribe()
@@ -207,6 +230,14 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       }
     }
   }, [isOpen, user?.id])
+
+  const handleListScroll = async (event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget
+    const nearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 80
+    if (nearBottom) {
+      await loadMoreNotifications()
+    }
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -552,7 +583,11 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           </div>
         </div>
 
-        <div className="max-h-80 sm:max-h-96 overflow-y-auto overflow-x-hidden">
+        <div
+          ref={listRef}
+          className="max-h-80 sm:max-h-96 overflow-y-auto overflow-x-hidden"
+          onScroll={handleListScroll}
+        >
           {loading ? (
             <div className="p-3 sm:p-4 text-center text-gray-500">
               Loading notifications...
@@ -596,6 +631,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                   </div>
                 </div>
               ))}
+              {loadingMore && (
+                <div className="p-3 text-center text-xs text-gray-500">Loading more...</div>
+              )}
+              {!hasMore && notifications.length >= PAGE_SIZE && (
+                <div className="p-3 text-center text-xs text-gray-400">No more notifications</div>
+              )}
             </div>
           )}
         </div>

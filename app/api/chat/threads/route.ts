@@ -14,8 +14,12 @@ export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
     const { searchParams } = new URL(request.url)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
-    const offset = parseInt(searchParams.get('offset') || '0', 10)
+    const parsedLimit = parseInt(searchParams.get('limit') || '50', 10)
+    const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100)
+    const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const from = page * limit
+    const to = from + limit - 1
 
     const serviceClient = createServiceClient()
 
@@ -31,13 +35,19 @@ export async function GET(request: NextRequest) {
       if (isRecursion) {
         const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_threads', { user_uuid: user.id })
         if (rpcError) return errorResponse(rpcError.message, 400)
-        return jsonResponse({ data: Array.isArray(rpcData) ? rpcData.slice(offset, offset + limit) : [], limit, offset })
+        const rows = Array.isArray(rpcData) ? rpcData : []
+        return jsonResponse({
+          data: rows.slice(from, to + 1),
+          page,
+          pageSize: limit,
+          hasMore: rows.length > to + 1,
+        })
       }
       return errorResponse(partError.message, 400)
     }
 
     if (!participantRows || participantRows.length === 0) {
-      return jsonResponse({ data: [], limit, offset })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const threadIds = [...new Set(participantRows.map((p: any) => p.thread_id))]
@@ -47,11 +57,11 @@ export async function GET(request: NextRequest) {
       .select(THREAD_SELECT)
       .in('id', threadIds)
       .order('last_message_at', { ascending: false, nullsFirst: false })
-      .range(offset, offset + limit - 1)
+      .range(from, to)
 
     if (threadError) return errorResponse(threadError.message, 400)
     if (!threads || threads.length === 0) {
-      return jsonResponse({ data: [], limit, offset })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const fetchedThreadIds = threads.map((t: any) => t.id)
@@ -85,7 +95,12 @@ export async function GET(request: NextRequest) {
       unread_count: unreadByThread[t.id] || 0,
     }))
 
-    return jsonResponse({ data: result, limit, offset })
+    return jsonResponse({
+      data: result,
+      page,
+      pageSize: limit,
+      hasMore: result.length === limit,
+    })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

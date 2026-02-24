@@ -30,8 +30,12 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || undefined
     const sort_field = searchParams.get('sort_field') || 'created_at'
     const sort_order = searchParams.get('sort_order') || 'desc'
-    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '10', 10), 1), 100)
-    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0)
+    const parsedLimit = parseInt(searchParams.get('limit') || '10', 10)
+    const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Number.isNaN(parsedLimit) ? 10 : Math.min(Math.max(parsedLimit, 1), 100)
+    const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const from = page * limit
+    const to = from + limit - 1
 
     let query = supabase
       .from('reels')
@@ -47,7 +51,7 @@ export async function GET(request: NextRequest) {
     if (tags && tags.length > 0) query = query.overlaps('tags', tags)
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
 
-    query = query.order(sort_field, { ascending: sort_order === 'asc' }).range(offset, offset + limit - 1)
+    query = query.order(sort_field, { ascending: sort_order === 'asc' }).range(from, to)
 
     const { data, error } = await query
 
@@ -75,7 +79,12 @@ export async function GET(request: NextRequest) {
       is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id) : false,
     }))
 
-    return jsonResponse({ data: result, limit, offset })
+    return jsonResponse({
+      data: result,
+      page,
+      pageSize: limit,
+      hasMore: result.length === limit,
+    })
   } catch (error: unknown) {
     const err = error as { message?: string }
     return errorResponse(err.message || 'Failed to fetch reels', 500)

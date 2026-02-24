@@ -40,7 +40,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
   const [paginatedUsers, setPaginatedUsers] = useState<Array<ReactionsModalUser & { reaction_type: string }>>([])
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const [offset, setOffset] = useState(0)
+  const [page, setPage] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
   const prevTabRef = useRef(activeTab)
   const prevOpenRef = useRef(isOpen)
@@ -52,12 +52,12 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     return reactionGroups.find((g) => g.type === activeTab)?.count ?? 0
   }, [activeTab, reactionGroups])
 
-  const fetchPage = useCallback(async (tab: string, pageOffset: number, replace: boolean) => {
+  const fetchPage = useCallback(async (tab: string, pageNum: number, replace: boolean) => {
     if (!reactionsEndpoint) return
     setLoading(true)
     try {
       const params: Record<string, string | number> = {
-        offset: pageOffset,
+        page: pageNum,
         limit: PAGE_SIZE,
       }
       if (tab !== 'all') {
@@ -85,7 +85,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
       }
 
       setHasMore(res?.hasMore ?? false)
-      setOffset(pageOffset + PAGE_SIZE)
+      setPage(pageNum)
     } catch {
       setHasMore(false)
     } finally {
@@ -96,7 +96,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
   useEffect(() => {
     if (isOpen && reactionsEndpoint && (!prevOpenRef.current || activeTab !== prevTabRef.current)) {
       setPaginatedUsers([])
-      setOffset(0)
+      setPage(0)
       setHasMore(true)
       fetchPage(activeTab, 0, true)
     }
@@ -108,7 +108,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     if (!isOpen) {
       setActiveTab('all')
       setPaginatedUsers([])
-      setOffset(0)
+      setPage(0)
       setHasMore(true)
     }
   }, [isOpen])
@@ -117,9 +117,9 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
     const el = listRef.current
     if (!el || loading || !hasMore) return
     if (el.scrollHeight - el.scrollTop - el.clientHeight < 100) {
-      fetchPage(activeTab, offset, false)
+      fetchPage(activeTab, page + 1, false)
     }
-  }, [loading, hasMore, activeTab, offset, fetchPage])
+  }, [loading, hasMore, activeTab, page, fetchPage])
 
   const userReactionMap = useMemo(() => {
     const map = new Map<string, string>()

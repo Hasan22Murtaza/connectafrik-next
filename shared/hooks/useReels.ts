@@ -29,7 +29,7 @@ export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions
       const sortOrder = currentSortOptions?.order || 'desc'
       const params: Record<string, string | number | boolean | undefined> = {
         limit: pageSize,
-        offset: pageNum * pageSize,
+        page: pageNum,
         sort_field: sortField,
         sort_order: sortOrder,
       }

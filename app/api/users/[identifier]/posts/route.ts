@@ -43,8 +43,12 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 50)
-    const offset = parseInt(searchParams.get('offset') || '0', 10)
+    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
+    const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 50)
+    const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
@@ -52,7 +56,7 @@ export async function GET(
       .eq('author_id', ownerId)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1)
+      .range(from, to)
 
     if (postsError) {
       return errorResponse(postsError.message, 400)
@@ -91,7 +95,12 @@ export async function GET(
       isLiked: likedPostIds.has(post.id),
     }))
 
-    return jsonResponse({ data: result })
+    return jsonResponse({
+      data: result,
+      page,
+      pageSize: limit,
+      hasMore: result.length === limit,
+    })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch user posts', 500)
   }

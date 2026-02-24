@@ -27,8 +27,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const { searchParams } = new URL(request.url)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100)
-    const offset = parseInt(searchParams.get('offset') || '0', 10)
+    const parsedLimit = parseInt(searchParams.get('limit') || '50', 10)
+    const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100)
+    const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: messages, error } = await serviceClient
       .from('chat_messages')
@@ -36,13 +40,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .eq('thread_id', threadId)
       .eq('is_deleted', false)
       .order('created_at', { ascending: true })
-      .range(offset, offset + limit - 1)
+      .range(from, to)
 
     if (error) return errorResponse(error.message, 400)
     const list = messages || []
 
     if (list.length === 0) {
-      return jsonResponse({ data: [], limit, offset })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const messageIds = list.map((m: any) => m.id)
@@ -70,7 +74,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
       attachments: attachmentsByMessage.get(m.id) || [],
     }))
 
-    return jsonResponse({ data: formatted, limit, offset })
+    return jsonResponse({
+      data: formatted,
+      page,
+      pageSize: limit,
+      hasMore: list.length === limit,
+    })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

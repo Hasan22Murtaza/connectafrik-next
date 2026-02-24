@@ -362,10 +362,10 @@
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Paginated thread list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Thread" } }, "limit": { "type": "integer" }, "offset": { "type": "integer" } } } } } },
+          "200": { "description": "Paginated thread list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Thread" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
@@ -442,10 +442,10 @@
         "parameters": [
           { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Paginated messages", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } }, "limit": { "type": "integer" }, "offset": { "type": "integer" } } } } } },
+          "200": { "description": "Paginated messages", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
@@ -615,10 +615,10 @@
         "parameters": [
           { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Follower list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "follower_id": { "type": "string" }, "created_at": { "type": "string" }, "follower": { "$ref": "#/components/schemas/UserProfile" } } } } } } } } },
+          "200": { "description": "Follower list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "follower_id": { "type": "string" }, "created_at": { "type": "string" }, "follower": { "$ref": "#/components/schemas/UserProfile" } } } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
       }
@@ -630,10 +630,10 @@
         "parameters": [
           { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Following list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "following_id": { "type": "string" }, "created_at": { "type": "string" }, "following": { "$ref": "#/components/schemas/UserProfile" } } } } } } } } },
+          "200": { "description": "Following list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "following_id": { "type": "string" }, "created_at": { "type": "string" }, "following": { "$ref": "#/components/schemas/UserProfile" } } } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
       }
@@ -1072,7 +1072,7 @@
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50 }, "description": "Enable paginated mode — number of reactions per page" },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Pagination offset (used with limit)" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 }, "description": "Pagination page index (used with limit)" },
           { "name": "reaction_type", "in": "query", "schema": { "type": "string" }, "description": "Filter by reaction type (e.g. love, like, haha)" }
         ],
         "responses": {
@@ -1080,7 +1080,7 @@
             "description": "Reactions (grouped summary or paginated list depending on params)",
             "content": { "application/json": { "schema": { "oneOf": [
               { "type": "object", "description": "Grouped summary (default)", "properties": { "data": { "type": "object", "additionalProperties": { "type": "object", "properties": { "type": { "type": "string" }, "count": { "type": "integer" }, "users": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } }, "currentUserReacted": { "type": "boolean" } } } } } },
-              { "type": "object", "description": "Paginated list (when limit is provided)", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "reaction_type": { "type": "string" }, "user": { "$ref": "#/components/schemas/UserProfile" } } } }, "hasMore": { "type": "boolean" } } }
+              { "type": "object", "description": "Paginated list (when limit is provided)", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "reaction_type": { "type": "string" }, "user": { "$ref": "#/components/schemas/UserProfile" } } } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } }
             ] } } }
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
@@ -1163,10 +1163,10 @@
           { "name": "search", "in": "query", "schema": { "type": "string" } },
           { "name": "seller_id", "in": "query", "schema": { "type": "string", "format": "uuid" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer" } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer" } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Product list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } } } },
+          "200": { "description": "Product list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
       },
@@ -1576,10 +1576,10 @@
           { "name": "search", "in": "query", "schema": { "type": "string" } },
           { "name": "sort", "in": "query", "schema": { "type": "string" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer" } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer" } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Memories list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Memory" } } } } } } },
+          "200": { "description": "Memories list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Memory" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
       },
@@ -1732,9 +1732,27 @@
         "tags": ["Notifications"],
         "summary": "List notifications",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer" } }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 0, "default": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 20 } }
+        ],
         "responses": {
-          "200": { "description": "Notification list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Notification" } } } } } } },
+          "200": {
+            "description": "Paginated notification list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Notification" } },
+                    "page": { "type": "integer", "example": 0 },
+                    "pageSize": { "type": "integer", "example": 20 },
+                    "hasMore": { "type": "boolean", "example": true }
+                  }
+                }
+              }
+            }
+          },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -1834,7 +1852,7 @@
         "security": [{ "BearerAuth": [] }, {}],
         "parameters": [
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Page number (0-indexed)" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 }, "description": "Number of posts per page (1-50)" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 10 }, "description": "Number of posts per page (max 10)" },
           { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Filter by category (e.g. culture, politics, general)" },
           { "name": "subcategory", "in": "query", "schema": { "type": "string" }, "description": "Filter by subcategory tag (for culture/politics)" }
         ],
@@ -1951,7 +1969,7 @@
         "parameters": [
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50 }, "description": "Enable paginated mode — number of reactions per page" },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 }, "description": "Pagination offset (used with limit)" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 }, "description": "Pagination page index (used with limit)" },
           { "name": "reaction_type", "in": "query", "schema": { "type": "string" }, "description": "Filter by reaction type (e.g. love, like, haha)" }
         ],
         "responses": {
@@ -1959,7 +1977,7 @@
             "description": "Reactions (grouped summary or paginated list depending on params)",
             "content": { "application/json": { "schema": { "oneOf": [
               { "type": "object", "description": "Grouped summary (default)", "properties": { "data": { "type": "object", "additionalProperties": { "type": "object", "properties": { "type": { "type": "string" }, "count": { "type": "integer" }, "users": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } }, "currentUserReacted": { "type": "boolean" } } } }, "totalCount": { "type": "integer" } } },
-              { "type": "object", "description": "Paginated list (when limit is provided)", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "reaction_type": { "type": "string" }, "user": { "$ref": "#/components/schemas/UserProfile" } } } }, "hasMore": { "type": "boolean" } } }
+              { "type": "object", "description": "Paginated list (when limit is provided)", "properties": { "data": { "type": "array", "items": { "type": "object", "properties": { "reaction_type": { "type": "string" }, "user": { "$ref": "#/components/schemas/UserProfile" } } } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } }
             ] } } }
           },
           "500": { "$ref": "#/components/responses/ServerError" }
@@ -2245,10 +2263,10 @@
         "parameters": [
           { "name": "identifier", "in": "path", "required": true, "schema": { "type": "string" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer" } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer" } }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "User's posts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } } },
+          "200": { "description": "User's posts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }

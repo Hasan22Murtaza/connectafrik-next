@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Bell, Check, X, Heart, MessageCircle, Share2, UserPlus, AtSign, Filter, CheckCheck } from 'lucide-react'
 import { Notification, NotificationType } from '@/shared/types/notifications'
 import { formatDistanceToNow } from 'date-fns'
@@ -13,19 +13,31 @@ import { useRouter } from 'next/navigation'
 type FilterType = 'all' | 'unread' | NotificationType
 
 const NotificationsPage: React.FC = () => {
+  const PAGE_SIZE = 20
   const { user } = useAuth()
   const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [filter, setFilter] = useState<FilterType>('all')
   const [stats, setStats] = useState({ total: 0, unread: 0 })
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (targetPage = 0, append = false) => {
     if (!user) return
 
     try {
-      setLoading(true)
-      const res = await apiClient.get<{ data: any[] }>('/api/notifications', { limit: 100 })
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+      const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
+        '/api/notifications',
+        { page: targetPage, limit: PAGE_SIZE }
+      )
       const data = res?.data ?? []
 
       const transformedNotifications: Notification[] = data.map((record: any) => {
@@ -43,17 +55,30 @@ const NotificationsPage: React.FC = () => {
         }
       })
 
-      setNotifications(transformedNotifications)
-      
-      const unreadCount = transformedNotifications.filter(n => !n.is_read).length
-      setStats({ total: transformedNotifications.length, unread: unreadCount })
+      setNotifications((prev) => {
+        if (!append) return transformedNotifications
+        const existingIds = new Set(prev.map((n) => n.id))
+        const uniqueNew = transformedNotifications.filter((n) => !existingIds.has(n.id))
+        return [...prev, ...uniqueNew]
+      })
+      setPage(targetPage)
+      setHasMore(typeof res?.hasMore === 'boolean' ? res.hasMore : transformedNotifications.length === PAGE_SIZE)
     } catch (error) {
       console.error('Error fetching notifications:', error)
       toast.error('Failed to load notifications')
     } finally {
-      setLoading(false)
+      if (append) {
+        setLoadingMore(false)
+      } else {
+        setLoading(false)
+      }
     }
   }, [user?.id])
+
+  const loadMore = useCallback(async () => {
+    if (!user || loading || loadingMore || !hasMore || filter !== 'all') return
+    await fetchNotifications(page + 1, true)
+  }, [user?.id, loading, loadingMore, hasMore, filter, page, fetchNotifications])
 
   // Helper function to get default title based on notification type
   const getDefaultTitle = (type: string): string => {
@@ -174,7 +199,7 @@ const NotificationsPage: React.FC = () => {
   // Fetch notifications on mount and when user changes
   useEffect(() => {
     if (user) {
-      fetchNotifications()
+      fetchNotifications(0, false)
 
       // Subscribe to real-time notifications
       const channel = supabase
@@ -188,7 +213,7 @@ const NotificationsPage: React.FC = () => {
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            fetchNotifications()
+            fetchNotifications(0, false)
           }
         )
         .subscribe()
@@ -198,6 +223,28 @@ const NotificationsPage: React.FC = () => {
       }
     }
   }, [user?.id, fetchNotifications])
+
+  useEffect(() => {
+    const sentinel = loadMoreRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasMore && !loading && !loadingMore && filter === 'all') {
+          loadMore()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, filter, loadMore])
+
+  useEffect(() => {
+    const unreadCount = notifications.filter((n) => !n.is_read).length
+    setStats((prev) => ({ ...prev, total: notifications.length, unread: unreadCount }))
+  }, [notifications])
 
   if (!user) {
     return (
@@ -280,59 +327,71 @@ const NotificationsPage: React.FC = () => {
               </p>
             </div>
           ) : (
-            filteredNotifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`bg-white rounded-xl sm:rounded-lg shadow-sm border ${
-                  !notification.is_read ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
-                } p-3 sm:p-4 hover:shadow-md active:bg-gray-50 transition-all cursor-pointer`}
-                onClick={() => {
-                  if (!notification.is_read) markAsRead(notification.id)
-                }}
-              >
-                <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className="flex-shrink-0 mt-0.5">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                      {getNotificationIcon(notification.type)}
+            <>
+              {filteredNotifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`bg-white rounded-xl sm:rounded-lg shadow-sm border ${
+                    !notification.is_read ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
+                  } p-3 sm:p-4 hover:shadow-md active:bg-gray-50 transition-all cursor-pointer`}
+                  onClick={() => {
+                    if (!notification.is_read) markAsRead(notification.id)
+                  }}
+                >
+                  <div className="flex items-start space-x-3 sm:space-x-4">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-50 flex items-center justify-center">
+                        {getNotificationIcon(notification.type)}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-                            {notification.title}
-                          </h3>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                              {notification.title}
+                            </h3>
+                            {!notification.is_read && (
+                              <span className="w-2 h-2 bg-[#FF6900] rounded-full flex-shrink-0"></span>
+                            )}
+                          </div>
+                          <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2 leading-relaxed">
+                            {notification.message}
+                          </p>
+                          <p className="text-[11px] sm:text-xs text-gray-400">
+                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <div className="flex items-center flex-shrink-0 ml-1">
                           {!notification.is_read && (
-                            <span className="w-2 h-2 bg-[#FF6900] rounded-full flex-shrink-0"></span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                markAsRead(notification.id)
+                              }}
+                              className="p-2 text-gray-400 hover:text-[#FF6900] hover:bg-orange-50 active:bg-orange-100 rounded-full transition-colors"
+                              title="Mark as read"
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2 leading-relaxed">
-                          {notification.message}
-                        </p>
-                        <p className="text-[11px] sm:text-xs text-gray-400">
-                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                        </p>
-                      </div>
-                      <div className="flex items-center flex-shrink-0 ml-1">
-                        {!notification.is_read && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              markAsRead(notification.id)
-                            }}
-                            className="p-2 text-gray-400 hover:text-[#FF6900] hover:bg-orange-50 active:bg-orange-100 rounded-full transition-colors"
-                            title="Mark as read"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+
+              {filter === 'all' && <div ref={loadMoreRef} className="h-1" />}
+
+              {filter === 'all' && loadingMore && (
+                <div className="py-4 text-center text-sm text-gray-500">Loading more notifications...</div>
+              )}
+
+              {filter === 'all' && !hasMore && notifications.length >= PAGE_SIZE && (
+                <div className="py-4 text-center text-sm text-gray-400">You&apos;ve reached the end of notifications</div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '0', 10)
-    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || String(PAGE_SIZE), 10) || PAGE_SIZE, 1), 50)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || String(PAGE_SIZE), 10) || PAGE_SIZE, 1), PAGE_SIZE)
     const category = searchParams.get('category') || undefined
     const subcategory = searchParams.get('subcategory') || undefined
 
