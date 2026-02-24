@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { notificationService } from '@/shared/services/notificationService'
+import { apiClient } from '@/lib/api-client'
 
 
 export type CommentAttachmentType = 'image' | 'gif' | 'sticker'
@@ -369,28 +369,15 @@ export const useComments = (postId: string) => {
         attachments: attachmentsForSerialization
       })
 
-      const { data, error } = await supabase
-        .from('comments')
-        .insert({
-          post_id: postId,
-          author_id: user.id,
+      const response = await apiClient.post<{ data: any }>(
+        `/api/posts/${postId}/comments`,
+        {
           content: serializedContent,
           parent_id: parentId || null
-        })
-        .select(`
-          *,
-          author:profiles!comments_author_id_fkey(
-            id,
-            username,
-            full_name,
-            avatar_url,
-            country,
-            is_verified
-          )
-        `)
-        .single()
-
-      if (error) throw error
+        }
+      )
+      const data = response?.data
+      if (!data) throw new Error('Failed to create comment')
 
       const parsed = parseCommentContent(data.content)
 
@@ -408,36 +395,6 @@ export const useComments = (postId: string) => {
         setComments(prev => addReplyToComments(prev, parentId, newComment))
       } else {
         setComments(prev => [...prev, newComment])
-      }
-
-      // Send push notification to post author (if not the current user)
-      try {
-        // Fetch post to get author_id
-        const { data: postData } = await supabase
-          .from('posts')
-          .select('author_id, title, content')
-          .eq('id', postId)
-          .single()
-
-        if (postData && postData.author_id !== user.id) {
-          const actorName = user.user_metadata?.full_name || user.email || 'Someone'
-          const postTitle = postData.title || postData.content?.substring(0, 50) || 'your post'
-          await notificationService.sendNotification({
-            user_id: postData.author_id,
-            title: 'New Comment',
-            body: `${actorName} commented on your post${postTitle ? `: "${postTitle}"` : ''}`,
-            notification_type: 'comment',
-            data: {
-              action: 'comment',
-              post_id: postId,
-              actor_id: user.id,
-              actor_name: actorName,
-              url: `/post/${postId}`
-            }
-          })
-        }
-      } catch (notificationError) {
-        // Don't fail the comment if notification fails
       }
 
       return { error: null }

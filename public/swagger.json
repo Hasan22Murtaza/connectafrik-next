@@ -1963,6 +1963,60 @@
         }
       }
     },
+    "/posts/{id}/comments": {
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Create a comment on a post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": { "type": "string", "description": "Comment content (serialized/plain text)" },
+                  "parent_id": { "type": "string", "format": "uuid", "nullable": true, "description": "Optional parent comment id for replies" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "description": "Created comment payload with author profile"
+                        }
+                      }
+                    },
+                    "message": { "type": "string", "example": "Success" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
     "/posts/{id}/like": {
       "post": {
         "tags": ["Posts"],
