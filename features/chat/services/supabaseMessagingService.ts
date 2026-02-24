@@ -167,6 +167,8 @@ let fallbackEnabled = false
 const localThreads = new Map<string, ChatThread>()
 const localMessages = new Map<string, ChatMessage[]>()
 const localThreadKeys = new Map<string, string>()
+const canDeletePermissionCache = new Map<string, boolean>()
+const canDeletePermissionInFlight = new Map<string, Promise<boolean>>()
 
 const activateFallback = (reason: unknown) => {
   if (!fallbackEnabled) {
@@ -192,6 +194,9 @@ const isPolicyRecursionError = (error: unknown) => {
   if (code === '42P17') return true
   return typeof message === 'string' && message.toLowerCase().includes('infinite recursion')
 }
+
+const getCanDeletePermissionKey = (messageId: string, userId: string) =>
+  `${messageId}:${userId}`
 
 const createLocalThread = (currentUser: ChatParticipant, options: CreateThreadOptions): ChatThread => {
   const participantMap = new Map<string, ChatParticipant>()
@@ -985,18 +990,46 @@ export const supabaseMessagingService = {
   },
 
   async canDeleteForEveryone(messageId: string, userId: string): Promise<boolean> {
-    try {
-      const { data, error } = await supabase.rpc('can_delete_for_everyone', {
-        p_message_id: messageId,
-        p_user_id: userId
-      })
+    const cacheKey = getCanDeletePermissionKey(messageId, userId)
 
-      if (error) {
-        console.error('Error checking delete permission:', error)
+    if (canDeletePermissionCache.has(cacheKey)) {
+      return canDeletePermissionCache.get(cacheKey) === true
+    }
+
+    const existingRequest = canDeletePermissionInFlight.get(cacheKey)
+    if (existingRequest) {
+      return existingRequest
+    }
+
+    const permissionRequest = (async () => {
+      try {
+        const { data, error } = await supabase.rpc('can_delete_for_everyone', {
+          p_message_id: messageId,
+          p_user_id: userId
+        })
+
+        if (error) {
+          console.error('Error checking delete permission:', error)
+          canDeletePermissionCache.set(cacheKey, false)
+          return false
+        }
+
+        const canDelete = data === true
+        canDeletePermissionCache.set(cacheKey, canDelete)
+        return canDelete
+      } catch (error) {
+        console.error('Error in canDeleteForEveryone:', error)
+        canDeletePermissionCache.set(cacheKey, false)
         return false
+      } finally {
+        canDeletePermissionInFlight.delete(cacheKey)
       }
+    })()
 
-      return data === true
+    canDeletePermissionInFlight.set(cacheKey, permissionRequest)
+
+    try {
+      return await permissionRequest
     } catch (error) {
       console.error('Error in canDeleteForEveryone:', error)
       return false

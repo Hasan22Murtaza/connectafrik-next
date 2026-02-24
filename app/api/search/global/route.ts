@@ -20,7 +20,7 @@ function parseLimit(value: string | null): number {
 }
 
 async function runQuery<T>(
-  promise: Promise<{ data: T[] | null; error: { message: string } | null }>,
+  promise: PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
   label: string
 ): Promise<T[]> {
   const { data, error } = await promise

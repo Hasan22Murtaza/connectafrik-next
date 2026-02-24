@@ -19,11 +19,17 @@ const normalizedName = (fullName?: string | null, username?: string | null) => {
   return 'ConnectAfrik Member'
 }
 
-export function useMembers() {
+export function useMembers(enabled: boolean = true) {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!enabled) {
+      setMembers([])
+      setLoading(false)
+      return
+    }
+
     const fetchMembers = async () => {
       try {
         const res = await apiClient.get<{ data: any[] }>('/api/users/members')
@@ -48,7 +54,7 @@ export function useMembers() {
     }
 
     fetchMembers()
-  }, [])
+  }, [enabled])
 
   return { members, loading }
 }
