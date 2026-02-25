@@ -12,6 +12,11 @@ const STORY_SELECT = `
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 50)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data, error } = await supabase
       .from('stories')
@@ -19,6 +24,7 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (error) return errorResponse(error.message, 400)
 
@@ -42,7 +48,12 @@ export async function GET(request: NextRequest) {
       has_viewed: true,
     }))
 
-    return jsonResponse({ data: stories })
+    return jsonResponse({
+      data: stories,
+      page,
+      pageSize: limit,
+      hasMore: stories.length === limit,
+    })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

@@ -80,6 +80,7 @@ export interface StoryReply {
 
 interface ListResponse<T> {
   data: T[]
+  hasMore?: boolean
 }
 
 interface SingleResponse<T> {
@@ -87,8 +88,20 @@ interface SingleResponse<T> {
 }
 
 export async function getStoryRecommendations(_userId: string): Promise<Story[]> {
-  const res = await apiClient.get<ListResponse<Story>>('/api/stories')
-  return res.data
+  const allStories: Story[] = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const res = await apiClient.get<ListResponse<Story>>('/api/stories', { page, limit: 20 })
+    const items = res.data || []
+    allStories.push(...items)
+    hasMore = Boolean(res.hasMore)
+    page += 1
+    if (items.length === 0) break
+  }
+
+  return allStories
 }
 
 export async function createStory(storyData: CreateStoryData): Promise<Story> {
@@ -101,13 +114,37 @@ export async function deleteStory(storyId: string): Promise<void> {
 }
 
 export async function getStoriesByUser(userId: string, _viewerId: string): Promise<Story[]> {
-  const res = await apiClient.get<ListResponse<Story>>(`/api/stories/user/${userId}`)
-  return res.data
+  const allStories: Story[] = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const res = await apiClient.get<ListResponse<Story>>(`/api/stories/user/${userId}`, { page, limit: 20 })
+    const items = res.data || []
+    allStories.push(...items)
+    hasMore = Boolean(res.hasMore)
+    page += 1
+    if (items.length === 0) break
+  }
+
+  return allStories
 }
 
 export async function getUserStories(_userId: string): Promise<Story[]> {
-  const res = await apiClient.get<ListResponse<Story>>('/api/stories/mine')
-  return res.data
+  const allStories: Story[] = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const res = await apiClient.get<ListResponse<Story>>('/api/stories/mine', { page, limit: 20 })
+    const items = res.data || []
+    allStories.push(...items)
+    hasMore = Boolean(res.hasMore)
+    page += 1
+    if (items.length === 0) break
+  }
+
+  return allStories
 }
 
 export async function recordStoryView(storyId: string, _viewerId: string): Promise<void> {
@@ -115,8 +152,20 @@ export async function recordStoryView(storyId: string, _viewerId: string): Promi
 }
 
 export async function getStoryViewers(storyId: string): Promise<StoryView[]> {
-  const res = await apiClient.get<ListResponse<StoryView>>(`/api/stories/${storyId}/viewers`)
-  return res.data
+  const allViewers: StoryView[] = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const res = await apiClient.get<ListResponse<StoryView>>(`/api/stories/${storyId}/viewers`, { page, limit: 20 })
+    const items = res.data || []
+    allViewers.push(...items)
+    hasMore = Boolean(res.hasMore)
+    page += 1
+    if (items.length === 0) break
+  }
+
+  return allViewers
 }
 
 export async function addStoryReaction(
@@ -135,8 +184,20 @@ export async function removeStoryReaction(storyId: string, _userId: string): Pro
 }
 
 export async function getStoryReactions(storyId: string): Promise<StoryReaction[]> {
-  const res = await apiClient.get<ListResponse<StoryReaction>>(`/api/stories/${storyId}/reaction`)
-  return res.data
+  const allReactions: StoryReaction[] = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const res = await apiClient.get<ListResponse<StoryReaction>>(`/api/stories/${storyId}/reaction`, { page, limit: 20 })
+    const items = res.data || []
+    allReactions.push(...items)
+    hasMore = Boolean(res.hasMore)
+    page += 1
+    if (items.length === 0) break
+  }
+
+  return allReactions
 }
 
 export async function getUserStoryReaction(storyId: string, _userId: string): Promise<StoryReaction | null> {
@@ -162,8 +223,20 @@ export async function deleteStoryReply(replyId: string, storyId: string): Promis
 }
 
 export async function getStoryReplies(storyId: string): Promise<StoryReply[]> {
-  const res = await apiClient.get<ListResponse<StoryReply>>(`/api/stories/${storyId}/replies`)
-  return res.data
+  const allReplies: StoryReply[] = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const res = await apiClient.get<ListResponse<StoryReply>>(`/api/stories/${storyId}/replies`, { page, limit: 20 })
+    const items = res.data || []
+    allReplies.push(...items)
+    hasMore = Boolean(res.hasMore)
+    page += 1
+    if (items.length === 0) break
+  }
+
+  return allReplies
 }
 
 export async function getStoryAnalytics(_userId: string): Promise<{
