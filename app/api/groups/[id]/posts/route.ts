@@ -42,11 +42,57 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { data: reactionsData } = await supabase
       .from('group_post_reactions')
-      .select('group_post_id')
-      .eq('user_id', user.id)
+      .select('group_post_id, user_id, reaction_type')
       .in('group_post_id', posts.map((p: { id: string }) => p.id))
 
-    const likedPostIds = new Set((reactionsData || []).map((r: { group_post_id: string }) => r.group_post_id))
+    const likedPostIds = new Set(
+      (reactionsData || [])
+        .filter((r: { user_id: string }) => r.user_id === user.id)
+        .map((r: { group_post_id: string }) => r.group_post_id)
+    )
+
+    const reactingUserIds = [...new Set((reactionsData || []).map((r: { user_id: string }) => r.user_id))]
+    const { data: reactingProfilesData } = reactingUserIds.length > 0
+      ? await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url')
+          .in('id', reactingUserIds)
+      : { data: [] as any[] }
+    const reactingProfilesMap = new Map(
+      (reactingProfilesData || []).map((profile: any) => [profile.id, profile])
+    )
+
+    const reactionsMap = new Map<string, { groups: Record<string, any>; totalCount: number }>()
+    for (const reaction of reactionsData || []) {
+      const postId = reaction.group_post_id as string
+      const reactionType = reaction.reaction_type as string
+      if (!reactionsMap.has(postId)) {
+        reactionsMap.set(postId, { groups: {}, totalCount: 0 })
+      }
+      const entry = reactionsMap.get(postId)!
+      if (!entry.groups[reactionType]) {
+        entry.groups[reactionType] = {
+          type: reactionType,
+          count: 0,
+          users: [],
+          currentUserReacted: false,
+        }
+      }
+      entry.groups[reactionType].count += 1
+      entry.totalCount += 1
+      if (reaction.user_id === user.id) {
+        entry.groups[reactionType].currentUserReacted = true
+      }
+      const reactingProfile = reactingProfilesMap.get(reaction.user_id)
+      if (reactingProfile) {
+        entry.groups[reactionType].users.push({
+          id: reactingProfile.id,
+          username: reactingProfile.username || '',
+          full_name: reactingProfile.full_name || 'Unknown',
+          avatar_url: reactingProfile.avatar_url || null,
+        })
+      }
+    }
 
     const result = posts.map((post: {
       id: string
@@ -59,11 +105,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
           ? post.group_post_comments[0].count
           : (post.comments_count ?? 0)
       const { group_post_comments: _, ...rest } = post
+      const postReactions = reactionsMap.get(post.id)
+      const reactionGroupsArray = postReactions
+        ? Object.values(postReactions.groups).sort((a: any, b: any) => b.count - a.count)
+        : []
       return {
         ...rest,
         author: profileMap.get(post.author_id) ?? null,
         comments_count: realCommentCount,
         isLiked: likedPostIds.has(post.id),
+        reactions: reactionGroupsArray,
+        reactions_total_count: postReactions?.totalCount ?? 0,
       }
     })
 
