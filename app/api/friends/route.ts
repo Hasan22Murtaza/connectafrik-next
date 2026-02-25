@@ -6,12 +6,19 @@ import { notificationService } from '@/shared/services/notificationService'
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 50)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: requests, error: reqError } = await supabase
       .from('friend_requests')
       .select('id, sender_id, receiver_id, status, created_at, updated_at')
       .eq('status', 'accepted')
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (reqError) {
       return errorResponse(reqError.message, 400)
@@ -21,7 +28,7 @@ export async function GET(request: NextRequest) {
     const otherIds = [...new Set(rows.map((r: any) => r.sender_id === user.id ? r.receiver_id : r.sender_id))]
 
     if (otherIds.length === 0) {
-      return jsonResponse([])
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const { data: profiles, error: profError } = await supabase
@@ -53,7 +60,7 @@ export async function GET(request: NextRequest) {
       }
     }).filter(Boolean)
 
-    return jsonResponse({ data: friends })
+    return jsonResponse({ data: friends, page, pageSize: limit, hasMore: rows.length === limit })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

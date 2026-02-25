@@ -161,12 +161,32 @@ const FriendsPage: React.FC = () => {
     }
   }, [activeSection]);
 
+  const fetchAllPages = async <T,>(
+    endpoint: string,
+    limit: number = 50
+  ): Promise<T[]> => {
+    const allItems: T[] = [];
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const res = await apiClient.get<{ data: T[]; hasMore?: boolean }>(endpoint, { page, limit });
+      const items = res.data || [];
+      allItems.push(...items);
+      hasMore = Boolean(res.hasMore);
+      page += 1;
+      if (items.length === 0) break;
+    }
+
+    return allItems;
+  };
+
   const fetchFriends = async () => {
     try {
       if (!user?.id) return;
 
-      const res = await apiClient.get<{ data: Friend[] }>("/api/friends");
-      setFriends(res.data || []);
+      const allFriends = await fetchAllPages<Friend>("/api/friends", 20);
+      setFriends(allFriends);
     } catch (error: any) {
       console.error("Error fetching friends:", error);
     }
@@ -177,8 +197,8 @@ const FriendsPage: React.FC = () => {
       setLoading(true);
       if (!user?.id) return;
 
-      const res = await apiClient.get<{ data: any[] }>("/api/friends/requests");
-      const mappedData = (res.data || []).map((req: any) => ({
+      const allRequests = await fetchAllPages<any>("/api/friends/requests", 20);
+      const mappedData = allRequests.map((req: any) => ({
         ...req,
         requester_id: req.sender_id || req.requester_id,
         recipient_id: req.receiver_id || req.recipient_id,
@@ -221,8 +241,8 @@ const FriendsPage: React.FC = () => {
 
     try {
       setSuggestionsLoading(true);
-      const res = await apiClient.get<{ data: any[] }>("/api/friends/suggestions", { limit: 50 });
-      setSuggestions(res.data || []);
+      const allSuggestions = await fetchAllPages<any>("/api/friends/suggestions", 50);
+      setSuggestions(allSuggestions);
     } catch (error) {
       console.error('Error in fetchSuggestions:', error);
     } finally {

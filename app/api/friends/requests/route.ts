@@ -5,6 +5,11 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 50)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: requests, error: reqError } = await supabase
       .from('friend_requests')
@@ -12,6 +17,7 @@ export async function GET(request: NextRequest) {
       .eq('receiver_id', user.id)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (reqError) {
       return errorResponse(reqError.message, 400)
@@ -21,7 +27,7 @@ export async function GET(request: NextRequest) {
     const senderIds = [...new Set(rows.map((r: any) => r.sender_id))]
 
     if (senderIds.length === 0) {
-      return jsonResponse([])
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const { data: profiles, error: profError } = await supabase
@@ -67,7 +73,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return jsonResponse({ data: result })
+    return jsonResponse({ data: result, page, pageSize: limit, hasMore: rows.length === limit })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

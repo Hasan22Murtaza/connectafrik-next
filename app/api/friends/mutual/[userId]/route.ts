@@ -11,7 +11,11 @@ export async function GET(
     const { user, supabase } = await getAuthenticatedUser(request)
 
     const { searchParams } = new URL(request.url)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '6', 10), 50)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '6', 10) || 6, 1), 50)
+    const fetchLimit = (page + 1) * limit
+    const from = page * limit
+    const toExclusive = from + limit
 
     const [{ data: countData }, { data: listData }] = await Promise.all([
       supabase.rpc('get_mutual_friends_count', {
@@ -21,13 +25,20 @@ export async function GET(
       supabase.rpc('get_mutual_friends', {
         user1_id: user.id,
         user2_id: userId,
-        limit_count: limit,
+        limit_count: fetchLimit,
       }),
     ])
 
+    const list = listData || []
+    const paged = list.slice(from, toExclusive)
+    const count = countData ?? 0
+
     return jsonResponse({
-      count: countData ?? 0,
-      data: listData || [],
+      count,
+      data: paged,
+      page,
+      pageSize: limit,
+      hasMore: count > toExclusive,
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

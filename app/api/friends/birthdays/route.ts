@@ -6,6 +6,11 @@ export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser(request)
     const serviceClient = createServiceClient()
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 100)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: connections, error: connError } = await serviceClient
       .from('follows')
@@ -26,7 +31,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (connectedUserIds.size === 0) {
-      return jsonResponse({ data: [] })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const { data: profiles, error: profError } = await serviceClient
@@ -34,12 +39,15 @@ export async function GET(request: NextRequest) {
       .select('id, full_name, username, avatar_url, birthday')
       .in('id', Array.from(connectedUserIds))
       .not('birthday', 'is', null)
+      .order('birthday', { ascending: true })
+      .range(from, to)
 
     if (profError) {
       return errorResponse(profError.message, 400)
     }
 
-    return jsonResponse({ data: profiles || [] })
+    const list = profiles || []
+    return jsonResponse({ data: list, page, pageSize: limit, hasMore: list.length === limit })
   } catch (error: any) {
     if (error?.message === 'Unauthorized') return unauthorizedResponse()
     return errorResponse(error?.message || 'Internal server error', 500)

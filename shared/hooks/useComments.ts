@@ -78,7 +78,15 @@ export interface Comment {
   replies?: Comment[]
 }
 
+interface CommentsApiResponse {
+  data: Comment[]
+  page?: number
+  pageSize?: number
+  hasMore?: boolean
+}
+
 const COMMENT_MEDIA_BUCKET = 'post-images'
+const COMMENTS_PAGE_SIZE = 20
 
 const generateLocalId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -212,7 +220,10 @@ export const useComments = (postId: string) => {
   const { user } = useAuth()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
 
   useEffect(() => {
     if (postId) {
@@ -220,93 +231,50 @@ export const useComments = (postId: string) => {
     }
   }, [postId, user])
 
+  const normalizeCommentTree = (comment: any): Comment => {
+    const { text: parsedText, attachments } = parseCommentContent(comment.content)
+    const reactions: CommentReaction[] = Array.isArray(comment.reactions)
+      ? comment.reactions
+      : []
+
+    return {
+      ...comment,
+      content: parsedText,
+      raw_content: comment.content,
+      attachments,
+      isLiked: Boolean(comment.isLiked),
+      reactions,
+      replies: Array.isArray(comment.replies)
+        ? comment.replies.map((reply: any) => normalizeCommentTree(reply))
+        : []
+    }
+  }
+
+  const mergeComments = (existing: Comment[], incoming: Comment[]): Comment[] => {
+    if (incoming.length === 0) return existing
+    const existingIds = new Set(existing.map(comment => comment.id))
+    const uniqueIncoming = incoming.filter(comment => !existingIds.has(comment.id))
+    return [...existing, ...uniqueIncoming]
+  }
+
   const fetchComments = async () => {
     try {
       setLoading(true)
-      
-      // Fetch comments with author details
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('comments')
-        .select(`
-          *,
-          author:profiles!comments_author_id_fkey(
-            id,
-            username,
-            full_name,
-            avatar_url,
-            country,
-            is_verified
-          )
-        `)
-        .eq('post_id', postId)
-        .eq('is_deleted', false)
-        .order('created_at', { ascending: true })
+      setError(null)
 
-      if (commentsError) throw commentsError
+      const response = await apiClient.get<CommentsApiResponse>(
+        `/api/posts/${postId}/comments`,
+        { page: 1, limit: COMMENTS_PAGE_SIZE }
+      )
+      const commentsData = response?.data || []
 
-      // Check which comments the current user has liked
-      let likesData: any[] = []
-      if (user && commentsData?.length > 0) {
-        const { data, error: likesError } = await supabase
-          .from('likes')
-          .select('comment_id')
-          .eq('user_id', user.id)
-          .in('comment_id', commentsData.map(c => c.id))
+      const processedComments = Array.isArray(commentsData)
+        ? commentsData.map(normalizeCommentTree)
+        : []
 
-        if (!likesError) {
-          likesData = data || []
-        }
-      }
-
-      // Fetch comment reactions
-      let reactionsData: any[] = []
-      if (commentsData?.length > 0) {
-        const { data, error: reactionsError } = await supabase
-          .from('comment_reactions')
-          .select('comment_id, emoji, user_id')
-          .in('comment_id', commentsData.map(c => c.id))
-
-        if (!reactionsError) {
-          reactionsData = data || []
-        }
-      }
-
-      // Process reactions into the format we need
-      const processedComments = commentsData?.map(comment => {
-        const commentReactions = reactionsData.filter(r => r.comment_id === comment.id)
-        const reactionCounts: { [emoji: string]: { count: number, user_reacted: boolean } } = {}
-
-        commentReactions.forEach(reaction => {
-          if (!reactionCounts[reaction.emoji]) {
-            reactionCounts[reaction.emoji] = { count: 0, user_reacted: false }
-          }
-          reactionCounts[reaction.emoji].count++
-          if (user && reaction.user_id === user.id) {
-            reactionCounts[reaction.emoji].user_reacted = true
-          }
-        })
-
-        const reactions: CommentReaction[] = Object.entries(reactionCounts).map(([emoji, data]) => ({
-          emoji,
-          count: data.count,
-          user_reacted: data.user_reacted
-        })).sort((a, b) => b.count - a.count)
-
-        const { text: parsedText, attachments } = parseCommentContent(comment.content)
-
-        return {
-          ...comment,
-          content: parsedText,
-          raw_content: comment.content,
-          attachments,
-          isLiked: likesData.some(like => like.comment_id === comment.id),
-          reactions
-        }
-      }) || []
-
-      // Organize comments into threaded structure
-      const organizedComments = organizeComments(processedComments)
-      setComments(organizedComments)
+      setComments(processedComments)
+      setCurrentPage(response?.page || 1)
+      setHasNextPage(Boolean(response?.hasMore))
 
     } catch (error: any) {
       setError(error.message)
@@ -315,33 +283,32 @@ export const useComments = (postId: string) => {
     }
   }
 
-  const organizeComments = (flatComments: Comment[]): Comment[] => {
-    const commentMap = new Map<string, Comment>()
-    const rootComments: Comment[] = []
+  const loadMoreComments = async () => {
+    if (!hasNextPage || isLoadingMore) return
 
-    // First pass: create map and initialize replies arrays
-    flatComments.forEach(comment => {
-      commentMap.set(comment.id, { ...comment, replies: [] })
-    })
+    const nextPage = currentPage + 1
+    try {
+      setIsLoadingMore(true)
+      setError(null)
 
-    // Second pass: organize into threads
-    flatComments.forEach(comment => {
-      const commentWithReplies = commentMap.get(comment.id)!
-      
-      if (comment.parent_id) {
-        // This is a reply
-        const parent = commentMap.get(comment.parent_id)
-        if (parent) {
-          parent.replies = parent.replies || []
-          parent.replies.push(commentWithReplies)
-        }
-      } else {
-        // This is a root comment
-        rootComments.push(commentWithReplies)
-      }
-    })
+      const response = await apiClient.get<CommentsApiResponse>(
+        `/api/posts/${postId}/comments`,
+        { page: nextPage, limit: COMMENTS_PAGE_SIZE }
+      )
 
-    return rootComments
+      const commentsData = response?.data || []
+      const processedComments = Array.isArray(commentsData)
+        ? commentsData.map(normalizeCommentTree)
+        : []
+
+      setComments(prev => mergeComments(prev, processedComments))
+      setCurrentPage(response?.page || nextPage)
+      setHasNextPage(Boolean(response?.hasMore))
+    } catch (error: any) {
+      setError(error.message)
+    } finally {
+      setIsLoadingMore(false)
+    }
   }
 
   const addComment = async (input: string | NewCommentPayload, parentId?: string): Promise<{ error: string | null }> => {
@@ -429,30 +396,12 @@ export const useComments = (postId: string) => {
       const comment = findComment(comments, commentId)
       if (!comment) return
 
-      if (comment.isLiked) {
-        // Unlike the comment
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('comment_id', commentId)
-
-        if (error) throw error
-
-        setComments(prev => updateCommentLikes(prev, commentId, false, -1))
-      } else {
-        // Like the comment
-        const { error } = await supabase
-          .from('likes')
-          .insert({
-            user_id: user.id,
-            comment_id: commentId
-          })
-
-        if (error) throw error
-
-        setComments(prev => updateCommentLikes(prev, commentId, true, 1))
-      }
+      const response = await apiClient.post<{ liked: boolean; likes_count: number }>(
+        `/api/posts/${postId}/comments/${commentId}/like`
+      )
+      const wasLiked = Boolean(comment.isLiked)
+      const likeDelta = response.liked === wasLiked ? 0 : (response.liked ? 1 : -1)
+      setComments(prev => updateCommentLikes(prev, commentId, response.liked, likeDelta, response.likes_count))
     } catch (error: any) {
       console.error('Error toggling comment like:', error.message)
     }
@@ -469,18 +418,26 @@ export const useComments = (postId: string) => {
     return null
   }
 
-  const updateCommentLikes = (comments: Comment[], commentId: string, isLiked: boolean, likeDelta: number): Comment[] => {
+  const updateCommentLikes = (
+    comments: Comment[],
+    commentId: string,
+    isLiked: boolean,
+    likeDelta: number,
+    exactLikesCount?: number
+  ): Comment[] => {
     return comments.map(comment => {
       if (comment.id === commentId) {
         return {
           ...comment,
           isLiked,
-          likes_count: comment.likes_count + likeDelta
+          likes_count: typeof exactLikesCount === 'number'
+            ? exactLikesCount
+            : comment.likes_count + likeDelta
         }
       } else if (comment.replies && comment.replies.length > 0) {
         return {
           ...comment,
-          replies: updateCommentLikes(comment.replies, commentId, isLiked, likeDelta)
+          replies: updateCommentLikes(comment.replies, commentId, isLiked, likeDelta, exactLikesCount)
         }
       }
       return comment
@@ -666,8 +623,11 @@ export const useComments = (postId: string) => {
   return {
     comments,
     loading,
+    isLoadingMore,
+    hasNextPage,
     error,
     addComment,
+    loadMoreComments,
     toggleCommentLike,
     toggleCommentReaction,
     deleteComment,
