@@ -525,6 +525,8 @@ const GroupDetailPage: React.FC = () => {
                         onEdit={(title, content) => updatePost(post.id, { title, content })}
                         onEmojiReaction={handleEmojiReaction}
                         isPostLiked={post.isLiked}
+                        prefetchedReactionGroups={(post.reactions ?? []) as any}
+                        prefetchedTotalReactionCount={post.reactions_total_count ?? 0}
                         showCommentsFor={showCommentsFor === post.id}
                         onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}
                       />

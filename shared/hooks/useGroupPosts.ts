@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
+import { GroupReactionGroup } from '@/shared/hooks/useGroupPostReactions'
 
 export interface GroupPost {
   id: string
@@ -25,6 +26,8 @@ export interface GroupPost {
     country: string | null
   }
   isLiked?: boolean
+  reactions?: GroupReactionGroup[]
+  reactions_total_count?: number
 }
 
 export const useGroupPosts = (groupId: string) => {
@@ -71,7 +74,9 @@ export const useGroupPosts = (groupId: string) => {
             avatar_url: null,
             country: null
           },
-          isLiked: p.isLiked ?? false
+          isLiked: p.isLiked ?? false,
+          reactions: p.reactions ?? [],
+          reactions_total_count: p.reactions_total_count ?? 0
         }))
       )
     } catch (err: any) {
