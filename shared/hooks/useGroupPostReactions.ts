@@ -21,15 +21,20 @@ export interface GroupPostReactionsData {
   totalCount: number
 }
 
-export const useGroupPostReactions = (groupId: string, groupPostId: string) => {
+export const useGroupPostReactions = (
+  groupId: string,
+  groupPostId: string,
+  options?: { enabled?: boolean; initialReactions?: GroupPostReactionsData }
+) => {
   const { user } = useAuth()
-  const [reactions, setReactions] = useState<GroupPostReactionsData>({
-    totalCount: 0
-  })
-  const [loading, setLoading] = useState(true)
+  const enabled = options?.enabled ?? true
+  const [reactions, setReactions] = useState<GroupPostReactionsData>(
+    options?.initialReactions ?? { totalCount: 0 }
+  )
+  const [loading, setLoading] = useState(enabled)
 
   const fetchReactions = async () => {
-    if (!groupPostId || !groupId) return
+    if (!enabled || !groupPostId || !groupId) return
 
     try {
       setLoading(true)
@@ -48,12 +53,18 @@ export const useGroupPostReactions = (groupId: string, groupPostId: string) => {
   }
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false)
+      return
+    }
     if (groupPostId && groupId) {
       fetchReactions()
     }
-  }, [groupId, groupPostId, user?.id])
+  }, [groupId, groupPostId, user?.id, enabled])
 
   useEffect(() => {
+    if (!enabled) return
+
     const handleReactionUpdate = (event: CustomEvent) => {
       if (event.detail?.postId === groupPostId) {
         setTimeout(() => {
@@ -72,7 +83,7 @@ export const useGroupPostReactions = (groupId: string, groupPostId: string) => {
         handleReactionUpdate as EventListener
       )
     }
-  }, [groupId, groupPostId])
+  }, [groupId, groupPostId, enabled])
 
   return {
     reactions,

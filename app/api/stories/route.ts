@@ -12,6 +12,11 @@ const STORY_SELECT = `
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 50)
+    const from = page * limit
+    const to = from + limit
 
     const { data, error } = await supabase.rpc('get_story_recommendations', {
       user_id_param: user.id,
@@ -19,7 +24,14 @@ export async function GET(request: NextRequest) {
 
     if (error) return errorResponse(error.message, 400)
 
-    return jsonResponse({ data: data || [] })
+    const stories = data || []
+    const paged = stories.slice(from, to)
+    return jsonResponse({
+      data: paged,
+      page,
+      pageSize: limit,
+      hasMore: stories.length > to,
+    })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

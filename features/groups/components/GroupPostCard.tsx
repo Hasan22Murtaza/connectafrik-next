@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { GroupPost } from '@/shared/hooks/useGroupPosts'
 import GroupPostCommentsSection from '@/features/groups/components/GroupPostCommentsSection'
-import { useGroupPostReactions, GroupReactionGroup } from '@/shared/hooks/useGroupPostReactions'
+import { useGroupPostReactions, GroupReactionGroup, GroupPostReactionsData } from '@/shared/hooks/useGroupPostReactions'
 import toast from 'react-hot-toast'
 import PostEngagement from '@/shared/components/PostEngagement'
 
@@ -23,6 +23,9 @@ interface GroupPostCardProps {
   isPostLiked?: boolean
   showCommentsFor?: boolean
   onToggleComments?: () => void
+  prefetchedReactions?: GroupPostReactionsData
+  prefetchedReactionGroups?: GroupReactionGroup[]
+  prefetchedTotalReactionCount?: number
 }
 
 const POST_TYPE_LABELS = {
@@ -54,7 +57,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   onEmojiReaction,
   isPostLiked = false,
   showCommentsFor = false,
-  onToggleComments
+  onToggleComments,
+  prefetchedReactions,
+  prefetchedReactionGroups,
+  prefetchedTotalReactionCount
 }) => {
   const { user } = useAuth()
   const router = useRouter()
@@ -65,10 +71,11 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
 
   // Fetch reactions with user data
   const {
-    reactions,
-    loading: reactionsLoading,
-    refetch: refetchReactions,
-  } = useGroupPostReactions(post.group_id, post.id)
+    reactions
+  } = useGroupPostReactions(post.group_id, post.id, {
+    enabled: !prefetchedReactions && !prefetchedReactionGroups,
+    initialReactions: prefetchedReactions,
+  })
 
   const isAuthor = user?.id === post.author_id
 
@@ -87,6 +94,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
 
   // Get all reaction groups sorted by count
   const getReactionGroups = () => {
+    if (prefetchedReactionGroups) {
+      return [...prefetchedReactionGroups].sort((a, b) => b.count - a.count)
+    }
+
     const groups: GroupReactionGroup[] = []
     Object.keys(reactions).forEach((key) => {
       if (key !== 'totalCount') {
@@ -234,9 +245,13 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
       )}
 
       {/* Engagement Stats & Actions */}
+      {/*
+        For activity feed posts, reactions are prefetched from /api/groups/activity
+        in post-like shape (reactions + reactions_total_count), so no extra call.
+      */}
       <PostEngagement
         reactionGroups={getReactionGroups()}
-        totalReactionCount={reactions.totalCount}
+        totalReactionCount={prefetchedReactionGroups ? (prefetchedTotalReactionCount ?? 0) : reactions.totalCount}
         commentsCount={post.comments_count}
         onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
         onComment={() => onToggleComments ? onToggleComments() : onComment()}

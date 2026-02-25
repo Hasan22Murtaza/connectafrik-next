@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Users, MapPin } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import { GroupMembership } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
 import { getRoleIcon } from '@/shared/utils/groupUtils'
@@ -30,63 +30,24 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, currentUse
   const fetchMembers = async () => {
     try {
       setLoading(true)
-      
-      // First, try with join query
-      let { data, error } = await supabase
-        .from('group_memberships')
-        .select(`
-          *,
-          user:profiles!user_id(id, username, full_name, avatar_url)
-        `)
-        .eq('group_id', groupId)
-        .eq('status', 'active')
-        .order('role', { ascending: false })
-        .order('joined_at', { ascending: true })
-      
-      // If join fails or user data is missing, fetch profiles separately
-      if (error || !data || data.some((member: any) => !member.user)) {
-        
-        // Fetch memberships
-        const { data: membershipsData, error: membershipsError } = await supabase
-          .from('group_memberships')
-          .select('*')
-          .eq('group_id', groupId)
-          .eq('status', 'active')
-          .order('role', { ascending: false })
-          .order('joined_at', { ascending: true })
-        
-        if (membershipsError) throw membershipsError
-        
-        if (!membershipsData || membershipsData.length === 0) {
-          setMembers([])
-          return
-        }
-        
-        // Fetch profiles for all user IDs
-        const userIds = membershipsData.map((m: any) => m.user_id).filter(Boolean)
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url')
-          .in('id', userIds)
-        
-        // Create a map of profiles by user ID
-        const profileMap = new Map(
-          (profilesData || []).map((profile: any) => [profile.id, profile])
+
+      const allMembers: MemberWithProfile[] = []
+      let page = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const res = await apiClient.get<{ data: MemberWithProfile[]; hasMore?: boolean }>(
+          `/api/groups/${groupId}/members`,
+          { page, limit: 50 }
         )
-        
-        // Combine memberships with profiles
-        data = membershipsData.map((membership: any) => ({
-          ...membership,
-          user: profileMap.get(membership.user_id) || {
-            id: membership.user_id,
-            username: 'Unknown',
-            full_name: 'Unknown User',
-            avatar_url: null
-          }
-        }))
+        const pageMembers = res.data || []
+        allMembers.push(...pageMembers)
+        hasMore = Boolean(res.hasMore)
+        page += 1
+        if (pageMembers.length === 0) break
       }
-      
-      setMembers(data || [])
+
+      setMembers(allMembers)
     } catch (error) {
       console.error('Error fetching members:', error)
       setMembers([])

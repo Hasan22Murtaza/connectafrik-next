@@ -5,17 +5,23 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 100)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: savesData, error: savesError } = await supabase
       .from('product_saves')
       .select('created_at, product_id')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (savesError) throw savesError
 
     if (!savesData || savesData.length === 0) {
-      return jsonResponse({ data: [] })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const productIds = savesData.map(save => save.product_id)
@@ -35,13 +41,19 @@ export async function GET(request: NextRequest) {
 
     const sellerMap = new Map((sellers || []).map(s => [s.id, s]))
 
-    const productsWithSellers = (products || []).map(product => ({
+    const productsById = new Map((products || []).map(product => [product.id, product]))
+    const productsWithSellers = savesData.map(save => productsById.get(save.product_id)).filter(Boolean).map(product => ({
       ...product,
       seller: sellerMap.get(product.seller_id) || null,
       is_saved: true,
     }))
 
-    return jsonResponse({ data: productsWithSellers })
+    return jsonResponse({
+      data: productsWithSellers,
+      page,
+      pageSize: limit,
+      hasMore: savesData.length === limit,
+    })
   } catch (err: any) {
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
       return unauthorizedResponse()

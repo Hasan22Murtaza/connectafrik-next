@@ -53,9 +53,9 @@ interface SinglePostResponse {
   data: Post
 }
 
-interface LikeResponse {
-  liked: boolean
-  likes_count: number
+interface ReactionResponse {
+  action: 'added' | 'updated' | 'removed'
+  reaction_type: string
 }
 
 interface ShareResponse {
@@ -166,12 +166,24 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
           : p
       ))
 
-      const response = await apiClient.post<LikeResponse>(`/api/posts/${postId}/like`)
+      const response = await apiClient.post<ReactionResponse>(
+        `/api/posts/${postId}/reaction`,
+        { reaction_type: 'like' }
+      )
 
       // Reconcile with server state
       setPosts(prev => prev.map(p =>
         p.id === postId
-          ? { ...p, isLiked: response.liked, likes_count: response.likes_count }
+          ? {
+              ...p,
+              isLiked: response.action === 'removed' ? false : true,
+              likes_count:
+                response.action === 'added'
+                  ? p.likes_count + 1
+                  : response.action === 'removed'
+                  ? Math.max(0, p.likes_count - 1)
+                  : p.likes_count
+            }
           : p
       ))
     } catch (error: any) {

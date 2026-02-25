@@ -306,8 +306,20 @@ const UserProfilePage: React.FC = () => {
     const wasLiked = post.isLiked
     updatePost(postId, (p) => ({ ...p, isLiked: !wasLiked, likes_count: wasLiked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1 }))
     try {
-      const res = await apiClient.post<{ liked: boolean; likes_count: number }>(`/api/posts/${postId}/like`)
-      updatePost(postId, (p) => ({ ...p, isLiked: res.liked, likes_count: res.likes_count }))
+      const res = await apiClient.post<{ action: 'added' | 'updated' | 'removed'; reaction_type: string }>(
+        `/api/posts/${postId}/reaction`,
+        { reaction_type: 'like' }
+      )
+      updatePost(postId, (p) => ({
+        ...p,
+        isLiked: res.action === 'removed' ? false : true,
+        likes_count:
+          res.action === 'added'
+            ? p.likes_count + 1
+            : res.action === 'removed'
+            ? Math.max(0, p.likes_count - 1)
+            : p.likes_count,
+      }))
     } catch {
       updatePost(postId, (p) => ({ ...p, isLiked: wasLiked, likes_count: wasLiked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1) }))
       toast.error('Failed to update like')

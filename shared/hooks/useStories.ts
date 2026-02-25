@@ -30,6 +30,7 @@ export interface StoryGroup {
 
 interface ActiveStoriesResponse {
   data: Story[]
+  hasMore?: boolean
 }
 
 export const useStories = () => {
@@ -48,8 +49,19 @@ export const useStories = () => {
       setLoading(true)
       setError(null)
 
-      const response = await apiClient.get<ActiveStoriesResponse>('/api/stories')
-      const storiesData = response.data || []
+      const storiesData: Story[] = []
+      let page = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const response = await apiClient.get<ActiveStoriesResponse>('/api/stories', { page, limit: 20 })
+        const pageStories = response.data || []
+        storiesData.push(...pageStories)
+        hasMore = Boolean(response.hasMore)
+        page += 1
+        if (pageStories.length === 0) break
+      }
+
       setStories(storiesData)
 
       const grouped = groupStoriesByAuthor(storiesData)

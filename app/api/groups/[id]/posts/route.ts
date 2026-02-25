@@ -8,6 +8,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id: groupId } = await context.params
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '10', 10) || 10, 1), 50)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: postsData, error: postsError } = await supabase
       .from('group_posts')
@@ -16,6 +21,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .eq('is_deleted', false)
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (postsError) {
       return errorResponse(postsError.message, 400)
@@ -23,7 +29,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const posts = postsData || []
     if (posts.length === 0) {
-      return jsonResponse({ data: [] })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const authorIds = [...new Set(posts.map((p: { author_id: string }) => p.author_id))]
@@ -61,7 +67,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
     })
 
-    return jsonResponse({ data: result })
+    return jsonResponse({
+      data: result,
+      page,
+      pageSize: limit,
+      hasMore: posts.length === limit,
+    })
   } catch (error: unknown) {
     const err = error as { message?: string }
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {

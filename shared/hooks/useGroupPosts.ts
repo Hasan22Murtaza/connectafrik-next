@@ -44,11 +44,25 @@ export const useGroupPosts = (groupId: string) => {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.get<{ data: GroupPost[] }>(`/api/groups/${groupId}/posts`)
-      const postsData = res.data || []
+      const allPosts: GroupPost[] = []
+      let page = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const res = await apiClient.get<{ data: GroupPost[]; hasMore?: boolean }>(
+          `/api/groups/${groupId}/posts`,
+          { page, limit: 10 }
+        )
+        const pagePosts = res.data || []
+        allPosts.push(...pagePosts)
+        hasMore = Boolean(res.hasMore)
+        page += 1
+
+        if (pagePosts.length === 0) break
+      }
 
       setPosts(
-        postsData.map((p: GroupPost) => ({
+        allPosts.map((p: GroupPost) => ({
           ...p,
           author: p.author ?? {
             id: p.author_id,
@@ -130,13 +144,25 @@ export const useGroupPosts = (groupId: string) => {
     )
 
     try {
-      const res = await apiClient.post<{ liked: boolean; likes_count: number }>(
-        `/api/groups/${groupId}/posts/${postId}/like`
+      const res = await apiClient.post<{ action: 'added' | 'updated' | 'removed'; reaction_type: string }>(
+        `/api/groups/${groupId}/posts/${postId}/reactions`,
+        { reaction_type: 'like' }
       )
 
       setPosts(prev =>
         prev.map(post =>
-          post.id === postId ? { ...post, isLiked: res.liked, likes_count: res.likes_count } : post
+          post.id === postId
+            ? {
+                ...post,
+                isLiked: res.action === 'removed' ? false : true,
+                likes_count:
+                  res.action === 'added'
+                    ? post.likes_count + 1
+                    : res.action === 'removed'
+                    ? Math.max(0, post.likes_count - 1)
+                    : post.likes_count,
+              }
+            : post
         )
       )
 

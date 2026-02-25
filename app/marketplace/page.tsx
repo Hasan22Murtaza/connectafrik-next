@@ -95,8 +95,24 @@ const MarketplacePage: React.FC = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get<{ data: Product[] }>("/api/marketplace");
-      setProducts(res.data || []);
+      const allProducts: Product[] = [];
+      let page = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const res = await apiClient.get<{ data: Product[]; hasMore?: boolean }>(
+          "/api/marketplace",
+          { page, limit: 20 }
+        );
+        const pageProducts = res.data || [];
+        allProducts.push(...pageProducts);
+        hasMore = Boolean(res.hasMore);
+        page += 1;
+
+        if (pageProducts.length === 0) break;
+      }
+
+      setProducts(allProducts);
     } catch {
       toast.error("Failed to load products");
     } finally {

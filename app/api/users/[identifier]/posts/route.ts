@@ -72,14 +72,14 @@ export async function GET(
 
     let likedPostIds = new Set<string>()
     if (viewerId && posts.length > 0) {
-      const { data: likesData } = await supabase
-        .from('likes')
+      const { data: reactionsData } = await supabase
+        .from('post_reactions')
         .select('post_id')
         .eq('user_id', viewerId)
         .in('post_id', posts.map((p: any) => p.id))
 
-      if (likesData) {
-        likedPostIds = new Set(likesData.map((l: any) => l.post_id))
+      if (reactionsData) {
+        likedPostIds = new Set(reactionsData.map((r: any) => r.post_id))
       }
     }
 

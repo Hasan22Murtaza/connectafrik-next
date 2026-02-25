@@ -67,12 +67,30 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
     try {
       setLoading(true)
 
-      const res = await apiClient.get<{ data: Review[]; userReview: Review | null }>(
-        `/api/marketplace/${productId}/reviews`
-      )
+      const allReviews: Review[] = []
+      let page = 0
+      let hasMore = true
+      let currentUserReview: Review | null = null
 
-      setReviews(res.data || [])
-      setUserReview(res.userReview || null)
+      while (hasMore) {
+        const res = await apiClient.get<{ data: Review[]; userReview: Review | null; hasMore?: boolean }>(
+          `/api/marketplace/${productId}/reviews`,
+          { page, limit: 20 }
+        )
+
+        const pageReviews = res.data || []
+        allReviews.push(...pageReviews)
+        if (!currentUserReview && res.userReview) {
+          currentUserReview = res.userReview
+        }
+
+        hasMore = Boolean(res.hasMore)
+        page += 1
+        if (pageReviews.length === 0) break
+      }
+
+      setReviews(allReviews)
+      setUserReview(currentUserReview)
     } catch (error: any) {
       console.error('Error fetching reviews:', error)
       toast.error('Failed to load reviews')

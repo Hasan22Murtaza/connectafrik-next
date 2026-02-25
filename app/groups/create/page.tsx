@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Users, Globe, Lock, Plus, Minus, MapPin, Tag, Upload, X, Image as ImageIcon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -14,6 +14,7 @@ const CreateGroupPage: React.FC = () => {
   const { createGroup } = useGroups()
   const { uploadImage } = useImageUpload()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmittingRef = useRef(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [uploadingBanner, setUploadingBanner] = useState(false)
 
@@ -171,6 +172,8 @@ const CreateGroupPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isSubmittingRef.current) return
+
     if (!user) {
       toast.error('You must be logged in to create a group')
       router.push('/signin')
@@ -194,6 +197,7 @@ const CreateGroupPage: React.FC = () => {
       return
     }
 
+    isSubmittingRef.current = true
     setIsSubmitting(true)
 
     try {
@@ -212,6 +216,7 @@ const CreateGroupPage: React.FC = () => {
     } catch (error) {
       // Error handling is done in the hook
     } finally {
+      isSubmittingRef.current = false
       setIsSubmitting(false)
     }
   }
