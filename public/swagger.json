@@ -692,8 +692,12 @@
         "tags": ["Friends"],
         "summary": "List all friends",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Friend list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "200": { "description": "Friend list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       },
@@ -717,8 +721,12 @@
         "tags": ["Friends"],
         "summary": "Get friends with upcoming birthdays",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Birthday list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "200": { "description": "Birthday list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -730,10 +738,11 @@
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 6, "maximum": 50 } }
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 6, "minimum": 1, "maximum": 50 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Mutual friends", "content": { "application/json": { "schema": { "type": "object", "properties": { "count": { "type": "integer" }, "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "200": { "description": "Mutual friends", "content": { "application/json": { "schema": { "type": "object", "properties": { "count": { "type": "integer" }, "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -743,8 +752,12 @@
         "tags": ["Friends"],
         "summary": "Get incoming friend requests",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Pending requests with requester profiles", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "allOf": [{ "$ref": "#/components/schemas/FriendRequest" }, { "type": "object", "properties": { "requester": { "$ref": "#/components/schemas/UserProfile" }, "mutualFriendsCount": { "type": "integer" } } }] } } } } } } },
+          "200": { "description": "Pending requests with requester profiles", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "allOf": [{ "$ref": "#/components/schemas/FriendRequest" }, { "type": "object", "properties": { "requester": { "$ref": "#/components/schemas/UserProfile" }, "mutualFriendsCount": { "type": "integer" } } }] } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -754,8 +767,12 @@
         "tags": ["Friends"],
         "summary": "Get sent friend requests",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Sent requests with receiver profiles", "content": { "application/json": { "schema": { "type": "array", "items": { "allOf": [{ "$ref": "#/components/schemas/FriendRequest" }, { "type": "object", "properties": { "receiver": { "$ref": "#/components/schemas/UserProfile" } } }] } } } } },
+          "200": { "description": "Sent requests with receiver profiles", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "allOf": [{ "$ref": "#/components/schemas/FriendRequest" }, { "type": "object", "properties": { "receiver": { "$ref": "#/components/schemas/UserProfile" } } }] } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -821,9 +838,12 @@
         "tags": ["Friends"],
         "summary": "Get friend suggestions",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Suggested friends", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } } } } } } },
+          "200": { "description": "Suggested friends", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProfile" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -1964,6 +1984,39 @@
       }
     },
     "/posts/{id}/comments": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get post comments",
+        "description": "Returns top-level comments for a post with nested replies, author details, like state, reactions, and paginated metadata.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comments list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Comment" }
+                    },
+                    "page": { "type": "integer" },
+                    "pageSize": { "type": "integer" },
+                    "hasMore": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
       "post": {
         "tags": ["Posts"],
         "summary": "Create a comment on a post",
@@ -2014,6 +2067,35 @@
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "404": { "$ref": "#/components/responses/NotFound" },
           "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/posts/{id}/comments/{commentId}/like": {
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Toggle like on a comment",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "commentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment like toggled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "liked": { "type": "boolean" },
+                    "likes_count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
     },

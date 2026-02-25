@@ -59,7 +59,10 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
   const {
     comments,
     loading,
+    isLoadingMore,
+    hasNextPage,
     addComment,
+    loadMoreComments,
     toggleCommentLike,
     toggleCommentReaction,
     deleteComment,
@@ -240,23 +243,38 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
         ) : comments.length === 0 ? (
           <p className="py-3 text-center text-xs text-gray-400">Be the first to comment</p>
         ) : (
-          comments.map(comment => (
-            <FBCommentItem
-              key={comment.id}
-              comment={comment}
-              onLike={toggleCommentLike}
-              onEmojiReact={toggleCommentReaction}
-              onReplyToggle={handleReplyToggle}
-              onDelete={handleDeleteComment}
-              onUpdate={updateComment}
-              replyingTo={replyingTo}
-              replyContent={replyContent}
-              setReplyContent={setReplyContent}
-              onSubmitReply={handleSubmitReply}
-              isReplySubmitting={isReplySubmitting}
-              currentUser={user}
-            />
-          ))
+          <>
+            {comments.map(comment => (
+              <FBCommentItem
+                key={comment.id}
+                comment={comment}
+                onLike={toggleCommentLike}
+                onEmojiReact={toggleCommentReaction}
+                onReplyToggle={handleReplyToggle}
+                onDelete={handleDeleteComment}
+                onUpdate={updateComment}
+                replyingTo={replyingTo}
+                replyContent={replyContent}
+                setReplyContent={setReplyContent}
+                onSubmitReply={handleSubmitReply}
+                isReplySubmitting={isReplySubmitting}
+                currentUser={user}
+              />
+            ))}
+            {hasNextPage && (
+              <div className="py-2 text-center">
+                <button
+                  type="button"
+                  onClick={loadMoreComments}
+                  disabled={isLoadingMore}
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {isLoadingMore ? 'Loading...' : 'Load more comments'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

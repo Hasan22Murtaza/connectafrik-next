@@ -28,6 +28,23 @@ export interface NotificationRecord {
 }
 
 export const socialService = {
+  async fetchAllPages<T>(endpoint: string, limit = 50): Promise<T[]> {
+    const allItems: T[] = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const res = await apiClient.get<{ data: T[]; hasMore?: boolean }>(endpoint, { page, limit })
+      const items = res.data || []
+      allItems.push(...items)
+      hasMore = Boolean(res.hasMore)
+      page += 1
+      if (items.length === 0) break
+    }
+
+    return allItems
+  },
+
   async sendFriendRequest(recipientId: string, message?: string) {
     try {
       const data = await apiClient.post<{ success: boolean }>("/api/friends", {
@@ -59,8 +76,8 @@ export const socialService = {
 
   async getPendingFriendRequests(): Promise<{ data: FriendRequest[] | null; error: Error | null }> {
     try {
-      const res = await apiClient.get<{ data: any[] }>("/api/friends/requests");
-      const mapped = (res.data || []).map((req: any) => ({
+      const allRequests = await this.fetchAllPages<any>('/api/friends/requests', 20)
+      const mapped = allRequests.map((req: any) => ({
         ...req,
         requester_id: req.sender_id || req.requester_id,
         recipient_id: req.receiver_id || req.recipient_id,

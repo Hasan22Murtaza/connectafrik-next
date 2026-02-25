@@ -33,6 +33,23 @@ export interface Friend {
 }
 
 class FriendRequestService {
+  private async fetchAllPages<T>(endpoint: string, limit = 50): Promise<T[]> {
+    const allItems: T[] = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const res = await apiClient.get<{ data: T[]; hasMore?: boolean }>(endpoint, { page, limit })
+      const items = res.data || []
+      allItems.push(...items)
+      hasMore = Boolean(res.hasMore)
+      page += 1
+      if (items.length === 0) break
+    }
+
+    return allItems
+  }
+
   /**
    * Send a friend request to another user
    */
@@ -103,8 +120,7 @@ class FriendRequestService {
    */
   async getPendingRequests(): Promise<FriendRequest[]> {
     try {
-      const res = await apiClient.get<{ data: FriendRequest[] }>('/api/friends/requests')
-      return res.data ?? []
+      return await this.fetchAllPages<FriendRequest>('/api/friends/requests', 20)
     } catch (error) {
       console.error('Error fetching pending requests:', error)
       return []
@@ -116,8 +132,7 @@ class FriendRequestService {
    */
   async getSentRequests(): Promise<FriendRequest[]> {
     try {
-      const res = await apiClient.get<{ data: FriendRequest[] }>('/api/friends/requests/sent')
-      return res.data ?? []
+      return await this.fetchAllPages<FriendRequest>('/api/friends/requests/sent', 20)
     } catch (error) {
       console.error('Error fetching sent requests:', error)
       return []
@@ -129,8 +144,7 @@ class FriendRequestService {
    */
   async getFriends(): Promise<Friend[]> {
     try {
-      const res = await apiClient.get<{ data: Friend[] }>('/api/friends')
-      return res.data ?? []
+      return await this.fetchAllPages<Friend>('/api/friends', 20)
     } catch (error) {
       console.error('Error fetching friends:', error)
       return []
@@ -167,8 +181,7 @@ class FriendRequestService {
    */
   async getSuggestedUsers(limit: number = 20): Promise<Friend[]> {
     try {
-      const res = await apiClient.get<{ data: Friend[] } | Friend[]>('/api/friends/suggestions', { limit })
-      const list = Array.isArray(res) ? res : (res as { data: Friend[] }).data ?? []
+      const list = await this.fetchAllPages<Friend>('/api/friends/suggestions', Math.min(limit, 50))
       return list.map((u) => ({
         id: u.id,
         username: u.username ?? 'user',

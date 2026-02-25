@@ -8,10 +8,26 @@ interface BirthdayUser {
   birthday: string
 }
 
+const fetchAllBirthdayProfiles = async (): Promise<any[]> => {
+  const allProfiles: any[] = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const res = await apiClient.get<{ data: any[]; hasMore?: boolean }>('/api/friends/birthdays', { page, limit: 100 })
+    const pageData = res.data || []
+    allProfiles.push(...pageData)
+    hasMore = Boolean(res.hasMore)
+    page += 1
+    if (pageData.length === 0) break
+  }
+
+  return allProfiles
+}
+
 export const checkUpcomingBirthdays = async (currentUserId: string) => {
   try {
-    const res = await apiClient.get<{ data: any[] }>('/api/friends/birthdays')
-    const profiles = res.data || []
+    const profiles = await fetchAllBirthdayProfiles()
 
     const today = new Date()
     const tomorrow = new Date(today)
@@ -93,8 +109,7 @@ export const getTodaysBirthdays = async (connectedUserIds: string[]) => {
   try {
     if (connectedUserIds.length === 0) return []
 
-    const res = await apiClient.get<{ data: any[] }>('/api/friends/birthdays')
-    const profiles = res.data || []
+    const profiles = await fetchAllBirthdayProfiles()
 
     const today = new Date()
     const todayKey = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
