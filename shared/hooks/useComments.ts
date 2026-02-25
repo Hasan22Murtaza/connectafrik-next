@@ -319,27 +319,14 @@ export const useComments = (postId: string) => {
       const normalized = normalizeNewCommentPayload(input)
       const textContent = sanitizeCommentText(normalized.text)
 
-      const preparedAttachments = await processNewAttachments(normalized.attachments, user.id)
-      if (!textContent && preparedAttachments.length === 0) {
+      if (!textContent) {
         throw new Error('Comment cannot be empty')
       }
-
-      const attachmentsForSerialization: CommentAttachment[] = preparedAttachments.map(attachment => ({
-        id: generateLocalId(),
-        type: attachment.type,
-        url: attachment.url,
-        value: attachment.value
-      }))
-
-      const serializedContent = serializeCommentContent({
-        text: textContent,
-        attachments: attachmentsForSerialization
-      })
 
       const response = await apiClient.post<{ data: any }>(
         `/api/posts/${postId}/comments`,
         {
-          content: serializedContent,
+          content: textContent,
           parent_id: parentId || null
         }
       )
@@ -352,7 +339,7 @@ export const useComments = (postId: string) => {
         ...data,
         content: parsed.text,
         raw_content: data.content,
-        attachments: parsed.attachments,
+        attachments: [],
         isLiked: false,
         reactions: [],
         replies: []
@@ -541,26 +528,14 @@ export const useComments = (postId: string) => {
 
       const normalized = normalizeUpdateCommentPayload(input)
       const textContent = sanitizeCommentText(normalized.text)
-      const attachments = normalized.attachments ?? []
-
-      if (!textContent && attachments.length === 0) {
+      if (!textContent) {
         throw new Error('Comment cannot be empty')
       }
-
-      const attachmentsWithIds: CommentAttachment[] = attachments.map(attachment => ({
-        ...attachment,
-        id: attachment.id ?? generateLocalId()
-      }))
-
-      const serializedContent = serializeCommentContent({
-        text: textContent,
-        attachments: attachmentsWithIds
-      })
 
       const { error } = await supabase
         .from('comments')
         .update({
-          content: serializedContent,
+          content: textContent,
           updated_at: new Date().toISOString()
         })
         .eq('id', commentId)
@@ -570,8 +545,8 @@ export const useComments = (postId: string) => {
 
       setComments(prev => updateCommentContent(prev, commentId, {
         text: textContent,
-        attachments: attachmentsWithIds,
-        raw: serializedContent
+        attachments: [],
+        raw: textContent
       }))
       return { error: null }
 
