@@ -881,12 +881,14 @@
       "post": {
         "tags": ["Groups"],
         "summary": "Create a group",
+        "description": "Creates a new group. If the same creator submits an identical payload again within a short window, the existing group may be returned (duplicate-submit protection).",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["name", "description"], "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "category": { "type": "string" }, "goals": { "type": "string" }, "is_public": { "type": "boolean" }, "max_members": { "type": "integer" }, "location": { "type": "string" }, "country": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "rules": { "type": "string" }, "avatar_url": { "type": "string" }, "banner_url": { "type": "string" } } } } }
+          "content": { "application/json": { "schema": { "type": "object", "required": ["name", "description"], "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "category": { "type": "string" }, "goals": { "type": "array", "items": { "type": "string" } }, "is_public": { "type": "boolean" }, "max_members": { "type": "integer" }, "location": { "type": "string" }, "country": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "rules": { "type": "array", "items": { "type": "string" } }, "avatar_url": { "type": "string" }, "banner_url": { "type": "string" } } } } }
         },
         "responses": {
+          "200": { "description": "Existing group returned (duplicate submit)", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Group" } } } } } },
           "201": { "description": "Group created", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Group" } } } } } },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/Unauthorized" }
@@ -903,7 +905,7 @@
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Group activity posts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
+          "200": { "description": "Group activity posts with post-style reactions", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "allOf": [{ "$ref": "#/components/schemas/Post" }], "properties": { "group_id": { "type": "string", "format": "uuid" }, "isLiked": { "type": "boolean" }, "reactions": { "type": "array", "items": { "type": "object", "properties": { "type": { "type": "string" }, "count": { "type": "integer" }, "users": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string", "format": "uuid" }, "full_name": { "type": "string", "nullable": true } } } }, "currentUserReacted": { "type": "boolean" } } } }, "reactions_total_count": { "type": "integer" } } } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }

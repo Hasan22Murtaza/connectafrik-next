@@ -607,6 +607,8 @@ const GroupsPage: React.FC = () => {
                           onShare={() => handlePostShare(post.id)}
                           onEmojiReaction={handlePostEmojiReaction}
                           isPostLiked={post.isLiked}
+                          prefetchedReactionGroups={post.reactions}
+                          prefetchedTotalReactionCount={post.reactions_total_count}
                           showCommentsFor={showCommentsFor === post.id}
                           onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}
                         />

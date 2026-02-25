@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import { Group, GroupMembership } from '@/shared/types'
@@ -270,12 +270,6 @@ export const useGroups = () => {
       return []
     }
   }
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchGroups()
-    }
-  }, [user?.id])
 
   return {
     groups,

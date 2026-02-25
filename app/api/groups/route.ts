@@ -110,15 +110,66 @@ export async function POST(request: NextRequest) {
       banner_url,
     } = body
 
-    if (!name || !description) {
+    const normalizedName = String(name || '').trim()
+    const normalizedDescription = String(description || '').trim()
+
+    if (!normalizedName || !normalizedDescription) {
       return errorResponse('Name and description are required', 400)
+    }
+
+    // Prevent accidental double-creates from rapid duplicate submits.
+    const duplicateWindowStart = new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    const { data: existingGroup } = await supabase
+      .from('groups')
+      .select(GROUP_SELECT)
+      .eq('creator_id', user.id)
+      .eq('name', normalizedName)
+      .eq('description', normalizedDescription)
+      .gte('created_at', duplicateWindowStart)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingGroup) {
+      let existingMembership = (existingGroup.memberships || []).find(
+        (m: any) => m.user_id === user.id && m.status === 'active'
+      )
+      if (!existingMembership) {
+        const { data } = await supabase
+          .from('group_memberships')
+          .select('id, user_id, role, status, joined_at, updated_at')
+          .eq('group_id', existingGroup.id)
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .maybeSingle()
+        existingMembership = data
+      }
+
+      return jsonResponse({
+        data: {
+          ...existingGroup,
+          member_count: existingGroup.member_count ?? 1,
+          membership: existingMembership
+            ? {
+                id: existingMembership.id,
+                group_id: existingGroup.id,
+                user_id: existingMembership.user_id,
+                role: existingMembership.role,
+                status: existingMembership.status,
+                joined_at: existingMembership.joined_at,
+                updated_at: existingMembership.updated_at,
+              }
+            : undefined,
+          memberships: undefined,
+        },
+      })
     }
 
     const { data: group, error: groupError } = await supabase
       .from('groups')
       .insert({
-        name,
-        description,
+        name: normalizedName,
+        description: normalizedDescription,
         category: category || 'community',
         goals: goals || [],
         is_public: is_public !== false,
@@ -139,7 +190,7 @@ export async function POST(request: NextRequest) {
       return errorResponse(groupError.message, 400)
     }
 
-    const { data: membership, error: membershipError } = await supabase
+    const { data: insertedMembership, error: membershipError } = await supabase
       .from('group_memberships')
       .insert({
         group_id: group.id,
@@ -150,8 +201,30 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
+    let membership = insertedMembership
     if (membershipError) {
-      return errorResponse(membershipError.message, 400)
+      const isDuplicateMembership =
+        membershipError.code === '23505' ||
+        membershipError.message?.includes('unique_group_membership')
+
+      if (!isDuplicateMembership) {
+        return errorResponse(membershipError.message, 400)
+      }
+
+      // Some environments auto-create creator membership (trigger); reuse it.
+      const { data: existingMembership, error: existingMembershipError } = await supabase
+        .from('group_memberships')
+        .select('id, user_id, role, status, joined_at, updated_at')
+        .eq('group_id', group.id)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (existingMembershipError || !existingMembership) {
+        return errorResponse(existingMembershipError?.message || 'Failed to fetch group membership', 400)
+      }
+
+      membership = existingMembership
     }
 
     const { error: updateError } = await supabase
@@ -168,13 +241,13 @@ export async function POST(request: NextRequest) {
       ...group,
       member_count: 1,
       membership: {
-        id: membership.id,
+        id: membership!.id,
         group_id: group.id,
-        user_id: membership.user_id,
-        role: membership.role,
-        status: membership.status,
-        joined_at: membership.joined_at,
-        updated_at: membership.updated_at,
+        user_id: membership!.user_id,
+        role: membership!.role,
+        status: membership!.status,
+        joined_at: membership!.joined_at,
+        updated_at: membership!.updated_at,
       },
       memberships: undefined,
     }
