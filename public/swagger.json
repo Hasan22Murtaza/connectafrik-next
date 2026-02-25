@@ -870,10 +870,11 @@
           { "name": "category", "in": "query", "schema": { "type": "string" } },
           { "name": "search", "in": "query", "schema": { "type": "string" } },
           { "name": "country", "in": "query", "schema": { "type": "string" } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "maximum": 100 } }
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
         ],
         "responses": {
-          "200": { "description": "Group list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } } } } } } },
+          "200": { "description": "Group list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "500": { "$ref": "#/components/responses/ServerError" }
         }
       },
@@ -897,9 +898,12 @@
         "tags": ["Groups"],
         "summary": "Get activity feed from joined groups",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 50 } }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Group activity posts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } } },
+          "200": { "description": "Group activity posts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -909,8 +913,12 @@
         "tags": ["Groups"],
         "summary": "Get groups managed by current user",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Managed groups", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } } } } } } },
+          "200": { "description": "Managed groups", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -920,8 +928,12 @@
         "tags": ["Groups"],
         "summary": "Get groups current user has joined",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 100 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
         "responses": {
-          "200": { "description": "Joined groups", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } } } } } } },
+          "200": { "description": "Joined groups", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Group" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -963,6 +975,52 @@
         }
       }
     },
+    "/groups/{id}/members": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "List active group members",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group members list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "group_id": { "type": "string", "format": "uuid" },
+                          "user_id": { "type": "string", "format": "uuid" },
+                          "role": { "type": "string" },
+                          "status": { "type": "string" },
+                          "joined_at": { "type": "string", "format": "date-time" },
+                          "updated_at": { "type": "string", "format": "date-time" },
+                          "user": { "$ref": "#/components/schemas/UserProfile" }
+                        }
+                      }
+                    },
+                    "page": { "type": "integer" },
+                    "pageSize": { "type": "integer" },
+                    "hasMore": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
     "/groups/{id}/join": {
       "post": {
         "tags": ["Groups"],
@@ -992,9 +1050,13 @@
         "tags": ["Group Events"],
         "summary": "List group events",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 } }
+        ],
         "responses": {
-          "200": { "description": "Event list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/GroupEvent" } } } } } } },
+          "200": { "description": "Event list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/GroupEvent" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       },
@@ -1049,9 +1111,13 @@
         "tags": ["Group Posts"],
         "summary": "List group posts",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 } }
+        ],
         "responses": {
-          "200": { "description": "Post list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } } } } } } },
+          "200": { "description": "Post list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       },
@@ -1104,21 +1170,6 @@
         }
       }
     },
-    "/groups/{id}/posts/{postId}/like": {
-      "post": {
-        "tags": ["Group Posts"],
-        "summary": "Toggle like on group post",
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "responses": {
-          "200": { "description": "Like toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "liked": { "type": "boolean" }, "likes_count": { "type": "integer" } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
     "/groups/{id}/posts/{postId}/reactions": {
       "get": {
         "tags": ["Group Posts"],
@@ -1142,6 +1193,23 @@
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      },
+      "post": {
+        "tags": ["Group Posts"],
+        "summary": "Add/update/remove a reaction on a group post",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["reaction_type"], "properties": { "reaction_type": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Reaction updated", "content": { "application/json": { "schema": { "type": "object", "properties": { "action": { "type": "string", "enum": ["added", "updated", "removed"] }, "reaction_type": { "type": "string" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
     },
@@ -1247,8 +1315,12 @@
         "tags": ["Marketplace"],
         "summary": "Get saved products",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
         "responses": {
-          "200": { "description": "Saved products", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } } } } } } },
+          "200": { "description": "Saved products", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Product" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -1269,9 +1341,13 @@
         "tags": ["Marketplace"],
         "summary": "Get seller payouts",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by payout status" }],
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by payout status" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
         "responses": {
-          "200": { "description": "Payout list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "200": { "description": "Payout list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -1325,8 +1401,12 @@
         "tags": ["Marketplace Admin"],
         "summary": "Get pending seller payouts (admin only)",
         "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
         "responses": {
-          "200": { "description": "Pending payouts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
+          "200": { "description": "Pending payouts", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -1585,9 +1665,13 @@
       "get": {
         "tags": ["Marketplace"],
         "summary": "Get product reviews",
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
         "responses": {
-          "200": { "description": "Reviews list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } }, "userReview": { "nullable": true, "allOf": [{ "$ref": "#/components/schemas/Review" }] } } } } } }
+          "200": { "description": "Reviews list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Review" } }, "userReview": { "nullable": true, "allOf": [{ "$ref": "#/components/schemas/Review" }] }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } }
         }
       },
       "post": {
@@ -1853,9 +1937,13 @@
         "tags": ["Orders"],
         "summary": "List orders",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "type", "in": "query", "schema": { "type": "string", "enum": ["purchases", "sales"] } }],
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["purchases", "sales"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 } }
+        ],
         "responses": {
-          "200": { "description": "Order list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } } } } } } },
+          "200": { "description": "Order list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
@@ -2096,18 +2184,6 @@
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/posts/{id}/like": {
-      "post": {
-        "tags": ["Posts"],
-        "summary": "Toggle like on a post",
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
-        "responses": {
-          "200": { "description": "Like toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "liked": { "type": "boolean" }, "likes_count": { "type": "integer" } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }
     },

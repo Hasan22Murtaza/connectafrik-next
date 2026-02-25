@@ -29,24 +29,38 @@ export interface GroupEvent {
   isAttending?: boolean
 }
 
-export const useGroupEvents = (groupId: string) => {
+export const useGroupEvents = (groupId: string, enabled: boolean = true) => {
   const { user } = useAuth()
   const [events, setEvents] = useState<GroupEvent[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
 
   const fetchEvents = useCallback(async () => {
-    if (!groupId) return
+    if (!groupId || !enabled) return
 
     try {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.get<{ data: GroupEvent[] }>(`/api/groups/${groupId}/events`)
-      const eventsData = res.data || []
+      const allEvents: GroupEvent[] = []
+      let page = 0
+      let hasMore = true
+
+      while (hasMore) {
+        const res = await apiClient.get<{ data: GroupEvent[]; hasMore?: boolean }>(
+          `/api/groups/${groupId}/events`,
+          { page, limit: 10 }
+        )
+        const pageEvents = res.data || []
+        allEvents.push(...pageEvents)
+        hasMore = Boolean(res.hasMore)
+        page += 1
+
+        if (pageEvents.length === 0) break
+      }
 
       setEvents(
-        eventsData.map((e: GroupEvent) => ({
+        allEvents.map((e: GroupEvent) => ({
           ...e,
           creator: e.creator ?? {
             id: e.creator_id,
@@ -64,11 +78,17 @@ export const useGroupEvents = (groupId: string) => {
     } finally {
       setLoading(false)
     }
-  }, [groupId, user?.id])
+  }, [groupId, user?.id, enabled])
 
   useEffect(() => {
+    if (!enabled) {
+      setEvents([])
+      setError(null)
+      setLoading(false)
+      return
+    }
     fetchEvents()
-  }, [fetchEvents])
+  }, [fetchEvents, enabled])
 
   const createEvent = async (eventData: {
     title: string

@@ -7,8 +7,10 @@ export async function GET(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
 
     const { searchParams } = new URL(request.url)
-    const limitParam = searchParams.get('limit')
-    const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 20, 50) : 20
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 50)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: memberships, error: membershipsError } = await supabase
       .from('group_memberships')
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!memberships || memberships.length === 0) {
-      return jsonResponse({ data: [] })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const groupIds = memberships.map((m) => m.group_id)
@@ -36,14 +38,14 @@ export async function GET(request: NextRequest) {
       .in('group_id', groupIds)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
-      .limit(limit)
+      .range(from, to)
 
     if (postsError) {
       return errorResponse(postsError.message, 400)
     }
 
     if (!postsData || postsData.length === 0) {
-      return jsonResponse({ data: [] })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const authorIds = [...new Set(postsData.map((p: any) => p.author_id))]
@@ -83,7 +85,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return jsonResponse({ data })
+    return jsonResponse({ data, page, pageSize: limit, hasMore: postsData.length === limit })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

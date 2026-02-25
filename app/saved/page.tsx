@@ -23,8 +23,24 @@ const SavedPage: React.FC = () => {
       setLoading(true)
 
       if (activeTab === 'products') {
-        const res = await apiClient.get<{ data: Product[] }>('/api/marketplace/saved')
-        setSavedProducts(res.data || [])
+        const allProducts: Product[] = []
+        let page = 0
+        let hasMore = true
+
+        while (hasMore) {
+          const res = await apiClient.get<{ data: Product[]; hasMore?: boolean }>(
+            '/api/marketplace/saved',
+            { page, limit: 20 }
+          )
+          const pageProducts = res.data || []
+          allProducts.push(...pageProducts)
+          hasMore = Boolean(res.hasMore)
+          page += 1
+
+          if (pageProducts.length === 0) break
+        }
+
+        setSavedProducts(allProducts)
       } else {
         setSavedPosts([])
       }

@@ -65,6 +65,7 @@ const GroupDetailPage: React.FC = () => {
     toggleLike, 
     deletePost, 
     updatePost, 
+    refetch: refetchGroupPosts,
   } = useGroupPosts(groupId || '')
   
   const [group, setGroup] = useState<Group | null>(null)
@@ -76,7 +77,7 @@ const GroupDetailPage: React.FC = () => {
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [isSticky, setIsSticky] = useState(false)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
-  const { members } = useMembers()
+  const { members } = useMembers(shareModalState.open)
   const feedShimmerCount = useFeedShimmerCount()
 
   const {
@@ -84,8 +85,9 @@ const GroupDetailPage: React.FC = () => {
     loading: eventsLoading,
     createEvent,
     toggleAttendance,
-    deleteEvent
-  } = useGroupEvents(groupId || '')
+    deleteEvent,
+    refetch: refetchGroupEvents,
+  } = useGroupEvents(groupId || '', activeTab === 'events')
 
   useEffect(() => {
     // Wait for auth to finish loading before fetching group
@@ -232,10 +234,8 @@ const GroupDetailPage: React.FC = () => {
   }, [shareModalState.postId, groupId])
 
   const handleEmojiReaction = useEmojiReaction({
-    reactionsTable: 'group_post_reactions',
-    postIdColumn: 'group_post_id',
-    postsTable: 'group_posts',
     eventName: 'group-reaction-updated',
+    reactionEndpoint: (postId: string) => `/api/groups/${groupId}/posts/${postId}/reactions`,
   })
 
   const handleShareGroup = async (groupid: string) => {
@@ -265,6 +265,19 @@ const GroupDetailPage: React.FC = () => {
       }
     }
   }
+
+  const handleTabChange = useCallback((tab: 'posts' | 'events' | 'media' | 'files' | 'about' | 'members') => {
+    setActiveTab(tab)
+
+    if (tab === 'posts' || tab === 'media' || tab === 'files') {
+      refetchGroupPosts()
+      return
+    }
+
+    if (tab === 'about') {
+      fetchGroup()
+    }
+  }, [refetchGroupPosts, fetchGroup])
 
   if (authLoading || loading) {
     return <GroupDetailPageShimmer />
@@ -394,7 +407,7 @@ const GroupDetailPage: React.FC = () => {
           {/* Navigation Tabs */}
           <div className="flex border-t border-gray-200 overflow-x-auto  scrollbar-hide">
             <button
-              onClick={() => setActiveTab('posts')}
+              onClick={() => handleTabChange('posts')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'posts'
                   ? 'text-primary-600 border-primary-600'
@@ -405,7 +418,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
            
             <button
-              onClick={() => setActiveTab('about')}
+              onClick={() => handleTabChange('about')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'about'
                   ? 'text-primary-600 border-primary-600'
@@ -416,7 +429,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('members')}
+              onClick={() => handleTabChange('members')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'members'
                   ? 'text-primary-600 border-primary-600'
@@ -427,7 +440,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('events')}
+              onClick={() => handleTabChange('events')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'events'
                   ? 'text-primary-600 border-primary-600'
@@ -441,7 +454,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('media')}
+              onClick={() => handleTabChange('media')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'media'
                   ? 'text-primary-600 border-primary-600'
@@ -455,7 +468,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('files')}
+              onClick={() => handleTabChange('files')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'files'
                   ? 'text-primary-600 border-primary-600'

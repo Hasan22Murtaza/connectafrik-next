@@ -7,6 +7,10 @@ export async function GET(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'purchases'
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 100)
+    const from = page * limit
+    const to = from + limit - 1
 
     const column = type === 'sales' ? 'seller_id' : 'buyer_id'
 
@@ -15,6 +19,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq(column, user.id)
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (error) throw error
 
@@ -36,7 +41,12 @@ export async function GET(request: NextRequest) {
         : undefined,
     }))
 
-    return jsonResponse({ data: orders })
+    return jsonResponse({
+      data: orders,
+      page,
+      pageSize: limit,
+      hasMore: orders.length === limit,
+    })
   } catch (err: any) {
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
       return unauthorizedResponse()

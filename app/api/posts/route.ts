@@ -101,17 +101,17 @@ export async function GET(request: NextRequest) {
       return false
     })
 
-    // Fetch like status for the current user
+    // Fetch reaction status for the current user
     let likedPostIds = new Set<string>()
     if (userId && filtered.length > 0) {
-      const { data: likesData } = await supabase
-        .from('likes')
+      const { data: reactionsByUser } = await supabase
+        .from('post_reactions')
         .select('post_id')
         .eq('user_id', userId)
         .in('post_id', filtered.map((p: any) => p.id))
 
-      if (likesData) {
-        likedPostIds = new Set(likesData.map((l: any) => l.post_id))
+      if (reactionsByUser) {
+        likedPostIds = new Set(reactionsByUser.map((r: any) => r.post_id))
       }
     }
 

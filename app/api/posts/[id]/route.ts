@@ -43,14 +43,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     let isLiked = false
     if (userId) {
-      const { data: likeData } = await supabase
-        .from('likes')
+      const { data: reactionData } = await supabase
+        .from('post_reactions')
         .select('id')
         .eq('post_id', postId)
         .eq('user_id', userId)
         .maybeSingle()
 
-      isLiked = !!likeData
+      isLiked = !!reactionData
     }
 
     const reactionsByType: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }> = {}

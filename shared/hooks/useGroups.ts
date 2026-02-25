@@ -10,6 +10,33 @@ export const useGroups = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const fetchAllPages = async <T,>(
+    endpoint: string,
+    params?: Record<string, string | number | boolean | undefined>,
+    limit: number = 50
+  ): Promise<T[]> => {
+    const allItems: T[] = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const queryParams: Record<string, string | number | boolean | undefined> = {
+        ...(params || {}),
+        page,
+        limit,
+      }
+
+      const res = await apiClient.get<{ data: T[]; hasMore?: boolean }>(endpoint, queryParams)
+      const items = res.data || []
+      allItems.push(...items)
+      hasMore = Boolean(res.hasMore)
+      page += 1
+      if (items.length === 0) break
+    }
+
+    return allItems
+  }
+
   const fetchGroups = async (filters?: {
     category?: string
     search?: string
@@ -26,8 +53,12 @@ export const useGroups = () => {
       if (filters?.country) params.country = filters.country
       if (filters?.limit) params.limit = filters.limit
 
-      const res = await apiClient.get<{ data: Group[] }>('/api/groups', Object.keys(params).length ? params : undefined)
-      setGroups(res.data || [])
+      const list = await fetchAllPages<Group>(
+        '/api/groups',
+        Object.keys(params).length ? params : undefined,
+        filters?.limit ? Math.min(filters.limit, 100) : 50
+      )
+      setGroups(list)
     } catch (err: any) {
       console.error('Groups fetch error:', err)
       setError(err.message)
@@ -45,8 +76,8 @@ export const useGroups = () => {
       setLoading(true)
       setError(null)
 
-      const res = await apiClient.get<{ data: Group[] }>('/api/groups/mine')
-      setGroups(res.data || [])
+      const list = await fetchAllPages<Group>('/api/groups/mine', undefined, 50)
+      setGroups(list)
     } catch (err: any) {
       console.error('My groups fetch error:', err)
       setError(err.message)
@@ -222,8 +253,7 @@ export const useGroups = () => {
     if (!user) return []
 
     try {
-      const res = await apiClient.get<{ data: Group[] }>('/api/groups/managed')
-      return res.data || []
+      return await fetchAllPages<Group>('/api/groups/managed', undefined, 50)
     } catch (err: any) {
       console.error('Managed groups fetch error:', err)
       return []
@@ -234,8 +264,7 @@ export const useGroups = () => {
     if (!user) return []
 
     try {
-      const res = await apiClient.get<{ data: any[] }>('/api/groups/activity', { limit })
-      return res.data || []
+      return await fetchAllPages<any>('/api/groups/activity', undefined, Math.min(limit, 50))
     } catch (err: any) {
       console.error('Recent activity fetch error:', err)
       return []

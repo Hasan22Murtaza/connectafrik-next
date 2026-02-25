@@ -9,6 +9,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: productId } = await params
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 100)
+    const from = page * limit
+    const to = from + limit - 1
 
     let userId: string | null = null
     let supabase
@@ -29,10 +34,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       `)
       .eq('product_id', productId)
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (error) {
       if (error.message?.includes('relation "product_reviews" does not exist')) {
-        return jsonResponse({ data: [], userReview: null })
+        return jsonResponse({ data: [], userReview: null, page, pageSize: limit, hasMore: false })
       }
       throw error
     }
@@ -53,9 +59,34 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       is_helpful: helpfulReviewIds.includes(review.id),
     }))
 
-    const userReview = userId ? reviews.find(r => r.user_id === userId) || null : null
+    let userReview = null
+    if (userId) {
+      const { data: currentUserReview } = await supabase
+        .from('product_reviews')
+        .select(`
+          *,
+          user:profiles!product_reviews_user_id_fkey(id, username, full_name, avatar_url)
+        `)
+        .eq('product_id', productId)
+        .eq('user_id', userId)
+        .maybeSingle()
 
-    return jsonResponse({ data: reviews, userReview })
+      if (currentUserReview) {
+        userReview = {
+          ...currentUserReview,
+          user: Array.isArray(currentUserReview.user) ? currentUserReview.user[0] : currentUserReview.user,
+          is_helpful: helpfulReviewIds.includes(currentUserReview.id),
+        }
+      }
+    }
+
+    return jsonResponse({
+      data: reviews,
+      userReview,
+      page,
+      pageSize: limit,
+      hasMore: reviews.length === limit,
+    })
   } catch (err: any) {
     console.error('GET /api/marketplace/[id]/reviews error:', err)
     return errorResponse(err.message || 'Failed to fetch reviews', 500)

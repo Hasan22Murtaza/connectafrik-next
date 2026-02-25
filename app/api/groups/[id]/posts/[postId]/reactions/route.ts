@@ -120,3 +120,88 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return errorResponse(err.message || 'Failed to fetch reactions', 500)
   }
 }
+
+export async function POST(request: NextRequest, context: RouteContext) {
+  try {
+    const { postId } = await context.params
+    const { user, supabase } = await getAuthenticatedUser(request)
+    const { reaction_type } = await request.json()
+
+    if (!reaction_type) {
+      return errorResponse('reaction_type is required', 400)
+    }
+
+    const { data: existing, error: checkError } = await supabase
+      .from('group_post_reactions')
+      .select('id, reaction_type')
+      .eq('group_post_id', postId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (checkError) return errorResponse(checkError.message, 400)
+
+    if (existing && existing.reaction_type === reaction_type) {
+      const { error: deleteError } = await supabase
+        .from('group_post_reactions')
+        .delete()
+        .eq('group_post_id', postId)
+        .eq('user_id', user.id)
+        .eq('reaction_type', reaction_type)
+
+      if (deleteError) return errorResponse(deleteError.message, 400)
+
+      const { data: post } = await supabase
+        .from('group_posts')
+        .select('likes_count')
+        .eq('id', postId)
+        .single()
+
+      if (post) {
+        await supabase
+          .from('group_posts')
+          .update({ likes_count: Math.max(0, (post.likes_count || 0) - 1) })
+          .eq('id', postId)
+      }
+
+      return jsonResponse({ action: 'removed', reaction_type })
+    }
+
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from('group_post_reactions')
+        .update({ reaction_type })
+        .eq('group_post_id', postId)
+        .eq('user_id', user.id)
+
+      if (updateError) return errorResponse(updateError.message, 400)
+      return jsonResponse({ action: 'updated', reaction_type })
+    }
+
+    const { error: insertError } = await supabase
+      .from('group_post_reactions')
+      .insert({ group_post_id: postId, user_id: user.id, reaction_type })
+
+    if (insertError) return errorResponse(insertError.message, 400)
+
+    const { data: post } = await supabase
+      .from('group_posts')
+      .select('likes_count')
+      .eq('id', postId)
+      .single()
+
+    if (post) {
+      await supabase
+        .from('group_posts')
+        .update({ likes_count: (post.likes_count || 0) + 1 })
+        .eq('id', postId)
+    }
+
+    return jsonResponse({ action: 'added', reaction_type })
+  } catch (error: unknown) {
+    const err = error as { message?: string }
+    if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
+      return unauthorizedResponse()
+    }
+    return errorResponse(err.message || 'Failed to handle reaction', 500)
+  }
+}

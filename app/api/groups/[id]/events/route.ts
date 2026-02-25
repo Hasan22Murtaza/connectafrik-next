@@ -8,12 +8,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id: groupId } = await context.params
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '10', 10) || 10, 1), 50)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data: eventsData, error: eventsError } = await supabase
       .from('group_events')
       .select('*')
       .eq('group_id', groupId)
       .order('start_time', { ascending: true })
+      .range(from, to)
 
     if (eventsError) {
       return errorResponse(eventsError.message, 400)
@@ -21,7 +27,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const events = eventsData || []
     if (events.length === 0) {
-      return jsonResponse({ data: [] })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
     }
 
     const creatorIds = [...new Set(events.map((e: { creator_id: string }) => e.creator_id))]
@@ -48,7 +54,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
       isAttending: attendingEventIds.has(e.id),
     }))
 
-    return jsonResponse({ data: result })
+    return jsonResponse({
+      data: result,
+      page,
+      pageSize: limit,
+      hasMore: events.length === limit,
+    })
   } catch (error: unknown) {
     const err = error as { message?: string }
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {

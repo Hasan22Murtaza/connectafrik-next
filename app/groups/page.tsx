@@ -16,7 +16,7 @@ import {
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import toast from "react-hot-toast";
 import { getReactionTypeFromEmoji } from "@/shared/utils/reactionUtils";
 import {
@@ -157,114 +157,47 @@ const GroupsPage: React.FC = () => {
 
     try {
       const reactionType = getReactionTypeFromEmoji(emoji);
-
-      // Check if user already has a reaction for this post
-      const { data: existingReaction, error: checkError } = await supabase
-        .from("group_post_reactions")
-        .select("id, reaction_type")
-        .eq("group_post_id", postId)
-        .eq("user_id", user.id)
-        .single();
-
-      if (checkError && checkError.code !== "PGRST116") {
-        console.error("Error checking existing reaction:", checkError);
-        toast.error("Failed to check reaction");
+      const targetPost = recentActivity.find((p: any) => p.id === postId);
+      if (!targetPost?.group_id) {
+        toast.error("Post not found");
         return;
       }
 
-      // If user already reacted with the same type, remove it (toggle off)
-      if (existingReaction && existingReaction.reaction_type === reactionType) {
-        await supabase
-          .from("group_post_reactions")
-          .delete()
-          .eq("group_post_id", postId)
-          .eq("user_id", user.id)
-          .eq("reaction_type", reactionType);
-
-        // Decrement likes_count
-        const { data: currentPost } = await supabase
-          .from("group_posts")
-          .select("likes_count")
-          .eq("id", postId)
-          .single();
-
-        if (currentPost) {
-          await supabase
-            .from("group_posts")
-            .update({ likes_count: Math.max(0, (currentPost.likes_count || 0) - 1) })
-            .eq("id", postId);
-        }
-
-        setRecentActivity((prev: any[]) =>
-          prev.map((p: any) =>
-            p.id === postId
-              ? { ...p, likes_count: Math.max(0, p.likes_count - 1), isLiked: false }
-              : p,
-          ),
-        );
-
-        toast.success("Reaction removed");
-        window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
-        return;
-      }
-
-      // If user has a different reaction, update it (no count change)
-      if (existingReaction) {
-        await supabase
-          .from("group_post_reactions")
-          .update({ reaction_type: reactionType })
-          .eq("group_post_id", postId)
-          .eq("user_id", user.id);
-
-        toast.success("Reaction updated");
-        window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
-        return;
-      }
-
-      // Insert new reaction
-      const { error: insertError } = await supabase
-        .from("group_post_reactions")
-        .insert({
-          group_post_id: postId,
-          user_id: user.id,
-          reaction_type: reactionType,
-        });
-
-      if (insertError) {
-        console.error("Error inserting reaction:", insertError);
-        toast.error("Failed to save reaction");
-        return;
-      }
-
-      // Increment likes_count
-      const { data: currentPost } = await supabase
-        .from("group_posts")
-        .select("likes_count")
-        .eq("id", postId)
-        .single();
-
-      if (currentPost) {
-        await supabase
-          .from("group_posts")
-          .update({ likes_count: (currentPost.likes_count || 0) + 1 })
-          .eq("id", postId);
-      }
+      const response = await apiClient.post<{ action: 'added' | 'updated' | 'removed'; reaction_type: string }>(
+        `/api/groups/${targetPost.group_id}/posts/${postId}/reactions`,
+        { reaction_type: reactionType }
+      );
 
       setRecentActivity((prev: any[]) =>
         prev.map((p: any) =>
           p.id === postId
-            ? { ...p, likes_count: p.likes_count + 1, isLiked: true }
+            ? {
+                ...p,
+                likes_count:
+                  response.action === "added"
+                    ? p.likes_count + 1
+                    : response.action === "removed"
+                    ? Math.max(0, p.likes_count - 1)
+                    : p.likes_count,
+                isLiked: response.action === "removed" ? false : true,
+              }
             : p,
         ),
       );
 
-      toast.success("Reaction saved!");
+      if (response.action === "removed") {
+        toast.success("Reaction removed");
+      } else if (response.action === "updated") {
+        toast.success("Reaction updated");
+      } else {
+        toast.success("Reaction saved!");
+      }
       window.dispatchEvent(new CustomEvent("group-reaction-updated", { detail: { postId } }));
     } catch (err: any) {
       console.error("Error handling emoji reaction:", err);
       toast.error("Something went wrong");
     }
-  }, [user?.id]);
+  }, [user?.id, recentActivity]);
 
   const handlePostComment = (postId: string) => {
     setShowCommentsFor(showCommentsFor === postId ? null : postId);

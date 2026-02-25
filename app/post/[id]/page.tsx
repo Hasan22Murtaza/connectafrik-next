@@ -37,9 +37,9 @@ interface PostResponse {
   data: Post
 }
 
-interface LikeResponse {
-  liked: boolean
-  likes_count: number
+interface ReactionResponse {
+  action: 'added' | 'updated' | 'removed'
+  reaction_type: string
 }
 
 const PostDetailPage: React.FC = () => {
@@ -94,12 +94,22 @@ const PostDetailPage: React.FC = () => {
     }
 
     try {
-      const response = await apiClient.post<LikeResponse>(`/api/posts/${postId}/like`)
-
-      setPost((prev) =>
-        prev ? { ...prev, likes_count: response.likes_count } : null
+      const response = await apiClient.post<ReactionResponse>(
+        `/api/posts/${postId}/reaction`,
+        { reaction_type: 'like' }
       )
-      setIsLiked(response.liked)
+
+      setPost((prev) => {
+        if (!prev) return null
+        const nextLikes =
+          response.action === 'added'
+            ? prev.likes_count + 1
+            : response.action === 'removed'
+            ? Math.max(0, prev.likes_count - 1)
+            : prev.likes_count
+        return { ...prev, likes_count: nextLikes }
+      })
+      setIsLiked(response.action === 'removed' ? false : true)
     } catch (error: any) {
       console.error('Error toggling like:', error)
       toast.error('Failed to update like')

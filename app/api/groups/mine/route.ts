@@ -11,6 +11,11 @@ const GROUP_SELECT = `
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10) || 50, 1), 100)
+    const from = page * limit
+    const to = from + limit - 1
 
     const { data, error } = await supabase
       .from('groups')
@@ -19,6 +24,7 @@ export async function GET(request: NextRequest) {
       .eq('memberships.user_id', user.id)
       .eq('memberships.status', 'active')
       .order('created_at', { ascending: false })
+      .range(from, to)
 
     if (error) {
       return errorResponse(error.message, 400)
@@ -66,7 +72,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return jsonResponse({ data: groups })
+    return jsonResponse({ data: groups, page, pageSize: limit, hasMore: groups.length === limit })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

@@ -29,8 +29,10 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') || undefined
     const search = searchParams.get('search') || undefined
     const country = searchParams.get('country') || undefined
-    const limitParam = searchParams.get('limit')
-    const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 50, 100) : 50
+    const page = parseInt(searchParams.get('page') || '0', 10)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '50', 10) || 50, 1), 100)
+    const from = page * limit
+    const to = from + limit - 1
 
     let query = supabase
       .from('groups')
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .order('member_count', { ascending: false })
       .order('created_at', { ascending: false })
-      .limit(limit)
+      .range(from, to)
 
     if (category) {
       query = query.eq('category', category)
@@ -82,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return jsonResponse({ data: processed })
+    return jsonResponse({ data: processed, page, pageSize: limit, hasMore: groups.length === limit })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch groups', 500)
   }

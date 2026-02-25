@@ -185,11 +185,28 @@ export async function getSellerPayouts(
   status?: SellerPayout['status']
 ): Promise<SellerPayout[]> {
   try {
-    const url = status
-      ? `/api/marketplace/payouts?status=${encodeURIComponent(status)}`
-      : '/api/marketplace/payouts'
-    const result = await apiClient.get<{ data: SellerPayout[] }>(url)
-    return result.data || []
+    const allPayouts: SellerPayout[] = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const params: Record<string, string | number> = { page, limit: 20 }
+      if (status) params.status = status
+
+      const result = await apiClient.get<{ data: SellerPayout[]; hasMore?: boolean }>(
+        '/api/marketplace/payouts',
+        params
+      )
+
+      const pagePayouts = result.data || []
+      allPayouts.push(...pagePayouts)
+      hasMore = Boolean(result.hasMore)
+      page += 1
+
+      if (pagePayouts.length === 0) break
+    }
+
+    return allPayouts
   } catch (error) {
     console.error('Error fetching seller payouts:', error)
     return []
@@ -201,8 +218,24 @@ export async function getSellerPayouts(
  */
 export async function getPendingPayouts(): Promise<SellerPayout[]> {
   try {
-    const result = await apiClient.get<{ data: SellerPayout[] }>('/api/marketplace/admin/pending-payouts')
-    return result.data || []
+    const allPayouts: SellerPayout[] = []
+    let page = 0
+    let hasMore = true
+
+    while (hasMore) {
+      const result = await apiClient.get<{ data: SellerPayout[]; hasMore?: boolean }>(
+        '/api/marketplace/admin/pending-payouts',
+        { page, limit: 20 }
+      )
+      const pagePayouts = result.data || []
+      allPayouts.push(...pagePayouts)
+      hasMore = Boolean(result.hasMore)
+      page += 1
+
+      if (pagePayouts.length === 0) break
+    }
+
+    return allPayouts
   } catch (error) {
     console.error('Error fetching pending payouts:', error)
     return []
