@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const { data: callMessages, error } = await serviceClient
       .from('chat_messages')
-      .select('thread_id, message_type, metadata, created_at')
+      .select('thread_id, message_type, created_at')
       .in('thread_id', threadIds)
       .in('message_type', CALL_TYPES)
       .eq('is_deleted', false)
@@ -100,7 +100,6 @@ export async function GET(request: NextRequest) {
         thread_id: r.thread_id,
         created_at: r.created_at,
         message_type: r.message_type,
-        metadata: r.metadata || {},
         thread_name: thread?.title || thread?.name || null,
         contact_id: otherId,
         contact_name: contactName,
