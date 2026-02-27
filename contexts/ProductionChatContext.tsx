@@ -1,16 +1,13 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
-import { apiClient } from '@/lib/api-client'
 import { supabase } from '@/lib/supabase'
 import {
   initializePresence,
   updatePresence as updatePresenceStatus,
   subscribeToPresenceChanges,
-  calculateStatusFromLastSeen,
   cleanup as cleanupPresence,
 } from '@/shared/services/presenceService'
 
@@ -69,7 +66,6 @@ export const useProductionChat = () => {
 }
 
 export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const pathname = usePathname()
   const { user } = useAuth()
   const [presence, setPresence] = useState<Record<string, 'online' | 'away' | 'busy' | 'offline'>>({})
   const [callRequests, setCallRequests] = useState<Record<string, CallRequest>>({})
@@ -621,33 +617,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       supabase.removeChannel(channel)
     }
   }, [currentUser])
-
-  useEffect(() => {
-    if (!user?.id) return
-    if (pathname?.startsWith('/user/')) return
-
-    const loadAndUpdatePresence = async () => {
-      try {
-        const res = await apiClient.get<{ data: any[] }>('/api/friends')
-        const friends = res.data || []
-
-        friends.forEach((friend: any) => {
-          if (friend?.id) {
-            const calculatedStatus = calculateStatusFromLastSeen(friend.last_seen)
-            updatePresence(friend.id, calculatedStatus)
-          }
-        })
-      } catch (error) {
-        console.error('Failed to load initial presence:', error)
-      }
-    }
-
-    loadAndUpdatePresence()
-
-    const interval = setInterval(loadAndUpdatePresence, 30000)
-
-    return () => clearInterval(interval)
-  }, [user?.id, updatePresence, pathname])
 
   useEffect(() => {
     if (!user?.id) return

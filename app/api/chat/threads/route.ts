@@ -13,7 +13,7 @@ const THREAD_SELECT = `
   created_at,
   updated_at,
   chat_participants(
-    user:profiles!user_id(id, username, full_name, avatar_url)
+    user:profiles!user_id(id, username, full_name, avatar_url, status)
   )
 `
 
@@ -38,6 +38,7 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
               username: participant.name ?? null,
               full_name: participant.name ?? null,
               avatar_url: participant.avatar_url ?? null,
+              status: participant.status ?? 'offline',
             },
           }))
         : [],

@@ -69,7 +69,8 @@
           "avatar_url": { "type": "string", "nullable": true },
           "bio": { "type": "string", "nullable": true },
           "country": { "type": "string", "nullable": true },
-          "birthday": { "type": "string", "format": "date", "nullable": true }
+          "birthday": { "type": "string", "format": "date", "nullable": true },
+          "status": { "type": "string", "enum": ["online", "away", "busy", "offline"], "nullable": true }
         }
       },
       "Thread": {
@@ -349,11 +350,11 @@
                           "thread_id": { "type": "string", "format": "uuid" },
                           "created_at": { "type": "string", "format": "date-time" },
                           "message_type": { "type": "string" },
-                          "metadata": { "type": "object" },
                           "thread_name": { "type": "string", "nullable": true },
                           "contact_id": { "type": "string", "format": "uuid", "nullable": true },
                           "contact_name": { "type": "string", "nullable": true },
-                          "contact_avatar_url": { "type": "string", "nullable": true }
+                          "contact_avatar_url": { "type": "string", "nullable": true },
+                          "status": { "type": "string", "enum": ["online", "away", "busy", "offline"] }
                         }
                       }
                     },
