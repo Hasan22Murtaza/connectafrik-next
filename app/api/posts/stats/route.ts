@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { CULTURE_SUBCATEGORIES } from '@/shared/constants/culture'
+import { POLITICS_SUBCATEGORIES } from '@/shared/constants/politics'
 
 export async function GET(request: NextRequest) {
   try {
@@ -89,7 +91,14 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.participants - a.participants)
       .slice(0, 5)
 
-    const tagCounts: Record<string, number> = {}
+    const baseTagCounts = (
+      category === 'culture' ? CULTURE_SUBCATEGORIES : POLITICS_SUBCATEGORIES
+    ).reduce<Record<string, number>>((acc, item) => {
+      acc[item.slug] = 0
+      return acc
+    }, {})
+
+    const tagCounts: Record<string, number> = { ...baseTagCounts }
     for (const p of posts) {
       if (p.tags && Array.isArray(p.tags)) {
         for (const tag of p.tags) {
