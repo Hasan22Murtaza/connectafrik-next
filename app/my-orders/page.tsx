@@ -342,7 +342,8 @@ const MyOrders: React.FC = () => {
   const activeStats = activeTab === "purchases" ? stats.purchases : stats.sales;
   const primaryLabel = activeTab === "purchases" ? "Total Purchases" : "Total Sales";
   const amountLabel = activeTab === "purchases" ? "Total Spent" : "Earnings";
-  const amountValue = activeTab === "purchases" ? activeStats.totalSpent : activeStats.totalEarned;
+  const amountValue =
+    activeTab === "purchases" ? stats.purchases.totalSpent : stats.sales.totalEarned;
 
   return (
     <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
