@@ -1951,6 +1951,18 @@
         }
       }
     },
+    "/orders/stats": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Get order statistics for authenticated user",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Order statistics", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean", "example": true }, "data": { "type": "object", "properties": { "purchases": { "type": "object", "properties": { "total": { "type": "integer" }, "pending": { "type": "integer" }, "completed": { "type": "integer" }, "totalSpent": { "type": "number" } } }, "sales": { "type": "object", "properties": { "total": { "type": "integer" }, "pending": { "type": "integer" }, "completed": { "type": "integer" }, "totalEarned": { "type": "number" } } } } }, "message": { "type": "string" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
     "/orders/{id}": {
       "get": {
         "tags": ["Orders"],
