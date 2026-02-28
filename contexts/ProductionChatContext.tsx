@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import {
   initializePresence,
   updatePresence as updatePresenceStatus,
@@ -590,9 +591,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           table: 'chat_messages',
           filter: 'message_type=eq.call_request'
         },
-        (payload) => {
+        async (payload) => {
           const msg = payload.new as any
           if (msg.sender_id === currentUser.id) return
+
+          // Guard against cross-thread/cross-team ringing:
+          // only dispatch incoming calls for threads the current user can access.
+          try {
+            await apiClient.get<{ data: unknown }>(`/api/chat/threads/${msg.thread_id}`)
+          } catch {
+            return
+          }
 
           const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
           if (metadata?.roomId && metadata?.callType) {
