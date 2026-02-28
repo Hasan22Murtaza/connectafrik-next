@@ -33,6 +33,7 @@ interface CallRequest {
   callerName?: string
   roomId?: string
   token?: string
+  targetUserId?: string
 }
 
 interface ProductionChatContextType {
@@ -40,7 +41,7 @@ interface ProductionChatContextType {
   updatePresence: (userId: string, status: 'online' | 'away' | 'busy' | 'offline') => void
   startChatWithMembers: (participants: ChatParticipant[], options?: ThreadOptions) => Promise<string | null>
   openThread: (threadId: string) => void
-  startCall: (threadId: string, type: 'audio' | 'video') => Promise<void>
+  startCall: (threadId: string, type: 'audio' | 'video', targetUserId?: string) => Promise<void>
   callRequests: Record<string, CallRequest>
   currentUser: { id: string; name?: string } | null
   clearCallRequest: (threadId: string) => void
@@ -303,8 +304,26 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [currentUser, openThread])
 
-  const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
+  const startCall = useCallback(async (threadId: string, type: 'audio' | 'video', targetUserId?: string) => {
     try {
+      const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
+        `/api/chat/threads/${threadId}/participants`,
+        { exclude_user_id: currentUser?.id || '' }
+      )
+      const participants = participantsResponse?.data ?? []
+
+      let resolvedTargetUserId = (targetUserId || '').trim()
+      if (resolvedTargetUserId) {
+        const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
+        if (!targetExists) {
+          throw new Error('Recipient ID not found in this chat. Call not sent.')
+        }
+      } else if (participants.length === 1 && participants[0]?.user_id) {
+        resolvedTargetUserId = participants[0].user_id
+      } else {
+        throw new Error('Recipient ID not found. Call not sent.')
+      }
+
       const roomResponse = await fetch('/api/videosdk/room', {
         method: 'POST',
         headers: {
@@ -353,7 +372,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         callerId: currentUser?.id || '',
         callerName: currentUser?.name || 'Unknown',
         roomId,
-        token
+        token,
+        targetUserId: resolvedTargetUserId
       }
 
       setCallRequests(prev => ({
@@ -407,6 +427,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
               token,
               callerId: currentUser?.id,
               callerName: currentUser?.name,
+              targetUserId: resolvedTargetUserId,
               timestamp: new Date().toISOString()
             }
           },
@@ -435,7 +456,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, roomId, token } = event.detail
+      const { threadId, type, callerId, callerName, roomId, token, targetUserId } = event.detail
+      if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
       
       setCallRequests(prev => ({
         ...prev,
@@ -445,7 +467,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerId,
           callerName,
           roomId,
-          token
+          token,
+          targetUserId
         }
       }))
     }
@@ -455,7 +478,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       window.removeEventListener('incomingCall', handleIncomingCall as EventListener)
     }
-  }, [])
+  }, [currentUser?.id])
 
   useEffect(() => {
     const loadMessagesForThreads = async () => {
@@ -495,6 +518,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
         if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
           const metadata = message.metadata as any
+          if (metadata?.targetUserId && metadata.targetUserId !== currentUser.id) {
+            return
+          }
           if (metadata?.roomId && metadata?.callType) {
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('incomingCall', {
@@ -504,7 +530,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   callerId: message.sender_id,
                   callerName: message.sender?.name || metadata?.callerName || 'Unknown',
                   roomId: metadata.roomId,
-                  token: metadata.token
+                  token: metadata.token,
+                  targetUserId: metadata.targetUserId
                 }
               }))
             }
@@ -604,6 +631,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           }
 
           const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+          if (metadata?.targetUserId && metadata.targetUserId !== currentUser.id) {
+            return
+          }
           if (metadata?.roomId && metadata?.callType) {
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('incomingCall', {
@@ -613,7 +643,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   callerId: msg.sender_id,
                   callerName: metadata.callerName || 'Unknown',
                   roomId: metadata.roomId,
-                  token: metadata.token
+                  token: metadata.token,
+                  targetUserId: metadata.targetUserId
                 }
               }))
             }
