@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '0', 10)
-    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 50)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '5', 10) || 5, 1), 50)
     const from = page * limit
     const to = from + limit - 1
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, ChevronLeft, ChevronRight, Play } from 'lucide-react'
-import { getStoryRecommendations, getUserStories, getStoriesByUser, Story } from '@/features/social/services/storiesService'
+import { getStoryRecommendations, getUserStories, Story } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import StoryViewer from './StoryViewer'
@@ -268,6 +268,7 @@ const StoriesBar: React.FC = () => {
 
   const [stories, setStories] = useState<Story[]>([])
   const [userOwnStories, setUserOwnStories] = useState<Story[]>([])
+  const [storiesByUser, setStoriesByUser] = useState<Record<string, Story[]>>({})
   const [loading, setLoading] = useState(true)
   const [isViewerOpen, setIsViewerOpen] = useState(false)
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0)
@@ -297,29 +298,54 @@ const StoriesBar: React.FC = () => {
     scrollContainerRef.current?.scrollBy({ left: direction === 'left' ? -240 : 240, behavior: 'smooth' })
   }, [])
 
+  const normalizeStory = useCallback((story: any): Story => ({
+    ...story,
+    id: story?.id || story?.story_id || '',
+    user_id: story?.user_id || '',
+    user_name: story?.username || story?.user_name || 'Unknown User',
+    user_avatar: story?.profile_picture_url || story?.user_avatar || '',
+    username: story?.username || story?.user_name || '',
+    profile_picture_url: story?.profile_picture_url || story?.user_avatar || '',
+    background_color: story?.background_color || '#2563eb',
+    view_count: story?.view_count || 0,
+    has_viewed: Boolean(story?.has_viewed),
+  }), [])
+
   // Process raw data into state (reusable helper)
   const processStoryData = useCallback((storyRecommendations: Story[], ownStories: Story[]) => {
-    const storiesByUser = new Map<string, Story>()
-    storyRecommendations.forEach(story => {
-      const existing = storiesByUser.get(story.user_id)
+    const normalizedRecommendations = storyRecommendations
+      .map(normalizeStory)
+      .filter((story) => Boolean(story.id && story.user_id))
+
+    const groupedStories = normalizedRecommendations.reduce<Record<string, Story[]>>((acc, story) => {
+      if (!acc[story.user_id]) acc[story.user_id] = []
+      acc[story.user_id].push(story)
+      return acc
+    }, {})
+
+    Object.keys(groupedStories).forEach((userId) => {
+      groupedStories[userId].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+    })
+
+    const latestStoryByUser = new Map<string, Story>()
+    normalizedRecommendations.forEach(story => {
+      const existing = latestStoryByUser.get(story.user_id)
       if (!existing || new Date(story.created_at) > new Date(existing.created_at)) {
-        storiesByUser.set(story.user_id, {
-          ...story,
-          user_name: story.username || story.user_name || 'Unknown User',
-          user_avatar: story.profile_picture_url || story.user_avatar || '',
-          username: story.username,
-          profile_picture_url: story.profile_picture_url
-        })
+        latestStoryByUser.set(story.user_id, story)
       }
     })
 
-    setStories(Array.from(storiesByUser.values()))
-    setUserOwnStories(ownStories.map(story => ({
+    setStoriesByUser(groupedStories)
+    setStories(Array.from(latestStoryByUser.values()))
+    setUserOwnStories(ownStories.map((story) => normalizeStory({
       ...story,
       user_name: story.user_name || profile?.full_name || user?.user_metadata?.full_name || 'You',
-      user_avatar: story.user_avatar || profile?.avatar_url || user?.user_metadata?.avatar_url || ''
+      user_avatar: story.user_avatar || profile?.avatar_url || user?.user_metadata?.avatar_url || '',
+      has_viewed: true,
     })))
-  }, [profile?.full_name, profile?.avatar_url, user?.user_metadata?.full_name, user?.user_metadata?.avatar_url])
+  }, [normalizeStory, profile?.full_name, profile?.avatar_url, user?.user_metadata?.full_name, user?.user_metadata?.avatar_url])
 
   // Initial load — shows skeleton only the first time
   const loadStories = useCallback(async () => {
@@ -393,20 +419,16 @@ const StoriesBar: React.FC = () => {
 
   const handleCreateStory = useCallback(() => router.push('/stories/create'), [router])
 
-  const handleViewStory = useCallback(async (storyIndex: number) => {
+  const handleViewStory = useCallback((storyIndex: number) => {
     const selectedStory = stories[storyIndex]
-    if (!selectedStory || !user?.id) return
+    if (!selectedStory) return
 
-    try {
-      const userStories = await getStoriesByUser(selectedStory.user_id, user.id)
-      setViewerStories(userStories)
-    } catch (error) {
-      console.error('Error loading user stories:', error)
-      setViewerStories([selectedStory])
-    }
+    const userStories = (storiesByUser[selectedStory.user_id] || [selectedStory]).filter((story) => Boolean(story.id))
+    if (userStories.length === 0) return
+    setViewerStories(userStories)
     setSelectedStoryIndex(0)
     setIsViewerOpen(true)
-  }, [stories, user?.id])
+  }, [stories, storiesByUser])
 
   const handleViewOwnStories = useCallback(() => {
     if (!user || userOwnStories.length === 0) return
