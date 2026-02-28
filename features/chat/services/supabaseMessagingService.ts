@@ -863,10 +863,20 @@ export const supabaseMessagingService = {
             const callType = metadata?.callType || 'audio'
             const roomId = metadata?.roomId
             const token = metadata?.token
+            const targetUserId = metadata?.targetUserId
             const callerId = currentUser.id
             const callerName = currentUser.name || metadata?.callerName || 'Someone'
 
-            for (const participant of participants) {
+            const targetParticipants = targetUserId
+              ? participants.filter((participant) => participant.user_id === targetUserId)
+              : participants
+
+            if (targetUserId && targetParticipants.length === 0) {
+              console.warn('Skipping call notification: target user id not found in thread participants')
+              return formattedMessage
+            }
+
+            for (const participant of targetParticipants) {
               try {
                 if (roomId && token && callerId) {
                   await notificationService.sendNotification({

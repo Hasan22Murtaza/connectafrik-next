@@ -29,8 +29,27 @@ export interface StoryGroup {
 }
 
 interface ActiveStoriesResponse {
-  data: Story[]
+  data: Array<Story | StoryGroupResponse>
   hasMore?: boolean
+}
+
+interface StoryGroupResponse {
+  user_id: string
+  username?: string
+  user_name?: string
+  user_avatar?: string
+  profile_picture_url?: string
+  stories: Story[]
+}
+
+const flattenStoryData = (items: Array<Story | StoryGroupResponse>): Story[] => {
+  if (!Array.isArray(items) || items.length === 0) return []
+
+  if ('stories' in items[0]) {
+    return (items as StoryGroupResponse[]).flatMap((group) => group.stories || [])
+  }
+
+  return items as Story[]
 }
 
 export const useStories = () => {
@@ -54,8 +73,8 @@ export const useStories = () => {
       let hasMore = true
 
       while (hasMore) {
-        const response = await apiClient.get<ActiveStoriesResponse>('/api/stories', { page, limit: 20 })
-        const pageStories = response.data || []
+        const response = await apiClient.get<ActiveStoriesResponse>('/api/stories', { page, limit: 5 })
+        const pageStories = flattenStoryData(response.data || [])
         storiesData.push(...pageStories)
         hasMore = Boolean(response.hasMore)
         page += 1

@@ -87,18 +87,39 @@ interface SingleResponse<T> {
   data: T
 }
 
+interface StoryGroupResponse {
+  user_id: string
+  username?: string
+  user_name?: string
+  user_avatar?: string
+  profile_picture_url?: string
+  has_unviewed?: boolean
+  stories: Story[]
+}
+
+const flattenStoryData = (items: Array<Story | StoryGroupResponse>): Story[] => {
+  if (!Array.isArray(items) || items.length === 0) return []
+
+  if ('stories' in items[0]) {
+    return (items as StoryGroupResponse[]).flatMap((group) => group.stories || [])
+  }
+
+  return items as Story[]
+}
+
 export async function getStoryRecommendations(_userId: string): Promise<Story[]> {
   const allStories: Story[] = []
   let page = 0
   let hasMore = true
 
   while (hasMore) {
-    const res = await apiClient.get<ListResponse<Story>>('/api/stories', { page, limit: 20 })
+    const res = await apiClient.get<ListResponse<Story | StoryGroupResponse>>('/api/stories', { page, limit: 5 })
     const items = res.data || []
-    allStories.push(...items)
+    const flattened = flattenStoryData(items)
+    allStories.push(...flattened)
     hasMore = Boolean(res.hasMore)
     page += 1
-    if (items.length === 0) break
+    if (flattened.length === 0) break
   }
 
   return allStories
@@ -113,30 +134,13 @@ export async function deleteStory(storyId: string): Promise<void> {
   await apiClient.delete(`/api/stories/${storyId}`)
 }
 
-export async function getStoriesByUser(userId: string, _viewerId: string): Promise<Story[]> {
-  const allStories: Story[] = []
-  let page = 0
-  let hasMore = true
-
-  while (hasMore) {
-    const res = await apiClient.get<ListResponse<Story>>(`/api/stories/user/${userId}`, { page, limit: 20 })
-    const items = res.data || []
-    allStories.push(...items)
-    hasMore = Boolean(res.hasMore)
-    page += 1
-    if (items.length === 0) break
-  }
-
-  return allStories
-}
-
 export async function getUserStories(_userId: string): Promise<Story[]> {
   const allStories: Story[] = []
   let page = 0
   let hasMore = true
 
   while (hasMore) {
-    const res = await apiClient.get<ListResponse<Story>>('/api/stories/mine', { page, limit: 20 })
+    const res = await apiClient.get<ListResponse<Story>>('/api/stories/mine', { page, limit: 5 })
     const items = res.data || []
     allStories.push(...items)
     hasMore = Boolean(res.hasMore)

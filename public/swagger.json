@@ -2279,14 +2279,15 @@
     "/stories": {
       "get": {
         "tags": ["Stories"],
-        "summary": "Get story recommendations",
+        "summary": "Get stories feed (grouped by user) or user stories",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
+          { "name": "userId", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Optional user id to fetch stories for a specific user" },
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } }
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 5, "minimum": 1, "maximum": 50 } }
         ],
         "responses": {
-          "200": { "description": "Story feed", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
+          "200": { "description": "When userId is absent, data is grouped by user with stories[]; when userId is present, data is an array of Story", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "oneOf": [ { "$ref": "#/components/schemas/Story" }, { "type": "object", "properties": { "user_id": { "type": "string", "format": "uuid" }, "username": { "type": "string" }, "user_name": { "type": "string" }, "user_avatar": { "type": "string" }, "profile_picture_url": { "type": "string" }, "has_unviewed": { "type": "boolean" }, "latest_story_at": { "type": "string", "format": "date-time" }, "stories": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } } }, "required": ["user_id", "stories"] } ] } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       },
@@ -2311,7 +2312,7 @@
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } }
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 5, "minimum": 1, "maximum": 50 } }
         ],
         "responses": {
           "200": { "description": "User's stories", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
@@ -2326,22 +2327,6 @@
         "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Story analytics aggregates", "content": { "application/json": { "schema": { "type": "object", "properties": { "totalStories": { "type": "integer" }, "totalViews": { "type": "integer" }, "totalReactions": { "type": "integer" }, "totalReplies": { "type": "integer" } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/stories/user/{userId}": {
-      "get": {
-        "tags": ["Stories"],
-        "summary": "Get stories by user",
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [
-          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 50 } }
-        ],
-        "responses": {
-          "200": { "description": "User's stories", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }

@@ -9,14 +9,96 @@ const STORY_SELECT = `
   profiles!stories_user_id_fkey ( full_name, avatar_url, username )
 `
 
+const toStoryResponse = (story: any) => {
+  const profileData = story?.profiles
+  return {
+    id: story.id || story.story_id,
+    user_id: story.user_id,
+    user_name: profileData?.full_name || story.user_name || story.full_name || story.username || 'Unknown',
+    user_avatar: profileData?.avatar_url || story.user_avatar || story.profile_picture_url || '',
+    username: profileData?.username || story.username || '',
+    profile_picture_url: profileData?.avatar_url || story.profile_picture_url || story.user_avatar || '',
+    media_url: story.media_url,
+    media_type: story.media_type,
+    text_overlay: story.text_overlay,
+    background_color: story.background_color || '#2563eb',
+    caption: story.caption,
+    music_url: story.music_url,
+    music_title: story.music_title || null,
+    music_artist: story.music_artist || null,
+    is_highlight: Boolean(story.is_highlight),
+    view_count: story.view_count || 0,
+    expires_at: story.expires_at,
+    created_at: story.created_at,
+    has_viewed: Boolean(story.has_viewed ?? story.is_viewed ?? false),
+    reaction_count: story.reaction_count || 0,
+    reply_count: story.reply_count || 0,
+    user_reaction: story.user_reaction || null,
+  }
+}
+
+const groupStoriesByUser = (stories: any[]) => {
+  const grouped = new Map<string, any>()
+
+  stories.forEach((story) => {
+    if (!story?.id || !story?.user_id) return
+
+    if (!grouped.has(story.user_id)) {
+      grouped.set(story.user_id, {
+        user_id: story.user_id,
+        username: story.username || '',
+        user_name: story.user_name || 'Unknown',
+        user_avatar: story.user_avatar || '',
+        profile_picture_url: story.profile_picture_url || story.user_avatar || '',
+        has_unviewed: false,
+        stories: [],
+      })
+    }
+
+    const bucket = grouped.get(story.user_id)
+    bucket.stories.push(story)
+    if (!story.has_viewed) bucket.has_unviewed = true
+  })
+
+  const groups = Array.from(grouped.values())
+  groups.forEach((group) => {
+    group.stories.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    group.latest_story_at = group.stories[0]?.created_at || null
+  })
+
+  groups.sort((a, b) => new Date(b.latest_story_at || 0).getTime() - new Date(a.latest_story_at || 0).getTime())
+  return groups
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
     const { searchParams } = new URL(request.url)
+    const targetUserId = searchParams.get('userId')
     const page = parseInt(searchParams.get('page') || '0', 10)
-    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 50)
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '5', 10) || 5, 1), 50)
     const from = page * limit
     const to = from + limit
+
+    if (targetUserId) {
+      const { data, error } = await supabase
+        .from('stories')
+        .select(STORY_SELECT)
+        .eq('user_id', targetUserId)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .range(from, to - 1)
+
+      if (error) return errorResponse(error.message, 400)
+
+      const stories = (data || []).map(toStoryResponse)
+      return jsonResponse({
+        data: stories,
+        page,
+        pageSize: limit,
+        hasMore: stories.length === limit,
+      })
+    }
 
     const { data, error } = await supabase.rpc('get_story_recommendations', {
       user_id_param: user.id,
@@ -24,13 +106,14 @@ export async function GET(request: NextRequest) {
 
     if (error) return errorResponse(error.message, 400)
 
-    const stories = data || []
-    const paged = stories.slice(from, to)
+    const stories = (data || []).map(toStoryResponse)
+    const groupedStories = groupStoriesByUser(stories)
+    const paged = groupedStories.slice(from, to)
     return jsonResponse({
       data: paged,
       page,
       pageSize: limit,
-      hasMore: stories.length > to,
+      hasMore: groupedStories.length > to,
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
@@ -71,27 +154,7 @@ export async function POST(request: NextRequest) {
 
     if (error) return errorResponse(error.message, 400)
 
-    const profileData = (data as any).profiles
-    const story = {
-      id: data.id,
-      user_id: data.user_id,
-      user_name: profileData?.full_name || 'Unknown',
-      user_avatar: profileData?.avatar_url || '',
-      username: profileData?.username || '',
-      media_url: data.media_url,
-      media_type: data.media_type,
-      text_overlay: data.text_overlay,
-      background_color: data.background_color,
-      caption: data.caption,
-      music_url: data.music_url,
-      music_title: data.music_title,
-      music_artist: data.music_artist,
-      is_highlight: data.is_highlight,
-      view_count: data.view_count || 0,
-      expires_at: data.expires_at,
-      created_at: data.created_at,
-      has_viewed: false,
-    }
+    const story = toStoryResponse(data as any)
 
     return jsonResponse({ data: story }, 201)
   } catch (error: any) {

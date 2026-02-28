@@ -977,7 +977,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       await supabaseMessagingService.sendMessage(directThreadId, {
         content: `📞 Incoming ${callType === 'video' ? 'video' : 'audio'} call`,
         message_type: 'call_request',
-        metadata: { callType, roomId: currentRoomId, callerId: currentUserId, callerName: user?.user_metadata?.full_name || 'Unknown', timestamp: new Date().toISOString() },
+        metadata: {
+          callType,
+          roomId: currentRoomId,
+          callerId: currentUserId,
+          callerName: user?.user_metadata?.full_name || 'Unknown',
+          targetUserId: targetUser.id,
+          timestamp: new Date().toISOString(),
+        },
       }, { id: currentUserId, name: user?.user_metadata?.full_name || 'Unknown' });
       setShowAddPeople(false);
       setAddPeopleSearch('');
