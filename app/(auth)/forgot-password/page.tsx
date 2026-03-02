@@ -3,11 +3,10 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { Globe, Mail, ArrowLeft } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 
 const ForgotPassword: React.FC = () => {
-  const { resetPassword } = useAuth()
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
@@ -17,16 +16,14 @@ const ForgotPassword: React.FC = () => {
     
     setIsLoading(true)
     try {
-      const { error } = await resetPassword(email)
-
-      if (error) {
-        toast.error(error.message)
-      } else {
-        setIsSubmitted(true)
-        toast.success('Password reset email sent! Please check your inbox.')
-      }
+      await apiClient.post<{ sent: boolean }>('/api/auth/reset-password', {
+        email,
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      setIsSubmitted(true)
+      toast.success('Password reset email sent! Please check your inbox.')
     } catch (error: any) {
-      toast.error('An unexpected error occurred')
+      toast.error(error.message || 'An unexpected error occurred')
     } finally {
       setIsLoading(false)
     }
