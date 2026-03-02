@@ -4,14 +4,13 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Globe, Eye, EyeOff, Mail, Lock, Phone } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import toast from "react-hot-toast";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 
 const SigninForm: React.FC = () => {
-  const { signIn } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
@@ -34,22 +33,36 @@ const SigninForm: React.FC = () => {
     setIsLoading(true);
     try {
       if (loginMethod === "email") {
-        // Email/Password login
-        const { error } = await signIn(formData.email, formData.password);
+        const data = await apiClient.post<{
+          user: any;
+          session: { access_token: string; refresh_token: string } | null;
+        }>("/api/auth/signin", {
+          email: formData.email,
+          password: formData.password,
+        });
 
-        if (error) {
-          toast.error(error.message);
+        if (!data?.session?.access_token || !data?.session?.refresh_token) {
+          toast.error("Sign in succeeded, but no session was returned.");
           setIsLoading(false);
-        } else {
-          toast.success("Welcome back!");
-          // Wait for session to be set in cookies before redirecting
-          // Use a small delay to ensure cookies are properly set
-          const redirectTo = searchParams.get("redirect") || "/feed";
-          setTimeout(() => {
-            // Use window.location for full page reload to ensure middleware can read cookies
-            window.location.href = redirectTo;
-          }, 200);
+          return;
         }
+
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+
+        if (setSessionError) {
+          toast.error(setSessionError.message);
+          setIsLoading(false);
+          return;
+        }
+
+        toast.success("Welcome back!");
+        const redirectTo = searchParams.get("redirect") || "/feed";
+        setTimeout(() => {
+          window.location.href = redirectTo;
+        }, 200);
       } else {
         // Phone/OTP login
         const cleanPhone = formData.phone.trim();
@@ -64,11 +77,20 @@ const SigninForm: React.FC = () => {
         }
 
         // Send OTP via Supabase Phone Auth
-        const { data, error } = await supabase.auth.signInWithOtp({
-          phone: cleanPhone,
-        });
+        try {
+          await apiClient.post<{ sent: boolean }>("/api/auth/send-otp", {
+            phone: cleanPhone,
+          });
 
-        if (error) {
+          toast.success("Verification code sent to your phone!");
+          router.push(
+            `/verify-otp?phone=${encodeURIComponent(
+              cleanPhone
+            )}&redirect=${encodeURIComponent(
+              searchParams.get("redirect") || "/feed"
+            )}`
+          );
+        } catch (error: any) {
           console.error("Phone OTP error:", error);
           if (
             error.message?.includes("Invalid phone") ||
@@ -97,18 +119,6 @@ const SigninForm: React.FC = () => {
               error.message || "Failed to send verification code";
             toast.error(errorMsg);
           }
-          setIsLoading(false);
-        } else {
-          console.log("Phone OTP sent:", data);
-          toast.success("Verification code sent to your phone!");
-          // Navigate to OTP verification page with phone number
-          router.push(
-            `/verify-otp?phone=${encodeURIComponent(
-              cleanPhone
-            )}&redirect=${encodeURIComponent(
-              searchParams.get("redirect") || "/feed"
-            )}`
-          );
         }
       }
     } catch (error: any) {

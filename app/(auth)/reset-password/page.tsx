@@ -5,10 +5,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Globe, Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 
 const ResetPassword: React.FC = () => {
-  const { updatePassword, session, loading: authLoading } = useAuth()
+  const { session, loading: authLoading } = useAuth()
   const router = useRouter()
   const [formData, setFormData] = useState({
     password: '',
@@ -48,21 +49,19 @@ const ResetPassword: React.FC = () => {
     
     setIsLoading(true)
     try {
-      const { error } = await updatePassword(formData.password)
+      await apiClient.post<{ updated: boolean }>('/api/auth/update-password', {
+        password: formData.password,
+      })
 
-      if (error) {
-        toast.error(error.message)
-      } else {
-        setIsSuccess(true)
-        toast.success('Password updated successfully!')
-        
-        // Redirect to sign in after 2 seconds
-        setTimeout(() => {
-          router.push('/signin')
-        }, 2000)
-      }
+      setIsSuccess(true)
+      toast.success('Password updated successfully!')
+      
+      // Redirect to sign in after 2 seconds
+      setTimeout(() => {
+        router.push('/signin')
+      }, 2000)
     } catch (error: any) {
-      toast.error('An unexpected error occurred')
+      toast.error(error.message || 'An unexpected error occurred')
     } finally {
       setIsLoading(false)
     }

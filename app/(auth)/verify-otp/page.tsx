@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Phone, ArrowLeft, RefreshCw } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 
 const VerifyOTPForm: React.FC = () => {
@@ -90,42 +91,52 @@ const VerifyOTPForm: React.FC = () => {
 
     setIsLoading(true)
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const data = await apiClient.post<{
+        user: any
+        session: { access_token: string; refresh_token: string } | null
+      }>('/api/auth/verify-otp', {
         phone: phone,
         token: otpCode,
         type: 'sms'
       })
 
-      if (error) {
-        console.error('OTP verification error:', error)
-        if (error.message?.includes('Invalid') || error.message?.includes('invalid')) {
-          toast.error('Invalid verification code. Please try again.')
-          setOtp(['', '', '', '', '', ''])
-          document.getElementById('otp-0')?.focus()
-        } else if (error.message?.includes('expired')) {
-          toast.error('Verification code has expired. Please request a new one.')
-          setOtp(['', '', '', '', '', ''])
-        } else if (error.message?.includes('rate limit')) {
-          toast.error('Too many attempts. Please wait a moment and try again.')
-        } else {
-          const errorMsg = error.message || 'Failed to verify code'
-          toast.error(errorMsg)
-        }
+      if (!data?.session?.access_token || !data?.session?.refresh_token) {
+        toast.error('Verification succeeded, but no session was returned.')
         setIsLoading(false)
-      } else {
-        console.log('OTP verification success:', data)
-        toast.success('Verification successful! Welcome back!')
-        
-        // Wait for session to be set in cookies before redirecting
-        const redirectTo = searchParams.get('redirect') || '/feed'
-        setTimeout(() => {
-          // Use window.location for full page reload to ensure middleware can read cookies
-          window.location.href = redirectTo
-        }, 200)
+        return
       }
+
+      const { error: setSessionError } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      })
+
+      if (setSessionError) {
+        toast.error(setSessionError.message)
+        setIsLoading(false)
+        return
+      }
+
+      toast.success('Verification successful! Welcome back!')
+      
+      const redirectTo = searchParams.get('redirect') || '/feed'
+      setTimeout(() => {
+        window.location.href = redirectTo
+      }, 200)
     } catch (error: any) {
       console.error('OTP verification exception:', error)
-      toast.error('An unexpected error occurred')
+      if (error.message?.includes('Invalid') || error.message?.includes('invalid')) {
+        toast.error('Invalid verification code. Please try again.')
+        setOtp(['', '', '', '', '', ''])
+        document.getElementById('otp-0')?.focus()
+      } else if (error.message?.includes('expired')) {
+        toast.error('Verification code has expired. Please request a new one.')
+        setOtp(['', '', '', '', '', ''])
+      } else if (error.message?.includes('rate limit')) {
+        toast.error('Too many attempts. Please wait a moment and try again.')
+      } else {
+        toast.error(error.message || 'An unexpected error occurred')
+      }
       setIsLoading(false)
     }
   }
@@ -140,27 +151,22 @@ const VerifyOTPForm: React.FC = () => {
 
     setIsResending(true)
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      await apiClient.post<{ sent: boolean }>('/api/auth/send-otp', {
         phone: phone
       })
 
-      if (error) {
-        console.error('Resend OTP error:', error)
-        if (error.message?.includes('rate limit')) {
-          toast.error('Too many attempts. Please wait a moment and try again.')
-          setCountdown(60)
-        } else {
-          toast.error('Failed to resend code. Please try again.')
-        }
-      } else {
-        toast.success('Verification code sent!')
-        setCountdown(60)
-        setOtp(['', '', '', '', '', ''])
-        document.getElementById('otp-0')?.focus()
-      }
+      toast.success('Verification code sent!')
+      setCountdown(60)
+      setOtp(['', '', '', '', '', ''])
+      document.getElementById('otp-0')?.focus()
     } catch (error: any) {
       console.error('Resend OTP exception:', error)
-      toast.error('An unexpected error occurred')
+      if (error.message?.includes('rate limit')) {
+        toast.error('Too many attempts. Please wait a moment and try again.')
+        setCountdown(60)
+      } else {
+        toast.error(error.message || 'An unexpected error occurred')
+      }
     } finally {
       setIsResending(false)
     }
