@@ -437,7 +437,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         if (!hasRemoteParticipants && callStatusRef.current === 'connected') {
           if (threadId && currentUserId) {
             supabaseMessagingService.sendMessage(threadId, {
-              content: '📞 Call ended',
+              content: 'Call ended',
               message_type: 'call_ended',
               metadata: { callType, endedBy: currentUserId, endedAt: new Date().toISOString() },
             }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }).catch(() => {});
@@ -457,7 +457,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (threadId && currentUserId && callStatusRef.current !== 'ended') {
         try {
           await supabaseMessagingService.sendMessage(threadId, {
-            content: '📞 Call ended',
+            content: 'Call ended',
             message_type: 'call_ended',
             metadata: { callType, endedBy: currentUserId, endedAt: new Date().toISOString() },
           }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
@@ -732,7 +732,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (threadId && currentUserId) {
         try {
           await supabaseMessagingService.sendMessage(threadId, {
-            content: '✅ Call accepted',
+            content: 'Call accepted',
             message_type: 'call_accepted',
             metadata: { callType, acceptedBy: currentUserId, acceptedAt: new Date().toISOString() },
           }, { id: currentUserId, name: decodedRecipientName });
@@ -753,7 +753,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (threadId && currentUserId) {
       try {
         await supabaseMessagingService.sendMessage(threadId, {
-          content: '❌ Call rejected',
+          content: 'Call rejected',
           message_type: 'call_rejected',
           metadata: { callType, rejectedBy: currentUserId, rejectedAt: new Date().toISOString() },
         }, { id: currentUserId, name: isIncoming ? decodedRecipientName : decodedCallerName });
@@ -787,7 +787,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (threadId && currentUserId && callStatusRef.current !== 'ended') {
       try {
         await supabaseMessagingService.sendMessage(threadId, {
-          content: '📞 Call ended',
+          content: 'Call ended',
           message_type: 'call_ended',
           metadata: { callType, endedBy: currentUserId, endedAt: new Date().toISOString() },
         }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
@@ -975,13 +975,18 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       const directThreadId = threadRes?.data?.id;
       if (!directThreadId) throw new Error('Could not find or create thread');
       await supabaseMessagingService.sendMessage(directThreadId, {
-        content: `📞 Incoming ${callType === 'video' ? 'video' : 'audio'} call`,
+        content: `Incoming ${callType === 'video' ? 'video' : 'audio'} call`,
         message_type: 'call_request',
         metadata: {
           callType,
           roomId: currentRoomId,
           callerId: currentUserId,
           callerName: user?.user_metadata?.full_name || 'Unknown',
+          callerAvatarUrl:
+            user?.user_metadata?.avatar_url ||
+            user?.user_metadata?.picture ||
+            user?.user_metadata?.profile_image ||
+            undefined,
           targetUserId: targetUser.id,
           timestamp: new Date().toISOString(),
         },

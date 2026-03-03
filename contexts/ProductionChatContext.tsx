@@ -31,6 +31,7 @@ interface CallRequest {
   type: 'audio' | 'video'
   callerId: string
   callerName?: string
+  callerAvatarUrl?: string
   roomId?: string
   token?: string
   targetUserId?: string
@@ -43,7 +44,7 @@ interface ProductionChatContextType {
   openThread: (threadId: string) => void
   startCall: (threadId: string, type: 'audio' | 'video', targetUserId?: string) => Promise<void>
   callRequests: Record<string, CallRequest>
-  currentUser: { id: string; name?: string } | null
+  currentUser: { id: string; name?: string; avatarUrl?: string } | null
   clearCallRequest: (threadId: string) => void
   openThreads: string[]
   closeThread: (threadId: string) => void
@@ -79,7 +80,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     user?.user_metadata?.full_name ||
     [user?.user_metadata?.first_name, user?.user_metadata?.last_name].filter(Boolean).join(' ') ||
     user?.email
-  const currentUser = user ? { id: user.id, name: displayName || user.email } : null
+  const avatarUrl =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    user?.user_metadata?.profile_image ||
+    undefined
+  const currentUser = user ? { id: user.id, name: displayName || user.email, avatarUrl } : null
   const updatePresence = useCallback((userId: string, status: 'online' | 'away' | 'busy' | 'offline') => {
     setPresence(prev => ({
       ...prev,
@@ -419,14 +425,14 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         await supabaseMessagingService.sendMessage(
           threadId,
           {
-            content: `📞 Incoming ${type === 'video' ? 'video' : 'audio'} call`,
+            content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
             message_type: 'call_request',
             metadata: {
               callType: type,
               roomId,
-              token,
               callerId: currentUser?.id,
               callerName: currentUser?.name,
+              callerAvatarUrl: currentUser?.avatarUrl,
               targetUserId: resolvedTargetUserId,
               timestamp: new Date().toISOString()
             }
@@ -456,7 +462,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, roomId, token, targetUserId } = event.detail
+      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, token, targetUserId } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
       
       setCallRequests(prev => ({
@@ -466,6 +472,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           type,
           callerId,
           callerName,
+          callerAvatarUrl,
           roomId,
           token,
           targetUserId
@@ -529,6 +536,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   type: metadata.callType,
                   callerId: message.sender_id,
                   callerName: message.sender?.name || metadata?.callerName || 'Unknown',
+                  callerAvatarUrl: message.sender?.avatarUrl || metadata?.callerAvatarUrl,
                   roomId: metadata.roomId,
                   token: metadata.token,
                   targetUserId: metadata.targetUserId
@@ -642,6 +650,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   type: metadata.callType,
                   callerId: msg.sender_id,
                   callerName: metadata.callerName || 'Unknown',
+                  callerAvatarUrl: metadata.callerAvatarUrl,
                   roomId: metadata.roomId,
                   token: metadata.token,
                   targetUserId: metadata.targetUserId
