@@ -105,7 +105,9 @@ export async function GET(request: NextRequest) {
       if (reactingProfile) {
         entry.groups[reactionType].users.push({
           id: reactingProfile.id,
+          username: reactingProfile.username || '',
           full_name: reactingProfile.full_name,
+          avatar_url: reactingProfile.avatar_url || null,
         })
       }
     }

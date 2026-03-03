@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, full_name')
+          .select('id, username, full_name, avatar_url')
           .in('id', userIds)
         if (profiles) {
           profileMap = new Map(profiles.map((p: any) => [p.id, p]))
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (userIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, username, full_name, avatar_url')
         .in('id', userIds)
 
       if (profiles) {
