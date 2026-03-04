@@ -9,7 +9,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const { postId } = await context.params
     const { user, supabase } = await getAuthenticatedUser(request)
 
-    const { data: commentsData, error: commentsError } = await supabase
+    const { data: topLevelCommentsData, error: commentsError } = await supabase
       .from('group_post_comments')
       .select('*')
       .eq('group_post_id', postId)
@@ -20,11 +20,35 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return errorResponse(commentsError.message, 400)
     }
 
-    const comments = commentsData || []
-    if (comments.length === 0) {
+    const topLevelComments = topLevelCommentsData || []
+    if (topLevelComments.length === 0) {
       return jsonResponse({ data: [] })
     }
 
+    const replies: any[] = []
+    let pendingParentIds = topLevelComments.map((comment: { id: string }) => comment.id)
+
+    while (pendingParentIds.length > 0) {
+      const { data: childComments, error: childError } = await supabase
+        .from('group_post_comments')
+        .select('*')
+        .eq('group_post_id', postId)
+        .in('parent_id', pendingParentIds)
+        .order('created_at', { ascending: true })
+
+      if (childError) {
+        return errorResponse(childError.message, 400)
+      }
+
+      if (!childComments || childComments.length === 0) {
+        break
+      }
+
+      replies.push(...childComments)
+      pendingParentIds = childComments.map((comment: { id: string }) => comment.id)
+    }
+
+    const comments = [...topLevelComments, ...replies]
     const commentIds = comments.map((c: { id: string }) => c.id)
     const authorIds = [...new Set(comments.map((c: { author_id: string }) => c.author_id))]
 
@@ -35,53 +59,38 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const profileMap = new Map((authorProfiles || []).map((p: { id: string }) => [p.id, p]))
 
-    const { data: repliesData } = await supabase
-      .from('group_post_comments')
-      .select('*')
-      .in('parent_id', commentIds)
-      .order('created_at', { ascending: true })
-
-    const replies = repliesData || []
-    const replyAuthorIds = [...new Set(replies.map((r: { author_id: string }) => r.author_id))]
-    let replyProfileMap = new Map<string, { id: string; username?: string; full_name?: string; avatar_url?: string }>()
-    if (replyAuthorIds.length > 0) {
-      const { data: replyProfiles } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url')
-        .in('id', replyAuthorIds)
-      replyProfileMap = new Map((replyProfiles || []).map((p: { id: string }) => [p.id, p]))
-    }
-
-    const allCommentIds = [...commentIds, ...replies.map((r: { id: string }) => r.id)]
     let likedCommentIds = new Set<string>()
-    if (allCommentIds.length > 0) {
+    if (commentIds.length > 0) {
       const { data: likesData } = await supabase
         .from('comment_likes')
         .select('comment_id')
         .eq('user_id', user.id)
-        .in('comment_id', allCommentIds)
+        .in('comment_id', commentIds)
       likedCommentIds = new Set((likesData || []).map((l: { comment_id: string }) => l.comment_id))
     }
 
-    const repliesByParent = new Map<string, unknown[]>()
-    for (const r of replies) {
-      const parentId = (r as { parent_id: string }).parent_id
-      if (!repliesByParent.has(parentId)) repliesByParent.set(parentId, [])
-      repliesByParent.get(parentId)!.push({
-        ...r,
-        author: replyProfileMap.get(r.author_id) ?? null,
-        isLiked: likedCommentIds.has(r.id),
-      })
-    }
-
-    const result = comments.map((c: { id: string; author_id: string }) => ({
-      ...c,
-      author: profileMap.get(c.author_id) ?? null,
-      replies: repliesByParent.get(c.id) ?? [],
-      isLiked: likedCommentIds.has(c.id),
+    const mappedComments = comments.map((comment: any) => ({
+      ...comment,
+      author: profileMap.get(comment.author_id) ?? null,
+      isLiked: likedCommentIds.has(comment.id),
+      replies: [] as any[],
     }))
 
-    return jsonResponse({ data: result })
+    const commentsById = new Map<string, any>()
+    const topLevel: any[] = []
+    for (const comment of mappedComments) {
+      commentsById.set(comment.id, comment)
+    }
+
+    for (const comment of mappedComments) {
+      if (comment.parent_id && commentsById.has(comment.parent_id)) {
+        commentsById.get(comment.parent_id).replies.push(comment)
+      } else {
+        topLevel.push(comment)
+      }
+    }
+
+    return jsonResponse({ data: topLevel })
   } catch (error: unknown) {
     const err = error as { message?: string }
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {

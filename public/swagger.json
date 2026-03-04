@@ -357,12 +357,72 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "user": { "type": "object", "nullable": true },
-                        "session": { "type": "object", "nullable": true }
+                        "user": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "id": { "type": "string" },
+                            "email": { "type": "string", "format": "email", "nullable": true },
+                            "user_metadata": {
+                              "type": "object",
+                              "nullable": true,
+                              "properties": {
+                                "avatar_url": { "type": "string", "nullable": true }
+                              }
+                            }
+                          }
+                        },
+                        "session": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "access_token": { "type": "string" },
+                            "refresh_token": { "type": "string" },
+                            "user": {
+                              "type": "object",
+                              "nullable": true,
+                              "properties": {
+                                "id": { "type": "string" },
+                                "email": { "type": "string", "format": "email", "nullable": true },
+                                "user_metadata": {
+                                  "type": "object",
+                                  "nullable": true,
+                                  "properties": {
+                                    "avatar_url": { "type": "string", "nullable": true }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
                       }
                     },
                     "message": { "type": "string" }
                   }
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "user": {
+                      "id": "789455a5-dec8-4a9c-8b68-7f7e40788fb4",
+                      "email": "hasanmurtaza88@gmail.com",
+                      "user_metadata": {
+                        "avatar_url": "https://example.com/avatar.jpg"
+                      }
+                    },
+                    "session": {
+                      "access_token": "jwt-token",
+                      "refresh_token": "refresh-token",
+                      "user": {
+                        "id": "789455a5-dec8-4a9c-8b68-7f7e40788fb4",
+                        "email": "hasanmurtaza88@gmail.com",
+                        "user_metadata": {
+                          "avatar_url": "https://example.com/avatar.jpg"
+                        }
+                      }
+                    }
+                  },
+                  "message": "Success"
                 }
               }
             }
@@ -1383,6 +1443,104 @@
         "responses": {
           "200": { "description": "Attendance toggled", "content": { "application/json": { "schema": { "type": "object", "properties": { "attending": { "type": "boolean" }, "attendee_count": { "type": "integer" } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/groups/{id}/media": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "List group media items",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group media items",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "url": { "type": "string" },
+                          "type": { "type": "string", "enum": ["image", "video"] },
+                          "created_at": { "type": "string", "format": "date-time" },
+                          "author": {
+                            "nullable": true,
+                            "allOf": [{ "$ref": "#/components/schemas/UserProfile" }]
+                          }
+                        }
+                      }
+                    },
+                    "total": { "type": "integer" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/groups/{id}/files": {
+      "get": {
+        "tags": ["Groups"],
+        "summary": "List group files",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group file list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "url": { "type": "string" },
+                          "name": { "type": "string" },
+                          "type": { "type": "string" },
+                          "created_at": { "type": "string", "format": "date-time" },
+                          "post": {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string", "format": "uuid" },
+                              "title": { "type": "string" }
+                            }
+                          },
+                          "author": {
+                            "nullable": true,
+                            "allOf": [{ "$ref": "#/components/schemas/UserProfile" }]
+                          }
+                        }
+                      }
+                    },
+                    "total": { "type": "integer" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
         }
       }
     },

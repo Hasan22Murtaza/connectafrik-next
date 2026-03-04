@@ -254,14 +254,12 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
             >
               Like
             </button>
-            {depth === 0 && (
-              <button
-                onClick={() => onReplyToggle(comment.id)}
-                className="font-semibold text-gray-500 hover:text-gray-700 hover:underline transition"
-              >
-                Reply
-              </button>
-            )}
+            <button
+              onClick={() => onReplyToggle(comment.id)}
+              className="font-semibold text-gray-500 hover:text-gray-700 hover:underline transition"
+            >
+              Reply
+            </button>
             <span className="text-gray-400">{timeAgo}</span>
             {comment.likes_count > 0 && (
               <span className="text-gray-400 ml-auto">{comment.likes_count} ❤️</span>
@@ -269,7 +267,7 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
           </div>
 
           {/* Reply input */}
-          {replyingTo === comment.id && depth === 0 && (
+          {replyingTo === comment.id && (
             <div className="flex items-center gap-2 mt-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-500 flex-shrink-0">
                 {(currentUserId || 'U').charAt(0).toUpperCase()}

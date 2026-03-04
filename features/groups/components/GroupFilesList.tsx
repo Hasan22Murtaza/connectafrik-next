@@ -1,41 +1,33 @@
 'use client'
 
 import React from 'react'
-import { FileText, Download, Image, Video, File, FileType, Calendar, User, Folder } from 'lucide-react'
-import { GroupPost } from '@/shared/hooks/useGroupPosts'
+import { FileText, Download, Image, Video, File, Calendar, User, Folder } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 interface GroupFilesListProps {
-  posts: GroupPost[]
+  files: FileItem[]
   loading: boolean
 }
 
 interface FileItem {
+  id: string
   url: string
   name: string
   type: string
-  size?: number
-  post: GroupPost
+  created_at: string
+  post: {
+    id: string
+    title: string
+  }
+  author?: {
+    id: string
+    username?: string
+    full_name?: string
+    avatar_url?: string | null
+  } | null
 }
 
-const GroupFilesList: React.FC<GroupFilesListProps> = ({ posts, loading }) => {
-  // Extract files from posts
-  // For now, we'll treat media_urls as files, but in production you might have a separate files field
-  const files: FileItem[] = posts
-    .filter(post => post.media_urls && post.media_urls.length > 0)
-    .flatMap(post => 
-      (post.media_urls || []).map(url => {
-        const fileName = url.split('/').pop() || 'file'
-        const extension = fileName.split('.').pop()?.toLowerCase() || ''
-        
-        return {
-          url,
-          name: fileName,
-          type: extension,
-          post
-        }
-      })
-    )
+const GroupFilesList: React.FC<GroupFilesListProps> = ({ files, loading }) => {
 
   const getFileIcon = (type: string) => {
     if (type.match(/jpg|jpeg|png|gif|webp|svg/i)) {
@@ -89,9 +81,9 @@ const GroupFilesList: React.FC<GroupFilesListProps> = ({ posts, loading }) => {
       </div>
 
       <div className="space-y-2">
-        {files.map((file, index) => (
+        {files.map((file) => (
           <div
-            key={`${file.post.id}-${index}`}
+            key={file.id}
             className="bg-gray-50 hover:bg-gray-100 rounded-lg p-4 transition-colors"
           >
             <div className="flex items-center gap-4">
@@ -110,13 +102,13 @@ const GroupFilesList: React.FC<GroupFilesListProps> = ({ posts, loading }) => {
                   <div className="flex items-center gap-1">
                     <User className="w-4 h-4" />
                     <span className="truncate">
-                      {file.post.author?.full_name || file.post.author?.username || 'Unknown'}
+                      {file.author?.full_name || file.author?.username || 'Unknown'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      {formatDistanceToNow(new Date(file.post.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(file.created_at), { addSuffix: true })}
                     </span>
                   </div>
                   <span className="text-xs text-gray-400">From: {file.post.title}</span>

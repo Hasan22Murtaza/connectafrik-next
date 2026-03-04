@@ -28,6 +28,7 @@ import { useGroupPosts } from '@/shared/hooks/useGroupPosts'
 import { Group } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { apiClient } from '@/lib/api-client'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import GroupMembersList from '@/features/groups/components/GroupMembersList'
 import InviteFriendsModal from '@/features/groups/components/InviteFriendsModal'
@@ -48,6 +49,37 @@ import {
   GroupPostsFeedShimmer,
   GroupDetailPageShimmer,
 } from '@/shared/components/ui/ShimmerLoaders'
+
+type GroupFileItem = {
+  id: string
+  url: string
+  name: string
+  type: string
+  created_at: string
+  post: {
+    id: string
+    title: string
+  }
+  author?: {
+    id: string
+    username?: string
+    full_name?: string
+    avatar_url?: string | null
+  } | null
+}
+
+type GroupMediaItem = {
+  id: string
+  url: string
+  type: 'image' | 'video'
+  created_at: string
+  author?: {
+    id: string
+    username?: string
+    full_name?: string
+    avatar_url?: string | null
+  } | null
+}
 
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
@@ -76,6 +108,10 @@ const GroupDetailPage: React.FC = () => {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [isSticky, setIsSticky] = useState(false)
+  const [mediaItems, setMediaItems] = useState<GroupMediaItem[]>([])
+  const [files, setFiles] = useState<GroupFileItem[]>([])
+  const [mediaLoading, setMediaLoading] = useState(false)
+  const [filesLoading, setFilesLoading] = useState(false)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const { members } = useMembers(shareModalState.open)
   const feedShimmerCount = useFeedShimmerCount()
@@ -112,6 +148,16 @@ const GroupDetailPage: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    if (!groupId || activeTab !== 'media') return
+    fetchGroupMedia()
+  }, [groupId, activeTab, user?.id])
+
+  useEffect(() => {
+    if (!groupId || activeTab !== 'files') return
+    fetchGroupFiles()
+  }, [groupId, activeTab, user?.id])
+
   const fetchGroup = async () => {
     try {
       setLoading(true)
@@ -128,6 +174,34 @@ const GroupDetailPage: React.FC = () => {
       router.push('/groups')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchGroupMedia = async () => {
+    try {
+      setMediaLoading(true)
+      const res = await apiClient.get<{ data: GroupMediaItem[] }>(`/api/groups/${groupId}/media`)
+      setMediaItems(res.data || [])
+    } catch (error: any) {
+      console.error('Error fetching group media:', error)
+      setMediaItems([])
+      toast.error(error?.message || 'Failed to load group media')
+    } finally {
+      setMediaLoading(false)
+    }
+  }
+
+  const fetchGroupFiles = async () => {
+    try {
+      setFilesLoading(true)
+      const res = await apiClient.get<{ data: GroupFileItem[] }>(`/api/groups/${groupId}/files`)
+      setFiles(res.data || [])
+    } catch (error: any) {
+      console.error('Error fetching group files:', error)
+      setFiles([])
+      toast.error(error?.message || 'Failed to load group files')
+    } finally {
+      setFilesLoading(false)
     }
   }
 
@@ -269,7 +343,7 @@ const GroupDetailPage: React.FC = () => {
   const handleTabChange = useCallback((tab: 'posts' | 'events' | 'media' | 'files' | 'about' | 'members') => {
     setActiveTab(tab)
 
-    if (tab === 'posts' || tab === 'media' || tab === 'files') {
+    if (tab === 'posts') {
       refetchGroupPosts()
       return
     }
@@ -672,8 +746,8 @@ const GroupDetailPage: React.FC = () => {
             {activeTab === 'media' && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <GroupMediaGallery
-                  posts={groupPosts}
-                  loading={postsLoading}
+                  items={mediaItems}
+                  loading={mediaLoading}
                 />
               </div>
             )}
@@ -681,8 +755,8 @@ const GroupDetailPage: React.FC = () => {
             {activeTab === 'files' && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <GroupFilesList
-                  posts={groupPosts}
-                  loading={postsLoading}
+                  files={files}
+                  loading={filesLoading}
                 />
               </div>
             )}

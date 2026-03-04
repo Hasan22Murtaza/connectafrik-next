@@ -41,29 +41,21 @@ export const useGroupPostComments = (groupId: string, groupPostId: string) => {
       )
       const commentsData = res.data || []
 
-      setComments(
-        commentsData.map((c: GroupPostComment) => ({
-          ...c,
-          author: c.author ?? {
-            id: c.author_id,
-            username: 'Unknown',
-            full_name: 'Unknown User',
-            avatar_url: null,
-            country: null
-          },
-          replies: (c.replies || []).map((r: GroupPostComment) => ({
-            ...r,
-            author: r.author ?? {
-              id: r.author_id,
-              username: 'Unknown',
-              full_name: 'Unknown User',
-              avatar_url: null,
-              country: null
-            },
-            replies: []
-          }))
-        }))
-      )
+      const normalizeCommentTree = (comment: GroupPostComment): GroupPostComment => ({
+        ...comment,
+        author: comment.author ?? {
+          id: comment.author_id,
+          username: 'Unknown',
+          full_name: 'Unknown User',
+          avatar_url: null,
+          country: null
+        },
+        replies: Array.isArray(comment.replies)
+          ? comment.replies.map(normalizeCommentTree)
+          : []
+      })
+
+      setComments(commentsData.map(normalizeCommentTree))
     } catch (err: any) {
       console.error('Error fetching group post comments:', err)
       setError(err.message)
@@ -108,13 +100,7 @@ export const useGroupPostComments = (groupId: string, groupPostId: string) => {
       }
 
       if (parentId) {
-        setComments(prev =>
-          prev.map(comment =>
-            comment.id === parentId
-              ? { ...comment, replies: [...(comment.replies || []), newComment] }
-              : comment
-          )
-        )
+        setComments(prev => addReplyToComments(prev, parentId, newComment))
       } else {
         setComments(prev => [...prev, newComment])
       }
@@ -126,6 +112,28 @@ export const useGroupPostComments = (groupId: string, groupPostId: string) => {
       toast.error(err.message || 'Failed to post comment')
       return { error: err.message || 'Failed to post comment' }
     }
+  }
+
+  const addReplyToComments = (
+    commentsList: GroupPostComment[],
+    parentId: string,
+    newReply: GroupPostComment
+  ): GroupPostComment[] => {
+    return commentsList.map(comment => {
+      if (comment.id === parentId) {
+        return {
+          ...comment,
+          replies: [...(comment.replies || []), newReply]
+        }
+      }
+      if (comment.replies && comment.replies.length > 0) {
+        return {
+          ...comment,
+          replies: addReplyToComments(comment.replies, parentId, newReply)
+        }
+      }
+      return comment
+    })
   }
 
   const updateCommentLikes = (
@@ -174,20 +182,25 @@ export const useGroupPostComments = (groupId: string, groupPostId: string) => {
     try {
       await apiClient.delete(`/api/groups/${groupId}/posts/${groupPostId}/comments/${commentId}`)
 
-      setComments(prev =>
-        prev
-          .filter(c => c.id !== commentId)
-          .map(comment => ({
-            ...comment,
-            replies: comment.replies?.filter(r => r.id !== commentId)
-          }))
-      )
+      setComments(prev => removeCommentFromTree(prev, commentId))
 
       toast.success('Comment deleted')
     } catch (err: any) {
       console.error('Error deleting comment:', err)
       toast.error(err.message || 'Failed to delete comment')
     }
+  }
+
+  const removeCommentFromTree = (
+    commentsList: GroupPostComment[],
+    targetId: string
+  ): GroupPostComment[] => {
+    return commentsList
+      .filter(comment => comment.id !== targetId)
+      .map(comment => ({
+        ...comment,
+        replies: comment.replies ? removeCommentFromTree(comment.replies, targetId) : []
+      }))
   }
 
   return {
