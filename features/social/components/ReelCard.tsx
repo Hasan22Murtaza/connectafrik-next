@@ -23,7 +23,6 @@ import ReelComments from "@/features/social/components/ReelComments";
 import {
   followUser,
   unfollowUser,
-  checkIsFollowing,
 } from "../services/followService";
 import { VideoWatchTracker } from "../services/engagementTracking";
 import { PiShareFat } from "react-icons/pi";
@@ -66,7 +65,7 @@ const ReelCard: React.FC<ReelCardProps> = ({
   const [showControls, setShowControls] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(reel.is_following ?? false);
   const [likesCount, setLikesCount] = useState(reel.likes_count);
   const [savesCount, setSavesCount] = useState(reel.saves_count);
   const [showMenu, setShowMenu] = useState(false);
@@ -80,17 +79,6 @@ const ReelCard: React.FC<ReelCardProps> = ({
     undefined
   );
   const watchTrackerRef = useRef<VideoWatchTracker | null>(null);
-
-  // Check if user is following the reel author on mount
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (user && user.id !== reel.author_id) {
-        const following = await checkIsFollowing(user.id, reel.author_id);
-        setIsFollowing(following);
-      }
-    };
-    checkFollowStatus();
-  }, [user, reel.author_id]);
 
   // Format time helper
   const formatTime = (seconds: number) => {
@@ -303,17 +291,7 @@ const ReelCard: React.FC<ReelCardProps> = ({
           setIsFollowing(true);
           toast.success("Tapped in!");
         } else {
-          // Check if already following (failed because duplicate)
-          const stillFollowing = await checkIsFollowing(
-            user.id,
-            reel.author_id
-          );
-          if (stillFollowing) {
-            setIsFollowing(true);
-            toast.success("Already tapped in!");
-          } else {
-            toast.error("Failed to tap in");
-          }
+          toast.error("Failed to tap in");
         }
       }
       onFollow?.(reel.author_id);

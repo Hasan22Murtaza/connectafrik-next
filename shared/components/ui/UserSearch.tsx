@@ -1,6 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
-import { notificationService } from '@/shared/services/notificationService'
+import { apiClient } from '@/lib/api-client'
 import { Search, UserPlus, Users, X } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
@@ -48,49 +47,8 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
 
     setLoading(true)
     try {
-      // Search for users by username or full name
-      const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id,
-          username,
-          full_name,
-          avatar_url,
-          country
-        `)
-        .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
-        .neq('id', user.id) // Exclude current user
-        .limit(20)
-
-      if (error) throw error
-
-      // Get friend status and mutual friends for each result
-      const enrichedResults = await Promise.all(
-        (data || []).map(async (profile) => {
-          // Check if already friends
-          const { data: friendCheck } = await supabase
-            .from('friend_requests')
-            .select('status')
-            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-            .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
-            .single()
-
-          // Get mutual friends count
-          const { data: mutualFriends } = await supabase.rpc('get_mutual_friends_count', {
-            user1_id: user.id,
-            user2_id: profile.id
-          })
-
-          return {
-            ...profile,
-            mutual_friends_count: mutualFriends || 0,
-            is_friend: friendCheck?.status === 'accepted',
-            has_pending_request: friendCheck?.status === 'pending'
-          }
-        })
-      )
-
-      setResults(enrichedResults)
+      const res = await apiClient.get<{ data: SearchResult[] }>('/api/users/search', { q: query, limit: 20 })
+      setResults(res.data || [])
     } catch (error: any) {
       console.error('Error searching users:', error)
       toast.error('Failed to search users')
@@ -99,44 +57,16 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
     }
   }
 
-  const handleSendRequest = async (userId: string) => {
+  const handleSendRequest = async (targetUserId: string) => {
     if (!user) return
 
-    setSendingRequests(prev => new Set(prev).add(userId))
+    setSendingRequests(prev => new Set(prev).add(targetUserId))
 
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: userId,
-          status: 'pending'
-        })
+      await apiClient.post('/api/friends', { receiver_id: targetUserId })
 
-      if (error) throw error
-
-      // Send push notification to the recipient
-      try {
-        const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
-        await notificationService.sendNotification({
-          user_id: userId,
-          title: 'New Friend Request',
-          body: `${senderName} wants to be your friend on ConnectAfrik`,
-          notification_type: 'friend_request',
-          data: {
-            sender_id: user.id,
-            sender_name: senderName,
-            url: `/user/${user.user_metadata?.username}`
-          }
-        })
-      } catch (notificationError) {
-        console.error('Error sending push notification:', notificationError)
-        // Don't fail the friend request if notification fails
-      }
-
-      // Update the result to show pending status
       setResults(prev => prev.map(result => 
-        result.id === userId 
+        result.id === targetUserId 
           ? { ...result, has_pending_request: true }
           : result
       ))
@@ -148,7 +78,7 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
     } finally {
       setSendingRequests(prev => {
         const newSet = new Set(prev)
-        newSet.delete(userId)
+        newSet.delete(targetUserId)
         return newSet
       })
     }

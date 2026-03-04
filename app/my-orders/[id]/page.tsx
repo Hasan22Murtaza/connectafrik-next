@@ -18,7 +18,7 @@ import {
   Phone
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import Link from 'next/link'
 import { OrderDetailPageShimmer } from '@/shared/components/ui/ShimmerLoaders'
@@ -89,14 +89,8 @@ const OrderDetailPage: React.FC = () => {
     try {
       setLoading(true)
 
-      // Fetch order details from the orders table
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('id', orderId)
-        .single()
-
-      if (orderError) throw orderError
+      const res = await apiClient.get<{ data: OrderDetail & { isBuyer: boolean; isSeller: boolean } }>(`/api/orders/${orderId}`)
+      const orderData = res.data
 
       if (!orderData) {
         toast.error('Order not found')
@@ -104,50 +98,16 @@ const OrderDetailPage: React.FC = () => {
         return
       }
 
-      // Check if user is authorized to view this order
-      if (orderData.buyer_id !== user.id && orderData.seller_id !== user.id) {
-        toast.error('You are not authorized to view this order')
-        router.push('/my-orders')
-        return
-      }
-
-      setIsBuyer(orderData.buyer_id === user.id)
-      setIsSeller(orderData.seller_id === user.id)
-
-      // Fetch seller profile
-      const { data: sellerProfile } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url')
-        .eq('id', orderData.seller_id)
-        .single()
-
-      // Fetch buyer profile
-      const { data: buyerProfile } = await supabase
-        .from('profiles')
-        .select('id, username, full_name, avatar_url')
-        .eq('id', orderData.buyer_id)
-        .single()
-
-      const orderDetail: OrderDetail = {
-        ...orderData,
-        seller: sellerProfile ? {
-          id: sellerProfile.id,
-          username: sellerProfile.username,
-          full_name: sellerProfile.full_name,
-          avatar_url: sellerProfile.avatar_url
-        } : undefined,
-        buyer: buyerProfile ? {
-          id: buyerProfile.id,
-          username: buyerProfile.username,
-          full_name: buyerProfile.full_name,
-          avatar_url: buyerProfile.avatar_url
-        } : undefined
-      }
-
-      setOrder(orderDetail)
+      setIsBuyer(orderData.isBuyer)
+      setIsSeller(orderData.isSeller)
+      setOrder(orderData)
     } catch (error: any) {
       console.error('Error fetching order details:', error)
-      toast.error('Failed to load order details')
+      if (error.status === 403) {
+        toast.error('You are not authorized to view this order')
+      } else {
+        toast.error('Failed to load order details')
+      }
       router.push('/my-orders')
     } finally {
       setLoading(false)
@@ -216,28 +176,8 @@ const OrderDetailPage: React.FC = () => {
     try {
       setIsUpdatingStatus(true)
 
-      // Determine the next delivery status based on order status
-      let deliveryStatus = order.delivery_status
-      if (newStatus === 'processing') {
-        deliveryStatus = 'processing'
-      } else if (newStatus === 'shipped') {
-        deliveryStatus = 'shipped'
-      } else if (newStatus === 'completed') {
-        deliveryStatus = 'delivered'
-      }
+      await apiClient.patch(`/api/orders/${order.id}/status`, { status: newStatus })
 
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: newStatus,
-          delivery_status: deliveryStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', order.id)
-
-      if (error) throw error
-
-      // Refresh order data
       await fetchOrderDetails()
       toast.success(`Order status updated to ${newStatus}`)
     } catch (error: any) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Building2, Save, Check, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { getBanks, resolveBankAccount } from '@/features/marketplace/services/paystackService'
 
@@ -35,7 +35,7 @@ const BankAccountSettings: React.FC = () => {
   useEffect(() => {
     loadBanks()
     loadUserBankDetails()
-  }, [user])
+  }, [user?.id])
 
   const loadBanks = async () => {
     try {
@@ -53,13 +53,8 @@ const BankAccountSettings: React.FC = () => {
     if (!user) return
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('bank_name, bank_code, account_number, account_name')
-        .eq('id', user.id)
-        .single()
-
-      if (error) throw error
+      const result = await apiClient.get<{ data: any }>('/api/users/me')
+      const data = result.data
 
       if (data && data.bank_name) {
         setBankDetails({
@@ -132,18 +127,13 @@ const BankAccountSettings: React.FC = () => {
 
     setIsSaving(true)
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          bank_name: bankDetails.bank_name,
-          bank_code: bankDetails.bank_code,
-          account_number: bankDetails.account_number,
-          account_name: bankDetails.account_name,
-          bank_details_updated_at: new Date().toISOString()
-        })
-        .eq('id', user?.id)
-
-      if (error) throw error
+      await apiClient.patch('/api/users/me', {
+        bank_name: bankDetails.bank_name,
+        bank_code: bankDetails.bank_code,
+        account_number: bankDetails.account_number,
+        account_name: bankDetails.account_name,
+        bank_details_updated_at: new Date().toISOString()
+      })
 
       toast.success('Bank details saved successfully!')
     } catch (error) {

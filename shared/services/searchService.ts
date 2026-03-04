@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 
 export interface SearchUser {
   id: string
@@ -208,26 +209,15 @@ export const searchService = {
       return { users: [], posts: [], groups: [], products: [] }
     }
 
-    const [users, posts, groups, productsData] = await Promise.all([
-      executeQuery<SearchUser>(
-        buildUserSearchQuery(normalizedQuery, limit),
-        'user search'
-      ),
-      executeQuery<SearchPost>(
-        buildPostSearchQuery(normalizedQuery, limit),
-        'post search'
-      ),
-      executeQuery<SearchGroup>(
-        buildGroupSearchQuery(normalizedQuery, limit),
-        'group search'
-      ),
-      executeQuery<SearchProduct>(
-        buildProductSearchQuery(normalizedQuery, limit),
-        'product search'
-      ),
-    ])
-
-    return { users, posts, groups, products: productsData }
+    try {
+      return await apiClient.get<SearchResults>('/api/search/global', {
+        q: normalizedQuery,
+        limit,
+      })
+    } catch (error) {
+      console.error('[SearchService] Global search API failed:', error)
+      return { users: [], posts: [], groups: [], products: [] }
+    }
   },
 
   async searchUsers(query: string, limit: number = 10): Promise<SearchUser[]> {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Smartphone, Save, Check, AlertCircle, Zap } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import {
   getMobileMoneyProviders,
   detectProviderFromPhone,
@@ -51,13 +51,8 @@ const MobileMoneySettings: React.FC = () => {
     if (!user) return
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('mobile_money_phone, mobile_money_provider, mobile_money_provider_code, mobile_money_account_name, mobile_money_country')
-        .eq('id', user.id)
-        .single()
-
-      if (error) throw error
+      const result = await apiClient.get<{ data: any }>('/api/users/me')
+      const data = result.data
 
       if (data && data.mobile_money_phone) {
         setMobileMoneyDetails({
@@ -177,21 +172,16 @@ const MobileMoneySettings: React.FC = () => {
 
     setIsSaving(true)
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          mobile_money_phone: mobileMoneyDetails.phone,
-          mobile_money_provider: mobileMoneyDetails.provider,
-          mobile_money_provider_code: mobileMoneyDetails.provider_code,
-          mobile_money_account_name: mobileMoneyDetails.account_name,
-          mobile_money_country: selectedCountry,
-          mobile_money_verified: true,
-          mobile_money_updated_at: new Date().toISOString(),
-          payout_method: 'mobile_money' // Set as preferred payout method
-        })
-        .eq('id', user?.id)
-
-      if (error) throw error
+      await apiClient.patch('/api/users/me', {
+        mobile_money_phone: mobileMoneyDetails.phone,
+        mobile_money_provider: mobileMoneyDetails.provider,
+        mobile_money_provider_code: mobileMoneyDetails.provider_code,
+        mobile_money_account_name: mobileMoneyDetails.account_name,
+        mobile_money_country: selectedCountry,
+        mobile_money_verified: true,
+        mobile_money_updated_at: new Date().toISOString(),
+        payout_method: 'mobile_money',
+      })
 
       toast.success('Mobile money details saved successfully!')
     } catch (error) {

@@ -72,6 +72,9 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [isLiked, setIsLiked] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [replies, setReplies] = useState<StoryReply[]>([])
+  const [replyCount, setReplyCount] = useState(0)
+  const [repliesLoadedFor, setRepliesLoadedFor] = useState<string | null>(null)
+  const [reactionLoadedFor, setReactionLoadedFor] = useState<string | null>(null)
   const [showReplies, setShowReplies] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [viewCount, setViewCount] = useState(0)
@@ -112,6 +115,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     setShowMenu(false)
     setReplyText('')
     setShowReplies(false)
+    setReplies([])
+    setReplyCount(currentStory.reply_count || 0)
+    setRepliesLoadedFor(null)
+    setIsLiked(Boolean(currentStory.user_reaction))
+    setReactionLoadedFor(currentStory.user_reaction ? currentStory.id : null)
 
     if (user && currentStory.user_id !== user.id) {
       recordStoryView(currentStory.id, user.id)
@@ -124,14 +132,6 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     getStoryViewers(currentStory.id)
       .then(viewers => setViewCount(viewers.length))
       .catch(console.error)
-
-    if (user) {
-      getUserStoryReaction(currentStory.id, user.id)
-        .then(reaction => setIsLiked(!!reaction))
-        .catch(console.error)
-    }
-
-    getStoryReplies(currentStory.id).then(setReplies).catch(console.error)
     storyDuration.current = currentStory.media_type === 'video' ? STORY_DURATION.VIDEO : STORY_DURATION.IMAGE
 
     // Auto-play music/audio unmuted for video stories or stories with music
@@ -211,9 +211,34 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }
   }, [showReplies, replies.length])
 
+  const loadRepliesIfNeeded = useCallback(async () => {
+    if (!currentStory || repliesLoadedFor === currentStory.id) return
+    try {
+      const fetchedReplies = await getStoryReplies(currentStory.id)
+      setReplies(fetchedReplies)
+      setReplyCount(fetchedReplies.length)
+      setRepliesLoadedFor(currentStory.id)
+    } catch (error) {
+      console.error('Error loading story replies:', error)
+    }
+  }, [currentStory, repliesLoadedFor])
+
+  const ensureReactionStateLoaded = useCallback(async () => {
+    if (!user || !currentStory || reactionLoadedFor === currentStory.id) return
+    try {
+      const reaction = await getUserStoryReaction(currentStory.id, user.id)
+      setIsLiked(!!reaction)
+      setReactionLoadedFor(currentStory.id)
+    } catch (error) {
+      console.error('Error loading story reaction:', error)
+    }
+  }, [user, currentStory, reactionLoadedFor])
+
   const handleLike = async () => {
     if (!user || !currentStory) return
     try {
+      await ensureReactionStateLoaded()
+
       if (isLiked) {
         await removeStoryReaction(currentStory.id, user.id)
         setIsLiked(false)
@@ -221,6 +246,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
         await addStoryReaction(currentStory.id, user.id, 'like')
         setIsLiked(true)
       }
+      setReactionLoadedFor(currentStory.id)
     } catch (error) {
       console.error('Error toggling like:', error)
     }
@@ -231,6 +257,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     try {
       const reply = await addStoryReply(currentStory.id, user.id, replyText.trim())
       setReplies(prev => [...prev, reply])
+      setRepliesLoadedFor(currentStory.id)
+      setReplyCount(prev => prev + 1)
       setReplyText('')
       toast.success('Reply sent!')
     } catch (error) {
@@ -260,13 +288,15 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const toggleRepliesSheet = useCallback(() => {
     setShowReplies(prev => {
       if (prev) setIsPaused(false) // Resume when closing
+      if (!prev) loadRepliesIfNeeded()
       return !prev
     })
-  }, [])
+  }, [loadRepliesIfNeeded])
 
   if (!isOpen || !currentStory) return null
 
   const glowColor = isTextStory ? (currentStory.background_color || '#2563eb') : '#3b82f6'
+  const visibleReplyCount = repliesLoadedFor === currentStory.id ? replies.length : replyCount
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center">
@@ -432,14 +462,14 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
               {!isOwnStory ? (
                 <div className="space-y-2.5">
                   {/* View replies indicator */}
-                  {replies.length > 0 && (
+                  {visibleReplyCount > 0 && (
                     <button
                       onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
                       className="flex items-center gap-1.5 mx-auto px-3 py-1 rounded-full bg-black/40 hover:bg-black/50 transition-colors"
                     >
                       <MessageCircle className="w-3 h-3 text-white/60" />
                       <span className="text-white/60 text-[11px] font-medium">
-                        {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
+                        {visibleReplyCount} {visibleReplyCount === 1 ? 'reply' : 'replies'}
                       </span>
                     </button>
                   )}
@@ -486,15 +516,15 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                   <button
                     onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ${
-                      replies.length > 0
+                      visibleReplyCount > 0
                         ? 'bg-black/40 hover:bg-black/50 text-white/80'
                         : 'text-white/40 cursor-default'
                     }`}
-                    disabled={replies.length === 0}
+                    disabled={visibleReplyCount === 0}
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
                     <span className="text-xs font-medium">
-                      {replies.length > 0 ? `${replies.length} ${replies.length === 1 ? 'Reply' : 'Replies'}` : 'No replies'}
+                      {visibleReplyCount > 0 ? `${visibleReplyCount} ${visibleReplyCount === 1 ? 'Reply' : 'Replies'}` : 'No replies'}
                     </span>
                   </button>
                 </div>
@@ -524,7 +554,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                       Replies
                     </h3>
                     <span className="bg-white/15 text-white/80 text-[10px] md:text-xs font-medium px-2 py-0.5 rounded-full">
-                      {replies.length}
+                      {visibleReplyCount}
                     </span>
                   </div>
                   <button

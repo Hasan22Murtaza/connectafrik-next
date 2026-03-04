@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import Link from 'next/link'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useRouter } from 'next/navigation'
@@ -16,60 +17,85 @@ interface NotificationDropdownProps {
 }
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onClose, onUnreadCountChange }) => {
+  const PAGE_SIZE = 10
   const { user } = useAuth()
   const router = useRouter()
   const { startChatWithMembers, openThread } = useProductionChat()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [stats, setStats] = useState({ unread: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
-  const fetchNotifications = async () => {
+  const fetchUnreadCount = async () => {
+    if (!user) return
+    try {
+      const res = await apiClient.get<{ data: { unread_count: number } }>('/api/notifications/unread-count')
+      const unreadCount = res?.data?.unread_count ?? 0
+      setStats({ unread: unreadCount })
+      onUnreadCountChange?.(unreadCount)
+    } catch (error) {
+      console.error('Error fetching unread count:', error)
+    }
+  }
+
+  const fetchNotifications = async (targetPage = 0, append = false) => {
     if (!user) return
 
     try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (error) {
-        console.error('Error fetching notifications:', error)
-        toast.error('Failed to load notifications')
-        return
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
       }
+      const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
+        '/api/notifications',
+        { page: targetPage, limit: PAGE_SIZE }
+      )
+      const data = res?.data ?? []
 
-      if (data) {
-        const transformedNotifications: Notification[] = data.map((record: any) => {
-          const payload = record.payload || record.data || {}
-          return {
-            id: record.id,
-            user_id: record.user_id,
-            type: record.type as Notification['type'],
-            title: payload.title || record.title || getDefaultTitle(record.type),
-            message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
-            data: payload.data || payload,
-            is_read: record.is_read || false,
-            created_at: record.created_at,
-            updated_at: record.updated_at || record.created_at,
-          }
-        })
+      const transformedNotifications: Notification[] = data.map((record: any) => {
+        const payload = record.payload || record.data || {}
+        return {
+          id: record.id,
+          user_id: record.user_id,
+          type: record.type as Notification['type'],
+          title: payload.title || record.title || getDefaultTitle(record.type),
+          message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
+          data: payload.data || payload,
+          is_read: record.is_read || false,
+          created_at: record.created_at,
+          updated_at: record.updated_at || record.created_at,
+        }
+      })
 
-        setNotifications(transformedNotifications)
-        
-        const unreadCount = transformedNotifications.filter(n => !n.is_read).length
-        setStats({ unread: unreadCount })
-        onUnreadCountChange?.(unreadCount)
-      }
+      setNotifications((prev) => {
+        if (!append) return transformedNotifications
+        const existingIds = new Set(prev.map((n) => n.id))
+        const uniqueNew = transformedNotifications.filter((n) => !existingIds.has(n.id))
+        return [...prev, ...uniqueNew]
+      })
+      setPage(targetPage)
+      setHasMore(typeof res?.hasMore === 'boolean' ? res.hasMore : transformedNotifications.length === PAGE_SIZE)
+      await fetchUnreadCount()
     } catch (error) {
       console.error('Error fetching notifications:', error)
       toast.error('Failed to load notifications')
     } finally {
-      setLoading(false)
+      if (append) {
+        setLoadingMore(false)
+      } else {
+        setLoading(false)
+      }
     }
+  }
+
+  const loadMoreNotifications = async () => {
+    if (!user || loading || loadingMore || !hasMore) return
+    await fetchNotifications(page + 1, true)
   }
 
   const getDefaultTitle = (type: string): string => {
@@ -135,17 +161,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
     if (!user) return
 
     try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id)
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Error marking notification as read:', error)
-        toast.error('Failed to mark notification as read')
-        return
-      }
+      await apiClient.patch(`/api/notifications/${id}/read`, {})
 
       setNotifications(prev =>
         prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
@@ -167,17 +183,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       const unreadNotifications = notifications.filter(n => !n.is_read)
       if (unreadNotifications.length === 0) return
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true})
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-
-      if (error) {
-        console.error('Error marking all notifications as read:', error)
-        toast.error('Failed to mark all notifications as read')
-        return
-      }
+      await apiClient.patch('/api/notifications/read-all', {})
 
       setNotifications(prev =>
         prev.map(n => ({ ...n, is_read: true }))
@@ -193,25 +199,6 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   }
 
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!user) return
-
-      try {
-        const { data, error } = await supabase
-          .from('notifications')
-          .select('id, is_read')
-          .eq('user_id', user.id)
-          .eq('is_read', false)
-
-        if (!error && data) {
-          const unreadCount = data.length
-          onUnreadCountChange?.(unreadCount)
-        }
-      } catch (error) {
-        console.error('Error fetching unread count:', error)
-      }
-    }
-
     if (user) {
       fetchUnreadCount()
     }
@@ -219,7 +206,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
   useEffect(() => {
     if (isOpen && user) {
-      fetchNotifications()
+      fetchNotifications(0, false)
 
       const channel = supabase
         .channel('notifications-changes')
@@ -232,19 +219,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             filter: `user_id=eq.${user.id}`,
           },
           () => {
-            fetchNotifications()
-            if (user) {
-              supabase
-                .from('notifications')
-                .select('id, is_read')
-                .eq('user_id', user.id)
-                .eq('is_read', false)
-                .then(({ data, error }) => {
-                  if (!error && data) {
-                    onUnreadCountChange?.(data.length)
-                  }
-                })
-            }
+            fetchNotifications(0, false)
+            fetchUnreadCount()
           }
         )
         .subscribe()
@@ -254,6 +230,14 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       }
     }
   }, [isOpen, user?.id])
+
+  const handleListScroll = async (event: React.UIEvent<HTMLDivElement>) => {
+    const target = event.currentTarget
+    const nearBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 80
+    if (nearBottom) {
+      await loadMoreNotifications()
+    }
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -599,7 +583,11 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           </div>
         </div>
 
-        <div className="max-h-80 sm:max-h-96 overflow-y-auto overflow-x-hidden">
+        <div
+          ref={listRef}
+          className="max-h-80 sm:max-h-96 overflow-y-auto overflow-x-hidden"
+          onScroll={handleListScroll}
+        >
           {loading ? (
             <div className="p-3 sm:p-4 text-center text-gray-500">
               Loading notifications...
@@ -643,6 +631,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                   </div>
                 </div>
               ))}
+              {loadingMore && (
+                <div className="p-3 text-center text-xs text-gray-500">Loading more...</div>
+              )}
+              {!hasMore && notifications.length >= PAGE_SIZE && (
+                <div className="p-3 text-center text-xs text-gray-400">No more notifications</div>
+              )}
             </div>
           )}
         </div>

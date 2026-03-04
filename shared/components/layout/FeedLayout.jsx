@@ -4,7 +4,6 @@ import RightSidebar from '@/shared/components/ui/RightSidebar'
 import MobileMenuButton from '@/shared/components/ui/MobileMenuButton'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
 import { checkUpcomingBirthdays } from '@/shared/services/birthdayNotificationService'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
 import { calculateStatusFromLastSeen } from '@/shared/services/presenceService'
@@ -44,17 +43,11 @@ const FeedLayout = ({ children }) => {
         setFriends(friendsList)
         setSuggestedUsers(suggested)
 
-        // Get birthdays from friends only
+        // Get birthdays from friends only (no extra profile query)
         const today = new Date()
         const todayKey = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-        // Fetch birthday data for friends
-        const { data: friendProfiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, birthday')
-          .in('id', friendsList.map(f => f.id))
-
-        const todaysBirthdays = (friendProfiles || [])
+        const todaysBirthdays = (friendsList || [])
           .filter((profile) => {
             if (!profile.birthday) return false
             const parts = String(profile.birthday).split('-')

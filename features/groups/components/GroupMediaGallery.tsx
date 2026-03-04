@@ -2,27 +2,27 @@
 
 import React, { useState } from 'react'
 import { Images, Video, X, Download } from 'lucide-react'
-import { GroupPost } from '@/shared/hooks/useGroupPosts'
-import { formatDistanceToNow } from 'date-fns'
 
 interface GroupMediaGalleryProps {
-  posts: GroupPost[]
+  items: GroupMediaItem[]
   loading: boolean
 }
 
-const GroupMediaGallery: React.FC<GroupMediaGalleryProps> = ({ posts, loading }) => {
-  const [selectedMedia, setSelectedMedia] = useState<{ url: string; type: 'image' | 'video'; post: GroupPost } | null>(null)
+interface GroupMediaItem {
+  id: string
+  url: string
+  type: 'image' | 'video'
+  created_at: string
+  author?: {
+    id: string
+    username?: string
+    full_name?: string
+    avatar_url?: string | null
+  } | null
+}
 
-  // Extract all media from posts
-  const allMedia = posts
-    .filter(post => post.media_urls && post.media_urls.length > 0)
-    .flatMap(post => 
-      (post.media_urls || []).map(url => ({
-        url,
-        type: url.match(/\.(mp4|webm|mov|avi)$/i) ? 'video' as const : 'image' as const,
-        post
-      }))
-    )
+const GroupMediaGallery: React.FC<GroupMediaGalleryProps> = ({ items, loading }) => {
+  const [selectedMedia, setSelectedMedia] = useState<GroupMediaItem | null>(null)
 
   if (loading) {
     return (
@@ -32,7 +32,7 @@ const GroupMediaGallery: React.FC<GroupMediaGalleryProps> = ({ posts, loading })
     )
   }
 
-  if (allMedia.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="text-center py-12">
         <Images className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -48,21 +48,21 @@ const GroupMediaGallery: React.FC<GroupMediaGalleryProps> = ({ posts, loading })
     <>
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-gray-900">
-          {allMedia.length} {allMedia.length === 1 ? 'item' : 'items'}
+          {items.length} {items.length === 1 ? 'item' : 'items'}
         </h3>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-        {allMedia.map((media, index) => (
+        {items.map((media) => (
           <div
-            key={`${media.post.id}-${index}`}
+            key={media.id}
             className="relative group cursor-pointer aspect-square"
             onClick={() => setSelectedMedia(media)}
           >
             {media.type === 'image' ? (
               <img
                 src={media.url}
-                alt={`Media from ${media.post.title}`}
+                alt="Group media"
                 className="w-full h-full object-cover rounded-lg hover:opacity-90 transition-opacity"
               />
             ) : (
@@ -88,7 +88,6 @@ const GroupMediaGallery: React.FC<GroupMediaGalleryProps> = ({ posts, loading })
         ))}
       </div>
 
-      {/* Media Viewer Modal */}
       {selectedMedia && (
         <div
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
@@ -119,16 +118,11 @@ const GroupMediaGallery: React.FC<GroupMediaGalleryProps> = ({ posts, loading })
               />
             )}
 
-            {/* Media Info */}
             <div className="absolute bottom-4 left-4 right-4 bg-black/60 text-white p-4 rounded-lg">
-              <p className="font-semibold">{selectedMedia.post.title}</p>
-              <p className="text-sm text-gray-300 mt-1">
-                {formatDistanceToNow(new Date(selectedMedia.post.created_at), { addSuffix: true })}
-              </p>
               <a
                 href={selectedMedia.url}
                 download
-                className="inline-flex items-center gap-2 mt-2 text-sm text-blue-400 hover:text-blue-300"
+                className="inline-flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Download className="w-4 h-4" />

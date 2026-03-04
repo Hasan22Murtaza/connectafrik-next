@@ -12,6 +12,7 @@ export default function ConditionalHeader() {
     "/signup",
     "/forgot-password",
     "/reset-password",
+    "/api-docs",
   ];
   
   // Hide header on call pages (like Facebook)

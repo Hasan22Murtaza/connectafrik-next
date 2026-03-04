@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import CommentsSection from '@/features/social/components/CommentsSection'
 import { PostCard } from '@/features/social/components/PostCard'
@@ -33,6 +33,15 @@ interface Post {
   isLiked?: boolean
 }
 
+interface PostResponse {
+  data: Post
+}
+
+interface ReactionResponse {
+  action: 'added' | 'updated' | 'removed'
+  reaction_type: string
+}
+
 const PostDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
@@ -51,7 +60,6 @@ const PostDetailPage: React.FC = () => {
   useEffect(() => {
     if (postId) {
       fetchPost()
-      recordView()
     }
   }, [postId, user])
 
@@ -59,23 +67,9 @@ const PostDetailPage: React.FC = () => {
     try {
       setLoading(true)
 
-      const { data: postData, error: postError } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          author:profiles!posts_author_id_fkey(
-            id,
-            username,
-            full_name,
-            avatar_url,
-            country
-          )
-        `)
-        .eq('id', postId)
-        .eq('is_deleted', false)
-        .single()
+      const response = await apiClient.get<PostResponse>(`/api/posts/${postId}`)
+      const postData = response.data
 
-      if (postError) throw postError
       if (!postData) {
         toast.error('Post not found')
         router.push('/feed')
@@ -83,36 +77,13 @@ const PostDetailPage: React.FC = () => {
       }
 
       setPost(postData)
-
-      if (user) {
-        const { data: likeData } = await supabase
-          .from('likes')
-          .select('id')
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
-          .single()
-
-        setIsLiked(!!likeData)
-      }
+      setIsLiked(!!postData.isLiked)
     } catch (error: any) {
       console.error('Error fetching post:', error)
       toast.error('Failed to load post')
       router.push('/feed')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const recordView = async () => {
-    if (!user || !postId) return
-
-    try {
-      await supabase.from('post_views').insert({
-        post_id: postId,
-        user_id: user.id,
-      })
-    } catch (error) {
-      console.error('Error recording view:', error)
     }
   }
 
@@ -123,32 +94,22 @@ const PostDetailPage: React.FC = () => {
     }
 
     try {
-      if (isLiked) {
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .eq('post_id', postId)
-          .eq('user_id', user.id)
+      const response = await apiClient.post<ReactionResponse>(
+        `/api/posts/${postId}/reaction`,
+        { reaction_type: 'like' }
+      )
 
-        if (error) throw error
-
-        setPost((prev) =>
-          prev ? { ...prev, likes_count: prev.likes_count - 1 } : null
-        )
-        setIsLiked(false)
-      } else {
-        const { error } = await supabase.from('likes').insert({
-          post_id: postId,
-          user_id: user.id,
-        })
-
-        if (error) throw error
-
-        setPost((prev) =>
-          prev ? { ...prev, likes_count: prev.likes_count + 1 } : null
-        )
-        setIsLiked(true)
-      }
+      setPost((prev) => {
+        if (!prev) return null
+        const nextLikes =
+          response.action === 'added'
+            ? prev.likes_count + 1
+            : response.action === 'removed'
+            ? Math.max(0, prev.likes_count - 1)
+            : prev.likes_count
+        return { ...prev, likes_count: nextLikes }
+      })
+      setIsLiked(response.action === 'removed' ? false : true)
     } catch (error: any) {
       console.error('Error toggling like:', error)
       toast.error('Failed to update like')
@@ -185,13 +146,7 @@ const PostDetailPage: React.FC = () => {
     if (!confirm('Are you sure you want to delete this post?')) return
 
     try {
-      const { error } = await supabase
-        .from('posts')
-        .update({ is_deleted: true })
-        .eq('id', postId)
-        .eq('author_id', user.id)
-
-      if (error) throw error
+      await apiClient.delete(`/api/posts/${postId}`)
 
       toast.success('Post deleted')
       router.push('/feed')
@@ -276,4 +231,3 @@ const PostDetailPage: React.FC = () => {
 }
 
 export default PostDetailPage
-

@@ -28,6 +28,7 @@ import { useGroupPosts } from '@/shared/hooks/useGroupPosts'
 import { Group } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
+import { apiClient } from '@/lib/api-client'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import GroupMembersList from '@/features/groups/components/GroupMembersList'
 import InviteFriendsModal from '@/features/groups/components/InviteFriendsModal'
@@ -49,6 +50,37 @@ import {
   GroupDetailPageShimmer,
 } from '@/shared/components/ui/ShimmerLoaders'
 
+type GroupFileItem = {
+  id: string
+  url: string
+  name: string
+  type: string
+  created_at: string
+  post: {
+    id: string
+    title: string
+  }
+  author?: {
+    id: string
+    username?: string
+    full_name?: string
+    avatar_url?: string | null
+  } | null
+}
+
+type GroupMediaItem = {
+  id: string
+  url: string
+  type: 'image' | 'video'
+  created_at: string
+  author?: {
+    id: string
+    username?: string
+    full_name?: string
+    avatar_url?: string | null
+  } | null
+}
+
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
@@ -65,7 +97,7 @@ const GroupDetailPage: React.FC = () => {
     toggleLike, 
     deletePost, 
     updatePost, 
-    recordView 
+    refetch: refetchGroupPosts,
   } = useGroupPosts(groupId || '')
   
   const [group, setGroup] = useState<Group | null>(null)
@@ -76,8 +108,12 @@ const GroupDetailPage: React.FC = () => {
   const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [isSticky, setIsSticky] = useState(false)
+  const [mediaItems, setMediaItems] = useState<GroupMediaItem[]>([])
+  const [files, setFiles] = useState<GroupFileItem[]>([])
+  const [mediaLoading, setMediaLoading] = useState(false)
+  const [filesLoading, setFilesLoading] = useState(false)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
-  const { members } = useMembers()
+  const { members } = useMembers(shareModalState.open)
   const feedShimmerCount = useFeedShimmerCount()
 
   const {
@@ -85,8 +121,9 @@ const GroupDetailPage: React.FC = () => {
     loading: eventsLoading,
     createEvent,
     toggleAttendance,
-    deleteEvent
-  } = useGroupEvents(groupId || '')
+    deleteEvent,
+    refetch: refetchGroupEvents,
+  } = useGroupEvents(groupId || '', activeTab === 'events')
 
   useEffect(() => {
     // Wait for auth to finish loading before fetching group
@@ -111,6 +148,16 @@ const GroupDetailPage: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    if (!groupId || activeTab !== 'media') return
+    fetchGroupMedia()
+  }, [groupId, activeTab, user?.id])
+
+  useEffect(() => {
+    if (!groupId || activeTab !== 'files') return
+    fetchGroupFiles()
+  }, [groupId, activeTab, user?.id])
+
   const fetchGroup = async () => {
     try {
       setLoading(true)
@@ -127,6 +174,34 @@ const GroupDetailPage: React.FC = () => {
       router.push('/groups')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchGroupMedia = async () => {
+    try {
+      setMediaLoading(true)
+      const res = await apiClient.get<{ data: GroupMediaItem[] }>(`/api/groups/${groupId}/media`)
+      setMediaItems(res.data || [])
+    } catch (error: any) {
+      console.error('Error fetching group media:', error)
+      setMediaItems([])
+      toast.error(error?.message || 'Failed to load group media')
+    } finally {
+      setMediaLoading(false)
+    }
+  }
+
+  const fetchGroupFiles = async () => {
+    try {
+      setFilesLoading(true)
+      const res = await apiClient.get<{ data: GroupFileItem[] }>(`/api/groups/${groupId}/files`)
+      setFiles(res.data || [])
+    } catch (error: any) {
+      console.error('Error fetching group files:', error)
+      setFiles([])
+      toast.error(error?.message || 'Failed to load group files')
+    } finally {
+      setFilesLoading(false)
     }
   }
 
@@ -233,10 +308,8 @@ const GroupDetailPage: React.FC = () => {
   }, [shareModalState.postId, groupId])
 
   const handleEmojiReaction = useEmojiReaction({
-    reactionsTable: 'group_post_reactions',
-    postIdColumn: 'group_post_id',
-    postsTable: 'group_posts',
     eventName: 'group-reaction-updated',
+    reactionEndpoint: (postId: string) => `/api/groups/${groupId}/posts/${postId}/reactions`,
   })
 
   const handleShareGroup = async (groupid: string) => {
@@ -266,6 +339,19 @@ const GroupDetailPage: React.FC = () => {
       }
     }
   }
+
+  const handleTabChange = useCallback((tab: 'posts' | 'events' | 'media' | 'files' | 'about' | 'members') => {
+    setActiveTab(tab)
+
+    if (tab === 'posts') {
+      refetchGroupPosts()
+      return
+    }
+
+    if (tab === 'about') {
+      fetchGroup()
+    }
+  }, [refetchGroupPosts, fetchGroup])
 
   if (authLoading || loading) {
     return <GroupDetailPageShimmer />
@@ -395,7 +481,7 @@ const GroupDetailPage: React.FC = () => {
           {/* Navigation Tabs */}
           <div className="flex border-t border-gray-200 overflow-x-auto  scrollbar-hide">
             <button
-              onClick={() => setActiveTab('posts')}
+              onClick={() => handleTabChange('posts')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'posts'
                   ? 'text-primary-600 border-primary-600'
@@ -406,7 +492,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
            
             <button
-              onClick={() => setActiveTab('about')}
+              onClick={() => handleTabChange('about')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'about'
                   ? 'text-primary-600 border-primary-600'
@@ -417,7 +503,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('members')}
+              onClick={() => handleTabChange('members')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'members'
                   ? 'text-primary-600 border-primary-600'
@@ -428,7 +514,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('events')}
+              onClick={() => handleTabChange('events')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'events'
                   ? 'text-primary-600 border-primary-600'
@@ -442,7 +528,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('media')}
+              onClick={() => handleTabChange('media')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'media'
                   ? 'text-primary-600 border-primary-600'
@@ -456,7 +542,7 @@ const GroupDetailPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab('files')}
+              onClick={() => handleTabChange('files')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'files'
                   ? 'text-primary-600 border-primary-600'
@@ -511,9 +597,10 @@ const GroupDetailPage: React.FC = () => {
                         onShare={() => handleShare(post.id)}
                         onDelete={() => deletePost(post.id)}
                         onEdit={(title, content) => updatePost(post.id, { title, content })}
-                        onView={() => recordView(post.id)}
                         onEmojiReaction={handleEmojiReaction}
                         isPostLiked={post.isLiked}
+                        prefetchedReactionGroups={(post.reactions ?? []) as any}
+                        prefetchedTotalReactionCount={post.reactions_total_count ?? 0}
                         showCommentsFor={showCommentsFor === post.id}
                         onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}
                       />
@@ -659,8 +746,8 @@ const GroupDetailPage: React.FC = () => {
             {activeTab === 'media' && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <GroupMediaGallery
-                  posts={groupPosts}
-                  loading={postsLoading}
+                  items={mediaItems}
+                  loading={mediaLoading}
                 />
               </div>
             )}
@@ -668,8 +755,8 @@ const GroupDetailPage: React.FC = () => {
             {activeTab === 'files' && (
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <GroupFilesList
-                  posts={groupPosts}
-                  loading={postsLoading}
+                  files={files}
+                  loading={filesLoading}
                 />
               </div>
             )}

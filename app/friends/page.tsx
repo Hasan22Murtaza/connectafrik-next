@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import { Friend, FriendRequest } from "@/shared/types";
 import {
   Cake,
@@ -18,7 +18,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { notificationService } from '@/shared/services/notificationService';
 import { useShimmerCount, FriendsGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 
@@ -43,6 +42,7 @@ const FriendsPage: React.FC = () => {
   const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
   const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
   const [activeSection, setActiveSection] = useState<"home" | "requests" | "suggestions" | "all" | "birthdays" | "custom">("home");
+  const [hasLoadedSuggestions, setHasLoadedSuggestions] = useState(false);
   const [birthdayDisplayLimit, setBirthdayDisplayLimit] = useState(10);
   const birthdaySentinelRef = useRef<HTMLDivElement>(null);
   const shimmerCount = useShimmerCount();
@@ -139,57 +139,54 @@ const FriendsPage: React.FC = () => {
   }, [activeSection, hasMoreBirthdays]);
 
   useEffect(() => {
-    if (user) {
-      fetchFriends();
-      fetchFriendRequests();
-      if (activeSection === "suggestions" || activeSection === "home") {
-        fetchSuggestions();
-      }
-      // Reset display limits when switching sections
-      if (activeSection === "home") {
-        setRequestsDisplayLimit(20);
-        setSuggestionsDisplayLimit(20);
-      }
+    if (!user) return;
+    fetchFriends();
+    fetchFriendRequests();
+    setHasLoadedSuggestions(false);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (hasLoadedSuggestions) return;
+    if (activeSection === "suggestions" || activeSection === "home") {
+      fetchSuggestions();
+      setHasLoadedSuggestions(true);
     }
-  }, [user, activeSection]);
+  }, [user, activeSection, hasLoadedSuggestions]);
+
+  useEffect(() => {
+    if (activeSection === "home") {
+      setRequestsDisplayLimit(20);
+      setSuggestionsDisplayLimit(20);
+    }
+  }, [activeSection]);
+
+  const fetchAllPages = async <T,>(
+    endpoint: string,
+    limit: number = 50
+  ): Promise<T[]> => {
+    const allItems: T[] = [];
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const res = await apiClient.get<{ data: T[]; hasMore?: boolean }>(endpoint, { page, limit });
+      const items = res.data || [];
+      allItems.push(...items);
+      hasMore = Boolean(res.hasMore);
+      page += 1;
+      if (items.length === 0) break;
+    }
+
+    return allItems;
+  };
 
   const fetchFriends = async () => {
     try {
       if (!user?.id) return;
 
-      const { data, error } = await supabase
-        .from("friend_requests")
-        .select(
-          `
-          *,
-          sender:profiles!friend_requests_sender_id_profiles_fkey(id, username, full_name, avatar_url, country, bio, birthday),
-          receiver:profiles!friend_requests_receiver_id_profiles_fkey(id, username, full_name, avatar_url, country, bio, birthday)
-        `
-        )
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .eq("status", "accepted")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      // Map to friend objects (the other person in the friendship)
-      const friendsList: Friend[] = (data || []).map((req) => {
-        const friend = req.sender_id === user.id ? req.receiver : req.sender;
-        const friendData = Array.isArray(friend) ? friend[0] : friend;
-
-        return {
-          id: friendData?.id || "",
-          username: friendData?.username || "",
-          full_name: friendData?.full_name || "",
-          avatar_url: friendData?.avatar_url,
-          country: friendData?.country,
-          bio: friendData?.bio,
-          friendship_date: req.created_at,
-          birthday: friendData?.birthday,
-        };
-      });
-
-      setFriends(friendsList);
+      const allFriends = await fetchAllPages<Friend>("/api/friends", 20);
+      setFriends(allFriends);
     } catch (error: any) {
       console.error("Error fetching friends:", error);
     }
@@ -200,52 +197,15 @@ const FriendsPage: React.FC = () => {
       setLoading(true);
       if (!user?.id) return;
 
-      const { data, error } = await supabase
-        .from("friend_requests")
-        .select(
-          `
-          *,
-          sender:profiles!friend_requests_sender_id_profiles_fkey (
-            id,
-            username,
-            full_name,
-            avatar_url,
-            country
-          )
-        `
-        )
-        .eq("receiver_id", user.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
+      const allRequests = await fetchAllPages<any>("/api/friends/requests", 20);
+      const mappedData = allRequests.map((req: any) => ({
+        ...req,
+        requester_id: req.sender_id || req.requester_id,
+        recipient_id: req.receiver_id || req.recipient_id,
+        requester: req.requester || req.sender,
+      }));
 
-      if (error) throw error;
-
-      // Map to match the interface and fetch mutual friends count
-      const mappedData = await Promise.all(
-        (data || []).map(async (req) => {
-          // Get mutual friends count
-          let mutualFriendsCount = 0;
-          try {
-            const { data: countData } = await supabase.rpc('get_mutual_friends_count', {
-              user1_id: user.id,
-              user2_id: req.sender_id
-            });
-            mutualFriendsCount = countData || 0;
-          } catch (err) {
-            console.error("Error fetching mutual friends count:", err);
-          }
-
-          return {
-            ...req,
-            requester_id: req.sender_id,
-            recipient_id: req.receiver_id,
-            requester: req.sender,
-            mutualFriendsCount,
-          };
-        })
-      );
-
-      setRequests(mappedData || []);
+      setRequests(mappedData);
     } catch (error: any) {
       console.error("Error fetching friend requests:", error);
     } finally {
@@ -255,13 +215,7 @@ const FriendsPage: React.FC = () => {
 
   const handleAcceptRequest = async (requestId: string) => {
     try {
-      const { error } = await supabase
-        .from("friend_requests")
-        .update({ status: "accepted", responded_at: new Date().toISOString() })
-        .eq("id", requestId);
-
-      if (error) throw error;
-
+      await apiClient.patch(`/api/friends/requests/${requestId}`, { status: "accepted" });
       toast.success("Friend request accepted!");
       fetchFriendRequests();
       fetchFriends();
@@ -273,13 +227,7 @@ const FriendsPage: React.FC = () => {
 
   const handleDeclineRequest = async (requestId: string) => {
     try {
-      const { error } = await supabase
-        .from("friend_requests")
-        .update({ status: "declined", responded_at: new Date().toISOString() })
-        .eq("id", requestId);
-
-      if (error) throw error;
-
+      await apiClient.patch(`/api/friends/requests/${requestId}`, { status: "declined" });
       toast.success("Friend request declined");
       fetchFriendRequests();
     } catch (error: any) {
@@ -293,33 +241,8 @@ const FriendsPage: React.FC = () => {
 
     try {
       setSuggestionsLoading(true);
-
-      // First try to get mutual friend recommendations
-      const { data: mutualData, error: mutualError } = await supabase.rpc('get_friend_recommendations', {
-        p_user_id: user.id,
-        p_limit: 50
-      });
-
-      if (mutualError) {
-        console.error('Error fetching mutual recommendations:', mutualError);
-      }
-
-      // If no mutual recommendations, get general user recommendations
-      if (!mutualData || mutualData.length === 0) {
-        const { data: generalData, error: generalError } = await supabase.rpc('get_general_user_recommendations', {
-          p_user_id: user.id,
-          p_limit: 50
-        });
-
-        if (generalError) {
-          console.error('Error fetching general recommendations:', generalError);
-          return;
-        }
-
-        setSuggestions(generalData || []);
-      } else {
-        setSuggestions(mutualData || []);
-      }
+      const allSuggestions = await fetchAllPages<any>("/api/friends/suggestions", 50);
+      setSuggestions(allSuggestions);
     } catch (error) {
       console.error('Error in fetchSuggestions:', error);
     } finally {
@@ -357,36 +280,8 @@ const FriendsPage: React.FC = () => {
     setSendingRequests(prev => new Set(prev).add(userId));
 
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: userId,
-          status: 'pending'
-        });
+      await apiClient.post('/api/friends', { receiver_id: userId });
 
-      if (error) throw error;
-
-      // Send push notification to the recipient
-      try {
-        const senderName = user.user_metadata?.full_name || user.email || 'Someone'
-        await notificationService.sendNotification({
-          user_id: userId,
-          title: 'New Friend Request',
-          body: `${senderName} wants to be your friend on ConnectAfrik`,
-          notification_type: 'friend_request',
-          data: {
-            sender_id: user.id,
-            sender_name: senderName,
-            url: `/user/${user.user_metadata?.username}`
-          }
-        })
-      } catch (notificationError) {
-        console.error('Error sending push notification:', notificationError)
-        // Don't fail the friend request if notification fails
-      }
-
-      // Remove from suggestions after sending request
       setSuggestions(prev => prev.filter(rec => rec.user_id !== userId));
       toast.success('Friend request sent!');
     } catch (error: any) {

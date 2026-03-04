@@ -30,8 +30,7 @@ export interface PostEngagementProps {
   onShare: () => void
   onUserClick?: (username: string) => void
   postId?: string
-  reactionsTable?: string
-  postIdColumn?: string
+  reactionsEndpoint?: string
 }
 
 const PostEngagement: React.FC<PostEngagementProps> = ({
@@ -46,8 +45,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
   onShare,
   onUserClick,
   postId,
-  reactionsTable,
-  postIdColumn,
+  reactionsEndpoint,
 }) => {
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null)
   const [showReactionPicker, setShowReactionPicker] = useState(false)
@@ -232,9 +230,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
         onClose={() => setShowReactionsModal(false)}
         reactionGroups={reactionGroups}
         onUserClick={onUserClick}
-        postId={postId}
-        reactionsTable={reactionsTable}
-        postIdColumn={postIdColumn}
+        reactionsEndpoint={reactionsEndpoint || (postId ? `/api/posts/${postId}/reaction` : undefined)}
       />
     </div>
   )

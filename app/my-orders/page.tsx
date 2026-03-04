@@ -13,7 +13,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { apiClient } from "@/lib/api-client";
 import toast from "react-hot-toast";
 import {
   useShimmerCountMd,
@@ -44,6 +44,21 @@ interface Order {
   };
 }
 
+interface OrderStats {
+  purchases: {
+    total: number;
+    pending: number;
+    completed: number;
+    totalSpent: number;
+  };
+  sales: {
+    total: number;
+    pending: number;
+    completed: number;
+    totalEarned: number;
+  };
+}
+
 const MyOrders: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
@@ -52,15 +67,19 @@ const MyOrders: React.FC = () => {
   );
   const [purchases, setPurchases] = useState<Order[]>([]);
   const [sales, setSales] = useState<Order[]>([]);
+  const [stats, setStats] = useState<OrderStats>({
+    purchases: { total: 0, pending: 0, completed: 0, totalSpent: 0 },
+    sales: { total: 0, pending: 0, completed: 0, totalEarned: 0 },
+  });
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const shimmerCount = useShimmerCountMd();
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchOrders();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchOrders = async () => {
     if (!user) return;
@@ -68,45 +87,15 @@ const MyOrders: React.FC = () => {
     try {
       setLoading(true);
 
-      // Fetch purchases (orders where user is buyer)
-      const { data: purchasesData, error: purchasesError } = await supabase
-        .from("order_with_parties")
-        .select("*")
-        .eq("buyer_id", user.id)
-        .order("created_at", { ascending: false });
+      const [purchasesRes, salesRes, statsRes] = await Promise.all([
+        apiClient.get<{ data: Order[]; page: number; pageSize: number; hasMore: boolean }>('/api/orders', { type: 'purchases' }),
+        apiClient.get<{ data: Order[]; page: number; pageSize: number; hasMore: boolean }>('/api/orders', { type: 'sales' }),
+        apiClient.get<OrderStats>('/api/orders/stats'),
+      ]);
 
-      if (purchasesError) throw purchasesError;
-
-      // Fetch sales (orders where user is seller)
-      const { data: salesData, error: salesError } = await supabase
-        .from("order_with_parties")
-        .select("*")
-        .eq("seller_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (salesError) throw salesError;
-
-      // Transform the flat view data to match the Order interface structure
-      const transformOrder = (order: any): Order => ({
-        ...order,
-        seller: order.seller_id_profile
-          ? {
-              username: order.seller_username,
-              full_name: order.seller_full_name,
-              avatar_url: order.seller_avatar_url,
-            }
-          : undefined,
-        buyer: order.buyer_id_profile
-          ? {
-              username: order.buyer_username,
-              full_name: order.buyer_full_name,
-              avatar_url: order.buyer_avatar_url,
-            }
-          : undefined,
-      });
-
-      setPurchases((purchasesData || []).map(transformOrder));
-      setSales((salesData || []).map(transformOrder));
+      setPurchases(purchasesRes.data || []);
+      setSales(salesRes.data || []);
+      setStats(statsRes);
     } catch (error: any) {
       console.error("Error fetching orders:", error);
       toast.error("Failed to load orders");
@@ -172,28 +161,8 @@ const MyOrders: React.FC = () => {
     try {
       setUpdatingOrderId(orderId);
 
-      // Determine the next delivery status based on order status
-      let deliveryStatus = 'pending';
-      if (newStatus === 'processing') {
-        deliveryStatus = 'processing';
-      } else if (newStatus === 'shipped') {
-        deliveryStatus = 'shipped';
-      } else if (newStatus === 'completed') {
-        deliveryStatus = 'delivered';
-      }
+      await apiClient.patch(`/api/orders/${orderId}/status`, { status: newStatus });
 
-      const { error } = await supabase
-        .from('orders')
-        .update({
-          status: newStatus,
-          delivery_status: deliveryStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) throw error;
-
-      // Refresh orders
       await fetchOrders();
       toast.success(`Order status updated to ${newStatus}`);
     } catch (error: any) {
@@ -370,25 +339,11 @@ const MyOrders: React.FC = () => {
   };
 
   const currentOrders = activeTab === "purchases" ? purchases : sales;
-
-  const stats = {
-    purchases: {
-      total: purchases.length,
-      pending: purchases.filter((o) => o.status === "pending").length,
-      completed: purchases.filter((o) => o.status === "completed").length,
-      totalSpent: purchases
-        .filter((o) => o.payment_status === "completed")
-        .reduce((sum, o) => sum + o.total_amount, 0),
-    },
-    sales: {
-      total: sales.length,
-      pending: sales.filter((o) => o.status === "pending").length,
-      completed: sales.filter((o) => o.status === "completed").length,
-      totalEarned: sales
-        .filter((o) => o.payment_status === "completed")
-        .reduce((sum, o) => sum + o.total_amount, 0),
-    },
-  };
+  const activeStats = activeTab === "purchases" ? stats.purchases : stats.sales;
+  const primaryLabel = activeTab === "purchases" ? "Total Purchases" : "Total Sales";
+  const amountLabel = activeTab === "purchases" ? "Total Spent" : "Earnings";
+  const amountValue =
+    activeTab === "purchases" ? stats.purchases.totalSpent : stats.sales.totalEarned;
 
   return (
     <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
@@ -402,16 +357,31 @@ const MyOrders: React.FC = () => {
 
           {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-6">
-  {/* Total Purchases */}
+  {/* Total (changes by active tab) */}
   <div className="bg-primary-50 rounded-lg p-2 sm:p-4">
     <div className="flex items-center space-x-1 mb-1">
-      <ShoppingCart className="w-6 h-6 text-primary-600" />
+      {activeTab === "purchases" ? (
+        <ShoppingCart className="w-6 h-6 text-primary-600" />
+      ) : (
+        <Package className="w-6 h-6 text-primary-600" />
+      )}
       <p className="text-sm text-primary-600 font-medium">
-        Total Purchases
+        {primaryLabel}
       </p>
     </div>
     <p className="text-2xl font-bold text-primary-700">
-      {stats.purchases.total}
+      {activeStats.total}
+    </p>
+  </div>
+
+  {/* Pending */}
+  <div className="bg-yellow-50 rounded-lg p-2 sm:p-4">
+    <div className="flex items-center space-x-1 mb-1">
+      <Clock className="w-6 h-6 text-yellow-600" />
+      <p className="text-sm text-yellow-600 font-medium">Pending</p>
+    </div>
+    <p className="text-2xl font-bold text-yellow-700">
+      {activeStats.pending}
     </p>
   </div>
 
@@ -422,31 +392,18 @@ const MyOrders: React.FC = () => {
       <p className="text-sm text-green-600 font-medium">Completed</p>
     </div>
     <p className="text-2xl font-bold text-green-700">
-      {stats.purchases.completed}
+      {activeStats.completed}
     </p>
   </div>
 
-  {/* Total Sales */}
-  <div className="bg-primary-100 rounded-lg p-2 sm:p-4">
-    <div className="flex items-center space-x-1 mb-1">
-      <Package className="w-6 h-6 text-primary-600" />
-      <p className="text-sm text-primary-600 font-medium">
-        Total Sales
-      </p>
-    </div>
-    <p className="text-2xl font-bold text-primary-700">
-      {stats.sales.total}
-    </p>
-  </div>
-
-  {/* Earnings */}
+  {/* Amount */}
   <div className="bg-primary-200 rounded-lg p-2 sm:p-4">
     <div className="flex items-center space-x-1 mb-1">
       <TrendingUp className="w-6 h-6 text-primary-700" />
-      <p className="text-sm text-primary-700 font-medium">Earnings</p>
+      <p className="text-sm text-primary-700 font-medium">{amountLabel}</p>
     </div>
     <p className="text-2xl font-bold text-primary-700">
-      ${stats.sales.totalEarned.toLocaleString()}
+      ${amountValue.toLocaleString()}
     </p>
   </div>
 </div>
@@ -461,7 +418,7 @@ const MyOrders: React.FC = () => {
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              My Purchases ({purchases.length})
+              My Purchases ({stats.purchases.total})
             </button>
             <button
               onClick={() => setActiveTab("sales")}
@@ -471,7 +428,7 @@ const MyOrders: React.FC = () => {
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
-              My Sales ({sales.length})
+              My Sales ({stats.sales.total})
             </button>
           </div>
         </div>

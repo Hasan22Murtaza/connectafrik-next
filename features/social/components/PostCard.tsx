@@ -16,14 +16,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   followUser,
   unfollowUser,
-  checkIsFollowing,
 } from "../services/followService";
 import { supabase } from "@/lib/supabase";
 import { getDiversityBadges } from "../services/fairnessRankingService";
-import { DwellTimeTracker } from "../services/engagementTracking";
+import { logEngagementEvent } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
-import { usePostReactionsWithUsers } from "@/shared/hooks/usePostReactionsWithUsers";
+import { apiClient } from "@/lib/api-client";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
@@ -52,6 +51,14 @@ interface Post {
   language?: string;
   created_at: string;
   isLiked?: boolean;
+  is_following?: boolean;
+  reactions?: Array<{
+    type: string;
+    count: number;
+    users: Array<{ id: string; username?: string; full_name?: string; avatar_url?: string | null }>;
+    currentUserReacted?: boolean;
+  }>;
+  reactions_total_count?: number;
 }
 
 interface PostCardProps {
@@ -61,7 +68,6 @@ interface PostCardProps {
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
   onEdit?: (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void;
-  onView?: (postId: string) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void;
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
@@ -95,7 +101,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   onShare,
   onDelete,
   onEdit,
-  onView,
   onEmojiReaction,
   postReactions = {},
   isPostLiked = false,
@@ -110,8 +115,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followCheckLoading, setFollowCheckLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(post.is_following ?? false);
+  const [followCheckLoading, setFollowCheckLoading] = useState(false);
   const [hasViewed, setHasViewed] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
@@ -119,38 +124,55 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
-  const dwellTrackerRef = useRef<DwellTimeTracker | null>(null);
-  const [showInlineComments, setShowInlineComments] = useState(false);
+  // Auto-open comments for a random subset of posts with exactly 2 comments
+  const shouldAutoOpenComments = (() => {
+    if ((post.comments_count || 0) !== 2) return false;
+    const hash = post.id.split("").reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    return Math.abs(hash) % 3 === 0; // ~33% of eligible posts
+  })();
 
-  // Fetch reactions with user data
-  const {
-    reactions,
-    loading: reactionsLoading,
-    refetch: refetchReactions,
-  } = usePostReactionsWithUsers(post.id);
+  const [showInlineComments, setShowInlineComments] = useState(shouldAutoOpenComments);
 
-  // Listen for reaction updates and refetch
+  const [reactions, setReactions] = useState<{
+    groups: Array<{
+      type: string;
+      count: number;
+      users: Array<{ id: string; username?: string; full_name?: string; avatar_url?: string | null }>;
+      currentUserReacted?: boolean;
+    }>;
+    totalCount: number;
+  }>({
+    groups: post.reactions || [],
+    totalCount: post.reactions_total_count ?? 0,
+  });
+
   useEffect(() => {
     const handleReactionUpdate = (event: CustomEvent) => {
       if (event.detail?.postId === post.id) {
-        // Small delay to ensure DB has updated
-        setTimeout(() => {
-          refetchReactions();
+        setTimeout(async () => {
+          try {
+            const res = await apiClient.get<{
+              data: Array<{
+                type: string;
+                count: number;
+                users: Array<{ id: string; username?: string; full_name?: string; avatar_url?: string | null }>;
+                currentUserReacted?: boolean;
+              }>
+              totalCount: number
+            }>(`/api/posts/${post.id}/reaction`);
+            setReactions({ groups: res.data || [], totalCount: res.totalCount || 0 });
+          } catch {}
         }, 300);
       }
     };
 
-    window.addEventListener(
-      "reaction-updated",
-      handleReactionUpdate as EventListener
-    );
+    window.addEventListener("reaction-updated", handleReactionUpdate as EventListener);
     return () => {
-      window.removeEventListener(
-        "reaction-updated",
-        handleReactionUpdate as EventListener
-      );
+      window.removeEventListener("reaction-updated", handleReactionUpdate as EventListener);
     };
-  }, [post.id, refetchReactions]);
+  }, [post.id]);
 
   // Determine if this is a short text-only post (Facebook-style large text)
   const isShortTextPost = () => {
@@ -175,41 +197,24 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     return POST_BACKGROUNDS[index];
   };
 
-  // Check if current user is following the post author
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!user || !post.author?.id || user.id === post.author.id) {
-        setFollowCheckLoading(false);
-        return;
-      }
-
-      try {
-        const following = await checkIsFollowing(user.id, post.author.id);
-        setIsFollowing(following);
-      } catch (error) {
-        console.error("Error checking follow status:", error);
-      } finally {
-        setFollowCheckLoading(false);
-      }
-    };
-
-    checkFollowStatus();
-  }, [user, post.author?.id]);
-
   // Track view when post comes into view
   useEffect(() => {
-    if (!user || hasViewed || !onView) return;
+    if (!user || hasViewed) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting && !hasViewed) {
             setHasViewed(true);
-            onView(post.id);
+            logEngagementEvent({
+              userId: user.id,
+              postId: post.id,
+              type: 'view',
+            });
           }
         });
       },
-      { threshold: 0.5 } // Trigger when 50% of post is visible
+      { threshold: 0.5 }
     );
 
     if (postRef.current) {
@@ -219,7 +224,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     return () => {
       observer.disconnect();
     };
-  }, [user, hasViewed, onView, post.id]);
+  }, [user, hasViewed, post.id]);
 
 
   const handleEmojiHover = (emoji: string) => {
@@ -268,6 +273,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     }
 
     try {
+      setFollowCheckLoading(true);
       if (isFollowing) {
         const success = await unfollowUser(user.id, post.author.id);
         if (success) {
@@ -282,22 +288,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           setIsFollowing(true);
           toast.success("Tapped in!");
         } else {
-          // Check if already following (failed because duplicate)
-          const stillFollowing = await checkIsFollowing(
-            user.id,
-            post.author.id
-          );
-          if (stillFollowing) {
-            setIsFollowing(true);
-            toast.success("Already tapped in!");
-          } else {
-            toast.error("Failed to tap in");
-          }
+          toast.error("Failed to tap in");
         }
       }
     } catch (error) {
       console.error("Error handling follow:", error);
       toast.error("Something went wrong");
+    } finally {
+      setFollowCheckLoading(false);
     }
   };
 
@@ -354,29 +352,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const handleCancelEdit = () => {
     setIsEditing(false);
   };
-
-  // Check if user is following the post author on mount
-  // Track dwell time for engagement
-  useEffect(() => {
-    if (user?.id && post.id) {
-      dwellTrackerRef.current = new DwellTimeTracker(post.id, user.id);
-      dwellTrackerRef.current.start();
-    }
-
-    return () => {
-      dwellTrackerRef.current?.cleanup();
-    };
-  }, [post.id, user?.id]);
-
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (user && post.author && user.id !== post.author.id) {
-        const following = await checkIsFollowing(user.id, post.author.id);
-        setIsFollowing(following);
-      }
-    };
-    checkFollowStatus();
-  }, [user, post.author?.id]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -486,17 +461,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
   // Get all reaction groups sorted by count
   const getReactionGroups = () => {
-    const groups: any[] = [];
-    Object.keys(reactions).forEach((key) => {
-      if (key !== "totalCount") {
-        const reaction = reactions[key];
-        // Type guard: check if it's a ReactionGroup (has count property) and not a number
-        if (reaction && typeof reaction === "object" && "count" in reaction && reaction.count > 0) {
-          groups.push(reaction);
-        }
-      }
-    });
-    return groups.sort((a, b) => b.count - a.count);
+    return (reactions.groups || [])
+      .filter((reaction) => reaction && reaction.count > 0)
+      .sort((a, b) => b.count - a.count);
   };
 
   const renderMedia = (url: string, index: number) => {

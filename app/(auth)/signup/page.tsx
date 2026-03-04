@@ -4,14 +4,10 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
-import Logo from '@/shared/components/ui/Logo'
-import Footer from '@/shared/components/layout/FooterNext'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 
 const Signup: React.FC = () => {
-  const { signUp } = useAuth()
   const router = useRouter()
   const [formData, setFormData] = useState({
     firstName: '',
@@ -133,20 +129,20 @@ const Signup: React.FC = () => {
       }
 
       if (isEmailInput) {
-        // Email signup - use Supabase signUp with metadata
-        const { data, error } = await supabase.auth.signUp({
-          email: input,
-          password: formData.password,
-          options: {
-            data: {
+        try {
+          await apiClient.post<{ user: any; session: any }>('/api/auth/signup', {
+            email: input,
+            password: formData.password,
+            metadata: {
               ...profileData,
               phone_number: null,
               is_phone_registration: false
             }
-          }
-        })
+          })
 
-        if (error) {
+          toast.success('Account created successfully! Please check your email to verify your account.')
+          router.push('/signin')
+        } catch (error: any) {
           console.error('Email signup error:', error)
           if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
             toast.error('An account with this email already exists. Please sign in instead.')
@@ -163,10 +159,6 @@ const Signup: React.FC = () => {
             const errorMsg = error.message || 'Failed to create account'
             toast.error(errorMsg)
           }
-        } else {
-          console.log('Email signup success:', data)
-          toast.success('Account created successfully! Please check your email to verify your account.')
-          router.push('/signin')
         }
       } else {
         // Phone signup - use Supabase Phone Auth with OTP
@@ -178,19 +170,19 @@ const Signup: React.FC = () => {
           return
         }
 
-        // Send OTP via Supabase Phone Auth
-        const { data, error } = await supabase.auth.signInWithOtp({
-          phone: cleanPhone,
-          options: {
+        try {
+          await apiClient.post<{ sent: boolean }>('/api/auth/send-otp', {
+            phone: cleanPhone,
             data: {
               ...profileData,
               phone_number: cleanPhone,
               is_phone_registration: true
             }
-          }
-        })
+          })
 
-        if (error) {
+          toast.success('Verification code sent to your phone!')
+          router.push('/signin')
+        } catch (error: any) {
           console.error('Phone OTP error:', error)
           if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
             toast.error('An account with this phone number already exists. Please sign in instead.')
@@ -205,13 +197,6 @@ const Signup: React.FC = () => {
             const errorMsg = error.message || 'Failed to send verification code'
             toast.error(errorMsg)
           }
-        } else {
-          console.log('Phone OTP sent:', data)
-          toast.success('Verification code sent to your phone!')
-
-          // Navigate to OTP verification page (if it exists)
-          // For now, redirect to signin - you may need to create a verify-otp page
-          router.push('/signin')
         }
       }
     } catch (error: any) {
@@ -324,10 +309,7 @@ const Signup: React.FC = () => {
                   className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter your email (user@example.com) or phone number
-                  (+1234567890)
-                </p>
+              
               </div>
 
               {/* Password */}
@@ -358,12 +340,7 @@ const Signup: React.FC = () => {
               <div>
                 <label className="flex items-center text-xs text-gray-600 mb-1">
                   Birthday
-                  <span
-                    className="ml-1 text-gray-400 cursor-help"
-                    title="Provide your date of birth"
-                  >
-                    ⓘ
-                  </span>
+                 
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   <select
@@ -415,12 +392,7 @@ const Signup: React.FC = () => {
               <div>
                 <label className="flex items-center text-xs text-gray-600 mb-1">
                   Gender
-                  <span
-                    className="ml-1 text-gray-400 cursor-help"
-                    title="Select your gender"
-                  >
-                    ⓘ
-                  </span>
+                 
                 </label>
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">

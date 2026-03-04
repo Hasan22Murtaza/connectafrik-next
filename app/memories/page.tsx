@@ -47,27 +47,27 @@ const MemoriesPage: React.FC = () => {
     if (user?.id) {
       trackEvent.like(user.id, reelId, 'reel')
     }
-  }, [user])
+  }, [user?.id])
 
   const handleComment = useCallback((reelId: string) => {
     setShowCommentsFor(showCommentsFor === reelId ? null : reelId)
     if (user?.id) {
       trackEvent.comment(user.id, reelId, 'reel')
     }
-  }, [showCommentsFor, user])
+  }, [showCommentsFor, user?.id])
 
   const handleShare = useCallback((reelId: string) => {
     setShareModalState({ open: true, reelId })
     if (user?.id) {
       trackEvent.share(user.id, reelId, 'reel')
     }
-  }, [user])
+  }, [user?.id])
 
   const handleSave = useCallback((reelId: string) => {
     if (user?.id) {
       trackEvent.save(user.id, reelId, 'reel')
     }
-  }, [user])
+  }, [user?.id])
 
   const handleFollow = useCallback((authorId: string) => {
     console.log('Followed author:', authorId)

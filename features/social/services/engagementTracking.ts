@@ -3,40 +3,46 @@
  * Logs user interactions for the recommendation engine
  */
 
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 
 interface EventData {
   userId: string
   postId: string
   type: 'view' | 'like' | 'comment' | 'share' | 'save' | 'watch'
-  contentType?: 'post' | 'reel' // NEW: Distinguish between posts and reels
+  contentType?: 'post' | 'reel'
   dwellMs?: number
   percentViewed?: number
 }
 
-/**
- * Log engagement event to database
- * Non-blocking - errors logged but don't interrupt user experience
- */
-export async function logEngagementEvent(event: EventData): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('user_events')
-      .insert({
-        user_id: event.userId,
-        post_id: event.postId,
-        event_type: event.type,
-        content_type: event.contentType ?? 'post', // Default to 'post' for backward compatibility
-        dwell_ms: event.dwellMs ?? null,
-        percent_viewed: event.percentViewed ?? null
-      })
+let pendingEvents: EventData[] = []
+let flushTimer: ReturnType<typeof setTimeout> | null = null
+const FLUSH_DELAY_MS = 50
 
-    if (error) {
-      console.error('Event tracking error:', error)
-    }
-  } catch (e) {
-    console.error('Failed to log engagement event:', e)
-  }
+function flushPendingEvents(): void {
+  if (pendingEvents.length === 0) return
+
+  const batch = pendingEvents
+  pendingEvents = []
+  flushTimer = null
+
+  apiClient.post('/api/engagement', {
+    events: batch.map(e => ({
+      post_id: e.postId,
+      event_type: e.type,
+      content_type: e.contentType ?? 'post',
+      dwell_ms: e.dwellMs ?? null,
+      percent_viewed: e.percentViewed ?? null,
+    }))
+  }).catch(err => {
+    console.error('Failed to flush engagement events:', err)
+  })
+}
+
+export function logEngagementEvent(event: EventData): void {
+  pendingEvents.push(event)
+
+  if (flushTimer) clearTimeout(flushTimer)
+  flushTimer = setTimeout(flushPendingEvents, FLUSH_DELAY_MS)
 }
 
 /**
@@ -80,20 +86,19 @@ export class DwellTimeTracker {
    * Log view event with dwell time
    * Only logs if user spent at least minDwellMs
    */
-  async logView(): Promise<void> {
+  logView(): void {
     if (this.logged) return
 
     const dwellMs = this.getDwellTime()
 
-    // Only log if user spent enough time (prevent accidental scrolls)
     if (dwellMs >= this.minDwellMs) {
-      await logEngagementEvent({
+      this.logged = true
+      logEngagementEvent({
         userId: this.userId,
         postId: this.postId,
         type: 'view',
         dwellMs
       })
-      this.logged = true
     }
   }
 
@@ -101,8 +106,8 @@ export class DwellTimeTracker {
    * Cleanup - call when component unmounts
    * Logs view if not already logged
    */
-  async cleanup(): Promise<void> {
-    await this.logView()
+  cleanup(): void {
+    this.logView()
   }
 }
 
@@ -136,22 +141,21 @@ export class VideoWatchTracker {
    * Update watch progress
    * Logs when user reaches 50% or completes video
    */
-  async updateProgress(currentTime: number): Promise<void> {
+  updateProgress(currentTime: number): void {
     if (this.logged || this.videoDuration <= 0) return
 
     this.lastProgress = currentTime
     const percentViewed = Math.min(currentTime / this.videoDuration, 1.0)
 
-    // Log when user reaches 50% milestone
     if (percentViewed >= 0.5) {
-      await logEngagementEvent({
+      this.logged = true
+      logEngagementEvent({
         userId: this.userId,
         postId: this.postId,
         type: 'watch',
         percentViewed,
         contentType: this.contentType
       })
-      this.logged = true
     }
   }
 
@@ -159,22 +163,21 @@ export class VideoWatchTracker {
    * Cleanup - call when video ends or component unmounts
    * Logs watch event if user watched at least 10%
    */
-  async cleanup(currentTime?: number): Promise<void> {
+  cleanup(currentTime?: number): void {
     if (this.logged || this.videoDuration <= 0) return
 
     const finalTime = currentTime ?? this.lastProgress
     const percentViewed = Math.min(finalTime / this.videoDuration, 1.0)
 
-    // Log if user watched at least 10% (shows some interest)
     if (percentViewed >= 0.1) {
-      await logEngagementEvent({
+      this.logged = true
+      logEngagementEvent({
         userId: this.userId,
         postId: this.postId,
         type: 'watch',
         percentViewed,
         contentType: this.contentType
       })
-      this.logged = true
     }
   }
 }
@@ -219,26 +222,17 @@ export class BatchEventLogger {
     this.events = []
 
     try {
-      const { error } = await supabase
-        .from('user_events')
-        .insert(
-          batch.map(e => ({
-            user_id: e.userId,
-            post_id: e.postId,
-            event_type: e.type,
-            dwell_ms: e.dwellMs ?? null,
-            percent_viewed: e.percentViewed ?? null
-          }))
-        )
-
-      if (error) {
-        console.error('Batch event tracking error:', error)
-        // Re-add failed events to retry
-        this.events.push(...batch)
-      }
+      await apiClient.post('/api/engagement', {
+        events: batch.map(e => ({
+          post_id: e.postId,
+          event_type: e.type,
+          content_type: e.contentType ?? 'post',
+          dwell_ms: e.dwellMs ?? null,
+          percent_viewed: e.percentViewed ?? null,
+        }))
+      })
     } catch (e) {
       console.error('Failed to flush event batch:', e)
-      // Re-add failed events to retry
       this.events.push(...batch)
     }
   }

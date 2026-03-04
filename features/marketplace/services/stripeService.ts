@@ -1,5 +1,5 @@
 import { loadStripe, Stripe, StripeElements } from '@stripe/stripe-js'
-import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 
 let stripePromise: Promise<Stripe | null>
 
@@ -76,29 +76,18 @@ export async function createStripePaymentIntent(
   metadata: Record<string, string>
 ): Promise<{ clientSecret: string; paymentIntentId: string } | null> {
   try {
-    // Call backend edge function to create payment intent
-    // Secret key is securely stored in Supabase, not exposed to frontend
-    const { data, error } = await supabase.functions.invoke('create-stripe-payment', {
-      body: {
-        amount: Math.round(amount * 100), // Convert to cents
-        currency: currency.toLowerCase(),
-        metadata
-      }
-    })
+    const data = await apiClient.post<{ clientSecret: string; paymentIntentId: string }>(
+      '/api/marketplace/checkout/stripe/intent',
+      { amount, currency, metadata }
+    )
 
-    if (error) {
-      console.error('Supabase function error:', error)
-      throw error
-    }
-
-    if (!data || !data.clientSecret) {
-      console.error('Invalid response from payment function:', data)
+    if (!data?.clientSecret) {
       throw new Error('Invalid response from payment service')
     }
 
     return {
       clientSecret: data.clientSecret,
-      paymentIntentId: data.paymentIntentId
+      paymentIntentId: data.paymentIntentId,
     }
   } catch (error) {
     console.error('Error creating Stripe payment intent:', error)
@@ -116,18 +105,18 @@ export async function verifyStripePayment(paymentIntentId: string): Promise<{
   currency?: string
 }> {
   try {
-    // Call backend edge function to verify payment
-    const { data, error } = await supabase.functions.invoke('verify-stripe-payment', {
-      body: { paymentIntentId }
-    })
-
-    if (error) throw error
+    const data = await apiClient.post<{
+      success: boolean
+      status: string
+      amount?: number
+      currency?: string
+    }>('/api/marketplace/checkout/stripe/verify', { paymentIntentId })
 
     return {
-      success: data.status === 'succeeded',
+      success: data.success,
       status: data.status,
-      amount: data.amount ? data.amount / 100 : undefined,
-      currency: data.currency?.toUpperCase()
+      amount: data.amount,
+      currency: data.currency,
     }
   } catch (error) {
     console.error('Error verifying Stripe payment:', error)
@@ -142,29 +131,22 @@ export async function createStripePayout(
   sellerId: string,
   amount: number,
   currency: string,
-  destination: string // Stripe Connect account ID or bank account token
+  destination: string
 ): Promise<{ success: boolean; payoutId?: string; error?: string }> {
   try {
-    const { data, error } = await supabase.functions.invoke('create-stripe-payout', {
-      body: {
+    const data = await apiClient.post<{ payoutId: string }>(
+      '/api/marketplace/checkout/stripe/payout',
+      {
         sellerId,
-        amount: Math.round(amount * 100),
-        currency: currency.toLowerCase(),
-        destination
+        amount,
+        currency,
+        destination,
       }
-    })
+    )
 
-    if (error) throw error
-
-    return {
-      success: true,
-      payoutId: data.payoutId
-    }
+    return { success: true, payoutId: data.payoutId }
   } catch (error: any) {
     console.error('Error creating Stripe payout:', error)
-    return {
-      success: false,
-      error: error.message || 'Payout failed'
-    }
+    return { success: false, error: error.message || 'Payout failed' }
   }
 }

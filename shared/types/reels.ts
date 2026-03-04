@@ -20,6 +20,7 @@ export interface Reel {
   engagement_score: number
   created_at: string
   updated_at: string
+  is_following?: boolean
   // Joined fields from profiles
   profiles?: {
     username: string

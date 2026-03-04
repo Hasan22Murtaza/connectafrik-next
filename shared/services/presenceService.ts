@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+import { apiClient } from '@/lib/api-client'
 
 export type PresenceStatusType = 'online' | 'away' | 'busy' | 'offline'
 
@@ -22,12 +23,16 @@ type PresenceChangeCallback = (userId: string, status: PresenceStatusType, lastS
 // Constants
 const IDLE_THRESHOLD = 5 * 60 * 1000 // 5 minutes
 const HEARTBEAT_INTERVAL = 45 * 1000 // 45 seconds
+const DATABASE_HEARTBEAT_INTERVAL = 60 * 1000 // 60 seconds
 
 // State management
 let presenceChannel: RealtimeChannel | null = null
 let statusUpdateInterval: ReturnType<typeof setInterval> | null = null
 let idleTimeout: ReturnType<typeof setTimeout> | null = null
 let lastActivityTime = Date.now()
+let initialized = false
+let lastDatabaseStatus: PresenceStatusType | null = null
+let lastDatabaseUpdateAt = 0
 const activityListeners: Array<() => void> = []
 const presenceCallbacks = new Set<PresenceChangeCallback>()
 
@@ -76,16 +81,24 @@ const getCurrentStatus = async (userId: string): Promise<PresenceStatusType> => 
  */
 const updateDatabasePresence = async (
   userId: string,
-  status: PresenceStatusType
+  status: PresenceStatusType,
+  options: { force?: boolean } = {}
 ): Promise<void> => {
+  const now = Date.now()
+  const statusChanged = status !== lastDatabaseStatus
+  const heartbeatDue = now - lastDatabaseUpdateAt >= DATABASE_HEARTBEAT_INTERVAL
+  const shouldPersist =
+    options.force === true || statusChanged || (status === 'online' && heartbeatDue)
+
+  if (!shouldPersist) return
+
   try {
-    await supabase
-      .from('profiles')
-      .update({
-        status,
-        last_seen: new Date().toISOString(),
-      })
-      .eq('id', userId)
+    await apiClient.patch('/api/users/me/presence', {
+      status,
+      last_seen: new Date().toISOString(),
+    })
+    lastDatabaseStatus = status
+    lastDatabaseUpdateAt = now
   } catch (error) {
     console.error('Failed to update database presence:', error)
   }
@@ -160,7 +173,10 @@ const startActivityTracking = (userId: string): void => {
  * Initialize presence tracking for a user
  */
 export const initializePresence = async (userId: string): Promise<void> => {
+  if (initialized) return
+
   try {
+    initialized = true
     presenceChannel = supabase.channel('presence', {
       config: {
         presence: {
@@ -190,7 +206,7 @@ export const initializePresence = async (userId: string): Promise<void> => {
             last_activity: timestamp,
           })
 
-          await updateDatabasePresence(userId, 'online')
+          await updateDatabasePresence(userId, 'online', { force: true })
           startActivityTracking(userId)
         }
       })
@@ -378,6 +394,10 @@ export const setBusy = (userId: string): Promise<void> => {
  * Clean up presence tracking
  */
 export const cleanup = async (userId?: string): Promise<void> => {
+  initialized = false
+  lastDatabaseStatus = null
+  lastDatabaseUpdateAt = 0
+
   // Clear activity listeners
   activityListeners.forEach((removeListener) => removeListener())
   activityListeners.length = 0
@@ -397,7 +417,7 @@ export const cleanup = async (userId?: string): Promise<void> => {
 
   // Mark user as offline in database
   if (userId) {
-    await updateDatabasePresence(userId, 'offline')
+    await updateDatabasePresence(userId, 'offline', { force: true })
   }
 
   if (presenceChannel) {

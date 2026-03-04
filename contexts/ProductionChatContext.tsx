@@ -4,11 +4,12 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
+import { apiClient } from '@/lib/api-client'
 import {
   initializePresence,
   updatePresence as updatePresenceStatus,
   subscribeToPresenceChanges,
-  calculateStatusFromLastSeen,
+  cleanup as cleanupPresence,
 } from '@/shared/services/presenceService'
 
 interface ChatParticipant {
@@ -30,8 +31,10 @@ interface CallRequest {
   type: 'audio' | 'video'
   callerId: string
   callerName?: string
+  callerAvatarUrl?: string
   roomId?: string
   token?: string
+  targetUserId?: string
 }
 
 interface ProductionChatContextType {
@@ -39,9 +42,9 @@ interface ProductionChatContextType {
   updatePresence: (userId: string, status: 'online' | 'away' | 'busy' | 'offline') => void
   startChatWithMembers: (participants: ChatParticipant[], options?: ThreadOptions) => Promise<string | null>
   openThread: (threadId: string) => void
-  startCall: (threadId: string, type: 'audio' | 'video') => Promise<void>
+  startCall: (threadId: string, type: 'audio' | 'video', targetUserId?: string) => Promise<void>
   callRequests: Record<string, CallRequest>
-  currentUser: { id: string; name?: string } | null
+  currentUser: { id: string; name?: string; avatarUrl?: string } | null
   clearCallRequest: (threadId: string) => void
   openThreads: string[]
   closeThread: (threadId: string) => void
@@ -77,7 +80,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     user?.user_metadata?.full_name ||
     [user?.user_metadata?.first_name, user?.user_metadata?.last_name].filter(Boolean).join(' ') ||
     user?.email
-  const currentUser = user ? { id: user.id, name: displayName || user.email } : null
+  const avatarUrl =
+    user?.user_metadata?.avatar_url ||
+    user?.user_metadata?.picture ||
+    user?.user_metadata?.profile_image ||
+    undefined
+  const currentUser = user ? { id: user.id, name: displayName || user.email, avatarUrl } : null
   const updatePresence = useCallback((userId: string, status: 'online' | 'away' | 'busy' | 'offline') => {
     setPresence(prev => ({
       ...prev,
@@ -302,8 +310,26 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [currentUser, openThread])
 
-  const startCall = useCallback(async (threadId: string, type: 'audio' | 'video') => {
+  const startCall = useCallback(async (threadId: string, type: 'audio' | 'video', targetUserId?: string) => {
     try {
+      const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
+        `/api/chat/threads/${threadId}/participants`,
+        { exclude_user_id: currentUser?.id || '' }
+      )
+      const participants = participantsResponse?.data ?? []
+
+      let resolvedTargetUserId = (targetUserId || '').trim()
+      if (resolvedTargetUserId) {
+        const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
+        if (!targetExists) {
+          throw new Error('Recipient ID not found in this chat. Call not sent.')
+        }
+      } else if (participants.length === 1 && participants[0]?.user_id) {
+        resolvedTargetUserId = participants[0].user_id
+      } else {
+        throw new Error('Recipient ID not found. Call not sent.')
+      }
+
       const roomResponse = await fetch('/api/videosdk/room', {
         method: 'POST',
         headers: {
@@ -352,7 +378,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         callerId: currentUser?.id || '',
         callerName: currentUser?.name || 'Unknown',
         roomId,
-        token
+        token,
+        targetUserId: resolvedTargetUserId
       }
 
       setCallRequests(prev => ({
@@ -398,14 +425,15 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         await supabaseMessagingService.sendMessage(
           threadId,
           {
-            content: `📞 Incoming ${type === 'video' ? 'video' : 'audio'} call`,
+            content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
             message_type: 'call_request',
             metadata: {
               callType: type,
               roomId,
-              token,
               callerId: currentUser?.id,
               callerName: currentUser?.name,
+              callerAvatarUrl: currentUser?.avatarUrl,
+              targetUserId: resolvedTargetUserId,
               timestamp: new Date().toISOString()
             }
           },
@@ -434,7 +462,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, roomId, token } = event.detail
+      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, token, targetUserId } = event.detail
+      if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
       
       setCallRequests(prev => ({
         ...prev,
@@ -443,8 +472,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           type,
           callerId,
           callerName,
+          callerAvatarUrl,
           roomId,
-          token
+          token,
+          targetUserId
         }
       }))
     }
@@ -454,7 +485,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       window.removeEventListener('incomingCall', handleIncomingCall as EventListener)
     }
-  }, [])
+  }, [currentUser?.id])
 
   useEffect(() => {
     const loadMessagesForThreads = async () => {
@@ -494,6 +525,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
         if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
           const metadata = message.metadata as any
+          if (metadata?.targetUserId && metadata.targetUserId !== currentUser.id) {
+            return
+          }
           if (metadata?.roomId && metadata?.callType) {
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('incomingCall', {
@@ -502,8 +536,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   type: metadata.callType,
                   callerId: message.sender_id,
                   callerName: message.sender?.name || metadata?.callerName || 'Unknown',
+                  callerAvatarUrl: message.sender?.avatarUrl || metadata?.callerAvatarUrl,
                   roomId: metadata.roomId,
-                  token: metadata.token
+                  token: metadata.token,
+                  targetUserId: metadata.targetUserId
                 }
               }))
             }
@@ -580,98 +616,56 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     if (!currentUser) return
 
-    const unsubscribeCallbacks: (() => void)[] = []
-    const subscribedThreadIds = new Set<string>()
+    const channel = supabase
+      .channel('global-call-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: 'message_type=eq.call_request'
+        },
+        async (payload) => {
+          const msg = payload.new as any
+          if (msg.sender_id === currentUser.id) return
 
-    const subscribeToThreadForCalls = (threadId: string) => {
-      if (subscribedThreadIds.has(threadId)) {
-        return
-      }
+          // Guard against cross-thread/cross-team ringing:
+          // only dispatch incoming calls for threads the current user can access.
+          try {
+            await apiClient.get<{ data: unknown }>(`/api/chat/threads/${msg.thread_id}`)
+          } catch {
+            return
+          }
 
-      subscribedThreadIds.add(threadId)
-      const messageUnsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
-        if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
-          const metadata = message.metadata as any
+          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+          if (metadata?.targetUserId && metadata.targetUserId !== currentUser.id) {
+            return
+          }
           if (metadata?.roomId && metadata?.callType) {
             if (typeof window !== 'undefined') {
               window.dispatchEvent(new CustomEvent('incomingCall', {
                 detail: {
-                  threadId: threadId,
+                  threadId: msg.thread_id,
                   type: metadata.callType,
-                  callerId: message.sender_id,
-                  callerName: message.sender?.name || metadata?.callerName || 'Unknown',
+                  callerId: msg.sender_id,
+                  callerName: metadata.callerName || 'Unknown',
+                  callerAvatarUrl: metadata.callerAvatarUrl,
                   roomId: metadata.roomId,
-                  token: metadata.token
+                  token: metadata.token,
+                  targetUserId: metadata.targetUserId
                 }
               }))
             }
           }
         }
-      })
-      unsubscribeCallbacks.push(messageUnsubscribe)
-    }
-
-    const setupGlobalCallListener = async () => {
-      try {
-        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
-        userThreads.forEach(thread => {
-          subscribeToThreadForCalls(thread.id)
-        })
-      } catch (error) {
-        console.error('Error setting up global call listener:', error)
-      }
-    }
-
-    const threadUnsubscribe = supabaseMessagingService.subscribeToUserThreads(currentUser, (thread) => {
-      subscribeToThreadForCalls(thread.id)
-    })
-    unsubscribeCallbacks.push(threadUnsubscribe)
-
-    setupGlobalCallListener()
+      )
+      .subscribe()
 
     return () => {
-      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
-      subscribedThreadIds.clear()
+      supabase.removeChannel(channel)
     }
   }, [currentUser])
-
-  useEffect(() => {
-    if (!user?.id) return
-
-    const loadAndUpdatePresence = async () => {
-      try {
-        const { data: friendsData } = await supabase
-          .from('friend_requests')
-          .select(`
-            sender_id,
-            receiver_id,
-            sender:profiles!friend_requests_sender_id_profiles_fkey(id, status, last_seen),
-            receiver:profiles!friend_requests_receiver_id_profiles_fkey(id, status, last_seen)
-          `)
-          .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-          .eq('status', 'accepted')
-
-        if (friendsData) {
-          friendsData.forEach((req: any) => {
-            const friend = req.sender_id === user.id ? req.receiver : req.sender
-            const friendData = Array.isArray(friend) ? friend[0] : friend
-            if (friendData?.id) {
-              const calculatedStatus = calculateStatusFromLastSeen(friendData.last_seen)
-              updatePresence(friendData.id, calculatedStatus)
-            }
-          })
-        }
-      } catch (error) {
-        console.error('Failed to load initial presence:', error)
-      }
-    }
-
-    loadAndUpdatePresence()
-
-    const interval = setInterval(loadAndUpdatePresence, 30000)
-
-    return () => clearInterval(interval)
-  }, [user?.id, updatePresence])
 
   useEffect(() => {
     if (!user?.id) return
@@ -686,10 +680,14 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [user?.id, updatePresence])
 
   useEffect(() => {
-    if (user?.id) {
-      initializePresence(user.id).then(() => {
-        updatePresence(user.id, 'online')
-      })
+    if (!user?.id) return
+
+    initializePresence(user.id).then(() => {
+      updatePresence(user.id, 'online')
+    })
+
+    return () => {
+      cleanupPresence(user.id)
     }
   }, [user?.id, updatePresence])
 

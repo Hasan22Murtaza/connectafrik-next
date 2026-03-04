@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { X, Search, Check, QrCode, UserPlus } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
+import { apiClient } from '@/lib/api-client'
 import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
@@ -75,15 +76,24 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
 
   const fetchExistingMembers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('group_memberships')
-        .select('user_id')
-        .eq('group_id', groupId)
-        .eq('status', 'active')
+      const memberIds = new Set<string>()
+      let page = 0
+      let hasMore = true
 
-      if (error) throw error
+      while (hasMore) {
+        const res = await apiClient.get<{ data: Array<{ user_id: string }>; hasMore?: boolean }>(
+          `/api/groups/${groupId}/members`,
+          { page, limit: 100 }
+        )
+        const data = res.data || []
+        data.forEach((member) => {
+          if (member.user_id) memberIds.add(member.user_id)
+        })
+        hasMore = Boolean(res.hasMore)
+        page += 1
+        if (data.length === 0) break
+      }
 
-      const memberIds = new Set((data || []).map(m => m.user_id))
       setExistingMembers(memberIds)
     } catch (error) {
       console.error('Error fetching existing members:', error)

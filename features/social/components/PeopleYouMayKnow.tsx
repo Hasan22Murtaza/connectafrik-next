@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserPlus, Users, Search } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import UserSearch from '@/shared/components/ui/UserSearch';
-import { notificationService } from '@/shared/services/notificationService';
 
 interface Recommendation {
   user_id: string;
@@ -22,43 +21,18 @@ export const PeopleYouMayKnow: React.FC = () => {
   const [showUserSearch, setShowUserSearch] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchRecommendations();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchRecommendations = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      
-      // First try to get mutual friend recommendations
-      const { data: mutualData, error: mutualError } = await supabase.rpc('get_friend_recommendations', {
-        p_user_id: user.id,
-        p_limit: 5
-      });
-
-      if (mutualError) {
-        console.error('Error fetching mutual recommendations:', mutualError);
-      }
-
-      // If no mutual recommendations, get general user recommendations
-      if (!mutualData || mutualData.length === 0) {
-        const { data: generalData, error: generalError } = await supabase.rpc('get_general_user_recommendations', {
-          p_user_id: user.id,
-          p_limit: 5
-        });
-
-        if (generalError) {
-          console.error('Error fetching general recommendations:', generalError);
-          return;
-        }
-
-        setRecommendations(generalData || []);
-      } else {
-        setRecommendations(mutualData || []);
-      }
+      const res = await apiClient.get<{ data: Recommendation[] }>('/api/friends/suggestions', { limit: 5 });
+      setRecommendations(res.data || []);
     } catch (error) {
       console.error('Error in fetchRecommendations:', error);
     } finally {
@@ -72,36 +46,8 @@ export const PeopleYouMayKnow: React.FC = () => {
     setSendingRequests(prev => new Set(prev).add(userId));
 
     try {
-      const { error } = await supabase
-        .from('friend_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: userId,
-          status: 'pending'
-        });
+      await apiClient.post('/api/friends', { receiver_id: userId });
 
-      if (error) throw error;
-
-      // Send push notification to the recipient
-      try {
-        const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
-        await notificationService.sendNotification({
-          user_id: userId,
-          title: 'New Friend Request',
-          body: `${senderName} wants to be your friend on ConnectAfrik`,
-          notification_type: 'friend_request',
-          data: {
-            sender_id: user.id,
-            sender_name: senderName,
-            url: `/user/${user.user_metadata?.username}`
-          }
-        })
-      } catch (notificationError) {
-        console.error('Error sending push notification:', notificationError)
-        // Don't fail the friend request if notification fails
-      }
-
-      // Remove from recommendations after sending request
       setRecommendations(prev => prev.filter(rec => rec.user_id !== userId));
       toast.success('Friend request sent!');
     } catch (error: any) {
