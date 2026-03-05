@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const { data: profiles } = participantUserIds.length
       ? await serviceClient
           .from('profiles')
-          .select('id, username, full_name, avatar_url, status')
+          .select('id, username, full_name, avatar_url, status, last_seen')
           .in('id', participantUserIds)
       : { data: [] as any[] }
 
@@ -104,7 +104,8 @@ export async function GET(request: NextRequest) {
         contact_id: otherId,
         contact_name: contactName,
         contact_avatar_url: otherProfile?.avatar_url || null,
-        status: otherProfile?.status || 'offline',
+        contact_status: otherProfile?.status || 'offline',
+        contact_last_seen: otherProfile?.last_seen || null,
       }
     })
 

@@ -878,7 +878,7 @@ export const supabaseMessagingService = {
 
             for (const participant of targetParticipants) {
               try {
-                if (roomId && token && callerId) {
+                if (roomId && callerId) {
                   await notificationService.sendNotification({
                     user_id: participant.user_id,
                     title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
@@ -893,7 +893,7 @@ export const supabaseMessagingService = {
                       call_type: callType,
                       room_id: roomId,
                       thread_id: threadId,
-                      token: token,
+                      ...(token ? { token } : {}),
                       caller_id: callerId,
                       caller_name: callerName,
                       url: `/call/${roomId}`
