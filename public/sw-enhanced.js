@@ -107,7 +107,8 @@ self.addEventListener('notificationclick', (event) => {
     const callerName = data.caller_name || 'Unknown';
     const url = data.url || `/call/${roomId}`;
     
-    const callUrl = `${self.location.origin}${url}?call=true&type=${callType}&threadId=${threadId}&callerName=${encodeURIComponent(callerName)}&isIncoming=true&callerId=${data.caller_id || ''}`;
+    const callId = data.call_id || data.callId || '';
+    const callUrl = `${self.location.origin}${url}?call=true&type=${callType}&threadId=${threadId}&callerName=${encodeURIComponent(callerName)}&isIncoming=true&callerId=${data.caller_id || ''}${callId ? `&callId=${encodeURIComponent(callId)}` : ''}`;
     
     event.waitUntil(
       clients.openWindow(callUrl)

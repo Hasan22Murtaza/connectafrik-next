@@ -35,6 +35,7 @@ interface CallRequest {
   roomId?: string
   token?: string
   targetUserId?: string
+  callId?: string
 }
 
 interface ProductionChatContextType {
@@ -312,6 +313,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video', targetUserId?: string) => {
     try {
+      const callId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `call_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+
       const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
         `/api/chat/threads/${threadId}/participants`,
         { exclude_user_id: currentUser?.id || '' }
@@ -379,7 +385,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         callerName: currentUser?.name || 'Unknown',
         roomId,
         token,
-        targetUserId: resolvedTargetUserId
+        targetUserId: resolvedTargetUserId,
+        callId
       }
 
       setCallRequests(prev => ({
@@ -387,10 +394,35 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         [threadId]: callRequest
       }))
 
-      // Open new call window for the caller (like Facebook)
+      console.log('Sending call request message', currentUser?.name)
+      try {
+        await supabaseMessagingService.sendMessage(
+          threadId,
+          {
+            content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
+            message_type: 'call_request',
+            metadata: {
+              callType: type,
+              roomId,
+              callerId: currentUser?.id,
+              callerName: currentUser?.name,
+              callerAvatarUrl: currentUser?.avatarUrl,
+              targetUserId: resolvedTargetUserId,
+              callId,
+              timestamp: new Date().toISOString()
+            }
+          },
+          { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
+        )
+      } catch (msgError) {
+        console.warn('⚠️ Failed to send call notification:', msgError)
+        // Don't fail the call if message sending fails
+      }
+
+      // Open new call window for the caller (like Facebook) after signaling is sent
       if (typeof window !== 'undefined') {
         const { openCallWindow } = await import('@/shared/utils/callWindow')
-        
+
         // Get recipient/group name from thread
         const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
         const thread = userThreads.find(t => t.id === threadId)
@@ -406,7 +438,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerName: currentUser?.name || 'Unknown',
           recipientName,
           isIncoming: false,
-          callerId: currentUser?.id
+          callerId: currentUser?.id,
+          callId,
         })
 
         window.dispatchEvent(new CustomEvent('startCall', {
@@ -416,32 +449,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             meetingId: roomId,
             token,
             participantId: currentUser?.id,
-            participantName: currentUser?.name
+            participantName: currentUser?.name,
+            callId,
           }
         }))
-      }
-      console.log('Sending call request message', currentUser?.name)
-      try {
-        await supabaseMessagingService.sendMessage(
-          threadId,
-          {
-            content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
-            message_type: 'call_request',
-            metadata: {
-              callType: type,
-              roomId,
-              callerId: currentUser?.id,
-              callerName: currentUser?.name,
-              callerAvatarUrl: currentUser?.avatarUrl,
-              targetUserId: resolvedTargetUserId,
-              timestamp: new Date().toISOString()
-            }
-          },
-          { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
-        )
-      } catch (msgError) {
-        console.warn('⚠️ Failed to send call notification:', msgError)
-        // Don't fail the call if message sending fails
       }
     } catch (error) {
       console.error('Failed to start call:', error)
@@ -462,7 +473,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, token, targetUserId } = event.detail
+      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, token, targetUserId, callId } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
       
       setCallRequests(prev => ({
@@ -475,7 +486,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerAvatarUrl,
           roomId,
           token,
-          targetUserId
+          targetUserId,
+          callId,
         }
       }))
     }
@@ -539,7 +551,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   callerAvatarUrl: message.sender?.avatarUrl || metadata?.callerAvatarUrl,
                   roomId: metadata.roomId,
                   token: metadata.token,
-                  targetUserId: metadata.targetUserId
+                  targetUserId: metadata.targetUserId,
+                  callId: metadata.callId,
                 }
               }))
             }
@@ -653,7 +666,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   callerAvatarUrl: metadata.callerAvatarUrl,
                   roomId: metadata.roomId,
                   token: metadata.token,
-                  targetUserId: metadata.targetUserId
+                  targetUserId: metadata.targetUserId,
+                  callId: metadata.callId,
                 }
               }))
             }
