@@ -30,6 +30,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     currentUserId,
     roomIdHint,
     tokenHint,
+    callIdHint,
   } = props;
 
   const { user } = useAuth();
@@ -54,6 +55,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
   const [roomId, setRoomId] = useState<string>('');
+  const [currentCallId, setCurrentCallId] = useState<string>(callIdHint || '');
   const [error, setError] = useState<string>('');
   const [participants, setParticipants] = useState<any[]>([]);
   const [showMessageInput, setShowMessageInput] = useState(false);
@@ -77,12 +79,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const ringtoneRef = useRef<{ stop: () => void } | null>(null);
   const callTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remoteDisconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamsRef = useRef<MediaStream[]>([]);
   const hasInitializedRef = useRef(false);
   const isMountedRef = useRef(false);
   const currentMeetingRef = useRef<any>(null);
   const callStatusRef = useRef<CallStatus>('connecting');
+  const callIdRef = useRef<string>(callIdHint || '');
   const videoSDKModuleRef = useRef<{ VideoSDK: any } | null>(null);
   const speakerLevelRef = useRef<SpeakerLevel>(speakerLevel);
 
@@ -122,10 +126,52 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   // --- Sync refs with state ---
   useEffect(() => { speakerLevelRef.current = speakerLevel; }, [speakerLevel]);
   useEffect(() => { callStatusRef.current = callStatus; }, [callStatus]);
+  useEffect(() => { callIdRef.current = currentCallId; }, [currentCallId]);
+  useEffect(() => {
+    if (callIdHint && callIdHint !== callIdRef.current) {
+      setCurrentCallId(callIdHint);
+      callIdRef.current = callIdHint;
+    }
+  }, [callIdHint]);
   useEffect(() => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+
+  const createCallId = useCallback(() => {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `call_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }, []);
+
+  const getOrCreateCallId = useCallback(() => {
+    if (callIdRef.current) return callIdRef.current;
+    const generated = createCallId();
+    callIdRef.current = generated;
+    if (isMountedRef.current) setCurrentCallId(generated);
+    return generated;
+  }, [createCallId]);
+
+  const clearRemoteDisconnectTimer = useCallback(() => {
+    if (remoteDisconnectTimerRef.current) {
+      clearTimeout(remoteDisconnectTimerRef.current);
+      remoteDisconnectTimerRef.current = null;
+    }
+  }, []);
+
+  const shouldHandleSignal = useCallback((msg: any, expectedType?: string) => {
+    if (!msg || !threadId) return false;
+    if (expectedType && msg.message_type !== expectedType) return false;
+    if (msg.thread_id && msg.thread_id !== threadId) return false;
+    if (msg.sender_id && currentUserId && msg.sender_id === currentUserId) return false;
+    const meta = (msg.metadata || {}) as Record<string, any>;
+    const activeCallId = callIdRef.current;
+    const activeRoomId = roomId || roomIdHint || '';
+    if (activeCallId && meta.callId && meta.callId !== activeCallId) return false;
+    if (activeCallId && !meta.callId) return false;
+    if (activeRoomId && meta.roomId && meta.roomId !== activeRoomId) return false;
+    return true;
+  }, [threadId, currentUserId, roomId, roomIdHint]);
 
   // Preload VideoSDK when modal opens
   useEffect(() => {
@@ -184,6 +230,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       clearTimeout(callTimeoutRef.current);
       callTimeoutRef.current = null;
     }
+    clearRemoteDisconnectTimer();
     if (ringtoneRef.current) {
       try { ringtoneRef.current.stop(); } catch {}
       ringtoneRef.current = null;
@@ -224,10 +271,12 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       setParticipantVideoMap(new Map());
       setCallStatus('ended');
       setRoomId('');
+      setCurrentCallId(callIdHint || '');
       setError('');
     }
+    callIdRef.current = callIdHint || '';
     hasInitializedRef.current = false;
-  }, [updateLocalStream, updateRemoteStreams]);
+  }, [updateLocalStream, updateRemoteStreams, clearRemoteDisconnectTimer, callIdHint]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -404,6 +453,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const setupParticipantJoined = (meeting: any, options?: { isOutgoing?: boolean }) => {
     meeting.on("participant-joined", (participant: any) => {
       if (!isMountedRef.current) return;
+      clearRemoteDisconnectTimer();
       if (options?.isOutgoing && (callStatusRef.current === 'ringing' || callStatusRef.current === 'connecting')) {
         setCallStatus('connected');
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
@@ -435,16 +485,37 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           hasRemoteParticipants = updated.length > 0;
         }
         if (!hasRemoteParticipants && callStatusRef.current === 'connected') {
-          if (threadId && currentUserId) {
-            supabaseMessagingService.sendMessage(threadId, {
-              content: 'Call ended',
-              message_type: 'call_ended',
-              metadata: { callType, endedBy: currentUserId, endedAt: new Date().toISOString() },
-            }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }).catch(() => {});
-          }
-          setCallStatus('ended');
-          cleanupResources();
-          setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
+          clearRemoteDisconnectTimer();
+          remoteDisconnectTimerRef.current = setTimeout(() => {
+            let stillNoRemoteParticipants = true;
+            try {
+              const localParticipantId = meeting.localParticipant?.id;
+              const allP = getMeetingParticipants(meeting.participants);
+              stillNoRemoteParticipants = allP.filter((pt: any) => pt.id !== localParticipantId).length === 0;
+            } catch {
+              stillNoRemoteParticipants = true;
+            }
+            if (!stillNoRemoteParticipants || callStatusRef.current !== 'connected') return;
+            if (threadId && currentUserId) {
+              const activeCallId = callIdRef.current || callIdHint || '';
+              const activeRoomId = roomId || roomIdHint || '';
+              supabaseMessagingService.sendMessage(threadId, {
+                content: 'Call ended',
+                message_type: 'call_ended',
+                metadata: {
+                  callType,
+                  roomId: activeRoomId,
+                  callId: activeCallId,
+                  endedBy: currentUserId,
+                  endedAt: new Date().toISOString(),
+                  reason: 'remote_disconnected_timeout',
+                },
+              }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }).catch(() => {});
+            }
+            setCallStatus('ended');
+            cleanupResources();
+            setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
+          }, 15000);
         }
         return updated;
       });
@@ -456,10 +527,18 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     meeting.on("meeting-left", async () => {
       if (threadId && currentUserId && callStatusRef.current !== 'ended') {
         try {
+          const activeCallId = callIdRef.current || callIdHint || '';
+          const activeRoomId = roomId || roomIdHint || '';
           await supabaseMessagingService.sendMessage(threadId, {
             content: 'Call ended',
             message_type: 'call_ended',
-            metadata: { callType, endedBy: currentUserId, endedAt: new Date().toISOString() },
+            metadata: {
+              callType,
+              roomId: activeRoomId,
+              callId: activeCallId,
+              endedBy: currentUserId,
+              endedAt: new Date().toISOString(),
+            },
           }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
         } catch {}
       }
@@ -560,6 +639,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     try {
       setCallStatus('connecting');
       setError('');
+      getOrCreateCallId();
 
       let meetingId = roomIdHint;
       if (!meetingId) {
@@ -639,6 +719,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         try { window.opener.postMessage({ type: 'CALL_ACCEPTED', threadId }, window.location.origin); } catch {}
       }
       if (!roomIdHint) { setError('Cannot accept call - missing room information.'); setIsAcceptingCall(false); return; }
+      const acceptedCallId = getOrCreateCallId();
       setCallStatus('connecting');
 
       const [token, sdkModule] = await Promise.all([
@@ -734,7 +815,13 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           await supabaseMessagingService.sendMessage(threadId, {
             content: 'Call accepted',
             message_type: 'call_accepted',
-            metadata: { callType, acceptedBy: currentUserId, acceptedAt: new Date().toISOString() },
+            metadata: {
+              callType,
+              roomId: roomIdHint,
+              callId: acceptedCallId,
+              acceptedBy: currentUserId,
+              acceptedAt: new Date().toISOString(),
+            },
           }, { id: currentUserId, name: decodedRecipientName });
         } catch {}
       }
@@ -748,6 +835,8 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   };
 
   const handleRejectCall = async () => {
+    const activeCallId = callIdRef.current || callIdHint || '';
+    const activeRoomId = roomId || roomIdHint || '';
     if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
     stopAllRingtones();
     if (threadId && currentUserId) {
@@ -755,7 +844,13 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         await supabaseMessagingService.sendMessage(threadId, {
           content: 'Call rejected',
           message_type: 'call_rejected',
-          metadata: { callType, rejectedBy: currentUserId, rejectedAt: new Date().toISOString() },
+          metadata: {
+            callType,
+            roomId: activeRoomId,
+            callId: activeCallId,
+            rejectedBy: currentUserId,
+            rejectedAt: new Date().toISOString(),
+          },
         }, { id: currentUserId, name: isIncoming ? decodedRecipientName : decodedCallerName });
       } catch {}
       try {
@@ -783,13 +878,21 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   };
 
   const handleEndCall = async () => {
+    const activeCallId = callIdRef.current || callIdHint || '';
+    const activeRoomId = roomId || roomIdHint || '';
     const wasNeverConnected = callStatusRef.current === 'ringing' || callStatusRef.current === 'connecting';
     if (threadId && currentUserId && callStatusRef.current !== 'ended') {
       try {
         await supabaseMessagingService.sendMessage(threadId, {
           content: 'Call ended',
           message_type: 'call_ended',
-          metadata: { callType, endedBy: currentUserId, endedAt: new Date().toISOString() },
+          metadata: {
+            callType,
+            roomId: activeRoomId,
+            callId: activeCallId,
+            endedBy: currentUserId,
+            endedAt: new Date().toISOString(),
+          },
         }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
       } catch {}
       if (wasNeverConnected && !isIncoming) {
@@ -980,6 +1083,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         metadata: {
           callType,
           roomId: currentRoomId,
+          callId: callIdRef.current || callIdHint || '',
           callerId: currentUserId,
           callerName: user?.user_metadata?.full_name || 'Unknown',
           callerAvatarUrl:
@@ -999,7 +1103,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     } finally {
       setInvitingUserId(null);
     }
-  }, [currentUserId, roomId, roomIdHint, callType, user, invitingUserId]);
+  }, [currentUserId, roomId, roomIdHint, callType, user, invitingUserId, callIdHint]);
 
   // ===== EFFECTS =====
 
@@ -1027,7 +1131,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (callStatus !== 'connecting' && callStatus !== 'ringing') return;
     let accepted = false;
     const unsub = supabaseMessagingService.subscribeToThread(threadId, (msg) => {
-      if (!accepted && msg.message_type === 'call_accepted' && msg.metadata?.acceptedBy) {
+      if (!accepted && shouldHandleSignal(msg, 'call_accepted') && msg.metadata?.acceptedBy) {
         accepted = true;
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
         stopAllRingtones();
@@ -1036,15 +1140,15 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       }
     });
     return () => { unsub(); };
-  }, [isOpen, isIncoming, threadId, callStatus]);
+  }, [isOpen, isIncoming, threadId, callStatus, shouldHandleSignal]);
 
   // Listen for call_rejected messages
   useEffect(() => {
     if (!isOpen || !threadId || !currentUserId) return;
     let rejected = false;
     const unsub = supabaseMessagingService.subscribeToThread(threadId, (msg) => {
-      if (msg.thread_id !== threadId || callStatusRef.current === 'ended') return;
-      if (!rejected && msg.message_type === 'call_rejected' && msg.metadata?.rejectedBy && msg.sender_id && msg.sender_id !== currentUserId) {
+      if (callStatusRef.current === 'ended') return;
+      if (!rejected && shouldHandleSignal(msg, 'call_rejected') && msg.metadata?.rejectedBy) {
         rejected = true;
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
         stopAllRingtones();
@@ -1053,15 +1157,15 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       }
     });
     return () => { unsub(); };
-  }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
+  }, [isOpen, threadId, currentUserId, cleanupResources, onClose, shouldHandleSignal]);
 
   // Listen for call_ended messages
   useEffect(() => {
     if (!isOpen || !threadId || !currentUserId) return;
     let ended = false;
     const unsub = supabaseMessagingService.subscribeToThread(threadId, (msg) => {
-      if (msg.thread_id !== threadId || callStatusRef.current === 'ended') return;
-      if (!ended && msg.message_type === 'call_ended' && msg.metadata?.endedBy && msg.sender_id && msg.sender_id !== currentUserId) {
+      if (callStatusRef.current === 'ended') return;
+      if (!ended && shouldHandleSignal(msg, 'call_ended') && msg.metadata?.endedBy) {
         ended = true;
         if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
         stopAllRingtones();
@@ -1070,7 +1174,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       }
     });
     return () => { unsub(); };
-  }, [isOpen, threadId, currentUserId, cleanupResources, onClose]);
+  }, [isOpen, threadId, currentUserId, cleanupResources, onClose, shouldHandleSignal]);
 
   // Polling fallback for call end
   useEffect(() => {
@@ -1082,9 +1186,10 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       try {
         const res = await apiClient.get<{ data: any[] }>(`/api/chat/threads/${threadId}/messages`, { limit: 20 });
         if (cancelled) return;
-        const msgs = (res?.data || []).filter((m: any) =>
-          ['call_ended', 'call_rejected'].includes(m.message_type) && m.sender_id !== currentUserId
-        );
+        const msgs = (res?.data || []).filter((m: any) => (
+          ['call_ended', 'call_rejected'].includes(m.message_type) &&
+          shouldHandleSignal(m)
+        ));
         const latest = msgs.length > 0 ? msgs[msgs.length - 1] : null;
         if (latest && Date.now() - new Date(latest.created_at).getTime() < 120000) {
           if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
@@ -1098,7 +1203,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     const interval = setInterval(poll, 3000);
     const initial = setTimeout(poll, 2000);
     return () => { cancelled = true; clearInterval(interval); clearTimeout(initial); };
-  }, [isOpen, threadId, currentUserId, callStatus, isAcceptingCall, cleanupResources, onClose]);
+  }, [isOpen, threadId, currentUserId, callStatus, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal]);
 
   // Screen share video ref fallback
   useEffect(() => {

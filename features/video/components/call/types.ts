@@ -15,6 +15,7 @@ export interface VideoSDKCallModalProps {
   currentUserId?: string;
   roomIdHint?: string;
   tokenHint?: string;
+  callIdHint?: string;
 }
 
 export const SPEAKER_VOLUMES: Record<SpeakerLevel, number> = {

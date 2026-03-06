@@ -864,6 +864,7 @@ export const supabaseMessagingService = {
             const roomId = metadata?.roomId
             const token = metadata?.token
             const targetUserId = metadata?.targetUserId
+            const callId = metadata?.callId
             const callerId = currentUser.id
             const callerName = currentUser.name || metadata?.callerName || 'Someone'
 
@@ -894,6 +895,7 @@ export const supabaseMessagingService = {
                       room_id: roomId,
                       thread_id: threadId,
                       ...(token ? { token } : {}),
+                      ...(callId ? { call_id: callId, callId } : {}),
                       caller_id: callerId,
                       caller_name: callerName,
                       url: `/call/${roomId}`
