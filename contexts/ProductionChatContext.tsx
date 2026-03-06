@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -76,6 +76,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
+  const callRequestsRef = useRef<Record<string, CallRequest>>({})
+  const callStartInFlightRef = useRef<Set<string>>(new Set())
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -87,6 +89,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     user?.user_metadata?.profile_image ||
     undefined
   const currentUser = user ? { id: user.id, name: displayName || user.email, avatarUrl } : null
+
+  useEffect(() => {
+    callRequestsRef.current = callRequests
+  }, [callRequests])
   const updatePresence = useCallback((userId: string, status: 'online' | 'away' | 'busy' | 'offline') => {
     setPresence(prev => ({
       ...prev,
@@ -312,6 +318,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [currentUser, openThread])
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video', targetUserId?: string) => {
+    const lockKey = `${threadId}:${(targetUserId || '').trim() || 'auto'}`
+    if (callStartInFlightRef.current.has(lockKey)) {
+      throw new Error('Call is already starting. Please wait.')
+    }
+
+    const activeCallForThread = callRequestsRef.current[threadId]
+    if (activeCallForThread) {
+      throw new Error('A call is already active for this chat.')
+    }
+
+    callStartInFlightRef.current.add(lockKey)
     try {
       const callId =
         typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -457,6 +474,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     } catch (error) {
       console.error('Failed to start call:', error)
       throw error // Re-throw so caller can handle it
+    } finally {
+      callStartInFlightRef.current.delete(lockKey)
     }
   }, [currentUser])
 
