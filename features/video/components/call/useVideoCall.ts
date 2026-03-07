@@ -823,6 +823,36 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
               acceptedAt: new Date().toISOString(),
             },
           }, { id: currentUserId, name: decodedRecipientName });
+
+          // Notify the caller/other participants that the call was accepted.
+          // This also updates secondary devices that rely on push notifications.
+          try {
+            const threadRes = await apiClient.get<{ data: any }>(`/api/chat/threads/${threadId}`);
+            const threadParticipants = threadRes?.data?.chat_participants || [];
+            const otherParts = threadParticipants.filter((p: any) => p.user_id !== currentUserId);
+            for (const p of otherParts) {
+              try {
+                await notificationService.sendNotification({
+                  user_id: p.user_id,
+                  title: '📞 Call accepted',
+                  body: `${decodedRecipientName || 'User'} accepted your ${callType} call`,
+                  notification_type: 'call_accepted',
+                  tag: `call-accepted-${threadId}`,
+                  requireInteraction: false,
+                  silent: true,
+                  data: {
+                    type: 'call_accepted',
+                    thread_id: threadId,
+                    room_id: roomIdHint,
+                    call_type: callType,
+                    call_id: acceptedCallId,
+                    callId: acceptedCallId,
+                    accepted_by: currentUserId,
+                  },
+                });
+              } catch {}
+            }
+          } catch {}
         } catch {}
       }
       onAccept?.();
@@ -852,6 +882,35 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
             rejectedAt: new Date().toISOString(),
           },
         }, { id: currentUserId, name: isIncoming ? decodedRecipientName : decodedCallerName });
+
+        // Notify caller/participants that call was declined.
+        try {
+          const threadRes = await apiClient.get<{ data: any }>(`/api/chat/threads/${threadId}`);
+          const threadParticipants = threadRes?.data?.chat_participants || [];
+          const otherParts = threadParticipants.filter((p: any) => p.user_id !== currentUserId);
+          for (const p of otherParts) {
+            try {
+              await notificationService.sendNotification({
+                user_id: p.user_id,
+                title: '📞 Call declined',
+                body: `${decodedRecipientName || 'User'} declined your ${callType} call`,
+                notification_type: 'call_rejected',
+                tag: `call-rejected-${threadId}`,
+                requireInteraction: false,
+                silent: true,
+                data: {
+                  type: 'call_rejected',
+                  thread_id: threadId,
+                  room_id: activeRoomId,
+                  call_type: callType,
+                  call_id: activeCallId,
+                  callId: activeCallId,
+                  rejected_by: currentUserId,
+                },
+              });
+            } catch {}
+          }
+        } catch {}
       } catch {}
       try {
         const threadRes = await apiClient.get<{ data: any }>(`/api/chat/threads/${threadId}`);
@@ -1142,6 +1201,40 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     return () => { unsub(); };
   }, [isOpen, isIncoming, threadId, callStatus, shouldHandleSignal]);
 
+  // Incoming call accepted on another logged-in device for the same user
+  // => hide this incoming call screen to avoid duplicate accept UIs.
+  useEffect(() => {
+    if (!isOpen || !isIncoming || !threadId || !currentUserId) return;
+    if (callStatus !== 'ringing' && callStatus !== 'connecting') return;
+    let handled = false;
+    const unsub = supabaseMessagingService.subscribeToThread(threadId, (msg) => {
+      if (handled || callStatusRef.current === 'ended') return;
+      if (msg?.message_type !== 'call_accepted') return;
+      const meta = (msg.metadata || {}) as Record<string, any>;
+      if (!meta?.acceptedBy || meta.acceptedBy !== currentUserId) return;
+
+      const activeCallId = callIdRef.current;
+      const activeRoomId = roomId || roomIdHint || '';
+      if (activeCallId && meta.callId && meta.callId !== activeCallId) return;
+      if (activeCallId && !meta.callId) return;
+      if (activeRoomId && meta.roomId && meta.roomId !== activeRoomId) return;
+
+      // Ignore echo on the exact device currently processing Accept.
+      if (isAcceptingCall) return;
+
+      handled = true;
+      if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
+      stopAllRingtones();
+      if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
+      if (isMountedRef.current) {
+        setCallStatus('ended');
+        cleanupResources();
+        setTimeout(() => { if (isMountedRef.current) onClose(); }, 800);
+      }
+    });
+    return () => { unsub(); };
+  }, [isOpen, isIncoming, threadId, currentUserId, callStatus, isAcceptingCall, roomId, roomIdHint, cleanupResources, onClose]);
+
   // Listen for call_rejected messages
   useEffect(() => {
     if (!isOpen || !threadId || !currentUserId) return;
@@ -1158,6 +1251,37 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     });
     return () => { unsub(); };
   }, [isOpen, threadId, currentUserId, cleanupResources, onClose, shouldHandleSignal]);
+
+  // Incoming call rejected on another logged-in device for the same user
+  // => hide this incoming call screen to avoid duplicate ringing UIs.
+  useEffect(() => {
+    if (!isOpen || !isIncoming || !threadId || !currentUserId) return;
+    if (callStatus !== 'ringing' && callStatus !== 'connecting') return;
+    let handled = false;
+    const unsub = supabaseMessagingService.subscribeToThread(threadId, (msg) => {
+      if (handled || callStatusRef.current === 'ended') return;
+      if (msg?.message_type !== 'call_rejected') return;
+      const meta = (msg.metadata || {}) as Record<string, any>;
+      if (!meta?.rejectedBy || meta.rejectedBy !== currentUserId) return;
+
+      const activeCallId = callIdRef.current;
+      const activeRoomId = roomId || roomIdHint || '';
+      if (activeCallId && meta.callId && meta.callId !== activeCallId) return;
+      if (activeCallId && !meta.callId) return;
+      if (activeRoomId && meta.roomId && meta.roomId !== activeRoomId) return;
+
+      handled = true;
+      if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
+      stopAllRingtones();
+      if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
+      if (isMountedRef.current) {
+        setCallStatus('ended');
+        cleanupResources();
+        setTimeout(() => { if (isMountedRef.current) onClose(); }, 800);
+      }
+    });
+    return () => { unsub(); };
+  }, [isOpen, isIncoming, threadId, currentUserId, callStatus, roomId, roomIdHint, cleanupResources, onClose]);
 
   // Listen for call_ended messages
   useEffect(() => {

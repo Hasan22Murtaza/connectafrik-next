@@ -581,6 +581,20 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (message.message_type === 'call_ended') {
           clearCallRequest(threadId)
         }
+        // If this user accepted the call on another device, hide any pending incoming call UI on this device.
+        if (message.message_type === 'call_accepted') {
+          const metadata = (message.metadata || {}) as any
+          if (metadata?.acceptedBy && metadata.acceptedBy === currentUser.id) {
+            clearCallRequest(threadId)
+          }
+        }
+        // If this user rejected the call on another device, hide any pending incoming call UI on this device.
+        if (message.message_type === 'call_rejected') {
+          const metadata = (message.metadata || {}) as any
+          if (metadata?.rejectedBy && metadata.rejectedBy === currentUser.id) {
+            clearCallRequest(threadId)
+          }
+        }
       })
       unsubscribeCallbacks.push(unsubscribe)
     })
@@ -644,6 +658,62 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       supabase.removeChannel(channel)
     }
   }, [currentUser])
+
+  useEffect(() => {
+    if (!currentUser) return
+
+    const channel = supabase
+      .channel('global-call-accepted-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: 'message_type=eq.call_accepted'
+        },
+        async (payload) => {
+          const msg = payload.new as any
+          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+          if (metadata?.acceptedBy && metadata.acceptedBy === currentUser.id) {
+            clearCallRequest(msg.thread_id)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser, clearCallRequest])
+
+  useEffect(() => {
+    if (!currentUser) return
+
+    const channel = supabase
+      .channel('global-call-rejected-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: 'message_type=eq.call_rejected'
+        },
+        async (payload) => {
+          const msg = payload.new as any
+          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+          if (metadata?.rejectedBy && metadata.rejectedBy === currentUser.id) {
+            clearCallRequest(msg.thread_id)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser, clearCallRequest])
 
   useEffect(() => {
     if (!currentUser) return
