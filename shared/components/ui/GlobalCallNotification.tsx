@@ -13,6 +13,7 @@ const GlobalCallNotification: React.FC = () => {
     roomId: string
     token: string
     callerId: string
+    callId?: string
   } | null>(null)
 
   const startCallRingtone = () => {
@@ -44,7 +45,8 @@ const GlobalCallNotification: React.FC = () => {
             callerName: callRequest.callerName || 'Unknown caller',
             roomId,
             token: callRequest.token || '',
-            callerId: callRequest.callerId || ''
+            callerId: callRequest.callerId || '',
+            callId: callRequest.callId
           })
 
           if (typeof window !== 'undefined' && roomId && !alreadyOpenedForThisRoom) {
@@ -57,7 +59,8 @@ const GlobalCallNotification: React.FC = () => {
                 callerName: callRequest.callerName || 'Unknown',
                 recipientName: currentUser?.name || 'You',
                 isIncoming: true,
-                callerId: callRequest.callerId
+                callerId: callRequest.callerId,
+                callId: callRequest.callId
               })
             })
           }

@@ -9,8 +9,9 @@ export function openCallWindow(params: {
   recipientName: string
   isIncoming: boolean
   callerId?: string
+  callId?: string
 }) {
-  const { roomId, callType, threadId, callerName, recipientName, isIncoming, callerId } = params
+  const { roomId, callType, threadId, callerName, recipientName, isIncoming, callerId, callId } = params
   
   // Build URL with query parameters
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -23,6 +24,9 @@ export function openCallWindow(params: {
   url.searchParams.set('isIncoming', isIncoming.toString())
   if (callerId) {
     url.searchParams.set('callerId', callerId)
+  }
+  if (callId) {
+    url.searchParams.set('callId', callId)
   }
 
   // Open new window with specific dimensions (like Facebook)

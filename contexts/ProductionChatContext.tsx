@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -11,6 +11,7 @@ import {
   subscribeToPresenceChanges,
   cleanup as cleanupPresence,
 } from '@/shared/services/presenceService'
+import type { CallMessageType } from '@/shared/types/call'
 
 interface ChatParticipant {
   id: string
@@ -35,6 +36,7 @@ interface CallRequest {
   roomId?: string
   token?: string
   targetUserId?: string
+  callId?: string
 }
 
 interface ProductionChatContextType {
@@ -75,6 +77,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
+  const callRequestsRef = useRef<Record<string, CallRequest>>({})
+  const callStartInFlightRef = useRef<Set<string>>(new Set())
 
   const displayName =
     user?.user_metadata?.full_name ||
@@ -86,6 +90,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     user?.user_metadata?.profile_image ||
     undefined
   const currentUser = user ? { id: user.id, name: displayName || user.email, avatarUrl } : null
+
+  useEffect(() => {
+    callRequestsRef.current = callRequests
+  }, [callRequests])
   const updatePresence = useCallback((userId: string, status: 'online' | 'away' | 'busy' | 'offline') => {
     setPresence(prev => ({
       ...prev,
@@ -311,7 +319,23 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [currentUser, openThread])
 
   const startCall = useCallback(async (threadId: string, type: 'audio' | 'video', targetUserId?: string) => {
+    const lockKey = `${threadId}:${(targetUserId || '').trim() || 'auto'}`
+    if (callStartInFlightRef.current.has(lockKey)) {
+      throw new Error('Call is already starting. Please wait.')
+    }
+
+    const activeCallForThread = callRequestsRef.current[threadId]
+    if (activeCallForThread) {
+      throw new Error('A call is already active for this chat.')
+    }
+
+    callStartInFlightRef.current.add(lockKey)
     try {
+      const callId =
+        typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `call_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+
       const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
         `/api/chat/threads/${threadId}/participants`,
         { exclude_user_id: currentUser?.id || '' }
@@ -379,7 +403,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         callerName: currentUser?.name || 'Unknown',
         roomId,
         token,
-        targetUserId: resolvedTargetUserId
+        targetUserId: resolvedTargetUserId,
+        callId
       }
 
       setCallRequests(prev => ({
@@ -387,10 +412,39 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         [threadId]: callRequest
       }))
 
-      // Open new call window for the caller (like Facebook)
+      console.log('Sending call request message', currentUser?.name)
+      try {
+        await supabaseMessagingService.sendMessage(
+          threadId,
+          {
+            content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
+            message_type: 'call_request' as CallMessageType,
+            metadata: {
+              callType: type,
+              roomId,
+              callerId: currentUser?.id,
+              callerName: currentUser?.name,
+              callerAvatarUrl: currentUser?.avatarUrl,
+              targetUserId: resolvedTargetUserId,
+              callId,
+              behaviorAction: 'call_requested',
+              behaviorDirection: 'outgoing',
+              behaviorState: 'initiating',
+              behaviorAt: new Date().toISOString(),
+              timestamp: new Date().toISOString()
+            }
+          },
+          { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
+        )
+      } catch (msgError) {
+        console.warn('⚠️ Failed to send call notification:', msgError)
+        // Don't fail the call if message sending fails
+      }
+
+      // Open new call window for the caller (like Facebook) after signaling is sent
       if (typeof window !== 'undefined') {
         const { openCallWindow } = await import('@/shared/utils/callWindow')
-        
+
         // Get recipient/group name from thread
         const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
         const thread = userThreads.find(t => t.id === threadId)
@@ -406,7 +460,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerName: currentUser?.name || 'Unknown',
           recipientName,
           isIncoming: false,
-          callerId: currentUser?.id
+          callerId: currentUser?.id,
+          callId,
         })
 
         window.dispatchEvent(new CustomEvent('startCall', {
@@ -416,36 +471,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             meetingId: roomId,
             token,
             participantId: currentUser?.id,
-            participantName: currentUser?.name
+            participantName: currentUser?.name,
+            callId,
           }
         }))
-      }
-      console.log('Sending call request message', currentUser?.name)
-      try {
-        await supabaseMessagingService.sendMessage(
-          threadId,
-          {
-            content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
-            message_type: 'call_request',
-            metadata: {
-              callType: type,
-              roomId,
-              callerId: currentUser?.id,
-              callerName: currentUser?.name,
-              callerAvatarUrl: currentUser?.avatarUrl,
-              targetUserId: resolvedTargetUserId,
-              timestamp: new Date().toISOString()
-            }
-          },
-          { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
-        )
-      } catch (msgError) {
-        console.warn('⚠️ Failed to send call notification:', msgError)
-        // Don't fail the call if message sending fails
       }
     } catch (error) {
       console.error('Failed to start call:', error)
       throw error // Re-throw so caller can handle it
+    } finally {
+      callStartInFlightRef.current.delete(lockKey)
     }
   }, [currentUser])
 
@@ -462,7 +497,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, token, targetUserId } = event.detail
+      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, token, targetUserId, callId } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
       
       setCallRequests(prev => ({
@@ -475,7 +510,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerAvatarUrl,
           roomId,
           token,
-          targetUserId
+          targetUserId,
+          callId,
         }
       }))
     }
@@ -539,7 +575,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   callerAvatarUrl: message.sender?.avatarUrl || metadata?.callerAvatarUrl,
                   roomId: metadata.roomId,
                   token: metadata.token,
-                  targetUserId: metadata.targetUserId
+                  targetUserId: metadata.targetUserId,
+                  callId: metadata.callId,
                 }
               }))
             }
@@ -548,6 +585,20 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         // Clear call request when call ended message is received (so UI updates for both parties)
         if (message.message_type === 'call_ended') {
           clearCallRequest(threadId)
+        }
+        // If this user accepted the call on another device, hide any pending incoming call UI on this device.
+        if (message.message_type === 'call_accepted') {
+          const metadata = (message.metadata || {}) as any
+          if (metadata?.acceptedBy && metadata.acceptedBy === currentUser.id) {
+            clearCallRequest(threadId)
+          }
+        }
+        // If this user rejected the call on another device, hide any pending incoming call UI on this device.
+        if (message.message_type === 'call_rejected') {
+          const metadata = (message.metadata || {}) as any
+          if (metadata?.rejectedBy && metadata.rejectedBy === currentUser.id) {
+            clearCallRequest(threadId)
+          }
         }
       })
       unsubscribeCallbacks.push(unsubscribe)
@@ -617,6 +668,62 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (!currentUser) return
 
     const channel = supabase
+      .channel('global-call-accepted-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: 'message_type=eq.call_accepted'
+        },
+        async (payload) => {
+          const msg = payload.new as any
+          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+          if (metadata?.acceptedBy && metadata.acceptedBy === currentUser.id) {
+            clearCallRequest(msg.thread_id)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser, clearCallRequest])
+
+  useEffect(() => {
+    if (!currentUser) return
+
+    const channel = supabase
+      .channel('global-call-rejected-listener')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: 'message_type=eq.call_rejected'
+        },
+        async (payload) => {
+          const msg = payload.new as any
+          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
+          if (metadata?.rejectedBy && metadata.rejectedBy === currentUser.id) {
+            clearCallRequest(msg.thread_id)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [currentUser, clearCallRequest])
+
+  useEffect(() => {
+    if (!currentUser) return
+
+    const channel = supabase
       .channel('global-call-listener')
       .on(
         'postgres_changes',
@@ -653,7 +760,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   callerAvatarUrl: metadata.callerAvatarUrl,
                   roomId: metadata.roomId,
                   token: metadata.token,
-                  targetUserId: metadata.targetUserId
+                  targetUserId: metadata.targetUserId,
+                  callId: metadata.callId,
                 }
               }))
             }

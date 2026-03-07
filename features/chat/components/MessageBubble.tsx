@@ -137,6 +137,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const systemMessageTypes = [
     "call_ended",
     "call_accepted",
+    "call_rejected",
     "call_request",
     "call_notification",
     "hand_raised",

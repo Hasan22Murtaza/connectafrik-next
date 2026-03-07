@@ -43,6 +43,7 @@ export default function CallWindowPage() {
   const recipientName = safeDecode(searchParams?.get('recipientName'))
   const isIncoming = searchParams?.get('isIncoming') === 'true'
   const callerId = searchParams?.get('callerId') || ''
+  const callId = searchParams?.get('callId') || ''
 
   // Notify parent tab when call ends so it can clear callRequests/activeCall and stop ringtone
   // This fixes: after first call closes, second call does not ring on callee and caller stays ringing
@@ -79,6 +80,7 @@ export default function CallWindowPage() {
           threadId={threadId}
           currentUserId={currentUser?.id || user?.id}
           roomIdHint={roomId}
+          callIdHint={callId}
         />
       ) : (
         <div className="flex items-center justify-center h-full text-white text-sm sm:text-base md:text-lg px-4 text-center">Call ended</div>

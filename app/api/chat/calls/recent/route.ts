@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-
-const CALL_TYPES = ['call_request', 'call_accepted', 'call_ended', 'call_rejected']
+import { normalizeCallBehavior, normalizeCallMetadata } from '@/shared/utils/callBehavior'
+import { CALL_MESSAGE_TYPES } from '@/shared/types/call'
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
 
     const { data: callMessages, error } = await serviceClient
       .from('chat_messages')
-      .select('thread_id, message_type, created_at')
+      .select('thread_id, message_type, created_at, metadata')
       .in('thread_id', threadIds)
-      .in('message_type', CALL_TYPES)
+      .in('message_type', [...CALL_MESSAGE_TYPES])
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
 
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     const { data: profiles } = participantUserIds.length
       ? await serviceClient
           .from('profiles')
-          .select('id, username, full_name, avatar_url, status')
+          .select('id, username, full_name, avatar_url, status, last_seen')
           .in('id', participantUserIds)
       : { data: [] as any[] }
 
@@ -86,6 +86,8 @@ export async function GET(request: NextRequest) {
 
     const result = recent.map((r: any) => {
       const thread = threadMap.get(r.thread_id)
+      const normalizedMetadata = normalizeCallMetadata(r.metadata)
+      const behavior = normalizeCallBehavior(normalizedMetadata)
       const participantIds = participantsByThread.get(r.thread_id) || []
       const otherId = participantIds.find((id) => id !== user.id) || null
       const otherProfile = otherId ? profileMap.get(otherId) : null
@@ -100,11 +102,16 @@ export async function GET(request: NextRequest) {
         thread_id: r.thread_id,
         created_at: r.created_at,
         message_type: r.message_type,
+        metadata: normalizedMetadata,
+        call_type: behavior.callType,
+        behavior_action: behavior.behaviorAction,
+        behavior_end_reason: behavior.behaviorEndReason,
         thread_name: thread?.title || thread?.name || null,
         contact_id: otherId,
         contact_name: contactName,
         contact_avatar_url: otherProfile?.avatar_url || null,
-        status: otherProfile?.status || 'offline',
+        contact_status: otherProfile?.status || 'offline',
+        contact_last_seen: otherProfile?.last_seen || null,
       }
     })
 

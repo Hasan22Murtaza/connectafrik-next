@@ -59,12 +59,18 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
       const transformedNotifications: Notification[] = data.map((record: any) => {
         const payload = record.payload || record.data || {}
+        const payloadType = payload?.data?.type || payload?.type || null
+        const callPayloadTypes = new Set(['missed_call', 'call_accepted', 'call_rejected', 'call_ended'])
+        const resolvedType =
+          typeof payloadType === 'string' && callPayloadTypes.has(payloadType)
+            ? payloadType
+            : record.type
         return {
           id: record.id,
           user_id: record.user_id,
-          type: record.type as Notification['type'],
-          title: payload.title || record.title || getDefaultTitle(record.type),
-          message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
+          type: resolvedType as Notification['type'],
+          title: payload.title || record.title || getDefaultTitle(resolvedType),
+          message: payload.message || record.message || payload.body || getDefaultMessage(resolvedType, payload),
           data: payload.data || payload,
           is_read: record.is_read || false,
           created_at: record.created_at,
@@ -120,6 +126,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       friend_request_declined: 'Friend Request Declined',
       chat_message: 'New Message',
       missed_call: 'Missed Call',
+      call_accepted: 'Call Accepted',
+      call_rejected: 'Call Rejected',
+      call_ended: 'Call Ended',
       birthday: 'Birthday Reminder',
       new_order: 'New Order',
       system: 'System Notification',
@@ -150,6 +159,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       friend_request_declined: `${actorName} declined your friend request`,
       chat_message: `${actorName} sent you a message`,
       missed_call: `You missed a call from ${actorName}`,
+      call_accepted: `${actorName} accepted your call`,
+      call_rejected: `${actorName} rejected your call`,
+      call_ended: `Your call with ${actorName} ended`,
       birthday: `It's ${actorName}'s birthday today!`,
       new_order: `${actorName} placed a new order`,
       system: payload?.message || 'You have a new notification',
@@ -435,6 +447,37 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           break
         }
 
+        // Call accepted/rejected → open corresponding thread for quick follow-up
+        case 'call_accepted':
+        case 'call_rejected': {
+          const threadId = data.thread_id || data.chat_thread_id
+          const actorId = data.caller_id || data.sender_id || data.actor_id || data.user_id
+          const actorName = data.caller_name || data.sender_name || data.actor_name || 'User'
+          const actorAvatar = data.actor_avatar || data.avatar_url || ''
+
+          if (threadId) {
+            openThread(threadId)
+          } else if (actorId) {
+            await startChatWithMembers(
+              [{ id: actorId, name: actorName, avatarUrl: actorAvatar }],
+              { participant_ids: [actorId], type: 'direct', openInDock: true }
+            )
+          }
+          onClose()
+          break
+        }
+
+        case 'call_ended': {
+          const threadId = data.thread_id || data.chat_thread_id
+          if (threadId) {
+            openThread(threadId)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          }
+          onClose()
+          break
+        }
+
         // Order notification → navigate to order detail page
         case 'new_order': {
           const orderId = data.order_id || data.id
@@ -504,6 +547,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         return <MessageSquare className="w-4 h-4 text-[#FF6900]" />
       case 'missed_call':
         return <PhoneMissed className="w-4 h-4 text-red-500" />
+      case 'call_accepted':
+        return <Check className="w-4 h-4 text-green-500" />
+      case 'call_rejected':
+        return <PhoneMissed className="w-4 h-4 text-red-500" />
+      case 'call_ended':
+        return <Info className="w-4 h-4 text-gray-500" />
       case 'birthday':
         return <span className="text-lg">🎂</span>
       case 'new_order':
@@ -547,6 +596,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         return 'bg-orange-50 border-orange-200'
       case 'missed_call':
         return 'bg-red-50 border-red-200'
+      case 'call_accepted':
+        return 'bg-green-50 border-green-200'
+      case 'call_rejected':
+        return 'bg-red-50 border-red-200'
+      case 'call_ended':
+        return 'bg-gray-50 border-gray-200'
       case 'birthday':
         return 'bg-pink-50 border-pink-200'
       case 'new_order':
