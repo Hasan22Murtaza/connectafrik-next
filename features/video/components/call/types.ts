@@ -1,6 +1,16 @@
 export type CallStatus = 'connecting' | 'ringing' | 'connected' | 'ended';
 export type SpeakerLevel = 'normal' | 'low' | 'loud';
 
+export type {
+  CallActionType,
+  CallBehaviorMetadata,
+  CallDirection,
+  CallEndReason,
+  CallFailureStage,
+  CallNotificationType,
+  CallState,
+} from '@/shared/types/call';
+
 export interface VideoSDKCallModalProps {
   isOpen: boolean;
   onClose: () => void;

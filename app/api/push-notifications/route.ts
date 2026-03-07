@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
 import { getFirebaseAdmin } from '../fcm/_utils'
 import type { NotificationType } from '@/shared/types/notifications'
+import type { NotificationPayloadData } from '@/shared/services/notificationService'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,7 +23,7 @@ export interface NotificationPayload {
   image?: string
   badge?: string
   tag?: string
-  data?: any
+  data?: NotificationPayloadData
   actions?: Array<{
     action: string
     title: string
@@ -32,6 +33,12 @@ export interface NotificationPayload {
   silent?: boolean
   vibrate?: number[]
 }
+
+const DB_UNSUPPORTED_CALL_NOTIFICATION_TYPES = new Set<NotificationType>([
+  'call_accepted',
+  'call_rejected',
+  'call_ended',
+])
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -69,14 +76,23 @@ export async function POST(request: NextRequest) {
     // Step 1: Create notification record in database (unless skip_db is true)
     let notificationId: string | null = null
     if (!skip_db) {
+      const requestedType = (notification_type || 'system') as NotificationType
+      const dbType = DB_UNSUPPORTED_CALL_NOTIFICATION_TYPES.has(requestedType)
+        ? 'system'
+        : requestedType
+      const payloadData = {
+        ...(body.data || {}),
+        ...(dbType !== requestedType ? { notification_type_original: requestedType } : {}),
+      }
+
       const { data: notification, error: dbError } = await supabase
         .from('notifications')
         .insert({
           user_id,
-          type: notification_type || 'system',
+          type: dbType,
           title,
           message: notificationBody,
-          data: body.data || {},
+          data: payloadData,
           is_read: false
         })
         .select('id')

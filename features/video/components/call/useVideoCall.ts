@@ -12,8 +12,11 @@ import { apiClient } from '@/lib/api-client';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { notificationService } from '@/shared/services/notificationService';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CallStatus, SpeakerLevel, VideoSDKCallModalProps } from './types';
+import type { CallMessageType } from '@/shared/types/call';
+import type { CallActionType, CallEndReason, CallFailureStage, CallNotificationType, CallState, CallStatus, SpeakerLevel, VideoSDKCallModalProps } from './types';
 import { SPEAKER_VOLUMES } from './types';
+
+const END_OR_REJECTED_MESSAGE_TYPES: ReadonlyArray<CallMessageType> = ['call_ended', 'call_rejected'];
 
 export function useVideoCall(props: VideoSDKCallModalProps) {
   const {
@@ -159,7 +162,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     }
   }, []);
 
-  const shouldHandleSignal = useCallback((msg: any, expectedType?: string) => {
+  const shouldHandleSignal = useCallback((msg: any, expectedType?: CallMessageType) => {
     if (!msg || !threadId) return false;
     if (expectedType && msg.message_type !== expectedType) return false;
     if (msg.thread_id && msg.thread_id !== threadId) return false;
@@ -172,6 +175,28 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (activeRoomId && meta.roomId && meta.roomId !== activeRoomId) return false;
     return true;
   }, [threadId, currentUserId, roomId, roomIdHint]);
+
+  const toBehaviorState = useCallback((status: CallStatus): CallState => {
+    if (status === 'connecting') return 'connecting';
+    if (status === 'ringing') return 'ringing';
+    if (status === 'connected') return 'connected';
+    return 'ended';
+  }, []);
+
+  const buildBehaviorMetadata = useCallback(
+    (
+      action: CallActionType,
+      options?: { endReason?: CallEndReason; failureStage?: CallFailureStage; at?: string }
+    ) => ({
+      behaviorAction: action,
+      behaviorDirection: isIncoming ? 'incoming' : 'outgoing',
+      behaviorState: toBehaviorState(callStatusRef.current),
+      ...(options?.endReason ? { behaviorEndReason: options.endReason } : {}),
+      ...(options?.failureStage ? { behaviorFailureStage: options.failureStage } : {}),
+      behaviorAt: options?.at || new Date().toISOString(),
+    }),
+    [isIncoming, toBehaviorState]
+  );
 
   // Preload VideoSDK when modal opens
   useEffect(() => {
@@ -501,7 +526,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
               const activeRoomId = roomId || roomIdHint || '';
               supabaseMessagingService.sendMessage(threadId, {
                 content: 'Call ended',
-                message_type: 'call_ended',
+                message_type: 'call_ended' as CallMessageType,
                 metadata: {
                   callType,
                   roomId: activeRoomId,
@@ -509,6 +534,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
                   endedBy: currentUserId,
                   endedAt: new Date().toISOString(),
                   reason: 'remote_disconnected_timeout',
+                  ...buildBehaviorMetadata('call_ended', { endReason: 'remote_disconnected_timeout' }),
                 },
               }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }).catch(() => {});
             }
@@ -531,13 +557,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           const activeRoomId = roomId || roomIdHint || '';
           await supabaseMessagingService.sendMessage(threadId, {
             content: 'Call ended',
-            message_type: 'call_ended',
+            message_type: 'call_ended' as CallMessageType,
             metadata: {
               callType,
               roomId: activeRoomId,
               callId: activeCallId,
               endedBy: currentUserId,
               endedAt: new Date().toISOString(),
+              ...buildBehaviorMetadata('call_ended', { endReason: 'remote_hangup' }),
             },
           }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
         } catch {}
@@ -814,13 +841,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         try {
           await supabaseMessagingService.sendMessage(threadId, {
             content: 'Call accepted',
-            message_type: 'call_accepted',
+            message_type: 'call_accepted' as CallMessageType,
             metadata: {
               callType,
               roomId: roomIdHint,
               callId: acceptedCallId,
               acceptedBy: currentUserId,
               acceptedAt: new Date().toISOString(),
+              ...buildBehaviorMetadata('call_accepted'),
             },
           }, { id: currentUserId, name: decodedRecipientName });
 
@@ -841,13 +869,17 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
                   requireInteraction: false,
                   silent: true,
                   data: {
-                    type: 'call_accepted',
+                    type: 'call_accepted' as CallNotificationType,
                     thread_id: threadId,
                     room_id: roomIdHint,
                     call_type: callType,
                     call_id: acceptedCallId,
                     callId: acceptedCallId,
                     accepted_by: currentUserId,
+                    behaviorAction: 'call_accepted',
+                    behaviorDirection: 'incoming',
+                    behaviorState: 'connected',
+                    behaviorAt: new Date().toISOString(),
                   },
                 });
               } catch {}
@@ -873,13 +905,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       try {
         await supabaseMessagingService.sendMessage(threadId, {
           content: 'Call rejected',
-          message_type: 'call_rejected',
+          message_type: 'call_rejected' as CallMessageType,
           metadata: {
             callType,
             roomId: activeRoomId,
             callId: activeCallId,
             rejectedBy: currentUserId,
             rejectedAt: new Date().toISOString(),
+            ...buildBehaviorMetadata('call_rejected', { endReason: 'rejected' }),
           },
         }, { id: currentUserId, name: isIncoming ? decodedRecipientName : decodedCallerName });
 
@@ -899,13 +932,18 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
                 requireInteraction: false,
                 silent: true,
                 data: {
-                  type: 'call_rejected',
+                  type: 'call_rejected' as CallNotificationType,
                   thread_id: threadId,
                   room_id: activeRoomId,
                   call_type: callType,
                   call_id: activeCallId,
                   callId: activeCallId,
                   rejected_by: currentUserId,
+                  behaviorAction: 'call_rejected',
+                  behaviorDirection: 'incoming',
+                  behaviorState: 'ended',
+                  behaviorEndReason: 'rejected',
+                  behaviorAt: new Date().toISOString(),
                 },
               });
             } catch {}
@@ -921,12 +959,39 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           await notificationService.sendNotification({
             user_id: callerId, title: '📞 Missed Call', body: `${decodedRecipientName} missed your ${callType} call`,
             notification_type: 'missed_call', tag: `incoming-call-${threadId}`, actions: [], requireInteraction: false, silent: true,
-            data: { type: 'missed_call', call_type: callType, room_id: roomId || roomIdHint || '', thread_id: threadId || '', recipient_id: currentUserId || '', recipient_name: decodedRecipientName },
+            data: {
+              type: 'missed_call' as CallNotificationType,
+              call_type: callType,
+              room_id: roomId || roomIdHint || '',
+              thread_id: threadId || '',
+              recipient_id: currentUserId || '',
+              recipient_name: decodedRecipientName,
+              call_id: activeCallId,
+              callId: activeCallId,
+              behaviorAction: 'call_missed',
+              behaviorDirection: 'incoming',
+              behaviorState: 'ended',
+              behaviorEndReason: 'missed',
+              behaviorAt: new Date().toISOString(),
+            },
           });
           await notificationService.sendNotification({
             user_id: currentUserId, title: '📞 Missed Call', body: `You missed a ${callType} call from ${decodedCallerName}`,
             notification_type: 'missed_call', tag: `incoming-call-${threadId}`, actions: [], requireInteraction: false, silent: true,
-            data: { type: 'missed_call', call_type: callType, thread_id: threadId || '', caller_id: callerId, caller_name: decodedCallerName },
+            data: {
+              type: 'missed_call' as CallNotificationType,
+              call_type: callType,
+              thread_id: threadId || '',
+              caller_id: callerId,
+              caller_name: decodedCallerName,
+              call_id: activeCallId,
+              callId: activeCallId,
+              behaviorAction: 'call_missed',
+              behaviorDirection: 'incoming',
+              behaviorState: 'ended',
+              behaviorEndReason: 'missed',
+              behaviorAt: new Date().toISOString(),
+            },
           });
         }
       } catch {}
@@ -944,13 +1009,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       try {
         await supabaseMessagingService.sendMessage(threadId, {
           content: 'Call ended',
-          message_type: 'call_ended',
+          message_type: 'call_ended' as CallMessageType,
           metadata: {
             callType,
             roomId: activeRoomId,
             callId: activeCallId,
             endedBy: currentUserId,
             endedAt: new Date().toISOString(),
+            ...buildBehaviorMetadata('call_ended', { endReason: 'local_hangup' }),
           },
         }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
       } catch {}
@@ -966,7 +1032,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
                 await notificationService.sendNotification({
                   user_id: p.user_id, title: '📞 Missed Call', body: `${callerDisplayName} tried to ${callType} call you`,
                   notification_type: 'missed_call', tag: `incoming-call-${threadId}`, actions: [], requireInteraction: false, silent: true,
-                  data: { type: 'missed_call', call_type: callType, thread_id: threadId, caller_id: currentUserId, caller_name: callerDisplayName },
+                  data: { type: 'missed_call' as CallNotificationType, call_type: callType, thread_id: threadId, caller_id: currentUserId, caller_name: callerDisplayName },
                 });
               } catch {}
             }
@@ -1138,7 +1204,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (!directThreadId) throw new Error('Could not find or create thread');
       await supabaseMessagingService.sendMessage(directThreadId, {
         content: `Incoming ${callType === 'video' ? 'video' : 'audio'} call`,
-        message_type: 'call_request',
+        message_type: 'call_request' as CallMessageType,
         metadata: {
           callType,
           roomId: currentRoomId,
@@ -1152,6 +1218,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
             undefined,
           targetUserId: targetUser.id,
           timestamp: new Date().toISOString(),
+          ...buildBehaviorMetadata('call_requested'),
         },
       }, { id: currentUserId, name: user?.user_metadata?.full_name || 'Unknown' });
       setShowAddPeople(false);
@@ -1162,7 +1229,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     } finally {
       setInvitingUserId(null);
     }
-  }, [currentUserId, roomId, roomIdHint, callType, user, invitingUserId, callIdHint]);
+  }, [currentUserId, roomId, roomIdHint, callType, user, invitingUserId, callIdHint, buildBehaviorMetadata]);
 
   // ===== EFFECTS =====
 
@@ -1209,7 +1276,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     let handled = false;
     const unsub = supabaseMessagingService.subscribeToThread(threadId, (msg) => {
       if (handled || callStatusRef.current === 'ended') return;
-      if (msg?.message_type !== 'call_accepted') return;
+      if (msg?.message_type !== ('call_accepted' as CallMessageType)) return;
       const meta = (msg.metadata || {}) as Record<string, any>;
       if (!meta?.acceptedBy || meta.acceptedBy !== currentUserId) return;
 
@@ -1260,7 +1327,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     let handled = false;
     const unsub = supabaseMessagingService.subscribeToThread(threadId, (msg) => {
       if (handled || callStatusRef.current === 'ended') return;
-      if (msg?.message_type !== 'call_rejected') return;
+      if (msg?.message_type !== ('call_rejected' as CallMessageType)) return;
       const meta = (msg.metadata || {}) as Record<string, any>;
       if (!meta?.rejectedBy || meta.rejectedBy !== currentUserId) return;
 
@@ -1311,7 +1378,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         const res = await apiClient.get<{ data: any[] }>(`/api/chat/threads/${threadId}/messages`, { limit: 20 });
         if (cancelled) return;
         const msgs = (res?.data || []).filter((m: any) => (
-          ['call_ended', 'call_rejected'].includes(m.message_type) &&
+          END_OR_REJECTED_MESSAGE_TYPES.includes(m.message_type as CallMessageType) &&
           shouldHandleSignal(m)
         ));
         const latest = msgs.length > 0 ? msgs[msgs.length - 1] : null;

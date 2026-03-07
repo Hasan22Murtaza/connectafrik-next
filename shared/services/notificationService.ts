@@ -1,4 +1,9 @@
 import type { NotificationType } from '@/shared/types/notifications'
+import type { CallNotificationType } from '@/shared/types/call'
+
+export interface NotificationPayloadData extends Record<string, any> {
+  type?: string | CallNotificationType
+}
 
 export interface NotificationData {
   user_id: string
@@ -10,7 +15,7 @@ export interface NotificationData {
   image?: string
   badge?: string
   tag?: string
-  data?: Record<string, any>
+  data?: NotificationPayloadData
   actions?: Array<{
     action: string
     title: string

@@ -2,6 +2,8 @@ import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
 import type { ChatParticipant as BaseParticipant } from "@/shared/types/chat"
 import { notificationService } from '@/shared/services/notificationService'
+import { normalizeCallBehavior, normalizeCallMetadata } from '@/shared/utils/callBehavior'
+import { CALL_MESSAGE_TYPES, type CallActionType, type CallEndReason, type CallMessageType, type CallNotificationType } from '@/shared/types/call'
 
 export interface ChatParticipant extends BaseParticipant {}
 
@@ -68,6 +70,8 @@ export interface RecentCallEntry {
   message_type: string
   call_type: 'audio' | 'video'
   metadata?: Record<string, unknown>
+  behavior_action?: CallActionType | null
+  behavior_end_reason?: CallEndReason | null
   thread_name?: string | null
   contact_id?: string | null
   contact_name?: string | null
@@ -101,7 +105,12 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
 
   // Send push notification for new messages (not call requests). Skip when skipPush is true
   // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
-  if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted' && message.message_type !== 'call_ended') {
+  if (
+    !options?.skipPush &&
+    message.message_type !== 'call_request' &&
+    message.message_type !== 'call_accepted' &&
+    message.message_type !== 'call_ended'
+  ) {
     try {
       const res = await apiClient.get<{ data: { user_id: string }[] }>(
         `/api/chat/threads/${message.thread_id}/participants`,
@@ -419,7 +428,7 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
         try {
           await apiClient.get<{ data: unknown }>(`/api/chat/threads/${message.thread_id}`)
         } catch {
-          const isCallMessage = ['call_request', 'call_accepted', 'call_rejected', 'call_ended'].includes(message.message_type)
+          const isCallMessage = CALL_MESSAGE_TYPES.includes(message.message_type as CallMessageType)
           if (!isCallMessage) return
         }
 
@@ -793,13 +802,16 @@ export const supabaseMessagingService = {
       )
       const list = res?.data ?? []
       return list.map((r: any) => {
-        const meta = (r.metadata ?? {}) as Record<string, unknown>
+        const meta = normalizeCallMetadata(r.metadata)
+        const behavior = normalizeCallBehavior(meta)
         return {
           thread_id: r.thread_id,
           created_at: r.created_at,
           message_type: r.message_type,
-          call_type: (meta.callType === 'video' ? 'video' : 'audio') as 'audio' | 'video',
+          call_type: (r.call_type === 'video' ? 'video' : behavior.callType) as 'audio' | 'video',
           metadata: meta,
+          behavior_action: (r.behavior_action || behavior.behaviorAction || null) as CallActionType | null,
+          behavior_end_reason: (r.behavior_end_reason || behavior.behaviorEndReason || null) as CallEndReason | null,
           thread_name: r.thread_name ?? null,
           contact_id: r.contact_id ?? null,
           contact_name: r.contact_name ?? null,
@@ -850,7 +862,7 @@ export const supabaseMessagingService = {
       const formattedMessage = mapApiMessageToChatMessage(rawMessage)
 
       // Send push notification for call requests immediately (works even when offline)
-      if (payload.message_type === 'call_request') {
+      if (payload.message_type === ('call_request' as CallMessageType)) {
         try {
           const callParticipantsRes = await apiClient.get<{ data: { user_id: string }[] }>(
             `/api/chat/threads/${threadId}/participants`,
@@ -890,12 +902,16 @@ export const supabaseMessagingService = {
                     requireInteraction: true,
                     vibrate: [200, 100, 200, 100, 200, 100, 200],
                     data: {
-                      type: 'incoming_call',
+                      type: 'incoming_call' as CallNotificationType,
                       call_type: callType,
                       room_id: roomId,
                       thread_id: threadId,
                       ...(token ? { token } : {}),
                       ...(callId ? { call_id: callId, callId } : {}),
+                      behaviorAction: 'call_requested',
+                      behaviorDirection: 'incoming',
+                      behaviorState: 'ringing',
+                      behaviorAt: new Date().toISOString(),
                       caller_id: callerId,
                       caller_name: callerName,
                       url: `/call/${roomId}`

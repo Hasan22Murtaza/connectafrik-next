@@ -40,6 +40,9 @@ export type NotificationType =
   // Communication
   | 'chat_message'
   | 'missed_call'
+  | 'call_accepted'
+  | 'call_rejected'
+  | 'call_ended'
   // Other
   | 'birthday'
 

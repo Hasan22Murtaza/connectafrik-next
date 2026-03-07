@@ -11,6 +11,7 @@ import {
   subscribeToPresenceChanges,
   cleanup as cleanupPresence,
 } from '@/shared/services/presenceService'
+import type { CallMessageType } from '@/shared/types/call'
 
 interface ChatParticipant {
   id: string
@@ -417,7 +418,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           threadId,
           {
             content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
-            message_type: 'call_request',
+            message_type: 'call_request' as CallMessageType,
             metadata: {
               callType: type,
               roomId,
@@ -426,6 +427,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
               callerAvatarUrl: currentUser?.avatarUrl,
               targetUserId: resolvedTargetUserId,
               callId,
+              behaviorAction: 'call_requested',
+              behaviorDirection: 'outgoing',
+              behaviorState: 'initiating',
+              behaviorAt: new Date().toISOString(),
               timestamp: new Date().toISOString()
             }
           },
