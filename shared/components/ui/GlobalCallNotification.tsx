@@ -11,7 +11,6 @@ const GlobalCallNotification: React.FC = () => {
     type: 'audio' | 'video'
     callerName: string
     roomId: string
-    token: string
     callerId: string
     callId?: string
   } | null>(null)
@@ -44,7 +43,6 @@ const GlobalCallNotification: React.FC = () => {
             type: callRequest.type,
             callerName: callRequest.callerName || 'Unknown caller',
             roomId,
-            token: callRequest.token || '',
             callerId: callRequest.callerId || '',
             callId: callRequest.callId
           })

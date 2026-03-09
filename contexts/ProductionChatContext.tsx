@@ -33,7 +33,6 @@ interface CallRequest {
   callerName?: string
   callerAvatarUrl?: string
   roomId?: string
-  token?: string
   targetUserId?: string
   callId?: string
 }
@@ -371,29 +370,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (!roomId) {
         throw new Error('Failed to create call room. Please try again.')
       }
-      
-      const response = await fetch('/api/videosdk/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          roomId,
-          userId: currentUser?.id || ''
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to generate call token. Please try again.')
-      }
-
-      const data = await response.json()
-      if (!data?.token) {
-        throw new Error('Failed to generate call token. Please try again.')
-      }
-
-      const token = data.token as string
 
       const callRequest: CallRequest = {
         threadId,
@@ -401,7 +377,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         callerId: currentUser?.id || '',
         callerName: currentUser?.name || 'Unknown',
         roomId,
-        token,
         targetUserId: resolvedTargetUserId,
         callId
       }
@@ -464,7 +439,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             threadId,
             type,
             meetingId: roomId,
-            token,
             participantId: currentUser?.id,
             participantName: currentUser?.name,
             callId,
@@ -492,7 +466,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, token, targetUserId, callId } = event.detail
+      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, targetUserId, callId } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
       
       setCallRequests(prev => ({
@@ -504,7 +478,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerName,
           callerAvatarUrl,
           roomId,
-          token,
           targetUserId,
           callId,
         }

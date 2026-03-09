@@ -75,14 +75,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('?? generate-videosdk-token called')
     
     const authHeader = request.headers.get('Authorization')
     console.log('Authorization header:', authHeader ? 'Present' : 'Missing')
 
     const body = await request.json()
     const { roomId, userId } = body
-    console.log('Request params:', { roomId, userId })
 
     if (!roomId || !userId) {
       console.error('Missing roomId or userId:', { roomId, userId })
