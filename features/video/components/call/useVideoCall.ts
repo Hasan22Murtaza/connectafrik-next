@@ -474,6 +474,36 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     } catch {}
   };
 
+  const refreshRemoteTracksFromMeeting = useCallback((meeting: any) => {
+    try {
+      const localParticipantId = meeting.localParticipant?.id;
+      const allParticipants = getMeetingParticipants(meeting.participants).filter((pt: any) => pt.id !== localParticipantId);
+
+      const nextVideoMap = new Map<string, MediaStream>();
+      const nextStreams: MediaStream[] = [];
+
+      allParticipants.forEach((participant: any) => {
+        const streams = participant?.streams;
+        const entries = streams instanceof Map ? Array.from(streams.values()) : streams && typeof streams === 'object' ? Object.values(streams) : [];
+        entries.forEach((s: any) => {
+          const track = s?.track;
+          if (!track || track.readyState !== 'live') return;
+          if (s.kind === 'video') {
+            const ms = new MediaStream([track]);
+            nextVideoMap.set(participant.id, ms);
+            nextStreams.push(ms);
+          } else if (s.kind === 'audio') {
+            nextStreams.push(new MediaStream([track]));
+          }
+        });
+      });
+
+      participantVideoMapRef.current = nextVideoMap;
+      setParticipantVideoMap(new Map(nextVideoMap));
+      updateRemoteStreams(() => nextStreams);
+    } catch {}
+  }, [getMeetingParticipants, updateRemoteStreams]);
+
   // --- Shared: set up presenter-changed handler ---
   const setupPresenterChanged = (meeting: any) => {
     meeting.on("presenter-changed", (presenterId: string | null) => {
@@ -593,10 +623,42 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const setupParticipantLeft = (meeting: any) => {
     meeting.on("participant-left", (p: any) => {
       if (!isMountedRef.current) return;
+      // Remove departed participant tracks immediately to avoid stale media bindings
+      // when group calls shrink back to 1:1.
+      try {
+        const mappedVideoStream = participantVideoMapRef.current.get(p.id);
+        if (mappedVideoStream) {
+          const mappedTrackIds = [...mappedVideoStream.getAudioTracks(), ...mappedVideoStream.getVideoTracks()].map((t) => t.id);
+          mappedTrackIds.forEach((trackId) => removeRemoteStream(trackId));
+        }
+      } catch {}
+      try {
+        const participantStreams = p?.streams;
+        const streamEntries = participantStreams instanceof Map
+          ? Array.from(participantStreams.values())
+          : participantStreams && typeof participantStreams === 'object'
+          ? Object.values(participantStreams)
+          : [];
+        streamEntries.forEach((s: any) => {
+          const tid = s?.track?.id;
+          if (tid) removeRemoteStream(tid);
+        });
+      } catch {}
+      // Keep only live tracks in remote stream state.
+      updateRemoteStreams((prev) =>
+        prev
+          .map((stream) => {
+            const liveTracks = [...stream.getAudioTracks(), ...stream.getVideoTracks()].filter((t) => t.readyState === 'live');
+            return liveTracks.length > 0 ? new MediaStream(liveTracks) : null;
+          })
+          .filter((stream): stream is MediaStream => Boolean(stream))
+      );
       participantVideoMapRef.current.delete(p.id);
       setParticipantVideoMap(new Map(participantVideoMapRef.current));
       setParticipants(prev => {
         const updated = prev.filter((x: any) => x.id !== p.id);
+        // Re-sync remaining participants so surviving video tracks stay bound after a member leaves.
+        refreshRemoteTracksFromMeeting(meeting);
         if (isGroupSessionRef.current) {
           // In group sessions, one participant leaving must not impact ongoing call for others.
           clearRemoteDisconnectTimer();
