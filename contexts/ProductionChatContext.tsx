@@ -36,6 +36,7 @@ interface CallRequest {
   token?: string
   targetUserId?: string
   callId?: string
+  isGroupCall?: boolean
 }
 
 interface ProductionChatContextType {
@@ -399,9 +400,14 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const cachedParticipantIds = (thread?.participants || [])
         .map((p: any) => p?.id)
         .filter((id: string | undefined) => Boolean(id && id !== currentUser?.id)) as string[]
+      let isGroupCall = (thread?.participants?.length || 0) > 2 || thread?.type === 'group'
 
       let resolvedTargetUserId = (targetUserId || '').trim()
-      if (resolvedTargetUserId) {
+      if (isGroupCall && resolvedTargetUserId) {
+        // Group calls should broadcast to all members, not only a single target user.
+        resolvedTargetUserId = ''
+      }
+      if (!isGroupCall && resolvedTargetUserId) {
         // Validate target from cache when available to avoid an extra hot-path request.
         if (cachedParticipantIds.length > 0 && !cachedParticipantIds.includes(resolvedTargetUserId)) {
           throw new Error('Recipient ID not found in this chat. Call not sent.')
@@ -415,9 +421,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
           if (!targetExists) throw new Error('Recipient ID not found in this chat. Call not sent.')
         }
-      } else if (cachedParticipantIds.length === 1) {
+      } else if (!isGroupCall && cachedParticipantIds.length === 1) {
         resolvedTargetUserId = cachedParticipantIds[0]
-      } else {
+      } else if (!isGroupCall) {
         // Fallback to participants API only when target cannot be inferred from already-loaded thread state.
         const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
           `/api/chat/threads/${threadId}/participants`,
@@ -427,6 +433,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (resolvedTargetUserId) {
           const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
           if (!targetExists) throw new Error('Recipient ID not found in this chat. Call not sent.')
+        } else if (participants.length > 1) {
+          // Multiple recipients means this is a group call; broadcast signaling.
+          isGroupCall = true
+          resolvedTargetUserId = ''
         } else if (participants.length === 1 && participants[0]?.user_id) {
           resolvedTargetUserId = participants[0].user_id
         } else {
@@ -463,7 +473,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         roomId,
         token,
         targetUserId: resolvedTargetUserId,
-        callId
+        callId,
+        isGroupCall,
       }
 
       setCallRequests(prev => ({
@@ -476,7 +487,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         const { openCallWindow } = await import('@/shared/utils/callWindow')
 
         // Resolve recipient/group name from already-loaded thread state (no extra fetch in hot path)
-        const isGroupCall = (thread?.participants?.length || 0) > 2 || thread?.type === 'group'
         const getParticipantId = (p: any) => p?.id || p?.user_id || p?.user?.id || p?.profile?.id || ''
         const isMissingName = (value?: string | null) => {
           const normalized = (value || '').trim().toLowerCase()
@@ -550,6 +560,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           recipientName,
           callerAvatarUrl: currentUser?.avatarUrl || '',
           recipientAvatarUrl: isGroupCall ? '' : resolvedDirectAvatarUrl,
+          isGroupCall,
           isIncoming: false,
           callerId: currentUser?.id,
           callId,
@@ -585,6 +596,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             callerName: currentUser?.name,
             callerAvatarUrl: currentUser?.avatarUrl,
             targetUserId: resolvedTargetUserId,
+            isGroupCall,
             callId,
             timestamp: new Date().toISOString()
           }
@@ -614,7 +626,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, targetUserId, callId } = event.detail
+      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, targetUserId, callId, isGroupCall } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
       
       setCallRequests(prev => ({
@@ -628,6 +640,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           roomId,
           targetUserId,
           callId,
+          isGroupCall,
         }
       }))
     }
@@ -693,6 +706,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   token: metadata.token,
                   targetUserId: metadata.targetUserId,
                   callId: metadata.callId,
+                  isGroupCall: metadata.isGroupCall === true,
                 }
               }))
             }
@@ -878,6 +892,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
                   token: metadata.token,
                   targetUserId: metadata.targetUserId,
                   callId: metadata.callId,
+                  isGroupCall: metadata.isGroupCall === true,
                 }
               }))
             }

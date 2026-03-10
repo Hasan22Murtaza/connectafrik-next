@@ -109,7 +109,8 @@ self.addEventListener('notificationclick', (event) => {
     const url = data.url || `/call/${roomId}`;
     
     const callId = data.call_id || data.callId || '';
-    const callUrl = `${self.location.origin}${url}?call=true&type=${callType}&threadId=${threadId}&callerName=${encodeURIComponent(callerName)}&recipientName=${encodeURIComponent('You')}&isIncoming=true&callerId=${data.caller_id || ''}${callerAvatarUrl ? `&callerAvatarUrl=${encodeURIComponent(callerAvatarUrl)}` : ''}${callId ? `&callId=${encodeURIComponent(callId)}` : ''}`;
+    const groupParam = data.is_group_call === true || data.isGroupCall === true ? '&isGroupCall=true' : '';
+    const callUrl = `${self.location.origin}${url}?call=true&type=${callType}&threadId=${threadId}&callerName=${encodeURIComponent(callerName)}&recipientName=${encodeURIComponent('You')}&isIncoming=true&callerId=${data.caller_id || ''}${callerAvatarUrl ? `&callerAvatarUrl=${encodeURIComponent(callerAvatarUrl)}` : ''}${callId ? `&callId=${encodeURIComponent(callId)}` : ''}${groupParam}`;
     
     event.waitUntil(
       clients.openWindow(callUrl)

@@ -9,11 +9,12 @@ export function openCallWindow(params: {
   recipientName: string
   callerAvatarUrl?: string
   recipientAvatarUrl?: string
+  isGroupCall?: boolean
   isIncoming: boolean
   callerId?: string
   callId?: string
 }) {
-  const { roomId, callType, threadId, callerName, recipientName, callerAvatarUrl, recipientAvatarUrl, isIncoming, callerId, callId } = params
+  const { roomId, callType, threadId, callerName, recipientName, callerAvatarUrl, recipientAvatarUrl, isGroupCall, isIncoming, callerId, callId } = params
   
   // Build URL with query parameters
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -28,6 +29,9 @@ export function openCallWindow(params: {
   }
   if (recipientAvatarUrl) {
     url.searchParams.set('recipientAvatarUrl', encodeURIComponent(recipientAvatarUrl))
+  }
+  if (typeof isGroupCall === 'boolean') {
+    url.searchParams.set('isGroupCall', isGroupCall ? 'true' : 'false')
   }
   url.searchParams.set('isIncoming', isIncoming.toString())
   if (callerId) {

@@ -9,6 +9,7 @@ export interface VideoSDKCallModalProps {
   recipientName: string;
   callerAvatarUrl?: string;
   recipientAvatarUrl?: string;
+  isGroupCallHint?: boolean;
   isIncoming?: boolean;
   onAccept?: () => void;
   onReject?: () => void;

@@ -59,6 +59,7 @@ export default function CallWindowPage() {
   const recipientName = safeDecode(searchParams?.get('recipientName'))
   const callerAvatarUrl = safeDecodeOptional(searchParams?.get('callerAvatarUrl'))
   const recipientAvatarUrl = safeDecodeOptional(searchParams?.get('recipientAvatarUrl'))
+  const isGroupCallHint = searchParams?.get('isGroupCall') === 'true'
   const isIncoming = searchParams?.get('isIncoming') === 'true'
   const callId = searchParams?.get('callId') || ''
 
@@ -92,6 +93,7 @@ export default function CallWindowPage() {
           recipientName={recipientName || currentUserName}
           callerAvatarUrl={callerAvatarUrl}
           recipientAvatarUrl={recipientAvatarUrl}
+          isGroupCallHint={isGroupCallHint}
           isIncoming={isIncoming}
           onAccept={() => {}}
           onReject={handleCallEnd}

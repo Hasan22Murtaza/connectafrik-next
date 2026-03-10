@@ -899,6 +899,8 @@ export const supabaseMessagingService = {
                     caller_id: actorId,
                     caller_name: actorName,
                     caller_avatar_url: metadata?.callerAvatarUrl || '',
+                    is_group_call: metadata?.isGroupCall === true,
+                    isGroupCall: metadata?.isGroupCall === true,
                     url: `/call/${roomId}`
                   }
                 }

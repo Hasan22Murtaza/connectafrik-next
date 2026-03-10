@@ -48,8 +48,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   }, [vc.callType, vc.participants, vc.participantVideoMap, vc.user?.user_metadata?.full_name, vc.localStream, vc.isVideoEnabled]);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black animate-fadeIn">
-      <div className="bg-black w-full h-full overflow-hidden">
+    <div className="fixed inset-0 z-[9999] animate-fadeIn">
+      <div className="w-full h-full overflow-hidden">
         {/* Video/Audio Content - Fullscreen */}
         <div
           className="relative w-full h-screen overflow-hidden"
@@ -72,7 +72,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           {groupLayout && (
               <div
                 className="w-full h-full flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
-                style={{ gap: '4px', background: '#1b1b1b' }}
+                style={{
+                  gap: '4px',
+                  background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
+                }}
               >
                 {groupLayout.tiles.map((tile) => (
                   <div
@@ -81,7 +84,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                     style={{
                       width: `calc(${100 / groupLayout.cols}% - 6px)`,
                       height: `calc(${100 / groupLayout.rows}% - 6px)`,
-                      background: '#272727',
+                      background: 'rgba(15, 23, 42, 0.58)',
                       minHeight: 0,
                     }}
                   >
@@ -92,7 +95,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                         mirrored={tile.isLocal}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center" style={{ background: '#272727' }}>
+                      <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(15, 23, 42, 0.58)' }}>
                         <div
                           className={`rounded-full flex items-center justify-center ${
                             groupLayout.total <= 4
