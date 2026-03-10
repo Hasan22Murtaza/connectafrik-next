@@ -34,19 +34,31 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const from = page * limit
     const to = from + limit - 1
 
-    const { data: messages, error } = await serviceClient
-      .from('chat_messages')
-      .select(MESSAGE_SELECT)
-      .eq('thread_id', threadId)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: true })
-      .range(from, to)
+    const [messagesRes, countRes] = await Promise.all([
+      serviceClient
+        .from('chat_messages')
+        .select(MESSAGE_SELECT)
+        .eq('thread_id', threadId)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: true })
+        .range(from, to),
+      serviceClient
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('thread_id', threadId)
+        .eq('is_deleted', false),
+    ])
+
+    const { data: messages, error } = messagesRes
 
     if (error) return errorResponse(error.message, 400)
+    if (countRes.error) return errorResponse(countRes.error.message, 400)
     const list = messages || []
+    const totalCount = countRes.count || 0
+    const totalPages = totalCount > 0 ? Math.ceil(totalCount / limit) : 0
 
     if (list.length === 0) {
-      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false, totalCount, totalPages })
     }
 
     const messageIds = list.map((m: any) => m.id)
@@ -79,6 +91,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       page,
       pageSize: limit,
       hasMore: list.length === limit,
+      totalCount,
+      totalPages,
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
