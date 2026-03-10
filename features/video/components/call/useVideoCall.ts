@@ -1247,6 +1247,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         message_type: 'call_request',
         metadata: {
           callType,
+          isGroupCall: true,
           roomId: currentRoomId,
           callId: callIdRef.current || callIdHint || '',
           callerId: currentUserId,
