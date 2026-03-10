@@ -33,6 +33,7 @@ interface CallRequest {
   callerName?: string
   callerAvatarUrl?: string
   roomId?: string
+  token?: string
   targetUserId?: string
   callId?: string
 }
@@ -366,6 +367,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       const roomData = await roomResponse.json()
       const roomId = roomData.roomId
+      const token = typeof roomData.token === 'string' ? roomData.token : undefined
       
       if (!roomId) {
         throw new Error('Failed to create call room. Please try again.')
@@ -377,6 +379,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         callerId: currentUser?.id || '',
         callerName: currentUser?.name || 'Unknown',
         roomId,
+        token,
         targetUserId: resolvedTargetUserId,
         callId
       }
@@ -396,6 +399,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             metadata: {
               callType: type,
               roomId,
+              token,
               callerId: currentUser?.id,
               callerName: currentUser?.name,
               callerAvatarUrl: currentUser?.avatarUrl,
