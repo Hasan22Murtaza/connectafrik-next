@@ -6,7 +6,15 @@ export type StoryType = 'photo' | 'text' | null
 interface StoryTypeSelectorProps {
   onSelect: (type: StoryType) => void
   userAvatar?: string
-  userName?: string
+  userName?: string | null
+}
+
+const toSafeDisplayName = (value: unknown): string => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed || 'User'
+  }
+  return 'User'
 }
 
 const StoryTypeSelector: React.FC<StoryTypeSelectorProps> = ({
@@ -14,6 +22,8 @@ const StoryTypeSelector: React.FC<StoryTypeSelectorProps> = ({
   userAvatar,
   userName = 'User'
 }) => {
+  const safeUserName = toSafeDisplayName(userName)
+
   return (
     <div className="flex flex-col items-center justify-center w-full h-full px-4 sm:px-6 py-6 sm:py-12">
       <div className="text-center mb-5 sm:mb-10">
@@ -60,13 +70,13 @@ const StoryTypeSelector: React.FC<StoryTypeSelectorProps> = ({
       <div className="mt-6 sm:mt-10 flex items-center gap-2.5 bg-gray-100 rounded-full px-3.5 py-2">
         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs sm:text-sm font-semibold overflow-hidden">
           {userAvatar ? (
-            <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
+            <img src={userAvatar} alt={safeUserName} className="w-full h-full object-cover" />
           ) : (
-            userName.charAt(0).toUpperCase()
+            safeUserName.charAt(0).toUpperCase()
           )}
         </div>
         <span className="text-xs sm:text-sm text-gray-600">
-          Posting as <span className="text-gray-900 font-medium">{userName}</span>
+          Posting as <span className="text-gray-900 font-medium">{safeUserName}</span>
         </span>
       </div>
     </div>

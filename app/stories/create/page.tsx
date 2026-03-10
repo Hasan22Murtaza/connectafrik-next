@@ -7,14 +7,10 @@ import { createStory, CreateStoryData } from '@/features/social/services/stories
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
-import {
-  StoryTypeSelector,
-  GradientPicker,
-  TextEditor,
-  STORY_GRADIENTS,
-  type StoryType,
-  type TextStyle
-} from '@/features/social/components/story'
+import StoryTypeSelector from '@/features/social/components/story/StoryTypeSelector'
+import GradientPicker, { STORY_GRADIENTS, type GradientOption } from '@/features/social/components/story/GradientPicker'
+import TextEditor, { type TextStyle } from '@/features/social/components/story/TextEditor'
+import { type StoryType } from '@/features/social/components/story/StoryTypeSelector'
 
 interface MediaFile {
   id: string
@@ -26,6 +22,19 @@ interface MediaFile {
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024
 const MAX_CAPTION_LENGTH = 200
+
+const toSafeDisplayName = (value: unknown): string => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed || 'User'
+  }
+  return 'User'
+}
+
+const getInitial = (name: string): string => {
+  if (!name) return 'U'
+  return name.charAt(0).toUpperCase()
+}
 
 export default function CreateStoryPage() {
   const router = useRouter()
@@ -50,7 +59,7 @@ export default function CreateStoryPage() {
   const [caption, setCaption] = useState('')
   const [isUploading, setIsUploading] = useState(false)
 
-  const userName = user?.user_metadata?.full_name || 'User'
+  const userName = toSafeDisplayName(user?.user_metadata?.full_name)
   const userAvatar = user?.user_metadata?.avatar_url
 
   const canSubmit = useMemo(() => {
@@ -309,7 +318,7 @@ export default function CreateStoryPage() {
               <>
                 <GradientPicker
                   selectedGradient={selectedGradient}
-                  onSelect={(gradient) => {
+                  onSelect={(gradient: GradientOption) => {
                     setSelectedGradient(gradient.gradient)
                     setSelectedBackgroundColor(gradient.colors[0])
                   }}
@@ -337,7 +346,7 @@ export default function CreateStoryPage() {
                     {userAvatar ? (
                       <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-white text-xs sm:text-sm font-semibold">{userName.charAt(0).toUpperCase()}</span>
+                      <span className="text-white text-xs sm:text-sm font-semibold">{getInitial(userName)}</span>
                     )}
                   </div>
                   <div>
