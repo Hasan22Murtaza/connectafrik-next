@@ -43,7 +43,13 @@ interface ProductionChatContextType {
   updatePresence: (userId: string, status: 'online' | 'away' | 'busy' | 'offline') => void
   startChatWithMembers: (participants: ChatParticipant[], options?: ThreadOptions) => Promise<string | null>
   openThread: (threadId: string) => void
-  startCall: (threadId: string, type: 'audio' | 'video', targetUserId?: string) => Promise<void>
+  startCall: (
+    threadId: string,
+    type: 'audio' | 'video',
+    targetUserId?: string,
+    targetUserName?: string,
+    targetUserAvatarUrl?: string
+  ) => Promise<void>
   callRequests: Record<string, CallRequest>
   currentUser: { id: string; name?: string; avatarUrl?: string } | null
   clearCallRequest: (threadId: string) => void
@@ -93,6 +99,37 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     callRequestsRef.current = callRequests
   }, [callRequests])
+
+  // Preload call-related chunks/sdk during idle time so call startup is faster.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !user) return
+    let cancelled = false
+    const windowWithIdle = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+    const preload = () => {
+      if (cancelled) return
+      void import('@videosdk.live/js-sdk')
+      void import('@/shared/utils/callWindow')
+      void import('@/features/video/components/VideoSDKCallModal')
+    }
+
+    if (windowWithIdle.requestIdleCallback) {
+      const idleId = windowWithIdle.requestIdleCallback(preload, { timeout: 1500 })
+      return () => {
+        cancelled = true
+        try { windowWithIdle.cancelIdleCallback?.(idleId) } catch {}
+      }
+    }
+
+    const timer = window.setTimeout(preload, 400)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [user])
+
   const updatePresence = useCallback((userId: string, status: 'online' | 'away' | 'busy' | 'offline') => {
     setPresence(prev => ({
       ...prev,
@@ -317,7 +354,30 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [currentUser, openThread])
 
-  const startCall = useCallback(async (threadId: string, type: 'audio' | 'video', targetUserId?: string) => {
+  const startCall = useCallback(async (
+    threadId: string,
+    type: 'audio' | 'video',
+    targetUserId?: string,
+    targetUserName?: string,
+    targetUserAvatarUrl?: string
+  ) => {
+    const telemetryBase = {
+      threadId,
+      type,
+      targetUserId: (targetUserId || '').trim() || undefined,
+      targetUserName: (targetUserName || '').trim() || undefined,
+      targetUserAvatarUrl: (targetUserAvatarUrl || '').trim() || undefined,
+    }
+    const markCallStartMetric = (event: string, extra?: Record<string, unknown>) => {
+      console.info('[call-telemetry]', {
+        event,
+        ts: Date.now(),
+        ...telemetryBase,
+        ...extra,
+      })
+    }
+    markCallStartMetric('t0_click_call')
+
     const lockKey = `${threadId}:${(targetUserId || '').trim() || 'auto'}`
     if (callStartInFlightRef.current.has(lockKey)) {
       throw new Error('Call is already starting. Please wait.')
@@ -335,22 +395,43 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           ? crypto.randomUUID()
           : `call_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
 
-      const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
-        `/api/chat/threads/${threadId}/participants`,
-        { exclude_user_id: currentUser?.id || '' }
-      )
-      const participants = participantsResponse?.data ?? []
+      const thread = threads.find((t) => t.id === threadId)
+      const cachedParticipantIds = (thread?.participants || [])
+        .map((p: any) => p?.id)
+        .filter((id: string | undefined) => Boolean(id && id !== currentUser?.id)) as string[]
 
       let resolvedTargetUserId = (targetUserId || '').trim()
       if (resolvedTargetUserId) {
-        const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
-        if (!targetExists) {
+        // Validate target from cache when available to avoid an extra hot-path request.
+        if (cachedParticipantIds.length > 0 && !cachedParticipantIds.includes(resolvedTargetUserId)) {
           throw new Error('Recipient ID not found in this chat. Call not sent.')
         }
-      } else if (participants.length === 1 && participants[0]?.user_id) {
-        resolvedTargetUserId = participants[0].user_id
+        if (cachedParticipantIds.length === 0) {
+          const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
+            `/api/chat/threads/${threadId}/participants`,
+            { exclude_user_id: currentUser?.id || '' }
+          )
+          const participants = participantsResponse?.data ?? []
+          const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
+          if (!targetExists) throw new Error('Recipient ID not found in this chat. Call not sent.')
+        }
+      } else if (cachedParticipantIds.length === 1) {
+        resolvedTargetUserId = cachedParticipantIds[0]
       } else {
-        throw new Error('Recipient ID not found. Call not sent.')
+        // Fallback to participants API only when target cannot be inferred from already-loaded thread state.
+        const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
+          `/api/chat/threads/${threadId}/participants`,
+          { exclude_user_id: currentUser?.id || '' }
+        )
+        const participants = participantsResponse?.data ?? []
+        if (resolvedTargetUserId) {
+          const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
+          if (!targetExists) throw new Error('Recipient ID not found in this chat. Call not sent.')
+        } else if (participants.length === 1 && participants[0]?.user_id) {
+          resolvedTargetUserId = participants[0].user_id
+        } else {
+          throw new Error('Recipient ID not found. Call not sent.')
+        }
       }
 
       const roomResponse = await fetch('/api/videosdk/room', {
@@ -368,6 +449,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const roomData = await roomResponse.json()
       const roomId = roomData.roomId
       const token = typeof roomData.token === 'string' ? roomData.token : undefined
+      markCallStartMetric('room_created', { roomId })
       
       if (!roomId) {
         throw new Error('Failed to create call room. Please try again.')
@@ -389,43 +471,76 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         [threadId]: callRequest
       }))
 
-      console.log('Sending call request message', currentUser?.name)
-      try {
-        await supabaseMessagingService.sendMessage(
-          threadId,
-          {
-            content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
-            message_type: 'call_request',
-            metadata: {
-              callType: type,
-              roomId,
-              token,
-              callerId: currentUser?.id,
-              callerName: currentUser?.name,
-              callerAvatarUrl: currentUser?.avatarUrl,
-              targetUserId: resolvedTargetUserId,
-              callId,
-              timestamp: new Date().toISOString()
-            }
-          },
-          { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
-        )
-      } catch (msgError) {
-        console.warn('⚠️ Failed to send call notification:', msgError)
-        // Don't fail the call if message sending fails
-      }
-
-      // Open new call window for the caller (like Facebook) after signaling is sent
+      // Open call window immediately after room creation (do not block on signaling/push work)
       if (typeof window !== 'undefined') {
         const { openCallWindow } = await import('@/shared/utils/callWindow')
 
-        // Get recipient/group name from thread
-        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
-        const thread = userThreads.find(t => t.id === threadId)
-        const isGroupCall = (thread?.participants?.length || 0) > 2
+        // Resolve recipient/group name from already-loaded thread state (no extra fetch in hot path)
+        const isGroupCall = (thread?.participants?.length || 0) > 2 || thread?.type === 'group'
+        const getParticipantId = (p: any) => p?.id || p?.user_id || p?.user?.id || p?.profile?.id || ''
+        const isMissingName = (value?: string | null) => {
+          const normalized = (value || '').trim().toLowerCase()
+          return !normalized || normalized === 'unknown'
+        }
+        const getParticipantName = (p: any) =>
+          (
+            p?.name ||
+            p?.fullName ||
+            p?.full_name ||
+            p?.display_name ||
+            p?.username ||
+            p?.user?.full_name ||
+            p?.user?.fullName ||
+            p?.user?.username ||
+            p?.profile?.full_name ||
+            p?.profile?.fullName ||
+            p?.profile?.username ||
+            ''
+          ).toString().trim()
+        const getParticipantAvatar = (p: any) =>
+          (
+            p?.avatarUrl ||
+            p?.avatar_url ||
+            p?.user?.avatarUrl ||
+            p?.user?.avatar_url ||
+            p?.profile?.avatarUrl ||
+            p?.profile?.avatar_url ||
+            ''
+          ).toString().trim()
+        const directRecipient =
+          thread?.participants?.find((p: any) => getParticipantId(p) === resolvedTargetUserId) ||
+          thread?.participants?.find((p: any) => getParticipantId(p) !== (currentUser?.id || ''))
+        const recipientFromKnownThreads =
+          resolvedTargetUserId
+            ? threads
+                .flatMap((t: any) => t?.participants || [])
+                .find((p: any) => {
+                  const pid = getParticipantId(p)
+                  const pname = getParticipantName(p)
+                  return pid === resolvedTargetUserId && !isMissingName(pname)
+                })
+            : null
+        const knownThreadsRecipientName = getParticipantName(recipientFromKnownThreads)
+        const directRecipientName = getParticipantName(directRecipient)
+        const directRecipientAvatar = getParticipantAvatar(directRecipient)
+        const knownThreadsRecipientAvatar = getParticipantAvatar(recipientFromKnownThreads)
+        const resolvedDirectName = !isMissingName(targetUserName)
+          ? (targetUserName || '').trim()
+          : !isMissingName(knownThreadsRecipientName)
+          ? knownThreadsRecipientName
+          : !isMissingName(directRecipientName)
+          ? directRecipientName
+          : !isMissingName(thread?.name)
+          ? (thread?.name || '').trim()
+          : 'Recipient'
+        const resolvedDirectAvatarUrl =
+          (targetUserAvatarUrl || '').trim() ||
+          knownThreadsRecipientAvatar ||
+          directRecipientAvatar ||
+          ''
         const recipientName = isGroupCall
           ? (thread?.name || 'Group Call')
-          : (thread?.participants?.find((p: any) => p.id !== currentUser?.id)?.name || 'Unknown')
+          : resolvedDirectName
 
         openCallWindow({
           roomId,
@@ -433,6 +548,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           threadId,
           callerName: currentUser?.name || 'Unknown',
           recipientName,
+          callerAvatarUrl: currentUser?.avatarUrl || '',
+          recipientAvatarUrl: isGroupCall ? '' : resolvedDirectAvatarUrl,
           isIncoming: false,
           callerId: currentUser?.id,
           callId,
@@ -446,16 +563,43 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             participantId: currentUser?.id,
             participantName: currentUser?.name,
             callId,
+            telemetry: {
+              t0ClickCallTs: Date.now(),
+              roomCreatedTs: Date.now(),
+            },
           }
         }))
       }
+
+      // Signal in background so caller connection setup is not delayed by push/message side effects
+      void supabaseMessagingService.sendMessage(
+        threadId,
+        {
+          content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
+          message_type: 'call_request',
+          metadata: {
+            callType: type,
+            roomId,
+            token,
+            callerId: currentUser?.id,
+            callerName: currentUser?.name,
+            callerAvatarUrl: currentUser?.avatarUrl,
+            targetUserId: resolvedTargetUserId,
+            callId,
+            timestamp: new Date().toISOString()
+          }
+        },
+        { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
+      ).catch((msgError) => {
+        console.warn('⚠️ Failed to send call notification:', msgError)
+      })
     } catch (error) {
       console.error('Failed to start call:', error)
       throw error // Re-throw so caller can handle it
     } finally {
       callStartInFlightRef.current.delete(lockKey)
     }
-  }, [currentUser])
+  }, [currentUser, threads])
 
   const clearCallRequest = useCallback((threadId: string) => {
     setCallRequests(prev => {

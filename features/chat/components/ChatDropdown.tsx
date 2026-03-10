@@ -220,8 +220,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     onClose()
   }
 
-  const handleStartCall = async (threadId: string, type: 'audio' | 'video') => {
-    await startCall(threadId, type)
+  const handleStartCall = async (
+    threadId: string,
+    type: 'audio' | 'video',
+    targetUserId?: string,
+    targetUserName?: string,
+    targetUserAvatarUrl?: string
+  ) => {
+    await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl)
     onClose()
   }
 
@@ -233,7 +239,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     }], { participant_ids: [contactId] })
 
     if (threadId) {
-      await startCall(threadId, type)
+      await startCall(threadId, type, contactId, contactName, contactAvatarUrl)
     }
     onClose()
   }
@@ -309,14 +315,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                     </div>
                     <div className="flex items-center space-x-2 flex-shrink-0">
                       <button
-                        onClick={() => handleStartCall(call.thread_id, 'audio')}
+                        onClick={() => handleStartCall(call.thread_id, 'audio', call.id, call.name, call.avatarUrl)}
                         className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
                         title="Start voice call"
                       >
                         <Phone className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleStartCall(call.thread_id, 'video')}
+                        onClick={() => handleStartCall(call.thread_id, 'video', call.id, call.name, call.avatarUrl)}
                         className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-purple-100 hover:text-purple-600 transition-colors"
                         title="Start video call"
                       >

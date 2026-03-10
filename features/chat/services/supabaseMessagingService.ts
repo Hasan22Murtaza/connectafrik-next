@@ -76,6 +76,7 @@ export interface RecentCallEntry {
 
 type ThreadSubscriber = (thread: ChatThread) => void
 type MessageSubscriber = (message: ChatMessage) => void
+type CallSignalSubscriber = (message: ChatMessage) => void
 
 // Subscribers for real-time updates
 const threadSubscribers = new Map<string, Set<ThreadSubscriber>>()
@@ -99,9 +100,9 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
     callbacks.forEach((callback) => callback(message))
   }
 
-  // Send push notification for new messages (not call requests). Skip when skipPush is true
+  // Send push notification for new messages (excluding call signaling). Skip when skipPush is true
   // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
-  if (!options?.skipPush && message.message_type !== 'call_request' && message.message_type !== 'call_accepted' && message.message_type !== 'call_ended') {
+  if (!options?.skipPush && !['call_request', 'call_accepted', 'call_rejected', 'call_ended', 'missed_call'].includes(message.message_type || '')) {
     try {
       const res = await apiClient.get<{ data: { user_id: string }[] }>(
         `/api/chat/threads/${message.thread_id}/participants`,
@@ -419,7 +420,7 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
         try {
           await apiClient.get<{ data: unknown }>(`/api/chat/threads/${message.thread_id}`)
         } catch {
-          const isCallMessage = ['call_request', 'call_accepted', 'call_rejected', 'call_ended'].includes(message.message_type)
+          const isCallMessage = ['call_request', 'call_accepted', 'call_rejected', 'call_ended', 'missed_call'].includes(message.message_type)
           if (!isCallMessage) return
         }
 
@@ -849,67 +850,172 @@ export const supabaseMessagingService = {
       if (!rawMessage) throw new Error('No message returned')
       const formattedMessage = mapApiMessageToChatMessage(rawMessage)
 
-      // Send push notification for call requests immediately (works even when offline)
-      if (payload.message_type === 'call_request') {
-        try {
-          const callParticipantsRes = await apiClient.get<{ data: { user_id: string }[] }>(
-            `/api/chat/threads/${threadId}/participants`,
-            { exclude_user_id: currentUser.id }
-          )
-          const participants = callParticipantsRes?.data ?? []
-
-          if (participants.length > 0) {
+      // Send call signaling notifications.
+      // For reject/missed signals we await delivery to avoid window-close races in call popup flows.
+      if (['call_request', 'call_accepted', 'call_rejected', 'call_ended', 'missed_call'].includes(payload.message_type || '')) {
+        const runCallSignalNotifications = async () => {
+          try {
             const metadata = payload.metadata as any
+            const messageType = payload.message_type || 'text'
             const callType = metadata?.callType || 'audio'
             const roomId = metadata?.roomId
             const token = metadata?.token
             const targetUserId = metadata?.targetUserId
             const callId = metadata?.callId
-            const callerId = currentUser.id
-            const callerName = currentUser.name || metadata?.callerName || 'Someone'
+            const actorId = currentUser.id
+            const actorName = currentUser.name || metadata?.callerName || 'Someone'
 
-            const targetParticipants = targetUserId
-              ? participants.filter((participant) => participant.user_id === targetUserId)
-              : participants
-
-            if (targetUserId && targetParticipants.length === 0) {
-              console.warn('Skipping call notification: target user id not found in thread participants')
-              return formattedMessage
+            // Fast path: when target user is already known, avoid extra participants lookup.
+            let targetParticipants: { user_id: string }[] = []
+            if (targetUserId) {
+              targetParticipants = [{ user_id: targetUserId }]
+            } else {
+              const callParticipantsRes = await apiClient.get<{ data: { user_id: string }[] }>(
+                `/api/chat/threads/${threadId}/participants`,
+                { exclude_user_id: currentUser.id }
+              )
+              targetParticipants = callParticipantsRes?.data ?? []
             }
 
-            for (const participant of targetParticipants) {
-              try {
-                if (roomId && callerId) {
-                  await notificationService.sendNotification({
-                    user_id: participant.user_id,
-                    title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
-                    body: `${callerName} is calling you...`,
-                    notification_type: 'system',
-                    skip_db: true,
-                    tag: `incoming-call-${threadId}`,
-                    requireInteraction: true,
-                    vibrate: [200, 100, 200, 100, 200, 100, 200],
-                    data: {
-                      type: 'incoming_call',
-                      call_type: callType,
-                      room_id: roomId,
-                      thread_id: threadId,
-                      ...(token ? { token } : {}),
-                      ...(callId ? { call_id: callId, callId } : {}),
-                      caller_id: callerId,
-                      caller_name: callerName,
-                      url: `/call/${roomId}`
-                    }
-                  })
-                  console.log(`📞 Sent incoming call push notification to ${participant.user_id}`)
+            if (targetParticipants.length === 0) return
+
+            const buildNotification = (recipientUserId: string) => {
+              if (messageType === 'call_request') {
+                return {
+                  title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
+                  body: `${actorName} is calling you...`,
+                  notification_type: 'system',
+                  tag: `incoming-call-${threadId}`,
+                  requireInteraction: true,
+                  silent: false,
+                  vibrate: [200, 100, 200, 100, 200, 100, 200] as number[],
+                  data: {
+                    type: 'incoming_call',
+                    call_type: callType,
+                    room_id: roomId,
+                    thread_id: threadId,
+                    ...(token ? { token } : {}),
+                    ...(callId ? { call_id: callId, callId } : {}),
+                    caller_id: actorId,
+                    caller_name: actorName,
+                    caller_avatar_url: metadata?.callerAvatarUrl || '',
+                    url: `/call/${roomId}`
+                  }
                 }
-              } catch (notificationError) {
-                console.error('Error sending call notification:', notificationError)
+              }
+
+              if (messageType === 'call_accepted') {
+                return {
+                  title: '📞 Call accepted',
+                  body: `${actorName} accepted your ${callType} call`,
+                  notification_type: 'call_accepted',
+                  tag: `call-accepted-${threadId}`,
+                  requireInteraction: false,
+                  silent: true,
+                  vibrate: undefined as number[] | undefined,
+                  data: {
+                    type: 'call_accepted',
+                    call_type: callType,
+                    thread_id: threadId,
+                    room_id: roomId,
+                    ...(callId ? { call_id: callId, callId } : {}),
+                    accepted_by: actorId,
+                    recipient_id: recipientUserId,
+                  }
+                }
+              }
+
+              if (messageType === 'call_rejected') {
+                return {
+                  title: '📞 Call declined',
+                  body: `${actorName} declined your ${callType} call`,
+                  notification_type: 'call_rejected',
+                  tag: `call-rejected-${threadId}`,
+                  requireInteraction: false,
+                  silent: true,
+                  vibrate: undefined as number[] | undefined,
+                  data: {
+                    type: 'call_rejected',
+                    call_type: callType,
+                    thread_id: threadId,
+                    room_id: roomId,
+                    ...(callId ? { call_id: callId, callId } : {}),
+                    rejected_by: actorId,
+                    recipient_id: recipientUserId,
+                  }
+                }
+              }
+
+              if (messageType === 'missed_call') {
+                return {
+                  title: '📞 Missed Call',
+                  body: `${actorName} tried to ${callType} call you`,
+                  notification_type: 'missed_call',
+                  tag: `missed-call-${threadId}`,
+                  requireInteraction: false,
+                  silent: true,
+                  vibrate: undefined as number[] | undefined,
+                  data: {
+                    type: 'missed_call',
+                    call_type: callType,
+                    thread_id: threadId,
+                    room_id: roomId,
+                    ...(callId ? { call_id: callId, callId } : {}),
+                    caller_id: actorId,
+                    caller_name: actorName,
+                    recipient_id: recipientUserId,
+                  }
+                }
+              }
+
+              return {
+                title: '📞 Call ended',
+                body: `${actorName} ended the ${callType} call`,
+                notification_type: 'call_ended',
+                tag: `call-ended-${threadId}`,
+                requireInteraction: false,
+                silent: true,
+                vibrate: undefined as number[] | undefined,
+                data: {
+                  type: 'call_ended',
+                  call_type: callType,
+                  thread_id: threadId,
+                  room_id: roomId,
+                  ...(callId ? { call_id: callId, callId } : {}),
+                  ended_by: actorId,
+                  recipient_id: recipientUserId,
+                }
               }
             }
+
+            await Promise.allSettled(targetParticipants.map(async (participant) => {
+              const notification = buildNotification(participant.user_id)
+              const persistToNotificationsTable = messageType === 'missed_call'
+              await notificationService.sendNotification({
+                user_id: participant.user_id,
+                title: notification.title,
+                body: notification.body,
+                notification_type: notification.notification_type as any,
+                skip_db: !persistToNotificationsTable,
+                tag: notification.tag,
+                requireInteraction: notification.requireInteraction,
+                silent: notification.silent,
+                ...(notification.vibrate ? { vibrate: notification.vibrate } : {}),
+                data: notification.data,
+              })
+              console.log(`📞 Sent ${messageType} notification to ${participant.user_id}`)
+            }))
+          } catch (error) {
+            console.error('Error processing call signaling notification:', error)
           }
-        } catch (error) {
-          console.error('Error processing call request notification:', error)
+        }
+
+        const messageType = payload.message_type || 'text'
+        const shouldAwaitSignalDelivery = messageType === 'call_rejected' || messageType === 'missed_call'
+        if (shouldAwaitSignalDelivery) {
+          await runCallSignalNotifications()
+        } else {
+          void runCallSignalNotifications()
         }
       }
 
@@ -1119,6 +1225,56 @@ export const supabaseMessagingService = {
       if (subs.size === 0) {
         messageSubscribers.delete(threadId)
       }
+    }
+  },
+
+  subscribeToCallSignals(threadId: string, callback: CallSignalSubscriber): () => void {
+    if (!threadId) return () => {}
+
+    if (fallbackEnabled) {
+      return this.subscribeToThread(threadId, (msg) => {
+        if (['call_request', 'call_accepted', 'call_rejected', 'call_ended', 'missed_call'].includes(msg.message_type || '')) {
+          callback(msg)
+        }
+      })
+    }
+
+    const channelName = `call_signals:${threadId}:${Date.now().toString(36)}`
+    const callChannel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `thread_id=eq.${threadId}`,
+        },
+        (payload) => {
+          const message = payload.new as any
+          const messageType = message?.message_type
+          if (!['call_request', 'call_accepted', 'call_rejected', 'call_ended', 'missed_call'].includes(messageType)) return
+
+          const lightweightSignal: ChatMessage = {
+            id: message.id,
+            thread_id: message.thread_id,
+            sender_id: message.sender_id,
+            content: message.content || '',
+            created_at: message.created_at,
+            updated_at: message.updated_at,
+            message_type: messageType,
+            metadata: (message.metadata || {}) as Record<string, unknown>,
+            read_by: [],
+            is_deleted: !!message.is_deleted,
+          }
+
+          callback(lightweightSignal)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      try { supabase.removeChannel(callChannel) } catch {}
     }
   },
 

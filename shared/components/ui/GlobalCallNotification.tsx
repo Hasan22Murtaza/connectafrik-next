@@ -56,6 +56,7 @@ const GlobalCallNotification: React.FC = () => {
                 threadId,
                 callerName: callRequest.callerName || 'Unknown',
                 recipientName: currentUser?.name || 'You',
+                callerAvatarUrl: callRequest.callerAvatarUrl,
                 isIncoming: true,
                 callerId: callRequest.callerId,
                 callId: callRequest.callId

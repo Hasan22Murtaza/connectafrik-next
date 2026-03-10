@@ -58,7 +58,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
         openInDock: true
       })
       if (threadId) {
-        await startCall(threadId, type)
+        await startCall(threadId, type, chatParticipant.id, chatParticipant.name, chatParticipant.avatarUrl)
         onStartCall?.(contact, type)
       }
     } catch (error) {

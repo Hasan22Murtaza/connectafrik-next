@@ -1,5 +1,5 @@
 import { PhoneOff } from 'lucide-react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   AddPeoplePanel,
   CallControls,
@@ -19,13 +19,42 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   if (!props.isOpen && vc.callStatus === 'connecting') return null;
   if (!props.isOpen) return null;
 
-  const userInitial = (vc.user?.user_metadata?.full_name || 'Y')[0].toUpperCase();
+  const userInitial = useMemo(() => (vc.user?.user_metadata?.full_name || 'Y')[0].toUpperCase(), [vc.user?.user_metadata?.full_name]);
+  const groupLayout = useMemo(() => {
+    if (vc.callType !== 'video' || vc.participants.length <= 1) return null;
+    const tiles = [
+      ...vc.participants.map((p: any) => {
+        const participantStream = vc.participantVideoMap.get(p.id) || null;
+        return {
+          id: p.id as string,
+          displayName: (p.displayName || 'Participant') as string,
+          stream: participantStream as MediaStream | null,
+          isLocal: false,
+          hasVideo: !!participantStream?.getVideoTracks?.().length,
+        };
+      }),
+      {
+        id: 'local',
+        displayName: (vc.user?.user_metadata?.full_name || 'You') as string,
+        stream: vc.localStream,
+        isLocal: true,
+        hasVideo: vc.isVideoEnabled && !!(vc.localStream?.getVideoTracks()?.length),
+      },
+    ];
+    const total = tiles.length;
+    const cols = total <= 2 ? 2 : total <= 4 ? 2 : total <= 9 ? 3 : total <= 16 ? 4 : 5;
+    const rows = Math.ceil(total / cols);
+    return { tiles, total, cols, rows };
+  }, [vc.callType, vc.participants, vc.participantVideoMap, vc.user?.user_metadata?.full_name, vc.localStream, vc.isVideoEnabled]);
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black animate-fadeIn">
       <div className="bg-black w-full h-full overflow-hidden">
         {/* Video/Audio Content - Fullscreen */}
-        <div className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 w-full h-screen overflow-hidden">
+        <div
+          className="relative w-full h-screen overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+        >
           {/* Remote Video - 1-on-1 call (single full-screen, HD) */}
           {vc.remoteStreams.length > 0 && vc.callType === 'video' && vc.participants.length <= 1 && (
             <div className="w-full h-full">
@@ -40,40 +69,18 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           )}
 
           {/* Teams-style Video Gallery - Group call (2+ remote participants + local) */}
-          {vc.callType === 'video' && vc.participants.length > 1 && (() => {
-            const tiles = [
-              ...vc.participants.map((p: any) => ({
-                id: p.id as string,
-                displayName: (p.displayName || 'Participant') as string,
-                stream: (vc.participantVideoMap.get(p.id) || null) as MediaStream | null,
-                isLocal: false,
-                hasVideo: !!(vc.participantVideoMap.get(p.id)?.getVideoTracks()?.length),
-              })),
-              {
-                id: 'local',
-                displayName: (vc.user?.user_metadata?.full_name || 'You') as string,
-                stream: vc.localStream,
-                isLocal: true,
-                hasVideo: vc.isVideoEnabled && !!(vc.localStream?.getVideoTracks()?.length),
-              },
-            ];
-
-            const total = tiles.length;
-            const cols = total <= 2 ? 2 : total <= 4 ? 2 : total <= 9 ? 3 : total <= 16 ? 4 : 5;
-            const rows = Math.ceil(total / cols);
-
-            return (
+          {groupLayout && (
               <div
                 className="w-full h-full flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
                 style={{ gap: '4px', background: '#1b1b1b' }}
               >
-                {tiles.map((tile) => (
+                {groupLayout.tiles.map((tile) => (
                   <div
                     key={tile.id}
                     className="relative overflow-hidden rounded-md sm:rounded-lg"
                     style={{
-                      width: `calc(${100 / cols}% - 6px)`,
-                      height: `calc(${100 / rows}% - 6px)`,
+                      width: `calc(${100 / groupLayout.cols}% - 6px)`,
+                      height: `calc(${100 / groupLayout.rows}% - 6px)`,
                       background: '#272727',
                       minHeight: 0,
                     }}
@@ -88,9 +95,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                       <div className="w-full h-full flex items-center justify-center" style={{ background: '#272727' }}>
                         <div
                           className={`rounded-full flex items-center justify-center ${
-                            total <= 4
+                            groupLayout.total <= 4
                               ? 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24'
-                              : total <= 9
+                              : groupLayout.total <= 9
                                 ? 'w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20'
                                 : 'w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14'
                           }`}
@@ -102,9 +109,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                         >
                           <span
                             className={`font-semibold text-white ${
-                              total <= 4
+                              groupLayout.total <= 4
                                 ? 'text-xl sm:text-2xl md:text-3xl'
-                                : total <= 9
+                                : groupLayout.total <= 9
                                   ? 'text-lg sm:text-xl md:text-2xl'
                                   : 'text-base sm:text-lg'
                             }`}
@@ -120,8 +127,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                   </div>
                 ))}
               </div>
-            );
-          })()}
+          )}
 
           {/* Local Video PiP - only for 1-on-1 calls; hidden during group calls (local is in grid) and screen share */}
           {vc.localStream && vc.callType === 'video' && vc.localStream.getVideoTracks().length > 0 && !vc.remoteScreenShareStream && vc.participants.length <= 1 && (
@@ -174,6 +180,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
             isIncoming={vc.isIncoming}
             decodedCallerName={vc.decodedCallerName}
             decodedRecipientName={vc.decodedRecipientName}
+            decodedCallerAvatarUrl={vc.decodedCallerAvatarUrl}
+            decodedRecipientAvatarUrl={vc.decodedRecipientAvatarUrl}
             isScreenSharing={vc.isScreenSharing}
             remoteScreenShareStream={vc.remoteScreenShareStream}
           />

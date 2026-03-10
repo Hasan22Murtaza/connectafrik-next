@@ -1,4 +1,4 @@
-export type CallStatus = 'connecting' | 'ringing' | 'connected' | 'ended';
+export type CallStatus = 'connecting' | 'ringing' | 'connecting_media' | 'connected' | 'ended';
 export type SpeakerLevel = 'normal' | 'low' | 'loud';
 
 export interface VideoSDKCallModalProps {
@@ -7,6 +7,8 @@ export interface VideoSDKCallModalProps {
   callType: 'audio' | 'video';
   callerName: string;
   recipientName: string;
+  callerAvatarUrl?: string;
+  recipientAvatarUrl?: string;
   isIncoming?: boolean;
   onAccept?: () => void;
   onReject?: () => void;

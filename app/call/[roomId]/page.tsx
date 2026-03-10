@@ -1,10 +1,13 @@
 'use client'
 
 import React, { useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import VideoSDKCallModal from '@/features/video/components/VideoSDKCallModal'
 import { useAuth } from '@/contexts/AuthContext'
-import { useProductionChat } from '@/contexts/ProductionChatContext'
+
+const VideoSDKCallModal = dynamic(() => import('@/features/video/components/VideoSDKCallModal'), {
+  ssr: false,
+})
 
 const CALL_ENDED = 'CALL_ENDED'
 
@@ -21,7 +24,12 @@ export default function CallWindowPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
-  const { currentUser } = useProductionChat()
+
+  const currentUserName =
+    user?.user_metadata?.full_name ||
+    [user?.user_metadata?.first_name, user?.user_metadata?.last_name].filter(Boolean).join(' ') ||
+    user?.email ||
+    'You'
 
   // Safe URL decoding function - handles already decoded strings gracefully
   const safeDecode = (str: string | null): string => {
@@ -33,6 +41,14 @@ export default function CallWindowPage() {
       return str;
     }
   };
+  const safeDecodeOptional = (str: string | null): string => {
+    if (!str) return '';
+    try {
+      return decodeURIComponent(str);
+    } catch {
+      return str;
+    }
+  };
 
   const roomId = params?.roomId as string
   const callParam = searchParams?.get('call') ?? 'true'
@@ -41,8 +57,9 @@ export default function CallWindowPage() {
   const threadId = searchParams?.get('threadId') || ''
   const callerName = safeDecode(searchParams?.get('callerName'))
   const recipientName = safeDecode(searchParams?.get('recipientName'))
+  const callerAvatarUrl = safeDecodeOptional(searchParams?.get('callerAvatarUrl'))
+  const recipientAvatarUrl = safeDecodeOptional(searchParams?.get('recipientAvatarUrl'))
   const isIncoming = searchParams?.get('isIncoming') === 'true'
-  const callerId = searchParams?.get('callerId') || ''
   const callId = searchParams?.get('callId') || ''
 
   // Notify parent tab when call ends so it can clear callRequests/activeCall and stop ringtone
@@ -72,13 +89,15 @@ export default function CallWindowPage() {
           onClose={handleCallEnd}
           callType={callType}
           callerName={callerName}
-          recipientName={recipientName || currentUser?.name || 'You'}
+          recipientName={recipientName || currentUserName}
+          callerAvatarUrl={callerAvatarUrl}
+          recipientAvatarUrl={recipientAvatarUrl}
           isIncoming={isIncoming}
           onAccept={() => {}}
           onReject={handleCallEnd}
           onCallEnd={handleCallEnd}
           threadId={threadId}
-          currentUserId={currentUser?.id || user?.id}
+          currentUserId={user?.id}
           roomIdHint={roomId}
           callIdHint={callId}
         />

@@ -7,11 +7,13 @@ export function openCallWindow(params: {
   threadId: string
   callerName: string
   recipientName: string
+  callerAvatarUrl?: string
+  recipientAvatarUrl?: string
   isIncoming: boolean
   callerId?: string
   callId?: string
 }) {
-  const { roomId, callType, threadId, callerName, recipientName, isIncoming, callerId, callId } = params
+  const { roomId, callType, threadId, callerName, recipientName, callerAvatarUrl, recipientAvatarUrl, isIncoming, callerId, callId } = params
   
   // Build URL with query parameters
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -21,6 +23,12 @@ export function openCallWindow(params: {
   url.searchParams.set('threadId', threadId)
   url.searchParams.set('callerName', encodeURIComponent(callerName))
   url.searchParams.set('recipientName', encodeURIComponent(recipientName))
+  if (callerAvatarUrl) {
+    url.searchParams.set('callerAvatarUrl', encodeURIComponent(callerAvatarUrl))
+  }
+  if (recipientAvatarUrl) {
+    url.searchParams.set('recipientAvatarUrl', encodeURIComponent(recipientAvatarUrl))
+  }
   url.searchParams.set('isIncoming', isIncoming.toString())
   if (callerId) {
     url.searchParams.set('callerId', callerId)

@@ -61,7 +61,7 @@ const ContactsRail: React.FC = () => {
       const threadId = await ensureThread(contact)
       if (threadId) {
         updatePresence(contact.id, 'online')
-        await startCall(threadId, type)
+        await startCall(threadId, type, contact.id, contact.name, contact.avatarUrl)
       }
     } catch (error) {
       console.error('Failed to start call:', error)

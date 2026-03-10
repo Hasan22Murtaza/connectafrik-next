@@ -433,7 +433,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleStartCall = async (type: "audio" | "video") => {
     try {
       userInitiatedCall.current = true;
-      await startCall(threadId, type, primaryParticipant?.id);
+      await startCall(threadId, type, primaryParticipant?.id, primaryParticipant?.name, primaryParticipant?.avatarUrl);
     } catch (error) {
       setIsCallOpen(false);
       setIsIncomingCall(false);
