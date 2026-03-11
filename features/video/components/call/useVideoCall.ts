@@ -688,8 +688,8 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
               const activeCallId = callIdRef.current || callIdHint || '';
               const activeRoomId = roomId || roomIdHint || '';
               supabaseMessagingService.sendMessage(threadId, {
-                content: 'Call ended',
-                message_type: 'call_ended',
+                content: 'Missed call',
+                message_type: 'missed_call',
                 metadata: {
                   callType,
                   roomId: activeRoomId,
@@ -719,8 +719,8 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           const activeCallId = callIdRef.current || callIdHint || '';
           const activeRoomId = roomId || roomIdHint || '';
           await supabaseMessagingService.sendMessage(threadId, {
-            content: 'Call ended',
-            message_type: 'call_ended',
+            content: 'Missed call',
+            message_type: 'missed_call',
             metadata: {
               callType,
               roomId: activeRoomId,
@@ -1113,8 +1113,8 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (threadId && currentUserId && callStatusRef.current !== 'ended' && shouldBroadcastEndSignal) {
       try {
         await supabaseMessagingService.sendMessage(threadId, {
-          content: 'Call ended',
-          message_type: 'call_ended',
+          content: 'Missed call',
+          message_type: 'missed_call',
           metadata: {
             callType,
             roomId: activeRoomId,
@@ -1389,7 +1389,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (messageType === 'missed_call') {
         if (isGroupSessionRef.current) return;
         // Fallback: if reject signal is missed, missed_call still means this ringing attempt is over.
-        if (!isIncoming && matchesRemoteSignal) {
+        if (matchesRemoteSignal) {
           closeCallUi(1000);
         }
         return;

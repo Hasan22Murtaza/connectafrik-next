@@ -712,8 +712,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             }
           }
         }
-        // Clear call request when call ended message is received (so UI updates for both parties)
-        if (message.message_type === 'call_ended') {
+        // Clear call request when call finishes (missed or ended) so UI updates for both parties.
+        if (message.message_type === 'missed_call' || message.message_type === 'call_ended') {
           clearCallRequest(threadId)
         }
         // If this user accepted the call on another device, hide any pending incoming call UI on this device.
