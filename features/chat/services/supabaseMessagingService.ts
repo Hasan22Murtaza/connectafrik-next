@@ -160,6 +160,20 @@ const createId = () =>
 
 const nowIso = () => new Date().toISOString()
 
+const toPushDataRecord = (data: Record<string, unknown>): Record<string, string> => {
+  const entries = Object.entries(data).flatMap(([key, value]) => {
+    if (value === undefined || value === null) return []
+    if (typeof value === 'string') return [[key, value] as [string, string]]
+    if (typeof value === 'number' || typeof value === 'boolean') return [[key, String(value)] as [string, string]]
+    try {
+      return [[key, JSON.stringify(value)] as [string, string]]
+    } catch {
+      return [[key, String(value)] as [string, string]]
+    }
+  })
+  return Object.fromEntries(entries)
+}
+
 const computeThreadKey = (participantIds: string[]) =>
   Array.from(new Set(participantIds)).sort().join(':')
 
@@ -835,13 +849,13 @@ export const supabaseMessagingService = {
           try {
             const metadata = payload.metadata as any
             const messageType = payload.message_type || 'text'
-            const callType = metadata?.callType || 'audio'
-            const roomId = metadata?.roomId
+            const callType = metadata?.callType || metadata?.call_type || 'audio'
+            const roomId = metadata?.roomId || metadata?.room_id
             const token = metadata?.token
-            const targetUserId = metadata?.targetUserId
-            const callId = metadata?.callId
+            const targetUserId = metadata?.targetUserId || metadata?.target_user_id
+            const callId = metadata?.callId || metadata?.call_id
             const actorId = currentUser.id
-            const actorName = currentUser.name || metadata?.callerName || 'Someone'
+            const actorName = currentUser.name || metadata?.callerName || metadata?.caller_name || 'Someone'
 
             // Fast path: when target user is already known, avoid extra participants lookup.
             let targetParticipants: { user_id: string }[] = []
@@ -855,10 +869,21 @@ export const supabaseMessagingService = {
               targetParticipants = callParticipantsRes?.data ?? []
             }
 
-            if (targetParticipants.length === 0) return
+            targetParticipants = Array.from(
+              new Set(
+                targetParticipants
+                  .map((p) => p?.user_id)
+                  .filter((id): id is string => Boolean(id && id !== actorId))
+              )
+            ).map((user_id) => ({ user_id }))
+
+            if (targetParticipants.length === 0) {
+              throw new Error(`No target participants resolved for ${messageType} in thread ${threadId}`)
+            }
 
             const buildNotification = (recipientUserId: string) => {
               if (messageType === 'call_request') {
+                const isGroupCall = metadata?.isGroupCall === true || metadata?.is_group_call === true || metadata?.is_group_call === 'true'
                 return {
                   title: `📞 Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
                   body: `${actorName} is calling you...`,
@@ -876,9 +901,9 @@ export const supabaseMessagingService = {
                     ...(callId ? { call_id: callId, callId } : {}),
                     caller_id: actorId,
                     caller_name: actorName,
-                    caller_avatar_url: metadata?.callerAvatarUrl || '',
-                    is_group_call: metadata?.isGroupCall === true,
-                    isGroupCall: metadata?.isGroupCall === true,
+                    caller_avatar_url: metadata?.callerAvatarUrl || metadata?.caller_avatar_url || '',
+                    is_group_call: isGroupCall ? 'true' : 'false',
+                    isGroupCall: isGroupCall ? 'true' : 'false',
                     url: `/call/${roomId}`
                   }
                 }
@@ -968,10 +993,11 @@ export const supabaseMessagingService = {
               }
             }
 
-            await Promise.allSettled(targetParticipants.map(async (participant) => {
+            const notificationResults = await Promise.allSettled(targetParticipants.map(async (participant) => {
               const notification = buildNotification(participant.user_id)
-              const persistToNotificationsTable = messageType === 'missed_call'
-              await notificationService.sendNotification({
+              const persistToNotificationsTable =
+                messageType === 'missed_call' || messageType === 'call_accepted'
+              const response = await notificationService.sendNotification({
                 user_id: participant.user_id,
                 title: notification.title,
                 body: notification.body,
@@ -981,17 +1007,33 @@ export const supabaseMessagingService = {
                 requireInteraction: notification.requireInteraction,
                 silent: notification.silent,
                 ...(notification.vibrate ? { vibrate: notification.vibrate } : {}),
-                data: notification.data,
+                data: toPushDataRecord(notification.data || {}),
               })
+              if (!response.success) {
+                throw new Error(response.error || `Failed to send ${messageType} notification`)
+              }
               console.log(`📞 Sent ${messageType} notification to ${participant.user_id}`)
             }))
+
+            const failedCount = notificationResults.filter((result) => result.status === 'rejected').length
+            if (failedCount > 0) {
+              const firstError = notificationResults.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined
+              throw new Error(
+                `Failed to deliver ${failedCount}/${notificationResults.length} ${messageType} notifications` +
+                (firstError?.reason ? `: ${String(firstError.reason)}` : '')
+              )
+            }
           } catch (error) {
             console.error('Error processing call signaling notification:', error)
           }
         }
 
         const messageType = payload.message_type || 'text'
-        const shouldAwaitSignalDelivery = messageType === 'call_rejected' || messageType === 'missed_call'
+        const shouldAwaitSignalDelivery =
+          messageType === 'call_request' ||
+          messageType === 'call_accepted' ||
+          messageType === 'call_rejected' ||
+          messageType === 'missed_call'
         if (shouldAwaitSignalDelivery) {
           await runCallSignalNotifications()
         } else {
