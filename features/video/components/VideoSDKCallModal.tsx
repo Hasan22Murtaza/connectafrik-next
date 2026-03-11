@@ -146,22 +146,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
             </div>
           )}
 
-          {/* Audio Call Avatar */}
-          {vc.callType === 'audio' && (
-            <div className="flex items-center justify-center h-full px-4">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center shadow-2xl ring-2 sm:ring-4 ring-primary-200/50 animate-pulse-glow">
-                {vc.callStatus !== 'ringing' && (
-                  <span className="text-sm sm:text-base md:text-lg lg:text-xl font-bold text-white text-center px-2 break-words">
-                    {vc.isIncoming ? vc.decodedCallerName : vc.decodedRecipientName}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Participants Count - hidden during screen share (shown in banner instead) */}
           {vc.callStatus === 'connected' && !vc.remoteScreenShareStream && !vc.isScreenSharing && (() => {
             const displayCount = vc.getParticipantCount();
+            if (displayCount <= 2) return null;
             return (
               <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] sm:text-xs md:text-sm font-medium shadow-lg border border-white/20">
                 <span className="flex items-center gap-1 sm:gap-2">
@@ -178,6 +166,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           {/* Call Status Overlay */}
           <CallStatusOverlay
             callStatus={vc.callStatus}
+            callType={vc.callType}
             callDuration={vc.callDuration}
             formatDuration={vc.formatDuration}
             isIncoming={vc.isIncoming}

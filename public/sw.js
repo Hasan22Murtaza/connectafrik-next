@@ -56,7 +56,7 @@ self.addEventListener('push', (event) => {
   }
 
   // Customize notification based on type
-  if (type === 'incoming_call') {
+  if (type === 'call_request') {
     // Incoming call: show Accept and Decline actions (no large image)
     actions = [
       { action: 'answer', title: 'Accept' },
@@ -74,7 +74,7 @@ self.addEventListener('push', (event) => {
     tag, // Same tag replaces existing notification
     data: notificationData, // Pass all data for click handling
     actions,
-    requireInteraction: type === 'incoming_call' ? true : (requireInteraction && type !== 'missed_call'),
+    requireInteraction: type === 'call_request' ? true : (requireInteraction && type !== 'missed_call'),
     silent: type === 'missed_call' ? true : silent,
     vibrate: type === 'missed_call' ? undefined : vibrate,
     renotify: true, // Vibrate/sound even when replacing same-tag notification
@@ -99,7 +99,7 @@ self.addEventListener('notificationclick', (event) => {
 
   notification.close();
 
-  if (action === 'answer' && data.type === 'incoming_call') {
+  if (action === 'answer' && data.type === 'call_request') {
     // Open call window
     const roomId = data.room_id;
     const callType = data.call_type || 'audio';
@@ -115,7 +115,7 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
       clients.openWindow(callUrl)
     );
-  } else if (action === 'decline' && data.type === 'incoming_call') {
+  } else if (action === 'decline' && data.type === 'call_request') {
     // Just close the notification — the call timeout will handle cleanup
     // Nothing else needed
   } else if (data.type === 'missed_call') {

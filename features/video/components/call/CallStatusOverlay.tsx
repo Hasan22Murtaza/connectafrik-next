@@ -3,6 +3,7 @@ import type { CallStatus } from './types';
 
 interface CallStatusOverlayProps {
   callStatus: CallStatus;
+  callType: 'audio' | 'video';
   callDuration: number;
   formatDuration: (seconds: number) => string;
   isIncoming: boolean;
@@ -16,6 +17,7 @@ interface CallStatusOverlayProps {
 
 const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
   callStatus,
+  callType,
   callDuration,
   formatDuration,
   isIncoming,
@@ -29,9 +31,15 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
   const activeName = isIncoming ? decodedCallerName : decodedRecipientName;
   const activeAvatarUrl = (isIncoming ? decodedCallerAvatarUrl : decodedRecipientAvatarUrl) || '';
   const activeInitial = (activeName || 'U').trim().charAt(0).toUpperCase();
+  const isAudioConnectedTopLayout =
+    callStatus === 'connected' && callType === 'audio' && !remoteScreenShareStream && !isScreenSharing;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-4">
+    <div
+      className={`absolute inset-0 flex justify-center pointer-events-none px-4 ${
+        isAudioConnectedTopLayout ? 'items-start pt-24 sm:pt-28 md:pt-32' : 'items-center'
+      }`}
+    >
       <div className="text-center text-slate-800">
         <div className="mb-4">
           {callStatus === 'connecting' && (
@@ -71,9 +79,30 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
             </div>
           )}
           {callStatus === 'connected' && !remoteScreenShareStream && !isScreenSharing && (
-            <div className="space-y-2 flex">
-              <div className="absolute bottom-0 left-2 sm:left-4 text-xs sm:text-sm md:text-base font-bold tracking-wider text-slate-800 font-mono tabular-nums z-30">{formatDuration(callDuration)}</div>
-            </div>
+            callType === 'audio' ? (
+              <div className="flex flex-col items-center">
+                <div className="mb-3 sm:mb-4">
+                  {activeAvatarUrl ? (
+                    <img
+                      src={activeAvatarUrl}
+                      alt={activeName}
+                      className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-4 border-slate-700/20 shadow-xl"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-slate-200 text-slate-800 border-4 border-slate-700/20 shadow-xl flex items-center justify-center text-2xl sm:text-3xl font-bold">
+                      {activeInitial}
+                    </div>
+                  )}
+                </div>
+                <div className="text-xs sm:text-sm md:text-base font-bold tracking-wider text-slate-800 font-mono tabular-nums">
+                  {formatDuration(callDuration)}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 flex">
+                <div className="absolute bottom-0 left-2 sm:left-4 text-xs sm:text-sm md:text-base font-bold tracking-wider text-slate-800 font-mono tabular-nums z-30">{formatDuration(callDuration)}</div>
+              </div>
+            )
           )}
           {callStatus === 'ended' && (
             <div>

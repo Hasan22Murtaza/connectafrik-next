@@ -178,7 +178,7 @@ export async function POST(request: NextRequest) {
         vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),
         timestamp: String(Date.now()),
         // Actions are determined by the service worker based on notification type.
-        // For incoming_call: SW shows Answer/Decline. For missed_call: SW shows no actions.
+        // For call_request: SW shows Answer/Decline. For missed_call: SW shows no actions.
         // Pass through any explicit actions, or let the SW decide based on type.
         actions: JSON.stringify(body.actions || []),
       },

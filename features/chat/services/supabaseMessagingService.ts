@@ -702,28 +702,6 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
   }
 }
 
-// Function to fetch sender information for messages
-const fetchSenderInfo = async (senderId: string) => {
-  try {
-    const res = await apiClient.get<{ data: { id: string; full_name?: string; username?: string; avatar_url?: string } }>(
-      `/api/users/${senderId}`
-    )
-    const data = (res as any)?.data
-    if (!data) throw new Error('No profile')
-    return {
-      id: data.id,
-      name: data.full_name || data.username || 'Unknown User',
-      avatarUrl: data.avatar_url ?? null
-    }
-  } catch (error) {
-    console.error('Error fetching sender info:', error)
-    return {
-      id: senderId,
-      name: 'Unknown User',
-      avatarUrl: null
-    }
-  }
-}
 
 export const supabaseMessagingService = {
   async getUserThreads(currentUser?: ChatParticipant | null, options?: { limit?: number; page?: number }): Promise<ChatThread[]> {
@@ -890,7 +868,7 @@ export const supabaseMessagingService = {
                   silent: false,
                   vibrate: [200, 100, 200, 100, 200, 100, 200] as number[],
                   data: {
-                    type: 'incoming_call',
+                    type: 'call_request',
                     call_type: callType,
                     room_id: roomId,
                     thread_id: threadId,

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
-const CALL_TYPES = ['call_request', 'call_accepted', 'call_ended', 'call_rejected']
+const CALL_TYPES = ['call_request', 'call_accepted', 'call_ended', 'call_rejected', 'missed_call']
 
 export async function GET(request: NextRequest) {
   try {

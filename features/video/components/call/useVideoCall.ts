@@ -1124,22 +1124,6 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           },
         }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
       } catch {}
-      if (wasNeverConnected && !isIncoming) {
-        try {
-          const callerDisplayName = decodedCallerName || user?.user_metadata?.full_name || 'Someone';
-          await supabaseMessagingService.sendMessage(threadId, {
-            content: 'Missed call',
-            message_type: 'missed_call',
-            metadata: {
-              callType,
-              roomId: activeRoomId,
-              callId: activeCallId,
-              callerName: callerDisplayName,
-              timestamp: new Date().toISOString(),
-            },
-          }, { id: currentUserId, name: callerDisplayName });
-        } catch {}
-      }
     }
     suppressMeetingLeftSignalRef.current = true;
     cleanupResources();
