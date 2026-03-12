@@ -30,6 +30,28 @@ self.addEventListener('push', (event) => {
   const badge = notificationData.badge || '/assets/images/logo.png';
   const requireInteraction = notificationData.requireInteraction === 'true' || notificationData.requireInteraction === true;
   const silent = notificationData.silent === 'true' || notificationData.silent === true;
+  const parseOptionalNumber = (value) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const nowMs = Date.now();
+  const sentAtRaw = notificationData.sent_at;
+  const sentAtMs =
+    typeof sentAtRaw === 'string' && sentAtRaw
+      ? Date.parse(sentAtRaw)
+      : parseOptionalNumber(sentAtRaw);
+  const staleAfterMs = parseOptionalNumber(notificationData.stale_after_ms) ?? 120000;
+
+  // Prevent delayed call-ended pushes from showing long after the call is over.
+  if (type === 'call_ended' && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
+    console.log('[SW] Skipping stale call-ended notification');
+    return;
+  }
 
   // Parse vibrate pattern
   let vibrate = [200, 100, 200];
@@ -85,9 +107,27 @@ self.addEventListener('push', (event) => {
 
   // Remove undefined values
   if (!options.vibrate) delete options.vibrate;
+  const autoCloseMs = parseOptionalNumber(notificationData.auto_close_ms);
 
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    (async () => {
+      await self.registration.showNotification(title, options);
+
+      // Auto-dismiss short-lived call-ended notifications to reduce stale stacks.
+      if (type === 'call_ended' && autoCloseMs && autoCloseMs > 0) {
+        setTimeout(async () => {
+          try {
+            const notifications = await self.registration.getNotifications({ tag });
+            notifications.forEach((n) => {
+              const notificationType = n?.data?.type;
+              if (notificationType === 'call_ended') n.close();
+            });
+          } catch (error) {
+            console.error('[SW] Failed to auto-close call-ended notification:', error);
+          }
+        }, autoCloseMs);
+      }
+    })()
   );
 });
 

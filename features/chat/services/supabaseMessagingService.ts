@@ -856,6 +856,7 @@ export const supabaseMessagingService = {
             const callId = metadata?.callId || metadata?.call_id
             const actorId = currentUser.id
             const actorName = currentUser.name || metadata?.callerName || metadata?.caller_name || 'Someone'
+            const signalSentAtIso = new Date().toISOString()
 
             // Fast path: when target user is already known, avoid extra participants lookup.
             let targetParticipants: { user_id: string }[] = []
@@ -904,6 +905,7 @@ export const supabaseMessagingService = {
                     caller_avatar_url: metadata?.callerAvatarUrl || metadata?.caller_avatar_url || '',
                     is_group_call: isGroupCall ? 'true' : 'false',
                     isGroupCall: isGroupCall ? 'true' : 'false',
+                    sent_at: signalSentAtIso,
                     url: `/call/${roomId}`
                   }
                 }
@@ -926,6 +928,7 @@ export const supabaseMessagingService = {
                     ...(callId ? { call_id: callId, callId } : {}),
                     accepted_by: actorId,
                     recipient_id: recipientUserId,
+                    sent_at: signalSentAtIso,
                   }
                 }
               }
@@ -947,6 +950,7 @@ export const supabaseMessagingService = {
                     ...(callId ? { call_id: callId, callId } : {}),
                     rejected_by: actorId,
                     recipient_id: recipientUserId,
+                    sent_at: signalSentAtIso,
                   }
                 }
               }
@@ -969,6 +973,7 @@ export const supabaseMessagingService = {
                     caller_id: actorId,
                     caller_name: actorName,
                     recipient_id: recipientUserId,
+                    sent_at: signalSentAtIso,
                   }
                 }
               }
@@ -989,6 +994,9 @@ export const supabaseMessagingService = {
                   ...(callId ? { call_id: callId, callId } : {}),
                   ended_by: actorId,
                   recipient_id: recipientUserId,
+                  sent_at: signalSentAtIso,
+                  auto_close_ms: 10000,
+                  stale_after_ms: 120000,
                 }
               }
             }
