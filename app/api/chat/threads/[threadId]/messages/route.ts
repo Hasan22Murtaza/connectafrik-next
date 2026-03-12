@@ -40,7 +40,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .select(MESSAGE_SELECT)
         .eq('thread_id', threadId)
         .eq('is_deleted', false)
-        .order('created_at', { ascending: true })
+        // Fetch newest slice first so page 0 contains latest messages.
+        .order('created_at', { ascending: false })
         .range(from, to),
       serviceClient
         .from('chat_messages')
@@ -85,12 +86,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
       read_by: readByMessage.get(m.id) || [],
       attachments: attachmentsByMessage.get(m.id) || [],
     }))
+    // Preserve natural chat display (oldest -> newest) inside the fetched page.
+    const chronological = [...formatted].reverse()
 
     return jsonResponse({
-      data: formatted,
+      data: chronological,
       page,
       pageSize: limit,
-      hasMore: list.length === limit,
+      hasMore: totalCount > (to + 1),
       totalCount,
       totalPages,
     })

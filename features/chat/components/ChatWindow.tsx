@@ -52,6 +52,7 @@ const formatPresenceLabel = (status?: string) => {
       return "Offline";
   }
 };
+const MESSAGES_PAGE_SIZE = 50;
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
   threadId,
@@ -194,6 +195,67 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map());
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const isPrependingHistoryRef = useRef(false);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+
+  useEffect(() => {
+    setHistoryPage(0);
+    setHasOlderMessages(true);
+    setIsLoadingOlderMessages(false);
+    isPrependingHistoryRef.current = false;
+  }, [threadId]);
+
+  const loadOlderMessages = async () => {
+    if (!threadId || isLoadingOlderMessages || !hasOlderMessages) return;
+    const scrollEl = messagesScrollRef.current;
+    if (!scrollEl) return;
+
+    setIsLoadingOlderMessages(true);
+    const prevScrollHeight = scrollEl.scrollHeight;
+    const prevScrollTop = scrollEl.scrollTop;
+    const nextPage = historyPage + 1;
+
+    try {
+      const olderMessages = await supabaseMessagingService.getThreadMessages(threadId, {
+        page: nextPage,
+        limit: MESSAGES_PAGE_SIZE,
+      });
+
+      if (!olderMessages.length) {
+        setHasOlderMessages(false);
+        return;
+      }
+      if (olderMessages.length < MESSAGES_PAGE_SIZE) {
+        setHasOlderMessages(false);
+      }
+
+      const currentMessages = getMessagesForThread(threadId);
+      const mergedMap = new Map<string, ChatMessage>();
+      currentMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
+      olderMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
+      const merged = Array.from(mergedMap.values()).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+      isPrependingHistoryRef.current = true;
+      setMessagesForThread(threadId, merged);
+      setHistoryPage(nextPage);
+
+      requestAnimationFrame(() => {
+        const node = messagesScrollRef.current;
+        if (!node) return;
+        const heightDiff = node.scrollHeight - prevScrollHeight;
+        node.scrollTop = prevScrollTop + heightDiff;
+        isPrependingHistoryRef.current = false;
+      });
+    } catch (error) {
+      console.error("Error loading older messages:", error);
+    } finally {
+      setIsLoadingOlderMessages(false);
+    }
+  };
 
   useEffect(() => {
     if (!currentUser) return;
@@ -270,22 +332,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ]);
 
   useEffect(() => {
-    if (!threadId || !currentUser) return
-
-    const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
-      const currentMessages = getMessagesForThread(threadId)
-      if (currentMessages.some((m: ChatMessage) => m.id === message.id)) {
-        return
-      }
-      setMessagesForThread(threadId, [...currentMessages, message])
-    })
-
-    return () => {
-      unsubscribe()
-    }
-  }, [threadId, currentUser, getMessagesForThread, setMessagesForThread])
-
-  useEffect(() => {
     if (
       thread &&
       !minimizedThreadIds.includes(threadId) &&
@@ -298,12 +344,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   useEffect(() => {
     const el = messagesScrollRef.current;
     if (!el || visibleMessages.length === 0) return;
+    if (isPrependingHistoryRef.current) return;
     const scrollToBottom = () => {
       el.scrollTop = el.scrollHeight;
     };
     scrollToBottom();
     requestAnimationFrame(scrollToBottom);
   }, [threadId, visibleMessages.length]);
+
+  useEffect(() => {
+    const el = messagesScrollRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      if (el.scrollTop <= 32) {
+        void loadOlderMessages();
+      }
+    };
+
+    el.addEventListener("scroll", handleScroll);
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+    };
+  }, [threadId, historyPage, isLoadingOlderMessages, hasOlderMessages, messages.length]);
 
   if (!thread) return null;
 
@@ -573,6 +636,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ref={messagesScrollRef}
         className="flex h-[250px] sm:h-[290px] flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3"
       >
+        {isLoadingOlderMessages && (
+          <div className="py-1 text-center text-xs text-gray-500">Loading older messages...</div>
+        )}
         {visibleMessages.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-500">
             Send a message to kick off the conversation.

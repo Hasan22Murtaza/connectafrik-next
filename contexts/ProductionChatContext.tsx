@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -86,16 +86,19 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const callRequestsRef = useRef<Record<string, CallRequest>>({})
   const callStartInFlightRef = useRef<Set<string>>(new Set())
 
-  const displayName =
-    user?.user_metadata?.full_name ||
-    [user?.user_metadata?.first_name, user?.user_metadata?.last_name].filter(Boolean).join(' ') ||
-    user?.email
-  const avatarUrl =
-    user?.user_metadata?.avatar_url ||
-    user?.user_metadata?.picture ||
-    user?.user_metadata?.profile_image ||
-    undefined
-  const currentUser = user ? { id: user.id, name: displayName || user.email, avatarUrl } : null
+  const currentUser = useMemo(() => {
+    if (!user) return null
+    const displayName =
+      user.user_metadata?.full_name ||
+      [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(' ') ||
+      user.email
+    const avatarUrl =
+      user.user_metadata?.avatar_url ||
+      user.user_metadata?.picture ||
+      user.user_metadata?.profile_image ||
+      undefined
+    return { id: user.id, name: displayName || user.email, avatarUrl }
+  }, [user])
 
   useEffect(() => {
     callRequestsRef.current = callRequests
@@ -659,10 +662,28 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       for (const threadId of openThreads) {
         try {
           const threadMessages = await supabaseMessagingService.getThreadMessages(threadId)
-          setMessages(prev => ({
-            ...prev,
-            [threadId]: threadMessages
-          }))
+          setMessages(prev => {
+            const current = prev[threadId] || []
+            if (current.length === 0) {
+              return {
+                ...prev,
+                [threadId]: threadMessages,
+              }
+            }
+
+            // Merge paged API load with realtime updates to avoid clobbering latest messages.
+            const mergedMap = new Map<string, ChatMessage>()
+            current.forEach((msg) => mergedMap.set(msg.id, msg))
+            threadMessages.forEach((msg) => mergedMap.set(msg.id, msg))
+            const merged = Array.from(mergedMap.values()).sort(
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            )
+
+            return {
+              ...prev,
+              [threadId]: merged,
+            }
+          })
         } catch (error) {
           console.error(`Error loading messages for thread ${threadId}:`, error)
         }
@@ -730,7 +751,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             clearCallRequest(threadId)
           }
         }
-      })
+      }, currentUser)
       unsubscribeCallbacks.push(unsubscribe)
     })
 

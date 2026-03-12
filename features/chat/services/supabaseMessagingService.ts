@@ -81,6 +81,7 @@ type CallSignalSubscriber = (message: ChatMessage) => void
 // Subscribers for real-time updates
 const threadSubscribers = new Map<string, Set<ThreadSubscriber>>()
 const messageSubscribers = new Map<string, Set<MessageSubscriber>>()
+const threadMessageChannels = new Map<string, any>()
 
 // Real-time subscriptions
 let threadsSubscription: any = null
@@ -417,44 +418,8 @@ const initializeSubscriptions = async (currentUser: ChatParticipant) => {
     )
     .subscribe()
 
-  // Subscribe to message updates
-  messagesSubscription = supabase
-    .channel('chat_messages')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages'
-      },
-      async (payload) => {
-        const message = payload.new as any
-
-        // Check if current user is a participant via API (404/error => skip unless call message)
-        try {
-          await apiClient.get<{ data: unknown }>(`/api/chat/threads/${message.thread_id}`)
-        } catch {
-          const isCallMessage = ['call_request', 'call_accepted', 'call_rejected', 'call_ended', 'missed_call'].includes(message.message_type)
-          if (!isCallMessage) return
-        }
-
-        // Fetch full message with sender info (no single-message API; use Supabase for realtime)
-        const { data: fullMessage } = await supabase
-          .from('chat_messages')
-          .select(`
-            *,
-            sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
-          `)
-          .eq('id', message.id)
-          .single()
-
-        if (fullMessage) {
-          const formattedMessage = await formatMessage(fullMessage)
-          notifyMessageSubscribers(formattedMessage, { skipPush: true })
-        }
-      }
-    )
-    .subscribe()
+  // Message realtime is managed by per-thread channels in subscribeToThread.
+  messagesSubscription = null
 }
 
 // Cleanup subscriptions
@@ -467,6 +432,10 @@ const cleanupSubscriptions = () => {
     supabase.removeChannel(messagesSubscription)
     messagesSubscription = null
   }
+  threadMessageChannels.forEach((channel) => {
+    try { supabase.removeChannel(channel) } catch {}
+  })
+  threadMessageChannels.clear()
 }
 
 // Format thread data from Supabase
@@ -759,12 +728,16 @@ export const supabaseMessagingService = {
     }
   },
 
-  async getThreadMessages(threadId: string): Promise<ChatMessage[]> {
+  async getThreadMessages(threadId: string, options?: { limit?: number; page?: number }): Promise<ChatMessage[]> {
+    const limit = options?.limit ?? 50
+    const page = options?.page ?? 0
     try {
-      const res = await apiClient.get<{ data: any[] }>(
-        `/api/chat/threads/${threadId}/messages`
+      const res = await apiClient.get<{ data?: any[] } | any[]>(
+        `/api/chat/threads/${threadId}/messages`,
+        { limit, page }
       )
-      const messages = res?.data ?? []
+      const payload = res as any
+      const messages = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : [])
       if (fallbackEnabled) {
         fallbackEnabled = false
       }
@@ -772,7 +745,9 @@ export const supabaseMessagingService = {
     } catch (error) {
       console.error('Error in getThreadMessages:', error)
       activateFallback(error)
-      return localMessages.get(threadId) ?? []
+      const list = localMessages.get(threadId) ?? []
+      const from = page * limit
+      return list.slice(from, from + limit)
     }
   },
 
@@ -1226,26 +1201,68 @@ export const supabaseMessagingService = {
     }
   },
 
-  subscribeToThread(threadId: string, callback: MessageSubscriber): () => void {
+  subscribeToThread(threadId: string, callback: MessageSubscriber, currentUserForInit?: ChatParticipant | null): () => void {
     const existing = messageSubscribers.get(threadId)
     const callbacks = existing ?? new Set<MessageSubscriber>()
     callbacks.add(callback)
     messageSubscribers.set(threadId, callbacks)
 
-    // Ensure real-time subscriptions are initialized if not already
-    // We need a currentUser to initialize, so we'll get it from the first subscriber
-    // This is a workaround - ideally we'd pass currentUser here
-    if (!messagesSubscription && !fallbackEnabled) {
-      // Try to get currentUser from auth session
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const currentUser: ChatParticipant = {
-            id: session.user.id,
-            name: session.user.user_metadata?.full_name || session.user.email || 'User'
+    // Ensure base thread subscriptions are initialized if not already.
+    // Prefer explicit current user from caller to avoid auth-session timing races.
+    if (!threadsSubscription && !fallbackEnabled) {
+      if (currentUserForInit?.id) {
+        initializeSubscriptions(currentUserForInit)
+      } else {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) {
+            const currentUser: ChatParticipant = {
+              id: session.user.id,
+              name: session.user.user_metadata?.full_name || session.user.email || 'User'
+            }
+            initializeSubscriptions(currentUser)
           }
-          initializeSubscriptions(currentUser)
-        }
-      })
+        })
+      }
+    }
+
+    if (!fallbackEnabled && !threadMessageChannels.has(threadId)) {
+      const channelName = `chat_messages:${threadId}:${Date.now().toString(36)}`
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `thread_id=eq.${threadId}`,
+          },
+          async (payload) => {
+            const message = payload.new as any
+            try {
+              const { data: fullMessage } = await supabase
+                .from('chat_messages')
+                .select(`
+                  *,
+                  sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
+                `)
+                .eq('id', message.id)
+                .single()
+
+              const formattedMessage = fullMessage
+                ? await formatMessage(fullMessage)
+                : mapApiMessageToChatMessage(message)
+
+              notifyMessageSubscribers(formattedMessage, { skipPush: true })
+            } catch (error) {
+              console.warn('Realtime thread message hydration failed, using lightweight payload:', error)
+              notifyMessageSubscribers(mapApiMessageToChatMessage(message), { skipPush: true })
+            }
+          }
+        )
+        .subscribe()
+
+      threadMessageChannels.set(threadId, channel)
     }
 
     return () => {
@@ -1254,6 +1271,11 @@ export const supabaseMessagingService = {
       subs.delete(callback)
       if (subs.size === 0) {
         messageSubscribers.delete(threadId)
+        const channel = threadMessageChannels.get(threadId)
+        if (channel) {
+          try { supabase.removeChannel(channel) } catch {}
+          threadMessageChannels.delete(threadId)
+        }
       }
     }
   },
