@@ -40,13 +40,28 @@ export async function GET(request: NextRequest) {
     if (error) return errorResponse(error.message, 400)
     const list = callMessages || []
 
-    const byThread = new Map<string, any>()
+    // Defensive dedupe for duplicated rows coming from upstream sources.
+    const uniqueRows: any[] = []
+    const seenRowKeys = new Set<string>()
     for (const m of list) {
-      if (!byThread.has(m.thread_id)) {
+      const rowKey = `${m.thread_id}:${m.message_type}:${m.created_at}`
+      if (seenRowKeys.has(rowKey)) continue
+      seenRowKeys.add(rowKey)
+      uniqueRows.push(m)
+    }
+
+    // Keep only the latest call signal per thread.
+    const byThread = new Map<string, any>()
+    for (const m of uniqueRows) {
+      const existing = byThread.get(m.thread_id)
+      if (!existing || new Date(m.created_at).getTime() > new Date(existing.created_at).getTime()) {
         byThread.set(m.thread_id, m)
       }
     }
-    const recentAll = [...byThread.values()]
+
+    const recentAll = [...byThread.values()].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
     const recent = recentAll.slice(from, to + 1)
 
     if (recent.length === 0) {
@@ -107,7 +122,7 @@ export async function GET(request: NextRequest) {
         contact_status: otherProfile?.status || 'offline',
         contact_last_seen: otherProfile?.last_seen || null,
       }
-    })
+    }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
     return jsonResponse({
       data: result,
