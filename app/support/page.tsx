@@ -23,8 +23,8 @@ const SupportPage: React.FC = () => {
             <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
               <Mail className="w-8 h-8 text-green-600 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Email Support</h3>
-              <a href="mailto:wlivinston21@gmail.com" className="text-green-600 hover:text-green-700">
-                wlivinston21@gmail.com
+              <a href="mailto:info@connectafrik.com " className="text-green-600 hover:text-green-700">
+                info@connectafrik.com 
               </a>
             </div>
 

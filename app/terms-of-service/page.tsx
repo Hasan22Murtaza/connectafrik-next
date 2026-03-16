@@ -136,10 +136,10 @@ const TermsOfServicePage: React.FC = () => {
                 If you have any questions about these Terms of Service, please
                 contact us at{' '}
                 <a
-                  href="mailto:wlivinston21@gmail.com"
+                  href="mailto:info@connectafrik.com "
                   className="text-green-600 hover:text-green-700"
                 >
-                  wlivinston21@gmail.com
+                  info@connectafrik.com 
                 </a>
               </p>
             </section>
