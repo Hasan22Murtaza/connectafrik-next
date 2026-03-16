@@ -161,7 +161,7 @@ const GuidelinesPage = () => {
                 <li>
                   <strong>Responsibility to community:</strong> Your rights come
                   with responsibilities. Help keep ConnectAfrik welcoming and
-                  trustworthy.
+                  trust worthy.
                 </li>
                 <li>
                   <strong>Compliance:</strong> Follow local laws and our
@@ -180,7 +180,7 @@ const GuidelinesPage = () => {
                   <ul className="list-disc space-y-1 pl-5">
                     <li>
                       Absolutely prohibited: any content that sexualizes,
-                      exploits, or endangers minors; grooming; solicitation; or
+                      exploits, or endangers minors, grooming, solicitation, or
                       instructions to harm or abuse children.
                     </li>
                     <li>
@@ -296,7 +296,7 @@ const GuidelinesPage = () => {
                     <li>Do not post content you do not have rights to.</li>
                     <li>
                       Copyright and trademark violations will be removed upon
-                      notice; repeat infringers may lose accounts.
+                      notice, repeat infringers may lose accounts.
                     </li>
                     <li>Use licensed media or your own content.</li>
                   </ul>
