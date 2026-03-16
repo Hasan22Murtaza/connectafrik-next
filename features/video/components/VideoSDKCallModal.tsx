@@ -1,5 +1,5 @@
 import { PhoneOff } from 'lucide-react';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AddPeoplePanel,
   CallControls,
@@ -14,6 +14,8 @@ import type { VideoSDKCallModalProps } from './call';
 
 const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   const vc = useVideoCall(props);
+  const [groupPage, setGroupPage] = useState(0);
+  const [screenShareVisibleParticipantIds, setScreenShareVisibleParticipantIds] = useState<string[]>([]);
 
   // Don't render if not open
   if (!props.isOpen && vc.callStatus === 'connecting') return null;
@@ -22,30 +24,85 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   const userInitial = useMemo(() => (vc.user?.user_metadata?.full_name || 'Y')[0].toUpperCase(), [vc.user?.user_metadata?.full_name]);
   const groupLayout = useMemo(() => {
     if (vc.callType !== 'video' || vc.participants.length <= 1) return null;
-    const tiles = [
-      ...vc.participants.map((p: any) => {
-        const participantStream = vc.participantVideoMap.get(p.id) || null;
-        return {
-          id: p.id as string,
-          displayName: (p.displayName || 'Participant') as string,
-          stream: participantStream as MediaStream | null,
-          isLocal: false,
-          hasVideo: !!participantStream?.getVideoTracks?.().length,
-        };
-      }),
-      {
-        id: 'local',
-        displayName: (vc.user?.user_metadata?.full_name || 'You') as string,
-        stream: vc.localStream,
-        isLocal: true,
-        hasVideo: vc.isVideoEnabled && !!(vc.localStream?.getVideoTracks()?.length),
-      },
-    ];
+    const maxTilesPerPage = 9;
+    const maxRemotePerPage = Math.max(1, maxTilesPerPage - 1); // keep local tile on every page
+    const remoteTiles = vc.participants.map((p: any) => {
+      const participantStream = vc.participantVideoMap.get(p.id) || null;
+      return {
+        id: p.id as string,
+        displayName: (p.displayName || 'Participant') as string,
+        stream: participantStream as MediaStream | null,
+        isLocal: false,
+        hasVideo: !!participantStream?.getVideoTracks?.().length,
+      };
+    });
+    const pageCount = Math.max(1, Math.ceil(remoteTiles.length / maxRemotePerPage));
+    const pageIndex = Math.min(groupPage, pageCount - 1);
+    const start = pageIndex * maxRemotePerPage;
+    const visibleRemoteTiles = remoteTiles.slice(start, start + maxRemotePerPage);
+    const localTile = {
+      id: 'local',
+      displayName: (vc.user?.user_metadata?.full_name || 'You') as string,
+      stream: vc.localStream,
+      isLocal: true,
+      hasVideo: vc.isVideoEnabled && !!(vc.localStream?.getVideoTracks()?.length),
+    };
+    const tiles = [...visibleRemoteTiles, localTile];
     const total = tiles.length;
     const cols = total <= 2 ? 2 : total <= 4 ? 2 : total <= 9 ? 3 : total <= 16 ? 4 : 5;
     const rows = Math.ceil(total / cols);
-    return { tiles, total, cols, rows };
-  }, [vc.callType, vc.participants, vc.participantVideoMap, vc.user?.user_metadata?.full_name, vc.localStream, vc.isVideoEnabled]);
+    return {
+      tiles,
+      total,
+      cols,
+      rows,
+      pageIndex,
+      pageCount,
+      visibleRemoteParticipantIds: visibleRemoteTiles.map((tile) => tile.id),
+    };
+  }, [vc.callType, vc.participants, vc.participantVideoMap, vc.user?.user_metadata?.full_name, vc.localStream, vc.isVideoEnabled, groupPage]);
+
+  useEffect(() => {
+    setGroupPage(0);
+  }, [vc.callType, vc.participants.length]);
+
+  useEffect(() => {
+    if (!groupLayout) return;
+    if (groupPage !== groupLayout.pageIndex) {
+      setGroupPage(groupLayout.pageIndex);
+    }
+  }, [groupLayout, groupPage]);
+
+  useEffect(() => {
+    if (vc.callType !== 'video') {
+      vc.setVisibleRemoteParticipantIds([]);
+      return;
+    }
+
+    if (vc.remoteScreenShareStream) {
+      vc.setVisibleRemoteParticipantIds(screenShareVisibleParticipantIds);
+      return;
+    }
+    if (vc.isScreenSharing) {
+      vc.setVisibleRemoteParticipantIds(vc.participants.map((p: any) => p.id));
+      return;
+    }
+
+    if (groupLayout) {
+      vc.setVisibleRemoteParticipantIds(groupLayout.visibleRemoteParticipantIds);
+      return;
+    }
+
+    vc.setVisibleRemoteParticipantIds(vc.participants.map((p: any) => p.id));
+  }, [
+    vc.callType,
+    vc.remoteScreenShareStream,
+    vc.isScreenSharing,
+    vc.participants,
+    vc.setVisibleRemoteParticipantIds,
+    groupLayout,
+    screenShareVisibleParticipantIds,
+  ]);
 
   return (
     <div className="fixed inset-0 z-[9999] animate-fadeIn">
@@ -129,6 +186,30 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                     </div>
                   </div>
                 ))}
+
+                {groupLayout.pageCount > 1 && (
+                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 flex items-center gap-2 bg-black/60 text-white rounded-full px-2.5 py-1.5 backdrop-blur-sm border border-white/20">
+                    <button
+                      onClick={() => setGroupPage((prev) => Math.max(0, prev - 1))}
+                      disabled={groupLayout.pageIndex === 0}
+                      className="text-xs px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Previous participants page"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-[10px] sm:text-xs tabular-nums">
+                      {groupLayout.pageIndex + 1}/{groupLayout.pageCount}
+                    </span>
+                    <button
+                      onClick={() => setGroupPage((prev) => Math.min(groupLayout.pageCount - 1, prev + 1))}
+                      disabled={groupLayout.pageIndex >= groupLayout.pageCount - 1}
+                      className="text-xs px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Next participants page"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
           )}
 
@@ -201,6 +282,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
             participantVideoMap={vc.participantVideoMap}
             userInitial={userInitial}
             onStopSharing={vc.toggleScreenShare}
+            onVisibleParticipantIdsChange={setScreenShareVisibleParticipantIds}
           />
 
           {/* End Call Button Overlay - Inside video section for outgoing calls */}

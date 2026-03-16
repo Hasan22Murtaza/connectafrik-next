@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
-      .select('fcm_token, device_type, device_id')
+      .select('fcm_token, device_type, device_id, is_active')
       .eq('user_id', user_id)
       .eq('is_active', true)
       .not('fcm_token', 'is', null)
@@ -136,12 +136,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!subscriptions || subscriptions.length === 0) {
+    // Safety gate: send only for active tokens (supports boolean and string values).
+    const activeSubscriptions = (subscriptions || []).filter((sub) => sub.is_active === true || sub.is_active === 'true')
+
+    if (activeSubscriptions.length === 0) {
       return NextResponse.json(
         {
           success: notificationId !== null, // Success if notification was stored in DB
           notification_id: notificationId,
-          message: 'No push subscriptions found for this user',
+          message: 'No active push subscriptions found for this user',
           sent: 0,
           failed: 0,
           total: 0,
@@ -155,8 +158,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Deduplicate by device_id so we send at most one notification per device (avoids duplicate toasts)
-    const byDevice = new Map<string, (typeof subscriptions)[0]>()
-    for (const sub of subscriptions) {
+    const byDevice = new Map<string, (typeof activeSubscriptions)[0]>()
+    for (const sub of activeSubscriptions) {
       const key = sub.device_id || sub.fcm_token
       if (!byDevice.has(key)) byDevice.set(key, sub)
     }

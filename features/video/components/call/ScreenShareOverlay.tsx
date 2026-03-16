@@ -1,6 +1,5 @@
 import { MonitorUp } from 'lucide-react';
-import React from 'react';
-import type { CallStatus } from './types';
+import React, { useEffect, useMemo, useState } from 'react';
 import ParticipantVideo from './ParticipantVideo';
 import ScreenShareVideo from './ScreenShareVideo';
 
@@ -17,6 +16,7 @@ interface ScreenShareOverlayProps {
   participantVideoMap: Map<string, MediaStream>;
   userInitial: string;
   onStopSharing: () => void;
+  onVisibleParticipantIdsChange?: (ids: string[]) => void;
 }
 
 const ScreenShareOverlay: React.FC<ScreenShareOverlayProps> = ({
@@ -32,7 +32,33 @@ const ScreenShareOverlay: React.FC<ScreenShareOverlayProps> = ({
   participantVideoMap,
   userInitial,
   onStopSharing,
+  onVisibleParticipantIdsChange,
 }) => {
+  const [sidebarPage, setSidebarPage] = useState(0);
+  const maxSidebarRemotePerPage = 6;
+
+  const sidebarLayout = useMemo(() => {
+    const pageCount = Math.max(1, Math.ceil(participants.length / maxSidebarRemotePerPage));
+    const pageIndex = Math.min(sidebarPage, pageCount - 1);
+    const start = pageIndex * maxSidebarRemotePerPage;
+    const visibleParticipants = participants.slice(start, start + maxSidebarRemotePerPage);
+    return {
+      pageCount,
+      pageIndex,
+      visibleParticipants,
+      visibleParticipantIds: visibleParticipants.map((p: any) => p.id),
+    };
+  }, [participants, sidebarPage]);
+
+  useEffect(() => {
+    setSidebarPage(0);
+  }, [participants.length, remoteScreenShareStream]);
+
+  useEffect(() => {
+    if (!remoteScreenShareStream) return;
+    onVisibleParticipantIdsChange?.(sidebarLayout.visibleParticipantIds);
+  }, [remoteScreenShareStream, sidebarLayout.visibleParticipantIds, onVisibleParticipantIdsChange]);
+
   return (
     <>
       {/* Teams-like Screen Share Layout: screen as main content, participants as sidebar thumbnails */}
@@ -82,7 +108,7 @@ const ScreenShareOverlay: React.FC<ScreenShareOverlayProps> = ({
                 </div>
               )}
               {/* Remote participant thumbnails */}
-              {participants.map((p: any) => {
+              {sidebarLayout.visibleParticipants.map((p: any) => {
                 const videoStream = participantVideoMap.get(p.id);
                 return (
                   <div key={p.id} className="relative aspect-video bg-gray-800 rounded-lg overflow-hidden border border-gray-700/50 shadow-sm transition-all duration-300 hover:border-blue-500/50">
@@ -103,6 +129,29 @@ const ScreenShareOverlay: React.FC<ScreenShareOverlayProps> = ({
                   </div>
                 );
               })}
+              {sidebarLayout.pageCount > 1 && (
+                <div className="mt-1 flex items-center justify-center gap-1.5 px-1">
+                  <button
+                    onClick={() => setSidebarPage((prev) => Math.max(0, prev - 1))}
+                    disabled={sidebarLayout.pageIndex === 0}
+                    className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label="Previous sidebar participants page"
+                  >
+                    Prev
+                  </button>
+                  <span className="text-[10px] text-gray-300 tabular-nums">
+                    {sidebarLayout.pageIndex + 1}/{sidebarLayout.pageCount}
+                  </span>
+                  <button
+                    onClick={() => setSidebarPage((prev) => Math.min(sidebarLayout.pageCount - 1, prev + 1))}
+                    disabled={sidebarLayout.pageIndex >= sidebarLayout.pageCount - 1}
+                    className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label="Next sidebar participants page"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

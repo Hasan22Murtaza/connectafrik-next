@@ -74,6 +74,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const [addPeopleSearch, setAddPeopleSearch] = useState('');
   const [addPeopleResults, setAddPeopleResults] = useState<any[]>([]);
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
+  const [visibleRemoteParticipantIds, setVisibleRemoteParticipantIds] = useState<string[]>([]);
   // --- Refs ---
   const screenShareVideoRef = useRef<HTMLVideoElement>(null);
   const participantVideoMapRef = useRef<Map<string, MediaStream>>(new Map());
@@ -96,6 +97,9 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const firstRemoteTrackLoggedRef = useRef(false);
   const isGroupSessionRef = useRef(false);
   const suppressMeetingLeftSignalRef = useRef(false);
+  const participantQualityRef = useRef<Map<string, 'high' | 'med' | 'low'>>(new Map());
+  const participantPausedRef = useRef<Map<string, boolean>>(new Map());
+  const presenterParticipantIdRef = useRef<string | null>(null);
 
   // --- Helpers ---
   const getMeetingParticipants = useCallback((meetingParticipants: any): any[] => {
@@ -349,6 +353,9 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     hasUpgradedVideoQualityRef.current = false;
     firstRemoteTrackLoggedRef.current = false;
     isGroupSessionRef.current = false;
+    participantQualityRef.current.clear();
+    participantPausedRef.current.clear();
+    presenterParticipantIdRef.current = null;
     callIdRef.current = callIdHint || '';
     hasInitializedRef.current = false;
   }, [updateLocalStream, updateRemoteStreams, clearRemoteDisconnectTimer, callIdHint]);
@@ -508,6 +515,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const setupPresenterChanged = (meeting: any) => {
     meeting.on("presenter-changed", (presenterId: string | null) => {
       if (!isMountedRef.current) return;
+      presenterParticipantIdRef.current = presenterId;
       if (!presenterId) {
         setRemoteScreenShareStream(null);
         setScreenShareParticipantName('');
@@ -654,6 +662,8 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           .filter((stream): stream is MediaStream => Boolean(stream))
       );
       participantVideoMapRef.current.delete(p.id);
+      participantQualityRef.current.delete(p.id);
+      participantPausedRef.current.delete(p.id);
       setParticipantVideoMap(new Map(participantVideoMapRef.current));
       setParticipants(prev => {
         const updated = prev.filter((x: any) => x.id !== p.id);
@@ -1319,6 +1329,78 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
   // ===== EFFECTS =====
 
+  // VideoSDK layout policy (quality + pagination stream optimization).
+  useEffect(() => {
+    if (callType !== 'video') return;
+    const meeting = currentMeetingRef.current;
+    if (!meeting) return;
+
+    const localParticipantId = meeting.localParticipant?.id;
+    const remoteParticipants = getMeetingParticipants(meeting.participants).filter((p: any) => p.id !== localParticipantId);
+    if (remoteParticipants.length === 0) return;
+
+    const visibleRemoteSet = new Set(
+      (visibleRemoteParticipantIds.length > 0
+        ? visibleRemoteParticipantIds
+        : remoteParticipants.map((p: any) => p.id)
+      ).filter(Boolean)
+    );
+
+    const hasScreenShareLayout = Boolean(remoteScreenShareStream || isScreenSharing);
+    const visibleRemoteCount = remoteParticipants.filter((p: any) => visibleRemoteSet.has(p.id)).length;
+    const visibleTileCount = visibleRemoteCount + 1; // local tile included
+    const gridQuality: 'high' | 'med' | 'low' =
+      visibleTileCount < 3 ? 'high' : visibleTileCount <= 6 ? 'med' : 'low';
+
+    remoteParticipants.forEach((participant: any) => {
+      const participantId = participant.id as string;
+      const isVisible = visibleRemoteSet.has(participantId);
+      const isPresenter = presenterParticipantIdRef.current === participantId;
+
+      const targetQuality: 'high' | 'med' | 'low' = hasScreenShareLayout
+        ? (isPresenter ? 'high' : 'low')
+        : (isVisible ? gridQuality : 'low');
+
+      if (participantQualityRef.current.get(participantId) !== targetQuality) {
+        try { participant.setQuality?.(targetQuality); } catch {}
+        participantQualityRef.current.set(participantId, targetQuality);
+      }
+
+      const shouldPause = !isPresenter && !isVisible;
+      if (participantPausedRef.current.get(participantId) !== shouldPause) {
+        try {
+          const participantStreams = participant?.streams;
+          const entries = participantStreams instanceof Map
+            ? Array.from(participantStreams.values())
+            : participantStreams && typeof participantStreams === 'object'
+            ? Object.values(participantStreams)
+            : [];
+
+          entries.forEach((stream: any) => {
+            if (shouldPause) stream?.pause?.();
+            else stream?.resume?.();
+          });
+        } catch {}
+        participantPausedRef.current.set(participantId, shouldPause);
+      }
+    });
+
+    const activeIds = new Set(remoteParticipants.map((p: any) => p.id as string));
+    participantQualityRef.current.forEach((_, participantId) => {
+      if (!activeIds.has(participantId)) participantQualityRef.current.delete(participantId);
+    });
+    participantPausedRef.current.forEach((_, participantId) => {
+      if (!activeIds.has(participantId)) participantPausedRef.current.delete(participantId);
+    });
+  }, [
+    callType,
+    participants,
+    visibleRemoteParticipantIds,
+    isScreenSharing,
+    remoteScreenShareStream,
+    getMeetingParticipants,
+  ]);
+
   // Initialize call when modal opens
   useEffect(() => {
     if (!isOpen) {
@@ -1574,6 +1656,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     showMessageInput, messageText, isAcceptingCall,
     isScreenSharing, screenShareStream, remoteScreenShareStream, screenShareParticipantName,
     participantVideoMap, showAddPeople, addPeopleSearch, addPeopleResults, invitingUserId,
+    setVisibleRemoteParticipantIds,
     // Derived
     decodedCallerName, decodedRecipientName, isIncoming, callType,
     decodedCallerAvatarUrl, decodedRecipientAvatarUrl,
