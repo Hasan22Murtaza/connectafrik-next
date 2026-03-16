@@ -103,12 +103,14 @@ export async function POST(request: NextRequest) {
       user_id = user.id
     }
 
-    // Check if token record already exists for this user + device combination
+    // Check if token record already exists for this device (global device uniqueness).
+    // A physical device should map to a single fcm_tokens row at any time.
     const { data: existingDeviceToken, error: checkError } = await supabase
       .from('fcm_tokens')
       .select('id, fcm_token, is_active, user_id, device_id')
-      .eq('user_id', user_id)
       .eq('device_id', device_id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     if (checkError && checkError.code !== 'PGRST116') {
@@ -129,10 +131,12 @@ export async function POST(request: NextRequest) {
     let resultData: any = null
 
     if (existingDeviceToken) {
-      // Token record exists for this user + device, update it with the new token
+      // Token record exists for this device, update it (including owner user_id)
+      // so we never create duplicate rows for the same device_id.
       const { data: updatedData, error: updateError } = await supabase
         .from('fcm_tokens')
         .update({
+          user_id,
           fcm_token: fcm_token,
           is_active: true,
           device_type: device_type,
@@ -157,8 +161,19 @@ export async function POST(request: NextRequest) {
       }
 
       resultData = updatedData?.[0]
+      if (resultData?.id) {
+        // Safety cleanup for legacy duplicates: keep newest row active and deactivate others.
+        await supabase
+          .from('fcm_tokens')
+          .update({
+            is_active: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('device_id', device_id)
+          .neq('id', resultData.id)
+      }
     } else {
-      // No token record exists for this user + device combination, insert new one
+      // No token record exists for this device_id, insert new one
       const tokenRecord = {
         user_id,
         fcm_token,
@@ -176,13 +191,14 @@ export async function POST(request: NextRequest) {
       if (insertError) {
         console.error('❌ Error inserting FCM token:', insertError)
         
-        // If insert fails due to unique constraint, try to find and update existing record
+        // If insert fails due to unique constraint, try to find and update by device_id
         if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
           const { data: checkAgain, error: recheckError } = await supabase
             .from('fcm_tokens')
             .select('id, user_id, fcm_token, is_active, device_id')
-            .eq('user_id', user_id)
             .eq('device_id', device_id)
+            .order('updated_at', { ascending: false })
+            .limit(1)
             .maybeSingle()
 
           if (recheckError && recheckError.code !== 'PGRST116') {
@@ -203,6 +219,7 @@ export async function POST(request: NextRequest) {
             const { data: updateData, error: updateError2 } = await supabase
               .from('fcm_tokens')
               .update({
+                user_id,
                 fcm_token: fcm_token,
                 is_active: true,
                 device_type: device_type,
@@ -226,6 +243,17 @@ export async function POST(request: NextRequest) {
             }
 
             resultData = updateData?.[0]
+            if (resultData?.id) {
+              // Safety cleanup for legacy duplicates: keep newest row active and deactivate others.
+              await supabase
+                .from('fcm_tokens')
+                .update({
+                  is_active: false,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('device_id', device_id)
+                .neq('id', resultData.id)
+            }
           } else {
             return NextResponse.json(
               { 

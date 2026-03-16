@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const providedUserId = searchParams.get('user_id')
+    const device_id = searchParams.get('device_id')
 
     // Get user_id from authenticated user or from query params
     let user_id = providedUserId || null
@@ -76,11 +77,16 @@ export async function GET(request: NextRequest) {
       user_id = user.id
     }
 
-    const { data: tokens, error } = await supabase
+    let tokenQuery = supabase
       .from('fcm_tokens')
       .select('id, fcm_token, device_type, device_id, is_active, updated_at, created_at')
       .eq('user_id', user_id)
-      .order('updated_at', { ascending: false })
+
+    if (device_id) {
+      tokenQuery = tokenQuery.eq('device_id', device_id)
+    }
+
+    const { data: tokens, error } = await tokenQuery.order('updated_at', { ascending: false })
 
     if (error) {
       console.error('❌ Error fetching FCM tokens:', error)
@@ -131,6 +137,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const providedUserId = searchParams.get('user_id')
     const device_id = searchParams.get('device_id')
+    const fcm_token = searchParams.get('fcm_token')
 
     // Get user_id from authenticated user or from query params
     let user_id = providedUserId || null
@@ -175,6 +182,9 @@ export async function DELETE(request: NextRequest) {
 
     if (device_id) {
       query = query.eq('device_id', device_id)
+    }
+    if (fcm_token) {
+      query = query.eq('fcm_token', fcm_token)
     }
 
     const { error } = await query

@@ -290,7 +290,8 @@ export const deactivateTokenOnLogout = async (): Promise<void> => {
 
     if (!device_id) return
 
-    const url = `/api/fcm/token?device_id=${encodeURIComponent(device_id)}`
+    const currentToken = await getFCMTokenFromFirebase()
+    const url = `/api/fcm/token?user_id=${encodeURIComponent(user.id)}&device_id=${encodeURIComponent(device_id)}${currentToken ? `&fcm_token=${encodeURIComponent(currentToken)}` : ''}`
     const response = await fetch(url, {
       method: 'DELETE',
       headers: {
@@ -321,11 +322,15 @@ export const checkTokenStatus = async (): Promise<boolean> => {
     const { data: { session } } = await supabase.auth.getSession()
     const authToken = session?.access_token
 
-    const response = await fetch(`/api/fcm/token?user_id=${user.id}`, {
-      headers: {
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
-      },
-    })
+    const { device_id } = getDeviceInfo()
+    const response = await fetch(
+      `/api/fcm/token?user_id=${user.id}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`,
+      {
+        headers: {
+          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+        },
+      }
+    )
 
     if (!response.ok) {
       return false
