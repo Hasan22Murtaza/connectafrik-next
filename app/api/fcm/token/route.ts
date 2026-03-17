@@ -135,29 +135,10 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const providedUserId = searchParams.get('user_id')
+    const user_id = searchParams.get('user_id')
     const device_id = searchParams.get('device_id')
-    const fcm_token = searchParams.get('fcm_token')
 
-    // Get user_id from authenticated user or from query params
-    let user_id = providedUserId || null
-    if (!user_id) {
-      const user = await getAuthenticatedUser(request)
-      if (!user) {
-        return NextResponse.json(
-          { 
-            success: false,
-            error: 'Unauthorized. Please provide user_id query parameter or valid authorization token' 
-          },
-          { 
-            status: 401,
-            headers: corsHeaders
-          }
-        )
-      }
-      user_id = user.id
-    }
-
+    // This endpoint is intentionally unauthenticated; user_id must be provided.
     if (!user_id) {
       return NextResponse.json(
         { 
@@ -182,9 +163,6 @@ export async function DELETE(request: NextRequest) {
 
     if (device_id) {
       query = query.eq('device_id', device_id)
-    }
-    if (fcm_token) {
-      query = query.eq('fcm_token', fcm_token)
     }
 
     const { error } = await query

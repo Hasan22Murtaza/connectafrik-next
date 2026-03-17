@@ -239,25 +239,19 @@ export const registerToken = async (token: string): Promise<boolean> => {
 /**
  * Remove FCM token via API
  */
-export const removeToken = async (token: string): Promise<boolean> => {
+export const removeToken = async (): Promise<boolean> => {
   try {
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user || !token) {
+    if (!user) {
       return false
     }
 
-    const { data: { session } } = await supabase.auth.getSession()
-    const authToken = session?.access_token
-
     const { device_id } = getDeviceInfo()
 
-    const url = `/api/fcm/token?user_id=${user.id}&fcm_token=${encodeURIComponent(token)}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`
+    const url = `/api/fcm/token?user_id=${encodeURIComponent(user.id)}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`
     
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: {
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
-      },
     })
 
     if (!response.ok) {
@@ -284,19 +278,13 @@ export const deactivateTokenOnLogout = async (): Promise<void> => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data: { session } } = await supabase.auth.getSession()
-    const authToken = session?.access_token
     const { device_id } = getDeviceInfo()
 
     if (!device_id) return
 
-    const currentToken = await getFCMTokenFromFirebase()
-    const url = `/api/fcm/token?user_id=${encodeURIComponent(user.id)}&device_id=${encodeURIComponent(device_id)}${currentToken ? `&fcm_token=${encodeURIComponent(currentToken)}` : ''}`
+    const url = `/api/fcm/token?user_id=${encodeURIComponent(user.id)}&device_id=${encodeURIComponent(device_id)}`
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: {
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
-      },
     })
 
     if (response.ok) {
@@ -384,7 +372,7 @@ export const unsubscribe = async (): Promise<boolean> => {
     const token = await getFCMTokenFromFirebase()
     if (token) {
       await deleteToken(messaging)
-      await removeToken(token)
+      await removeToken()
     }
 
     return true
