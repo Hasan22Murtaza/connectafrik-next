@@ -97,6 +97,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const firstRemoteTrackLoggedRef = useRef(false);
   const isGroupSessionRef = useRef(false);
   const suppressMeetingLeftSignalRef = useRef(false);
+  const remoteTerminalSignalReceivedRef = useRef(false);
   const participantQualityRef = useRef<Map<string, 'high' | 'med' | 'low'>>(new Map());
   const participantPausedRef = useRef<Map<string, boolean>>(new Map());
   const presenterParticipantIdRef = useRef<string | null>(null);
@@ -872,6 +873,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const initializeCall = async () => {
     try {
       suppressMeetingLeftSignalRef.current = false;
+      remoteTerminalSignalReceivedRef.current = false;
       markConnectionMetric('call_window_initialize');
       setCallStatus('connecting');
       setError('');
@@ -968,6 +970,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     setIsAcceptingCall(true);
     try {
       suppressMeetingLeftSignalRef.current = false;
+      remoteTerminalSignalReceivedRef.current = false;
       markConnectionMetric('incoming_accept_start');
       if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
       stopAllRingtones();
@@ -1074,6 +1077,12 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     const actorUserName = user?.user_metadata?.full_name || (isIncoming ? decodedRecipientName : decodedCallerName) || 'User';
     const activeCallId = callIdRef.current || callIdHint || '';
     const activeRoomId = roomId || roomIdHint || '';
+    const buildSignalMeta = (extra: Record<string, unknown>) => ({
+      callType,
+      roomId: activeRoomId,
+      callId: activeCallId,
+      ...extra,
+    });
     if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
     stopAllRingtones();
     if (threadId) {
@@ -1082,32 +1091,13 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         await supabaseMessagingService.sendMessage(threadId, {
           content: 'Call rejected',
           message_type: 'call_rejected',
-          metadata: {
-            callType,
-            roomId: activeRoomId,
-            callId: activeCallId,
+          metadata: buildSignalMeta({
             rejectedBy: actorUserId || null,
             rejectedAt: new Date().toISOString(),
-          },
+          }),
         }, senderForSignal);
       } catch (error) {
         console.error('Failed to send call_rejected signal:', error);
-      }
-      if (isIncoming) {
-        try {
-          await supabaseMessagingService.sendMessage(threadId, {
-            content: 'Missed call',
-            message_type: 'missed_call',
-            metadata: {
-              callType,
-              roomId: activeRoomId,
-              callId: activeCallId,
-              callerName: decodedCallerName,
-              recipientName: decodedRecipientName,
-              timestamp: new Date().toISOString(),
-            },
-          }, senderForSignal);
-        } catch {}
       }
     }
     setCallStatus('ended');
@@ -1118,21 +1108,26 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const handleEndCall = async () => {
     const activeCallId = callIdRef.current || callIdHint || '';
     const activeRoomId = roomId || roomIdHint || '';
-    const wasNeverConnected = callStatusRef.current === 'ringing' || callStatusRef.current === 'connecting';
+    const isConnectedCall = callStatusRef.current === 'connected';
     const shouldBroadcastEndSignal = !isGroupSessionRef.current;
+    const shouldSendMissedCall = !isConnectedCall && !remoteTerminalSignalReceivedRef.current;
+    const buildSignalMeta = () => ({
+      callType,
+      roomId: activeRoomId,
+      callId: activeCallId,
+      endedBy: currentUserId,
+      endedAt: new Date().toISOString(),
+    });
     if (threadId && currentUserId && callStatusRef.current !== 'ended' && shouldBroadcastEndSignal) {
       try {
-        await supabaseMessagingService.sendMessage(threadId, {
-          content: 'Missed call',
-          message_type: 'missed_call',
-          metadata: {
-            callType,
-            roomId: activeRoomId,
-            callId: activeCallId,
-            endedBy: currentUserId,
-            endedAt: new Date().toISOString(),
-          },
-        }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
+        const messageType = isConnectedCall ? 'call_ended' : (shouldSendMissedCall ? 'missed_call' : null);
+        if (messageType) {
+          await supabaseMessagingService.sendMessage(threadId, {
+            content: isConnectedCall ? 'Call ended' : 'Missed call',
+            message_type: messageType,
+            metadata: buildSignalMeta(),
+          }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
+        }
       } catch {}
     }
     suppressMeetingLeftSignalRef.current = true;
@@ -1424,11 +1419,13 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (!isOpen || !threadId) return;
 
     const closeCallUi = (delayMs: number) => {
+      remoteTerminalSignalReceivedRef.current = true;
+      suppressMeetingLeftSignalRef.current = true;
       if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
       stopAllRingtones();
       if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
       if (isMountedRef.current) {
-        setCallStatus('ended');
+        setCallStatusIfChanged('ended');
         cleanupResources();
         setTimeout(() => { if (isMountedRef.current) onClose(); }, delayMs);
       }
@@ -1483,7 +1480,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     });
 
     return () => { unsub(); };
-  }, [isOpen, threadId, currentUserId, isIncoming, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal, matchesActiveCallMeta, setMediaConnectingStatus, normalizeSignalMeta]);
+  }, [isOpen, threadId, currentUserId, isIncoming, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal, matchesActiveCallMeta, setMediaConnectingStatus, normalizeSignalMeta, setCallStatusIfChanged]);
 
   // Polling fallback for call end
   useEffect(() => {
@@ -1502,10 +1499,12 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         ));
         const latest = msgs.length > 0 ? msgs[msgs.length - 1] : null;
         if (latest && Date.now() - new Date(latest.created_at).getTime() < 120000) {
+          remoteTerminalSignalReceivedRef.current = true;
+          suppressMeetingLeftSignalRef.current = true;
           if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
           stopAllRingtones();
           if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
-          if (isMountedRef.current) { setCallStatus('ended'); cleanupResources(); setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000); }
+          if (isMountedRef.current) { setCallStatusIfChanged('ended'); cleanupResources(); setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000); }
           return;
         }
       } catch {}
@@ -1513,7 +1512,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     const interval = setInterval(poll, 3000);
     const initial = setTimeout(poll, 2000);
     return () => { cancelled = true; clearInterval(interval); clearTimeout(initial); };
-  }, [isOpen, threadId, currentUserId, callStatus, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal]);
+  }, [isOpen, threadId, currentUserId, callStatus, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal, setCallStatusIfChanged]);
 
   // Screen share video ref fallback
   useEffect(() => {

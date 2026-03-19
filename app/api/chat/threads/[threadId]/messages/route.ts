@@ -8,6 +8,62 @@ const MESSAGE_SELECT = `
 `
 
 type RouteContext = { params: Promise<{ threadId: string }> }
+const DEDUPED_CALL_SIGNAL_TYPES = new Set(['call_accepted', 'call_rejected', 'missed_call', 'call_ended'])
+const ROOM_FALLBACK_DEDUPE_WINDOW_MS = 5 * 60 * 1000
+const TERMINAL_CONFLICT_WINDOW_MS = 90 * 1000
+const CALL_TERMINAL_CONFLICT_TYPES = ['call_rejected', 'call_ended'] as const
+type CallIdentity = { callId: string; roomId: string }
+
+const normalizeCallIdentityValue = (value: unknown): string => (
+  typeof value === 'string' ? value.trim() : ''
+)
+
+const extractCallIdentity = (meta: unknown): CallIdentity => {
+  if (!meta || typeof meta !== 'object') return { callId: '', roomId: '' }
+  const metadata = meta as Record<string, unknown>
+  const callId = normalizeCallIdentityValue(metadata.callId) || normalizeCallIdentityValue(metadata.call_id)
+  const roomId = normalizeCallIdentityValue(metadata.roomId) || normalizeCallIdentityValue(metadata.room_id)
+  return { callId, roomId }
+}
+
+const isSameCallIdentity = (
+  incomingIdentity: CallIdentity,
+  existingIdentity: CallIdentity,
+  existingCreatedAt: string
+): boolean => {
+  if (incomingIdentity.callId && existingIdentity.callId) {
+    return incomingIdentity.callId === existingIdentity.callId
+  }
+  if (incomingIdentity.roomId && existingIdentity.roomId) {
+    if (incomingIdentity.roomId !== existingIdentity.roomId) return false
+    const existingTs = new Date(existingCreatedAt).getTime()
+    return Number.isFinite(existingTs) && (Date.now() - existingTs) <= ROOM_FALLBACK_DEDUPE_WINDOW_MS
+  }
+
+  // Last fallback when metadata is incomplete on either side: short time window in same thread.
+  const existingTs = new Date(existingCreatedAt).getTime()
+  return Number.isFinite(existingTs) && (Date.now() - existingTs) <= TERMINAL_CONFLICT_WINDOW_MS
+}
+
+const enrichMessageResponse = async (serviceClient: any, message: any, fallbackReaderId: string) => {
+  const [readsRes, attachmentsRes] = await Promise.all([
+    serviceClient.from('message_reads').select('user_id').eq('message_id', message.id),
+    serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
+  ])
+  const readBy = (readsRes.data || []).map((r: any) => r.user_id)
+  return {
+    ...message,
+    read_by: readBy.length ? readBy : [fallbackReaderId],
+    attachments: attachmentsRes.data || [],
+  }
+}
+
+const findMatchingCallSignal = (messages: any[], incomingIdentity: CallIdentity) => {
+  return messages.find((m: any) => {
+    const existingIdentity = extractCallIdentity(m?.metadata)
+    return isSameCallIdentity(incomingIdentity, existingIdentity, m.created_at)
+  })
+}
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
@@ -132,6 +188,49 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const hasAttachments = attachments && attachments.length > 0
     const preview = safeContent.length > 100 ? safeContent.slice(0, 97) + '...' : (safeContent || (hasAttachments ? 'Shared an attachment' : ''))
     const now = new Date().toISOString()
+    const normalizedMessageType = message_type || 'text'
+    const incomingIdentity = extractCallIdentity(metadata)
+
+    if (DEDUPED_CALL_SIGNAL_TYPES.has(normalizedMessageType)) {
+      const { data: sameTypeMessages, error: sameTypeError } = await serviceClient
+        .from('chat_messages')
+        .select(MESSAGE_SELECT)
+        .eq('thread_id', threadId)
+        .eq('message_type', normalizedMessageType)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(30)
+
+      if (!sameTypeError && sameTypeMessages?.length) {
+        const existingMatch = findMatchingCallSignal(sameTypeMessages, incomingIdentity)
+
+        if (existingMatch) {
+          const data = await enrichMessageResponse(serviceClient, existingMatch, user.id)
+          return jsonResponse({ data }, 200)
+        }
+      }
+    }
+
+    // Conflict rule: if call is already rejected/ended, do not store missed_call for same call.
+    if (normalizedMessageType === 'missed_call') {
+      const { data: terminalConflictMessages, error: terminalConflictError } = await serviceClient
+        .from('chat_messages')
+        .select(MESSAGE_SELECT)
+        .eq('thread_id', threadId)
+        .in('message_type', [...CALL_TERMINAL_CONFLICT_TYPES])
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(30)
+
+      if (!terminalConflictError && terminalConflictMessages?.length) {
+        const conflictMatch = findMatchingCallSignal(terminalConflictMessages, incomingIdentity)
+
+        if (conflictMatch) {
+          const data = await enrichMessageResponse(serviceClient, conflictMatch, user.id)
+          return jsonResponse({ data }, 200)
+        }
+      }
+    }
 
     const { data: message, error: msgError } = await serviceClient
       .from('chat_messages')
@@ -139,7 +238,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         thread_id: threadId,
         sender_id: user.id,
         content: safeContent,
-        message_type: message_type || 'text',
+        message_type: normalizedMessageType,
         metadata: metadata || null,
         reply_to_id: reply_to_id || null,
       })
