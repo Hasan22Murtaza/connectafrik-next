@@ -1,13 +1,14 @@
 'use client'
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { Plus, Clock, X, Pencil, Trash2, Tag, Globe, Lock } from 'lucide-react'
+import { Plus, Clock, Pencil, Trash2, X, Tag, Globe, Lock, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReels, useUpdateReel, useDeleteReel } from '@/shared/hooks/useReels'
 import { useMembers } from '@/shared/hooks/useMembers'
-import ReelCard from '@/features/social/components/ReelCard'
+import MemoryShortsSlide from '@/features/social/components/MemoryShortsSlide'
 import ShareModal from '@/features/social/components/ShareModal'
+import ReelComments from '@/features/social/components/ReelComments'
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import { sendNotification } from '@/shared/services/notificationService'
 import { REEL_CATEGORIES, MAX_REEL_TITLE_LENGTH, MAX_REEL_DESCRIPTION_LENGTH, MAX_REEL_TAGS } from '@/shared/types/reels'
@@ -19,7 +20,12 @@ const MemoriesPage: React.FC = () => {
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; reelId: string | null }>({ open: false, reelId: null })
 
-  // Edit modal state
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const intersectionRatiosRef = useRef<Map<string, number>>(new Map())
+
+  const [activeReelId, setActiveReelId] = useState<string | null>(null)
+
   const [editingReel, setEditingReel] = useState<Reel | null>(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
@@ -43,52 +49,108 @@ const MemoriesPage: React.FC = () => {
     return `${process.env.NEXT_PUBLIC_APP_URL}/memories/${shareModalState.reelId}`
   }, [shareModalState.reelId])
 
-  const handleLike = useCallback((reelId: string) => {
-    if (user?.id) {
-      trackEvent.like(user.id, reelId, 'reel')
-    }
-  }, [user?.id])
+  const activeIndex = useMemo(() => {
+    if (!activeReelId) return 0
+    const i = reels.findIndex((r) => r.id === activeReelId)
+    return i >= 0 ? i : 0
+  }, [reels, activeReelId])
 
-  const handleComment = useCallback((reelId: string) => {
-    setShowCommentsFor(showCommentsFor === reelId ? null : reelId)
-    if (user?.id) {
-      trackEvent.comment(user.id, reelId, 'reel')
-    }
-  }, [showCommentsFor, user?.id])
+  useEffect(() => {
+    intersectionRatiosRef.current = new Map()
+  }, [reels])
 
-  const handleShare = useCallback((reelId: string) => {
-    setShareModalState({ open: true, reelId })
-    if (user?.id) {
-      trackEvent.share(user.id, reelId, 'reel')
+  useEffect(() => {
+    if (reels.length > 0 && !activeReelId) {
+      setActiveReelId(reels[0].id)
     }
-  }, [user?.id])
+  }, [reels, activeReelId])
 
-  const handleSave = useCallback((reelId: string) => {
-    if (user?.id) {
-      trackEvent.save(user.id, reelId, 'reel')
+  useEffect(() => {
+    if (activeReelId && reels.length > 0 && !reels.some((r) => r.id === activeReelId)) {
+      setActiveReelId(reels[0].id)
     }
-  }, [user?.id])
+  }, [reels, activeReelId])
 
-  const handleFollow = useCallback((authorId: string) => {
-    console.log('Followed author:', authorId)
+  useEffect(() => {
+    const root = scrollRef.current
+    if (!root || reels.length === 0) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.reelId
+          if (id) intersectionRatiosRef.current.set(id, entry.intersectionRatio)
+        }
+        let bestId: string | null = null
+        let bestRatio = 0
+        for (const [id, ratio] of intersectionRatiosRef.current) {
+          if (!reels.some((r) => r.id === id)) continue
+          if (ratio > bestRatio) {
+            bestRatio = ratio
+            bestId = id
+          }
+        }
+        if (bestId && bestRatio >= 0.55) {
+          setActiveReelId(bestId)
+        }
+      },
+      { root, threshold: [0, 0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1] }
+    )
+
+    root.querySelectorAll('[data-memory-slide]').forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [reels])
+
+  useEffect(() => {
+    const root = scrollRef.current
+    const sentinel = sentinelRef.current
+    if (!root || !sentinel || !hasMore) return
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const [e] = entries
+        if (e?.isIntersecting && !loading) loadMore()
+      },
+      { root, rootMargin: '400px 0px' }
+    )
+    io.observe(sentinel)
+    return () => io.disconnect()
+  }, [hasMore, loading, loadMore, reels.length])
+
+  const handleLikeTracked = useCallback(
+    (reelId: string) => {
+      if (user?.id) trackEvent.like(user.id, reelId, 'reel')
+    },
+    [user?.id]
+  )
+
+  const handleCommentOpen = useCallback((reelId: string) => {
+    setShowCommentsFor(reelId)
   }, [])
 
-  // Delete handler
-  const handleDelete = useCallback(async (reelId: string) => {
-    if (!window.confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
-      return
-    }
+  const handleShare = useCallback(
+    (reelId: string) => {
+      setShareModalState({ open: true, reelId })
+    },
+    []
+  )
 
-    const { success, error: deleteError } = await deleteReel(reelId)
-    if (success) {
-      toast.success('Memory deleted successfully')
-      refresh()
-    } else {
-      toast.error(deleteError || 'Failed to delete memory')
-    }
-  }, [deleteReel, refresh])
+  const handleDelete = useCallback(
+    async (reelId: string) => {
+      if (!window.confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
+        return
+      }
+      const { success, error: deleteError } = await deleteReel(reelId)
+      if (success) {
+        toast.success('Memory deleted successfully')
+        refresh()
+      } else {
+        toast.error(deleteError || 'Failed to delete memory')
+      }
+    },
+    [deleteReel, refresh]
+  )
 
-  // Edit handlers
   const openEditModal = useCallback((reel: Reel) => {
     setEditingReel(reel)
     setEditTitle(reel.title)
@@ -109,31 +171,31 @@ const MemoriesPage: React.FC = () => {
     setEditIsPublic(true)
   }, [])
 
-  const handleEditSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingReel) return
-
-    if (!editTitle.trim()) {
-      toast.error('Title is required')
-      return
-    }
-
-    const { data, error: updateError } = await updateReel(editingReel.id, {
-      title: editTitle.trim(),
-      description: editDescription.trim() || undefined,
-      category: editCategory,
-      tags: editTags,
-      is_public: editIsPublic
-    })
-
-    if (data) {
-      toast.success('Memory updated successfully')
-      closeEditModal()
-      refresh()
-    } else {
-      toast.error(updateError || 'Failed to update memory')
-    }
-  }, [editingReel, editTitle, editDescription, editCategory, editTags, editIsPublic, updateReel, closeEditModal, refresh])
+  const handleEditSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!editingReel) return
+      if (!editTitle.trim()) {
+        toast.error('Title is required')
+        return
+      }
+      const { data, error: updateError } = await updateReel(editingReel.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        category: editCategory,
+        tags: editTags,
+        is_public: editIsPublic,
+      })
+      if (data) {
+        toast.success('Memory updated successfully')
+        closeEditModal()
+        refresh()
+      } else {
+        toast.error(updateError || 'Failed to update memory')
+      }
+    },
+    [editingReel, editTitle, editDescription, editCategory, editTags, editIsPublic, updateReel, closeEditModal, refresh]
+  )
 
   const addEditTag = useCallback(() => {
     if (editNewTag.trim() && editTags.length < MAX_REEL_TAGS) {
@@ -145,164 +207,150 @@ const MemoriesPage: React.FC = () => {
     }
   }, [editNewTag, editTags])
 
-  const removeEditTag = useCallback((tagToRemove: string) => {
-    setEditTags(editTags.filter(tag => tag !== tagToRemove))
-  }, [editTags])
+  const removeEditTag = useCallback(
+    (tagToRemove: string) => {
+      setEditTags(editTags.filter((tag) => tag !== tagToRemove))
+    },
+    [editTags]
+  )
 
-  const handleSendToMembers = useCallback(async (memberIds: string[], message: string) => {
-    if (!memberIds.length) {
-      toast.success('No members selected')
-      return
-    }
-
-    const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
-    const reelId = shareModalState.reelId
-
-    const results = await Promise.allSettled(
-      memberIds.map((memberId) =>
-        sendNotification({
-          user_id: memberId,
-          title: 'Memory Shared With You',
-          body: message
-            ? `${senderName} shared a memory with you: "${message}"`
-            : `${senderName} shared a memory with you`,
-          notification_type: 'post_share',
-          data: {
-            type: 'reel_share',
-            reel_id: reelId || '',
-            sender_id: user?.id || '',
-            sender_name: senderName,
-            message,
-            url: `/memories/${reelId}`,
-          },
-        })
+  const handleSendToMembers = useCallback(
+    async (memberIds: string[], message: string) => {
+      if (!memberIds.length) {
+        toast.success('No members selected')
+        return
+      }
+      const senderName = user?.user_metadata?.full_name || user?.email || 'Someone'
+      const reelId = shareModalState.reelId
+      const results = await Promise.allSettled(
+        memberIds.map((memberId) =>
+          sendNotification({
+            user_id: memberId,
+            title: 'Memory Shared With You',
+            body: message
+              ? `${senderName} shared a memory with you: "${message}"`
+              : `${senderName} shared a memory with you`,
+            notification_type: 'post_share',
+            data: {
+              type: 'reel_share',
+              reel_id: reelId || '',
+              sender_id: user?.id || '',
+              sender_name: senderName,
+              message,
+              url: `/memories/${reelId}`,
+            },
+          })
+        )
       )
-    )
+      const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length
+      if (succeeded > 0) {
+        toast.success(`Shared with ${succeeded} member${succeeded === 1 ? '' : 's'}`)
+      } else {
+        toast.error('Failed to send notifications')
+      }
+    },
+    [user, shareModalState.reelId]
+  )
 
-    const succeeded = results.filter((r) => r.status === 'fulfilled' && r.value.success).length
-    if (succeeded > 0) {
-      toast.success(`Shared with ${succeeded} member${succeeded === 1 ? '' : 's'}`)
-    } else {
-      toast.error('Failed to send notifications')
-    }
-  }, [user, shareModalState.reelId])
-
-  const handleToggleComments = useCallback((reelId: string) => {
-    setShowCommentsFor(showCommentsFor === reelId ? null : reelId)
-  }, [showCommentsFor])
-
-  const handleLoadMore = useCallback(() => {
-    if (!loading && hasMore) {
-      loadMore()
-    }
-  }, [loading, hasMore, loadMore])
+  const shouldLoadMedia = useCallback(
+    (index: number) => {
+      if (reels.length === 0) return false
+      if (!activeReelId) return index <= 1
+      return Math.abs(activeIndex - index) <= 1
+    },
+    [reels.length, activeReelId, activeIndex]
+  )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
-        {/* Header Section */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Memories</h1>
-              <p className="text-gray-600 mt-1 text-sm sm:text-base">Relive your past moments on ConnectAfrik</p>
-            </div>
-            
-            <Link
-              href="/memories/create"
-              className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
-            >
-              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="text-sm sm:text-base">Create Memory</span>
-            </Link>
+    <>
+      {loading && reels.length === 0 ? (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black text-white lg:static lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100 lg:text-gray-900">
+          <div
+            className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white lg:border-gray-300 lg:border-t-primary-600"
+            aria-hidden
+          />
+          <p className="mt-4 text-sm text-white/70 lg:text-gray-600">Loading memories…</p>
+        </div>
+      ) : error ? (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black px-6 text-center text-white lg:static lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100 lg:text-gray-900">
+          <Clock className="mb-4 h-14 w-14 text-white/40 lg:text-gray-400" />
+          <h2 className="text-lg font-semibold">Couldn’t load memories</h2>
+          <p className="mt-2 text-sm text-white/65 lg:text-gray-600">{error}</p>
+          <button type="button" onClick={refresh} className="btn-primary mt-6">
+            Try again
+          </button>
+        </div>
+      ) : reels.length === 0 ? (
+        <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black px-6 text-center text-white lg:static lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100 lg:text-gray-900">
+          <Clock className="mb-4 h-14 w-14 text-white/40 lg:text-gray-400" />
+          <h2 className="text-lg font-semibold">No memories yet</h2>
+          <p className="mt-2 text-sm text-white/65 lg:text-gray-600">Create your first full-screen memory.</p>
+          <Link href="/memories/create" className="btn-primary mt-6 inline-flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Create memory
+          </Link>
+        </div>
+      ) : (
+        <div className="fixed inset-0 z-40 bg-black lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100">
+          <Link
+            href="/memories/create"
+            className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] z-20 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2.5 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/25 lg:left-6 lg:top-[5.25rem] lg:bg-white lg:text-gray-900 lg:shadow-md lg:ring-1 lg:ring-gray-200 lg:hover:bg-gray-50"
+          >
+            <Plus className="h-5 w-5" />
+            Create
+          </Link>
+
+          <button
+            type="button"
+            aria-label="Next memory"
+            className="absolute right-3 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/90 text-gray-600 shadow-sm backdrop-blur-sm transition hover:bg-white lg:flex"
+            onClick={() => {
+              const el = scrollRef.current
+              if (!el) return
+              el.scrollBy({ top: el.clientHeight, behavior: 'smooth' })
+            }}
+          >
+            <ChevronDown className="h-7 w-7 opacity-70" strokeWidth={1.5} />
+          </button>
+
+          <div
+            ref={scrollRef}
+            className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth [-webkit-overflow-scrolling:touch] snap-y snap-mandatory lg:h-[calc(100dvh-4.5rem)]"
+            style={{ scrollSnapStop: 'always' } as React.CSSProperties}
+          >
+            {reels.map((reel, index) => (
+              <MemoryShortsSlide
+                key={reel.id}
+                reel={reel}
+                isActive={activeReelId === reel.id}
+                loadMedia={shouldLoadMedia(index)}
+                onLikeTracked={handleLikeTracked}
+                onComment={() => handleCommentOpen(reel.id)}
+                onShare={() => handleShare(reel.id)}
+                isOwner={!!user?.id && user.id === reel.author_id}
+                onEdit={() => openEditModal(reel)}
+                onDelete={() => handleDelete(reel.id)}
+              />
+            ))}
+
+            {hasMore && (
+              <div
+                ref={sentinelRef}
+                className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-black lg:bg-neutral-100"
+                aria-hidden
+              >
+                {loading && (
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80 lg:border-gray-200 lg:border-t-primary-600" />
+                )}
+              </div>
+            )}
           </div>
         </div>
+      )}
 
-        {/* Memories Grid */}
-        <div className="space-y-4 sm:space-y-6">
-          {loading && reels.length === 0 ? (
-            // Loading skeleton
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden animate-pulse">
-                  <div className="bg-gray-200 h-64 sm:h-96"></div>
-                  <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gray-200 rounded-full"></div>
-                      <div className="flex-1">
-                        <div className="h-3 sm:h-4 bg-gray-200 rounded w-1/3 mb-1 sm:mb-2"></div>
-                        <div className="h-2 sm:h-3 bg-gray-200 rounded w-1/4"></div>
-                      </div>
-                    </div>
-                    <div className="h-3 sm:h-4 bg-gray-200 rounded w-2/3"></div>
-                    <div className="h-2 sm:h-3 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : error ? (
-            <div className="text-center py-8 sm:py-12">
-              <Clock className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Error loading memories</h3>
-              <p className="text-gray-600 mb-4 text-sm sm:text-base">{error}</p>
-              <button
-                onClick={refresh}
-                className="btn-primary text-sm sm:text-base"
-              >
-                Try Again
-              </button>
-            </div>
-          ) : reels.length === 0 ? (
-            <div className="text-center py-8 sm:py-12">
-              <Clock className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mx-auto mb-3 sm:mb-4" />
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">No memories found</h3>
-              <p className="text-gray-600 mb-4 text-sm sm:text-base">
-                Be the first to create a memory!
-              </p>
-              <Link
-                href="/memories/create"
-                className="btn-primary text-sm sm:text-base inline-block"
-              >
-                Create First Memory
-              </Link>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {reels.map((reel) => (
-                  <ReelCard
-                    key={reel.id}
-                    reel={reel}
-                    onLike={handleLike}
-                    onComment={handleComment}
-                    onShare={handleShare}
-                    onSave={handleSave}
-                    onFollow={handleFollow}
-                    onDelete={() => handleDelete(reel.id)}
-                    onEdit={() => openEditModal(reel)}
-                    showComments={showCommentsFor === reel.id}
-                    onToggleComments={handleToggleComments}
-                  />
-                ))}
-              </div>
-
-              {/* Load More */}
-              {hasMore && (
-                <div className="text-center pt-6 sm:pt-8">
-                  <button
-                    onClick={handleLoadMore}
-                    disabled={loading}
-                    className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-                  >
-                    {loading ? 'Loading...' : 'Load More Memories'}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      {showCommentsFor && (
+        <ReelComments reelId={showCommentsFor} isOpen={!!showCommentsFor} onClose={() => setShowCommentsFor(null)} />
+      )}
 
       {activeShareReel && (
         <ShareModal
@@ -315,41 +363,32 @@ const MemoriesPage: React.FC = () => {
         />
       )}
 
-      {/* Edit Memory Modal */}
       {editingReel && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 bg-primary-600">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between bg-primary-600 px-5 py-4">
               <div className="flex items-center gap-2">
-                <Pencil className="w-5 h-5 text-white" />
+                <Pencil className="h-5 w-5 text-white" />
                 <h2 className="text-lg font-semibold text-white">Edit Memory</h2>
               </div>
-              <button
-                onClick={closeEditModal}
-                className="text-white/80 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
+              <button type="button" onClick={closeEditModal} className="text-white/80 transition-colors hover:text-white">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
-              {/* Thumbnail preview */}
+            <form onSubmit={handleEditSubmit} className="max-h-[calc(90vh-4rem)] space-y-5 overflow-y-auto p-5">
               {editingReel.thumbnail_url && (
                 <div className="flex justify-center">
                   <img
                     src={editingReel.thumbnail_url}
                     alt={editingReel.title}
-                    className="w-32 h-44 object-cover rounded-lg border border-gray-200"
+                    className="h-44 w-32 rounded-lg border border-gray-200 object-cover"
                   />
                 </div>
               )}
 
-              {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Title *
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Title *</label>
                 <input
                   type="text"
                   value={editTitle}
@@ -359,34 +398,28 @@ const MemoriesPage: React.FC = () => {
                   maxLength={MAX_REEL_TITLE_LENGTH}
                   required
                 />
-                <div className="text-right text-xs text-gray-400 mt-1">
+                <div className="mt-1 text-right text-xs text-gray-400">
                   {editTitle.length}/{MAX_REEL_TITLE_LENGTH}
                 </div>
               </div>
 
-              {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Description
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Tell people what this memory is about..."
                   rows={3}
-                  className="w-full px-3 py-2 text-sm text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500"
                   maxLength={MAX_REEL_DESCRIPTION_LENGTH}
                 />
-                <div className="text-right text-xs text-gray-400 mt-1">
+                <div className="mt-1 text-right text-xs text-gray-400">
                   {editDescription.length}/{MAX_REEL_DESCRIPTION_LENGTH}
                 </div>
               </div>
 
-              {/* Category */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Category
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Category</label>
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value as ReelCategory)}
@@ -400,11 +433,8 @@ const MemoriesPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* Tags */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Tags
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Tags</label>
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <input
@@ -425,75 +455,65 @@ const MemoriesPage: React.FC = () => {
                       type="button"
                       onClick={addEditTag}
                       disabled={!editNewTag.trim() || editTags.length >= MAX_REEL_TAGS}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Add
                     </button>
                   </div>
-
                   {editTags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
                       {editTags.map((tag) => (
                         <span
                           key={tag}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs"
+                          className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
                         >
-                          <Tag className="w-3 h-3" />
+                          <Tag className="h-3 w-3" />
                           <span>{tag}</span>
-                          <button
-                            type="button"
-                            onClick={() => removeEditTag(tag)}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <X className="w-3 h-3" />
+                          <button type="button" onClick={() => removeEditTag(tag)} className="text-gray-400 hover:text-gray-600">
+                            <X className="h-3 w-3" />
                           </button>
                         </span>
                       ))}
                     </div>
                   )}
-
                   <div className="text-xs text-gray-400">
                     {editTags.length}/{MAX_REEL_TAGS} tags
                   </div>
                 </div>
               </div>
 
-              {/* Privacy */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Privacy
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-gray-700">Privacy</label>
                 <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex cursor-pointer items-center gap-2">
                     <input
                       type="radio"
                       checked={editIsPublic}
                       onChange={() => setEditIsPublic(true)}
                       className="text-primary-600 focus:ring-primary-500"
                     />
-                    <Globe className="w-4 h-4 text-gray-500" />
+                    <Globe className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-700">Public</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex cursor-pointer items-center gap-2">
                     <input
                       type="radio"
                       checked={!editIsPublic}
                       onChange={() => setEditIsPublic(false)}
                       className="text-primary-600 focus:ring-primary-500"
                     />
-                    <Lock className="w-4 h-4 text-gray-500" />
+                    <Lock className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-700">Private</span>
                   </label>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     if (window.confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
-                      deleteReel(editingReel.id).then(({ success }) => {
+                      void deleteReel(editingReel.id).then(({ success }) => {
                         if (success) {
                           toast.success('Memory deleted successfully')
                           closeEditModal()
@@ -505,24 +525,23 @@ const MemoriesPage: React.FC = () => {
                     }
                   }}
                   disabled={deleting}
-                  className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="h-4 w-4" />
                   {deleting ? 'Deleting...' : 'Delete'}
                 </button>
-
                 <div className="flex gap-3">
                   <button
                     type="button"
                     onClick={closeEditModal}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={updating || !editTitle.trim()}
-                    className="px-5 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="rounded-lg bg-primary-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {updating ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -532,9 +551,8 @@ const MemoriesPage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
 
 export default MemoriesPage
-
