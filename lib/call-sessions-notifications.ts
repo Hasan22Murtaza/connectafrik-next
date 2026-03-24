@@ -1,5 +1,26 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { postInternalPushNotification } from '@/lib/server/internal-push'
+
+function getInternalSiteOrigin(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '')
+  const trimmed = (raw || '').replace(/\/$/, '')
+  return trimmed || 'http://localhost:3000'
+}
+
+async function postInternalPushNotification(payload: Record<string, unknown>): Promise<void> {
+  const url = `${getInternalSiteOrigin()}/api/push-notifications`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    console.warn('[call-sessions] push failed', res.status, text)
+  }
+}
 
 const toPushDataRecord = (data: Record<string, unknown>): Record<string, string> => {
   const entries = Object.entries(data).flatMap(([key, value]) => {
