@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react'
-import { Users, MapPin } from 'lucide-react'
+import { Users, UserMinus } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { GroupMembership } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
 import { getRoleIcon } from '@/shared/utils/groupUtils'
+import toast from 'react-hot-toast'
 
 interface GroupMembersListProps {
   groupId: string
   currentUserId?: string
+  canManageMembers?: boolean
+  onMembersChanged?: () => void
 }
 
 interface MemberWithProfile extends GroupMembership {
@@ -19,9 +22,15 @@ interface MemberWithProfile extends GroupMembership {
   }
 }
 
-const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, currentUserId }) => {
+const GroupMembersList: React.FC<GroupMembersListProps> = ({
+  groupId,
+  currentUserId,
+  canManageMembers = false,
+  onMembersChanged,
+}) => {
   const [members, setMembers] = useState<MemberWithProfile[]>([])
   const [loading, setLoading] = useState(true)
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchMembers()
@@ -53,6 +62,28 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, currentUse
       setMembers([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRemoveMember = async (member: MemberWithProfile) => {
+    if (!canManageMembers) return
+    if (member.user_id === currentUserId) return
+    if (member.role === 'admin') {
+      toast.error('Cannot remove admin')
+      return
+    }
+    if (!confirm(`Remove ${member.user?.full_name || member.user?.username || 'this member'} from the group?`)) return
+
+    setRemovingMemberId(member.user_id)
+    try {
+      await apiClient.delete(`/api/groups/${groupId}/members/${member.user_id}`)
+      setMembers((prev) => prev.filter((m) => m.user_id !== member.user_id))
+      onMembersChanged?.()
+      toast.success('Member removed')
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to remove member')
+    } finally {
+      setRemovingMemberId(null)
     }
   }
 
@@ -108,16 +139,27 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({ groupId, currentUse
             </p>
           </div>
 
-          {/* Role Badge */}
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            member.role === 'admin' 
-              ? 'bg-yellow-100 text-yellow-700' 
-              : member.role === 'moderator'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-gray-100 text-gray-700'
-          }`}>
-            {member.role}
-          </span>
+          <div className="flex items-center gap-2">
+            {canManageMembers && member.user_id !== currentUserId && member.role !== 'admin' && (
+              <button
+                onClick={() => handleRemoveMember(member)}
+                disabled={removingMemberId === member.user_id}
+                className="px-2 py-1 rounded-md text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                <UserMinus className="w-3 h-3" />
+                {removingMemberId === member.user_id ? 'Removing...' : 'Remove'}
+              </button>
+            )}
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              member.role === 'admin' 
+                ? 'bg-yellow-100 text-yellow-700' 
+                : member.role === 'moderator'
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-700'
+            }`}>
+              {member.role}
+            </span>
+          </div>
         </div>
       ))}
     </div>

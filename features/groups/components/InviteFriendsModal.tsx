@@ -5,7 +5,6 @@ import { X, Search, Check, QrCode, UserPlus } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
 import { apiClient } from '@/lib/api-client'
-import { supabase } from '@/lib/supabase'
 import toast from 'react-hot-toast'
 
 interface Friend {
@@ -137,52 +136,34 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
 
     setSending(true)
     try {
-      // Try to create group invitations first
-      const invitations = Array.from(selectedFriends).map(friendId => ({
-        group_id: groupId,
-        inviter_id: user.id,
-        invitee_id: friendId,
-        status: 'pending'
-      }))
-
-      const { error: inviteError } = await supabase
-        .from('group_invitations')
-        .insert(invitations)
-
-      if (inviteError) {
-        // If group_invitations table doesn't exist, create notifications instead
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('username, full_name')
-          .eq('id', user.id)
-          .single()
-
-        const inviterName = profileData?.full_name || profileData?.username || 'Someone'
-
-        const notifications = Array.from(selectedFriends).map(friendId => ({
-          user_id: friendId,
-          type: 'group_invitation',
-          title: 'Group Invitation',
-          message: `${inviterName} invited you to join ${groupName}`,
-          metadata: {
-            group_id: groupId,
-            group_name: groupName,
-            inviter_id: user.id
-          },
-          created_at: new Date().toISOString()
-        }))
-
-        const { error: notifError } = await supabase
-          .from('notifications')
-          .insert(notifications)
-
-        if (notifError) {
-          console.error('Notification error:', notifError)
-          // If notifications also fail, just show success (invites were attempted)
+      const targetUserIds = Array.from(selectedFriends)
+      const response = await apiClient.post<{
+        data?: {
+          added_count?: number
+          already_member_count?: number
+          added_user_ids?: string[]
         }
+      }>(`/api/groups/${groupId}/invite`, { user_ids: targetUserIds })
+
+      const addedCount = response?.data?.added_count ?? 0
+      const alreadyCount = response?.data?.already_member_count ?? 0
+      const addedUserIds = response?.data?.added_user_ids ?? []
+
+      if (addedUserIds.length > 0) {
+        setExistingMembers((prev) => {
+          const next = new Set(prev)
+          addedUserIds.forEach((id) => next.add(id))
+          return next
+        })
       }
 
-      toast.success(`Invited ${selectedFriends.size} friend${selectedFriends.size > 1 ? 's' : ''} to the group!`)
+      if (addedCount > 0 && alreadyCount > 0) {
+        toast.success(`Added ${addedCount} friend${addedCount > 1 ? 's' : ''}. ${alreadyCount} already in group.`)
+      } else if (addedCount > 0) {
+        toast.success(`Added ${addedCount} friend${addedCount > 1 ? 's' : ''} to the group!`)
+      } else {
+        toast.success('Selected friends are already in this group.')
+      }
       setSelectedFriends(new Set())
       onInviteSent?.()
       onClose()

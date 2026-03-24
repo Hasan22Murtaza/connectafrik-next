@@ -763,7 +763,14 @@ const GroupDetailPage: React.FC = () => {
 
             {activeTab === 'members' && (
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <GroupMembersList groupId={group.id} currentUserId={user?.id} />
+                <GroupMembersList
+                  groupId={group.id}
+                  currentUserId={user?.id}
+                  canManageMembers={isAdmin}
+                  onMembersChanged={() => {
+                    fetchGroup()
+                  }}
+                />
               </div>
             )}
           </div>
