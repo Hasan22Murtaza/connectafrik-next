@@ -18,8 +18,23 @@ export async function postInternalPushNotification(payload: Record<string, unkno
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    console.warn('[internal-push] push failed', res.status, text)
+  if (res.ok) return
+
+  const text = await res.text().catch(() => '')
+  console.warn('[internal-push] push failed', res.status, text)
+
+  if (payload.notification_type === 'ringing') {
+    const retryPayload = { ...payload, notification_type: 'system' }
+    const retryRes = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(retryPayload),
+    })
+    if (!retryRes.ok) {
+      const retryText = await retryRes.text().catch(() => '')
+      console.warn('[internal-push] ringing fallback push failed', retryRes.status, retryText)
+    } else {
+      console.info('[internal-push] ringing push delivered via system fallback')
+    }
   }
 }
