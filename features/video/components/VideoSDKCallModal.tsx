@@ -23,17 +23,21 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
 
   const userInitial = useMemo(() => (vc.user?.user_metadata?.full_name || 'Y')[0].toUpperCase(), [vc.user?.user_metadata?.full_name]);
   const groupLayout = useMemo(() => {
-    if (vc.callType !== 'video' || vc.participants.length <= 1) return null;
+    const isGroupGallery =
+      vc.participants.length > 1 && (vc.callType === 'video' || vc.callType === 'audio');
+    if (!isGroupGallery) return null;
     const maxTilesPerPage = 9;
     const maxRemotePerPage = Math.max(1, maxTilesPerPage - 1); // keep local tile on every page
     const remoteTiles = vc.participants.map((p: any) => {
       const participantStream = vc.participantVideoMap.get(p.id) || null;
+      const hasVideo =
+        vc.callType === 'video' && !!participantStream?.getVideoTracks?.().length;
       return {
         id: p.id as string,
         displayName: (p.displayName || 'Participant') as string,
         stream: participantStream as MediaStream | null,
         isLocal: false,
-        hasVideo: !!participantStream?.getVideoTracks?.().length,
+        hasVideo,
       };
     });
     const pageCount = Math.max(1, Math.ceil(remoteTiles.length / maxRemotePerPage));
@@ -45,7 +49,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
       displayName: (vc.user?.user_metadata?.full_name || 'You') as string,
       stream: vc.localStream,
       isLocal: true,
-      hasVideo: vc.isVideoEnabled && !!(vc.localStream?.getVideoTracks()?.length),
+      hasVideo:
+        vc.callType === 'video' &&
+        vc.isVideoEnabled &&
+        !!(vc.localStream?.getVideoTracks()?.length),
     };
     const tiles = [...visibleRemoteTiles, localTile];
     const total = tiles.length;
@@ -74,6 +81,15 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   }, [groupLayout, groupPage]);
 
   useEffect(() => {
+    if (vc.callType === 'audio') {
+      if (groupLayout) {
+        vc.setVisibleRemoteParticipantIds(groupLayout.visibleRemoteParticipantIds);
+        return;
+      }
+      vc.setVisibleRemoteParticipantIds(vc.participants.map((p: any) => p.id));
+      return;
+    }
+
     if (vc.callType !== 'video') {
       vc.setVisibleRemoteParticipantIds([]);
       return;
@@ -128,7 +144,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           {/* Teams-style Video Gallery - Group call (2+ remote participants + local) */}
           {groupLayout && (
               <div
-                className="w-full h-full flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
+                className="relative w-full h-full flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
                 style={{
                   gap: '4px',
                   background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
@@ -257,6 +273,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
             decodedRecipientAvatarUrl={vc.decodedRecipientAvatarUrl}
             isScreenSharing={vc.isScreenSharing}
             remoteScreenShareStream={vc.remoteScreenShareStream}
+            showConnectedGroupGallery={!!groupLayout && vc.callStatus === 'connected'}
           />
 
           {/* Accept/Reject Buttons for incoming calls */}
