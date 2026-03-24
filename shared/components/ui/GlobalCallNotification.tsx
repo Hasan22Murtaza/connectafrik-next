@@ -174,8 +174,15 @@ const GlobalCallNotification: React.FC = () => {
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
 
-      if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'active') {
-        stopCallRingtone()
+      if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'active' && event.data?.threadId) {
+        const activeThreadId = String(event.data.threadId)
+        const currentIncomingThreadId = primaryIncoming?.threadId
+        const openedForThread =
+          openedIncomingSignatureRef.current.length > 0 &&
+          openedIncomingSignatureRef.current.startsWith(`${activeThreadId}|`)
+        if (currentIncomingThreadId === activeThreadId || openedForThread) {
+          stopCallRingtone()
+        }
       }
 
       if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'ended' && event.data?.threadId) {
@@ -189,7 +196,7 @@ const GlobalCallNotification: React.FC = () => {
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [clearCallRequest])
+  }, [clearCallRequest, primaryIncoming?.threadId])
 
   return null
 }
