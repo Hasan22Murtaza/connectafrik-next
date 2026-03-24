@@ -875,7 +875,7 @@ export const supabaseMessagingService = {
               return {
                 title: `Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`,
                 body: `${actorName} is calling you...`,
-                notification_type: 'system',
+                notification_type: 'ringing',
                 tag: `incoming-call-${threadId}`,
                 requireInteraction: true,
                 silent: false,
