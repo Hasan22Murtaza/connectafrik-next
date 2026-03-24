@@ -1,8 +1,14 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Bell, Check, X, Heart, MessageCircle, Share2, UserPlus, AtSign, Filter, CheckCheck } from 'lucide-react'
+import { Bell, Check, X, Filter, CheckCheck } from 'lucide-react'
 import { Notification, NotificationType } from '@/shared/types/notifications'
+import {
+  getNotificationPayload,
+  getNotificationTypeSource,
+  normalizeNotificationType,
+  stripLeadingEmoji,
+} from '@/shared/utils/notificationRecord'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -41,14 +47,15 @@ const NotificationsPage: React.FC = () => {
       const data = res?.data ?? []
 
       const transformedNotifications: Notification[] = data.map((record: any) => {
-        const payload = record.payload || {}
+        const payload = getNotificationPayload(record)
+        const canonicalType = normalizeNotificationType(getNotificationTypeSource(record, payload))
         return {
           id: record.id,
           user_id: record.user_id,
-          type: record.type as Notification['type'],
-          title: payload.title || record.title || getDefaultTitle(record.type),
-          message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
-          data: payload.data || payload,
+          type: canonicalType,
+          title: payload.title || record.title || getDefaultTitle(canonicalType),
+          message: payload.message || record.message || payload.body || getDefaultMessage(canonicalType, payload),
+          data: (payload.data || payload) as Notification['data'],
           is_read: record.is_read || false,
           created_at: record.created_at,
           updated_at: record.updated_at || record.created_at,
@@ -98,6 +105,13 @@ const NotificationsPage: React.FC = () => {
       chat_message: 'New Message',
       birthday: 'Birthday Reminder',
       system: 'System Notification',
+      ringing: 'Incoming call',
+      initiated: 'Incoming call',
+      active: 'Call accepted',
+      ended: 'Call ended',
+      declined: 'Call declined',
+      missed: 'Missed Call',
+      failed: 'Call failed',
     }
     return titleMap[type] || 'New Notification'
   }
@@ -121,6 +135,13 @@ const NotificationsPage: React.FC = () => {
       chat_message: `${actorName} sent you a message`,
       birthday: `It's ${actorName}'s birthday today!`,
       system: payload?.message || 'You have a new notification',
+      ringing: `${actorName} is calling you`,
+      initiated: `${actorName} is calling you`,
+      active: `${actorName} accepted your call`,
+      ended: `Call ended`,
+      declined: `Call declined`,
+      missed: `You missed a call from ${actorName}`,
+      failed: `Call failed`,
     }
     return messageMap[type] || 'You have a new notification'
   }
@@ -163,29 +184,6 @@ const NotificationsPage: React.FC = () => {
     } catch (error) {
       console.error('Error marking all notifications as read:', error)
       toast.error('Failed to mark all notifications as read')
-    }
-  }
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'post_like':
-      case 'reel_like':
-      case 'comment_like':
-        return <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
-      case 'post_comment':
-      case 'reel_comment':
-      case 'comment_reply':
-        return <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-      case 'post_share':
-      case 'reel_share':
-        return <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-      case 'follow':
-        return <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
-      case 'mention':
-        return <AtSign className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
-      case 'birthday':
-        return <span className="text-lg sm:text-xl">🎂</span>
-      default:
     }
   }
 
@@ -341,7 +339,7 @@ const NotificationsPage: React.FC = () => {
                   <div className="flex items-start space-x-3 sm:space-x-4">
                     <div className="flex-shrink-0 mt-0.5">
                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                        {getNotificationIcon(notification.type)}
+                        <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6900]" aria-hidden />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -349,7 +347,7 @@ const NotificationsPage: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
                             <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-                              {notification.title}
+                              {stripLeadingEmoji(notification.title)}
                             </h3>
                             {!notification.is_read && (
                               <span className="w-2 h-2 bg-[#FF6900] rounded-full flex-shrink-0"></span>

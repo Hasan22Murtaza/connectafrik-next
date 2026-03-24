@@ -9,12 +9,13 @@ const VideoSDKCallModal = dynamic(() => import('@/features/video/components/Vide
   ssr: false,
 })
 
-const CALL_ENDED = 'CALL_ENDED'
-
-function notifyParentCallEnded(threadId: string) {
+function notifyParentCallEnded(threadId: string, callId?: string) {
   if (typeof window !== 'undefined' && threadId && window.opener) {
     try {
-      window.opener.postMessage({ type: CALL_ENDED, threadId }, window.location.origin)
+      window.opener.postMessage(
+        { type: 'CALL_STATUS', status: 'ended', threadId, ...(callId ? { callId } : {}) },
+        window.location.origin
+      )
     } catch {}
   }
 }
@@ -77,7 +78,7 @@ export default function CallWindowPage() {
 
   // If user closes window via X, still notify parent to clear state
   useEffect(() => {
-    const onBeforeUnload = () => notifyParentCallEnded(threadId)
+    const onBeforeUnload = () => notifyParentCallEnded(threadId, callId || undefined)
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [threadId])

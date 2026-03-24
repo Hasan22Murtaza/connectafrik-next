@@ -47,8 +47,12 @@ self.addEventListener('push', (event) => {
       : parseOptionalNumber(sentAtRaw);
   const staleAfterMs = parseOptionalNumber(notificationData.stale_after_ms) ?? 120000;
 
+  const isRingingType = (t) => t === 'ringing';
+  const isMissedType = (t) => t === 'missed';
+  const isEndedType = (t) => t === 'ended';
+
   // Prevent delayed call-ended pushes from showing long after the call is over.
-  if (type === 'call_ended' && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
+  if (isEndedType(type) && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
     console.log('[SW] Skipping stale call-ended notification');
     return;
   }
@@ -77,14 +81,14 @@ self.addEventListener('push', (event) => {
     // Use defaults based on type
   }
 
-  // Customize notification based on type
-  if (type === 'call_request') {
+  // Customize notification based on type (call_sessions.status + legacy payloads)
+  if (isRingingType(type)) {
     // Incoming call: show Accept and Decline actions (no large image)
     actions = [
       { action: 'answer', title: 'Accept' },
       { action: 'decline', title: 'Decline' }
     ];
-  } else if (type === 'missed_call') {
+  } else if (isMissedType(type)) {
     // Missed call: NO action buttons — just a clean static notification
     actions = [];
   }
@@ -96,9 +100,9 @@ self.addEventListener('push', (event) => {
     tag, // Same tag replaces existing notification
     data: notificationData, // Pass all data for click handling
     actions,
-    requireInteraction: type === 'call_request' ? true : (requireInteraction && type !== 'missed_call'),
-    silent: type === 'missed_call' ? true : silent,
-    vibrate: type === 'missed_call' ? undefined : vibrate,
+    requireInteraction: isRingingType(type) ? true : (requireInteraction && !isMissedType(type)),
+    silent: isMissedType(type) ? true : silent,
+    vibrate: isMissedType(type) ? undefined : vibrate,
     renotify: true, // Vibrate/sound even when replacing same-tag notification
   };
 
@@ -114,13 +118,13 @@ self.addEventListener('push', (event) => {
       await self.registration.showNotification(title, options);
 
       // Auto-dismiss short-lived call-ended notifications to reduce stale stacks.
-      if (type === 'call_ended' && autoCloseMs && autoCloseMs > 0) {
+      if (isEndedType(type) && autoCloseMs && autoCloseMs > 0) {
         setTimeout(async () => {
           try {
             const notifications = await self.registration.getNotifications({ tag });
             notifications.forEach((n) => {
               const notificationType = n?.data?.type;
-              if (notificationType === 'call_ended') n.close();
+              if (isEndedType(notificationType)) n.close();
             });
           } catch (error) {
             console.error('[SW] Failed to auto-close call-ended notification:', error);
@@ -139,7 +143,7 @@ self.addEventListener('notificationclick', (event) => {
 
   notification.close();
 
-  if (action === 'answer' && data.type === 'call_request') {
+  if (action === 'answer' && data.type === 'ringing') {
     // Open call window
     const roomId = data.room_id;
     const callType = data.call_type || 'audio';
@@ -155,10 +159,10 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
       clients.openWindow(callUrl)
     );
-  } else if (action === 'decline' && data.type === 'call_request') {
+  } else if (action === 'decline' && data.type === 'ringing') {
     // Just close the notification — the call timeout will handle cleanup
     // Nothing else needed
-  } else if (data.type === 'missed_call') {
+  } else if (data.type === 'missed') {
     // Open chat thread for missed call
     const threadId = data.thread_id;
     const url = threadId ? `/chat?thread=${threadId}` : '/feed';

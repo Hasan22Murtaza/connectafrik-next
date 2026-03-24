@@ -1,6 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Bell, Check, X, Heart, MessageCircle, Share2, UserPlus, AtSign, MessageSquare, Cake, ShoppingBag, PhoneMissed, ThumbsUp, Info, UserX } from 'lucide-react'
+import { Bell, X } from 'lucide-react'
 import { Notification } from '@/shared/types/notifications'
+import {
+  getNotificationPayload,
+  getNotificationTypeSource,
+  normalizeNotificationType,
+  stripLeadingEmoji,
+} from '@/shared/utils/notificationRecord'
 import { formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -58,13 +64,14 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       const data = res?.data ?? []
 
       const transformedNotifications: Notification[] = data.map((record: any) => {
-        const payload = record.payload || record.data || {}
+        const payload = getNotificationPayload(record)
+        const canonicalType = normalizeNotificationType(getNotificationTypeSource(record, payload))
         return {
           id: record.id,
           user_id: record.user_id,
-          type: record.type as Notification['type'],
-          title: payload.title || record.title || getDefaultTitle(record.type),
-          message: payload.message || record.message || payload.body || getDefaultMessage(record.type, payload),
+          type: canonicalType,
+          title: payload.title || record.title || getDefaultTitle(canonicalType),
+          message: payload.message || record.message || payload.body || getDefaultMessage(canonicalType, payload),
           data: payload.data || payload,
           is_read: record.is_read || false,
           created_at: record.created_at,
@@ -119,7 +126,13 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       friend_request_confirmed: 'Friend Request Confirmed',
       friend_request_declined: 'Friend Request Declined',
       chat_message: 'New Message',
-      missed_call: 'Missed Call',
+      missed: 'Missed Call',
+      ringing: 'Incoming call',
+      initiated: 'Incoming call',
+      active: 'Call',
+      ended: 'Call ended',
+      declined: 'Call',
+      failed: 'Call',
       birthday: 'Birthday Reminder',
       new_order: 'New Order',
       system: 'System Notification',
@@ -149,7 +162,13 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       friend_request_confirmed: `${actorName} confirmed your friend request`,
       friend_request_declined: `${actorName} declined your friend request`,
       chat_message: `${actorName} sent you a message`,
-      missed_call: `You missed a call from ${actorName}`,
+      missed: `You missed a call from ${actorName}`,
+      ringing: `${actorName} is calling you`,
+      initiated: `${actorName} is calling you`,
+      active: `Call update`,
+      ended: `Call ended`,
+      declined: `Call declined`,
+      failed: `Call failed`,
       birthday: `It's ${actorName}'s birthday today!`,
       new_order: `${actorName} placed a new order`,
       system: payload?.message || 'You have a new notification',
@@ -417,7 +436,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         }
 
         // Missed call → open chat with caller
-        case 'missed_call': {
+        case 'missed': {
           const threadId = data.thread_id || data.chat_thread_id
           const actorId = data.caller_id || data.sender_id || data.actor_id || data.user_id
           const actorName = data.caller_name || data.sender_name || data.actor_name || 'User'
@@ -472,92 +491,6 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
     await markAllAsRead()
   }
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'like':
-      case 'post_like':
-      case 'reel_like':
-      case 'comment_like':
-        return <Heart className="w-4 h-4 text-red-500" />
-      case 'post_reaction':
-      case 'comment_reaction':
-        return <ThumbsUp className="w-4 h-4 text-blue-500" />
-      case 'comment':
-      case 'post_comment':
-      case 'reel_comment':
-      case 'comment_reply':
-        return <MessageCircle className="w-4 h-4 text-orange-500" />
-      case 'post_share':
-      case 'reel_share':
-        return <Share2 className="w-4 h-4 text-green-500" />
-      case 'follow':
-        return <UserPlus className="w-4 h-4 text-purple-500" />
-      case 'mention':
-        return <AtSign className="w-4 h-4 text-orange-500" />
-      case 'friend_request':
-      case 'friend_request_accepted':
-      case 'friend_request_confirmed':
-        return <UserPlus className="w-4 h-4 text-indigo-500" />
-      case 'friend_request_declined':
-        return <UserX className="w-4 h-4 text-gray-500" />
-      case 'chat_message':
-        return <MessageSquare className="w-4 h-4 text-[#FF6900]" />
-      case 'missed_call':
-        return <PhoneMissed className="w-4 h-4 text-red-500" />
-      case 'birthday':
-        return <span className="text-lg">🎂</span>
-      case 'new_order':
-        return <ShoppingBag className="w-4 h-4 text-[#FF6900]" />
-      case 'system':
-        return <Info className="w-4 h-4 text-blue-500" />
-      default:
-        return <Bell className="w-4 h-4 text-gray-500" />
-    }
-  }
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'like':
-      case 'post_like':
-      case 'reel_like':
-      case 'comment_like':
-        return 'bg-red-50 border-red-200'
-      case 'post_reaction':
-      case 'comment_reaction':
-        return 'bg-blue-50 border-blue-200'
-      case 'comment':
-      case 'post_comment':
-      case 'reel_comment':
-      case 'comment_reply':
-        return 'bg-orange-50 border-orange-200'
-      case 'post_share':
-      case 'reel_share':
-        return 'bg-green-50 border-green-200'
-      case 'follow':
-        return 'bg-purple-50 border-purple-200'
-      case 'mention':
-        return 'bg-orange-50 border-orange-200'
-      case 'friend_request':
-      case 'friend_request_accepted':
-      case 'friend_request_confirmed':
-        return 'bg-indigo-50 border-indigo-200'
-      case 'friend_request_declined':
-        return 'bg-gray-50 border-gray-200'
-      case 'chat_message':
-        return 'bg-orange-50 border-orange-200'
-      case 'missed_call':
-        return 'bg-red-50 border-red-200'
-      case 'birthday':
-        return 'bg-pink-50 border-pink-200'
-      case 'new_order':
-        return 'bg-orange-50 border-orange-200'
-      case 'system':
-        return 'bg-blue-50 border-blue-200'
-      default:
-        return 'bg-gray-50 border-gray-200'
-    }
-  }
-
   if (!isOpen) return null
 
   return (
@@ -610,12 +543,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                 >
                   <div className="flex items-start space-x-2 sm:space-x-3">
                     <div className="flex-shrink-0 mt-1">
-                      {getNotificationIcon(notification.type)}
+                      <Bell className="w-4 h-4 text-[#FF6900]" aria-hidden />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {notification.title}
+                          {stripLeadingEmoji(notification.title)}
                         </p>
                         {!notification.is_read && (
                           <div className="w-2 h-2 bg-[#FF6900] rounded-full"></div>

@@ -192,6 +192,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   );
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const userInitiatedCall = useRef(false);
+  const lastIncomingCallSyncKeyRef = useRef<string>("");
   const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map());
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -310,6 +311,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         pendingCallerId && currentUserId && pendingCallerId === currentUserId
       );
 
+      if (!initiatedByCurrentUser) {
+        const syncKey = `${threadId}:${pendingCall?.callId || ""}:${pendingRoomId || ""}`;
+        if (lastIncomingCallSyncKeyRef.current === syncKey) {
+          return;
+        }
+        lastIncomingCallSyncKeyRef.current = syncKey;
+      }
+
       setCurrentCallType(pendingCallType);
       setIsCallOpen(true);
       if (pendingRoomId) {
@@ -320,6 +329,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       }
       setIsIncomingCall(!initiatedByCurrentUser);
     } else if (!userInitiatedCall.current) {
+      lastIncomingCallSyncKeyRef.current = "";
       setIsIncomingCall(false);
       setActiveRoomId(null);
     }
@@ -327,6 +337,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     pendingCallType,
     pendingRoomId,
     pendingCallerId,
+    pendingCall?.callId,
     threadId,
     currentUserId,
   ]);

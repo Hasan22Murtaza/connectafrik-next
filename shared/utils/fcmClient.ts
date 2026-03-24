@@ -229,7 +229,9 @@ export const registerToken = async (token: string): Promise<boolean> => {
     }
 
     const result = await response.json()
-    return result.success === true
+    const ok = result.success === true
+    if (ok) invalidateTokenStatusCache()
+    return ok
   } catch (error) {
     console.error('❌ Error registering token:', error)
     return false
@@ -259,7 +261,9 @@ export const removeToken = async (): Promise<boolean> => {
     }
 
     const result = await response.json()
-    return result.success === true
+    const ok = result.success === true
+    if (ok) invalidateTokenStatusCache()
+    return ok
   } catch (error) {
     console.error('❌ Error removing token:', error)
     return false
@@ -297,6 +301,48 @@ export const deactivateTokenOnLogout = async (): Promise<void> => {
   }
 }
 
+let tokenStatusCache: { key: string; value: boolean; t: number } | null = null
+const TOKEN_STATUS_CACHE_TTL_MS = 45_000
+const TOKEN_STATUS_LOCAL_COOLDOWN_MS = 5 * 60_000
+const TOKEN_STATUS_LOCAL_COOLDOWN_KEY = 'fcm_token_status_last_check'
+const tokenStatusInFlight = new Map<string, Promise<boolean>>()
+const setupInFlight = new Map<string, Promise<void>>()
+
+function invalidateTokenStatusCache() {
+  tokenStatusCache = null
+}
+
+function getTokenStatusCooldownKey(userId: string, deviceId: string | null): string {
+  return `${userId}:${deviceId || ''}`
+}
+
+function getTokenStatusCooldownMap(): Record<string, number> {
+  if (typeof window === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(TOKEN_STATUS_LOCAL_COOLDOWN_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function readRecentTokenStatusCheckMs(cooldownKey: string): number {
+  const map = getTokenStatusCooldownMap()
+  const value = map[cooldownKey]
+  return typeof value === 'number' ? value : 0
+}
+
+function markRecentTokenStatusCheck(cooldownKey: string, timestampMs: number): void {
+  if (typeof window === 'undefined') return
+  try {
+    const map = getTokenStatusCooldownMap()
+    map[cooldownKey] = timestampMs
+    localStorage.setItem(TOKEN_STATUS_LOCAL_COOLDOWN_KEY, JSON.stringify(map))
+  } catch {}
+}
+
 /**
  * Check if user has active token via API
  */
@@ -307,26 +353,66 @@ export const checkTokenStatus = async (): Promise<boolean> => {
       return false
     }
 
-    const { data: { session } } = await supabase.auth.getSession()
-    const authToken = session?.access_token
-
     const { device_id } = getDeviceInfo()
-    const response = await fetch(
-      `/api/fcm/token?user_id=${user.id}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`,
-      {
-        headers: {
-          ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
-        },
-      }
-    )
-
-    if (!response.ok) {
-      return false
+    const cacheKey = `${user.id}:${device_id || ''}`
+    const cooldownKey = getTokenStatusCooldownKey(user.id, device_id)
+    const now = Date.now()
+    if (
+      tokenStatusCache &&
+      tokenStatusCache.key === cacheKey &&
+      now - tokenStatusCache.t < TOKEN_STATUS_CACHE_TTL_MS
+    ) {
+      return tokenStatusCache.value
     }
 
-    const result = await response.json()
-    const activeTokens = result.tokens?.filter((t: any) => t.is_active) || []
-    return activeTokens.length > 0
+    const pending = tokenStatusInFlight.get(cacheKey)
+    if (pending) {
+      return await pending
+    }
+
+    const recentCheckMs = readRecentTokenStatusCheckMs(cooldownKey)
+    if (
+      tokenStatusCache &&
+      tokenStatusCache.key === cacheKey &&
+      recentCheckMs > 0 &&
+      now - recentCheckMs < TOKEN_STATUS_LOCAL_COOLDOWN_MS
+    ) {
+      return tokenStatusCache.value
+    }
+
+    const requestPromise = (async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const authToken = session?.access_token
+
+      const response = await fetch(
+        `/api/fcm/token?user_id=${user.id}${device_id ? `&device_id=${encodeURIComponent(device_id)}` : ''}`,
+        {
+          headers: {
+            ...(authToken && { 'Authorization': `Bearer ${authToken}` }),
+          },
+        }
+      )
+
+      if (!response.ok) {
+        tokenStatusCache = { key: cacheKey, value: false, t: now }
+        markRecentTokenStatusCheck(cooldownKey, now)
+        return false
+      }
+
+      const result = await response.json()
+      const activeTokens = result.tokens?.filter((t: any) => t.is_active) || []
+      const value = activeTokens.length > 0
+      tokenStatusCache = { key: cacheKey, value, t: now }
+      markRecentTokenStatusCheck(cooldownKey, now)
+      return value
+    })()
+
+    tokenStatusInFlight.set(cacheKey, requestPromise)
+    try {
+      return await requestPromise
+    } finally {
+      tokenStatusInFlight.delete(cacheKey)
+    }
   } catch (error) {
     console.error('❌ Error checking token status:', error)
     return false
@@ -429,18 +515,35 @@ export const checkAndSetupFCMTokenOnLogin = async (): Promise<void> => {
       return
     }
 
-    const hasActiveToken = await checkTokenStatus()
-    
-    if (!hasActiveToken) {
-      const initialized = await initialize()
-      if (!initialized) {
-        return
-      }
+    const { device_id } = getDeviceInfo()
+    const setupKey = `${user.id}:${device_id || ''}`
+    const activeSetup = setupInFlight.get(setupKey)
+    if (activeSetup) {
+      await activeSetup
+      return
+    }
 
-      const permission = await requestPermission()
-      if (permission === 'granted') {
-        await subscribe()
+    const setupPromise = (async () => {
+      const hasActiveToken = await checkTokenStatus()
+      
+      if (!hasActiveToken) {
+        const initialized = await initialize()
+        if (!initialized) {
+          return
+        }
+
+        const permission = await requestPermission()
+        if (permission === 'granted') {
+          await subscribe()
+        }
       }
+    })()
+
+    setupInFlight.set(setupKey, setupPromise)
+    try {
+      await setupPromise
+    } finally {
+      setupInFlight.delete(setupKey)
     }
   } catch (error) {
     console.error('❌ Error setting up FCM on login:', error)

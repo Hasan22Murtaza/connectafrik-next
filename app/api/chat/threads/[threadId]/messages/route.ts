@@ -8,10 +8,16 @@ const MESSAGE_SELECT = `
 `
 
 type RouteContext = { params: Promise<{ threadId: string }> }
-const DEDUPED_CALL_SIGNAL_TYPES = new Set(['call_accepted', 'call_rejected', 'missed_call', 'call_ended'])
+const DEDUPED_CALL_SIGNAL_TYPES = new Set([
+  'active',
+  'declined',
+  'missed',
+  'ended',
+  'failed',
+])
 const ROOM_FALLBACK_DEDUPE_WINDOW_MS = 5 * 60 * 1000
 const TERMINAL_CONFLICT_WINDOW_MS = 90 * 1000
-const CALL_TERMINAL_CONFLICT_TYPES = ['call_rejected', 'call_ended'] as const
+const CALL_TERMINAL_CONFLICT_TYPES = ['declined', 'ended'] as const
 type CallIdentity = { callId: string; roomId: string }
 
 const normalizeCallIdentityValue = (value: unknown): string => (
@@ -211,8 +217,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
     }
 
-    // Conflict rule: if call is already rejected/ended, do not store missed_call for same call.
-    if (normalizedMessageType === 'missed_call') {
+    // Conflict rule: if call is already declined/ended, do not store missed for same call.
+    if (normalizedMessageType === 'missed') {
       const { data: terminalConflictMessages, error: terminalConflictError } = await serviceClient
         .from('chat_messages')
         .select(MESSAGE_SELECT)
@@ -228,6 +234,60 @@ export async function POST(request: NextRequest, context: RouteContext) {
         if (conflictMatch) {
           const data = await enrichMessageResponse(serviceClient, conflictMatch, user.id)
           return jsonResponse({ data }, 200)
+        }
+      }
+    }
+
+    // If a "missed" row was stored first, a later "ended" for the same call should win (preview + history).
+    const isEndedMessageType = normalizedMessageType === 'ended'
+    if (isEndedMessageType && (incomingIdentity.callId || incomingIdentity.roomId)) {
+      const { data: missedRows, error: missedLookupError } = await serviceClient
+        .from('chat_messages')
+        .select(MESSAGE_SELECT)
+        .eq('thread_id', threadId)
+        .in('message_type', ['missed'])
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: false })
+        .limit(30)
+
+      if (!missedLookupError && missedRows?.length) {
+        const missedMatch = findMatchingCallSignal(missedRows, incomingIdentity)
+        if (missedMatch) {
+          const prevMeta =
+            missedMatch.metadata && typeof missedMatch.metadata === 'object' && !Array.isArray(missedMatch.metadata)
+              ? (missedMatch.metadata as Record<string, unknown>)
+              : {}
+          const mergedMetadata = { ...prevMeta, ...(metadata || {}) }
+          const endedContent =
+            safeContent && safeContent.trim() ? safeContent : 'Call ended'
+          const endedPreview =
+            endedContent.length > 100 ? endedContent.slice(0, 97) + '...' : endedContent
+
+          const { data: upgraded, error: upgradeError } = await serviceClient
+            .from('chat_messages')
+            .update({
+              message_type: 'ended',
+              content: endedContent,
+              metadata: mergedMetadata,
+              updated_at: now,
+            })
+            .eq('id', missedMatch.id)
+            .select(MESSAGE_SELECT)
+            .single()
+
+          if (!upgradeError && upgraded) {
+            await serviceClient
+              .from('chat_threads')
+              .update({
+                last_message_preview: endedPreview,
+                last_message_at: now,
+                last_activity_at: now,
+                updated_at: now,
+              })
+              .eq('id', threadId)
+            const data = await enrichMessageResponse(serviceClient, upgraded, user.id)
+            return jsonResponse({ data }, 200)
+          }
         }
       }
     }
