@@ -602,7 +602,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           }
         }))
       }
-
+      console.log('currentUser', currentUser)
       // Signal in background: call_sessions row + push (no chat_messages spam)
       void apiClient
         .post(`/api/chat/threads/${threadId}/call-sessions`, {

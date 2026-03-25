@@ -889,7 +889,7 @@ export const supabaseMessagingService = {
                   ...(callId ? { call_id: callId, callId } : {}),
                   caller_id: actorId,
                   caller_name: actorName,
-                  caller_avatar_url: metadata?.callerAvatarUrl || metadata?.caller_avatar_url || '',
+                  caller_avatar_url: metadata?.callerAvatarUrl || metadata?.caller_avatar_url,
                   is_group_call: isGroupCall ? 'true' : 'false',
                   isGroupCall: isGroupCall ? 'true' : 'false',
                   sent_at: signalSentAtIso,

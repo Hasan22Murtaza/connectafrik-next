@@ -1381,10 +1381,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         is_group_call: true,
         caller_name: user?.user_metadata?.full_name || 'Unknown',
         caller_avatar_url:
-          user?.user_metadata?.avatar_url ||
-          user?.user_metadata?.picture ||
-          user?.user_metadata?.profile_image ||
-          '',
+          user?.user_metadata?.avatar_url,
       });
       setShowAddPeople(false);
       setAddPeopleSearch('');
