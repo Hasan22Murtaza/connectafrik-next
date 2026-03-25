@@ -3,10 +3,17 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const THREAD_SELECT = `
-  *,
+  id,
+  type,
+  title,
+  name,
+  last_message_preview,
+  last_message_at,
+  last_activity_at,
+  created_at,
+  updated_at,
   chat_participants(
-    user_id,
-    user:profiles!user_id(id, username, full_name, avatar_url)
+    user:profiles!user_id(id, username, full_name, avatar_url, status, last_seen)
   )
 `
 
@@ -62,6 +69,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       data: {
         ...thread,
         unread_count,
+      },
+      meta: {
+        page: 0,
+        pageSize: 1,
+        hasMore: false,
       },
     })
   } catch (error: any) {

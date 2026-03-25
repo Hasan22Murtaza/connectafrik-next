@@ -13,6 +13,8 @@ interface CallStatusOverlayProps {
   decodedRecipientAvatarUrl?: string;
   isScreenSharing: boolean;
   remoteScreenShareStream: MediaStream | null;
+  /** When true, audio calls use the same minimal overlay as video (timer only) — e.g. group grid */
+  showConnectedGroupGallery?: boolean;
 }
 
 const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
@@ -27,12 +29,17 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
   decodedRecipientAvatarUrl,
   isScreenSharing,
   remoteScreenShareStream,
+  showConnectedGroupGallery = false,
 }) => {
   const activeName = isIncoming ? decodedCallerName : decodedRecipientName;
   const activeAvatarUrl = (isIncoming ? decodedCallerAvatarUrl : decodedRecipientAvatarUrl) || '';
   const activeInitial = (activeName || 'U').trim().charAt(0).toUpperCase();
   const isAudioConnectedTopLayout =
-    callStatus === 'connected' && callType === 'audio' && !remoteScreenShareStream && !isScreenSharing;
+    callStatus === 'connected' &&
+    callType === 'audio' &&
+    !remoteScreenShareStream &&
+    !isScreenSharing &&
+    !showConnectedGroupGallery;
 
   return (
     <div
@@ -79,7 +86,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
             </div>
           )}
           {callStatus === 'connected' && !remoteScreenShareStream && !isScreenSharing && (
-            callType === 'audio' ? (
+            callType === 'audio' && !showConnectedGroupGallery ? (
               <div className="flex flex-col items-center">
                 <div className="mb-3 sm:mb-4">
                   {activeAvatarUrl ? (

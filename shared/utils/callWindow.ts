@@ -50,9 +50,12 @@ export function openCallWindow(params: {
   const left = (window.screen.width - width) / 2
   const top = (window.screen.height - height) / 2
 
+  // Include callId when present so a new ring does not reuse the same named window (which reloads the page).
+  const windowName = callId ? `call-${roomId}-${callId}` : `call-${roomId}`
+
   const callWindow = window.open(
     url.toString(),
-    `call-${roomId}`,
+    windowName,
     `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
   )
 

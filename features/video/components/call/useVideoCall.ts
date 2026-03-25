@@ -6,6 +6,7 @@
  */
 import { useAuth } from '@/contexts/AuthContext';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
+import { callSessionRowToPollTerminalMessage, toCallSessionStatusMessageType } from '@/features/chat/services/callSessionRealtime';
 import { stopAll as stopAllRingtones, playRingtone, playRingbackTone } from '@/features/video/services/ringtoneService';
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/api-client';
@@ -13,6 +14,23 @@ import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CallStatus, SpeakerLevel, VideoSDKCallModalProps } from './types';
 import { SPEAKER_VOLUMES } from './types';
+
+function broadcastCallUiStatus(status: 'active' | 'ended', threadId: string | undefined) {
+  if (typeof window === 'undefined' || !threadId) return;
+  const payload = { type: 'CALL_STATUS', status, threadId };
+  try {
+    window.postMessage(payload, window.location.origin);
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(payload, window.location.origin);
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 export function useVideoCall(props: VideoSDKCallModalProps) {
   const {
@@ -98,6 +116,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const isGroupSessionRef = useRef(false);
   const suppressMeetingLeftSignalRef = useRef(false);
   const remoteTerminalSignalReceivedRef = useRef(false);
+  const callDurationRef = useRef(0);
   const participantQualityRef = useRef<Map<string, 'high' | 'med' | 'low'>>(new Map());
   const participantPausedRef = useRef<Map<string, boolean>>(new Map());
   const presenterParticipantIdRef = useRef<string | null>(null);
@@ -191,6 +210,24 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (callStatusRef.current === 'ended') return;
     setCallStatusIfChanged('connected');
   }, [setCallStatusIfChanged]);
+
+  /** When UI ref lags, DB `call_sessions.status` is authoritative (e.g. active after accept). */
+  const resolveCallSessionPhase = useCallback(async (): Promise<'active' | 'terminal' | 'ringing_like'> => {
+    const cid = callIdRef.current || callIdHint || '';
+    if (!threadId || !cid) return 'ringing_like';
+    try {
+      const res = await apiClient.get<{ session: { status?: string } | null }>(
+        `/api/chat/threads/${threadId}/call-sessions`,
+        { call_id: cid }
+      );
+      const st = String(res?.session?.status || '').trim();
+      if (st === 'active') return 'active';
+      if (st === 'ended' || st === 'declined' || st === 'missed' || st === 'failed') return 'terminal';
+    } catch {
+      /* ignore */
+    }
+    return 'ringing_like';
+  }, [threadId, callIdHint]);
 
   const markConnectionMetric = useCallback((event: string, extra?: Record<string, unknown>) => {
     console.info('[call-telemetry]', {
@@ -303,6 +340,9 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
   // --- Cleanup ---
   const cleanupResources = useCallback(() => {
+    if (typeof window !== 'undefined' && threadId && callStatusRef.current !== 'ended') {
+      broadcastCallUiStatus('ended', threadId);
+    }
     if (callTimeoutRef.current) {
       clearTimeout(callTimeoutRef.current);
       callTimeoutRef.current = null;
@@ -346,7 +386,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       setParticipants([]);
       participantVideoMapRef.current.clear();
       setParticipantVideoMap(new Map());
-      setCallStatus('ended');
+      setCallStatusIfChanged('ended');
       setRoomId('');
       setCurrentCallId(callIdHint || '');
       setError('');
@@ -359,7 +399,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     presenterParticipantIdRef.current = null;
     callIdRef.current = callIdHint || '';
     hasInitializedRef.current = false;
-  }, [updateLocalStream, updateRemoteStreams, clearRemoteDisconnectTimer, callIdHint]);
+  }, [updateLocalStream, updateRemoteStreams, clearRemoteDisconnectTimer, callIdHint, threadId, setCallStatusIfChanged]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -697,21 +737,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
             if (!stillNoRemoteParticipants || callStatusRef.current !== 'connected') return;
             if (threadId && currentUserId) {
               const activeCallId = callIdRef.current || callIdHint || '';
-              const activeRoomId = roomId || roomIdHint || '';
-              supabaseMessagingService.sendMessage(threadId, {
-                content: 'Missed call',
-                message_type: 'missed_call',
-                metadata: {
-                  callType,
-                  roomId: activeRoomId,
-                  callId: activeCallId,
-                  endedBy: currentUserId,
-                  endedAt: new Date().toISOString(),
-                  reason: 'remote_disconnected_timeout',
-                },
-              }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' }).catch(() => {});
+              void apiClient
+                .patch(`/api/chat/threads/${threadId}/call-sessions`, {
+                  call_id: activeCallId,
+                  event: 'end',
+                  duration_seconds: callDurationRef.current,
+                })
+                .catch(() => {});
             }
-            setCallStatus('ended');
             cleanupResources();
             setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
           }, 15000);
@@ -729,21 +762,63 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         try {
           const activeCallId = callIdRef.current || callIdHint || '';
           const activeRoomId = roomId || roomIdHint || '';
-          await supabaseMessagingService.sendMessage(threadId, {
-            content: 'Missed call',
-            message_type: 'missed_call',
-            metadata: {
-              callType,
-              roomId: activeRoomId,
-              callId: activeCallId,
-              endedBy: currentUserId,
-              endedAt: new Date().toISOString(),
-            },
-          }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
+          let substantive =
+            callStatusRef.current === 'connected' || callStatusRef.current === 'connecting_media';
+          let skipSessionPatches = false;
+          if (!substantive && activeCallId) {
+            const phase = await resolveCallSessionPhase();
+            if (phase === 'active') substantive = true;
+            if (phase === 'terminal') skipSessionPatches = true;
+          }
+          if (!skipSessionPatches && activeCallId) {
+            if (substantive) {
+              await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+                call_id: activeCallId,
+                event: 'end',
+                duration_seconds: callDurationRef.current,
+              });
+            } else if (isIncoming) {
+              await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+                call_id: activeCallId,
+                event: 'reject',
+              });
+            } else {
+              await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+                call_id: activeCallId,
+                event: 'missed',
+              });
+            }
+          }
+          if (!skipSessionPatches) {
+            if (substantive) {
+              await supabaseMessagingService.sendMessage(threadId, {
+                content: 'Call ended',
+                message_type: 'ended',
+                metadata: {
+                  callType,
+                  roomId: activeRoomId,
+                  callId: activeCallId,
+                  endedBy: currentUserId,
+                  endedAt: new Date().toISOString(),
+                },
+              }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
+            } else if (!isIncoming && activeCallId) {
+              await supabaseMessagingService.sendMessage(threadId, {
+                content: 'Missed call',
+                message_type: 'missed',
+                metadata: {
+                  callType,
+                  roomId: activeRoomId,
+                  callId: activeCallId,
+                  endedBy: currentUserId,
+                  endedAt: new Date().toISOString(),
+                },
+              }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
+            }
+          }
         } catch {}
       }
       if (isMountedRef.current) {
-        setCallStatus('ended');
         cleanupResources();
         setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
       } else {
@@ -875,7 +950,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       suppressMeetingLeftSignalRef.current = false;
       remoteTerminalSignalReceivedRef.current = false;
       markConnectionMetric('call_window_initialize');
-      setCallStatus('connecting');
+      setCallStatusIfChanged('connecting');
       setError('');
       getOrCreateCallId();
       const { joinTimeoutMs } = getConnectionStrategy();
@@ -929,7 +1004,8 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
       meeting.on("meeting-joined", () => {
         if (!isMountedRef.current) return;
-        setCallStatus(isIncoming ? 'connected' : 'ringing');
+        setCallStatusIfChanged(isIncoming ? 'connected' : 'ringing');
+        if (threadId && !isIncoming) broadcastCallUiStatus('active', threadId);
         setupLocalStreamListeners(meeting);
       });
 
@@ -941,7 +1017,6 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       const joinTimeout = setTimeout(() => {
         if (isMountedRef.current && currentMeetingRef.current) {
           setError('Connection timeout.');
-          setCallStatus('ended');
           cleanupResources();
         }
       }, joinTimeoutMs);
@@ -960,7 +1035,6 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       void attachLocalMedia(meeting);
     } catch (error: any) {
       setError(`Failed to start call: ${error.message || 'Check permissions and try again.'}`);
-      setCallStatus('ended');
       cleanupResources();
     }
   };
@@ -974,12 +1048,10 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       markConnectionMetric('incoming_accept_start');
       if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
       stopAllRingtones();
-      if (typeof window !== 'undefined' && window.opener) {
-        try { window.opener.postMessage({ type: 'CALL_ACCEPTED', threadId }, window.location.origin); } catch {}
-      }
+      broadcastCallUiStatus('active', threadId);
       if (!roomIdHint) { setError('Cannot accept call - missing room information.'); setIsAcceptingCall(false); return; }
       const acceptedCallId = getOrCreateCallId();
-      setCallStatus('connecting');
+      setCallStatusIfChanged('connecting');
       const { joinTimeoutMs } = getConnectionStrategy();
 
       const [token, sdkModule] = await Promise.all([
@@ -1034,7 +1106,6 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       const joinTimeout = setTimeout(() => {
         if (isMountedRef.current && currentMeetingRef.current) {
           setError('Connection timeout.');
-          setCallStatus('ended');
           cleanupResources();
         }
       }, joinTimeoutMs);
@@ -1050,57 +1121,35 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
       if (threadId && currentUserId) {
         try {
-          await supabaseMessagingService.sendMessage(threadId, {
-            content: 'Call accepted',
-            message_type: 'call_accepted',
-            metadata: {
-              callType,
-              roomId: roomIdHint,
-              callId: acceptedCallId,
-              acceptedBy: currentUserId,
-              acceptedAt: new Date().toISOString(),
-            },
-          }, { id: currentUserId, name: decodedRecipientName });
+          await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+            call_id: acceptedCallId,
+            event: 'accept',
+          });
         } catch {}
       }
       onAccept?.();
     } catch (error: any) {
       setError(`Failed to accept call: ${error.message || 'Check permissions.'}`);
-      setCallStatus('ended');
       setIsAcceptingCall(false);
       cleanupResources();
     }
   };
 
   const handleRejectCall = async () => {
-    const actorUserId = currentUserId || user?.id || '';
-    const actorUserName = user?.user_metadata?.full_name || (isIncoming ? decodedRecipientName : decodedCallerName) || 'User';
     const activeCallId = callIdRef.current || callIdHint || '';
-    const activeRoomId = roomId || roomIdHint || '';
-    const buildSignalMeta = (extra: Record<string, unknown>) => ({
-      callType,
-      roomId: activeRoomId,
-      callId: activeCallId,
-      ...extra,
-    });
     if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
     stopAllRingtones();
-    if (threadId) {
-      const senderForSignal = { id: actorUserId || 'unknown-user', name: actorUserName };
+    if (threadId && activeCallId) {
       try {
-        await supabaseMessagingService.sendMessage(threadId, {
-          content: 'Call rejected',
-          message_type: 'call_rejected',
-          metadata: buildSignalMeta({
-            rejectedBy: actorUserId || null,
-            rejectedAt: new Date().toISOString(),
-          }),
-        }, senderForSignal);
+        await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+          call_id: activeCallId,
+          event: 'reject',
+        });
       } catch (error) {
-        console.error('Failed to send call_rejected signal:', error);
+        console.error('Failed to send declined signal:', error);
       }
     }
-    setCallStatus('ended');
+    setCallStatusIfChanged('ended');
     onReject?.();
     setTimeout(() => onClose(), 1000);
   };
@@ -1108,9 +1157,14 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const handleEndCall = async () => {
     const activeCallId = callIdRef.current || callIdHint || '';
     const activeRoomId = roomId || roomIdHint || '';
-    const isConnectedCall = callStatusRef.current === 'connected';
+    let isConnectedCall =
+      callStatusRef.current === 'connected' || callStatusRef.current === 'connecting_media';
+    if (!isConnectedCall && activeCallId && threadId) {
+      const phase = await resolveCallSessionPhase();
+      if (phase === 'active') isConnectedCall = true;
+      if (phase === 'terminal') remoteTerminalSignalReceivedRef.current = true;
+    }
     const shouldBroadcastEndSignal = !isGroupSessionRef.current;
-    const shouldSendMissedCall = !isConnectedCall && !remoteTerminalSignalReceivedRef.current;
     const buildSignalMeta = () => ({
       callType,
       roomId: activeRoomId,
@@ -1120,13 +1174,39 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     });
     if (threadId && currentUserId && callStatusRef.current !== 'ended' && shouldBroadcastEndSignal) {
       try {
-        const messageType = isConnectedCall ? 'call_ended' : (shouldSendMissedCall ? 'missed_call' : null);
-        if (messageType) {
+        if (remoteTerminalSignalReceivedRef.current) {
+          // Peer already finalized the session (declined / ended / missed).
+        } else if (isConnectedCall) {
+          if (activeCallId) {
+            await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+              call_id: activeCallId,
+              event: 'end',
+              duration_seconds: callDuration,
+            });
+          }
           await supabaseMessagingService.sendMessage(threadId, {
-            content: isConnectedCall ? 'Call ended' : 'Missed call',
-            message_type: messageType,
+            content: 'Call ended',
+            message_type: 'ended',
             metadata: buildSignalMeta(),
           }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
+        } else if (activeCallId) {
+          // Pre-answer: caller hang-up → missed; callee hang-up / dismiss → declined (reject).
+          if (isIncoming) {
+            await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+              call_id: activeCallId,
+              event: 'reject',
+            });
+          } else {
+            await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+              call_id: activeCallId,
+              event: 'missed',
+            });
+            await supabaseMessagingService.sendMessage(threadId, {
+              content: 'Missed call',
+              message_type: 'missed',
+              metadata: buildSignalMeta(),
+            }, { id: currentUserId, name: user?.user_metadata?.full_name || 'User' });
+          }
         }
       } catch {}
     }
@@ -1293,25 +1373,19 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       });
       const directThreadId = threadRes?.data?.id;
       if (!directThreadId) throw new Error('Could not find or create thread');
-      await supabaseMessagingService.sendMessage(directThreadId, {
-        content: `Incoming ${callType === 'video' ? 'video' : 'audio'} call`,
-        message_type: 'call_request',
-        metadata: {
-          callType,
-          isGroupCall: true,
-          roomId: currentRoomId,
-          callId: callIdRef.current || callIdHint || '',
-          callerId: currentUserId,
-          callerName: user?.user_metadata?.full_name || 'Unknown',
-          callerAvatarUrl:
-            user?.user_metadata?.avatar_url ||
-            user?.user_metadata?.picture ||
-            user?.user_metadata?.profile_image ||
-            undefined,
-          targetUserId: targetUser.id,
-          timestamp: new Date().toISOString(),
-        },
-      }, { id: currentUserId, name: user?.user_metadata?.full_name || 'Unknown' });
+      await apiClient.post(`/api/chat/threads/${directThreadId}/call-sessions`, {
+        call_id: callIdRef.current || callIdHint || '',
+        call_type: callType,
+        room_id: currentRoomId,
+        target_user_id: targetUser.id,
+        is_group_call: true,
+        caller_name: user?.user_metadata?.full_name || 'Unknown',
+        caller_avatar_url:
+          user?.user_metadata?.avatar_url ||
+          user?.user_metadata?.picture ||
+          user?.user_metadata?.profile_image ||
+          '',
+      });
       setShowAddPeople(false);
       setAddPeopleSearch('');
       setAddPeopleResults([]);
@@ -1407,7 +1481,11 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     if (!hasInitializedRef.current) {
       hasInitializedRef.current = true;
       initializeCall().catch(() => {
-        if (isMountedRef.current) { setError('Failed to start call.'); setCallStatus('ended'); }
+        if (isMountedRef.current) {
+          broadcastCallUiStatus('ended', threadId);
+          setError('Failed to start call.');
+          setCallStatusIfChanged('ended');
+        }
       });
     }
     return () => { if (!isOpen) cleanupResources(); };
@@ -1425,7 +1503,6 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       stopAllRingtones();
       if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
       if (isMountedRef.current) {
-        setCallStatusIfChanged('ended');
         cleanupResources();
         setTimeout(() => { if (isMountedRef.current) onClose(); }, delayMs);
       }
@@ -1439,10 +1516,16 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
       if (!matchesActiveCallMeta(meta)) return;
 
       const matchesRemoteSignal = shouldHandleSignal(msg, messageType);
-      const acceptedElsewhereByMe = messageType === 'call_accepted' && meta?.acceptedBy === currentUserId;
-      const rejectedElsewhereByMe = messageType === 'call_rejected' && meta?.rejectedBy === currentUserId;
+      const mt = toCallSessionStatusMessageType(messageType as string);
+      const isAccept = mt === 'active';
+      const isReject = mt === 'declined';
+      const isMissed = mt === 'missed';
+      const isEnded = mt === 'ended';
+      const isFailed = mt === 'failed';
+      const acceptedElsewhereByMe = isAccept && meta?.acceptedBy === currentUserId;
+      const rejectedElsewhereByMe = isReject && meta?.rejectedBy === currentUserId;
 
-      if (messageType === 'call_accepted') {
+      if (isAccept) {
         if (!isIncoming && matchesRemoteSignal && meta?.acceptedBy) {
           if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
           stopAllRingtones();
@@ -1457,7 +1540,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         return;
       }
 
-      if (messageType === 'call_rejected') {
+      if (isReject) {
         if (isGroupSessionRef.current) return;
         if (matchesRemoteSignal || (isIncoming && rejectedElsewhereByMe)) {
           closeCallUi(isIncoming ? 800 : 1000);
@@ -1465,16 +1548,15 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         return;
       }
 
-      if (messageType === 'missed_call') {
+      if (isMissed) {
         if (isGroupSessionRef.current) return;
-        // Fallback: if reject signal is missed, missed_call still means this ringing attempt is over.
         if (matchesRemoteSignal) {
           closeCallUi(1000);
         }
         return;
       }
 
-      if (messageType === 'call_ended' && !isGroupSessionRef.current && matchesRemoteSignal && meta?.endedBy) {
+      if ((isEnded || isFailed) && !isGroupSessionRef.current && matchesRemoteSignal && (meta?.endedBy || isFailed)) {
         closeCallUi(1000);
       }
     });
@@ -1482,37 +1564,41 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     return () => { unsub(); };
   }, [isOpen, threadId, currentUserId, isIncoming, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal, matchesActiveCallMeta, setMediaConnectingStatus, normalizeSignalMeta, setCallStatusIfChanged]);
 
-  // Polling fallback for call end
+  // Polling fallback for call end (outgoing ring only). Incoming accept UI already uses Realtime;
+  // polling here hit /call-sessions every 3s and contributed to duplicate requests / flicker.
   useEffect(() => {
     if (!isOpen || !threadId) return;
+    if (isIncoming) return;
     if (isGroupSessionRef.current) return;
     if (callStatus === 'connected' || callStatus === 'connecting_media' || callStatus === 'ended') return;
     if (isAcceptingCall) return;
     let cancelled = false;
     const poll = async () => {
       try {
-        const res = await apiClient.get<{ data: any[] }>(`/api/chat/threads/${threadId}/messages`, { limit: 20 });
+        const cid = callIdRef.current || callIdHint || '';
+        if (!cid) return;
+        const res = await apiClient.get<{ session: Record<string, unknown> | null }>(
+          `/api/chat/threads/${threadId}/call-sessions`,
+          { call_id: cid }
+        );
         if (cancelled) return;
-        const msgs = (res?.data || []).filter((m: any) => (
-          ['call_ended', 'call_rejected', 'missed_call'].includes(m.message_type) &&
-          shouldHandleSignal(m)
-        ));
-        const latest = msgs.length > 0 ? msgs[msgs.length - 1] : null;
-        if (latest && Date.now() - new Date(latest.created_at).getTime() < 120000) {
+        const session = res?.session;
+        const latest = session ? callSessionRowToPollTerminalMessage(session) : null;
+        if (latest && shouldHandleSignal(latest) && Date.now() - new Date(latest.updated_at || latest.created_at).getTime() < 120000) {
           remoteTerminalSignalReceivedRef.current = true;
           suppressMeetingLeftSignalRef.current = true;
           if (ringtoneRef.current) { ringtoneRef.current.stop(); ringtoneRef.current = null; }
           stopAllRingtones();
           if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
-          if (isMountedRef.current) { setCallStatusIfChanged('ended'); cleanupResources(); setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000); }
+          if (isMountedRef.current) { cleanupResources(); setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000); }
           return;
         }
       } catch {}
     };
-    const interval = setInterval(poll, 3000);
-    const initial = setTimeout(poll, 2000);
+    const interval = setInterval(poll, 8000);
+    const initial = setTimeout(poll, 4000);
     return () => { cancelled = true; clearInterval(interval); clearTimeout(initial); };
-  }, [isOpen, threadId, currentUserId, callStatus, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal, setCallStatusIfChanged]);
+  }, [isOpen, threadId, currentUserId, isIncoming, callStatus, isAcceptingCall, cleanupResources, onClose, shouldHandleSignal, setCallStatusIfChanged, callIdHint]);
 
   // Screen share video ref fallback
   useEffect(() => {
@@ -1583,6 +1669,10 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
   // Call duration timer
   useEffect(() => {
+    callDurationRef.current = callDuration;
+  }, [callDuration]);
+
+  useEffect(() => {
     let interval: NodeJS.Timeout;
     if (callStatus === 'connected') { interval = setInterval(() => setCallDuration(p => p + 1), 1000); }
     return () => clearInterval(interval);
@@ -1612,7 +1702,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   // Transition incoming to ringing
   useEffect(() => {
     if (isIncoming && isOpen && callStatus === 'connecting' && !isAcceptingCall) {
-      setCallStatus('ringing');
+      setCallStatusIfChanged('ringing');
       callTimeoutRef.current = setTimeout(() => { handleRejectCall(); }, 45000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

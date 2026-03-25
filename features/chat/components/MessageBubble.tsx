@@ -1,5 +1,6 @@
 import MessageStatusIndicator from "@/features/chat/components/MessageStatusIndicator";
 import type { ChatMessage, ChatAttachment } from "@/features/chat/services/supabaseMessagingService";
+import { toCallSessionStatusMessageType } from "@/features/chat/services/callSessionRealtime";
 import { formatDistanceToNow } from "date-fns";
 import { Download, FileText, MoreVertical, UserCircle } from "lucide-react";
 import React, { useState, useMemo } from "react";
@@ -124,7 +125,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   if (isDeletedForMe) return null;
 
   // Show "Call ended" as a centered system message in the chat
-  if (message.message_type === "call_ended") {
+  if (toCallSessionStatusMessageType(message.message_type || "") === "ended") {
     return (
       <div className="flex justify-center mb-3">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs">
@@ -135,9 +136,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   }
 
   const systemMessageTypes = [
-    "call_ended",
-    "call_accepted",
-    "call_request",
+    "initiated",
+    "ringing",
+    "active",
+    "declined",
+    "ended",
+    "missed",
+    "failed",
     "call_notification",
     "hand_raised",
     "reaction",

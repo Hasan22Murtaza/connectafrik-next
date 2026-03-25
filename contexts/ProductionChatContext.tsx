@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
+import { toCallSessionStatusMessageType } from '@/features/chat/services/callSessionRealtime'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
@@ -26,7 +27,7 @@ interface ThreadOptions {
   openInDock?: boolean
 }
 
-interface CallRequest {
+export interface CallRequest {
   threadId: string
   type: 'audio' | 'video'
   callerId: string
@@ -66,6 +67,19 @@ interface ProductionChatContextType {
   setMessagesForThread: (threadId: string, messages: ChatMessage[]) => void
 }
 
+function parseCallSessionMetadata(raw: unknown): Record<string, any> {
+  if (!raw) return {}
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw)
+      return typeof p === 'object' && p && !Array.isArray(p) ? p : {}
+    } catch {
+      return {}
+    }
+  }
+  return typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, any>) : {}
+}
+
 const ProductionChatContext = createContext<ProductionChatContextType | undefined>(undefined)
 
 export const useProductionChat = () => {
@@ -85,6 +99,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
   const callRequestsRef = useRef<Record<string, CallRequest>>({})
   const callStartInFlightRef = useRef<Set<string>>(new Set())
+  /** Dedupes poll + Realtime so we do not open two modals for the same call_id. */
+  const dispatchedIncomingCallIdsRef = useRef<Set<string>>(new Set())
+  /** Main window: pause /calls/incoming poll while a call is active (accept is signaled via postMessage). */
+  const pauseIncomingCallsPollRef = useRef(false)
 
   const currentUser = useMemo(() => {
     if (!user) return null
@@ -585,29 +603,21 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }))
       }
 
-      // Signal in background so caller connection setup is not delayed by push/message side effects
-      void supabaseMessagingService.sendMessage(
-        threadId,
-        {
-          content: `Incoming ${type === 'video' ? 'video' : 'audio'} call`,
-          message_type: 'call_request',
-          metadata: {
-            callType: type,
-            roomId,
-            token,
-            callerId: currentUser?.id,
-            callerName: currentUser?.name,
-            callerAvatarUrl: currentUser?.avatarUrl,
-            targetUserId: resolvedTargetUserId,
-            isGroupCall,
-            callId,
-            timestamp: new Date().toISOString()
-          }
-        },
-        { id: currentUser?.id || '', name: currentUser?.name || 'Unknown' }
-      ).catch((msgError) => {
-        console.warn('⚠️ Failed to send call notification:', msgError)
-      })
+      // Signal in background: call_sessions row + push (no chat_messages spam)
+      void apiClient
+        .post(`/api/chat/threads/${threadId}/call-sessions`, {
+          call_id: callId,
+          call_type: type,
+          room_id: roomId,
+          token,
+          target_user_id: resolvedTargetUserId || undefined,
+          is_group_call: isGroupCall,
+          caller_name: currentUser?.name || 'Unknown',
+          caller_avatar_url: currentUser?.avatarUrl || '',
+        })
+        .catch((msgError) => {
+          console.warn('⚠️ Failed to create call session:', msgError)
+        })
     } catch (error) {
       console.error('Failed to start call:', error)
       throw error // Re-throw so caller can handle it
@@ -624,6 +634,43 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     })
   }, [])
 
+  const tryDispatchIncomingFromCallSession = useCallback(
+    (row: Record<string, any>) => {
+      if (!currentUser) return
+      if (row.created_by === currentUser.id) return
+      if (row.status !== 'ringing' && row.status !== 'initiated') return
+      const meta = parseCallSessionMetadata(row.metadata)
+      if (meta.targetUserId && meta.targetUserId !== currentUser.id) return
+      const roomId = (row.room_id as string) || (meta.roomId as string)
+      const callType = (row.call_type as string) || (meta.callType as string)
+      const callId = (row.call_id as string) || (meta.callId as string)
+      if (!roomId || !callType || !callId) return
+      const existing = callRequestsRef.current[row.thread_id]
+      if (existing?.callId === callId) return
+      if (dispatchedIncomingCallIdsRef.current.has(callId)) return
+      dispatchedIncomingCallIdsRef.current.add(callId)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('incomingCall', {
+            detail: {
+              threadId: row.thread_id,
+              type: callType,
+              callerId: row.created_by,
+              callerName: (meta.callerName as string) || 'Unknown',
+              callerAvatarUrl: meta.callerAvatarUrl as string | undefined,
+              roomId,
+              token: meta.token as string | undefined,
+              targetUserId: meta.targetUserId as string | undefined,
+              callId,
+              isGroupCall: meta.isGroupCall === true,
+            },
+          })
+        )
+      }
+    },
+    [currentUser]
+  )
+
   // Listen for incoming call requests (from WebSocket/Realtime)
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -631,21 +678,32 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     const handleIncomingCall = (event: CustomEvent) => {
       const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, targetUserId, callId, isGroupCall } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
-      
-      setCallRequests(prev => ({
-        ...prev,
-        [threadId]: {
-          threadId,
-          type,
-          callerId,
-          callerName,
-          callerAvatarUrl,
-          roomId,
-          targetUserId,
-          callId,
-          isGroupCall,
+
+      setCallRequests(prev => {
+        const cur = prev[threadId]
+        if (
+          cur &&
+          cur.callId === callId &&
+          cur.roomId === roomId &&
+          cur.callerId === callerId
+        ) {
+          return prev
         }
-      }))
+        return {
+          ...prev,
+          [threadId]: {
+            threadId,
+            type,
+            callerId,
+            callerName,
+            callerAvatarUrl,
+            roomId,
+            targetUserId,
+            callId,
+            isGroupCall,
+          },
+        }
+      })
     }
 
     window.addEventListener('incomingCall', handleIncomingCall as EventListener)
@@ -709,43 +767,19 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           return { ...prev, [threadId]: [...current, message] }
         })
 
-        if (message.message_type === 'call_request' && message.sender_id !== currentUser.id) {
-          const metadata = message.metadata as any
-          if (metadata?.targetUserId && metadata.targetUserId !== currentUser.id) {
-            return
-          }
-          if (metadata?.roomId && metadata?.callType) {
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('incomingCall', {
-                detail: {
-                  threadId: threadId,
-                  type: metadata.callType,
-                  callerId: message.sender_id,
-                  callerName: message.sender?.name || metadata?.callerName || 'Unknown',
-                  callerAvatarUrl: message.sender?.avatarUrl || metadata?.callerAvatarUrl,
-                  roomId: metadata.roomId,
-                  token: metadata.token,
-                  targetUserId: metadata.targetUserId,
-                  callId: metadata.callId,
-                  isGroupCall: metadata.isGroupCall === true,
-                }
-              }))
-            }
-          }
-        }
+        // Incoming calls use call_sessions + tryDispatchIncomingFromCallSession only (no chat_messages).
         // Clear call request when call finishes (missed or ended) so UI updates for both parties.
-        if (message.message_type === 'missed_call' || message.message_type === 'call_ended') {
+        const mt = toCallSessionStatusMessageType(message.message_type || '')
+        if (mt === 'missed' || mt === 'ended' || mt === 'failed') {
           clearCallRequest(threadId)
         }
-        // If this user accepted the call on another device, hide any pending incoming call UI on this device.
-        if (message.message_type === 'call_accepted') {
+        if (mt === 'active') {
           const metadata = (message.metadata || {}) as any
           if (metadata?.acceptedBy && metadata.acceptedBy === currentUser.id) {
             clearCallRequest(threadId)
           }
         }
-        // If this user rejected the call on another device, hide any pending incoming call UI on this device.
-        if (message.message_type === 'call_rejected') {
+        if (mt === 'declined') {
           const metadata = (message.metadata || {}) as any
           if (metadata?.rejectedBy && metadata.rejectedBy === currentUser.id) {
             clearCallRequest(threadId)
@@ -818,21 +852,42 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     if (!currentUser) return
 
+    const channelName = `global-call-sessions:${currentUser.id}:${Date.now().toString(36)}`
     const channel = supabase
-      .channel('global-call-accepted-listener')
+      .channel(channelName)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: 'message_type=eq.call_accepted'
-        },
-        async (payload) => {
-          const msg = payload.new as any
-          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
-          if (metadata?.acceptedBy && metadata.acceptedBy === currentUser.id) {
-            clearCallRequest(msg.thread_id)
+        { event: 'INSERT', schema: 'public', table: 'call_sessions' },
+        (payload) => {
+          const row = payload.new as Record<string, any>
+          // RLS on call_sessions already limits events to threads this user participates in.
+          tryDispatchIncomingFromCallSession(row)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'call_sessions' },
+        (payload) => {
+          const row = payload.new as Record<string, any>
+          const meta = parseCallSessionMetadata(row.metadata)
+          const st = String(row.status || '')
+          const lsRaw = meta.last_signal as string | undefined
+          const lsNorm = lsRaw ? toCallSessionStatusMessageType(String(lsRaw)) : ''
+          if (meta.acceptedBy === currentUser.id && (st === 'active' || lsNorm === 'active')) {
+            clearCallRequest(row.thread_id)
+          }
+          if (meta.rejectedBy === currentUser.id && (st === 'declined' || lsNorm === 'declined')) {
+            clearCallRequest(row.thread_id)
+          }
+          if (
+            st === 'ended' ||
+            st === 'missed' ||
+            st === 'failed' ||
+            lsNorm === 'ended' ||
+            lsNorm === 'missed' ||
+            lsNorm === 'failed'
+          ) {
+            clearCallRequest(row.thread_id)
           }
         }
       )
@@ -841,91 +896,68 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser, clearCallRequest])
+  }, [currentUser, clearCallRequest, tryDispatchIncomingFromCallSession])
 
+  // Pause poll while user is in an active call (popup notifies opener via CALL_STATUS).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'active') {
+        pauseIncomingCallsPollRef.current = true
+      }
+      if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'ended') {
+        pauseIncomingCallsPollRef.current = false
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  // Event-driven fallback for incoming calls (Realtime is primary).
+  // Avoid continuous polling; only perform one initial check and on visibility/focus wake-ups.
   useEffect(() => {
     if (!currentUser) return
+    // Dedicated call window runs the same provider; do not poll for incoming calls there.
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/call/')) return
+    let cancelled = false
 
-    const channel = supabase
-      .channel('global-call-rejected-listener')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: 'message_type=eq.call_rejected'
-        },
-        async (payload) => {
-          const msg = payload.new as any
-          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
-          if (metadata?.rejectedBy && metadata.rejectedBy === currentUser.id) {
-            clearCallRequest(msg.thread_id)
-          }
+    const tick = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      if (pauseIncomingCallsPollRef.current) return
+      try {
+        const res = await apiClient.get<{ sessions: Record<string, any>[] }>('/api/chat/calls/incoming')
+        if (cancelled) return
+        const sessions = res?.sessions ?? []
+        for (const row of sessions) {
+          tryDispatchIncomingFromCallSession(row)
         }
-      )
-      .subscribe()
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void tick()
+    }
+    const onFocus = () => {
+      void tick()
+    }
+
+    const initial = window.setTimeout(() => {
+      void tick()
+    }, 800)
+
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onFocus)
 
     return () => {
-      supabase.removeChannel(channel)
+      cancelled = true
+      window.clearTimeout(initial)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onFocus)
     }
-  }, [currentUser, clearCallRequest])
-
-  useEffect(() => {
-    if (!currentUser) return
-
-    const channel = supabase
-      .channel('global-call-listener')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: 'message_type=eq.call_request'
-        },
-        async (payload) => {
-          const msg = payload.new as any
-          if (msg.sender_id === currentUser.id) return
-
-          // Guard against cross-thread/cross-team ringing:
-          // only dispatch incoming calls for threads the current user can access.
-          try {
-            await apiClient.get<{ data: unknown }>(`/api/chat/threads/${msg.thread_id}`)
-          } catch {
-            return
-          }
-
-          const metadata = typeof msg.metadata === 'string' ? JSON.parse(msg.metadata) : msg.metadata
-          if (metadata?.targetUserId && metadata.targetUserId !== currentUser.id) {
-            return
-          }
-          if (metadata?.roomId && metadata?.callType) {
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('incomingCall', {
-                detail: {
-                  threadId: msg.thread_id,
-                  type: metadata.callType,
-                  callerId: msg.sender_id,
-                  callerName: metadata.callerName || 'Unknown',
-                  callerAvatarUrl: metadata.callerAvatarUrl,
-                  roomId: metadata.roomId,
-                  token: metadata.token,
-                  targetUserId: metadata.targetUserId,
-                  callId: metadata.callId,
-                  isGroupCall: metadata.isGroupCall === true,
-                }
-              }))
-            }
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [currentUser])
+  }, [currentUser, tryDispatchIncomingFromCallSession])
 
   useEffect(() => {
     if (!user?.id) return

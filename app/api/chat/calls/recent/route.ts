@@ -2,7 +2,14 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
-const CALL_TYPES = ['call_request', 'call_accepted', 'call_ended', 'call_rejected', 'missed_call']
+/** Align API message_type with call_sessions.status (Postgres check constraint). */
+function statusToMessageType(status: string | null | undefined): string {
+  const s = (status || '').trim()
+  if (['initiated', 'ringing', 'active', 'ended', 'failed', 'missed', 'declined'].includes(s)) {
+    return s
+  }
+  return 'ringing'
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,38 +36,28 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const { data: callMessages, error } = await serviceClient
-      .from('chat_messages')
-      .select('thread_id, message_type, created_at')
+    const { data: sessions, error } = await serviceClient
+      .from('call_sessions')
+      .select('thread_id, status, call_type, metadata, started_at, ended_at, updated_at, created_at')
       .in('thread_id', threadIds)
-      .in('message_type', CALL_TYPES)
-      .eq('is_deleted', false)
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
 
     if (error) return errorResponse(error.message, 400)
-    const list = callMessages || []
+    const list = sessions || []
 
-    // Defensive dedupe for duplicated rows coming from upstream sources.
-    const uniqueRows: any[] = []
-    const seenRowKeys = new Set<string>()
-    for (const m of list) {
-      const rowKey = `${m.thread_id}:${m.message_type}:${m.created_at}`
-      if (seenRowKeys.has(rowKey)) continue
-      seenRowKeys.add(rowKey)
-      uniqueRows.push(m)
-    }
-
-    // Keep only the latest call signal per thread.
     const byThread = new Map<string, any>()
-    for (const m of uniqueRows) {
-      const existing = byThread.get(m.thread_id)
-      if (!existing || new Date(m.created_at).getTime() > new Date(existing.created_at).getTime()) {
-        byThread.set(m.thread_id, m)
+    for (const s of list) {
+      const existing = byThread.get(s.thread_id)
+      const t = new Date(s.updated_at || s.created_at).getTime()
+      const et = existing ? new Date(existing.updated_at || existing.created_at).getTime() : 0
+      if (!existing || t > et) {
+        byThread.set(s.thread_id, s)
       }
     }
 
     const recentAll = [...byThread.values()].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      (a, b) =>
+        new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
     )
     const recent = recentAll.slice(from, to + 1)
 
@@ -99,30 +96,34 @@ export async function GET(request: NextRequest) {
     }
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
-    const result = recent.map((r: any) => {
-      const thread = threadMap.get(r.thread_id)
-      const participantIds = participantsByThread.get(r.thread_id) || []
-      const otherId = participantIds.find((id) => id !== user.id) || null
-      const otherProfile = otherId ? profileMap.get(otherId) : null
-      const contactName =
-        otherProfile?.full_name ||
-        otherProfile?.username ||
-        thread?.title ||
-        thread?.name ||
-        'Unknown'
+    const result = recent
+      .map((r: any) => {
+        const thread = threadMap.get(r.thread_id)
+        const participantIds = participantsByThread.get(r.thread_id) || []
+        const otherId = participantIds.find((id) => id !== user.id) || null
+        const otherProfile = otherId ? profileMap.get(otherId) : null
+        const contactName =
+          otherProfile?.full_name ||
+          otherProfile?.username ||
+          thread?.title ||
+          thread?.name ||
+          'Unknown'
 
-      return {
-        thread_id: r.thread_id,
-        created_at: r.created_at,
-        message_type: r.message_type,
-        thread_name: thread?.title || thread?.name || null,
-        contact_id: otherId,
-        contact_name: contactName,
-        contact_avatar_url: otherProfile?.avatar_url || null,
-        contact_status: otherProfile?.status || 'offline',
-        contact_last_seen: otherProfile?.last_seen || null,
-      }
-    }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        const meta = (r.metadata && typeof r.metadata === 'object' ? r.metadata : {}) as Record<string, unknown>
+        return {
+          thread_id: r.thread_id,
+          created_at: r.updated_at || r.created_at,
+          message_type: statusToMessageType(r.status),
+          metadata: { ...meta, callType: r.call_type || meta.callType },
+          thread_name: thread?.title || thread?.name || null,
+          contact_id: otherId,
+          contact_name: contactName,
+          contact_avatar_url: otherProfile?.avatar_url || null,
+          contact_status: otherProfile?.status || 'offline',
+          contact_last_seen: otherProfile?.last_seen || null,
+        }
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
     return jsonResponse({
       data: result,

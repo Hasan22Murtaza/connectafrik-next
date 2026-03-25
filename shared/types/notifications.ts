@@ -39,10 +39,14 @@ export type NotificationType =
   | 'friend_request_declined'
   // Communication
   | 'chat_message'
-  | 'missed_call'
-  | 'call_accepted'
-  | 'call_ended'
-  | 'call_rejected'
+  /** Align with call_sessions.status */
+  | 'initiated'
+  | 'ringing'
+  | 'active'
+  | 'ended'
+  | 'declined'
+  | 'missed'
+  | 'failed'
   // Other
   | 'birthday'
 
