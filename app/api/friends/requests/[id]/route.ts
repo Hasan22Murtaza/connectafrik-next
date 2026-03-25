@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { notificationService } from '@/shared/services/notificationService'
 
 export async function GET(
   request: NextRequest,
@@ -55,7 +56,7 @@ export async function PATCH(
 
     const { data: row, error: fetchError } = await supabase
       .from('friend_requests')
-      .select('id, receiver_id, status')
+      .select('id, sender_id, receiver_id, status')
       .eq('id', id)
       .single()
 
@@ -80,6 +81,35 @@ export async function PATCH(
 
     if (updateError) {
       return errorResponse(updateError.message, 400)
+    }
+
+    // Notify sender of accepted/declined request (best-effort)
+    if (row.sender_id && row.sender_id !== user.id) {
+      const { data: receiverProfile } = await supabase
+        .from('profiles')
+        .select('full_name, username')
+        .eq('id', user.id)
+        .single()
+
+      const receiverName = receiverProfile?.full_name || receiverProfile?.username || 'Someone'
+
+      if (status === 'accepted') {
+        await notificationService.sendNotification({
+          user_id: row.sender_id,
+          title: 'Friend request accepted',
+          body: `${receiverName} accepted your friend request`,
+          notification_type: 'friend_request_accepted',
+          data: { type: 'friend_request_accepted', receiver_id: user.id, receiver_name: receiverName, url: '/friends' },
+        })
+      } else if (status === 'declined') {
+        await notificationService.sendNotification({
+          user_id: row.sender_id,
+          title: 'Friend request declined',
+          body: `${receiverName} declined your friend request`,
+          notification_type: 'friend_request_declined',
+          data: { type: 'friend_request_declined', receiver_id: user.id, receiver_name: receiverName, url: '/friends' },
+        })
+      }
     }
 
     return jsonResponse(updated)

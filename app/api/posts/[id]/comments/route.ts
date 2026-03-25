@@ -248,8 +248,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         user_id: postData.author_id,
         title: 'New Comment',
         body: `${actorName} commented on your post${postTitle ? `: "${postTitle}"` : ''}`,
-        notification_type: 'comment',
+        notification_type: 'post_comment',
         data: {
+          type: 'post_comment',
           action: 'comment',
           post_id: postId,
           actor_id: user.id,

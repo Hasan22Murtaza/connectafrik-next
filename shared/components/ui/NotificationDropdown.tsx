@@ -311,6 +311,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         case 'post_comment':
         case 'post_share':
         case 'post_reaction':
+        case 'post_comment_like':
         case 'like': {
           const postId = data.post_id || data.content_id
           if (postId) {
@@ -324,28 +325,13 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           break
         }
 
-        // Comment interactions → navigate to the post with comment
-        case 'comment':
-        case 'comment_reply':
-        case 'comment_like':
-        case 'comment_reaction': {
-          const postId = data.post_id || data.content_id
-          const commentId = data.comment_id
-          if (postId) {
-            router.push(`/post/${postId}${commentId ? `?comment=${commentId}` : ''}`)
-          } else if (fallbackUrl) {
-            router.push(fallbackUrl)
-          } else {
-            router.push('/feed')
-          }
-          onClose()
-          break
-        }
+       
 
         // Reel interactions → navigate to the reel
         case 'reel_like':
         case 'reel_comment':
-        case 'reel_share': {
+        case 'reel_share':
+        case 'reel_comment_like': {
           const reelId = data.reel_id || data.content_id
           if (reelId) {
             router.push(`/reels?reel=${reelId}`)
@@ -369,6 +355,22 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             router.push(`/user/${username}`)
           } else if (followerId) {
             router.push(`/user/${followerId}`)
+          }
+          onClose()
+          break
+        }
+
+        case 'unfollow': {
+          const followerId = data.follower_id || data.actor_id || data.user_id
+          const username = data.follower_username || data.username
+          if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else if (username) {
+            router.push(`/user/${username}`)
+          } else if (followerId) {
+            router.push(`/user/${followerId}`)
+          } else {
+            router.push('/feed')
           }
           onClose()
           break
@@ -436,7 +438,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         }
 
         // Missed call → open chat with caller
-        case 'missed': {
+        case 'call': {
           const threadId = data.thread_id || data.chat_thread_id
           const actorId = data.caller_id || data.sender_id || data.actor_id || data.user_id
           const actorName = data.caller_name || data.sender_name || data.actor_name || 'User'
@@ -453,6 +455,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           onClose()
           break
         }
+
+       
 
         // Order notification → navigate to order detail page
         case 'new_order': {

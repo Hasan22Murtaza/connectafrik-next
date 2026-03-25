@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
 import { getFirebaseAdmin } from '../fcm/_utils'
 import type { NotificationType } from '@/shared/types/notifications'
+import { isCanonicalNotificationType } from '@/shared/types/notifications'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,6 +67,71 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const normalizeIncomingType = (raw: unknown, embeddedRaw: unknown): NotificationType | null => {
+      const candidate = (typeof raw === 'string' && raw.trim()) || (typeof embeddedRaw === 'string' && embeddedRaw.trim()) || ''
+      if (!candidate) return null
+
+      // Canonical types (your requested list)
+      if (isCanonicalNotificationType(candidate)) return candidate
+
+      // Legacy mappings → canonical
+      switch (candidate) {
+        case 'like':
+          return 'post_like'
+        case 'comment':
+          return 'post_comment'
+        case 'comment_like':
+          return 'post_comment_like'
+        case 'friend_request_confirmed':
+          return 'friend_request_accepted'
+        case 'initiated':
+        case 'ringing':
+        case 'active':
+        case 'ended':
+        case 'declined':
+        case 'missed':
+        case 'failed':
+          return 'call'
+        default:
+          return null
+      }
+    }
+
+    const embeddedType = body?.data && typeof body.data === 'object' ? (body.data as any)?.type : undefined
+    const canonicalType = normalizeIncomingType(notification_type, embeddedType)
+
+    if (!canonicalType) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Invalid notification_type. Allowed types: ' +
+            [
+              'new_order',
+              'post_like',
+              'post_comment',
+              'post_comment_like',
+              'post_share',
+              'post_reaction',
+              'reel_like',
+              'reel_comment',
+              'reel_share',
+              'reel_comment_like',
+              'follow',
+              'unfollow',
+              'mention',
+              'friend_request',
+              'friend_request_accepted',
+              'friend_request_declined',
+              'chat_message',
+              'call',
+              'birthday',
+            ].join(', '),
+        },
+        { status: 400, headers: corsHeaders }
+      )
+    }
+
     // Step 1: Create notification record in database (unless skip_db is true)
     let notificationId: string | null = null
     if (!skip_db) {
@@ -73,10 +139,10 @@ export async function POST(request: NextRequest) {
         .from('notifications')
         .insert({
           user_id,
-          type: notification_type || 'system',
+          type: canonicalType,
           title,
           message: notificationBody,
-          data: body.data || {},
+          data: { ...(body.data || {}), type: canonicalType },
           is_read: false
         })
         .select('id')

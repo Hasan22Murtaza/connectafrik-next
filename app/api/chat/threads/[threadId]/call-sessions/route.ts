@@ -178,10 +178,12 @@ async function insertCallNotificationRow(
 ): Promise<void> {
   const base = { user_id: params.user_id, title: params.title, message: params.message, is_read: false }
   const tries: Record<string, unknown>[] = [
-    { ...base, type: params.preferredType, data: params.data },
-    { ...base, type: 'system', data: { ...params.data, type: params.preferredType } },
-    { ...base, type: 'system', payload: params.data },
-    { ...base, type: 'system', metadata: params.data },
+    // Persist as canonical type `call` while preserving the specific call status in JSON
+    // so clients can still render "missed/declined/ended/active" accurately.
+    { ...base, type: 'call', data: params.data },
+    { ...base, type: 'call', data: { ...params.data, type: params.preferredType } },
+    { ...base, type: 'call', payload: params.data },
+    { ...base, type: 'call', metadata: params.data },
   ]
   for (let i = 0; i < tries.length; i += 1) {
     const { error } = await serviceClient.from('notifications').insert(tries[i] as never).select('id').maybeSingle()

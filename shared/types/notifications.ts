@@ -18,6 +18,7 @@ export type NotificationType =
   // Post interactions
   | 'post_like'
   | 'post_comment'
+  | 'post_comment_like'
   | 'post_share'
   | 'post_reaction'
   // Comment interactions
@@ -29,8 +30,10 @@ export type NotificationType =
   | 'reel_like'
   | 'reel_comment'
   | 'reel_share'
+  | 'reel_comment_like'
   // Social
   | 'follow'
+  | 'unfollow'
   | 'mention'
   // Friend requests
   | 'friend_request'
@@ -39,6 +42,7 @@ export type NotificationType =
   | 'friend_request_declined'
   // Communication
   | 'chat_message'
+  | 'call'
   /** Align with call_sessions.status */
   | 'initiated'
   | 'ringing'
@@ -49,6 +53,38 @@ export type NotificationType =
   | 'failed'
   // Other
   | 'birthday'
+
+/**
+ * Canonical types you requested for persisted notifications.
+ * (Legacy/aux types like `system`, `like`, `comment`, call session statuses, etc. may still exist in older rows.)
+ */
+export const CANONICAL_NOTIFICATION_TYPES = [
+  'new_order',
+  'post_like',
+  'post_comment',
+  'post_comment_like',
+  'post_share',
+  'post_reaction',
+  'reel_like',
+  'reel_comment',
+  'reel_share',
+  'reel_comment_like',
+  'follow',
+  'unfollow',
+  'mention',
+  'friend_request',
+  'friend_request_accepted',
+  'friend_request_declined',
+  'chat_message',
+  'call',
+  'birthday',
+] as const satisfies readonly NotificationType[]
+
+export type CanonicalNotificationType = (typeof CANONICAL_NOTIFICATION_TYPES)[number]
+
+export function isCanonicalNotificationType(value: unknown): value is CanonicalNotificationType {
+  return typeof value === 'string' && (CANONICAL_NOTIFICATION_TYPES as readonly string[]).includes(value)
+}
 
 export interface CreateNotificationData {
   user_id: string

@@ -99,6 +99,35 @@ export async function DELETE(request: NextRequest) {
     await supabase.rpc('decrement_following_count', { user_id: user.id })
     await supabase.rpc('decrement_follower_count', { user_id: following_id })
 
+    // Optional: notify user about unfollow (best-effort)
+    const { data: targetProfile } = await supabase
+      .from('profiles')
+      .select('follow_notifications')
+      .eq('id', following_id)
+      .single()
+
+    if (targetProfile?.follow_notifications) {
+      const { data: followerProfile } = await supabase
+        .from('profiles')
+        .select('username, full_name')
+        .eq('id', user.id)
+        .single()
+
+      const follower_name = followerProfile?.full_name || followerProfile?.username || 'Someone'
+      await notificationService.sendNotification({
+        user_id: following_id,
+        title: 'Unfollow',
+        body: `${follower_name} unfollowed you`,
+        notification_type: 'unfollow',
+        data: {
+          type: 'unfollow',
+          follower_id: user.id,
+          follower_name,
+          url: `/user/${followerProfile?.username || user.id}`,
+        },
+      })
+    }
+
     return jsonResponse({ success: true, unfollowed: true })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'

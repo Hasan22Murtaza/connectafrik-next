@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
 import { useRouter } from 'next/navigation'
+import { useProductionChat } from '@/contexts/ProductionChatContext'
 
 type FilterType = 'all' | 'unread' | NotificationType
 
@@ -22,6 +23,7 @@ const NotificationsPage: React.FC = () => {
   const PAGE_SIZE = 20
   const { user } = useAuth()
   const router = useRouter()
+  const { startChatWithMembers, openThread } = useProductionChat()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -160,6 +162,176 @@ const NotificationsPage: React.FC = () => {
     } catch (error) {
       console.error('Error marking notification as read:', error)
       toast.error('Failed to mark notification as read')
+    }
+  }
+
+  // Navigate based on notification type (mirrors dropdown behavior)
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.is_read) {
+      await markAsRead(notification.id)
+    }
+
+    const data = notification.data || {}
+    const fallbackUrl = data.url as string | undefined
+
+    try {
+      switch (notification.type) {
+        case 'chat_message': {
+          const threadId = data.thread_id || data.chat_thread_id
+          const actorId = data.sender_id || data.actor_id || data.user_id
+          const actorName = data.sender_name || data.actor_name || data.username || 'User'
+          const actorAvatar = data.actor_avatar || data.avatar_url || ''
+
+          if (threadId) {
+            openThread(threadId)
+          } else if (actorId) {
+            await startChatWithMembers(
+              [{ id: actorId, name: actorName, avatarUrl: actorAvatar }],
+              { participant_ids: [actorId], type: 'direct', openInDock: true }
+            )
+          }
+          break
+        }
+
+        // Post interactions
+        case 'post_like':
+        case 'post_comment':
+        case 'post_share':
+        case 'post_reaction':
+        case 'post_comment_like':
+        case 'like': {
+          const postId = data.post_id || data.content_id
+          if (postId) {
+            router.push(`/post/${postId}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/feed')
+          }
+          break
+        }
+
+        // Reel interactions
+        case 'reel_like':
+        case 'reel_comment':
+        case 'reel_share':
+        case 'reel_comment_like': {
+          const reelId = data.reel_id || data.content_id
+          if (reelId) {
+            router.push(`/reels?reel=${reelId}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/reels')
+          }
+          break
+        }
+
+        case 'follow':
+        case 'unfollow': {
+          const followerId = data.follower_id || data.actor_id || data.user_id
+          const username = data.follower_username || data.username || data.follower_name
+          if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else if (username) {
+            router.push(`/user/${username}`)
+          } else if (followerId) {
+            router.push(`/user/${followerId}`)
+          } else {
+            router.push('/feed')
+          }
+          break
+        }
+
+        case 'mention': {
+          const postId = data.post_id || data.content_id
+          const commentId = data.comment_id
+          if (postId) {
+            router.push(`/post/${postId}${commentId ? `?comment=${commentId}` : ''}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/feed')
+          }
+          break
+        }
+
+        case 'friend_request': {
+          router.push(fallbackUrl || '/friends?tab=requests')
+          break
+        }
+
+        case 'friend_request_declined': {
+          router.push(fallbackUrl || '/friends')
+          break
+        }
+
+        case 'friend_request_accepted':
+        case 'friend_request_confirmed': {
+          const actorId = data.sender_id || data.actor_id || data.user_id
+          const username = data.username || data.actor_username || data.sender_name
+          if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else if (username) {
+            router.push(`/user/${username}`)
+          } else if (actorId) {
+            router.push(`/user/${actorId}`)
+          }
+          break
+        }
+
+        case 'birthday': {
+          const actorId = data.actor_id || data.user_id || data.birthday_user_id
+          const actorName = data.actor_name || data.username || data.name || data.follower_name || 'Friend'
+          const actorAvatar = data.actor_avatar || data.avatar_url || ''
+
+          if (actorId) {
+            await startChatWithMembers(
+              [{ id: actorId, name: actorName, avatarUrl: actorAvatar }],
+              { participant_ids: [actorId], type: 'direct', openInDock: true }
+            )
+          }
+          break
+        }
+
+        case 'call': {
+          const threadId = data.thread_id || data.chat_thread_id
+          const actorId = data.caller_id || data.sender_id || data.actor_id || data.user_id
+          const actorName = data.caller_name || data.sender_name || data.actor_name || 'User'
+          const actorAvatar = data.actor_avatar || data.avatar_url || ''
+
+          if (threadId) {
+            openThread(threadId)
+          } else if (actorId) {
+            await startChatWithMembers(
+              [{ id: actorId, name: actorName, avatarUrl: actorAvatar }],
+              { participant_ids: [actorId], type: 'direct', openInDock: true }
+            )
+          }
+          break
+        }
+
+        
+        case 'new_order': {
+          const orderId = data.order_id || data.id
+          if (orderId) {
+            router.push(`/my-orders/${orderId}`)
+          } else if (fallbackUrl) {
+            router.push(fallbackUrl)
+          } else {
+            router.push('/my-orders')
+          }
+          break
+        }
+
+        default: {
+          if (fallbackUrl) router.push(fallbackUrl)
+          break
+        }
+      }
+    } catch (error) {
+      console.error('Error handling notification click:', error)
+      if (fallbackUrl) router.push(fallbackUrl)
     }
   }
 
@@ -332,9 +504,7 @@ const NotificationsPage: React.FC = () => {
                   className={`bg-white rounded-xl sm:rounded-lg shadow-sm border ${
                     !notification.is_read ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
                   } p-3 sm:p-4 hover:shadow-md active:bg-gray-50 transition-all cursor-pointer`}
-                  onClick={() => {
-                    if (!notification.is_read) markAsRead(notification.id)
-                  }}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start space-x-3 sm:space-x-4">
                     <div className="flex-shrink-0 mt-0.5">
