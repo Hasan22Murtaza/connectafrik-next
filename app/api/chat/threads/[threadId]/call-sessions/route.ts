@@ -118,6 +118,75 @@ async function sendRingingPushToUser(
   )
 }
 
+async function sendCallStatusPushToUser(
+  serviceClient: ServiceClient,
+  userId: string,
+  payload: {
+    title: string
+    body: string
+    threadId: string
+    data: Record<string, string>
+    status: 'missed' | 'declined' | 'ended' | 'active'
+  }
+): Promise<void> {
+  const firebaseAdmin = getFirebaseAdmin()
+  if (!firebaseAdmin) return
+
+  const { data: subscriptions, error: subscriptionError } = await serviceClient
+    .from('fcm_tokens')
+    .select('fcm_token, device_id, is_active')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .not('fcm_token', 'is', null)
+
+  if (subscriptionError) return
+  const activeSubscriptions = (subscriptions || []).filter((sub: any) => Boolean(sub?.fcm_token))
+  if (activeSubscriptions.length === 0) return
+
+  const byDevice = new Map<string, any>()
+  for (const sub of activeSubscriptions) {
+    const key = sub.device_id || sub.fcm_token
+    if (!byDevice.has(key)) byDevice.set(key, sub)
+  }
+
+  await Promise.allSettled(
+    Array.from(byDevice.values()).map(async (sub: any) => {
+      const fcmToken = sub?.fcm_token as string | undefined
+      if (!fcmToken) return
+      const message: admin.messaging.Message = {
+        token: fcmToken,
+        data: {
+          ...payload.data,
+          title: payload.title,
+          body: payload.body,
+          icon: '/assets/images/logo.png',
+          badge: '/assets/images/logo.png',
+          tag: `call-status-${payload.status}-${payload.threadId}`,
+          requireInteraction: 'false',
+          silent: 'false',
+          vibrate: JSON.stringify([200, 100, 200]),
+          timestamp: String(Date.now()),
+          actions: JSON.stringify([]),
+        },
+        android: { priority: 'high' },
+        apns: { payload: { aps: { sound: 'default', badge: 1, contentAvailable: true } } },
+      }
+      try {
+        await admin.messaging(firebaseAdmin).send(message)
+      } catch (error: any) {
+        const code = error?.code as string | undefined
+        if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
+          await serviceClient
+            .from('fcm_tokens')
+            .update({ is_active: false, updated_at: new Date().toISOString() })
+            .eq('fcm_token', fcmToken)
+            .eq('user_id', userId)
+        }
+      }
+    })
+  )
+}
+
 async function sendCallSessionPushes(params: {
   serviceClient: ServiceClient
   threadId: string
@@ -235,15 +304,22 @@ async function sendCallSessionStatusNotifications(params: {
     url: threadId ? `/chat?thread=${threadId}` : '/feed',
   })
   await Promise.allSettled(
-    recipients.map((user_id) =>
-      insertCallNotificationRow(serviceClient, {
+    recipients.map(async (user_id) => {
+      await insertCallNotificationRow(serviceClient, {
         user_id,
         title,
         message,
         preferredType: status,
         data,
       })
-    )
+      await sendCallStatusPushToUser(serviceClient, user_id, {
+        title,
+        body: message,
+        threadId,
+        data,
+        status,
+      })
+    })
   )
 }
 
@@ -548,7 +624,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               : 'Call update'
     await touchThreadPreview(serviceClient, threadId, preview)
 
-    if (nextStatus === 'missed' || nextStatus === 'declined') {
+    if (nextStatus === 'missed' || nextStatus === 'declined' || nextStatus === 'active') {
       const actorName = await resolveActorName(serviceClient, user.id)
       const callType = (updated.call_type === 'video' ? 'video' : 'audio') as 'video' | 'audio'
       const metaObj =
@@ -567,7 +643,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         callType,
         roomId: String(updated.room_id || ''),
         callId: String(updated.call_id || ''),
-        status: nextStatus as 'missed' | 'declined',
+        status: nextStatus as 'missed' | 'declined' | 'active',
         targetUserId,
       })
     }
