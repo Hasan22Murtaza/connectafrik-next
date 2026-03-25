@@ -94,11 +94,13 @@ const NotificationsPage: React.FC = () => {
     const titleMap: Record<string, string> = {
       post_like: 'New Like',
       post_comment: 'New Comment',
+      post_create: 'New Post',
       post_share: 'Post Shared',
       comment_reply: 'New Reply',
       comment_like: 'Comment Liked',
       reel_like: 'Reel Liked',
       reel_comment: 'Reel Comment',
+      reel_create: 'New Reel',
       reel_share: 'Reel Shared',
       follow: 'New Follower',
       mention: 'You were mentioned',
@@ -124,11 +126,13 @@ const NotificationsPage: React.FC = () => {
     const messageMap: Record<string, string> = {
       post_like: `${actorName} liked your post`,
       post_comment: `${actorName} commented on your post`,
+      post_create: `${actorName} created a new post`,
       post_share: `${actorName} shared your post`,
       comment_reply: `${actorName} replied to your comment`,
       comment_like: `${actorName} liked your comment`,
       reel_like: `${actorName} liked your reel`,
       reel_comment: `${actorName} commented on your reel`,
+      reel_create: `${actorName} created a new reel`,
       reel_share: `${actorName} shared your reel`,
       follow: `${actorName} started following you`,
       mention: `${actorName} mentioned you`,
@@ -197,6 +201,7 @@ const NotificationsPage: React.FC = () => {
         case 'post_like':
         case 'post_comment':
         case 'post_share':
+        case 'post_create':
         case 'post_reaction':
         case 'post_comment_like':
         case 'like': {
@@ -215,6 +220,7 @@ const NotificationsPage: React.FC = () => {
         case 'reel_like':
         case 'reel_comment':
         case 'reel_share':
+        case 'reel_create':
         case 'reel_comment_like': {
           const reelId = data.reel_id || data.content_id
           if (reelId) {
@@ -294,7 +300,14 @@ const NotificationsPage: React.FC = () => {
           break
         }
 
-        case 'call': {
+        case 'call':
+          case 'missed':
+          case 'ringing':
+          case 'initiated':
+          case 'active':
+          case 'ended':
+          case 'declined':
+          case 'failed': {
           const threadId = data.thread_id || data.chat_thread_id
           const actorId = data.caller_id || data.sender_id || data.actor_id || data.user_id
           const actorName = data.caller_name || data.sender_name || data.actor_name || 'User'

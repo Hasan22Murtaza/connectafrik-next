@@ -19,6 +19,7 @@ export type NotificationType =
   | 'post_like'
   | 'post_comment'
   | 'post_comment_like'
+  | 'post_create'
   | 'post_share'
   | 'post_reaction'
   // Comment interactions
@@ -29,6 +30,7 @@ export type NotificationType =
   // Reel interactions
   | 'reel_like'
   | 'reel_comment'
+  | 'reel_create'
   | 'reel_share'
   | 'reel_comment_like'
   // Social
@@ -63,10 +65,12 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'post_like',
   'post_comment',
   'post_comment_like',
+  'post_create',
   'post_share',
   'post_reaction',
   'reel_like',
   'reel_comment',
+  'reel_create',
   'reel_share',
   'reel_comment_like',
   'follow',

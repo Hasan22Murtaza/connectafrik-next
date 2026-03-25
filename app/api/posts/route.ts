@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const PAGE_SIZE = 10
@@ -301,48 +301,43 @@ function computePermission(
 
 async function notifyFollowersAndFriends(supabase: any, user: any, post: any) {
   try {
+    const serviceSupabase = createServiceClient()
     const authorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone'
     const postTitle = post.title || post.content?.substring(0, 50) || 'a new post'
 
-    const [{ data: followersData }, { data: friendsData }] = await Promise.all([
-      supabase.from('follows').select('follower_id').eq('following_id', user.id),
-      supabase
-        .from('friend_requests')
-        .select('sender_id, receiver_id')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .eq('status', 'accepted'),
-    ])
+    const { data: friendsData } = await serviceSupabase
+      .from('friend_requests')
+      .select('sender_id, receiver_id')
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .eq('status', 'accepted')
 
     const recipientIds = new Set<string>()
 
-    followersData?.forEach((f: any) => {
-      if (f.follower_id !== user.id) recipientIds.add(f.follower_id)
-    })
     friendsData?.forEach((f: any) => {
       const friendId = f.sender_id === user.id ? f.receiver_id : f.sender_id
       if (friendId && friendId !== user.id) recipientIds.add(friendId)
     })
 
-    const { sendNotification } = await import('@/shared/services/notificationService')
+    const notifications = Array.from(recipientIds).map((recipientId) => ({
+      user_id: recipientId,
+      type: 'post_create',
+      title: 'New Post',
+      message: `${authorName} shared a new post: "${postTitle}"`,
+      data: {
+        type: 'post_create',
+        post_id: post.id,
+        author_id: user.id,
+        author_name: authorName,
+        url: `/post/${post.id}`,
+      },
+      is_read: false,
+    }))
 
-    await Promise.allSettled(
-      Array.from(recipientIds).map((recipientId) =>
-        sendNotification({
-          user_id: recipientId,
-          title: 'New Post',
-          body: `${authorName} shared a new post: "${postTitle}"`,
-          notification_type: 'system',
-          data: {
-            type: 'new_post',
-            post_id: post.id,
-            author_id: user.id,
-            author_name: authorName,
-            url: `/post/${post.id}`,
-          },
-        }).catch(() => ({ success: false }))
-      )
-    )
-  } catch {
+    if (notifications.length > 0) {
+      await serviceSupabase.from('notifications').insert(notifications)
+    }
+  } catch (error) {
     // Notifications are best-effort
+    console.error('Post create notification failed:', error)
   }
 }
