@@ -96,6 +96,7 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
   const [showHeartBurst, setShowHeartBurst] = useState(false)
   const [showPlayIcon, setShowPlayIcon] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [isCaptionExpanded, setIsCaptionExpanded] = useState(false)
 
   const categoryMeta = REEL_CATEGORIES.find((c) => c.value === reel.category)
   const username = reel.profiles?.username || 'user'
@@ -296,6 +297,12 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
   }, [user, shareReel, onShare])
 
   const captionLine = reel.description?.trim() || reel.title
+  // Line-based collapse (TikTok-like): keep caption compact by default.
+  const shouldTruncateCaption = captionLine.length > 70
+
+  useEffect(() => {
+    setIsCaptionExpanded(false)
+  }, [reel.id])
 
   return (
     <section
@@ -364,7 +371,7 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
           )}
 
           {/* Bottom info — pr-* on small screens clears overlaid rail; desktop uses external rail so normal padding */}
-          <div className="absolute bottom-0 left-0 z-10 w-full px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pr-14 pt-12 text-left sm:pr-16 lg:px-4 lg:pb-4 lg:pr-4 lg:pt-16">
+          <div className="absolute bottom-0 left-0 z-10 w-full px-3 pb-[max(0.65rem,env(safe-area-inset-bottom))] pr-14 pt-10 text-left sm:pr-16 lg:px-4 lg:pb-4 lg:pr-4 lg:pt-14">
             <div className="flex items-center gap-2.5">
               {reel.profiles?.avatar_url ? (
                 <img
@@ -378,21 +385,33 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-white drop-shadow-md lg:text-base">@{username}</p>
+                <p className="truncate text-[13px] font-bold text-white drop-shadow-md lg:text-sm">@{username}</p>
                 {displayName !== username && (
-                  <p className="truncate text-xs text-white/85 drop-shadow lg:text-sm">{displayName}</p>
+                  <p className="truncate text-[11px] text-white/85 drop-shadow lg:text-xs">{displayName}</p>
                 )}
               </div>
             </div>
-            <p className="mt-2 flex items-start gap-1.5 text-sm text-white/95 drop-shadow line-clamp-3 lg:line-clamp-4">
-              <Play className="mt-0.5 h-3.5 w-3.5 shrink-0 fill-white/90 text-white/90 lg:h-4 lg:w-4" aria-hidden />
-              <span>{captionLine}</span>
+            <p className="mt-1.5 text-[13px] leading-snug text-white/95 drop-shadow lg:text-sm">
+              <span className={isCaptionExpanded ? '' : 'line-clamp-2'}>{captionLine}</span>{' '}
+              {shouldTruncateCaption && (
+                <button
+                  type="button"
+                  className="inline text-[11px] font-semibold text-white/90 underline-offset-2 hover:underline"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsCaptionExpanded((v) => !v)
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  {isCaptionExpanded ? 'less' : 'more'}
+                </button>
+              )}
             </p>
             {reel.description?.trim() && reel.description.trim() !== reel.title && (
-              <p className="mt-1 text-xs text-white/80 drop-shadow line-clamp-2 lg:text-sm">{reel.title}</p>
+              <p className="mt-1 text-[11px] text-white/80 drop-shadow line-clamp-1 lg:text-xs">{reel.title}</p>
             )}
             {(categoryMeta || (reel.tags && reel.tags.length > 0)) && (
-              <p className="mt-2 text-[11px] text-white/75 drop-shadow lg:text-xs">
+              <p className="mt-1.5 text-[10px] text-white/75 drop-shadow lg:text-[11px]">
                 {categoryMeta && (
                   <span>
                     {categoryMeta.icon} {categoryMeta.label}
