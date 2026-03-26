@@ -134,9 +134,16 @@ export interface ReelStats {
   avg_engagement: number
 }
 
+/** Single `/api/memories?feed=…` discriminator (preferred over legacy flags). */
+export type ReelFeedType = 'foryou' | 'explore' | 'following' | 'mine'
+
 export interface ReelFilters {
   category?: ReelCategory
   author_id?: string
+  /** Preferred: unified feed mode for GET /api/memories */
+  feed?: ReelFeedType
+  /** Public reels from creators the current user follows (API requires auth). */
+  following_only?: boolean
   is_featured?: boolean
   min_duration?: number
   max_duration?: number
