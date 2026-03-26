@@ -3,8 +3,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Heart,
+  Bookmark,
   MessageCircle,
-  Share2,
+  Send,
   Play,
   Pause,
   Pencil,
@@ -81,7 +82,7 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
   onDelete,
 }) => {
   const { user } = useAuth()
-  const { toggleLike, recordView, shareReel, loading: interactionLoading } = useReelInteractions(reel.id)
+  const { toggleLike, toggleSave, recordView, shareReel, loading: interactionLoading } = useReelInteractions(reel.id)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const watchTrackerRef = useRef<VideoWatchTracker | null>(null)
@@ -92,7 +93,10 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
 
   const [isPlaying, setIsPlaying] = useState(true)
   const [isLiked, setIsLiked] = useState(false)
+  const [isSaved, setIsSaved] = useState(Boolean(reel.is_saved))
   const [likesCount, setLikesCount] = useState(reel.likes_count)
+  const [savesCount, setSavesCount] = useState(reel.saves_count ?? 0)
+  const [sharesCount, setSharesCount] = useState(reel.shares_count ?? 0)
   const [showHeartBurst, setShowHeartBurst] = useState(false)
   const [showPlayIcon, setShowPlayIcon] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -234,6 +238,26 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
     void runLike(false)
   }, [runLike])
 
+  const handleSaveButton = useCallback(async () => {
+    if (!user) {
+      toast.error('Please sign in to save memories')
+      return
+    }
+    try {
+      const { success, error } = await toggleSave()
+      if (!success) {
+        if (error) toast.error(error)
+        return
+      }
+      const wasSaved = isSaved
+      setIsSaved(!wasSaved)
+      setSavesCount((c) => (wasSaved ? Math.max(0, c - 1) : c + 1))
+      trackEvent.save(user.id, reel.id, 'reel')
+    } catch {
+      toast.error('Failed to update save')
+    }
+  }, [user, toggleSave, isSaved, reel.id])
+
   const handleVideoAreaTap = useCallback(() => {
     tapCountRef.current += 1
     if (tapCountRef.current === 1) {
@@ -286,12 +310,17 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
   }, [])
 
   const handleShare = useCallback(async () => {
+    let shared = false
     if (user) {
       try {
         await shareReel('copy_link')
+        shared = true
       } catch {
         /* non-blocking */
       }
+    }
+    if (shared) {
+      setSharesCount((c) => c + 1)
     }
     onShare()
   }, [user, shareReel, onShare])
@@ -469,7 +498,26 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
               <span className={actionCircleClass}>
                 <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" strokeWidth={2} />
               </span>
-              <span className={`${actionLabelOverlayClass} tabular-nums`}>{formatFullCount(reel.comments_count)}</span>
+              <span className={`${actionLabelOverlayClass} tabular-nums`}>{formatFullCount(reel.comments_count ?? 0)}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                void handleSaveButton()
+              }}
+              disabled={interactionLoading}
+              className="flex flex-col items-center gap-0.5 disabled:opacity-60"
+              aria-label={isSaved ? 'Unsave' : 'Save'}
+            >
+              <span className={actionCircleClass}>
+                <Bookmark
+                  className={`h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 ${isSaved ? 'fill-zinc-900 text-zinc-900' : ''}`}
+                  strokeWidth={isSaved ? 0 : 2}
+                />
+              </span>
+              <span className={`${actionLabelOverlayClass} tabular-nums`}>{formatShortCount(savesCount)}</span>
             </button>
 
             <button
@@ -483,9 +531,9 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
               aria-label="Share"
             >
               <span className={actionCircleClass}>
-                <Share2 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" strokeWidth={2} />
+                <Send className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" strokeWidth={2} />
               </span>
-              <span className={actionLabelOverlayClass}>Share</span>
+              <span className={`${actionLabelOverlayClass} tabular-nums`}>{formatShortCount(sharesCount)}</span>
             </button>
 
           </div>
@@ -525,7 +573,23 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
             <span className={actionCircleClass}>
               <MessageCircle className="h-6 w-6" strokeWidth={2} />
             </span>
-            <span className={`${actionLabelOutsideClass} tabular-nums`}>{formatFullCount(reel.comments_count)}</span>
+            <span className={`${actionLabelOutsideClass} tabular-nums`}>{formatFullCount(reel.comments_count ?? 0)}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              void handleSaveButton()
+            }}
+            disabled={interactionLoading}
+            className="flex flex-col items-center gap-1 disabled:opacity-60"
+            aria-label={isSaved ? 'Unsave' : 'Save'}
+          >
+            <span className={actionCircleClass}>
+              <Bookmark className={`h-6 w-6 ${isSaved ? 'fill-zinc-900 text-zinc-900' : ''}`} strokeWidth={isSaved ? 0 : 2} />
+            </span>
+            <span className={`${actionLabelOutsideClass} tabular-nums`}>{formatShortCount(savesCount)}</span>
           </button>
 
           <button
@@ -539,9 +603,9 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
             aria-label="Share"
           >
             <span className={actionCircleClass}>
-              <Share2 className="h-6 w-6" strokeWidth={2} />
+              <Send className="h-6 w-6" strokeWidth={2} />
             </span>
-            <span className={actionLabelOutsideClass}>Share</span>
+            <span className={`${actionLabelOutsideClass} tabular-nums`}>{formatShortCount(sharesCount)}</span>
           </button>
 
         </div>

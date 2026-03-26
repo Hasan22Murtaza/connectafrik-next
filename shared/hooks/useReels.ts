@@ -9,6 +9,7 @@ import {
   ReelSortOptions,
   ReelComment,
   ReelInteractionState,
+  ReelStats,
 } from '../types/reels'
 
 export type UseReelsOptions = {
@@ -429,6 +430,24 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
     }
   }, [user, reelId, fetchComments])
 
+  const toggleCommentLike = useCallback(async (commentId: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to like a comment')
+    }
+
+    try {
+      setError(null)
+      const res = await apiClient.post<{ data: { liked: boolean } }>(`/api/memories/${reelId}/comments/${commentId}/like`)
+      await fetchComments()
+      return { liked: !!res?.data?.liked, error: null }
+    } catch (err) {
+      console.error('Error toggling reel comment like:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to like comment'
+      setError(errorMessage)
+      return { liked: false, error: errorMessage }
+    }
+  }, [user, reelId, fetchComments])
+
   useEffect(() => {
     if (enabled) {
       fetchComments()
@@ -441,6 +460,46 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
     error,
     addComment,
     deleteComment,
+    toggleCommentLike,
     refresh: fetchComments
+  }
+}
+
+export const useReelStats = (enabled: boolean = true) => {
+  const { user } = useAuth()
+  const [stats, setStats] = useState<ReelStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchStats = useCallback(async () => {
+    if (!enabled) return
+    if (!user) {
+      setStats(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await apiClient.get<{ data: ReelStats }>('/api/memories/stats')
+      setStats(res?.data ?? null)
+    } catch (err) {
+      console.error('Error fetching reel stats:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch reel stats')
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled, user])
+
+  useEffect(() => {
+    void fetchStats()
+  }, [fetchStats])
+
+  return {
+    stats,
+    loading,
+    error,
+    refresh: fetchStats,
   }
 }

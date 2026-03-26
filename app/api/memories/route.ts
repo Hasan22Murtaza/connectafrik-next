@@ -89,8 +89,10 @@ export async function GET(request: NextRequest) {
       if (fError) return errorResponse(fError.message, 400)
       const reels = fData ?? []
       let followingSet = new Set<string>()
+      let savedSet = new Set<string>()
       if (userId && reels.length > 0) {
         const authorIds = [...new Set(reels.map((r: { author_id: string }) => r.author_id).filter((id: string) => id !== userId))]
+        const reelIds = [...new Set(reels.map((r: { id: string }) => r.id))]
         if (authorIds.length > 0) {
           const { data: followsData } = await supabase
             .from('follows')
@@ -99,10 +101,19 @@ export async function GET(request: NextRequest) {
             .in('following_id', authorIds)
           if (followsData) followingSet = new Set(followsData.map((f: { following_id: string }) => f.following_id))
         }
+        if (reelIds.length > 0) {
+          const { data: savesData } = await supabase
+            .from('reel_saves')
+            .select('reel_id')
+            .eq('user_id', userId)
+            .in('reel_id', reelIds)
+          if (savesData) savedSet = new Set(savesData.map((s: { reel_id: string }) => s.reel_id))
+        }
       }
       const result = reels.map((reel: Record<string, unknown>) => ({
         ...reel,
         is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id as string) : false,
+        is_saved: userId ? savedSet.has(reel.id as string) : false,
       }))
       return jsonResponse({ data: result, page, pageSize: limit, hasMore: result.length === limit })
     }
@@ -132,8 +143,10 @@ export async function GET(request: NextRequest) {
     const reels = data ?? []
 
     let followingSet = new Set<string>()
+    let savedSet = new Set<string>()
     if (userId && reels.length > 0) {
       const authorIds = [...new Set(reels.map((r: any) => r.author_id).filter((id: string) => id !== userId))]
+      const reelIds = [...new Set(reels.map((r: any) => r.id))]
       if (authorIds.length > 0) {
         const { data: followsData } = await supabase
           .from('follows')
@@ -144,11 +157,22 @@ export async function GET(request: NextRequest) {
           followingSet = new Set(followsData.map((f: any) => f.following_id))
         }
       }
+      if (reelIds.length > 0) {
+        const { data: savesData } = await supabase
+          .from('reel_saves')
+          .select('reel_id')
+          .eq('user_id', userId)
+          .in('reel_id', reelIds)
+        if (savesData) {
+          savedSet = new Set(savesData.map((s: any) => s.reel_id))
+        }
+      }
     }
 
     const result = reels.map((reel: any) => ({
       ...reel,
       is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id) : false,
+      is_saved: userId ? savedSet.has(reel.id) : false,
     }))
 
     return jsonResponse({
