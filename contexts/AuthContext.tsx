@@ -109,7 +109,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     // Deactivate FCM token so push notifications are not sent to this user until they log in again
     await deactivateTokenOnLogout().catch(() => {})
-    await supabase.auth.signOut()
+    // Keep other devices/browsers signed in; only end this local session.
+    await supabase.auth.signOut({ scope: 'local' })
     router.push('/')
   }
 
