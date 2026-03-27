@@ -39,7 +39,11 @@ async function resolveTargetUserIds(
   targetUserId?: string | null
 ): Promise<string[]> {
   if (targetUserId && targetUserId.trim()) {
-    return targetUserId.trim() === actorId ? [] : [targetUserId.trim()]
+    const normalizedTarget = targetUserId.trim()
+    
+    if (normalizedTarget !== actorId) {
+      return [normalizedTarget]
+    }
   }
   const { data: rows } = await serviceClient
     .from('chat_participants')
