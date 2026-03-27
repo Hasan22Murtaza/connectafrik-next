@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Send, Reply, MoreHorizontal, Trash2, Edit2, Check, X } from 'lucide-react'
+import { Send, Reply, Trash2, Edit2, Check, X, Heart } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReelComments } from '@/shared/hooks/useReels'
 import { ReelComment } from '@/shared/types/reels'
@@ -14,7 +14,7 @@ interface ReelCommentsProps {
 
 const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) => {
   const { user } = useAuth()
-  const { comments, loading, addComment, deleteComment, refresh } = useReelComments(reelId, isOpen)
+  const { comments, loading, addComment, deleteComment, toggleCommentLike } = useReelComments(reelId, isOpen)
   
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
@@ -22,6 +22,12 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
   const [editingComment, setEditingComment] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const getCommentAuthor = (comment: ReelComment) => comment.author ?? comment.profiles
+  const isOwnComment = (comment: ReelComment) => {
+    if (!user) return false
+    return (comment.user_id || comment.author_id) === user.id
+  }
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,6 +85,12 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
       console.error('Error deleting comment:', err)
       toast.error('Failed to delete comment')
     }
+  }
+
+  const handleLikeComment = async (commentId: string) => {
+    if (!user) return
+    const { error } = await toggleCommentLike(commentId)
+    if (error) toast.error(error)
   }
 
   const handleEditComment = async (commentId: string) => {
@@ -155,7 +167,7 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                         <span className="text-gray-600 font-medium text-sm">
-                          {comment.author?.username?.charAt(0).toUpperCase()}
+                          {getCommentAuthor(comment)?.username?.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     </div>
@@ -165,14 +177,14 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-gray-900">
-                              {comment.author?.username}
+                              {getCommentAuthor(comment)?.username}
                             </span>
                             <span className="text-xs text-gray-500">
                               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                             </span>
                           </div>
                           
-                          {user && comment.author_id === user.id && (
+                          {isOwnComment(comment) && (
                             <div className="flex items-center space-x-1">
                               <button
                                 onClick={() => startEdit(comment)}
@@ -221,6 +233,13 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                       
                       <div className="flex items-center space-x-4 mt-2">
                         <button
+                          onClick={() => handleLikeComment(comment.id)}
+                          className="text-xs text-gray-500 hover:text-[#f97316] transition-colors flex items-center space-x-1"
+                        >
+                          <Heart className="w-3 h-3" />
+                          <span>{comment.likes_count || 0}</span>
+                        </button>
+                        <button
                           onClick={() => startReply(comment.id)}
                           className="text-xs text-gray-500 hover:text-[#f97316] transition-colors flex items-center space-x-1"
                         >
@@ -237,7 +256,7 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                       <textarea
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
-                        placeholder={`Reply to ${comment.author?.username}...`}
+                        placeholder={`Reply to ${getCommentAuthor(comment)?.username}...`}
                         className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         rows={2}
                       />
@@ -268,7 +287,7 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                           <div className="flex-shrink-0">
                             <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
                               <span className="text-gray-600 font-medium text-xs">
-                                {reply.author?.username?.charAt(0).toUpperCase()}
+                                {getCommentAuthor(reply)?.username?.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           </div>
@@ -278,14 +297,14 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center space-x-2">
                                   <span className="text-xs font-medium text-gray-900">
-                                    {reply.author?.username}
+                                    {getCommentAuthor(reply)?.username}
                                   </span>
                                   <span className="text-xs text-gray-500">
                                     {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
                                   </span>
                                 </div>
                                 
-                                {user && reply.author_id === user.id && (
+                                {isOwnComment(reply) && (
                                   <button
                                     onClick={() => handleDeleteComment(reply.id)}
                                     className="text-gray-400 hover:text-red-600 transition-colors"
@@ -295,6 +314,13 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                                 )}
                               </div>
                               <p className="text-xs text-gray-700">{reply.content}</p>
+                              <button
+                                onClick={() => handleLikeComment(reply.id)}
+                                className="mt-1 text-[11px] text-gray-500 hover:text-[#f97316] transition-colors inline-flex items-center gap-1"
+                              >
+                                <Heart className="w-3 h-3" />
+                                <span>{reply.likes_count || 0}</span>
+                              </button>
                             </div>
                           </div>
                         </div>

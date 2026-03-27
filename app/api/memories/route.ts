@@ -20,16 +20,31 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
+    const FEEDS = ['foryou', 'explore', 'following', 'mine'] as const
+    type FeedType = (typeof FEEDS)[number]
+    const rawFeed = searchParams.get('feed')
+    const feed = rawFeed && FEEDS.includes(rawFeed as FeedType) ? (rawFeed as FeedType) : null
+
     const category = searchParams.get('category') || undefined
-    const author_id = searchParams.get('author_id') || undefined
+    let author_id = searchParams.get('author_id') || undefined
+    let followingFeed = searchParams.get('following') === 'true'
+    if (feed === 'following') followingFeed = true
+    if (feed === 'mine' && userId) {
+      author_id = userId
+    }
+
     const is_featured = searchParams.get('is_featured')
     const min_duration = searchParams.get('min_duration')
     const max_duration = searchParams.get('max_duration')
     const tagsParam = searchParams.get('tags')
     const tags = tagsParam ? tagsParam.split(',').map((t) => t.trim()).filter(Boolean) : undefined
     const search = searchParams.get('search') || undefined
-    const sort_field = searchParams.get('sort_field') || 'created_at'
+    const sortFieldExplicit = searchParams.has('sort_field')
+    let sort_field = searchParams.get('sort_field') || 'created_at'
     const sort_order = searchParams.get('sort_order') || 'desc'
+    if (feed === 'foryou' && !sortFieldExplicit) {
+      sort_field = 'engagement_score'
+    }
     const parsedLimit = parseInt(searchParams.get('limit') || '10', 10)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
     const limit = Number.isNaN(parsedLimit) ? 10 : Math.min(Math.max(parsedLimit, 1), 100)
@@ -37,11 +52,79 @@ export async function GET(request: NextRequest) {
     const from = page * limit
     const to = from + limit - 1
 
-    let query = supabase
-      .from('reels')
-      .select(REEL_SELECT, { count: 'exact' })
-      .eq('is_deleted', false)
-      .eq('is_public', true)
+    if (feed === 'mine' && !userId) {
+      return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+    }
+
+    if (followingFeed) {
+      if (!userId) {
+        return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      }
+      const { data: followsRows, error: followsErr } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', userId)
+      if (followsErr) return errorResponse(followsErr.message, 400)
+      const followingIds = [...new Set((followsRows ?? []).map((r: { following_id: string }) => r.following_id))]
+      if (followingIds.length === 0) {
+        return jsonResponse({ data: [], page, pageSize: limit, hasMore: false })
+      }
+
+      let fq = supabase
+        .from('reels')
+        .select(REEL_SELECT, { count: 'exact' })
+        .eq('is_deleted', false)
+        .eq('is_public', true)
+        .in('author_id', followingIds)
+
+      if (category) fq = fq.eq('category', category)
+      if (is_featured !== undefined && is_featured !== '') fq = fq.eq('is_featured', is_featured === 'true')
+      if (min_duration != null && min_duration !== '') fq = fq.gte('duration', parseInt(min_duration, 10))
+      if (max_duration != null && max_duration !== '') fq = fq.lte('duration', parseInt(max_duration, 10))
+      if (tags && tags.length > 0) fq = fq.overlaps('tags', tags)
+      if (search) fq = fq.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+
+      fq = fq.order(sort_field, { ascending: sort_order === 'asc' }).range(from, to)
+      const { data: fData, error: fError } = await fq
+      if (fError) return errorResponse(fError.message, 400)
+      const reels = fData ?? []
+      let followingSet = new Set<string>()
+      let savedSet = new Set<string>()
+      if (userId && reels.length > 0) {
+        const authorIds = [...new Set(reels.map((r: { author_id: string }) => r.author_id).filter((id: string) => id !== userId))]
+        const reelIds = [...new Set(reels.map((r: { id: string }) => r.id))]
+        if (authorIds.length > 0) {
+          const { data: followsData } = await supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', userId)
+            .in('following_id', authorIds)
+          if (followsData) followingSet = new Set(followsData.map((f: { following_id: string }) => f.following_id))
+        }
+        if (reelIds.length > 0) {
+          const { data: savesData } = await supabase
+            .from('reel_saves')
+            .select('reel_id')
+            .eq('user_id', userId)
+            .in('reel_id', reelIds)
+          if (savesData) savedSet = new Set(savesData.map((s: { reel_id: string }) => s.reel_id))
+        }
+      }
+      const result = reels.map((reel: Record<string, unknown>) => ({
+        ...reel,
+        is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id as string) : false,
+        is_saved: userId ? savedSet.has(reel.id as string) : false,
+      }))
+      return jsonResponse({ data: result, page, pageSize: limit, hasMore: result.length === limit })
+    }
+
+    const viewingOwnReels = !!(userId && author_id && author_id === userId)
+
+    let query = supabase.from('reels').select(REEL_SELECT, { count: 'exact' }).eq('is_deleted', false)
+
+    if (!viewingOwnReels) {
+      query = query.eq('is_public', true)
+    }
 
     if (category) query = query.eq('category', category)
     if (author_id) query = query.eq('author_id', author_id)
@@ -60,8 +143,10 @@ export async function GET(request: NextRequest) {
     const reels = data ?? []
 
     let followingSet = new Set<string>()
+    let savedSet = new Set<string>()
     if (userId && reels.length > 0) {
       const authorIds = [...new Set(reels.map((r: any) => r.author_id).filter((id: string) => id !== userId))]
+      const reelIds = [...new Set(reels.map((r: any) => r.id))]
       if (authorIds.length > 0) {
         const { data: followsData } = await supabase
           .from('follows')
@@ -72,11 +157,22 @@ export async function GET(request: NextRequest) {
           followingSet = new Set(followsData.map((f: any) => f.following_id))
         }
       }
+      if (reelIds.length > 0) {
+        const { data: savesData } = await supabase
+          .from('reel_saves')
+          .select('reel_id')
+          .eq('user_id', userId)
+          .in('reel_id', reelIds)
+        if (savesData) {
+          savedSet = new Set(savesData.map((s: any) => s.reel_id))
+        }
+      }
     }
 
     const result = reels.map((reel: any) => ({
       ...reel,
       is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id) : false,
+      is_saved: userId ? savedSet.has(reel.id) : false,
     }))
 
     return jsonResponse({

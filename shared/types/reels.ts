@@ -21,6 +21,7 @@ export interface Reel {
   created_at: string
   updated_at: string
   is_following?: boolean
+  is_saved?: boolean
   // Joined fields from profiles
   profiles?: {
     username: string
@@ -52,7 +53,10 @@ export interface ReelLike {
 export interface ReelComment {
   id: string
   reel_id: string
-  author_id: string
+  /** Current schema column in public.reel_comments */
+  user_id: string
+  /** Backward-compatible alias returned by some API paths */
+  author_id?: string
   content: string
   parent_id?: string
   thread_depth: number
@@ -63,6 +67,11 @@ export interface ReelComment {
   updated_at: string
   // Joined fields
   author?: {
+    username: string
+    full_name: string
+    avatar_url?: string
+  }
+  profiles?: {
     username: string
     full_name: string
     avatar_url?: string
@@ -134,9 +143,16 @@ export interface ReelStats {
   avg_engagement: number
 }
 
+/** Single `/api/memories?feed=…` discriminator (preferred over legacy flags). */
+export type ReelFeedType = 'foryou' | 'explore' | 'following' | 'mine'
+
 export interface ReelFilters {
   category?: ReelCategory
   author_id?: string
+  /** Preferred: unified feed mode for GET /api/memories */
+  feed?: ReelFeedType
+  /** Public reels from creators the current user follows (API requires auth). */
+  following_only?: boolean
   is_featured?: boolean
   min_duration?: number
   max_duration?: number

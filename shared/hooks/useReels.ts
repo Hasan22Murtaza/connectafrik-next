@@ -9,10 +9,20 @@ import {
   ReelSortOptions,
   ReelComment,
   ReelInteractionState,
+  ReelStats,
 } from '../types/reels'
 
-export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions = { field: 'created_at', order: 'desc' }) => {
-  const { user } = useAuth()
+export type UseReelsOptions = {
+  /** When false, clears data and skips network requests. */
+  enabled?: boolean
+}
+
+export const useReels = (
+  filters: ReelFilters = {},
+  sortOptions: ReelSortOptions = { field: 'created_at', order: 'desc' },
+  options?: UseReelsOptions
+) => {
+  const enabled = options?.enabled !== false
   const [reels, setReels] = useState<Reel[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -33,8 +43,10 @@ export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions
         sort_field: sortField,
         sort_order: sortOrder,
       }
+      if (currentFilters?.feed) params.feed = currentFilters.feed
       if (currentFilters?.category) params.category = currentFilters.category
-      if (currentFilters?.author_id) params.author_id = currentFilters.author_id
+      if (currentFilters?.author_id && currentFilters?.feed !== 'mine') params.author_id = currentFilters.author_id
+      if (currentFilters?.following_only) params.following = true
       if (currentFilters?.is_featured) params.is_featured = true
       if (currentFilters?.min_duration != null) params.min_duration = currentFilters.min_duration
       if (currentFilters?.max_duration != null) params.max_duration = currentFilters.max_duration
@@ -61,18 +73,28 @@ export const useReels = (filters: ReelFilters = {}, sortOptions: ReelSortOptions
   }, [])
 
   const loadMore = useCallback(() => {
+    if (!enabled) return
     if (!loading && hasMore) {
       fetchReels(page + 1, true, filters, sortOptions)
     }
-  }, [loading, hasMore, page, fetchReels, filters, sortOptions])
+  }, [enabled, loading, hasMore, page, fetchReels, filters, sortOptions])
 
   const refresh = useCallback(() => {
+    if (!enabled) return
     fetchReels(0, false, filters, sortOptions)
-  }, [fetchReels, filters, sortOptions])
+  }, [enabled, fetchReels, filters, sortOptions])
 
   useEffect(() => {
+    if (!enabled) {
+      setReels([])
+      setLoading(false)
+      setError(null)
+      setHasMore(false)
+      setPage(0)
+      return
+    }
     fetchReels(0, false, filters, sortOptions)
-  }, [JSON.stringify(filters), JSON.stringify(sortOptions)])
+  }, [enabled, fetchReels, JSON.stringify(filters), JSON.stringify(sortOptions)])
 
   return {
     reels,
@@ -408,6 +430,24 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
     }
   }, [user, reelId, fetchComments])
 
+  const toggleCommentLike = useCallback(async (commentId: string) => {
+    if (!user) {
+      throw new Error('User must be logged in to like a comment')
+    }
+
+    try {
+      setError(null)
+      const res = await apiClient.post<{ data: { liked: boolean } }>(`/api/memories/${reelId}/comments/${commentId}/like`)
+      await fetchComments()
+      return { liked: !!res?.data?.liked, error: null }
+    } catch (err) {
+      console.error('Error toggling reel comment like:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to like comment'
+      setError(errorMessage)
+      return { liked: false, error: errorMessage }
+    }
+  }, [user, reelId, fetchComments])
+
   useEffect(() => {
     if (enabled) {
       fetchComments()
@@ -420,6 +460,46 @@ export const useReelComments = (reelId: string, enabled: boolean = false) => {
     error,
     addComment,
     deleteComment,
+    toggleCommentLike,
     refresh: fetchComments
+  }
+}
+
+export const useReelStats = (enabled: boolean = true) => {
+  const { user } = useAuth()
+  const [stats, setStats] = useState<ReelStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchStats = useCallback(async () => {
+    if (!enabled) return
+    if (!user) {
+      setStats(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await apiClient.get<{ data: ReelStats }>('/api/memories/stats')
+      setStats(res?.data ?? null)
+    } catch (err) {
+      console.error('Error fetching reel stats:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch reel stats')
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled, user])
+
+  useEffect(() => {
+    void fetchStats()
+  }, [fetchStats])
+
+  return {
+    stats,
+    loading,
+    error,
+    refresh: fetchStats,
   }
 }

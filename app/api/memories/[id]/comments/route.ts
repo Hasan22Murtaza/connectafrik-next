@@ -4,8 +4,17 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 
 const COMMENT_SELECT = `
   *,
-  profiles!reel_comments_user_id_fkey(username, full_name, avatar_url)
+  author:profiles!reel_comments_user_id_fkey(username, full_name, avatar_url)
 `
+
+function normalizeComment<T extends Record<string, unknown>>(comment: T) {
+  const userId = comment.user_id as string | undefined
+  return {
+    ...comment,
+    // Backward compatibility for UI code that still reads author_id.
+    author_id: (comment.author_id as string | undefined) ?? userId ?? null,
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -45,9 +54,9 @@ export async function GET(
       repliesByParent.get(pid)!.push(r)
     }
 
-    const data = comments.map((c: { id: string }) => ({
-      ...c,
-      replies: repliesByParent.get(c.id) ?? [],
+    const data = comments.map((c: { id: string } & Record<string, unknown>) => ({
+      ...normalizeComment(c),
+      replies: (repliesByParent.get(c.id) ?? []).map((r) => normalizeComment(r as Record<string, unknown>)),
     }))
     return jsonResponse({ data })
   } catch (error: unknown) {
@@ -81,7 +90,7 @@ export async function POST(
       .single()
 
     if (error) return errorResponse(error.message, 400)
-    return jsonResponse({ data: comment }, 201)
+    return jsonResponse({ data: normalizeComment(comment as Record<string, unknown>) }, 201)
   } catch (error: unknown) {
     const err = error as { message?: string }
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') return unauthorizedResponse()

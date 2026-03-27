@@ -483,7 +483,7 @@ const CreateMemoryPage: React.FC = () => {
       }
 
       toast.success('Memory created successfully!')
-      router.push('/memories')
+      router.push('/memories/foryou')
     } catch (err) {
       console.error('Error creating reel:', err)
       toast.error(err instanceof Error ? err.message : 'Failed to create memory')

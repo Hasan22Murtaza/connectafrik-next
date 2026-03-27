@@ -196,16 +196,16 @@ const Header: React.FC<HeaderProps> = ({
                     {/* Reels */}
                     <li className="relative">
                       <Link
-                        href="/memories"
+                        href="/memories/foryou"
                         className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
-                          pathname === "/memories"
+                          pathname.startsWith("/memories")
                             ? "text-[#FF6900]"
                             : "text-gray-600 hover:text-[#FF6900]"
                         }`}
                       >
                         <Video className="w-12" />
                         <span className="text-sm font-medium">Reels</span>
-                        {pathname === "/memories" && (
+                        {pathname.startsWith("/memories") && (
                           <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
                         )}
                       </Link>
@@ -425,7 +425,7 @@ const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Mobile Navigation */}
-      {user && (
+      {user && !pathname?.startsWith("/memories") && (
         <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1">
           <nav className="w-full">
             <ul className="flex justify-between w-full px-2">
@@ -446,9 +446,9 @@ const Header: React.FC<HeaderProps> = ({
               {/* Reels */}
               <li>
                 <Link
-                  href="/memories"
+                  href="/memories/foryou"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${
-                    usePathname() === "/memories"
+                    usePathname()?.startsWith("/memories")
                       ? "text-[#FF6900]"
                       : "text-gray-500 hover:text-[#FF6900]"
                   }`}
