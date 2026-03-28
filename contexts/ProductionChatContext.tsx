@@ -916,48 +916,48 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   // Event-driven fallback for incoming calls (Realtime is primary).
   // Avoid continuous polling; only perform one initial check and on visibility/focus wake-ups.
-  useEffect(() => {
-    if (!currentUser) return
-    // Dedicated call window runs the same provider; do not poll for incoming calls there.
-    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/call/')) return
-    let cancelled = false
+  // useEffect(() => {
+  //   if (!currentUser) return
+  //   // Dedicated call window runs the same provider; do not poll for incoming calls there.
+  //   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/call/')) return
+  //   let cancelled = false
 
-    const tick = async () => {
-      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-      if (pauseIncomingCallsPollRef.current) return
-      try {
-        const res = await apiClient.get<{ sessions: Record<string, any>[] }>('/api/chat/calls/incoming')
-        if (cancelled) return
-        const sessions = res?.sessions ?? []
-        for (const row of sessions) {
-          tryDispatchIncomingFromCallSession(row)
-        }
-      } catch {
-        /* ignore */
-      }
-    }
+  //   const tick = async () => {
+  //     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+  //     if (pauseIncomingCallsPollRef.current) return
+  //     try {
+  //       const res = await apiClient.get<{ sessions: Record<string, any>[] }>('/api/chat/calls/incoming')
+  //       if (cancelled) return
+  //       const sessions = res?.sessions ?? []
+  //       for (const row of sessions) {
+  //         tryDispatchIncomingFromCallSession(row)
+  //       }
+  //     } catch {
+  //       /* ignore */
+  //     }
+  //   }
 
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void tick()
-    }
-    const onFocus = () => {
-      void tick()
-    }
+  //   const onVisible = () => {
+  //     if (document.visibilityState === 'visible') void tick()
+  //   }
+  //   const onFocus = () => {
+  //     void tick()
+  //   }
 
-    const initial = window.setTimeout(() => {
-      void tick()
-    }, 800)
+  //   const initial = window.setTimeout(() => {
+  //     void tick()
+  //   }, 800)
 
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', onFocus)
+  //   document.addEventListener('visibilitychange', onVisible)
+  //   window.addEventListener('focus', onFocus)
 
-    return () => {
-      cancelled = true
-      window.clearTimeout(initial)
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [currentUser, tryDispatchIncomingFromCallSession])
+  //   return () => {
+  //     cancelled = true
+  //     window.clearTimeout(initial)
+  //     document.removeEventListener('visibilitychange', onVisible)
+  //     window.removeEventListener('focus', onFocus)
+  //   }
+  // }, [currentUser, tryDispatchIncomingFromCallSession])
 
   useEffect(() => {
     if (!user?.id) return
