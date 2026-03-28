@@ -52,177 +52,6 @@ async function resolveTargetUserIds(
   return Array.from(new Set(ids))
 }
 
-async function sendPushNotificationViaApi(
-  apiBaseUrl: string,
-  payload: {
-    user_id: string
-    title: string
-    body: string
-    notification_type: 'call'
-    skip_db?: boolean
-    tag?: string
-    requireInteraction?: boolean
-    silent?: boolean
-    vibrate?: number[]
-    data: Record<string, string>
-  }
-): Promise<void> {
-  try {
-    console.log('apiBaseUrlhas been called', `${apiBaseUrl}/api/push-notifications`)
-    console.log('payload has been called', payload)
-    const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      cache: 'no-store',
-    })
-    if (!response.ok) {
-      const message = await response.text().catch(() => '')
-      console.error('Failed to send push via /api/push-notifications', {
-        status: response.status,
-        statusText: response.statusText,
-        body: message,
-        user_id: payload.user_id,
-      })
-    }
-  } catch (error) {
-    console.error('Failed to call /api/push-notifications', {
-      error: error instanceof Error ? error.message : String(error),
-      user_id: payload.user_id,
-    })
-  }
-}
-
-async function sendCallSessionPushes(params: {
-  apiBaseUrl: string
-  serviceClient: ServiceClient
-  threadId: string
-  actorId: string
-  actorName: string
-  callType: string
-  roomId: string
-  callId: string
-  token?: string
-  targetUserId?: string | null
-  isGroupCall?: boolean
-  callerAvatarUrl?: string
-}): Promise<void> {
-  const {
-    apiBaseUrl,
-    serviceClient,
-    threadId,
-    actorId,
-    actorName,
-    callType,
-    roomId,
-    callId,
-    token,
-    targetUserId,
-    isGroupCall,
-    callerAvatarUrl,
-  } = params
-  const recipients = await resolveTargetUserIds(serviceClient, threadId, actorId, targetUserId || undefined)
-  if (recipients.length === 0) return
-  const sentAt = new Date().toISOString()
-  const title = `Incoming ${callType === 'video' ? 'Video' : 'Audio'} Call`
-  const message = `${actorName} is calling you...`
-  const data = toPushDataRecord({
-    type: 'ringing',
-    call_type: callType,
-    room_id: roomId,
-    thread_id: threadId,
-    actor_name: actorName,
-    ...(token ? { token } : {}),
-    call_id: callId,
-    callId,
-    caller_id: actorId,
-    caller_name: actorName,
-    caller_avatar_url: callerAvatarUrl || '',
-    is_group_call: isGroupCall ? 'true' : 'false',
-    isGroupCall: isGroupCall ? 'true' : 'false',
-    sent_at: sentAt,
-    url: `/call/${roomId}`,
-  })
-  await Promise.allSettled(
-    recipients.map((user_id) =>
-      sendPushNotificationViaApi(apiBaseUrl, {
-        user_id,
-        title,
-        body: message,
-        notification_type: 'call',
-        skip_db: true,
-        tag: `incoming-call-${threadId}`,
-        requireInteraction: true,
-        silent: false,
-        vibrate: [200, 100, 200, 100, 200, 100, 200],
-        data,
-      })
-    )
-  )
-}
-
-async function sendCallSessionStatusNotifications(params: {
-  apiBaseUrl: string
-  serviceClient: ServiceClient
-  threadId: string
-  actorId: string
-  actorName: string
-  callType: string
-  roomId: string
-  callId: string
-  status: 'missed' | 'declined' | 'ended' | 'active'
-  targetUserId?: string | null
-}): Promise<void> {
-  const { apiBaseUrl, serviceClient, threadId, actorId, actorName, callType, roomId, callId, status, targetUserId } =
-    params
-  const recipients = await resolveTargetUserIds(serviceClient, threadId, actorId, targetUserId || undefined)
-  if (recipients.length === 0) return
-  const title =
-    status === 'declined'
-      ? 'Call declined'
-      : status === 'ended'
-        ? 'Call ended'
-        : status === 'active'
-          ? 'Call accepted'
-          : 'Missed Call'
-  const message =
-    status === 'declined'
-      ? `${actorName} declined your ${callType} call`
-      : status === 'ended'
-        ? 'Call ended'
-        : status === 'active'
-          ? `${actorName} accepted your ${callType} call`
-          : `${actorName} tried to ${callType} call you`
-  const data = toPushDataRecord({
-    type: status,
-    call_type: callType,
-    room_id: roomId,
-    thread_id: threadId,
-    actor_name: actorName,
-    call_id: callId,
-    callId,
-    caller_id: actorId,
-    caller_name: actorName,
-    sent_at: new Date().toISOString(),
-    url: threadId ? `/chat?thread=${threadId}` : '/feed',
-  })
-  await Promise.allSettled(
-    recipients.map(async (user_id) => {
-      await sendPushNotificationViaApi(apiBaseUrl, {
-        user_id: user_id,
-        title,
-        body: message,
-        notification_type: 'call',
-        tag: `call-status-${status}-${threadId}`,
-        requireInteraction: false,
-        silent: false,
-        vibrate: [200, 100, 200],
-        data,
-      })
-    })
-  )
-}
-
 async function assertThreadMember(serviceClient: ServiceClient, threadId: string, userId: string) {
   const { data: participant } = await serviceClient
     .from('chat_participants')
@@ -376,20 +205,66 @@ export async function POST(request: NextRequest, context: RouteContext) {
       `Incoming ${call_type === 'video' ? 'video' : 'audio'} call`
     )
 
-    await sendCallSessionPushes({
-      apiBaseUrl,
-      serviceClient,
-      threadId,
-      actorId: user.id,
-      actorName: caller_name,
-      callType: call_type,
-      roomId: room_id,
-      callId: call_id,
-      token,
-      targetUserId: target_user_id || null,
-      isGroupCall: is_group_call,
-      callerAvatarUrl: caller_avatar_url,
-    })
+    const recipients = await resolveTargetUserIds(serviceClient, threadId, user.id, target_user_id || undefined)
+    if (recipients.length > 0) {
+      const sentAt = new Date().toISOString()
+      const pushData = toPushDataRecord({
+        type: 'ringing',
+        call_type: call_type,
+        room_id,
+        thread_id: threadId,
+        actor_name: caller_name,
+        ...(token ? { token } : {}),
+        call_id,
+        callId: call_id,
+        caller_id: user.id,
+        caller_name,
+        caller_avatar_url: caller_avatar_url || '',
+        is_group_call: is_group_call ? 'true' : 'false',
+        isGroupCall: is_group_call ? 'true' : 'false',
+        sent_at: sentAt,
+        url: `/call/${room_id}`,
+      })
+
+      await Promise.allSettled(
+        recipients.map(async (user_id) => {
+          try {
+            const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id,
+                title: `Incoming ${call_type === 'video' ? 'Video' : 'Audio'} Call`,
+                body: `${caller_name} is calling you...`,
+                notification_type: 'call',
+                skip_db: true,
+                tag: `incoming-call-${threadId}`,
+                requireInteraction: true,
+                silent: false,
+                vibrate: [200, 100, 200, 100, 200, 100, 200],
+                data: pushData,
+              }),
+              cache: 'no-store',
+            })
+
+            if (!response.ok) {
+              const message = await response.text().catch(() => '')
+              console.error('Failed to send ringing push via /api/push-notifications', {
+                status: response.status,
+                statusText: response.statusText,
+                body: message,
+                user_id,
+              })
+            }
+          } catch (error) {
+            console.error('Failed to call /api/push-notifications for ringing status', {
+              error: error instanceof Error ? error.message : String(error),
+              user_id,
+            })
+          }
+        })
+      )
+    }
 
     return jsonResponse({ session })
   } catch (e: any) {
@@ -405,9 +280,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { threadId } = await context.params
     const { user } = await getAuthenticatedUser(request)
     const serviceClient = createServiceClient()
-    const apiBaseUrl = new URL(request.url).origin
-    console.log('apiBaseUrl', apiBaseUrl)
-    console.log('request.url', request.url)
+    const apiBaseUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin
 
     const body = await request.json()
 
@@ -530,7 +403,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               : 'Call update'
     await touchThreadPreview(serviceClient, threadId, preview)
 
-    if (nextStatus === 'missed' || nextStatus === 'declined' || nextStatus === 'active') {
+    if (nextStatus === 'missed' || nextStatus === 'declined' || nextStatus === 'active' || nextStatus === 'ended') {
       const actorName = await resolveActorName(serviceClient, user.id)
       const callType = (updated.call_type === 'video' ? 'video' : 'audio') as 'video' | 'audio'
       const metaObj =
@@ -541,21 +414,82 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         (typeof metaObj.targetUserId === 'string' && metaObj.targetUserId) ||
         (typeof metaObj.target_user_id === 'string' && metaObj.target_user_id) ||
         null
-      await sendCallSessionStatusNotifications({
-        apiBaseUrl,
-        serviceClient,
-        threadId,
-        actorId: user.id,
-        actorName,
-        callType,
-        roomId: String(updated.room_id || ''),
-        callId: String(updated.call_id || ''),
-        status: nextStatus as 'missed' | 'declined' | 'active',
-        targetUserId,
-      })
-    }
 
-    // Push only for POST (incoming ring). Accept/reject/end/missed are delivered in-app via Realtime on call_sessions.
+      const recipients = await resolveTargetUserIds(serviceClient, threadId, user.id, targetUserId || undefined)
+      if (recipients.length > 0) {
+        const status = nextStatus as 'missed' | 'declined' | 'active' | 'ended'
+        const title =
+          status === 'declined'
+            ? 'Call declined'
+            : status === 'ended'
+              ? 'Call ended'
+              : status === 'active'
+                ? 'Call accepted'
+                : 'Missed Call'
+        const message =
+          status === 'declined'
+            ? `${actorName} declined your ${callType} call`
+            : status === 'ended'
+              ? 'Call ended'
+              : status === 'active'
+                ? `${actorName} accepted your ${callType} call`
+                : `${actorName} tried to ${callType} call you`
+
+        const pushData = toPushDataRecord({
+          type: status,
+          call_type: callType,
+          room_id: String(updated.room_id || ''),
+          thread_id: threadId,
+          actor_name: actorName,
+          call_id: String(updated.call_id || ''),
+          callId: String(updated.call_id || ''),
+          caller_id: user.id,
+          caller_name: actorName,
+          sent_at: new Date().toISOString(),
+          url: threadId ? `/chat?thread=${threadId}` : '/feed',
+        })
+
+        await Promise.allSettled(
+          recipients.map(async (user_id) => {
+            try {
+              const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id,
+                  title,
+                  body: message,
+                  notification_type: 'call',
+                  tag: `call-status-${status}-${threadId}`,
+                  requireInteraction: false,
+                  silent: false,
+                  vibrate: [200, 100, 200],
+                  data: pushData,
+                }),
+                cache: 'no-store',
+              })
+
+              if (!response.ok) {
+                const responseBody = await response.text().catch(() => '')
+                console.error('Failed to send call status push via /api/push-notifications', {
+                  status: response.status,
+                  statusText: response.statusText,
+                  body: responseBody,
+                  user_id,
+                  call_status: status,
+                })
+              }
+            } catch (error) {
+              console.error('Failed to call /api/push-notifications for call status', {
+                error: error instanceof Error ? error.message : String(error),
+                user_id,
+                call_status: status,
+              })
+            }
+          })
+        )
+      }
+    }
 
     return jsonResponse({ session: updated })
   } catch (e: any) {
