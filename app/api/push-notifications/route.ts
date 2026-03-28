@@ -34,6 +34,25 @@ export interface NotificationPayload {
   vibrate?: number[]
 }
 
+const toFcmStringData = (input: Record<string, unknown> | undefined | null): Record<string, string> => {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return {}
+
+  const entries = Object.entries(input).flatMap(([key, value]) => {
+    if (value === undefined || value === null) return []
+    if (typeof value === 'string') return [[key, value] as [string, string]]
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return [[key, String(value)] as [string, string]]
+    }
+    try {
+      return [[key, JSON.stringify(value)] as [string, string]]
+    } catch {
+      return [[key, String(value)] as [string, string]]
+    }
+  })
+
+  return Object.fromEntries(entries)
+}
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
@@ -233,11 +252,14 @@ export async function POST(request: NextRequest) {
     }
     const subscriptionsToSend = Array.from(byDevice.values())
 
+    const normalizedData = toFcmStringData(body.data as Record<string, unknown> | undefined)
+    const notificationUrl = normalizedData.url || '/feed'
+
     // Prepare base FCM message payload
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
 
       data: {
-        ...(body.data || {}),
+        ...normalizedData,
         title: body.title,
         body: notificationBody,
         // No large image in notifications — keep them clean and compact
@@ -253,7 +275,26 @@ export async function POST(request: NextRequest) {
         // Pass through any explicit actions, or let the SW decide based on type.
         actions: JSON.stringify(body.actions || []),
       },
-      
+      webpush: {
+        headers: {
+          Urgency: 'high',
+          TTL: '60',
+        },
+        // Include a browser-level notification payload to improve reliability on some
+        // production browsers while still allowing SW custom handling via data payload.
+        notification: {
+          title: body.title,
+          body: notificationBody,
+          icon: body.icon || '/assets/images/logo.png',
+          badge: body.badge || '/assets/images/logo.png',
+          tag: body.tag || 'connectafrik-notification',
+          requireInteraction: Boolean(body.requireInteraction),
+          silent: Boolean(body.silent),
+        },
+        fcmOptions: {
+          link: notificationUrl,
+        },
+      },
       android: {
         priority: 'high',
       },
