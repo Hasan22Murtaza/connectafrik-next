@@ -299,7 +299,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { threadId } = await context.params
     const { user } = await getAuthenticatedUser(request)
     const serviceClient = createServiceClient()
-    const apiBaseUrl = new URL(request.url).origin
+    const apiBaseUrl = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin
     const body = await request.json()
 
     const call_id = typeof body.call_id === 'string' ? body.call_id.trim() : ''
