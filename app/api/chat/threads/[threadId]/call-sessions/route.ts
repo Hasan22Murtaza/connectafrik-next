@@ -68,6 +68,8 @@ async function sendPushNotificationViaApi(
   }
 ): Promise<void> {
   try {
+    console.log('apiBaseUrlhas been called', `${apiBaseUrl}/api/push-notifications`)
+    console.log('payload has been called', payload)
     const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -404,6 +406,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { user } = await getAuthenticatedUser(request)
     const serviceClient = createServiceClient()
     const apiBaseUrl = new URL(request.url).origin
+    console.log('apiBaseUrl', apiBaseUrl)
+    console.log('request.url', request.url)
+
     const body = await request.json()
 
     const call_id = typeof body.call_id === 'string' ? body.call_id.trim() : ''
