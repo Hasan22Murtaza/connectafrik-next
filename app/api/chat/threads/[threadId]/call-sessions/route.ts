@@ -1,8 +1,6 @@
 import { NextRequest } from 'next/server'
-import * as admin from 'firebase-admin'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { getFirebaseAdmin } from '@/app/api/fcm/_utils'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 
@@ -54,144 +52,47 @@ async function resolveTargetUserIds(
   return Array.from(new Set(ids))
 }
 
-async function sendRingingPushToUser(
-  serviceClient: ServiceClient,
-  userId: string,
+async function sendPushNotificationViaApi(
+  apiBaseUrl: string,
   payload: {
+    user_id: string
     title: string
     body: string
-    threadId: string
+    notification_type: 'call'
+    skip_db?: boolean
+    tag?: string
+    requireInteraction?: boolean
+    silent?: boolean
+    vibrate?: number[]
     data: Record<string, string>
   }
 ): Promise<void> {
-  const firebaseAdmin = getFirebaseAdmin()
-  if (!firebaseAdmin) return
-
-  const { data: subscriptions, error: subscriptionError } = await serviceClient
-    .from('fcm_tokens')
-    .select('fcm_token, device_id, is_active')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .not('fcm_token', 'is', null)
-
-  if (subscriptionError) return
-  const activeSubscriptions = (subscriptions || []).filter((sub: any) => Boolean(sub?.fcm_token))
-  if (activeSubscriptions.length === 0) return
-
-  const byDevice = new Map<string, any>()
-  for (const sub of activeSubscriptions) {
-    const key = sub.device_id || sub.fcm_token
-    if (!byDevice.has(key)) byDevice.set(key, sub)
-  }
-
-  await Promise.allSettled(
-    Array.from(byDevice.values()).map(async (sub: any) => {
-      const fcmToken = sub?.fcm_token as string | undefined
-      if (!fcmToken) return
-      const message: admin.messaging.Message = {
-        token: fcmToken,
-        data: {
-          ...payload.data,
-          title: payload.title,
-          body: payload.body,
-          icon: '/assets/images/logo.png',
-          badge: '/assets/images/logo.png',
-          tag: `incoming-call-${payload.threadId}`,
-          requireInteraction: 'true',
-          silent: 'false',
-          vibrate: JSON.stringify([200, 100, 200, 100, 200, 100, 200]),
-          timestamp: String(Date.now()),
-          actions: JSON.stringify([]),
-        },
-        android: { priority: 'high' },
-        apns: { payload: { aps: { sound: 'default', badge: 1, contentAvailable: true } } },
-      }
-      try {
-        await admin.messaging(firebaseAdmin).send(message)
-      } catch (error: any) {
-        const code = error?.code as string | undefined
-        if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
-          await serviceClient
-            .from('fcm_tokens')
-            .update({ is_active: false, updated_at: new Date().toISOString() })
-            .eq('fcm_token', fcmToken)
-            .eq('user_id', userId)
-        }
-      }
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      cache: 'no-store',
     })
-  )
-}
-
-async function sendCallStatusPushToUser(
-  serviceClient: ServiceClient,
-  userId: string,
-  payload: {
-    title: string
-    body: string
-    threadId: string
-    data: Record<string, string>
-    status: 'missed' | 'declined' | 'ended' | 'active'
-  }
-): Promise<void> {
-  const firebaseAdmin = getFirebaseAdmin()
-  if (!firebaseAdmin) return
-
-  const { data: subscriptions, error: subscriptionError } = await serviceClient
-    .from('fcm_tokens')
-    .select('fcm_token, device_id, is_active')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .not('fcm_token', 'is', null)
-
-  if (subscriptionError) return
-  const activeSubscriptions = (subscriptions || []).filter((sub: any) => Boolean(sub?.fcm_token))
-  if (activeSubscriptions.length === 0) return
-
-  const byDevice = new Map<string, any>()
-  for (const sub of activeSubscriptions) {
-    const key = sub.device_id || sub.fcm_token
-    if (!byDevice.has(key)) byDevice.set(key, sub)
-  }
-
-  await Promise.allSettled(
-    Array.from(byDevice.values()).map(async (sub: any) => {
-      const fcmToken = sub?.fcm_token as string | undefined
-      if (!fcmToken) return
-      const message: admin.messaging.Message = {
-        token: fcmToken,
-        data: {
-          ...payload.data,
-          title: payload.title,
-          body: payload.body,
-          icon: '/assets/images/logo.png',
-          badge: '/assets/images/logo.png',
-          tag: `call-status-${payload.status}-${payload.threadId}`,
-          requireInteraction: 'false',
-          silent: 'false',
-          vibrate: JSON.stringify([200, 100, 200]),
-          timestamp: String(Date.now()),
-          actions: JSON.stringify([]),
-        },
-        android: { priority: 'high' },
-        apns: { payload: { aps: { sound: 'default', badge: 1, contentAvailable: true } } },
-      }
-      try {
-        await admin.messaging(firebaseAdmin).send(message)
-      } catch (error: any) {
-        const code = error?.code as string | undefined
-        if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
-          await serviceClient
-            .from('fcm_tokens')
-            .update({ is_active: false, updated_at: new Date().toISOString() })
-            .eq('fcm_token', fcmToken)
-            .eq('user_id', userId)
-        }
-      }
+    if (!response.ok) {
+      const message = await response.text().catch(() => '')
+      console.error('Failed to send push via /api/push-notifications', {
+        status: response.status,
+        statusText: response.statusText,
+        body: message,
+        user_id: payload.user_id,
+      })
+    }
+  } catch (error) {
+    console.error('Failed to call /api/push-notifications', {
+      error: error instanceof Error ? error.message : String(error),
+      user_id: payload.user_id,
     })
-  )
+  }
 }
 
 async function sendCallSessionPushes(params: {
+  apiBaseUrl: string
   serviceClient: ServiceClient
   threadId: string
   actorId: string
@@ -204,7 +105,20 @@ async function sendCallSessionPushes(params: {
   isGroupCall?: boolean
   callerAvatarUrl?: string
 }): Promise<void> {
-  const { serviceClient, threadId, actorId, actorName, callType, roomId, callId, token, targetUserId, isGroupCall, callerAvatarUrl } = params
+  const {
+    apiBaseUrl,
+    serviceClient,
+    threadId,
+    actorId,
+    actorName,
+    callType,
+    roomId,
+    callId,
+    token,
+    targetUserId,
+    isGroupCall,
+    callerAvatarUrl,
+  } = params
   const recipients = await resolveTargetUserIds(serviceClient, threadId, actorId, targetUserId || undefined)
   if (recipients.length === 0) return
   const sentAt = new Date().toISOString()
@@ -229,42 +143,24 @@ async function sendCallSessionPushes(params: {
   })
   await Promise.allSettled(
     recipients.map((user_id) =>
-      sendRingingPushToUser(serviceClient, user_id, {
+      sendPushNotificationViaApi(apiBaseUrl, {
+        user_id,
         title,
         body: message,
-        threadId,
+        notification_type: 'call',
+        skip_db: true,
+        tag: `incoming-call-${threadId}`,
+        requireInteraction: true,
+        silent: false,
+        vibrate: [200, 100, 200, 100, 200, 100, 200],
         data,
       })
     )
   )
 }
 
-async function insertCallNotificationRow(
-  serviceClient: ServiceClient,
-  params: {
-    user_id: string
-    title: string
-    message: string
-    preferredType: 'ringing' | 'missed' | 'declined' | 'ended' | 'active' | 'system'
-    data: Record<string, string>
-  }
-): Promise<void> {
-  const base = { user_id: params.user_id, title: params.title, message: params.message, is_read: false }
-  const tries: Record<string, unknown>[] = [
-    // Persist as canonical type `call` while preserving the specific call status in JSON
-    // so clients can still render "missed/declined/ended/active" accurately.
-    { ...base, type: 'call', data: params.data },
-    { ...base, type: 'call', data: { ...params.data, type: params.preferredType } },
-    { ...base, type: 'call', payload: params.data },
-    { ...base, type: 'call', metadata: params.data },
-  ]
-  for (let i = 0; i < tries.length; i += 1) {
-    const { error } = await serviceClient.from('notifications').insert(tries[i] as never).select('id').maybeSingle()
-    if (!error) return
-  }
-}
-
 async function sendCallSessionStatusNotifications(params: {
+  apiBaseUrl: string
   serviceClient: ServiceClient
   threadId: string
   actorId: string
@@ -275,7 +171,8 @@ async function sendCallSessionStatusNotifications(params: {
   status: 'missed' | 'declined' | 'ended' | 'active'
   targetUserId?: string | null
 }): Promise<void> {
-  const { serviceClient, threadId, actorId, actorName, callType, roomId, callId, status, targetUserId } = params
+  const { apiBaseUrl, serviceClient, threadId, actorId, actorName, callType, roomId, callId, status, targetUserId } =
+    params
   const recipients = await resolveTargetUserIds(serviceClient, threadId, actorId, targetUserId || undefined)
   if (recipients.length === 0) return
   const title =
@@ -309,19 +206,16 @@ async function sendCallSessionStatusNotifications(params: {
   })
   await Promise.allSettled(
     recipients.map(async (user_id) => {
-      await insertCallNotificationRow(serviceClient, {
-        user_id,
-        title,
-        message,
-        preferredType: status,
-        data,
-      })
-      await sendCallStatusPushToUser(serviceClient, user_id, {
+      await sendPushNotificationViaApi(apiBaseUrl, {
+        user_id: user_id,
         title,
         body: message,
-        threadId,
+        notification_type: 'call',
+        tag: `call-status-${status}-${threadId}`,
+        requireInteraction: false,
+        silent: false,
+        vibrate: [200, 100, 200],
         data,
-        status,
       })
     })
   )
@@ -403,6 +297,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { threadId } = await context.params
     const { user } = await getAuthenticatedUser(request)
     const serviceClient = createServiceClient()
+    const apiBaseUrl = new URL(request.url).origin
     const body = await request.json()
 
     const call_id = typeof body.call_id === 'string' ? body.call_id.trim() : ''
@@ -480,6 +375,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     )
 
     await sendCallSessionPushes({
+      apiBaseUrl,
       serviceClient,
       threadId,
       actorId: user.id,
@@ -507,6 +403,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { threadId } = await context.params
     const { user } = await getAuthenticatedUser(request)
     const serviceClient = createServiceClient()
+    const apiBaseUrl = new URL(request.url).origin
     const body = await request.json()
 
     const call_id = typeof body.call_id === 'string' ? body.call_id.trim() : ''
@@ -640,6 +537,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         (typeof metaObj.target_user_id === 'string' && metaObj.target_user_id) ||
         null
       await sendCallSessionStatusNotifications({
+        apiBaseUrl,
         serviceClient,
         threadId,
         actorId: user.id,
