@@ -14,13 +14,8 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data.json();
   } catch (e) {
-    // Fallback: support plain-text payloads and JSON strings.
-    try {
-      const raw = event.data.text();
-      data = raw ? JSON.parse(raw) : { body: '' };
-    } catch {
-      data = { body: event.data.text() || '' };
-    }
+    console.error('[SW] Failed to parse push data:', e);
+    return;
   }
 
   // FCM wraps payload in data field
