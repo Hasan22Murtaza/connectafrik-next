@@ -10,7 +10,11 @@ import StoryViewer from './StoryViewer'
 
 const parseTextOverlay = (overlay: string | object | null | undefined) => {
   if (!overlay) return null
-  return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
+  try {
+    return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
+  } catch {
+    return null
+  }
 }
 
 interface StoryCardProps {
@@ -24,6 +28,7 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
   const displayAvatar = story.profile_picture_url || story.user_avatar || ''
   const isTextStory = story.media_url?.startsWith('gradient:') || story.text_overlay
   const textOverlay = parseTextOverlay(story.text_overlay)
+  const storyText = (textOverlay?.text || story.caption || '').trim()
   const isVideo = story.media_type === 'video' && !isTextStory
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -53,9 +58,9 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
             className="absolute inset-0 flex items-center justify-center p-2 sm:p-3"
             style={{ backgroundColor: story.background_color || '#2563eb' }}
           >
-            {textOverlay?.text && (
+            {storyText && (
               <p className="text-white text-center font-medium text-[10px] sm:text-xs line-clamp-4 sm:line-clamp-5 drop-shadow">
-                {textOverlay.text}
+                {storyText}
               </p>
             )}
           </div>

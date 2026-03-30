@@ -46,7 +46,11 @@ const formatRelativeTime = (dateString: string): string => {
 
 const parseTextOverlay = (overlay: string | object | null | undefined) => {
   if (!overlay) return null
-  return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
+  try {
+    return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
+  } catch {
+    return null
+  }
 }
 
 interface StoryViewerProps {
@@ -88,6 +92,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const currentStory = stories[currentIndex]
   const isOwnStory = currentStory?.user_id === user?.id
   const textOverlay = useMemo(() => parseTextOverlay(currentStory?.text_overlay), [currentStory?.text_overlay])
+  const storyText = (textOverlay?.text || currentStory?.caption || '').trim()
   const isTextStory = currentStory?.media_url?.startsWith('gradient:') || !!currentStory?.text_overlay
 
   const goToNext = useCallback(() => {
@@ -333,19 +338,19 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                 className="absolute inset-0 flex items-center justify-center"
                 style={{ backgroundColor: currentStory.background_color || '#2563eb' }}
               >
-                {textOverlay?.text && (
+                {storyText && (
                   <div
                     className="max-w-[85%] px-4 py-3 rounded-lg"
                     style={{
-                      fontSize: `${textOverlay.fontSize || 24}px`,
-                      fontFamily: textOverlay.fontFamily || 'ui-sans-serif, system-ui, sans-serif',
-                      color: textOverlay.color || '#FFFFFF',
-                      backgroundColor: textOverlay.backgroundColor || 'transparent',
-                      textAlign: textOverlay.align || 'center',
-                      fontWeight: textOverlay.isBold ? 'bold' : 'normal'
+                      fontSize: `${textOverlay?.fontSize || 24}px`,
+                      fontFamily: textOverlay?.fontFamily || 'ui-sans-serif, system-ui, sans-serif',
+                      color: textOverlay?.color || '#FFFFFF',
+                      backgroundColor: textOverlay?.backgroundColor || 'transparent',
+                      textAlign: textOverlay?.align || 'center',
+                      fontWeight: textOverlay?.isBold ? 'bold' : 'normal'
                     }}
                   >
-                    {textOverlay.text}
+                    {storyText}
                   </div>
                 )}
               </div>

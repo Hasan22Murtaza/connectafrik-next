@@ -147,25 +147,19 @@ export default function CreateStoryPage() {
         mediaType = 'image'
       }
 
-      const textOverlay = storyType === 'text' ? JSON.stringify({
-        text: textStyle.text,
-        fontSize: textStyle.fontSize,
-        fontFamily: textStyle.fontFamily,
-        color: textStyle.color,
-        backgroundColor: textStyle.backgroundColor,
-        align: textStyle.align,
-        isBold: textStyle.isBold,
-        x: 50,
-        y: 50
-      }) : undefined
-
-      const storyData: CreateStoryData = {
-        media_url: mediaUrl,
-        media_type: mediaType,
-        caption: caption || textStyle.text || undefined,
-        text_overlay: textOverlay,
-        background_color: storyType === 'text' ? selectedBackgroundColor : '#000000'
-      }
+      const storyData: CreateStoryData = storyType === 'text'
+        ? {
+            media_url: mediaUrl,
+            media_type: mediaType,
+            text: textStyle.text.trim(),
+            text_color: textStyle.color,
+            background_color: selectedBackgroundColor,
+          }
+        : {
+            media_url: mediaUrl,
+            media_type: mediaType,
+            caption: caption || undefined,
+          }
 
       const createdStory = await createStory(storyData)
       toast.success('Story created successfully!')

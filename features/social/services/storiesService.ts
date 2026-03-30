@@ -28,12 +28,14 @@ export interface Story {
 export interface CreateStoryData {
   media_url: string
   media_type: 'image' | 'video'
+  text?: string
+  text_color?: string
+  background_color?: string
   caption?: string
   music_url?: string
   music_title?: string
   music_artist?: string
   text_overlay?: string
-  background_color?: string
   is_highlight?: boolean
 }
 

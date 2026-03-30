@@ -128,11 +128,49 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const { media_url, media_type, caption, music_url, music_title, music_artist, text_overlay, background_color, is_highlight } = body
+    const {
+      media_url,
+      media_type,
+      caption,
+      music_url,
+      music_title,
+      music_artist,
+      text_overlay,
+      text,
+      text_color,
+      background_color,
+      is_highlight,
+    } = body
 
     if (!media_url || !media_type) {
       return errorResponse('media_url and media_type are required', 400)
     }
+
+    const isTextStory = typeof media_url === 'string' && media_url.startsWith('gradient:')
+    const sanitizedText = typeof text === 'string' ? text.trim() : ''
+    const sanitizedTextColor = typeof text_color === 'string' && text_color.trim() ? text_color : '#FFFFFF'
+    const sanitizedBackgroundColor =
+      typeof background_color === 'string' && background_color.trim()
+        ? background_color
+        : (isTextStory ? '#2563eb' : '#000000')
+
+    if (isTextStory && !sanitizedText) {
+      return errorResponse('text is required for text stories', 400)
+    }
+
+    const normalizedTextOverlay = isTextStory
+      ? JSON.stringify({
+          text: sanitizedText,
+          color: sanitizedTextColor,
+          fontSize: 24,
+          fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+          backgroundColor: 'transparent',
+          align: 'center',
+          isBold: false,
+          x: 50,
+          y: 50,
+        })
+      : (text_overlay || null)
 
     const { data, error } = await supabase
       .from('stories')
@@ -140,12 +178,12 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         media_url,
         media_type,
-        caption: caption || null,
-        music_url: music_url || null,
-        music_title: music_title || null,
-        music_artist: music_artist || null,
-        text_overlay: text_overlay || null,
-        background_color: background_color || '#000000',
+        caption: isTextStory ? sanitizedText : (caption || null),
+        music_url: isTextStory ? null : (music_url || null),
+        music_title: isTextStory ? null : (music_title || null),
+        music_artist: isTextStory ? null : (music_artist || null),
+        text_overlay: normalizedTextOverlay,
+        background_color: sanitizedBackgroundColor,
         is_highlight: is_highlight || false,
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       })
