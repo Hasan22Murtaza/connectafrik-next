@@ -197,7 +197,7 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="border-t border-gray-300 pb-14 pt-2 sm:py-2">
+        {/* <div className="border-t border-gray-300 pb-14 pt-2 sm:py-2">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
             <div className="flex items-center space-x-2 text-sm text-gray-800 flex-wrap ">
               <span>© {currentYear} ConnectAfrik. Made with</span>
@@ -227,7 +227,7 @@ const Footer: React.FC = () => {
               </Link>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </footer>
   );

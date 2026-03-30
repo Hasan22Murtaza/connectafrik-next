@@ -129,11 +129,11 @@ export async function middleware(request: NextRequest) {
     '/memories',
     '/video',
     '/my-orders',
+    '/culture',
+    '/politics',
   ]
   const publicRoutes = [
     '/',
-    '/culture',
-    '/politics',
     '/guidelines',
     '/our-story',
     '/privacy-policy',
