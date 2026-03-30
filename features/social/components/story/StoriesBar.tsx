@@ -6,6 +6,7 @@ import { Plus, ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { getStoryRecommendations, getUserStories, Story } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
+import { STORY_GRADIENTS } from './GradientPicker'
 import StoryViewer from './StoryViewer'
 
 const parseTextOverlay = (overlay: string | object | null | undefined) => {
@@ -14,6 +15,43 @@ const parseTextOverlay = (overlay: string | object | null | undefined) => {
     return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
   } catch {
     return null
+  }
+}
+
+const getStoryBackgroundGradient = (story: Story, textOverlay: any): string | null => {
+  if (typeof story.background_gradient === 'string' && story.background_gradient.trim()) {
+    return story.background_gradient.trim()
+  }
+  if (typeof story.media_url === 'string' && story.media_url.startsWith('gradient:')) {
+    return story.media_url.replace(/^gradient:/, '').trim()
+  }
+  if (typeof textOverlay?.gradient === 'string' && textOverlay.gradient.trim()) {
+    return textOverlay.gradient.trim()
+  }
+  return null
+}
+
+const getGradientStyle = (
+  gradient: string | null,
+  fallbackColor: string
+): React.CSSProperties => {
+  if (!gradient) return { backgroundColor: fallbackColor }
+  const normalizedGradient = gradient.startsWith('gradient:')
+    ? gradient.replace(/^gradient:/, '').trim()
+    : gradient
+  const colorParts = normalizedGradient
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+  if (colorParts.length >= 2) {
+    return {
+      backgroundImage: `linear-gradient(135deg, ${colorParts[0]}, ${colorParts[1]})`,
+    }
+  }
+  const selected = STORY_GRADIENTS.find(option => option.gradient === normalizedGradient)
+  if (!selected) return { backgroundColor: fallbackColor }
+  return {
+    backgroundImage: `linear-gradient(135deg, ${selected.colors[0]}, ${selected.colors[1]})`,
   }
 }
 
@@ -28,6 +66,7 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
   const displayAvatar = story.profile_picture_url || story.user_avatar || ''
   const isTextStory = story.media_url?.startsWith('gradient:') || story.text_overlay
   const textOverlay = parseTextOverlay(story.text_overlay)
+  const storyGradient = getStoryBackgroundGradient(story, textOverlay)
   const storyText = (textOverlay?.text || story.caption || '').trim()
   const isVideo = story.media_type === 'video' && !isTextStory
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -56,7 +95,7 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
         {isTextStory ? (
           <div
             className="absolute inset-0 flex items-center justify-center p-2 sm:p-3"
-            style={{ backgroundColor: story.background_color || '#2563eb' }}
+            style={getGradientStyle(storyGradient, story.background_color || '#2563eb')}
           >
             {storyText && (
               <p className="text-white text-center font-medium text-[10px] sm:text-xs line-clamp-4 sm:line-clamp-5 drop-shadow">
@@ -145,6 +184,8 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'You'
   const isTextStory = latestStory?.media_url?.startsWith('gradient:') || latestStory?.text_overlay
+  const latestStoryTextOverlay = parseTextOverlay(latestStory?.text_overlay)
+  const latestStoryGradient = latestStory ? getStoryBackgroundGradient(latestStory, latestStoryTextOverlay) : null
   const isVideo = latestStory?.media_type === 'video' && !isTextStory
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -171,7 +212,10 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
         <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow">
           <button onClick={onView} className="absolute inset-0 cursor-pointer">
             {isTextStory ? (
-              <div className="w-full h-full" style={{ backgroundColor: latestStory.background_color || '#2563eb' }} />
+              <div
+                className="w-full h-full"
+                style={getGradientStyle(latestStoryGradient, latestStory.background_color || '#2563eb')}
+              />
             ) : isVideo && latestStory.media_url ? (
               <video
                 ref={videoRef}
@@ -312,6 +356,7 @@ const StoriesBar: React.FC = () => {
     username: story?.username || story?.user_name || '',
     profile_picture_url: story?.profile_picture_url || story?.user_avatar || '',
     background_color: story?.background_color || '#2563eb',
+    background_gradient: story?.background_gradient || null,
     view_count: story?.view_count || 0,
     has_viewed: Boolean(story?.has_viewed),
   }), [])

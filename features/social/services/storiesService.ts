@@ -7,10 +7,11 @@ export interface Story {
   user_avatar: string
   username?: string
   profile_picture_url?: string
-  media_url: string
+  media_url: string | null
   media_type: 'image' | 'video'
   text_overlay?: string | null
   background_color: string
+  background_gradient?: string | null
   caption?: string | null
   music_url?: string | null
   music_title?: string | null
@@ -26,11 +27,12 @@ export interface Story {
 }
 
 export interface CreateStoryData {
-  media_url: string
-  media_type: 'image' | 'video'
+  media_url?: string | null
+  media_type?: 'image' | 'video'
   text?: string
   text_color?: string
   background_color?: string
+  background_gradient?: string
   caption?: string
   music_url?: string
   music_title?: string

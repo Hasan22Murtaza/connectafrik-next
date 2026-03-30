@@ -29,6 +29,7 @@ import {
   getStoryReplies,
   getStoryViewers
 } from '@/features/social/services/storiesService'
+import { STORY_GRADIENTS } from './GradientPicker'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 
@@ -50,6 +51,30 @@ const parseTextOverlay = (overlay: string | object | null | undefined) => {
     return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
   } catch {
     return null
+  }
+}
+
+const getGradientStyle = (
+  gradient: string | null | undefined,
+  fallbackColor: string
+): React.CSSProperties => {
+  if (!gradient) return { backgroundColor: fallbackColor }
+  const normalizedGradient = gradient.startsWith('gradient:')
+    ? gradient.replace(/^gradient:/, '').trim()
+    : gradient
+  const colorParts = normalizedGradient
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+  if (colorParts.length >= 2) {
+    return {
+      backgroundImage: `linear-gradient(135deg, ${colorParts[0]}, ${colorParts[1]})`,
+    }
+  }
+  const selected = STORY_GRADIENTS.find(option => option.gradient === normalizedGradient)
+  if (!selected) return { backgroundColor: fallbackColor }
+  return {
+    backgroundImage: `linear-gradient(135deg, ${selected.colors[0]}, ${selected.colors[1]})`,
   }
 }
 
@@ -93,6 +118,18 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const isOwnStory = currentStory?.user_id === user?.id
   const textOverlay = useMemo(() => parseTextOverlay(currentStory?.text_overlay), [currentStory?.text_overlay])
   const storyText = (textOverlay?.text || currentStory?.caption || '').trim()
+  const textStoryGradient = useMemo(() => {
+    if (typeof currentStory?.background_gradient === 'string' && currentStory.background_gradient.trim()) {
+      return currentStory.background_gradient.trim()
+    }
+    if (typeof currentStory?.media_url === 'string' && currentStory.media_url.startsWith('gradient:')) {
+      return currentStory.media_url.replace(/^gradient:/, '').trim()
+    }
+    if (typeof textOverlay?.gradient === 'string' && textOverlay.gradient.trim()) {
+      return textOverlay.gradient.trim()
+    }
+    return null
+  }, [currentStory?.background_gradient, textOverlay])
   const isTextStory = currentStory?.media_url?.startsWith('gradient:') || !!currentStory?.text_overlay
 
   const goToNext = useCallback(() => {
@@ -336,7 +373,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             {isTextStory ? (
               <div
                 className="absolute inset-0 flex items-center justify-center"
-                style={{ backgroundColor: currentStory.background_color || '#2563eb' }}
+                style={getGradientStyle(textStoryGradient, currentStory.background_color || '#2563eb')}
               >
                 {storyText && (
                   <div
@@ -357,7 +394,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             ) : currentStory.media_type === 'video' ? (
               <video
                 ref={videoRef}
-                src={currentStory.media_url}
+                src={currentStory.media_url ?? undefined}
                 className="absolute inset-0 w-full h-full object-cover"
                 autoPlay
                 loop
@@ -366,7 +403,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
               />
             ) : (
               <img
-                src={currentStory.media_url}
+                src={currentStory.media_url ?? undefined}
                 alt="Story"
                 className="absolute inset-0 w-full h-full object-cover"
               />

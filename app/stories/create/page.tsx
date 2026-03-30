@@ -46,6 +46,10 @@ export default function CreateStoryPage() {
   const [mediaFile, setMediaFile] = useState<MediaFile | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [selectedGradient, setSelectedGradient] = useState(STORY_GRADIENTS[0].gradient)
+  const [selectedGradientColors, setSelectedGradientColors] = useState<[string, string]>([
+    STORY_GRADIENTS[0].colors[0],
+    STORY_GRADIENTS[0].colors[1],
+  ])
   const [selectedBackgroundColor, setSelectedBackgroundColor] = useState(STORY_GRADIENTS[0].colors[0])
   const [textStyle, setTextStyle] = useState<TextStyle>({
     text: '',
@@ -126,8 +130,8 @@ export default function CreateStoryPage() {
 
     setIsUploading(true)
     try {
-      let mediaUrl = ''
-      let mediaType: 'image' | 'video' = 'image'
+      let mediaUrl: string | null = null
+      let mediaType: 'image' | 'video' | undefined
 
       if (storyType === 'photo' && mediaFile) {
         const bucket = mediaFile.type === 'video' ? 'post-videos' : 'post-images'
@@ -143,17 +147,15 @@ export default function CreateStoryPage() {
         mediaUrl = uploadResults[0].url
         mediaType = mediaFile.type
       } else if (storyType === 'text') {
-        mediaUrl = `gradient:${selectedGradient}`
-        mediaType = 'image'
+        mediaUrl = null
       }
 
       const storyData: CreateStoryData = storyType === 'text'
         ? {
-            media_url: mediaUrl,
-            media_type: mediaType,
             text: textStyle.text.trim(),
             text_color: textStyle.color,
             background_color: selectedBackgroundColor,
+            background_gradient: `${selectedGradientColors[0]},${selectedGradientColors[1]}`,
           }
         : {
             media_url: mediaUrl,
@@ -174,7 +176,7 @@ export default function CreateStoryPage() {
     } finally {
       setIsUploading(false)
     }
-  }, [user, canSubmit, storyType, mediaFile, textStyle, selectedGradient, selectedBackgroundColor, caption, uploadMultipleFiles, router])
+  }, [user, canSubmit, storyType, mediaFile, textStyle, selectedBackgroundColor, selectedGradientColors, caption, uploadMultipleFiles, router])
 
   const handleBack = useCallback(() => {
     if (storyType) {
@@ -314,6 +316,7 @@ export default function CreateStoryPage() {
                   selectedGradient={selectedGradient}
                   onSelect={(gradient: GradientOption) => {
                     setSelectedGradient(gradient.gradient)
+                    setSelectedGradientColors([gradient.colors[0], gradient.colors[1]])
                     setSelectedBackgroundColor(gradient.colors[0])
                   }}
                 />

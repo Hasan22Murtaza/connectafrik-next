@@ -9,6 +9,15 @@ const STORY_SELECT = `
   profiles!stories_user_id_fkey ( full_name, avatar_url )
 `
 
+const parseTextOverlay = (overlay: unknown) => {
+  if (!overlay) return null
+  try {
+    return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
+  } catch {
+    return null
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
@@ -28,25 +37,34 @@ export async function GET(request: NextRequest) {
 
     if (error) return errorResponse(error.message, 400)
 
-    const stories = (data || []).map((story: any) => ({
-      id: story.id,
-      user_id: story.user_id,
-      user_name: story.profiles?.full_name || 'Unknown',
-      user_avatar: story.profiles?.avatar_url || '',
-      media_url: story.media_url,
-      media_type: story.media_type,
-      text_overlay: story.text_overlay,
-      background_color: story.background_color,
-      caption: story.caption,
-      music_url: story.music_url,
-      music_title: story.music_title,
-      music_artist: story.music_artist,
-      is_highlight: story.is_highlight,
-      view_count: story.view_count || 0,
-      expires_at: story.expires_at,
-      created_at: story.created_at,
-      has_viewed: true,
-    }))
+    const stories = (data || []).map((story: any) => {
+      const textOverlay = parseTextOverlay(story.text_overlay) as { gradient?: string } | null
+      const backgroundGradient =
+        typeof story?.background_gradient === 'string' && story.background_gradient.trim()
+          ? story.background_gradient
+          : (typeof textOverlay?.gradient === 'string' ? textOverlay.gradient : null)
+
+      return {
+        id: story.id,
+        user_id: story.user_id,
+        user_name: story.profiles?.full_name || 'Unknown',
+        user_avatar: story.profiles?.avatar_url || '',
+        media_url: story.media_url,
+        media_type: story.media_type,
+        text_overlay: story.text_overlay,
+        background_color: story.background_color,
+        background_gradient: backgroundGradient,
+        caption: story.caption,
+        music_url: story.music_url,
+        music_title: story.music_title,
+        music_artist: story.music_artist,
+        is_highlight: story.is_highlight,
+        view_count: story.view_count || 0,
+        expires_at: story.expires_at,
+        created_at: story.created_at,
+        has_viewed: true,
+      }
+    })
 
     return jsonResponse({
       data: stories,

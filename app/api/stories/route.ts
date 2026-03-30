@@ -9,8 +9,37 @@ const STORY_SELECT = `
   profiles!stories_user_id_fkey ( full_name, avatar_url, username )
 `
 
+const parseTextOverlay = (overlay: unknown) => {
+  if (!overlay) return null
+  try {
+    return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
+  } catch {
+    return null
+  }
+}
+
+const parseGradientColors = (
+  gradient: string | null | undefined
+): { start: string; end: string } | null => {
+  if (!gradient || typeof gradient !== 'string') return null
+  const trimmed = gradient.trim()
+  if (!trimmed) return null
+
+  const parts = trimmed.split(',').map(part => part.trim()).filter(Boolean)
+  if (parts.length >= 2 && parts[0].startsWith('#') && parts[1].startsWith('#')) {
+    return { start: parts[0], end: parts[1] }
+  }
+  return null
+}
+
 const toStoryResponse = (story: any) => {
   const profileData = story?.profiles
+  const textOverlay = parseTextOverlay(story?.text_overlay) as { gradient?: string } | null
+  const backgroundGradient =
+    typeof story?.background_gradient === 'string' && story.background_gradient.trim()
+      ? story.background_gradient
+      : (typeof textOverlay?.gradient === 'string' ? textOverlay.gradient : null)
+
   return {
     id: story.id || story.story_id,
     user_id: story.user_id,
@@ -22,6 +51,7 @@ const toStoryResponse = (story: any) => {
     media_type: story.media_type,
     text_overlay: story.text_overlay,
     background_color: story.background_color || '#2563eb',
+    background_gradient: backgroundGradient,
     caption: story.caption,
     music_url: story.music_url,
     music_title: story.music_title || null,
@@ -139,20 +169,42 @@ export async function POST(request: NextRequest) {
       text,
       text_color,
       background_color,
+      background_gradient,
       is_highlight,
     } = body
 
-    if (!media_url || !media_type) {
-      return errorResponse('media_url and media_type are required', 400)
-    }
-
-    const isTextStory = typeof media_url === 'string' && media_url.startsWith('gradient:')
+    const sanitizedMediaUrl = typeof media_url === 'string' && media_url.trim() ? media_url.trim() : null
     const sanitizedText = typeof text === 'string' ? text.trim() : ''
     const sanitizedTextColor = typeof text_color === 'string' && text_color.trim() ? text_color : '#FFFFFF'
+    const sanitizedBackgroundGradient =
+      typeof background_gradient === 'string' && background_gradient.trim()
+        ? background_gradient.trim()
+        : null
+
+    const isGradientMediaUrl = typeof sanitizedMediaUrl === 'string' && sanitizedMediaUrl.startsWith('gradient:')
+    const isTextStory = Boolean(sanitizedText) || Boolean(sanitizedBackgroundGradient) || isGradientMediaUrl
+    const normalizedMediaType =
+      media_type === 'image' || media_type === 'video'
+        ? media_type
+        : (isTextStory ? 'image' : null)
+
+    if (!isTextStory && !sanitizedMediaUrl) {
+      return errorResponse('media_url is required', 400)
+    }
+    if (!normalizedMediaType) {
+      return errorResponse('media_type is required', 400)
+    }
+
     const sanitizedBackgroundColor =
       typeof background_color === 'string' && background_color.trim()
         ? background_color
         : (isTextStory ? '#2563eb' : '#000000')
+    const gradientFromMediaUrl = isGradientMediaUrl
+      ? sanitizedMediaUrl.replace(/^gradient:/, '').trim()
+      : null
+    const normalizedGradient =
+      sanitizedBackgroundGradient || gradientFromMediaUrl || `${sanitizedBackgroundColor},#1d4ed8`
+    const parsedGradient = parseGradientColors(normalizedGradient)
 
     if (isTextStory && !sanitizedText) {
       return errorResponse('text is required for text stories', 400)
@@ -167,6 +219,9 @@ export async function POST(request: NextRequest) {
           backgroundColor: 'transparent',
           align: 'center',
           isBold: false,
+          gradient: parsedGradient
+            ? `${parsedGradient.start},${parsedGradient.end}`
+            : normalizedGradient,
           x: 50,
           y: 50,
         })
@@ -176,8 +231,8 @@ export async function POST(request: NextRequest) {
       .from('stories')
       .insert({
         user_id: user.id,
-        media_url,
-        media_type,
+        media_url: isTextStory ? null : sanitizedMediaUrl,
+        media_type: normalizedMediaType,
         caption: isTextStory ? sanitizedText : (caption || null),
         music_url: isTextStory ? null : (music_url || null),
         music_title: isTextStory ? null : (music_title || null),
