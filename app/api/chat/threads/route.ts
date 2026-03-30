@@ -13,6 +13,7 @@ const THREAD_SELECT = `
   created_at,
   updated_at,
   chat_participants(
+    user_id,
     user:profiles!user_id(id, username, full_name, avatar_url, status, last_seen)
   )
 `
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const parsedLimit = parseInt(searchParams.get('limit') || '50', 10)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
+    const groupId = searchParams.get('group_id') || undefined
     const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
     const from = page * limit
@@ -95,12 +97,58 @@ export async function GET(request: NextRequest) {
 
     const threadIds = [...new Set(participantRows.map((p: any) => p.thread_id))]
 
-    const { data: threads, error: threadError } = await serviceClient
-      .from('chat_threads')
-      .select(THREAD_SELECT)
-      .in('id', threadIds)
-      .order('last_message_at', { ascending: false, nullsFirst: false })
-      .range(from, to)
+    let threads: any[] | null = null
+    let threadError: any = null
+
+    if (groupId) {
+      const { data: memberships, error: groupMembersError } = await serviceClient
+        .from('group_memberships')
+        .select('user_id')
+        .eq('group_id', groupId)
+        .eq('status', 'active')
+
+      if (groupMembersError) return errorResponse(groupMembersError.message, 400)
+      const memberIds = new Set((memberships || []).map((m: any) => m.user_id))
+      if (memberIds.size === 0) {
+        return jsonResponse({
+          data: [],
+          meta: { page, pageSize: limit, hasMore: false },
+        })
+      }
+
+      const allGroupThreadsRes = await serviceClient
+        .from('chat_threads')
+        .select(THREAD_SELECT)
+        .in('id', threadIds)
+        .eq('type', 'group')
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+
+      threadError = allGroupThreadsRes.error
+      if (!threadError) {
+        const allGroupThreads = allGroupThreadsRes.data || []
+        const filtered = allGroupThreads.filter((thread: any) => {
+          const participants = Array.isArray(thread?.chat_participants) ? thread.chat_participants : []
+          const threadMemberIds = participants
+            .map((p: any) => p?.user_id)
+            .filter((id: any): id is string => Boolean(id))
+
+          if (threadMemberIds.length === 0) return false
+          if (threadMemberIds.length !== memberIds.size) return false
+          return threadMemberIds.every((id: string) => memberIds.has(id))
+        })
+        threads = filtered.slice(from, to + 1)
+      }
+    } else {
+      const pagedThreadsRes = await serviceClient
+        .from('chat_threads')
+        .select(THREAD_SELECT)
+        .in('id', threadIds)
+        .order('last_message_at', { ascending: false, nullsFirst: false })
+        .range(from, to)
+
+      threadError = pagedThreadsRes.error
+      threads = pagedThreadsRes.data || []
+    }
 
     if (threadError) return errorResponse(threadError.message, 400)
     if (!threads || threads.length === 0) {

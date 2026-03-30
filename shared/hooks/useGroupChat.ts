@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 import { useAuth } from '@/contexts/AuthContext'
+import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 
 export const useGroupChat = () => {
@@ -22,10 +22,14 @@ export const useGroupChat = () => {
       }
 
       try {
-        // Check if a group chat thread already exists for this group
-        const existingThread = await supabaseMessagingService.findGroupThread(groupId)
+        // Prefer API over direct Supabase calls for group chat thread lookup.
+        const threadsRes = await apiClient.get<{ data?: Array<{ id: string }> }>(
+          '/api/chat/threads',
+          { group_id: groupId, limit: 1, page: 0 }
+        )
+        const existingThread = threadsRes?.data?.[0]
 
-        if (existingThread) {
+        if (existingThread?.id) {
           // Thread exists, just open it
           openThread(existingThread.id)
           return existingThread.id
@@ -33,32 +37,61 @@ export const useGroupChat = () => {
 
         // Need to create a new group chat thread
         // If memberIds not provided, fetch group members
-        let participants = memberIds || []
+        let participantIds = (memberIds || []).filter((id) => id !== user.id)
+        let chatParticipants: Array<{ id: string; name: string; avatarUrl?: string }> = []
 
-        if (!participants.length) {
-          const members = await supabaseMessagingService.getGroupMembers(groupId)
-          participants = members
+        if (!participantIds.length) {
+          const membersRes = await apiClient.get<{
+            data?: Array<{
+              user_id: string
+              user?: { full_name?: string | null; username?: string | null; avatar_url?: string | null }
+            }>
+          }>(`/api/groups/${groupId}/members`, { limit: 200, page: 0 })
+
+          const members = membersRes?.data || []
+          const otherMembers = members
             .filter(m => m.user_id !== user.id) // Exclude current user
-            .map(m => m.user_id)
+          participantIds = otherMembers.map(m => m.user_id)
+
+          chatParticipants = otherMembers.map((member) => ({
+            id: member.user_id,
+            name: member.user?.full_name || member.user?.username || 'Unknown',
+            avatarUrl: member.user?.avatar_url || undefined,
+          }))
         }
 
-        if (participants.length === 0) {
+        if (participantIds.length === 0) {
           toast.error('No other members in this group yet')
           return null
         }
 
-        // Map participant IDs to ChatParticipant objects
-        const chatParticipants = await supabaseMessagingService.getUsersByIds(participants)
+        // If IDs are provided externally, hydrate missing participant display fields via group members API.
+        if (chatParticipants.length === 0) {
+          const membersRes = await apiClient.get<{
+            data?: Array<{
+              user_id: string
+              user?: { full_name?: string | null; username?: string | null; avatar_url?: string | null }
+            }>
+          }>(`/api/groups/${groupId}/members`, { limit: 200, page: 0 })
+          const memberMap = new Map(
+            (membersRes?.data || []).map((m) => [m.user_id, m.user])
+          )
+
+          chatParticipants = participantIds.map((id) => {
+            const profile = memberMap.get(id)
+            return {
+              id,
+              name: profile?.full_name || profile?.username || 'Unknown',
+              avatarUrl: profile?.avatar_url || undefined,
+            }
+          })
+        }
 
         // Create group chat thread
         const threadId = await startChatWithMembers(chatParticipants, {
-          participant_ids: participants,
+          participant_ids: participantIds,
           type: 'group',
           name: groupName,
-          metadata: {
-            groupId,
-            groupName,
-          },
           openInDock: true,
         })
 
