@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Heart, Globe, Users, Target, Star, Lightbulb } from 'lucide-react'
 
 const journeyItems = [
@@ -9,28 +10,28 @@ const journeyItems = [
     color: 'bg-emerald-500',
     border: 'border-emerald-500',
     description:
-      'Recognizing the fragmentation of African voices across global platforms, we began research into what African communities truly needed from a digital platform.',
+      'We identified the fragmentation of African voices online and began researching what African communities truly need from a social platform.',
   },
   {
     year: 'The Foundation (Early 2024)',
     color: 'bg-blue-500',
     border: 'border-blue-500',
     description:
-      'We assembled a diverse team of developers, cultural experts, and community leaders from across Africa and the diaspora to build the foundation of what would become ConnectAfrik.',
+      'We brought together a diverse team of developers, cultural experts, journalists, linguists, and community leaders across Africa and the diaspora to design ConnectAfrik from the ground up.',
   },
   {
     year: 'The Launch (Mid 2024)',
     color: 'bg-green-500',
     border: 'border-green-500',
     description:
-      'After months of development and community testing, ConnectAfrik launched with its core features: political discussions, cultural sharing, and community building tools.',
+      'ConnectAfrik launched with a powerful set of core features: political discourse channels, cultural storytelling spaces, and tools for community collaboration.',
   },
   {
-    year: 'The Growth (Late 2024)',
+    year: 'The Growth (Late 2024-Present)',
     color: 'bg-purple-500',
     border: 'border-purple-500',
     description:
-      'Today, ConnectAfrik continues to evolve, adding new features and expanding our community while staying true to our core mission of celebrating and connecting African voices.',
+      'The platform continues to expand with enhanced features, mobile accessibility, creator tools, and unique innovations designed for African users worldwide.',
   },
 ]
 
@@ -39,37 +40,37 @@ const values = [
     title: 'Ubuntu',
     accent: 'text-emerald-600 dark:text-emerald-400',
     description:
-      '"I am because we are" - We believe in the interconnectedness of all African people and the power of collective success.',
+      '"I am because we are." We honor African unity and collective progress across borders.',
   },
   {
     title: 'Authenticity',
     accent: 'text-blue-600 dark:text-blue-400',
     description:
-      'We celebrate genuine African experiences, stories, and perspectives without dilution or appropriation.',
+      'We celebrate real stories, real identities, and real African experiences - without dilution.',
   },
   {
     title: 'Diversity',
     accent: 'text-green-600 dark:text-green-400',
     description:
-      "Africa's strength lies in its diversity. We embrace and amplify voices from all 54 countries and every corner of the diaspora.",
+      "Africa's strength is its diversity. We amplify voices from all 54 nations and the global Black diaspora.",
   },
   {
     title: 'Innovation',
     accent: 'text-purple-600 dark:text-purple-400',
     description:
-      'We continuously evolve our platform to better serve our community while pioneering new ways to connect and engage.',
+      "We create technology tailored to the continent's realities and push boundaries to redefine what a social platform can be.",
   },
   {
     title: 'Respect',
     accent: 'text-rose-600 dark:text-rose-400',
     description:
-      'Every voice matters. We maintain a respectful environment where constructive dialogue can flourish.',
+      'We nurture a safe and respectful environment where debate, culture, and expression can flourish.',
   },
   {
     title: 'Empowerment',
     accent: 'text-amber-600 dark:text-amber-400',
     description:
-      'We provide tools and opportunities for African individuals and communities to grow, connect, and succeed.',
+      'We provide tools for individuals, creators, and communities to grow, earn, collaborate, and impact the world.',
   },
 ]
 
@@ -88,8 +89,8 @@ const OurStory = () => {
                 Our Story
               </h1>
               <p className="max-w-2xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
-                From vision to reality: building the premier platform for African
-                voices worldwide.
+                From vision to reality - building the premier digital home for
+                African voices worldwide.
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -106,24 +107,25 @@ const OurStory = () => {
             <div className="mb-6 flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-slate-800">
               <Heart className="h-7 w-7 text-rose-500" />
               <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-                The Genesis
+                The Beginning
               </h2>
             </div>
             <div className="space-y-4 text-[15px] leading-7 text-slate-700 dark:text-slate-300">
               <p className="text-lg leading-8">
-                ConnectAfrik was born from a simple yet powerful realization:
-                despite being home to over 1.4 billion people across 54 nations,
-                Africa&apos;s diverse voices were scattered across different
-                platforms, often losing their unique context and power in the
-                global digital noise.
+                ConnectAfrik was born from a simple truth: Africa, a continent
+                of over 1.4 billion people across 54 nations, holds some of the
+                richest cultures, histories, political ideas, and untold stories
+                in the world. Yet these voices often became scattered across
+                global platforms, stripped of context, misrepresented, or
+                overshadowed by the world&apos;s digital noise.
               </p>
               <p>
-                In 2024, a group of African technologists, diaspora leaders, and
-                cultural advocates came together with a shared vision to create a
-                digital home where African political discourse could flourish,
-                cultural heritage could be preserved and celebrated, and
-                meaningful connections could bridge the gap between the continent
-                and its global diaspora.
+                In 2024, a coalition of African technologists, diaspora
+                innovators, cultural custodians, and community leaders united
+                around one mission: create a platform built by Africans, for
+                Africans, and about Africans. A digital space where political
+                dialogue thrives, culture is preserved, and the global African
+                family can connect without borders.
               </p>
             </div>
           </article>
@@ -137,10 +139,11 @@ const OurStory = () => {
                 </h2>
               </div>
               <p className="text-[15px] leading-7 text-slate-700 dark:text-slate-300">
-                To amplify African voices, foster meaningful political dialogue,
-                preserve cultural heritage, and build bridges that connect
-                Africans across continents creating a digital ecosystem where
-                every African story matters and every voice is heard.
+                To amplify African voices, enable meaningful political and civic
+                dialogue, preserve cultural identity, and build digital bridges
+                connecting Africans on the continent with Africans in the
+                diaspora - creating a global ecosystem where every African story
+                matters and every voice is heard.
               </p>
             </article>
 
@@ -153,9 +156,9 @@ const OurStory = () => {
               </div>
               <p className="text-[15px] leading-7 text-slate-700 dark:text-slate-300">
                 A world where African perspectives shape global conversations,
-                where cultural diversity is celebrated, and where the African
-                diaspora remains deeply connected to their roots while building
-                bridges to their future.
+                where African culture is celebrated and protected, and where the
+                diaspora remains deeply connected to its roots while actively
+                building Africa&apos;s future.
               </p>
             </article>
           </div>
@@ -226,7 +229,7 @@ const OurStory = () => {
                   10,000+
                 </div>
                 <p className="text-slate-700 dark:text-slate-300">
-                  Active Community Members
+                  Active Members
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-800">
@@ -270,25 +273,37 @@ const OurStory = () => {
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-800">
-                <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-r from-green-500 to-blue-500 text-xl font-bold text-white">
-                  CT
+                <div className="mx-auto mb-4 h-24 w-24 overflow-hidden rounded-full">
+                  <Image
+                    src="/assets/images/team/eli.jpeg"
+                    alt="Eli Orlando Adetor"
+                    width={96}
+                    height={96}
+                    className="h-full w-full rounded-full object-cover object-center"
+                  />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Community Team
+                Eli Orlando Adetor
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Pan-African Collective
+                  President
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-800">
-                <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-xl font-bold text-white">
-                  DT
+                <div className="mx-auto mb-4 h-24 w-24 overflow-hidden rounded-full">
+                  <Image
+                    src="/assets/images/team/hasan.jfif"
+                    alt="Hasan Murtaza"
+                    width={96}
+                    height={96}
+                    className="h-full w-full rounded-full object-cover object-center"
+                  />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Development Team
+                  Hasan Murtaza
                 </h3>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Global African Diaspora
+                  CTO &amp; Developer
                 </p>
               </div>
             </div>
