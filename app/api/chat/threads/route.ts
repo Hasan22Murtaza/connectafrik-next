@@ -34,6 +34,7 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
       unread_count: typeof row.unread_count === 'number' ? row.unread_count : 0,
       chat_participants: Array.isArray(row.participants)
         ? row.participants.map((participant: any) => ({
+            user_id: participant.id,
             user: {
               id: participant.id,
               username: participant.name ?? null,
@@ -46,6 +47,46 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
         : [],
     }
   })
+}
+
+const getThreadActivityTime = (thread: any) => {
+  const timestamp = thread?.last_activity_at ?? thread?.last_message_at ?? thread?.updated_at ?? thread?.created_at
+  const time = timestamp ? new Date(timestamp).getTime() : 0
+  return Number.isNaN(time) ? 0 : time
+}
+
+const deduplicateThreadsByParticipants = (threads: any[]) => {
+  const dedupedByMembers = new Map<string, any>()
+  const passthroughThreads: any[] = []
+
+  for (const thread of threads) {
+    const threadType = thread?.type
+    if (threadType !== 'group' && threadType !== 'direct') {
+      passthroughThreads.push(thread)
+      continue
+    }
+
+    const participantIds = Array.isArray(thread?.chat_participants)
+      ? thread.chat_participants
+          .map((participant: any) => participant?.user_id)
+          .filter((id: any): id is string => typeof id === 'string' && id.length > 0)
+      : []
+
+    if (participantIds.length === 0) {
+      passthroughThreads.push(thread)
+      continue
+    }
+
+    const key = `${threadType}:${[...new Set(participantIds)].sort().join(':')}`
+    const existing = dedupedByMembers.get(key)
+    if (!existing || getThreadActivityTime(thread) > getThreadActivityTime(existing)) {
+      dedupedByMembers.set(key, thread)
+    }
+  }
+
+  return [...passthroughThreads, ...Array.from(dedupedByMembers.values())].sort(
+    (a: any, b: any) => getThreadActivityTime(b) - getThreadActivityTime(a)
+  )
 }
 
 export async function GET(request: NextRequest) {
@@ -76,12 +117,13 @@ export async function GET(request: NextRequest) {
         if (rpcError) return errorResponse(rpcError.message, 400)
         const rows = Array.isArray(rpcData) ? rpcData : []
         const normalized = mapRpcRowsToThreadShape(rows)
+        const deduped = deduplicateThreadsByParticipants(normalized)
         return jsonResponse({
-          data: normalized.slice(from, to + 1),
+          data: deduped.slice(from, to + 1),
           meta: {
             page,
             pageSize: limit,
-            hasMore: normalized.length > to + 1,
+            hasMore: deduped.length > to + 1,
           },
         })
       }
@@ -98,6 +140,7 @@ export async function GET(request: NextRequest) {
     const threadIds = [...new Set(participantRows.map((p: any) => p.thread_id))]
 
     let threads: any[] | null = null
+    let dedupedTotal = 0
     let threadError: any = null
 
     if (groupId) {
@@ -136,18 +179,24 @@ export async function GET(request: NextRequest) {
           if (threadMemberIds.length !== memberIds.size) return false
           return threadMemberIds.every((id: string) => memberIds.has(id))
         })
-        threads = filtered.slice(from, to + 1)
+        const deduped = deduplicateThreadsByParticipants(filtered)
+        dedupedTotal = deduped.length
+        threads = deduped.slice(from, to + 1)
       }
     } else {
-      const pagedThreadsRes = await serviceClient
+      const threadsRes = await serviceClient
         .from('chat_threads')
         .select(THREAD_SELECT)
         .in('id', threadIds)
         .order('last_message_at', { ascending: false, nullsFirst: false })
-        .range(from, to)
 
-      threadError = pagedThreadsRes.error
-      threads = pagedThreadsRes.data || []
+      threadError = threadsRes.error
+      if (!threadError) {
+        const allThreads = threadsRes.data || []
+        const deduped = deduplicateThreadsByParticipants(allThreads)
+        dedupedTotal = deduped.length
+        threads = deduped.slice(from, to + 1)
+      }
     }
 
     if (threadError) return errorResponse(threadError.message, 400)
@@ -194,7 +243,7 @@ export async function GET(request: NextRequest) {
       meta: {
         page,
         pageSize: limit,
-        hasMore: result.length === limit,
+        hasMore: dedupedTotal > to + 1,
       },
     })
   } catch (error: any) {

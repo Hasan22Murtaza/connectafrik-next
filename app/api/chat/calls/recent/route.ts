@@ -11,6 +11,11 @@ function statusToMessageType(status: string | null | undefined): string {
   return 'ringing'
 }
 
+function toTime(value: string | null | undefined): number {
+  const t = value ? new Date(value).getTime() : 0
+  return Number.isNaN(t) ? 0 : t
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser(request)
@@ -48,27 +53,20 @@ export async function GET(request: NextRequest) {
     const byThread = new Map<string, any>()
     for (const s of list) {
       const existing = byThread.get(s.thread_id)
-      const t = new Date(s.updated_at || s.created_at).getTime()
-      const et = existing ? new Date(existing.updated_at || existing.created_at).getTime() : 0
-      if (!existing || t > et) {
-        byThread.set(s.thread_id, s)
-      }
+      const t = toTime(s.updated_at || s.created_at)
+      const et = existing ? toTime(existing.updated_at || existing.created_at) : 0
+      if (!existing || t > et) byThread.set(s.thread_id, s)
     }
 
-    const recentAll = [...byThread.values()].sort(
-      (a, b) =>
-        new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
-    )
-    const recent = recentAll.slice(from, to + 1)
-
-    if (recent.length === 0) {
+    const latestByThread = [...byThread.values()]
+    if (latestByThread.length === 0) {
       return jsonResponse({
         data: [],
         meta: { page, pageSize: limit, hasMore: false },
       })
     }
 
-    const threadIdsToFetch = [...new Set(recent.map((r: any) => r.thread_id))]
+    const threadIdsToFetch = [...new Set(latestByThread.map((r: any) => r.thread_id))]
     const { data: threads } = await serviceClient
       .from('chat_threads')
       .select('id, type, title, name')
@@ -95,6 +93,45 @@ export async function GET(request: NextRequest) {
       participantsByThread.set(p.thread_id, arr)
     }
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+    const dedupedByConversation = new Map<string, any>()
+    for (const record of latestByThread) {
+      const thread = threadMap.get(record.thread_id)
+      const participantIds = participantsByThread.get(record.thread_id) || []
+      const otherId = participantIds.find((id) => id !== user.id) || null
+      const participantKey = [...new Set(participantIds)].sort().join(':')
+      const meta =
+        record?.metadata && typeof record.metadata === 'object'
+          ? (record.metadata as Record<string, unknown>)
+          : {}
+      const isGroupCall = meta.isGroupCall === true
+      const conversationKey =
+        !isGroupCall && otherId
+          ? `direct:${otherId}`
+          : participantKey.length > 0
+            ? `${thread?.type || 'unknown'}:${participantKey}`
+            : `thread:${record.thread_id}`
+
+      const existing = dedupedByConversation.get(conversationKey)
+      if (
+        !existing ||
+        toTime(record.updated_at || record.created_at) > toTime(existing.updated_at || existing.created_at)
+      ) {
+        dedupedByConversation.set(conversationKey, record)
+      }
+    }
+
+    const recentAll = [...dedupedByConversation.values()].sort(
+      (a, b) => toTime(b.updated_at || b.created_at) - toTime(a.updated_at || a.created_at)
+    )
+    const recent = recentAll.slice(from, to + 1)
+
+    if (recent.length === 0) {
+      return jsonResponse({
+        data: [],
+        meta: { page, pageSize: limit, hasMore: false },
+      })
+    }
 
     const result = recent
       .map((r: any) => {
@@ -123,7 +160,7 @@ export async function GET(request: NextRequest) {
           contact_last_seen: otherProfile?.last_seen || null,
         }
       })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .sort((a, b) => toTime(b.created_at) - toTime(a.created_at))
 
     return jsonResponse({
       data: result,
