@@ -18,7 +18,20 @@ const parseTextOverlay = (overlay: string | object | null | undefined) => {
   }
 }
 
+const isTextStoryLike = (story: Story | null | undefined, textOverlay: any): boolean => {
+  if (!story) return false
+  if (typeof story.media_url === 'string' && story.media_url.startsWith('gradient:')) return true
+  if (Boolean(story.text_overlay)) return true
+  if (typeof story.background_gradient === 'string' && story.background_gradient.trim()) return true
+  if (Array.isArray(story.background_gradient_colors) && story.background_gradient_colors.length >= 2) return true
+  if (!story.media_url && Boolean(textOverlay?.text || story.caption || story.background_color)) return true
+  return false
+}
+
 const getStoryBackgroundGradient = (story: Story, textOverlay: any): string | null => {
+  if (Array.isArray(story.background_gradient_colors) && story.background_gradient_colors.length >= 2) {
+    return `${story.background_gradient_colors[0]},${story.background_gradient_colors[1]}`
+  }
   if (typeof story.background_gradient === 'string' && story.background_gradient.trim()) {
     return story.background_gradient.trim()
   }
@@ -64,8 +77,8 @@ interface StoryCardProps {
 const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUnseenStory = true }) => {
   const displayName = story.username || story.user_name || 'Unknown'
   const displayAvatar = story.profile_picture_url || story.user_avatar || ''
-  const isTextStory = story.media_url?.startsWith('gradient:') || story.text_overlay
   const textOverlay = parseTextOverlay(story.text_overlay)
+  const isTextStory = isTextStoryLike(story, textOverlay)
   const storyGradient = getStoryBackgroundGradient(story, textOverlay)
   const storyText = (textOverlay?.text || story.caption || '').trim()
   const isVideo = story.media_type === 'video' && !isTextStory
@@ -183,8 +196,8 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
   const latestStory = userStories[0]
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url
   const userName = profile?.full_name || user?.user_metadata?.full_name || 'You'
-  const isTextStory = latestStory?.media_url?.startsWith('gradient:') || latestStory?.text_overlay
   const latestStoryTextOverlay = parseTextOverlay(latestStory?.text_overlay)
+  const isTextStory = isTextStoryLike(latestStory, latestStoryTextOverlay)
   const latestStoryGradient = latestStory ? getStoryBackgroundGradient(latestStory, latestStoryTextOverlay) : null
   const isVideo = latestStory?.media_type === 'video' && !isTextStory
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -357,6 +370,9 @@ const StoriesBar: React.FC = () => {
     profile_picture_url: story?.profile_picture_url || story?.user_avatar || '',
     background_color: story?.background_color || '#2563eb',
     background_gradient: story?.background_gradient || null,
+    background_gradient_colors: Array.isArray(story?.background_gradient_colors)
+      ? story.background_gradient_colors
+      : null,
     view_count: story?.view_count || 0,
     has_viewed: Boolean(story?.has_viewed),
   }), [])

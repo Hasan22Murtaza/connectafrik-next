@@ -18,44 +18,77 @@ const parseTextOverlay = (overlay: unknown) => {
   }
 }
 
-const parseGradientColors = (
-  gradient: string | null | undefined
-): { start: string; end: string } | null => {
-  if (!gradient || typeof gradient !== 'string') return null
-  const trimmed = gradient.trim()
+const normalizeGradientValue = (value: string | null | undefined): string | null => {
+  if (!value || typeof value !== 'string') return null
+  const trimmed = value.trim()
   if (!trimmed) return null
+  return trimmed.startsWith('gradient:') ? trimmed.replace(/^gradient:/, '').trim() : trimmed
+}
 
-  const parts = trimmed.split(',').map(part => part.trim()).filter(Boolean)
-  if (parts.length >= 2 && parts[0].startsWith('#') && parts[1].startsWith('#')) {
-    return { start: parts[0], end: parts[1] }
+const parseGradientColors = (value: string | null | undefined): { start: string; end: string } | null => {
+  const normalized = normalizeGradientValue(value)
+  if (!normalized) return null
+  const parts = normalized.split(',').map(part => part.trim()).filter(Boolean)
+  if (parts.length < 2) return null
+  return { start: parts[0], end: parts[1] }
+}
+
+const getGradientPayload = (
+  story: any,
+  textOverlay: { gradient?: string } | null
+): { backgroundGradient: string | null; backgroundGradientColors: string[] | null } => {
+  const rawGradient =
+    (typeof story?.background_gradient === 'string' && story.background_gradient.trim()
+      ? story.background_gradient
+      : null) ||
+    (typeof story?.media_url === 'string' && story.media_url.startsWith('gradient:')
+      ? story.media_url
+      : null) ||
+    (typeof textOverlay?.gradient === 'string' ? textOverlay.gradient : null)
+
+  const backgroundGradient = normalizeGradientValue(rawGradient)
+  const parsed = parseGradientColors(backgroundGradient)
+  return {
+    backgroundGradient,
+    backgroundGradientColors: parsed ? [parsed.start, parsed.end] : null,
   }
-  return null
+}
+
+const compactObject = <T extends Record<string, any>>(obj: T) => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== null && value !== undefined && value !== '')
+  )
 }
 
 const toStoryResponse = (story: any) => {
   const profileData = story?.profiles
   const textOverlay = parseTextOverlay(story?.text_overlay) as { gradient?: string } | null
-  const backgroundGradient =
-    typeof story?.background_gradient === 'string' && story.background_gradient.trim()
-      ? story.background_gradient
-      : (typeof textOverlay?.gradient === 'string' ? textOverlay.gradient : null)
+  const { backgroundGradient, backgroundGradientColors } = getGradientPayload(story, textOverlay)
+  const isTextStory =
+    story?.media_type === 'text' ||
+    Boolean(textOverlay) ||
+    Boolean(backgroundGradient) ||
+    (typeof story?.media_url === 'string' && story.media_url.startsWith('gradient:')) ||
+    !story?.media_url
 
-  return {
+  return compactObject({
     id: story.id || story.story_id,
     user_id: story.user_id,
     user_name: profileData?.full_name || story.user_name || story.full_name || story.username || 'Unknown',
     user_avatar: profileData?.avatar_url || story.user_avatar || story.profile_picture_url || '',
     username: profileData?.username || story.username || '',
-    profile_picture_url: profileData?.avatar_url || story.profile_picture_url || story.user_avatar || '',
+    profile_picture_url:
+      profileData?.avatar_url || story.profile_picture_url || story.user_avatar || undefined,
     media_url: story.media_url,
-    media_type: story.media_type,
+    media_type: isTextStory ? 'text' : story.media_type,
     text_overlay: story.text_overlay,
     background_color: story.background_color || '#2563eb',
     background_gradient: backgroundGradient,
+    background_gradient_colors: backgroundGradientColors,
     caption: story.caption,
     music_url: story.music_url,
-    music_title: story.music_title || null,
-    music_artist: story.music_artist || null,
+    music_title: story.music_title || undefined,
+    music_artist: story.music_artist || undefined,
     is_highlight: Boolean(story.is_highlight),
     view_count: story.view_count || 0,
     expires_at: story.expires_at,
@@ -63,8 +96,8 @@ const toStoryResponse = (story: any) => {
     has_viewed: Boolean(story.has_viewed ?? story.is_viewed ?? false),
     reaction_count: story.reaction_count || 0,
     reply_count: story.reply_count || 0,
-    user_reaction: story.user_reaction || null,
-  }
+    user_reaction: story.user_reaction || undefined,
+  })
 }
 
 const groupStoriesByUser = (stories: any[]) => {
@@ -186,7 +219,7 @@ export async function POST(request: NextRequest) {
     const normalizedMediaType =
       media_type === 'image' || media_type === 'video'
         ? media_type
-        : (isTextStory ? 'image' : null)
+        : (isTextStory ? 'text' : null)
 
     if (!isTextStory && !sanitizedMediaUrl) {
       return errorResponse('media_url is required', 400)

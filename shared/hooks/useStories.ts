@@ -5,8 +5,8 @@ import { apiClient } from '@/lib/api-client'
 export interface Story {
   id: string
   author_id: string
-  media_url: string
-  media_type: 'image' | 'video'
+  media_url: string | null
+  media_type: 'image' | 'video' | 'text'
   text_overlay?: string
   background_color: string
   created_at: string
@@ -126,8 +126,8 @@ export const useStories = () => {
   }
 
   const createStory = async (storyData: {
-    media_url: string
-    media_type: 'image' | 'video'
+    media_url?: string | null
+    media_type?: 'image' | 'video' | 'text'
     text_overlay?: string
     background_color?: string
   }) => {

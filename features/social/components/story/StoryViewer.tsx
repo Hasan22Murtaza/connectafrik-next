@@ -130,7 +130,10 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
     }
     return null
   }, [currentStory?.background_gradient, textOverlay])
-  const isTextStory = currentStory?.media_url?.startsWith('gradient:') || !!currentStory?.text_overlay
+  const isTextStory =
+    currentStory?.media_type === 'text' ||
+    currentStory?.media_url?.startsWith('gradient:') ||
+    !!currentStory?.text_overlay
 
   const goToNext = useCallback(() => {
     if (currentIndex < stories.length - 1) {
@@ -409,7 +412,13 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
               />
             )}
 
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
+            <div
+              className={`absolute inset-0 pointer-events-none ${
+                isTextStory
+                  ? 'bg-gradient-to-b from-black/10 via-transparent to-black/20'
+                  : 'bg-gradient-to-b from-black/40 via-transparent to-black/60'
+              }`}
+            />
 
             <div className="absolute top-2 md:top-3 left-2 md:left-3 right-2 md:right-3 z-20 flex gap-0.5 md:gap-1">
               {stories.map((_, idx) => (

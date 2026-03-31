@@ -8,10 +8,11 @@ export interface Story {
   username?: string
   profile_picture_url?: string
   media_url: string | null
-  media_type: 'image' | 'video'
+  media_type: 'image' | 'video' | 'text'
   text_overlay?: string | null
   background_color: string
   background_gradient?: string | null
+  background_gradient_colors?: string[] | null
   caption?: string | null
   music_url?: string | null
   music_title?: string | null
@@ -28,7 +29,7 @@ export interface Story {
 
 export interface CreateStoryData {
   media_url?: string | null
-  media_type?: 'image' | 'video'
+  media_type?: 'image' | 'video' | 'text'
   text?: string
   text_color?: string
   background_color?: string

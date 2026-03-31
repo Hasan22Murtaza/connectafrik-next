@@ -18,6 +18,27 @@ const parseTextOverlay = (overlay: unknown) => {
   }
 }
 
+const normalizeGradientValue = (value: string | null | undefined): string | null => {
+  if (!value || typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return trimmed.startsWith('gradient:') ? trimmed.replace(/^gradient:/, '').trim() : trimmed
+}
+
+const parseGradientColors = (value: string | null | undefined): string[] | null => {
+  const normalized = normalizeGradientValue(value)
+  if (!normalized) return null
+  const parts = normalized.split(',').map(part => part.trim()).filter(Boolean)
+  if (parts.length < 2) return null
+  return [parts[0], parts[1]]
+}
+
+const compactObject = <T extends Record<string, any>>(obj: T) => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== null && value !== undefined && value !== '')
+  )
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
@@ -39,31 +60,44 @@ export async function GET(request: NextRequest) {
 
     const stories = (data || []).map((story: any) => {
       const textOverlay = parseTextOverlay(story.text_overlay) as { gradient?: string } | null
-      const backgroundGradient =
-        typeof story?.background_gradient === 'string' && story.background_gradient.trim()
+      const rawGradient =
+        (typeof story?.background_gradient === 'string' && story.background_gradient.trim()
           ? story.background_gradient
-          : (typeof textOverlay?.gradient === 'string' ? textOverlay.gradient : null)
+          : null) ||
+        (typeof story?.media_url === 'string' && story.media_url.startsWith('gradient:')
+          ? story.media_url
+          : null) ||
+        (typeof textOverlay?.gradient === 'string' ? textOverlay.gradient : null)
+      const backgroundGradient = normalizeGradientValue(rawGradient)
+      const backgroundGradientColors = parseGradientColors(backgroundGradient)
+      const isTextStory =
+        story?.media_type === 'text' ||
+        Boolean(textOverlay) ||
+        Boolean(backgroundGradient) ||
+        (typeof story?.media_url === 'string' && story.media_url.startsWith('gradient:')) ||
+        !story?.media_url
 
-      return {
+      return compactObject({
         id: story.id,
         user_id: story.user_id,
         user_name: story.profiles?.full_name || 'Unknown',
         user_avatar: story.profiles?.avatar_url || '',
         media_url: story.media_url,
-        media_type: story.media_type,
+        media_type: isTextStory ? 'text' : story.media_type,
         text_overlay: story.text_overlay,
         background_color: story.background_color,
         background_gradient: backgroundGradient,
+        background_gradient_colors: backgroundGradientColors,
         caption: story.caption,
         music_url: story.music_url,
-        music_title: story.music_title,
-        music_artist: story.music_artist,
+        music_title: story.music_title || undefined,
+        music_artist: story.music_artist || undefined,
         is_highlight: story.is_highlight,
         view_count: story.view_count || 0,
         expires_at: story.expires_at,
         created_at: story.created_at,
         has_viewed: true,
-      }
+      })
     })
 
     return jsonResponse({
