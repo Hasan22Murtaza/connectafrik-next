@@ -46,7 +46,7 @@ export type StoryProfilesApi = {
   username: string | null
 }
 
-/** One story for API: `stories` columns (no `text_overlay`) + `gradient_colors` + optional `text_color` + `profiles`. */
+/** One story for API: `stories` columns (no `text_overlay`) + `gradient_colors` (always `string[]`, empty if none) + optional `text_color` + `profiles`. */
 export function buildStoryApiRowFromDbRow(story: Record<string, unknown>): Record<string, unknown> {
   const profileData = story.profiles as { full_name?: string; avatar_url?: string; username?: string } | null | undefined
   const parsedOverlay = parseTextOverlay(story.text_overlay)
@@ -69,9 +69,7 @@ export function buildStoryApiRowFromDbRow(story: Record<string, unknown>): Recor
     created_at: story.created_at,
   }
 
-  if (gradientPair) {
-    row.gradient_colors = [gradientPair[0], gradientPair[1]]
-  }
+  row.gradient_colors = gradientPair ? [gradientPair[0], gradientPair[1]] : []
   if (isText && typeof parsedOverlay?.color === 'string' && (parsedOverlay.color as string).trim()) {
     row.text_color = (parsedOverlay.color as string).trim()
   }
