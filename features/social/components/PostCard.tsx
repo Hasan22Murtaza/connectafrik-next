@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useId } from "react";
 import {
   MoreHorizontal,
   Trash2,
   Edit,
   UserPlus,
   UserCheck,
-  Eye,
-  Plus,
   MapPin,
+  Bookmark,
+  BookmarkX,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,6 @@ import {
   unfollowUser,
 } from "../services/followService";
 import { supabase } from "@/lib/supabase";
-import { getDiversityBadges } from "../services/fairnessRankingService";
 import { logEngagementEvent } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
@@ -51,6 +50,8 @@ interface Post {
   language?: string;
   created_at: string;
   isLiked?: boolean;
+  /** From API when user has bookmarked this post */
+  is_saved?: boolean;
   is_following?: boolean;
   reactions?: Array<{
     type: string;
@@ -59,6 +60,8 @@ interface Post {
     currentUserReacted?: boolean;
   }>;
   reactions_total_count?: number;
+  canComment?: boolean;
+  canFollow?: boolean;
 }
 
 interface PostCardProps {
@@ -74,10 +77,12 @@ interface PostCardProps {
   isPostLiked?: boolean;
   /** When false, comment action is hidden/disabled (e.g. post owner turned off comments). Default true. */
   canComment?: boolean;
-  /** When false, follow (Tap In) button is hidden (e.g. post author allow_follows is none or friends-only). Default true. */
+  /** When false, Follow is hidden in the post menu (e.g. author allow_follows is none or friends-only). Default true. */
   canFollow?: boolean;
   /** When true, clicking the card does not navigate to the post page (e.g. when already on the detail page). */
   disablePostClick?: boolean;
+  /** Called after save/unsave API succeeds (e.g. remove card from Saved list). */
+  onSaveStateChange?: (postId: string, saved: boolean) => void;
 }
 
 // Facebook-style background colors for short posts
@@ -107,6 +112,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   canComment = true,
   canFollow = true,
   disablePostClick = false,
+  onSaveStateChange,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -121,9 +127,15 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const [postSaved, setPostSaved] = useState(post.is_saved ?? false);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    setPostSaved(post.is_saved ?? false);
+  }, [post.id, post.is_saved]);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
+  const postOptionsMenuId = useId();
   // Auto-open comments for a random subset of posts with exactly 2 comments
   const shouldAutoOpenComments = (() => {
     if ((post.comments_count || 0) !== 2) return false;
@@ -266,7 +278,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     setShowDeleteConfirm(false);
   };
 
-  const handleFollow = async () => {
+  const handleFollow = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!user) {
       toast.error("Please sign in to tap in");
       return;
@@ -297,6 +310,64 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     } finally {
       setFollowCheckLoading(false);
     }
+  };
+
+  const requireSignedIn = (): boolean => {
+    if (!user) {
+      toast.error("Please sign in to continue");
+      return false;
+    }
+    return true;
+  };
+
+  const persistPostSaveToggle = async () => {
+    if (!requireSignedIn() || !user) return;
+    if (post.author?.id === user.id) {
+      toast.success("This is your post");
+      return;
+    }
+    try {
+      const { saved } = await apiClient.post<{ saved: boolean }>(
+        `/api/posts/${post.id}/save`
+      );
+      setPostSaved(saved);
+      onSaveStateChange?.(post.id, saved);
+      if (saved) {
+        logEngagementEvent({
+          userId: user.id,
+          postId: post.id,
+          type: "save",
+          contentType: "post",
+        });
+        toast.success("Post saved");
+      } else {
+        logEngagementEvent({
+          userId: user.id,
+          postId: post.id,
+          type: "unsave",
+          contentType: "post",
+        });
+        toast.success("Removed from saved");
+      }
+    } catch {
+      toast.error("Could not update saved posts");
+    }
+  };
+
+  const savePostFromMenu = async () => {
+    if (postSaved) {
+      toast.success("Already in your saved list");
+      return;
+    }
+    await persistPostSaveToggle();
+  };
+
+  const unsavePostFromMenu = async () => {
+    if (!postSaved) {
+      toast.success("This post isn't in your saved list");
+      return;
+    }
+    await persistPostSaveToggle();
   };
 
   // Navigate to user profile
@@ -367,46 +438,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     };
   }, []);
 
-  const isOwnPost = user && post.author && post.author.id === user.id;
-
-  // Get diversity badges for this post
-  const diversityBadges = getDiversityBadges({
-    id: post.id,
-    creator_id: post.author_id,
-    creator_type:
-      (post.author?.creator_type as
-        | "verified"
-        | "regular"
-        | "underrepresented") || "regular",
-    creator_region: post.author.country || undefined,
-    language: post.language || "English",
-    created_at: post.created_at,
-    engagement_score:
-      (post.likes_count || 0) * 0.3 + (post.comments_count || 0) * 0.5,
-    topic_category: post.category,
-  });
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "politics":
-        return "bg-red-100 text-red-800";
-      case "culture":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "politics":
-        return "🏛️";
-      case "culture":
-        return "🎭";
-      default:
-        return "💬";
-    }
-  };
+  const isOwnPost = Boolean(
+    user && post.author && post.author.id === user.id
+  );
 
   // Open image viewer on image click
   const handleImageClick = (index: number) => {
@@ -581,26 +615,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                 )}
               </div>
               <div className="flex items-center space-x-2 mt-1 flex-wrap">
-                <span
-                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(
-                    post.category
-                  )}`}
-                >
-                  <span className="mr-1" role="img" aria-label={post.category}>
-                    {getCategoryIcon(post.category)}
-                  </span>
-                  {post.category.charAt(0).toUpperCase() +
-                    post.category.slice(1)}
-                </span>
-                {diversityBadges.map((badge, index) => (
-                  <span
-                    key={index}
-                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.color}`}
-                    title={`This content is from a ${badge.label.toLowerCase()}`}
-                  >
-                    {badge.label}
-                  </span>
-                ))}
                 <time
                   className="text-gray-500 text-xs sm:text-sm"
                   dateTime={post.created_at}
@@ -627,64 +641,201 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           </button>
         </div>
 
-        {/* Tap In button or Three-dot menu */}
-        {!isOwnPost && canFollow ? (
+        <div className="relative flex-shrink-0" ref={menuRef}>
           <button
-            onClick={handleFollow}
-            disabled={followCheckLoading}
-            className={`flex items-center space-x-1 justify-center px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors disabled:opacity-50  cursor-pointer ${
-              isFollowing
-                ? "bg-gray-400 text-white hover:bg-gray-600"
-                : "bg-[#FF6900] text-white hover:bg-[#ea580c]"
-            }`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+            className="rounded-full p-2 transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
+            aria-label="Post options"
+            aria-expanded={showMenu}
+            aria-haspopup="menu"
+            aria-controls={postOptionsMenuId}
           >
-            {followCheckLoading ? (
-              <>
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin " />
-                <span>Loading...</span>
-              </>
-            ) : isFollowing ? (
-              <>
-                <UserCheck className="w-3 h-3" />
-                <span>UnTap In</span>
-              </>
-            ) : (
-              <>
-                <UserPlus className="w-3 h-3" />
-                <span>Tap In</span>
-              </>
-            )}
+            <MoreHorizontal className="h-5 w-5 text-gray-600" aria-hidden />
           </button>
-        ) : !isOwnPost && !canFollow ? null : (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
-              aria-label="Post options"
-            >
-              <MoreHorizontal className="w-5 h-5 text-gray-600" />
-            </button>
 
-            {showMenu && (
-              <div className="absolute right-0 top-full mt-1 w-34 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                <button
-                  onClick={handleEditClick}
-                  className="w-full px-2 py-1 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2 cursor-pointer"
-                >
-                  <Edit className="w-3 h-3" />
-                  <span>Edit Post</span>
-                </button>
-                <button
-                  onClick={handleDeleteClick}
-                  className="w-full px-2 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 cursor-pointer"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  <span>Delete Post</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+          {showMenu && (
+            <ul
+              id={postOptionsMenuId}
+              role="menu"
+              aria-label={isOwnPost ? "Your post actions" : "Post actions"}
+              className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,20rem)] list-none rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+            >
+              {isOwnPost ? (
+                <>
+                  <li role="none" className="list-none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleEditClick}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                    >
+                      <Edit
+                        className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-gray-900">
+                          Edit post
+                        </span>
+                        <span className="mt-0.5 block text-xs text-gray-500">
+                          Change text, media, or details
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                  <li role="none" className="list-none border-t border-gray-100">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleDeleteClick}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-red-50 focus:outline-none focus-visible:bg-red-50"
+                    >
+                      <Trash2
+                        className="mt-0.5 h-5 w-5 shrink-0 text-red-600"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-red-600">
+                          Delete post
+                        </span>
+                        <span className="mt-0.5 block text-xs text-red-500/90">
+                          Remove this post permanently
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                </>
+              ) : (
+                <>
+                  {canFollow && (
+                    <li role="none" className="list-none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={followCheckLoading}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await handleFollow(e);
+                          setShowMenu(false);
+                        }}
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {followCheckLoading ? (
+                          <>
+                            <div
+                              className="mt-0.5 h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600"
+                              aria-hidden
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold text-gray-900">
+                                Working…
+                              </span>
+                              <span className="mt-0.5 block text-xs text-gray-500">
+                                Updating tap-in status
+                              </span>
+                            </span>
+                          </>
+                        ) : isFollowing ? (
+                          <>
+                            <UserCheck
+                              className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                              aria-hidden
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold text-gray-900">
+                                UnTap In
+                              </span>
+                              <span className="mt-0.5 block text-xs text-gray-500">
+                                Stop following this creator from your feed
+                              </span>
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus
+                              className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                              aria-hidden
+                            />
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold text-gray-900">
+                                Tap In
+                              </span>
+                              <span className="mt-0.5 block text-xs text-gray-500">
+                                Follow this creator and see more of their posts
+                              </span>
+                            </span>
+                          </>
+                        )}
+                      </button>
+                    </li>
+                  )}
+                  <li
+                    role="none"
+                    className={`list-none ${canFollow ? "border-t border-gray-100" : ""}`}
+                  >
+                    {postSaved ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void (async () => {
+                            await unsavePostFromMenu();
+                            setShowMenu(false);
+                          })();
+                        }}
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                      >
+                        <BookmarkX
+                          className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                          aria-hidden
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-gray-900">
+                            Unsave post
+                          </span>
+                          <span className="mt-0.5 block text-xs text-gray-500">
+                            Remove from your saved items
+                          </span>
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void (async () => {
+                            await savePostFromMenu();
+                            setShowMenu(false);
+                          })();
+                        }}
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                      >
+                        <Bookmark
+                          className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                          aria-hidden
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-gray-900">
+                            Save post
+                          </span>
+                          <span className="mt-0.5 block text-xs text-gray-500">
+                            Add to your saved list
+                          </span>
+                        </span>
+                      </button>
+                    )}
+                  </li>
+                </>
+              )}
+            </ul>
+          )}
+        </div>
       </div>
 
       {/* Edit Post Modal */}

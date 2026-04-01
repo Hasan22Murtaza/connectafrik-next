@@ -33,6 +33,7 @@ export interface Post {
   language?: string
   created_at: string
   isLiked?: boolean
+  is_saved?: boolean
   canComment?: boolean
   canFollow?: boolean
 }

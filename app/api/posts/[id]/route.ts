@@ -42,6 +42,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     let isLiked = false
+    let is_saved = false
     if (userId) {
       const { data: reactionData } = await supabase
         .from('post_reactions')
@@ -51,6 +52,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .maybeSingle()
 
       isLiked = !!reactionData
+
+      const { data: saveRow } = await supabase
+        .from('post_saves')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .maybeSingle()
+      is_saved = !!saveRow
     }
 
     const reactionsByType: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }> = {}
@@ -130,6 +139,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           country: post.author.country,
         } : null,
         isLiked,
+        is_saved,
         reactions,
         reactions_total_count: reactionsTotalCount,
       },

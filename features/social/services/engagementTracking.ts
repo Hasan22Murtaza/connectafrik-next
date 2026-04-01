@@ -8,7 +8,7 @@ import { apiClient } from '@/lib/api-client'
 interface EventData {
   userId: string
   postId: string
-  type: 'view' | 'like' | 'comment' | 'share' | 'save' | 'watch'
+  type: 'view' | 'like' | 'comment' | 'share' | 'save' | 'unsave' | 'watch' | 'interested' | 'not_interested'
   contentType?: 'post' | 'reel'
   dwellMs?: number
   percentViewed?: number
