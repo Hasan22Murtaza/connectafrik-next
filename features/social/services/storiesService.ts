@@ -1,45 +1,41 @@
 import { apiClient } from '@/lib/api-client'
+import {
+  denormalizeStoryFromApi,
+  flattenStoryFeedItems,
+} from '@/features/social/services/storyApiCodec'
+import type { Story } from '@/features/social/types/story'
 
-export interface Story {
-  id: string
-  user_id: string
-  user_name: string
-  user_avatar: string
-  username?: string
-  profile_picture_url?: string
-  media_url: string | null
-  media_type: 'image' | 'video' | 'text'
-  text_overlay?: string | null
-  background_color: string
-  background_gradient?: string | null
-  background_gradient_colors?: string[] | null
-  caption?: string | null
-  music_url?: string | null
-  music_title?: string | null
-  music_artist?: string | null
-  is_highlight: boolean
-  view_count: number
-  expires_at: string
-  created_at: string
-  has_viewed: boolean
-  reaction_count?: number
-  reply_count?: number
-  user_reaction?: string | null
-}
+export type { Story } from '@/features/social/types/story'
 
+/** POST /api/stories — prefer same field names as GET/POST story response */
 export interface CreateStoryData {
-  media_url?: string | null
-  media_type?: 'image' | 'video' | 'text'
-  text?: string
+  caption?: string
   text_color?: string
   background_color?: string
-  background_gradient?: string
-  caption?: string
+  gradient_colors?: [string, string]
+  media_url?: string | null
+  media_type?: 'image' | 'video' | 'text'
   music_url?: string
   music_title?: string
   music_artist?: string
-  text_overlay?: string
   is_highlight?: boolean
+  /** @deprecated use caption */
+  t?: string
+  /** @deprecated use gradient_colors */
+  g?: [string, string]
+  /** @deprecated use media_url */
+  mu?: string | null
+  /** @deprecated use media_type */
+  mt?: 'image' | 'video' | 'text'
+  /** @deprecated use text_color */
+  tc?: string
+  /** @deprecated use background_color */
+  bc?: string
+  /** @deprecated use caption */
+  ca?: string
+  text?: string
+  background_gradient?: string
+  text_overlay?: string
 }
 
 export interface TextOverlay {
@@ -94,22 +90,20 @@ interface SingleResponse<T> {
 
 interface StoryGroupResponse {
   user_id: string
+  u?: string
   username?: string
   user_name?: string
   user_avatar?: string
   profile_picture_url?: string
   has_unviewed?: boolean
-  stories: Story[]
+  hu?: boolean
+  stories?: Story[]
+  s?: Record<string, unknown>[]
 }
 
-const flattenStoryData = (items: Array<Story | StoryGroupResponse>): Story[] => {
-  if (!Array.isArray(items) || items.length === 0) return []
-
-  if ('stories' in items[0]) {
-    return (items as StoryGroupResponse[]).flatMap((group) => group.stories || [])
-  }
-
-  return items as Story[]
+const flattenStoryData = (items: Array<Story | StoryGroupResponse | Record<string, unknown>>): Story[] => {
+  const raw = items as Record<string, unknown>[]
+  return flattenStoryFeedItems(raw).map((row) => denormalizeStoryFromApi(row))
 }
 
 export async function getStoryRecommendations(_userId: string): Promise<Story[]> {
@@ -118,7 +112,10 @@ export async function getStoryRecommendations(_userId: string): Promise<Story[]>
   let hasMore = true
 
   while (hasMore) {
-    const res = await apiClient.get<ListResponse<Story | StoryGroupResponse>>('/api/stories', { page, limit: 5 })
+    const res = await apiClient.get<{ data: Record<string, unknown>[]; hasMore?: boolean }>('/api/stories', {
+      page,
+      limit: 5,
+    })
     const items = res.data || []
     const flattened = flattenStoryData(items)
     allStories.push(...flattened)
@@ -131,8 +128,8 @@ export async function getStoryRecommendations(_userId: string): Promise<Story[]>
 }
 
 export async function createStory(storyData: CreateStoryData): Promise<Story> {
-  const res = await apiClient.post<SingleResponse<Story>>('/api/stories', storyData)
-  return res.data
+  const res = await apiClient.post<SingleResponse<Record<string, unknown>>>('/api/stories', storyData)
+  return denormalizeStoryFromApi(res.data as Record<string, unknown>)
 }
 
 export async function deleteStory(storyId: string): Promise<void> {
@@ -145,8 +142,8 @@ export async function getUserStories(_userId: string): Promise<Story[]> {
   let hasMore = true
 
   while (hasMore) {
-    const res = await apiClient.get<ListResponse<Story>>('/api/stories/mine', { page, limit: 5 })
-    const items = res.data || []
+    const res = await apiClient.get<ListResponse<Record<string, unknown>>>('/api/stories/mine', { page, limit: 5 })
+    const items = (res.data || []).map((row) => denormalizeStoryFromApi(row as Record<string, unknown>))
     allStories.push(...items)
     hasMore = Boolean(res.hasMore)
     page += 1
@@ -256,8 +253,18 @@ export async function getStoryAnalytics(_userId: string): Promise<{
   averageViews: number
   topStories: Story[]
 }> {
-  const res = await apiClient.get<{ data: any }>('/api/stories/analytics')
-  return res.data
+  const res = await apiClient.get<{
+    totalStories: number
+    totalViews: number
+    totalReactions: number
+    totalReplies: number
+    averageViews: number
+    topStories: Record<string, unknown>[]
+  }>('/api/stories/analytics')
+  return {
+    ...res,
+    topStories: (res.topStories || []).map((row) => denormalizeStoryFromApi(row)),
+  }
 }
 
 export async function cleanupExpiredStories(): Promise<void> {

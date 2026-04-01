@@ -29,7 +29,8 @@ import {
   getStoryReplies,
   getStoryViewers
 } from '@/features/social/services/storiesService'
-import { STORY_GRADIENTS } from './GradientPicker'
+import { storyTextBackgroundStyle } from './storyGradientStyle'
+import { formatStoryRelativeTime } from './storyRelativeTime'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 
@@ -38,43 +39,12 @@ const STORY_DURATION = {
   VIDEO: 15000
 } as const
 
-const formatRelativeTime = (dateString: string): string => {
-  const hours = Math.floor((Date.now() - new Date(dateString).getTime()) / (1000 * 60 * 60))
-  if (hours < 1) return 'Just now'
-  if (hours < 24) return `${hours}h ago`
-  return `${Math.floor(hours / 24)}d ago`
-}
-
 const parseTextOverlay = (overlay: string | object | null | undefined) => {
   if (!overlay) return null
   try {
     return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
   } catch {
     return null
-  }
-}
-
-const getGradientStyle = (
-  gradient: string | null | undefined,
-  fallbackColor: string
-): React.CSSProperties => {
-  if (!gradient) return { backgroundColor: fallbackColor }
-  const normalizedGradient = gradient.startsWith('gradient:')
-    ? gradient.replace(/^gradient:/, '').trim()
-    : gradient
-  const colorParts = normalizedGradient
-    .split(',')
-    .map(part => part.trim())
-    .filter(Boolean)
-  if (colorParts.length >= 2) {
-    return {
-      backgroundImage: `linear-gradient(135deg, ${colorParts[0]}, ${colorParts[1]})`,
-    }
-  }
-  const selected = STORY_GRADIENTS.find(option => option.gradient === normalizedGradient)
-  if (!selected) return { backgroundColor: fallbackColor }
-  return {
-    backgroundImage: `linear-gradient(135deg, ${selected.colors[0]}, ${selected.colors[1]})`,
   }
 }
 
@@ -107,6 +77,8 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const [showReplies, setShowReplies] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [viewCount, setViewCount] = useState(0)
+  /** Bumps every minute so "Just now" → "5m ago" etc. while the viewer is open */
+  const [, setRelativeTimeTick] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -118,7 +90,10 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
   const isOwnStory = currentStory?.user_id === user?.id
   const textOverlay = useMemo(() => parseTextOverlay(currentStory?.text_overlay), [currentStory?.text_overlay])
   const storyText = (textOverlay?.text || currentStory?.caption || '').trim()
-  const textStoryGradient = useMemo(() => {
+  const textStoryLegacyGradient = useMemo(() => {
+    if (Array.isArray(currentStory?.background_gradient_colors) && currentStory.background_gradient_colors.length >= 2) {
+      return null
+    }
     if (typeof currentStory?.background_gradient === 'string' && currentStory.background_gradient.trim()) {
       return currentStory.background_gradient.trim()
     }
@@ -129,7 +104,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
       return textOverlay.gradient.trim()
     }
     return null
-  }, [currentStory?.background_gradient, textOverlay])
+  }, [currentStory?.background_gradient, currentStory?.background_gradient_colors, currentStory?.media_url, textOverlay])
   const isTextStory =
     currentStory?.media_type === 'text' ||
     currentStory?.media_url?.startsWith('gradient:') ||
@@ -151,6 +126,16 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
 
   const togglePause = useCallback(() => setIsPaused(p => !p), [])
   const toggleMute = useCallback(() => setIsMuted(m => !m), [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const id = window.setInterval(() => setRelativeTimeTick((n) => n + 1), 60_000)
+    return () => window.clearInterval(id)
+  }, [isOpen])
+
+  useEffect(() => {
+    if (isOpen && currentStory?.created_at) setRelativeTimeTick((n) => n + 1)
+  }, [isOpen, currentStory?.id, currentStory?.created_at])
 
   useEffect(() => {
     if (!isOpen || !currentStory) return
@@ -376,7 +361,11 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
             {isTextStory ? (
               <div
                 className="absolute inset-0 flex items-center justify-center"
-                style={getGradientStyle(textStoryGradient, currentStory.background_color || '#2563eb')}
+                style={storyTextBackgroundStyle(
+                  currentStory.background_gradient_colors,
+                  textStoryLegacyGradient,
+                  currentStory.background_color || '#2563eb'
+                )}
               >
                 {storyText && (
                   <div
@@ -444,7 +433,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                 </div>
                 <div>
                   <p className="text-white font-semibold text-xs md:text-sm drop-shadow-lg">{currentStory.user_name}</p>
-                  <p className="text-white/70 text-[10px] md:text-xs drop-shadow">{formatRelativeTime(currentStory.created_at)}</p>
+                  <p className="text-white/70 text-[10px] md:text-xs drop-shadow">{formatStoryRelativeTime(currentStory.created_at)}</p>
                 </div>
               </div>
 
@@ -565,17 +554,17 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                     <span className="text-sm font-medium">{viewCount}</span>
                   </div>
                   <button
+                    type="button"
                     onClick={(e) => { stopPropagation(e); toggleRepliesSheet() }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all ${
-                      visibleReplyCount > 0
-                        ? 'bg-black/40 hover:bg-black/50 text-white/80'
-                        : 'text-white/40 cursor-default'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all bg-black/40 hover:bg-black/50 text-white/80 ${
+                      visibleReplyCount === 0 ? 'text-white/50' : ''
                     }`}
-                    disabled={visibleReplyCount === 0}
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
                     <span className="text-xs font-medium">
-                      {visibleReplyCount > 0 ? `${visibleReplyCount} ${visibleReplyCount === 1 ? 'Reply' : 'Replies'}` : 'No replies'}
+                      {visibleReplyCount > 0
+                        ? `${visibleReplyCount} ${visibleReplyCount === 1 ? 'Reply' : 'Replies'}`
+                        : 'View replies'}
                     </span>
                   </button>
                 </div>
@@ -641,7 +630,7 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                             <p className="text-white/90 text-xs md:text-sm mt-0.5 break-words">{reply.content}</p>
                           </div>
                           <p className="text-white/40 text-[10px] md:text-xs mt-1 ml-2">
-                            {reply.created_at ? formatRelativeTime(reply.created_at) : ''}
+                            {reply.created_at ? formatStoryRelativeTime(reply.created_at) : ''}
                           </p>
                         </div>
                       </div>

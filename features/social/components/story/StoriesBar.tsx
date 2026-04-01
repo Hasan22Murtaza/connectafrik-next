@@ -6,8 +6,8 @@ import { Plus, ChevronLeft, ChevronRight, Play } from 'lucide-react'
 import { getStoryRecommendations, getUserStories, Story } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
-import { STORY_GRADIENTS } from './GradientPicker'
 import StoryViewer from './StoryViewer'
+import { storyTextBackgroundStyle } from './storyGradientStyle'
 
 const parseTextOverlay = (overlay: string | object | null | undefined) => {
   if (!overlay) return null
@@ -42,30 +42,6 @@ const getStoryBackgroundGradient = (story: Story, textOverlay: any): string | nu
     return textOverlay.gradient.trim()
   }
   return null
-}
-
-const getGradientStyle = (
-  gradient: string | null,
-  fallbackColor: string
-): React.CSSProperties => {
-  if (!gradient) return { backgroundColor: fallbackColor }
-  const normalizedGradient = gradient.startsWith('gradient:')
-    ? gradient.replace(/^gradient:/, '').trim()
-    : gradient
-  const colorParts = normalizedGradient
-    .split(',')
-    .map(part => part.trim())
-    .filter(Boolean)
-  if (colorParts.length >= 2) {
-    return {
-      backgroundImage: `linear-gradient(135deg, ${colorParts[0]}, ${colorParts[1]})`,
-    }
-  }
-  const selected = STORY_GRADIENTS.find(option => option.gradient === normalizedGradient)
-  if (!selected) return { backgroundColor: fallbackColor }
-  return {
-    backgroundImage: `linear-gradient(135deg, ${selected.colors[0]}, ${selected.colors[1]})`,
-  }
 }
 
 interface StoryCardProps {
@@ -108,7 +84,7 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
         {isTextStory ? (
           <div
             className="absolute inset-0 flex items-center justify-center p-2 sm:p-3"
-            style={getGradientStyle(storyGradient, story.background_color || '#2563eb')}
+            style={storyTextBackgroundStyle(story.background_gradient_colors, storyGradient, story.background_color || '#2563eb')}
           >
             {storyText && (
               <p className="text-white text-center font-medium text-[10px] sm:text-xs line-clamp-4 sm:line-clamp-5 drop-shadow">
@@ -227,7 +203,11 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
             {isTextStory ? (
               <div
                 className="w-full h-full"
-                style={getGradientStyle(latestStoryGradient, latestStory.background_color || '#2563eb')}
+                style={storyTextBackgroundStyle(
+                  latestStory.background_gradient_colors,
+                  latestStoryGradient,
+                  latestStory.background_color || '#2563eb'
+                )}
               />
             ) : isVideo && latestStory.media_url ? (
               <video

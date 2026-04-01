@@ -1,6 +1,11 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import {
+  buildStoryApiRowFromDbRow,
+  colorsFromGradientString,
+  groupRawStoriesToApiGroups,
+} from '@/features/social/services/storyApiCodec'
 
 const STORY_SELECT = `
   id, user_id, media_url, media_type, text_overlay, background_color,
@@ -9,128 +14,63 @@ const STORY_SELECT = `
   profiles!stories_user_id_fkey ( full_name, avatar_url, username )
 `
 
-const parseTextOverlay = (overlay: unknown) => {
-  if (!overlay) return null
-  try {
-    return typeof overlay === 'string' ? JSON.parse(overlay) : overlay
-  } catch {
-    return null
-  }
+function pickTrimmedString(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined
+  const t = v.trim()
+  return t || undefined
 }
 
-const normalizeGradientValue = (value: string | null | undefined): string | null => {
-  if (!value || typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  return trimmed.startsWith('gradient:') ? trimmed.replace(/^gradient:/, '').trim() : trimmed
-}
+/** Accept same names as API response; short aliases (t, tc, bc, mu, mt, …) still supported */
+function mergeCreateStoryBody(body: Record<string, unknown>) {
+  const captionUnified =
+    pickTrimmedString(body.caption) ??
+    pickTrimmedString(body.ca) ??
+    pickTrimmedString(body.t) ??
+    pickTrimmedString(body.text)
 
-const parseGradientColors = (value: string | null | undefined): { start: string; end: string } | null => {
-  const normalized = normalizeGradientValue(value)
-  if (!normalized) return null
-  const parts = normalized.split(',').map(part => part.trim()).filter(Boolean)
-  if (parts.length < 2) return null
-  return { start: parts[0], end: parts[1] }
-}
+  const text = captionUnified
+  const text_color = pickTrimmedString(body.text_color) ?? pickTrimmedString(body.tc)
+  const background_color = pickTrimmedString(body.background_color) ?? pickTrimmedString(body.bc)
 
-const getGradientPayload = (
-  story: any,
-  textOverlay: { gradient?: string } | null
-): { backgroundGradient: string | null; backgroundGradientColors: string[] | null } => {
-  const rawGradient =
-    (typeof story?.background_gradient === 'string' && story.background_gradient.trim()
-      ? story.background_gradient
-      : null) ||
-    (typeof story?.media_url === 'string' && story.media_url.startsWith('gradient:')
-      ? story.media_url
-      : null) ||
-    (typeof textOverlay?.gradient === 'string' ? textOverlay.gradient : null)
+  const media_url = (body.media_url !== undefined ? body.media_url : body.mu) as string | null | undefined
+  const media_type = (body.media_type as string) || (body.mt as string)
+  const caption = captionUnified
 
-  const backgroundGradient = normalizeGradientValue(rawGradient)
-  const parsed = parseGradientColors(backgroundGradient)
-  return {
-    backgroundGradient,
-    backgroundGradientColors: parsed ? [parsed.start, parsed.end] : null,
-  }
-}
+  const music_url = (body.music_url !== undefined ? body.music_url : body.mq) as string | undefined
+  const music_title = pickTrimmedString(body.music_title) ?? pickTrimmedString(body.mqt)
+  const music_artist = pickTrimmedString(body.music_artist) ?? pickTrimmedString(body.mqa)
+  const text_overlay = body.text_overlay as string | undefined
+  const is_highlight = Boolean(body.is_highlight ?? body.ih)
 
-const compactObject = <T extends Record<string, any>>(obj: T) => {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([, value]) => value !== null && value !== undefined && value !== '')
-  )
-}
-
-const toStoryResponse = (story: any) => {
-  const profileData = story?.profiles
-  const textOverlay = parseTextOverlay(story?.text_overlay) as { gradient?: string } | null
-  const { backgroundGradient, backgroundGradientColors } = getGradientPayload(story, textOverlay)
-  const isTextStory =
-    story?.media_type === 'text' ||
-    Boolean(textOverlay) ||
-    Boolean(backgroundGradient) ||
-    (typeof story?.media_url === 'string' && story.media_url.startsWith('gradient:')) ||
-    !story?.media_url
-
-  return compactObject({
-    id: story.id || story.story_id,
-    user_id: story.user_id,
-    user_name: profileData?.full_name || story.user_name || story.full_name || story.username || 'Unknown',
-    user_avatar: profileData?.avatar_url || story.user_avatar || story.profile_picture_url || '',
-    username: profileData?.username || story.username || '',
-    profile_picture_url:
-      profileData?.avatar_url || story.profile_picture_url || story.user_avatar || undefined,
-    media_url: story.media_url,
-    media_type: isTextStory ? 'text' : story.media_type,
-    text_overlay: story.text_overlay,
-    background_color: story.background_color || '#2563eb',
-    background_gradient: backgroundGradient,
-    background_gradient_colors: backgroundGradientColors,
-    caption: story.caption,
-    music_url: story.music_url,
-    music_title: story.music_title || undefined,
-    music_artist: story.music_artist || undefined,
-    is_highlight: Boolean(story.is_highlight),
-    view_count: story.view_count || 0,
-    expires_at: story.expires_at,
-    created_at: story.created_at,
-    has_viewed: Boolean(story.has_viewed ?? story.is_viewed ?? false),
-    reaction_count: story.reaction_count || 0,
-    reply_count: story.reply_count || 0,
-    user_reaction: story.user_reaction || undefined,
-  })
-}
-
-const groupStoriesByUser = (stories: any[]) => {
-  const grouped = new Map<string, any>()
-
-  stories.forEach((story) => {
-    if (!story?.id || !story?.user_id) return
-
-    if (!grouped.has(story.user_id)) {
-      grouped.set(story.user_id, {
-        user_id: story.user_id,
-        username: story.username || '',
-        user_name: story.user_name || 'Unknown',
-        user_avatar: story.user_avatar || '',
-        profile_picture_url: story.profile_picture_url || story.user_avatar || '',
-        has_unviewed: false,
-        stories: [],
-      })
+  const gradient_colors = body.gradient_colors as unknown
+  const g = body.g as unknown
+  let background_gradient = typeof body.background_gradient === 'string' ? body.background_gradient.trim() : ''
+  if (!background_gradient) {
+    const arr = Array.isArray(gradient_colors)
+      ? gradient_colors
+      : Array.isArray(g)
+        ? g
+        : null
+    if (arr && arr.length >= 2) {
+      background_gradient = `${String(arr[0]).trim()},${String(arr[1]).trim()}`
     }
+  }
+  if (!background_gradient) background_gradient = ''
 
-    const bucket = grouped.get(story.user_id)
-    bucket.stories.push(story)
-    if (!story.has_viewed) bucket.has_unviewed = true
-  })
-
-  const groups = Array.from(grouped.values())
-  groups.forEach((group) => {
-    group.stories.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    group.latest_story_at = group.stories[0]?.created_at || null
-  })
-
-  groups.sort((a, b) => new Date(b.latest_story_at || 0).getTime() - new Date(a.latest_story_at || 0).getTime())
-  return groups
+  return {
+    text,
+    text_color,
+    background_color,
+    media_url,
+    media_type,
+    caption,
+    music_url,
+    music_title,
+    music_artist,
+    text_overlay,
+    is_highlight,
+    background_gradient: background_gradient || null,
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -154,7 +94,7 @@ export async function GET(request: NextRequest) {
 
       if (error) return errorResponse(error.message, 400)
 
-      const stories = (data || []).map(toStoryResponse)
+      const stories = (data || []).map((row) => buildStoryApiRowFromDbRow(row as Record<string, unknown>))
       return jsonResponse({
         data: stories,
         page,
@@ -163,14 +103,77 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const { data, error } = await supabase.rpc('get_story_recommendations', {
-      user_id_param: user.id,
-    })
+    // Stories from people you follow (not yourself — /api/stories/mine covers yours).
+    // Uses service role so RLS cannot block reads; scoped to following_ids only.
+    let service
+    try {
+      service = createServiceClient()
+    } catch {
+      return errorResponse('Server misconfigured: SUPABASE_SERVICE_ROLE_KEY required for story feed', 500)
+    }
 
-    if (error) return errorResponse(error.message, 400)
+    const { data: followsRows, error: followsErr } = await service
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id)
 
-    const stories = (data || []).map(toStoryResponse)
-    const groupedStories = groupStoriesByUser(stories)
+    if (followsErr) return errorResponse(followsErr.message, 400)
+
+    const followingIds = [
+      ...new Set((followsRows ?? []).map((r: { following_id: string }) => r.following_id).filter(Boolean)),
+    ]
+
+    if (followingIds.length === 0) {
+      return jsonResponse({
+        data: [],
+        page,
+        pageSize: limit,
+        hasMore: false,
+      })
+    }
+
+    const STORY_IN_CHUNK = 100
+    const allRows: Record<string, unknown>[] = []
+    for (let i = 0; i < followingIds.length; i += STORY_IN_CHUNK) {
+      const chunk = followingIds.slice(i, i + STORY_IN_CHUNK)
+      const { data: chunkData, error: chunkErr } = await service
+        .from('stories')
+        .select(STORY_SELECT)
+        .in('user_id', chunk)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+
+      if (chunkErr) return errorResponse(chunkErr.message, 400)
+      allRows.push(...((chunkData || []) as Record<string, unknown>[]))
+    }
+
+    allRows.sort(
+      (a, b) => new Date(String(b.created_at)).getTime() - new Date(String(a.created_at)).getTime()
+    )
+    const capped = allRows.slice(0, 500)
+
+    if (capped.length > 0) {
+      const ids = capped.map((r) => r.id as string).filter(Boolean)
+      const viewChunks: string[][] = []
+      for (let i = 0; i < ids.length; i += STORY_IN_CHUNK) viewChunks.push(ids.slice(i, i + STORY_IN_CHUNK))
+
+      const viewedIds = new Set<string>()
+      for (const idChunk of viewChunks) {
+        const { data: viewRows } = await service
+          .from('story_views')
+          .select('story_id')
+          .eq('viewer_id', user.id)
+          .in('story_id', idChunk)
+        for (const v of viewRows ?? []) {
+          viewedIds.add((v as { story_id: string }).story_id)
+        }
+      }
+      capped.forEach((row) => {
+        row.has_viewed = viewedIds.has(row.id as string)
+      })
+    }
+
+    const groupedStories = groupRawStoriesToApiGroups(capped)
     const paged = groupedStories.slice(from, to)
     return jsonResponse({
       data: paged,
@@ -189,7 +192,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
-    const body = await request.json()
+    const body = (await request.json()) as Record<string, unknown>
+    const merged = mergeCreateStoryBody(body)
 
     const {
       media_url,
@@ -204,7 +208,7 @@ export async function POST(request: NextRequest) {
       background_color,
       background_gradient,
       is_highlight,
-    } = body
+    } = merged
 
     const sanitizedMediaUrl = typeof media_url === 'string' && media_url.trim() ? media_url.trim() : null
     const sanitizedText = typeof text === 'string' ? text.trim() : ''
@@ -219,7 +223,9 @@ export async function POST(request: NextRequest) {
     const normalizedMediaType =
       media_type === 'image' || media_type === 'video'
         ? media_type
-        : (isTextStory ? 'text' : null)
+        : isTextStory
+          ? 'text'
+          : null
 
     if (!isTextStory && !sanitizedMediaUrl) {
       return errorResponse('media_url is required', 400)
@@ -231,13 +237,15 @@ export async function POST(request: NextRequest) {
     const sanitizedBackgroundColor =
       typeof background_color === 'string' && background_color.trim()
         ? background_color
-        : (isTextStory ? '#2563eb' : '#000000')
+        : isTextStory
+          ? '#2563eb'
+          : '#000000'
     const gradientFromMediaUrl = isGradientMediaUrl
       ? sanitizedMediaUrl.replace(/^gradient:/, '').trim()
       : null
     const normalizedGradient =
       sanitizedBackgroundGradient || gradientFromMediaUrl || `${sanitizedBackgroundColor},#1d4ed8`
-    const parsedGradient = parseGradientColors(normalizedGradient)
+    const parsedGradient = colorsFromGradientString(normalizedGradient)
 
     if (isTextStory && !sanitizedText) {
       return errorResponse('text is required for text stories', 400)
@@ -252,13 +260,11 @@ export async function POST(request: NextRequest) {
           backgroundColor: 'transparent',
           align: 'center',
           isBold: false,
-          gradient: parsedGradient
-            ? `${parsedGradient.start},${parsedGradient.end}`
-            : normalizedGradient,
+          gradient: parsedGradient ? `${parsedGradient[0]},${parsedGradient[1]}` : normalizedGradient,
           x: 50,
           y: 50,
         })
-      : (text_overlay || null)
+      : text_overlay || null
 
     const { data, error } = await supabase
       .from('stories')
@@ -266,10 +272,10 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         media_url: isTextStory ? null : sanitizedMediaUrl,
         media_type: normalizedMediaType,
-        caption: isTextStory ? sanitizedText : (caption || null),
-        music_url: isTextStory ? null : (music_url || null),
-        music_title: isTextStory ? null : (music_title || null),
-        music_artist: isTextStory ? null : (music_artist || null),
+        caption: isTextStory ? sanitizedText : caption || null,
+        music_url: isTextStory ? null : music_url || null,
+        music_title: isTextStory ? null : music_title || null,
+        music_artist: isTextStory ? null : music_artist || null,
         text_overlay: normalizedTextOverlay,
         background_color: sanitizedBackgroundColor,
         is_highlight: is_highlight || false,
@@ -280,7 +286,7 @@ export async function POST(request: NextRequest) {
 
     if (error) return errorResponse(error.message, 400)
 
-    const story = toStoryResponse(data as any)
+    const story = buildStoryApiRowFromDbRow(data as Record<string, unknown>)
 
     return jsonResponse({ data: story }, 201)
   } catch (error: any) {

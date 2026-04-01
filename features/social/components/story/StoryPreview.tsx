@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { formatStoryRelativeTime } from './storyRelativeTime'
 
 interface TextOverlayData {
   id: string
@@ -22,6 +23,8 @@ interface StoryPreviewProps {
   caption?: string
   userName: string
   userAvatar?: string
+  /** When set (ISO), time label updates every minute like the live viewer */
+  postedAt?: string
 }
 
 const StoryPreview: React.FC<StoryPreviewProps> = ({
@@ -33,8 +36,18 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
   textOverlays,
   caption,
   userName,
-  userAvatar
+  userAvatar,
+  postedAt
 }) => {
+  const [, setTimeTick] = useState(0)
+  useEffect(() => {
+    if (!postedAt) return
+    const id = window.setInterval(() => setTimeTick((n) => n + 1), 60_000)
+    return () => window.clearInterval(id)
+  }, [postedAt])
+
+  const timeLabel = postedAt ? formatStoryRelativeTime(postedAt) : 'Just now'
+
   const backgroundStyle = type === 'text' && backgroundColor ? { backgroundColor } : undefined
   const backgroundClass = type === 'text' && !backgroundColor
     ? `bg-gradient-to-br ${gradient}`
@@ -65,7 +78,7 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
               </div>
               <div className="flex-1">
                 <p className="text-white text-[10px] sm:text-xs lg:text-sm font-semibold drop-shadow-lg">{userName}</p>
-                <p className="text-white/70 text-[8px] sm:text-[10px] lg:text-xs drop-shadow">Just now</p>
+                <p className="text-white/70 text-[8px] sm:text-[10px] lg:text-xs drop-shadow">{timeLabel}</p>
               </div>
             </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Upload, Sparkles, X, ImagePlus } from 'lucide-react'
 import { createStory, CreateStoryData } from '@/features/social/services/storiesService'
@@ -11,6 +11,7 @@ import StoryTypeSelector from '@/features/social/components/story/StoryTypeSelec
 import GradientPicker, { STORY_GRADIENTS, type GradientOption } from '@/features/social/components/story/GradientPicker'
 import TextEditor, { type TextStyle } from '@/features/social/components/story/TextEditor'
 import { type StoryType } from '@/features/social/components/story/StoryTypeSelector'
+import { formatStoryRelativeTime } from '@/features/social/components/story/storyRelativeTime'
 
 interface MediaFile {
   id: string
@@ -45,7 +46,7 @@ export default function CreateStoryPage() {
   const [storyType, setStoryType] = useState<StoryType>(null)
   const [mediaFile, setMediaFile] = useState<MediaFile | null>(null)
   const [isDragging, setIsDragging] = useState(false)
-  const [selectedGradient, setSelectedGradient] = useState(STORY_GRADIENTS[0].gradient)
+  const [selectedGradientId, setSelectedGradientId] = useState(STORY_GRADIENTS[0].id)
   const [selectedGradientColors, setSelectedGradientColors] = useState<[string, string]>([
     STORY_GRADIENTS[0].colors[0],
     STORY_GRADIENTS[0].colors[1],
@@ -62,6 +63,8 @@ export default function CreateStoryPage() {
   })
   const [caption, setCaption] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+  const [previewStartedAt, setPreviewStartedAt] = useState<string | null>(null)
+  const [, setPreviewTimeTick] = useState(0)
 
   const userName = toSafeDisplayName(user?.user_metadata?.full_name)
   const userAvatar = user?.user_metadata?.avatar_url
@@ -71,6 +74,22 @@ export default function CreateStoryPage() {
     if (storyType === 'text') return !!textStyle.text.trim()
     return false
   }, [storyType, mediaFile, textStyle.text])
+
+  useEffect(() => {
+    if (!storyType) {
+      setPreviewStartedAt(null)
+      return
+    }
+    setPreviewStartedAt((prev) => prev ?? new Date().toISOString())
+  }, [storyType])
+
+  useEffect(() => {
+    if (!storyType || !previewStartedAt) return
+    const id = window.setInterval(() => setPreviewTimeTick((n) => n + 1), 60_000)
+    return () => window.clearInterval(id)
+  }, [storyType, previewStartedAt])
+
+  const previewTimeLabel = previewStartedAt ? formatStoryRelativeTime(previewStartedAt) : 'Just now'
 
   const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files?.length) return
@@ -150,18 +169,19 @@ export default function CreateStoryPage() {
         mediaUrl = null
       }
 
-      const storyData: CreateStoryData = storyType === 'text'
-        ? {
-            text: textStyle.text.trim(),
-            text_color: textStyle.color,
-            background_color: selectedBackgroundColor,
-            background_gradient: `${selectedGradientColors[0]},${selectedGradientColors[1]}`,
-          }
-        : {
-            media_url: mediaUrl,
-            media_type: mediaType,
-            caption: caption || undefined,
-          }
+      const storyData: CreateStoryData =
+        storyType === 'text'
+          ? {
+              caption: textStyle.text.trim(),
+              text_color: textStyle.color,
+              background_color: selectedBackgroundColor,
+              gradient_colors: [selectedGradientColors[0], selectedGradientColors[1]],
+            }
+          : {
+              media_url: mediaUrl!,
+              media_type: mediaType,
+              ...(caption.trim() ? { caption: caption.trim() } : {}),
+            }
 
       const createdStory = await createStory(storyData)
       toast.success('Story created successfully!')
@@ -313,9 +333,9 @@ export default function CreateStoryPage() {
             ) : (
               <>
                 <GradientPicker
-                  selectedGradient={selectedGradient}
+                  selectedGradientId={selectedGradientId}
                   onSelect={(gradient: GradientOption) => {
-                    setSelectedGradient(gradient.gradient)
+                    setSelectedGradientId(gradient.id)
                     setSelectedGradientColors([gradient.colors[0], gradient.colors[1]])
                     setSelectedBackgroundColor(gradient.colors[0])
                   }}
@@ -348,7 +368,7 @@ export default function CreateStoryPage() {
                   </div>
                   <div>
                     <p className="text-white text-xs sm:text-sm font-semibold drop-shadow">{userName}</p>
-                    <p className="text-white/70 text-[10px] sm:text-xs drop-shadow">Just now</p>
+                    <p className="text-white/70 text-[10px] sm:text-xs drop-shadow">{previewTimeLabel}</p>
                   </div>
                 </div>
 
@@ -371,7 +391,12 @@ export default function CreateStoryPage() {
                     </div>
                   )
                 ) : (
-                  <div className={`absolute inset-0 bg-gradient-to-br ${selectedGradient} flex items-center justify-center p-4 sm:p-6`}>
+                  <div
+                    className="absolute inset-0 flex items-center justify-center p-4 sm:p-6"
+                    style={{
+                      backgroundImage: `linear-gradient(135deg, ${selectedGradientColors[0]}, ${selectedGradientColors[1]})`,
+                    }}
+                  >
                     {textStyle.text ? (
                       <p
                         className="max-w-full break-words px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg"

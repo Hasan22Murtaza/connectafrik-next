@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { createServiceClient, getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -7,14 +7,33 @@ type RouteContext = { params: Promise<{ id: string }> }
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id: storyId } = await context.params
-    const { supabase } = await getAuthenticatedUser(request)
+    await getAuthenticatedUser(request)
+
+    let service
+    try {
+      service = createServiceClient()
+    } catch {
+      return errorResponse('Server misconfigured: SUPABASE_SERVICE_ROLE_KEY required', 500)
+    }
+
+    const { data: story, error: storyErr } = await service
+      .from('stories')
+      .select('id, expires_at')
+      .eq('id', storyId)
+      .maybeSingle()
+
+    if (storyErr) return errorResponse(storyErr.message, 400)
+    if (!story || new Date(String(story.expires_at)).getTime() <= Date.now()) {
+      return errorResponse('Story not found or expired', 404)
+    }
+
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '0', 10)
     const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10) || 20, 1), 100)
     const from = page * limit
     const to = from + limit - 1
 
-    const { data: replies, error } = await supabase
+    const { data: replies, error } = await service
       .from('story_replies')
       .select('id, story_id, author_id, content, created_at')
       .eq('story_id', storyId)
@@ -27,7 +46,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const authorIds = [...new Set(replies.map((r: any) => r.author_id))]
-    const { data: profiles } = await supabase
+    const { data: profiles } = await service
       .from('profiles')
       .select('id, full_name, avatar_url')
       .in('id', authorIds)
