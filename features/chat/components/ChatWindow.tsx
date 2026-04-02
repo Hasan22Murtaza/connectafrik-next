@@ -451,12 +451,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           return;
         }
         await supabaseMessagingService.deleteMessageForEveryone(
+          threadId,
           messageId,
           currentUser.id
         );
         toast.success("Message deleted for everyone");
       } else {
         await supabaseMessagingService.deleteMessageForMe(
+          threadId,
           messageId,
           currentUser.id
         );
@@ -483,16 +485,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     let prevMessagesForThread: ChatMessage[] | null = null
     try {
       prevMessagesForThread = getMessagesForThread(threadId);
-      const messagesToDelete = visibleMessages;
 
       clearMessagesForUser(threadId, currentUser.id);
 
-      for (const message of messagesToDelete) {
-        await supabaseMessagingService.deleteMessageForMe(
-          message.id,
-          currentUser.id
-        );
-      }
+      await supabaseMessagingService.clearThreadMessagesForMe(
+        threadId,
+        currentUser.id
+      );
 
       toast.success("All messages cleared");
       setShowOptionsMenu(false);

@@ -990,21 +990,14 @@ export const supabaseMessagingService = {
     }
   },
 
-  async deleteMessageForMe(messageId: string, userId: string): Promise<void> {
+  async deleteMessageForMe(threadId: string, messageId: string, _userId: string): Promise<void> {
     if (fallbackEnabled) {
       deleteLocalMessage(messageId)
       return
     }
 
     try {
-      const { error } = await supabase.rpc('delete_message_for_user', {
-        p_message_id: messageId,
-        p_user_id: userId
-      })
-
-      if (error) {
-        throw error
-      }
+      await apiClient.post(`/api/chat/threads/${threadId}/messages/${messageId}/delete-for-me`)
     } catch (error) {
       console.error('Error deleting message for me:', error)
       activateFallback(error)
@@ -1012,24 +1005,34 @@ export const supabaseMessagingService = {
     }
   },
 
-  async deleteMessageForEveryone(messageId: string, userId: string): Promise<void> {
+  async deleteMessageForEveryone(threadId: string, messageId: string, _userId: string): Promise<void> {
     if (fallbackEnabled) {
       deleteLocalMessage(messageId)
       return
     }
 
     try {
-      const { error } = await supabase.rpc('delete_message_for_everyone', {
-        p_message_id: messageId,
-        p_user_id: userId
-      })
-
-      if (error) {
-        throw error
-      }
+      await apiClient.post(`/api/chat/threads/${threadId}/messages/${messageId}/delete-for-everyone`)
     } catch (error) {
       console.error('Error deleting message for everyone:', error)
       throw error // Re-throw to show user the error (might be time limit)
+    }
+  },
+
+  async clearThreadMessagesForMe(threadId: string, _userId: string): Promise<void> {
+    if (fallbackEnabled) {
+      const threadMessages = localMessages.get(threadId) || []
+      threadMessages.forEach((message) => deleteLocalMessage(message.id))
+      return
+    }
+
+    try {
+      await apiClient.post(`/api/chat/threads/${threadId}/messages/clear`)
+    } catch (error) {
+      console.error('Error clearing thread messages for me:', error)
+      activateFallback(error)
+      const threadMessages = localMessages.get(threadId) || []
+      threadMessages.forEach((message) => deleteLocalMessage(message.id))
     }
   },
 
