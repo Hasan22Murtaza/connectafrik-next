@@ -892,6 +892,74 @@
         }
       }
     },
+    "/chat/threads/{threadId}/messages/clear": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Clear all thread messages for current user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages cleared for current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cleared_count": { "type": "integer", "example": 12 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/messages/{messageId}/delete-for-me": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Delete message for current user",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "messageId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Message deleted for current user", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/messages/{messageId}/delete-for-everyone": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Delete message for everyone",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "messageId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Message deleted for everyone", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/email/order-confirmation": {
       "post": {
         "tags": ["Email"],
