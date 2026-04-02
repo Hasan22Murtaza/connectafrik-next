@@ -3,6 +3,24 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api-client";
 import { Friend, FriendRequest } from "@/shared/types";
+
+type BirthdayProfileRow = {
+  id: string;
+  full_name: string;
+  username: string;
+  avatar_url: string | null;
+  birthday: string;
+};
+
+function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
+  return {
+    id: p.id,
+    username: p.username,
+    full_name: p.full_name,
+    avatar_url: p.avatar_url ?? undefined,
+    birthday: p.birthday,
+  };
+}
 import {
   Cake,
   ChevronDown,
@@ -35,6 +53,7 @@ const FriendsPage: React.FC = () => {
     mutual_friends_count: number;
   }>>([]);
   const [loading, setLoading] = useState(true);
+  const [friendsLoading, setFriendsLoading] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [sendingRequests, setSendingRequests] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
@@ -42,12 +61,13 @@ const FriendsPage: React.FC = () => {
   const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
   const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
   const [activeSection, setActiveSection] = useState<"home" | "requests" | "suggestions" | "all" | "birthdays" | "custom">("home");
-  const [hasLoadedSuggestions, setHasLoadedSuggestions] = useState(false);
   const [birthdayDisplayLimit, setBirthdayDisplayLimit] = useState(10);
+  const [birthdayTabFriends, setBirthdayTabFriends] = useState<Friend[]>([]);
+  const [birthdaysLoading, setBirthdaysLoading] = useState(false);
   const birthdaySentinelRef = useRef<HTMLDivElement>(null);
   const shimmerCount = useShimmerCount();
 
-  // Derive birthday categories from already-fetched friends (no extra DB call)
+  // Categories for Birthdays tab (data loaded from /api/friends/birthdays when tab is opened)
   const birthdayFriends = useMemo(() => {
     const today = new Date();
     const todayMonth = today.getMonth() + 1;
@@ -58,7 +78,7 @@ const FriendsPage: React.FC = () => {
     const thisMonthList: Friend[] = [];
     const upcomingList: Friend[] = [];
 
-    friends.forEach((friend) => {
+    birthdayTabFriends.forEach((friend) => {
       if (!friend.birthday) return;
 
       const parts = String(friend.birthday).split("-");
@@ -101,7 +121,7 @@ const FriendsPage: React.FC = () => {
     upcomingList.sort(sortByNextBirthday);
 
     return { today: todayList, thisMonth: thisMonthList, upcoming: upcomingList };
-  }, [friends]);
+  }, [birthdayTabFriends]);
 
   // Flat list of all birthday friends for pagination
   const allBirthdayFriends = useMemo(
@@ -140,19 +160,59 @@ const FriendsPage: React.FC = () => {
 
   useEffect(() => {
     if (!user) return;
-    fetchFriends();
-    fetchFriendRequests();
-    setHasLoadedSuggestions(false);
-  }, [user]);
+    if (activeSection === "home") {
+      fetchFriends();
+      fetchFriendRequests();
+      fetchSuggestions();
+    } else if (activeSection === "all") {
+      fetchFriends();
+    } else if (activeSection === "requests") {
+      fetchFriendRequests();
+    } else if (activeSection === "suggestions") {
+      fetchSuggestions();
+    }
+  }, [user, activeSection]);
 
   useEffect(() => {
     if (!user) return;
-    if (hasLoadedSuggestions) return;
-    if (activeSection === "suggestions" || activeSection === "home") {
-      fetchSuggestions();
-      setHasLoadedSuggestions(true);
-    }
-  }, [user, activeSection, hasLoadedSuggestions]);
+    setFriends([]);
+    setRequests([]);
+    setSuggestions([]);
+    setBirthdayTabFriends([]);
+    setLoading(false);
+    setFriendsLoading(false);
+    setSuggestionsLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    if (activeSection !== "birthdays") return;
+
+    let cancelled = false;
+
+    const loadBirthdays = async () => {
+      setBirthdaysLoading(true);
+      try {
+        const rows = await fetchAllPages<BirthdayProfileRow>("/api/friends/birthdays", 50);
+        if (!cancelled) {
+          setBirthdayTabFriends(rows.map(mapBirthdayProfileToFriend));
+        }
+      } catch (error) {
+        console.error("Error fetching birthdays:", error);
+        if (!cancelled) {
+          setBirthdayTabFriends([]);
+          toast.error("Could not load birthdays");
+        }
+      } finally {
+        if (!cancelled) setBirthdaysLoading(false);
+      }
+    };
+
+    loadBirthdays();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, activeSection]);
 
   useEffect(() => {
     if (activeSection === "home") {
@@ -184,11 +244,13 @@ const FriendsPage: React.FC = () => {
   const fetchFriends = async () => {
     try {
       if (!user?.id) return;
-
+      setFriendsLoading(true);
       const allFriends = await fetchAllPages<Friend>("/api/friends", 20);
       setFriends(allFriends);
     } catch (error: any) {
       console.error("Error fetching friends:", error);
+    } finally {
+      setFriendsLoading(false);
     }
   };
 
@@ -753,7 +815,9 @@ const FriendsPage: React.FC = () => {
                 </div>
 
                 {/* Friends Grid */}
-                {filteredFriends.length > 0 ? (
+                {friendsLoading ? (
+                  <FriendsGridShimmer count={shimmerCount * 2} />
+                ) : filteredFriends.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                     {filteredFriends.map((friend) => (
                       <div
@@ -915,7 +979,7 @@ const FriendsPage: React.FC = () => {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Birthdays</h2>
 
-                {loading ? (
+                {birthdaysLoading ? (
                   <FriendsGridShimmer count={shimmerCount} />
                 ) : allBirthdayFriends.length > 0 ? (
                   <div className="space-y-8">

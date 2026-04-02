@@ -17,7 +17,6 @@ import {
   followUser,
   unfollowUser,
 } from "../services/followService";
-import { supabase } from "@/lib/supabase";
 import { logEngagementEvent } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
@@ -394,21 +393,25 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from("posts")
-        .update(updatePayload)
-        .eq("id", post.id);
-
-      if (error) throw error;
+      const response = await apiClient.patch<{
+        data: {
+          title: string;
+          content: string;
+          category: "politics" | "culture" | "general";
+          media_urls?: string[];
+          media_type?: string;
+          tags?: string[];
+        };
+      }>(`/api/posts/${post.id}`, updatePayload);
 
       if (onEdit) {
         onEdit(post.id, {
-          title: postData.title,
-          content: postData.content,
-          category: postData.category,
-          media_urls: postData.media_urls,
-          media_type: postData.media_type,
-          tags: postData.tags,
+          title: response.data.title,
+          content: response.data.content,
+          category: response.data.category,
+          media_urls: response.data.media_urls,
+          media_type: response.data.media_type,
+          tags: response.data.tags,
         });
       }
 

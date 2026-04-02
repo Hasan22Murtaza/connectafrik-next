@@ -596,7 +596,13 @@ const GroupDetailPage: React.FC = () => {
                         onComment={() => handleComment(post.id)}
                         onShare={() => handleShare(post.id)}
                         onDelete={() => deletePost(post.id)}
-                        onEdit={(title, content) => updatePost(post.id, { title, content })}
+                        onEdit={(data) =>
+                          updatePost(post.id, {
+                            title: data.title,
+                            content: data.content,
+                            media_urls: data.media_urls ?? [],
+                          })
+                        }
                         onEmojiReaction={handleEmojiReaction}
                         isPostLiked={post.isLiked}
                         prefetchedReactionGroups={(post.reactions ?? []) as any}

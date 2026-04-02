@@ -1,15 +1,15 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { MoreHorizontal, Trash2, Edit, Eye } from 'lucide-react'
+import { MoreHorizontal, Trash2, Edit } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { GroupPost } from '@/shared/hooks/useGroupPosts'
 import GroupPostCommentsSection from '@/features/groups/components/GroupPostCommentsSection'
 import { useGroupPostReactions, GroupReactionGroup, GroupPostReactionsData } from '@/shared/hooks/useGroupPostReactions'
-import toast from 'react-hot-toast'
 import PostEngagement from '@/shared/components/PostEngagement'
+import CreatePost, { type PostSubmitData } from '@/features/social/components/CreatePost'
 
 interface GroupPostCardProps {
   post: GroupPost
@@ -17,7 +17,7 @@ interface GroupPostCardProps {
   onComment: () => void
   onShare: () => void
   onDelete?: () => void
-  onEdit?: (title: string, content: string) => void
+  onEdit?: (data: PostSubmitData) => void
   onView?: () => void
   onEmojiReaction?: (postId: string, emoji: string) => void
   isPostLiked?: boolean
@@ -65,9 +65,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   const { user } = useAuth()
   const router = useRouter()
   const [showMenu, setShowMenu] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
-  const [editTitle, setEditTitle] = useState(post.title)
-  const [editContent, setEditContent] = useState(post.content)
+  const postOptionsMenuId = React.useId()
+  const menuRef = React.useRef<HTMLDivElement>(null)
 
   // Fetch reactions with user data
   const {
@@ -79,18 +80,51 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
 
   const isAuthor = user?.id === post.author_id
 
-  const handleEdit = () => {
-    if (onEdit) {
-      onEdit(editTitle, editContent)
+  const handleSaveEdit = async (postData: PostSubmitData) => {
+    if (!onEdit) return
+    try {
+      await onEdit(postData)
       setIsEditing(false)
+    } catch {
+      // Parent (e.g. updatePost) already surfaces error toast
     }
   }
 
-  const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this post?')) {
-      onDelete?.()
-    }
+  const handleCancelEdit = () => {
+    setIsEditing(false)
   }
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true)
+    setShowMenu(false)
+  }
+
+  const handleDeleteConfirm = () => {
+    onDelete?.()
+    setShowDeleteConfirm(false)
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false)
+  }
+
+  const handleEditClick = () => {
+    setIsEditing(true)
+    setShowMenu(false)
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   // Get all reaction groups sorted by count
   const getReactionGroups = () => {
@@ -150,99 +184,102 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         </div>
 
         {/* Menu */}
-        {isAuthor && (
-          <div className="relative">
+        {isAuthor && (onEdit || onDelete) && (
+          <div className="relative flex-shrink-0" ref={menuRef}>
             <button
+              type="button"
               onClick={() => setShowMenu(!showMenu)}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="rounded-full p-2 transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
+              aria-label="Post options"
+              aria-expanded={showMenu}
+              aria-haspopup="menu"
+              aria-controls={postOptionsMenuId}
             >
-              <MoreHorizontal className="w-5 h-5 text-gray-500" />
+              <MoreHorizontal className="h-5 w-5 text-gray-600" aria-hidden />
             </button>
             {showMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                <button
-                  onClick={() => {
-                    setIsEditing(true)
-                    setShowMenu(false)
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
-                >
-                  <Edit className="w-4 h-4" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => {
-                    handleDelete()
-                    setShowMenu(false)
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </button>
-              </div>
+              <ul
+                id={postOptionsMenuId}
+                role="menu"
+                aria-label="Your post actions"
+                className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,20rem)] list-none rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+              >
+                {onEdit && (
+                  <li role="none" className="list-none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleEditClick}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                    >
+                      <Edit
+                        className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-gray-900">
+                          Edit post
+                        </span>
+                        <span className="mt-0.5 block text-xs text-gray-500">
+                          Change text, media, or details
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                )}
+                {onDelete && (
+                  <li
+                    role="none"
+                    className={`list-none ${onEdit ? 'border-t border-gray-100' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleDeleteClick}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-red-50 focus:outline-none focus-visible:bg-red-50"
+                    >
+                      <Trash2
+                        className="mt-0.5 h-5 w-5 shrink-0 text-red-600"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-red-600">
+                          Delete post
+                        </span>
+                        <span className="mt-0.5 block text-xs text-red-500/90">
+                          Remove this group post permanently
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                )}
+              </ul>
             )}
           </div>
         )}
       </div>
 
       {/* Content */}
-      {isEditing ? (
-        <div className="space-y-3 mb-4">
-          <input
-            type="text"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            maxLength={200}
-          />
-          <textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[100px] resize-none"
-            maxLength={5000}
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={handleEdit}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm"
-            >
-              Save
-            </button>
-            <button
-              onClick={() => {
-                setIsEditing(false)
-                setEditTitle(post.title)
-                setEditContent(post.content)
-              }}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <h3 className="font-semibold text-gray-900 mb-2">{post.title}</h3>
-          <p className="text-gray-700 whitespace-pre-wrap mb-4">{post.content}</p>
+      <>
+        <h3 className="font-semibold text-gray-900 mb-2">{post.title}</h3>
+        <p className="text-gray-700 whitespace-pre-wrap mb-4">{post.content}</p>
 
-          {/* Media */}
-          {post.media_urls && post.media_urls.length > 0 && (
-            <div className={`grid gap-2 mb-4 ${
-              post.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-            }`}>
-              {post.media_urls.map((url, index) => (
-                <img
-                  key={index}
-                  src={url}
-                  alt={`Post media ${index + 1}`}
-                  className="w-full h-auto rounded-lg object-cover"
-                />
-              ))}
-            </div>
-          )}
-        </>
-      )}
+        {/* Media */}
+        {post.media_urls && post.media_urls.length > 0 && (
+          <div className={`grid gap-2 mb-4 ${
+            post.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+          }`}>
+            {post.media_urls.map((url, index) => (
+              <img
+                key={index}
+                src={url}
+                alt={`Post media ${index + 1}`}
+                className="w-full h-auto rounded-lg object-cover"
+              />
+            ))}
+          </div>
+        )}
+      </>
 
       {/* Engagement Stats & Actions */}
       {/*
@@ -260,6 +297,64 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         postId={post.id}
         reactionsEndpoint={`/api/groups/${post.group_id}/posts/${post.id}/reactions`}
       />
+
+      {/* Delete Confirmation Dialog */}
+      {/* Edit — same CreatePost modal as home feed */}
+      {isEditing && (
+        <div
+          data-edit-modal
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={handleCancelEdit}
+            aria-hidden
+          />
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl z-10">
+            <CreatePost
+              editData={{
+                id: post.id,
+                title: post.title,
+                content: post.content,
+                category: 'general',
+                media_urls: post.media_urls ?? [],
+                location: undefined,
+              }}
+              onSubmit={handleSaveEdit}
+              onCancel={handleCancelEdit}
+              defaultCategory="general"
+            />
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Delete Group Post
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this post? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3 justify-end">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Comments Section */}
       {showCommentsFor && (

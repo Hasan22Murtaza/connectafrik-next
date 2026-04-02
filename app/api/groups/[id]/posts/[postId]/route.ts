@@ -10,9 +10,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const updates: Record<string, string> = {}
+    const updates: Record<string, unknown> = {}
     if (body.title !== undefined) updates.title = body.title
     if (body.content !== undefined) updates.content = body.content
+    if (Array.isArray(body.media_urls)) {
+      updates.media_urls = body.media_urls
+    }
 
     if (Object.keys(updates).length === 0) {
       return errorResponse('No valid fields to update', 400)

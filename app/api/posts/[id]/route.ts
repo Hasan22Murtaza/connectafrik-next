@@ -193,12 +193,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         tags: post.tags,
         media_urls: post.media_urls,
         media_type: post.media_type,
-        likes_count: post.likes_count,
+        likes_count: post.likes_count ?? 0,
         comments_count: Array.isArray(post.comments) && post.comments.length > 0
           ? post.comments[0].count
-          : post.comments_count,
-        shares_count: post.shares_count,
-        views_count: post.views_count,
+          : (post.comments_count ?? 0),
+        shares_count: post.shares_count ?? 0,
+        views_count: post.views_count ?? 0,
         location: post.location,
         created_at: post.created_at,
         author: post.author ? {
@@ -208,6 +208,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           avatar_url: post.author.avatar_url,
           country: post.author.country,
         } : null,
+        isLiked: false,
       },
     })
   } catch (error: any) {

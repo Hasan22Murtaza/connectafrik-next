@@ -198,7 +198,10 @@ export const useGroupPosts = (groupId: string) => {
     }
   }
 
-  const updatePost = async (postId: string, updates: { title?: string; content?: string }) => {
+  const updatePost = async (
+    postId: string,
+    updates: { title?: string; content?: string; media_urls?: string[] }
+  ) => {
     if (!user) return
 
     try {
