@@ -2,15 +2,15 @@ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 
 // Initialize AWS SES Client
 const sesClient = new SESClient({
-  region: process.env.AWS_REGION || process.env.NEXT_PUBLIC_AWS_REGION,
+  region: process.env.AWS_REGION,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY || '',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   },
 })
 
-const FROM_EMAIL = process.env.AWS_SES_FROM_EMAIL || process.env.NEXT_PUBLIC_AWS_SES_FROM_EMAIL || 'noreply@dataafrik.com'
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://connectafrik.com'
+const FROM_EMAIL = process.env.AWS_SES_FROM_EMAIL
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL
 
 export interface SendEmailOptions {
   to: string | string[]
@@ -19,13 +19,19 @@ export interface SendEmailOptions {
   textBody?: string
 }
 
+export type SendEmailResult = { ok: true } | { ok: false; error: string }
+
 /**
  * Send email via AWS SES
  */
-export const sendEmail = async (options: SendEmailOptions): Promise<boolean> => {
+export const sendEmail = async (options: SendEmailOptions): Promise<SendEmailResult> => {
   const { to, subject, htmlBody, textBody } = options
 
   const recipients = Array.isArray(to) ? to : [to]
+
+  if (!FROM_EMAIL?.trim()) {
+    return { ok: false, error: 'AWS_SES_FROM_EMAIL is not set' }
+  }
 
   try {
     const command = new SendEmailCommand({
@@ -55,10 +61,12 @@ export const sendEmail = async (options: SendEmailOptions): Promise<boolean> => 
 
     await sesClient.send(command)
     console.log(`Email sent successfully to: ${recipients.join(', ')}`)
-    return true
+    return { ok: true }
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error'
     console.error('Error sending email:', error)
-    return false
+    return { ok: false, error: message }
   }
 }
 
@@ -189,12 +197,13 @@ Best regards,
 The ConnectAfrik Team
   `
 
-  return sendEmail({
+  const r = await sendEmail({
     to: buyerEmail,
     subject: `Order Confirmed - ${orderNumber} - ConnectAfrik`,
     htmlBody,
     textBody,
   })
+  return r.ok
 }
 
 /**
@@ -346,12 +355,13 @@ Best regards,
 The ConnectAfrik Team
   `
 
-  return sendEmail({
+  const r = await sendEmail({
     to: sellerEmail,
     subject: `🎉 New Order: ${productTitle} - ${orderNumber}`,
     htmlBody,
     textBody,
   })
+  return r.ok
 }
 
 /**
@@ -461,10 +471,11 @@ Best regards,
 The ConnectAfrik Team
   `
 
-  return sendEmail({
+  const r = await sendEmail({
     to: userEmail,
     subject: '🎉 Welcome to ConnectAfrik - Let\'s Get Started!',
     htmlBody,
     textBody,
   })
+  return r.ok
 }
