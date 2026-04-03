@@ -8,6 +8,7 @@ const THREAD_SELECT = `
   title,
   name,
   group_id,
+  group_banner:groups!chat_threads_group_id_fkey(banner_url),
   last_message_preview,
   last_message_at,
   last_activity_at,
