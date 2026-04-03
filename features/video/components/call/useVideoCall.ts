@@ -11,7 +11,7 @@ import { stopAll as stopAllRingtones, playRingtone, playRingbackTone } from '@/f
 import { supabase } from '@/lib/supabase';
 import { apiClient } from '@/lib/api-client';
 import { videoSDKWebRTCManager } from '@/lib/videosdk-webrtc';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CallStatus, SpeakerLevel, VideoSDKCallModalProps } from './types';
 import { SPEAKER_VOLUMES } from './types';
 
@@ -67,6 +67,29 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
   const decodedRecipientName = safeDecode(recipientName);
   const decodedCallerAvatarUrl = callerAvatarUrl ? safeDecode(callerAvatarUrl) : '';
   const decodedRecipientAvatarUrl = recipientAvatarUrl ? safeDecode(recipientAvatarUrl) : '';
+
+  /** Display name for signaling when auth user_metadata.full_name is often empty (matches chat / call window). */
+  const resolvedSignalingCallerName = useMemo(() => {
+    const fromUrl = decodedCallerName.trim();
+    if (fromUrl && fromUrl.toLowerCase() !== 'unknown') return fromUrl;
+    const meta = user?.user_metadata as Record<string, string | undefined> | undefined;
+    const fromMeta =
+      meta?.full_name?.trim() ||
+      meta?.name?.trim() ||
+      meta?.display_name?.trim() ||
+      meta?.preferred_username?.trim();
+    if (fromMeta) return fromMeta;
+    const email = user?.email?.trim();
+    if (email?.includes('@')) return email.split('@')[0] || 'Someone';
+    return 'Someone';
+  }, [decodedCallerName, user]);
+
+  const resolvedSignalingCallerAvatarUrl = useMemo(() => {
+    const u = decodedCallerAvatarUrl.trim();
+    if (u) return u;
+    const meta = user?.user_metadata as Record<string, string | undefined> | undefined;
+    return (meta?.avatar_url?.trim() || '');
+  }, [decodedCallerAvatarUrl, user]);
 
   // --- State ---
   const [callStatus, setCallStatus] = useState<CallStatus>('connecting');
@@ -1379,9 +1402,8 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
         room_id: currentRoomId,
         target_user_id: targetUser.id,
         is_group_call: true,
-        caller_name: user?.user_metadata?.full_name || 'Unknown',
-        caller_avatar_url:
-          user?.user_metadata?.avatar_url,
+        caller_name: resolvedSignalingCallerName,
+        caller_avatar_url: resolvedSignalingCallerAvatarUrl,
       });
       setShowAddPeople(false);
       setAddPeopleSearch('');
@@ -1391,7 +1413,16 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
     } finally {
       setInvitingUserId(null);
     }
-  }, [currentUserId, roomId, roomIdHint, callType, user, invitingUserId, callIdHint]);
+  }, [
+    currentUserId,
+    roomId,
+    roomIdHint,
+    callType,
+    invitingUserId,
+    callIdHint,
+    resolvedSignalingCallerName,
+    resolvedSignalingCallerAvatarUrl,
+  ]);
 
   // ===== EFFECTS =====
 
