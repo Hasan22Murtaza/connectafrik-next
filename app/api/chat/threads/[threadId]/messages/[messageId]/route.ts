@@ -21,13 +21,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found or access denied', 404)
     }
 
-    const { data: canDelete, error } = await serviceClient.rpc('can_delete_for_everyone', {
-      p_message_id: messageId,
-      p_user_id: user.id,
-    })
+    const { data: msg, error: msgError } = await serviceClient
+      .from('chat_messages')
+      .select('sender_id, is_deleted')
+      .eq('id', messageId)
+      .eq('thread_id', threadId)
+      .maybeSingle()
 
-    if (error) return errorResponse(error.message, 400)
-    return jsonResponse({ data: { can_delete_for_everyone: !!canDelete } })
+    if (msgError) return errorResponse(msgError.message, 400)
+    if (!msg) return errorResponse('Message not found', 404)
+
+    const canDelete =
+      msg.sender_id === user.id && !Boolean((msg as { is_deleted?: boolean }).is_deleted)
+    return jsonResponse({ data: { can_delete_for_everyone: canDelete } })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
@@ -65,11 +71,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (action === 'delete_for_everyone') {
-      const { error } = await serviceClient.rpc('delete_message_for_everyone', {
-        p_message_id: messageId,
-        p_user_id: user.id,
-      })
-      if (error) return errorResponse(error.message, 400)
+      const { data: row, error: rowError } = await serviceClient
+        .from('chat_messages')
+        .select('sender_id')
+        .eq('id', messageId)
+        .eq('thread_id', threadId)
+        .maybeSingle()
+
+      if (rowError) return errorResponse(rowError.message, 400)
+      if (!row) return errorResponse('Message not found', 404)
+      if (row.sender_id !== user.id) {
+        return errorResponse('Only the sender can delete this message for everyone', 403)
+      }
+
+      const now = new Date().toISOString()
+      const { error: updateError } = await serviceClient
+        .from('chat_messages')
+        .update({ is_deleted: true, deleted_at: now, updated_at: now })
+        .eq('id', messageId)
+
+      if (updateError) return errorResponse(updateError.message, 400)
       return jsonResponse({ success: true })
     }
 

@@ -51,7 +51,6 @@ interface MessageBubbleProps {
   participantPresence?: Record<string, 'online' | 'away' | 'busy' | 'offline'>; // Presence status of participants
   onReply?: (message: ChatMessage) => void;
   onDelete?: (messageId: string, deleteForEveryone: boolean) => void;
-  canDeleteForEveryone?: boolean;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -62,7 +61,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   participantPresence = {},
   onReply,
   onDelete,
-  canDeleteForEveryone = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -401,18 +399,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               >
                 Delete for Me
               </button>
-              {canDeleteForEveryone && (
-                <button
-                  onClick={() => {
-                    handleDelete(true);
-                    setShowMenu(false);
-                  }}
-                  className="w-full px-2 py-1 text-left hover:bg-gray-100 dark:hover:bg-gray-700  text-[12px] text-red-600 "
-                  type="button"
-                >
-                  Delete for Everyone
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  handleDelete(true);
+                  setShowMenu(false);
+                }}
+                className="w-full px-2 py-1 text-left hover:bg-gray-100 dark:hover:bg-gray-700  text-[12px] text-red-600 "
+                type="button"
+              >
+                Delete for Everyone
+              </button>
             </div>
           )}
         </div>

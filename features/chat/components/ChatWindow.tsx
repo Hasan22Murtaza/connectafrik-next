@@ -72,6 +72,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     startCall,
     markThreadRead,
     clearMessagesForUser,
+    markMessageDeletedForUser,
     setMessagesForThread,
   } = useProductionChat();
 
@@ -187,14 +188,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isFileAttachmentOpen, setIsFileAttachmentOpen] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
-  const [deleteStates, setDeleteStates] = useState<Map<string, boolean>>(
-    new Map()
-  );
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const userInitiatedCall = useRef(false);
   const lastIncomingCallSyncKeyRef = useRef<string>("");
-  const deleteStatesCacheRef = useRef<Map<string, boolean>>(new Map());
-  const processedMessageIdsRef = useRef<Set<string>>(new Set());
   const messagesScrollRef = useRef<HTMLDivElement>(null);
   const isPrependingHistoryRef = useRef(false);
   const [historyPage, setHistoryPage] = useState(0);
@@ -257,35 +253,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsLoadingOlderMessages(false);
     }
   };
-
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const checkDeletePermissions = async () => {
-      const messagesToCheck = messages.filter(
-        (m: ChatMessage) => m.sender_id === currentUser.id && !m.is_deleted
-      );
-      let hasNewMessages = false;
-
-      for (const message of messagesToCheck) {
-        if (!processedMessageIdsRef.current.has(message.id)) {
-          const canDelete = await supabaseMessagingService.canDeleteForEveryone(
-            message.id,
-            currentUser.id
-          );
-          deleteStatesCacheRef.current.set(message.id, canDelete);
-          processedMessageIdsRef.current.add(message.id);
-          hasNewMessages = true;
-        }
-      }
-
-      if (hasNewMessages) {
-        setDeleteStates(new Map(deleteStatesCacheRef.current));
-      }
-    };
-
-    checkDeletePermissions();
-  }, [messages.length, currentUser?.id]);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -440,16 +407,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     try {
       if (deleteForEveryone) {
-        const canDelete = await supabaseMessagingService.canDeleteForEveryone(
-          messageId,
-          currentUser.id
-        );
-        if (!canDelete) {
-          toast.error(
-            "Can only delete for everyone within 15 minutes of sending"
-          );
-          return;
-        }
         await supabaseMessagingService.deleteMessageForEveryone(
           threadId,
           messageId,
@@ -462,6 +419,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           messageId,
           currentUser.id
         );
+        markMessageDeletedForUser(threadId, messageId, currentUser.id);
         toast.success("Message deleted for you");
       }
     } catch (error) {
@@ -656,8 +614,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ) : (
           visibleMessages.map((message: ChatMessage) => {
               const isOwn = message.sender_id === currentUser?.id;
-              const canDeleteForEveryone =
-                deleteStates.get(message.id) ?? false;
 
               const participantPresenceMap: Record<string, 'online' | 'away' | 'busy' | 'offline'> = {};
               thread?.participants?.forEach((p: any) => {
@@ -676,7 +632,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   participantPresence={participantPresenceMap}
                   onReply={handleReply}
                   onDelete={handleDelete}
-                  canDeleteForEveryone={canDeleteForEveryone}
                 />
               );
             })

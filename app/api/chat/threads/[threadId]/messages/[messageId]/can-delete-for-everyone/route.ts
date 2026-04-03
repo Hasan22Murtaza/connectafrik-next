@@ -4,10 +4,10 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 
 type RouteContext = { params: Promise<{ threadId: string; messageId: string }> }
 
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function GET(_request: NextRequest, context: RouteContext) {
   try {
     const { threadId, messageId } = await context.params
-    const { user } = await getAuthenticatedUser(request)
+    const { user } = await getAuthenticatedUser(_request)
     const serviceClient = createServiceClient()
 
     const { data: participant } = await serviceClient
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { data: message, error: msgError } = await serviceClient
       .from('chat_messages')
-      .select('id, sender_id')
+      .select('id, sender_id, is_deleted')
       .eq('id', messageId)
       .eq('thread_id', threadId)
       .maybeSingle()
@@ -31,27 +31,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (msgError) return errorResponse(msgError.message, 400)
     if (!message) return errorResponse('Message not found', 404)
 
-    if (message.sender_id !== user.id) {
-      return errorResponse('Only the sender can delete this message for everyone', 403)
-    }
+    const senderId = message.sender_id as string | null | undefined
+    const alreadyDeleted = Boolean((message as { is_deleted?: boolean }).is_deleted)
+    const canDelete = Boolean(senderId === user.id && !alreadyDeleted)
 
-    const now = new Date().toISOString()
-    const { error: updateError } = await serviceClient
-      .from('chat_messages')
-      .update({
-        is_deleted: true,
-        deleted_at: now,
-        updated_at: now,
-      })
-      .eq('id', messageId)
-
-    if (updateError) return errorResponse(updateError.message, 400)
-
-    return jsonResponse({ success: true })
+    return jsonResponse({ canDelete })
   } catch (error: any) {
     if (error?.message === 'Unauthorized' || error?.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }
-    return errorResponse(error?.message || 'Failed to delete message for everyone', 500)
+    return errorResponse(error?.message || 'Failed to check delete permission', 500)
   }
 }

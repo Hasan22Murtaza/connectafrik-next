@@ -371,6 +371,14 @@ const deleteLocalMessage = (messageId: string) => {
   })
 }
 
+const findLocalMessageById = (messageId: string): ChatMessage | undefined => {
+  for (const messages of localMessages.values()) {
+    const found = messages.find((m) => m.id === messageId)
+    if (found) return found
+  }
+  return undefined
+}
+
 const searchLocalMessages = (query: string, userId: string, threadId?: string): ChatMessage[] => {
   const normalized = query.toLowerCase()
   const targetThreadIds = threadId
@@ -1000,8 +1008,7 @@ export const supabaseMessagingService = {
       await apiClient.post(`/api/chat/threads/${threadId}/messages/${messageId}/delete-for-me`)
     } catch (error) {
       console.error('Error deleting message for me:', error)
-      activateFallback(error)
-      deleteLocalMessage(messageId)
+      throw error
     }
   },
 
@@ -1036,7 +1043,11 @@ export const supabaseMessagingService = {
     }
   },
 
-  async canDeleteForEveryone(messageId: string, userId: string): Promise<boolean> {
+  async canDeleteForEveryone(
+    threadId: string,
+    messageId: string,
+    userId: string
+  ): Promise<boolean> {
     const cacheKey = getCanDeletePermissionKey(messageId, userId)
 
     if (canDeletePermissionCache.has(cacheKey)) {
@@ -1050,18 +1061,19 @@ export const supabaseMessagingService = {
 
     const permissionRequest = (async () => {
       try {
-        const { data, error } = await supabase.rpc('can_delete_for_everyone', {
-          p_message_id: messageId,
-          p_user_id: userId
-        })
-
-        if (error) {
-          console.error('Error checking delete permission:', error)
-          canDeletePermissionCache.set(cacheKey, false)
-          return false
+        if (fallbackEnabled) {
+          const msg = findLocalMessageById(messageId)
+          const canDelete = Boolean(
+            msg && msg.sender_id === userId && !msg.is_deleted
+          )
+          canDeletePermissionCache.set(cacheKey, canDelete)
+          return canDelete
         }
 
-        const canDelete = data === true
+        const data = await apiClient.get<{ canDelete: boolean }>(
+          `/api/chat/threads/${threadId}/messages/${messageId}/can-delete-for-everyone`
+        )
+        const canDelete = data?.canDelete === true
         canDeletePermissionCache.set(cacheKey, canDelete)
         return canDelete
       } catch (error) {

@@ -64,6 +64,7 @@ interface ProductionChatContextType {
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
   clearMessagesForUser: (threadId: string, userId: string) => void
+  markMessageDeletedForUser: (threadId: string, messageId: string, userId: string) => void
   setMessagesForThread: (threadId: string, messages: ChatMessage[]) => void
 }
 
@@ -295,6 +296,19 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     setMessages(prev => {
       const current = prev[threadId] || []
       const next = current.map(m => {
+        const deletedSet = new Set(Array.isArray(m.deleted_for) ? m.deleted_for : [])
+        deletedSet.add(userId)
+        return { ...m, deleted_for: Array.from(deletedSet) }
+      })
+      return { ...prev, [threadId]: next }
+    })
+  }, [])
+
+  const markMessageDeletedForUser = useCallback((threadId: string, messageId: string, userId: string) => {
+    setMessages(prev => {
+      const current = prev[threadId] || []
+      const next = current.map((m) => {
+        if (m.id !== messageId) return m
         const deletedSet = new Set(Array.isArray(m.deleted_for) ? m.deleted_for : [])
         deletedSet.add(userId)
         return { ...m, deleted_for: Array.from(deletedSet) }
@@ -1001,6 +1015,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     markThreadRead,
     threads,
     clearMessagesForUser,
+    markMessageDeletedForUser,
     setMessagesForThread
   }
 
