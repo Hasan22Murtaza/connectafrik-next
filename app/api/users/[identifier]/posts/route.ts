@@ -2,6 +2,11 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
+import { POST_SELECT, formatPostsForClient } from '../../../posts/format-posts-response'
+
+/** Profile "user's posts" — larger window than the global feed. */
+const DEFAULT_LIMIT = 20
+const MAX_LIMIT = 50
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -43,16 +48,19 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
-    const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
-    const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 50)
+    const parsedLimit = parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
+    const limit = Number.isNaN(parsedLimit)
+      ? DEFAULT_LIMIT
+      : Math.min(Math.max(parsedLimit, 1), MAX_LIMIT)
     const from = page * limit
     const to = from + limit - 1
 
+    // Only posts this user authored (author_id = profile).
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
-      .select('*')
+      .select(POST_SELECT)
       .eq('author_id', ownerId)
       .eq('is_deleted', false)
       .order('created_at', { ascending: false })
@@ -63,43 +71,15 @@ export async function GET(
     }
 
     const posts = postsData || []
-
-    const { data: ownerProfile } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, avatar_url, country')
-      .eq('id', ownerId)
-      .single()
-
-    let likedPostIds = new Set<string>()
-    if (viewerId && posts.length > 0) {
-      const { data: reactionsData } = await supabase
-        .from('post_reactions')
-        .select('post_id')
-        .eq('user_id', viewerId)
-        .in('post_id', posts.map((p: any) => p.id))
-
-      if (reactionsData) {
-        likedPostIds = new Set(reactionsData.map((r: any) => r.post_id))
-      }
-    }
-
-    const result = posts.map((post: any) => ({
-      ...post,
-      author: ownerProfile || {
-        id: ownerId,
-        username: identifier,
-        full_name: '',
-        avatar_url: null,
-        country: null,
-      },
-      isLiked: likedPostIds.has(post.id),
-    }))
+    const result = await formatPostsForClient(supabase, viewerId, posts, {
+      onlyAuthorId: ownerId,
+    })
 
     return jsonResponse({
       data: result,
       page,
       pageSize: limit,
-      hasMore: result.length === limit,
+      hasMore: posts.length === limit,
     })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch user posts', 500)

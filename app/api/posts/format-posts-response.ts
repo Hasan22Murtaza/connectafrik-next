@@ -26,6 +26,8 @@ export function computePermission(
 export type FormatPostsOptions = {
   /** All posts in this list are known to be saved by the current user (skips extra query). */
   markAllSaved?: boolean
+  /** Keep only rows authored by this user (e.g. GET /api/users/:id/posts). */
+  onlyAuthorId?: string
 }
 
 /**
@@ -37,7 +39,12 @@ export async function formatPostsForClient(
   posts: any[],
   options?: FormatPostsOptions
 ): Promise<any[]> {
-  const authorIds = [...new Set(posts.map((p: any) => p.author_id))]
+  const scoped =
+    options?.onlyAuthorId != null
+      ? posts.filter((p: any) => p.author_id === options.onlyAuthorId)
+      : posts
+
+  const authorIds = [...new Set(scoped.map((p: any) => p.author_id))]
   let mutualSet = new Set<string>()
   let followingSet = new Set<string>()
 
@@ -58,7 +65,7 @@ export async function formatPostsForClient(
     })
   }
 
-  const filtered = posts.filter((p: any) => {
+  const filtered = scoped.filter((p: any) => {
     const vis = p.author?.post_visibility ?? 'public'
     if (userId === p.author_id) return true
     if (vis === 'public' || vis === 'everyone') return true
