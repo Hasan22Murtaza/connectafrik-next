@@ -262,8 +262,14 @@ const OurStory = () => {
             </p>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-800">
-                <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-r from-emerald-500 to-blue-500 text-xl font-bold text-white">
-                  ST
+              <div className="mx-auto mb-4 h-24 w-24 overflow-hidden rounded-full">
+                  <Image
+                    src="/assets/images/team/senyo.jpeg"
+                    alt="Senyo Komla Tsedze"
+                    width={96}
+                    height={96}
+                    className="h-full w-full rounded-full object-cover object-center"
+                  />
                 </div>
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Senyo Komla Tsedze
