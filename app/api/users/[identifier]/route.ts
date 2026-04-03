@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { lookupDirectThreadIdBetweenUsers } from '@/lib/chatThreadLookup'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -25,12 +26,14 @@ export async function GET(
       if (error || !profile) {
         return errorResponse('Profile not found', 404)
       }
-      return jsonResponse({ data: profile })
+      return jsonResponse({ data: { ...profile, threadId: null } })
     }
 
+    let viewerUserId: string | null = null
     try {
       const auth = await getAuthenticatedUser(request)
       supabase = auth.supabase
+      viewerUserId = auth.user.id
     } catch {
       supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,7 +51,12 @@ export async function GET(
       return errorResponse('User not found', 404)
     }
 
-    return jsonResponse({ data: profile })
+    const threadId =
+      viewerUserId && viewerUserId !== profile.id
+        ? (await lookupDirectThreadIdBetweenUsers(viewerUserId, profile.id)) ?? null
+        : null
+
+    return jsonResponse({ data: { ...profile, threadId } })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
@@ -85,7 +93,7 @@ export async function PATCH(
       return errorResponse(error.message, 400)
     }
 
-    return jsonResponse({ data: profile })
+    return jsonResponse({ data: { ...profile, threadId: null } })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

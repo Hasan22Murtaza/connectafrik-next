@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { lookupGroupChatThreadIds } from '@/lib/chatThreadLookup'
 
 const GROUP_SELECT = `
   *,
@@ -73,7 +74,13 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return jsonResponse({ data: groups, page, pageSize: limit, hasMore: groups.length === limit })
+    const threadByGroup = await lookupGroupChatThreadIds(groups.map((g: any) => g.id))
+    const payload = groups.map((g: any) => ({
+      ...g,
+      threadId: threadByGroup.get(g.id) ?? null,
+    }))
+
+    return jsonResponse({ data: payload, page, pageSize: limit, hasMore: groups.length === limit })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

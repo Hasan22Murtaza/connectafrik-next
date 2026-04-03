@@ -59,6 +59,7 @@ export interface CreateThreadOptions {
   type?: 'direct' | 'group'
   title?: string | null
   name?: string
+  group_id?: string
   metadata?: Record<string, unknown>
   openInDock?: boolean
 }
@@ -806,6 +807,7 @@ export const supabaseMessagingService = {
         type: resolvedType,
         title: options.title ?? undefined,
         name: options.name ?? options.title ?? undefined,
+        group_id: options.group_id,
       })
       const id = (res as any)?.data?.id
       if (!id) throw new Error('No thread id returned')
@@ -1297,27 +1299,20 @@ export const supabaseMessagingService = {
    */
   async findGroupThread(groupId: string, currentUserId?: string): Promise<ChatThread | null> {
     try {
-      // Fetch all group threads and filter by groupId in metadata
-      const { data, error } = await supabase
+      const { data: groupThread, error } = await supabase
         .from('chat_threads')
         .select('*')
         .eq('type', 'group')
+        .eq('group_id', groupId)
+        .maybeSingle()
 
       if (error) {
         console.error('Error finding group thread:', error)
         return null
       }
 
-      if (!data || data.length === 0) return null
-
-      // Find thread with matching groupId in metadata
-      const groupThread = data.find(
-        (t) => t.metadata && typeof t.metadata === 'object' && 'groupId' in t.metadata && t.metadata.groupId === groupId
-      )
-
       if (!groupThread) return null
 
-      // Format the thread with participants (use currentUserId if provided)
       const thread = await formatThread(groupThread, currentUserId || '')
       return thread
     } catch (error) {

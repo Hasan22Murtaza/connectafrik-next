@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { lookupGroupChatThreadId, lookupGroupChatThreadIds } from '@/lib/chatThreadLookup'
 
 const GROUP_SELECT = `
   *,
@@ -84,7 +85,13 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    return jsonResponse({ data: processed, page, pageSize: limit, hasMore: groups.length === limit })
+    const threadByGroup = await lookupGroupChatThreadIds(processed.map((g: { id: string }) => g.id))
+    const withThreads = processed.map((group: { id: string }) => ({
+      ...group,
+      threadId: threadByGroup.get(group.id) ?? null,
+    }))
+
+    return jsonResponse({ data: withThreads, page, pageSize: limit, hasMore: groups.length === limit })
   } catch (error: any) {
     return errorResponse(error.message || 'Failed to fetch groups', 500)
   }
@@ -145,6 +152,8 @@ export async function POST(request: NextRequest) {
         existingMembership = data
       }
 
+      const existingThreadId = (await lookupGroupChatThreadId(existingGroup.id)) ?? null
+
       return jsonResponse({
         data: {
           ...existingGroup,
@@ -161,6 +170,7 @@ export async function POST(request: NextRequest) {
               }
             : undefined,
           memberships: undefined,
+          threadId: existingThreadId,
         },
       })
     }
@@ -237,6 +247,7 @@ export async function POST(request: NextRequest) {
     }
 
     const activeMemberships = (group.memberships || []).filter((m: any) => m.status === 'active')
+    const threadId = (await lookupGroupChatThreadId(group.id)) ?? null
     const result = {
       ...group,
       member_count: 1,
@@ -250,6 +261,7 @@ export async function POST(request: NextRequest) {
         updated_at: membership!.updated_at,
       },
       memberships: undefined,
+      threadId,
     }
 
     return jsonResponse({ data: result }, 201)

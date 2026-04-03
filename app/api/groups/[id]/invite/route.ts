@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { lookupGroupChatThreadId } from '@/lib/chatThreadLookup'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -100,12 +101,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const memberCount = activeCount ?? 0
     await serviceClient.from('groups').update({ member_count: memberCount }).eq('id', groupId)
 
+    const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
     return jsonResponse({
       added_user_ids: [...insertIds, ...reactivatedIds],
       already_member_user_ids: alreadyActiveIds,
       added_count: insertIds.length + reactivatedIds.length,
       already_member_count: alreadyActiveIds.length,
       member_count: memberCount,
+      threadId,
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

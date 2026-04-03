@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { lookupGroupChatThreadId } from '@/lib/chatThreadLookup'
 
 const GROUP_SELECT = `
   *,
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       ? activeMemberships.find((m: any) => m.user_id === userId)
       : undefined
 
+    const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
     const result = {
       ...data,
       member_count: actualMemberCount,
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           }
         : undefined,
       memberships: undefined,
+      threadId,
     }
 
     return jsonResponse({ data: result })
@@ -126,7 +129,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('Group not found or you are not the creator', 404)
     }
 
-    return jsonResponse({ data: group })
+    const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
+    return jsonResponse({ data: { ...group, threadId } })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

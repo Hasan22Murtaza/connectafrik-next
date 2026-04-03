@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { lookupDirectThreadIdBetweenUsers } from '@/lib/chatThreadLookup'
 
 export async function DELETE(
   request: NextRequest,
@@ -30,13 +31,15 @@ export async function DELETE(
       return errorResponse('Friendship not found', 404)
     }
 
+    const threadId = (await lookupDirectThreadIdBetweenUsers(user.id, userId)) ?? null
+
     const { error: deleteError } = await supabase.from('friend_requests').delete().eq('id', row.id)
 
     if (deleteError) {
       return errorResponse(deleteError.message, 400)
     }
 
-    return jsonResponse({ success: true })
+    return jsonResponse({ success: true, threadId })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

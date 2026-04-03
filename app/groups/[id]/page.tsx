@@ -127,10 +127,10 @@ const GroupDetailPage: React.FC = () => {
 
   useEffect(() => {
     // Wait for auth to finish loading before fetching group
-    if (groupId && !authLoading) {
+    if (groupId ) {
       fetchGroup()
     }
-  }, [groupId, user, authLoading])
+  }, [groupId])
 
   // Auto-open comments when ?post= query param is present
   useEffect(() => {

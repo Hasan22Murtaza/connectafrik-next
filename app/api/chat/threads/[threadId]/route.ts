@@ -7,6 +7,7 @@ const THREAD_SELECT = `
   type,
   title,
   name,
+  group_id,
   last_message_preview,
   last_message_at,
   last_activity_at,

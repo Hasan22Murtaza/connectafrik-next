@@ -7,6 +7,7 @@ const THREAD_SELECT = `
   type,
   title,
   name,
+  group_id,
   last_message_preview,
   last_message_at,
   last_activity_at,
@@ -144,42 +145,18 @@ export async function GET(request: NextRequest) {
     let threadError: any = null
 
     if (groupId) {
-      const { data: memberships, error: groupMembersError } = await serviceClient
-        .from('group_memberships')
-        .select('user_id')
-        .eq('group_id', groupId)
-        .eq('status', 'active')
-
-      if (groupMembersError) return errorResponse(groupMembersError.message, 400)
-      const memberIds = new Set((memberships || []).map((m: any) => m.user_id))
-      if (memberIds.size === 0) {
-        return jsonResponse({
-          data: [],
-          meta: { page, pageSize: limit, hasMore: false },
-        })
-      }
-
       const allGroupThreadsRes = await serviceClient
         .from('chat_threads')
         .select(THREAD_SELECT)
-        .in('id', threadIds)
+        .eq('group_id', groupId)
         .eq('type', 'group')
+        .in('id', threadIds)
         .order('last_message_at', { ascending: false, nullsFirst: false })
 
       threadError = allGroupThreadsRes.error
       if (!threadError) {
         const allGroupThreads = allGroupThreadsRes.data || []
-        const filtered = allGroupThreads.filter((thread: any) => {
-          const participants = Array.isArray(thread?.chat_participants) ? thread.chat_participants : []
-          const threadMemberIds = participants
-            .map((p: any) => p?.user_id)
-            .filter((id: any): id is string => Boolean(id))
-
-          if (threadMemberIds.length === 0) return false
-          if (threadMemberIds.length !== memberIds.size) return false
-          return threadMemberIds.every((id: string) => memberIds.has(id))
-        })
-        const deduped = deduplicateThreadsByParticipants(filtered)
+        const deduped = deduplicateThreadsByParticipants(allGroupThreads)
         dedupedTotal = deduped.length
         threads = deduped.slice(from, to + 1)
       }
@@ -263,6 +240,9 @@ export async function POST(request: NextRequest) {
     const type = (body.type as 'direct' | 'group') || 'direct'
     const title = body.title as string | undefined
     const name = body.name as string | undefined
+    const rawGroupId = body.group_id
+    const effectiveGroupId =
+      typeof rawGroupId === 'string' && rawGroupId.trim().length > 0 ? rawGroupId.trim() : undefined
 
     if (!participantIds || !Array.isArray(participantIds)) {
       return errorResponse('participant_ids is required and must be an array', 400)
@@ -270,6 +250,45 @@ export async function POST(request: NextRequest) {
 
     const allParticipantIds = [...new Set([user.id, ...participantIds])]
     const resolvedType = allParticipantIds.length > 2 ? 'group' : type
+
+    if (resolvedType === 'group' && effectiveGroupId) {
+      const { data: mem, error: memErr } = await serviceClient
+        .from('group_memberships')
+        .select('id')
+        .eq('group_id', effectiveGroupId)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle()
+
+      if (memErr) return errorResponse(memErr.message, 400)
+      if (!mem) return errorResponse('Not a member of this group', 403)
+
+      const { data: existingGroupThread } = await serviceClient
+        .from('chat_threads')
+        .select('id')
+        .eq('group_id', effectiveGroupId)
+        .eq('type', 'group')
+        .maybeSingle()
+
+      if (existingGroupThread?.id) {
+        const { data: part } = await serviceClient
+          .from('chat_participants')
+          .select('id')
+          .eq('thread_id', existingGroupThread.id)
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (!part) {
+          const { error: addPartErr } = await serviceClient.from('chat_participants').insert({
+            thread_id: existingGroupThread.id,
+            user_id: user.id,
+            role: 'member',
+          })
+          if (addPartErr) return errorResponse(addPartErr.message, 400)
+        }
+        return jsonResponse({ data: { id: existingGroupThread.id } }, 201)
+      }
+    }
 
     if (resolvedType === 'direct' && allParticipantIds.length === 2) {
       const { data: existingThreads } = await serviceClient
@@ -289,18 +308,50 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const insertRow: Record<string, unknown> = {
+      type: resolvedType,
+      title: title || null,
+      name: name || title || null,
+      created_by: user.id,
+    }
+    if (resolvedType === 'group' && effectiveGroupId) {
+      insertRow.group_id = effectiveGroupId
+    }
+
     const { data: thread, error: threadError } = await serviceClient
       .from('chat_threads')
-      .insert({
-        type: resolvedType,
-        title: title || null,
-        name: name || title || null,
-        created_by: user.id,
-      })
+      .insert(insertRow)
       .select()
       .single()
 
     if (threadError || !thread) {
+      if (threadError?.code === '23505' && resolvedType === 'group' && effectiveGroupId) {
+        const { data: existingGroupThread } = await serviceClient
+          .from('chat_threads')
+          .select('id')
+          .eq('group_id', effectiveGroupId)
+          .eq('type', 'group')
+          .maybeSingle()
+
+        if (existingGroupThread?.id) {
+          const { data: part } = await serviceClient
+            .from('chat_participants')
+            .select('id')
+            .eq('thread_id', existingGroupThread.id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (!part) {
+            const { error: addPartErr } = await serviceClient.from('chat_participants').insert({
+              thread_id: existingGroupThread.id,
+              user_id: user.id,
+              role: 'member',
+            })
+            if (addPartErr) return errorResponse(addPartErr.message, 400)
+          }
+          return jsonResponse({ data: { id: existingGroupThread.id } }, 201)
+        }
+      }
       return errorResponse(threadError?.message || 'Failed to create thread', 400)
     }
 

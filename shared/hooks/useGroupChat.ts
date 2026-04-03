@@ -92,6 +92,7 @@ export const useGroupChat = () => {
           participant_ids: participantIds,
           type: 'group',
           name: groupName,
+          group_id: groupId,
           openInDock: true,
         })
 

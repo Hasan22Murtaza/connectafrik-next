@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { lookupGroupChatThreadId } from '@/lib/chatThreadLookup'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -29,11 +30,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
           .select('id', { count: 'exact', head: true })
           .eq('group_id', groupId)
           .eq('status', 'active')
+        const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
         return jsonResponse({
           data: {
             membership: m ?? existingMembership,
             member_count: count ?? 0,
             alreadyMember: true,
+            threadId,
           },
         })
       }
@@ -76,10 +79,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
         if (updateError) console.error('Failed to update member_count:', updateError)
       })
 
+    const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
     return jsonResponse({
       data: {
         membership,
         member_count: memberCount,
+        threadId,
       },
     })
   } catch (error: any) {

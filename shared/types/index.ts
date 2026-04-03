@@ -164,6 +164,7 @@ export interface Group {
     avatar_url?: string
   }
   membership?: GroupMembership
+  threadId?: string | null
 }
 
 export interface GroupMembership {

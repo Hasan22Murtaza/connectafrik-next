@@ -23,6 +23,7 @@ interface ThreadOptions {
   participant_ids?: string[]
   type?: 'direct' | 'group'
   name?: string
+  group_id?: string
   metadata?: Record<string, any>
   openInDock?: boolean
 }
@@ -332,6 +333,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         type: options?.type,
         title: options?.name,
         name: options?.name,
+        group_id: options?.group_id,
         metadata: options?.metadata,
       })
 
