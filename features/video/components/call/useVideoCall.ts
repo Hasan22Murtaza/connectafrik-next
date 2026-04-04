@@ -803,7 +803,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
             } else if (isIncoming) {
               await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
                 call_id: activeCallId,
-                event: 'reject',
+                event: 'declined',
               });
             } else {
               await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
@@ -1217,7 +1217,7 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
           if (isIncoming) {
             await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
               call_id: activeCallId,
-              event: 'reject',
+              event: 'declined',
             });
           } else {
             await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {

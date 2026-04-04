@@ -292,8 +292,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         : undefined
 
     if (!call_id) return errorResponse('call_id is required', 400)
-    if (!['accept', 'reject', 'end', 'missed'].includes(event || '')) {
-      return errorResponse('event must be accept | reject | end | missed', 400)
+    if (!['accept', 'declined', 'end', 'missed'].includes(event || '')) {
+      return errorResponse('event must be accept | declined | end | missed', 400)
     }
 
     if (!(await assertThreadMember(serviceClient, threadId, user.id))) {
@@ -329,7 +329,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         acceptedAt: now,
         last_signal: 'active',
       }
-    } else if (event === 'reject') {
+    } else if (event === 'declined') {
       nextStatus = 'declined'
       nextEndedAt = now
       metaPatch = {
