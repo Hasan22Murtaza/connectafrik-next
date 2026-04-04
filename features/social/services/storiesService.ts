@@ -137,20 +137,8 @@ export async function deleteStory(storyId: string): Promise<void> {
 }
 
 export async function getUserStories(_userId: string): Promise<Story[]> {
-  const allStories: Story[] = []
-  let page = 0
-  let hasMore = true
-
-  while (hasMore) {
-    const res = await apiClient.get<ListResponse<Record<string, unknown>>>('/api/stories/mine', { page, limit: 5 })
-    const items = (res.data || []).map((row) => denormalizeStoryFromApi(row as Record<string, unknown>))
-    allStories.push(...items)
-    hasMore = Boolean(res.hasMore)
-    page += 1
-    if (items.length === 0) break
-  }
-
-  return allStories
+  const res = await apiClient.get<ListResponse<Record<string, unknown>>>('/api/stories/mine')
+  return (res.data || []).map((row) => denormalizeStoryFromApi(row as Record<string, unknown>))
 }
 
 export async function recordStoryView(storyId: string, _viewerId: string): Promise<void> {

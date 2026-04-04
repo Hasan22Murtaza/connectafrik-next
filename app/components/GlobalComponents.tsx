@@ -27,7 +27,7 @@ export default function GlobalComponents() {
     <>
       {user && <DynamicChatDock />}
       {/* {user && <DynamicMobileChatButton/>} */}
-      {user && <DynamicFriendRequestNotifications />}
+      {/* {user && <DynamicFriendRequestNotifications />} */}
       {user && <DynamicGlobalCallNotification />}
     </>
   )

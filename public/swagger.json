@@ -2914,12 +2914,8 @@
         "tags": ["Stories"],
         "summary": "Get current user's stories",
         "security": [{ "BearerAuth": [] }],
-        "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0, "minimum": 0 } },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 5, "minimum": 1, "maximum": 50 } }
-        ],
         "responses": {
-          "200": { "description": "User's stories", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } }, "page": { "type": "integer" }, "pageSize": { "type": "integer" }, "hasMore": { "type": "boolean" } } } } } },
+          "200": { "description": "User's stories (non-expired)", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Story" } } } } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
       }

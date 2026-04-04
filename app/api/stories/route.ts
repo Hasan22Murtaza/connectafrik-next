@@ -219,7 +219,11 @@ export async function POST(request: NextRequest) {
         : null
 
     const isGradientMediaUrl = typeof sanitizedMediaUrl === 'string' && sanitizedMediaUrl.startsWith('gradient:')
-    const isTextStory = Boolean(sanitizedText) || Boolean(sanitizedBackgroundGradient) || isGradientMediaUrl
+    /** Real image/video URL — caption alone must not force text-story mode or media_url is cleared on insert */
+    const hasRealMedia = Boolean(sanitizedMediaUrl && !isGradientMediaUrl)
+    const isTextStory =
+      !hasRealMedia &&
+      (Boolean(sanitizedText) || Boolean(sanitizedBackgroundGradient) || isGradientMediaUrl)
     const normalizedMediaType =
       media_type === 'image' || media_type === 'video'
         ? media_type

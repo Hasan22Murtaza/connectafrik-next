@@ -82,37 +82,39 @@ const DetailRow = ({ icon: Icon, children }: { icon: React.ElementType; children
 
 const ProfileSkeleton = () => (
   <div className="min-h-screen bg-[#f0f2f5]">
-    <div className="max-w-[940px] mx-auto bg-white shadow-sm border-b border-gray-200">
-      <div className="px-4 sm:px-6 py-5">
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-center sm:items-start">
-          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-300 animate-pulse" />
-          <div className="flex-1 space-y-3 text-center sm:text-left w-full">
-            <div className="h-8 w-56 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
-            <div className="h-4 w-44 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
-            <div className="h-4 w-72 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
-          </div>
-        </div>
-      </div>
-      <div className="flex gap-2 px-4 sm:px-6 py-3 border-t border-gray-200">
-        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-8 w-16 bg-gray-200 rounded animate-pulse" />)}
-      </div>
-    </div>
-    <div className="max-w-[940px] mx-auto px-4 mt-4 flex flex-col lg:flex-row gap-4">
-      <div className="w-full lg:w-[300px]">
-        <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${90 - i * 15}%` }} />)}
-        </div>
-      </div>
-      <div className="flex-1 space-y-4">
-        <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
-            <div className="space-y-2 flex-1">
-              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-              <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+    <div className="max-w-[940px] w-full mx-auto">
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="px-4 sm:px-6 py-5">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-center sm:items-start">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-300 animate-pulse" />
+            <div className="flex-1 space-y-3 text-center sm:text-left w-full">
+              <div className="h-8 w-56 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
+              <div className="h-4 w-44 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
+              <div className="h-4 w-72 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
             </div>
           </div>
-          <div className="h-20 w-full bg-gray-200 rounded animate-pulse" />
+        </div>
+        <div className="flex gap-2 px-4 sm:px-6 py-3 border-t border-gray-200">
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-8 w-16 bg-gray-200 rounded animate-pulse" />)}
+        </div>
+      </div>
+      <div className="mt-4 w-full flex flex-col lg:flex-row gap-4">
+        <div className="w-full lg:w-[300px]">
+          <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${90 - i * 15}%` }} />)}
+          </div>
+        </div>
+        <div className="flex-1 space-y-4">
+          <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+              <div className="space-y-2 flex-1">
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="h-20 w-full bg-gray-200 rounded animate-pulse" />
+          </div>
         </div>
       </div>
     </div>
@@ -400,7 +402,8 @@ const UserProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] pb-20 sm:pb-8">
-      <div className="max-w-[940px] mx-auto bg-white shadow-sm">
+      <div className="max-w-[940px] w-full mx-auto">
+        <div className="bg-white shadow-sm">
         <div className="px-4 sm:px-6 pt-4 pb-3 sm:py-5">
           <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
             <div className="flex-shrink-0">
@@ -534,10 +537,9 @@ const UserProfilePage: React.FC = () => {
             )}
           </div>
         </div>
-      </div>
+        </div>
 
-      <div className="max-w-[940px] mx-auto mt-3 sm:mt-4">
-        <div className="flex flex-col lg:flex-row gap-0 sm:gap-4">
+        <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
 
           <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-4 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
             <div className="bg-white sm:rounded-lg shadow-sm p-4">
