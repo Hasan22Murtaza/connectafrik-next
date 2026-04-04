@@ -51,6 +51,10 @@ export interface ChatThread {
   unread_count: number
   created_at: string
   updated_at: string
+  /** Set when this thread is the canonical chat for a group */
+  group_id?: string | null
+  /** Group thread: image URL from linked `groups.banner_url` when present */
+  banner_url?: string | null
 }
 
 export interface CreateThreadOptions {
@@ -79,9 +83,11 @@ export interface RecentCallEntry {
   call_type: 'audio' | 'video'
   metadata?: Record<string, unknown>
   thread_name?: string | null
+  thread_type?: string | null
   contact_id?: string | null
   contact_name?: string | null
   contact_avatar_url?: string | null
+  banner_url?: string | null
 }
 
 type ThreadSubscriber = (thread: ChatThread) => void
@@ -493,7 +499,10 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     .map((participant: any) => participant.name)
     .filter((name: any): name is string => Boolean(name))
 
-  const resolvedType: 'direct' | 'group' = thread.type || (participants.length > 2 ? 'group' : 'direct')
+  const resolvedType: 'direct' | 'group' =
+    thread.type === 'group' || Boolean(thread.group_id)
+      ? 'group'
+      : thread.type || (participants.length > 2 ? 'group' : 'direct')
 
   const directFallbackName =
     otherNames[0] ||
@@ -540,6 +549,11 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     }
   }
 
+  const bannerFromEmbed =
+    thread.group_banner && typeof thread.group_banner === 'object'
+      ? thread.group_banner.banner_url
+      : null
+
   return {
     id: thread.id,
     name: displayName,
@@ -550,6 +564,8 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     unread_count: unreadCount || 0,
     created_at: thread.created_at,
     updated_at: thread.updated_at || lastMessageAt,
+    group_id: thread.group_id ?? null,
+    banner_url: thread.banner_url ?? bannerFromEmbed ?? null,
   }
 }
 
@@ -746,6 +762,20 @@ export const supabaseMessagingService = {
     }
   },
 
+  /** Full thread row from API (includes banner_url, group_id). Use when list/temp thread is incomplete. */
+  async fetchThreadDetail(currentUserId: string, threadId: string): Promise<ChatThread | null> {
+    if (!threadId?.trim() || !currentUserId) return null
+    try {
+      const res = await apiClient.get<{ data: any; meta?: unknown }>(`/api/chat/threads/${threadId}`)
+      const raw = (res as any)?.data
+      if (!raw?.id) return null
+      return formatThread(raw, currentUserId)
+    } catch (error) {
+      console.error('fetchThreadDetail:', error)
+      return null
+    }
+  },
+
   async getThreadMessages(threadId: string, options?: { limit?: number; page?: number }): Promise<ChatMessage[]> {
     const limit = options?.limit ?? 50
     const page = options?.page ?? 0
@@ -787,9 +817,11 @@ export const supabaseMessagingService = {
           call_type: (meta.callType === 'video' ? 'video' : 'audio') as 'audio' | 'video',
           metadata: meta,
           thread_name: r.thread_name ?? null,
+          thread_type: r.thread_type ?? null,
           contact_id: r.contact_id ?? null,
           contact_name: r.contact_name ?? null,
           contact_avatar_url: r.contact_avatar_url ?? null,
+          banner_url: r.banner_url ?? null,
         }
       })
     } catch (err) {

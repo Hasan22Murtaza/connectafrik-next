@@ -211,10 +211,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const result = threads.map((t: any) => ({
-      ...t,
-      unread_count: unreadByThread[t.id] || 0,
-    }))
+    const result = threads.map((t: any) => {
+      const { group_banner, ...rest } = t
+      return {
+        ...rest,
+        banner_url: group_banner?.banner_url ?? null,
+        unread_count: unreadByThread[t.id] || 0,
+      }
+    })
 
     return jsonResponse({
       data: result,

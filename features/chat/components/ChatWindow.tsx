@@ -126,7 +126,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   }, [thread?.participants, currentUser?.id]);
 
-  const isGroupThread = (thread?.participants?.length ?? 0) > 2 || (thread as any)?.isGroup;
+  const isGroupThread =
+    thread?.type === "group" ||
+    Boolean(thread?.group_id) ||
+    (thread?.participants?.length ?? 0) > 2 ||
+    Boolean((thread as any)?.isGroup);
 
   const displayThreadName = useMemo(() => {
     if (isSelfChat) {
@@ -140,15 +144,68 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [isSelfChat, isGroupThread, primaryParticipant?.name, thread?.name, currentUser?.name]);
 
   const [headerImageFailed, setHeaderImageFailed] = useState(false);
+  /** Fetched banner; scoped by threadId so a switch never shows the previous chat's image */
+  const [enrichedBanner, setEnrichedBanner] = useState<{
+    threadId: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!threadId || !currentUser?.id || !thread) return;
+    if (!isGroupThread) return;
+    const existing =
+      (typeof thread.banner_url === "string" && thread.banner_url.trim()) || "";
+    if (existing) {
+      setEnrichedBanner(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const detail = await supabaseMessagingService.fetchThreadDetail(
+        currentUser.id,
+        threadId
+      );
+      const url =
+        typeof detail?.banner_url === "string" ? detail.banner_url.trim() : "";
+      if (!cancelled && url) setEnrichedBanner({ threadId, url });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    threadId,
+    currentUser?.id,
+    thread?.id,
+    isGroupThread,
+    thread?.banner_url,
+    thread?.type,
+    thread?.group_id,
+    thread?.participants?.length,
+  ]);
+
+  const groupBannerUrl =
+    (typeof thread?.banner_url === "string" && thread.banner_url.trim()) ||
+    (enrichedBanner?.threadId === threadId ? enrichedBanner.url : "") ||
+    "";
 
   const headerAvatarUrl = useMemo(() => {
+    if (isGroupThread && groupBannerUrl) {
+      return groupBannerUrl;
+    }
     if (isSelfChat) {
       const self = thread?.participants?.find((p: any) => p.id === currentUser?.id);
       return (self?.avatarUrl ?? (self as any)?.avatar_url) || undefined;
     }
     const p = primaryParticipant;
     return (p?.avatarUrl ?? (p as any)?.avatar_url) || undefined;
-  }, [isSelfChat, thread?.participants, primaryParticipant]);
+  }, [
+    isGroupThread,
+    groupBannerUrl,
+    isSelfChat,
+    thread?.participants,
+    primaryParticipant,
+    currentUser?.id,
+  ]);
 
   useEffect(() => {
     setHeaderImageFailed(false);

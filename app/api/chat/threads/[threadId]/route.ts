@@ -67,9 +67,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       unread_count = unreadMessages.filter((m: any) => !readSet.has(m.id)).length
     }
 
+    const { group_banner, ...threadRest } = thread as any
     return jsonResponse({
       data: {
-        ...thread,
+        ...threadRest,
+        banner_url: group_banner?.banner_url ?? null,
         unread_count,
       },
       meta: {

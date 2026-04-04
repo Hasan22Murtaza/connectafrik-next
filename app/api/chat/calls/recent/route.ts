@@ -67,10 +67,27 @@ export async function GET(request: NextRequest) {
     }
 
     const threadIdsToFetch = [...new Set(latestByThread.map((r: any) => r.thread_id))]
-    const { data: threads } = await serviceClient
+    const { data: threadsRaw } = await serviceClient
       .from('chat_threads')
-      .select('id, type, title, name')
+      .select(
+        `
+        id,
+        type,
+        title,
+        name,
+        group_id,
+        group_banner:groups!chat_threads_group_id_fkey(banner_url)
+      `
+      )
       .in('id', threadIdsToFetch)
+
+    const threads = (threadsRaw || []).map((t: any) => {
+      const { group_banner, ...rest } = t
+      return {
+        ...rest,
+        banner_url: group_banner?.banner_url ?? null,
+      }
+    })
 
     const { data: participants } = await serviceClient
       .from('chat_participants')
@@ -153,11 +170,13 @@ export async function GET(request: NextRequest) {
           message_type: statusToMessageType(r.status),
           metadata: { ...meta, callType: r.call_type || meta.callType },
           thread_name: thread?.title || thread?.name || null,
+          thread_type: thread?.type ?? null,
           contact_id: otherId,
           contact_name: contactName,
           contact_avatar_url: otherProfile?.avatar_url || null,
           contact_status: otherProfile?.status || 'offline',
           contact_last_seen: otherProfile?.last_seen || null,
+          banner_url: thread?.banner_url ?? null,
         }
       })
       .sort((a, b) => toTime(b.created_at) - toTime(a.created_at))

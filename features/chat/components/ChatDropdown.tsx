@@ -198,13 +198,24 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
           ? thread.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id)
           : []
         const primary = otherParticipants[0] ?? (thread ? thread.participants[0] : null)
-        const isGroup = thread ? (otherParticipants.length > 1 || (thread as any).isGroup) : false
+        const isGroup = thread
+          ? thread.type === 'group' ||
+            Boolean(thread.group_id) ||
+            otherParticipants.length > 1 ||
+            Boolean((thread as any).isGroup)
+          : entry.thread_type === 'group'
         const fallbackName = entry.contact_name || entry.thread_name || 'Unknown'
         const fallbackId = entry.contact_id || entry.thread_id
+        const groupBanner = isGroup ? thread?.banner_url || entry.banner_url || undefined : undefined
         return {
           ...entry,
-          name: (isGroup && thread?.name) ? thread.name : (primary?.name || thread?.name || fallbackName),
-          avatarUrl: isGroup ? undefined : (primary?.avatarUrl || entry.contact_avatar_url || undefined),
+          name:
+            isGroup && (thread?.name || entry.thread_name)
+              ? thread?.name || entry.thread_name || fallbackName
+              : primary?.name || thread?.name || fallbackName,
+          avatarUrl: isGroup
+            ? groupBanner
+            : (primary?.avatarUrl || entry.contact_avatar_url || undefined),
           id: primary?.id || fallbackId,
         }
       })
@@ -418,8 +429,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               const primary = otherParticipants[0] ?? thread.participants[0]
               const status = presence[primary?.id ?? ''] || 'offline'
               const lastActive = thread.last_message_at
-              const isGroup = otherParticipants.length > 1 || (thread as any).isGroup
+              const isGroup =
+                thread.type === 'group' ||
+                Boolean(thread.group_id) ||
+                otherParticipants.length > 1 ||
+                Boolean((thread as any).isGroup)
               const threadDisplayName = (isGroup && thread.name) ? thread.name : (primary?.name || thread.name || 'Conversation')
+              const listAvatarUrl =
+                isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl
 
               return (
                 <div
@@ -431,9 +448,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                     className="flex items-center space-x-2 sm:space-x-3 text-left"
                   >
                     <div className="relative w-8 h-8 sm:w-10 sm:h-10">
-                      {primary?.avatarUrl ? (
+                      {listAvatarUrl ? (
                         <img
-                          src={primary.avatarUrl}
+                          src={listAvatarUrl}
                           alt={threadDisplayName}
                           className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
                         />

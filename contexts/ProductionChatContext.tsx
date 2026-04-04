@@ -365,6 +365,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           unread_count: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          group_id: options?.group_id ?? null,
         }
         threadToAdd = tempThread
         setThreads(prev => {
