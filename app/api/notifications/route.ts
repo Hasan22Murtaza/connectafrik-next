@@ -13,13 +13,19 @@ export async function GET(request: NextRequest) {
     const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 200)
     const from = page * limit
     const to = from + limit - 1
+    const includeRead = searchParams.get('include_read') === 'true'
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('notifications')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .range(from, to)
+
+    if (!includeRead) {
+      query = query.eq('is_read', false)
+    }
+
+    const { data, error } = await query.range(from, to)
 
     if (error) return errorResponse(error.message, 400)
 

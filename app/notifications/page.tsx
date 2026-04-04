@@ -42,9 +42,14 @@ const NotificationsPage: React.FC = () => {
       } else {
         setLoading(true)
       }
+      const includeRead = filter !== 'unread'
       const res = await apiClient.get<{ data: any[]; page: number; pageSize: number; hasMore: boolean }>(
         '/api/notifications',
-        { page: targetPage, limit: PAGE_SIZE }
+        {
+          page: targetPage,
+          limit: PAGE_SIZE,
+          ...(includeRead ? { include_read: true } : {}),
+        }
       )
       const data = res?.data ?? []
 
@@ -82,7 +87,7 @@ const NotificationsPage: React.FC = () => {
         setLoading(false)
       }
     }
-  }, [user?.id])
+  }, [user?.id, filter])
 
   const loadMore = useCallback(async () => {
     if (!user || loading || loadingMore || !hasMore || filter !== 'all') return
