@@ -1010,10 +1010,12 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
       let meeting;
       try {
+       
         const preferredRegion = getPreferredVideoSDKRegion();
         meeting = VideoSDK.initMeeting({
           meetingId,
-          name: user?.user_metadata?.full_name || user?.email || 'User',
+          name: resolvedSignalingCallerName,
+          avatar: resolvedSignalingCallerAvatarUrl,
           micEnabled: true,
           webcamEnabled: false,
           multiStream: false,
@@ -1096,10 +1098,12 @@ export function useVideoCall(props: VideoSDKCallModalProps) {
 
       let meeting;
       try {
+        
         const preferredRegion = getPreferredVideoSDKRegion();
         meeting = VideoSDK.initMeeting({
           meetingId: roomIdHint,
-          name: user?.user_metadata?.full_name || user?.email || 'User',
+          name: resolvedSignalingCallerName,
+          avatar: resolvedSignalingCallerAvatarUrl,
           micEnabled: true,
           webcamEnabled: false,
           multiStream: false,
