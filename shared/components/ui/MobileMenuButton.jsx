@@ -7,6 +7,7 @@ const MobileMenuButton = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [showUserSearch, setShowUserSearch] = useState(false)
   const router = useRouter()
+  console.log('setIsOpen:', isOpen) // Debug log to check re-renders
 
   const shortcuts = [
     { icon: Search, label: 'Search Users', action: 'search', color: 'text-green-600' },

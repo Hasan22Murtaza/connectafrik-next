@@ -201,7 +201,7 @@ const FeedPage: React.FC = () => {
       return (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="animate-pulse rounded-2xl border border-gray-200 bg-white p-4">
+            <div key={idx} className="animate-pulse rounded-2xl border border-gray-200  p-4">
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 rounded-full bg-gray-200" />
                 <div className="flex-1 space-y-2">
@@ -229,7 +229,7 @@ const FeedPage: React.FC = () => {
     }
 
     return (
-      <div className="space-y-2 sm:space-y-3">
+      <div className="space-y-6 sm:space-y-6">
         {filteredPosts.map((post) => (
           <PostCard
               key={post.id}
@@ -287,13 +287,13 @@ const FeedPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto ">
+    <div className="min-h-screen max-w-full 4xl:max-w-screen-2xl mx-auto ">
 
       <FeedLayout>
-        <div className="w-full space-y-3 sm:space-y-4">
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-r from-orange-100 to-green-100">
-            <Advertisement type="banner" placement="feed-top" className="rounded-none" />
-          </div>
+        <div className="w-full space-y-3 sm:space-y-6">
+          {/* <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-r from-orange-100 to-green-100"> */}
+            <Advertisement type="banner" placement="feed-top" className="rounded-2xl" />
+          {/* </div> */}
 
           <StoriesBar />
 
@@ -312,12 +312,12 @@ const FeedPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsComposerOpen(true)}
-                className="flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 text-left shadow-sm transition-all hover:shadow hover:border-gray-200"
+                className="flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 text-left shadow-[0_8px_32px_rgba(255,88,20,0.04)]  transition-all hover:shadow hover:border-gray-200"
               >
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.full_name} className="h-10 w-10 rounded-full object-cover shrink-0" />
                 ) : (
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-orange-600 text-white font-semibold text-sm shrink-0">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br bg-primary-600 text-white font-semibold text-sm shrink-0">
                     {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
                   </span>
                 )}
@@ -328,7 +328,7 @@ const FeedPage: React.FC = () => {
             )}
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-4">
+          <section className="rounded-2xl  shadow-[0_8px_32px_rgba(255,88,20,0.04)] bg-white p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">Browse by category</h2>
               <button

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -35,6 +36,12 @@
     --background: #0a0a0a;
     --foreground: #ededed;
   }
+}
+
+.noto-color-emoji-regular {
+  font-family: "Noto Color Emoji", sans-serif;
+  font-weight: 400;
+  font-style: normal;
 }
 
 body {
@@ -138,6 +145,7 @@ body {
 }
 
 /* Utility Classes */
+
 .text-primary-600 {
   color: #f97316 ;
 }
