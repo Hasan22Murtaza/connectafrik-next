@@ -5,17 +5,14 @@ import {
   FaRegUser
 } from "react-icons/fa";
 import { FiVideo } from "react-icons/fi";
+import { HiOutlineUserGroup } from "react-icons/hi";
 import { IoBookmarkOutline } from "react-icons/io5";
-import { MdOutlineGroups2 } from "react-icons/md";
 import { RiHandbagLine } from "react-icons/ri";
-
-
-
 
 
 const shortcuts = [
   { name: "Friends", to: "/friends", icon: FaRegUser },
-  { name: "Groups", to: "/groups", icon: MdOutlineGroups2 },
+  { name: "Groups", to: "/groups", icon: HiOutlineUserGroup },
   { name: "Marketplace", to: "/marketplace", icon: BsShop },
   { name: "My Orders", to: "/my-orders", icon: RiHandbagLine },
   { name: "Saved", to: "/saved", icon: IoBookmarkOutline },

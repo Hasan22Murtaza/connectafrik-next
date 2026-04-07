@@ -169,7 +169,7 @@ export function GroupsFeedShimmer() {
 /** Group card grid shimmer. Pass count from useShimmerCount(). */
 export function GroupsGridShimmer({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-6 w-full min-w-0">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="bg-white rounded-xl shadow-sm overflow-hidden w-full min-w-0 flex flex-col">
           <div className="h-28 sm:h-40 w-full animate-shimmer rounded-t-xl flex-shrink-0" />

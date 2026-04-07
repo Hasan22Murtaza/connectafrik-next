@@ -28,9 +28,9 @@ interface AboutTabProps {
 
 const AboutTab: React.FC<AboutTabProps> = ({ profile, visibleFields }) => {
   return (
-    <div className="bg-white sm:rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden">
       <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900">About</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-600">About</h2>
       </div>
       <div className="p-4 sm:p-6 space-y-5">
         {profile.bio && (

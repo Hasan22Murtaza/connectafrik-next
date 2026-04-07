@@ -62,7 +62,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased `}
       >
         <Providers>
-          <div className="min-h-screen bg-[#F5F6F8] ">
+          <div className="min-h-screen bg-[#F5F6F8] 4xl:max-w-screen-2xl mx-auto pb-20 sm:pb-6">
             <ConditionalHeader />
             
             {children}

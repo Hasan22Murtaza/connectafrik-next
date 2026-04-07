@@ -104,7 +104,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
               {group.description}
             </p>
 
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-x-1 gap-y-1 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <Users className="w-3 h-3" />
                 {/* {membershipCount} */}
@@ -137,58 +137,23 @@ const GroupCard: React.FC<GroupCardProps> = ({
   return (
     <div className="rounded-xl overflow-hidden hover:shadow-lg transition-shadow bg-white">
       {/* Banner */}
-      <div className="relative">
-        {group.banner_url ? (
-          <div className="bg-gray-100 w-full h-40 sm:h-50">
-            <img
-              src={group.banner_url}
-              alt={group.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <div
-            className={`w-full h-40 sm:h-50  flex items-center justify-center ${categoryInfo.color} `}
-          >
-            <span className="group_card_image">{categoryInfo.icon}</span>
-          </div>
-        )}
-        {/* {group.membership && (  
-          <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-400 text-white">
-            {getRoleIcon(group.membership.role)}
-            <span className="capitalize">{group.membership.role}</span>
-          </div>
-        )} */}
-
-        {/* Privacy */}
-        {/* <span
-          className={`absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white ${
-            group.is_public ? "bg-green-500" : "bg-gray-600"
-          }`}
-        >
-          {group.is_public ? (
-            <Globe className="w-3 h-3" />
-          ) : (
-            <Lock className="w-3 h-3" />
-          )}
-          {group.is_public ? "Public" : "Private"}
-        </span> */}
-
-        {/* Avatar */}
-        {/* <div className="absolute -bottom-6 left-4">
-          <div className="w-12 h-12 rounded-full bg-gray-100 border border-orange-400 shadow flex items-center justify-center">
-            {group.avatar_url ? (
-              <img
-                src={group.avatar_url}
-                alt={group.name}
-                className="w-full h-full object-cover rounded-lg"
-              />
-            ) : (
-              <span className="text-lg">{categoryInfo.icon}</span>
-            )}
-          </div>
-        </div> */}
-      </div>
+      <div className="relative group">
+  {group.banner_url ? (
+    <div className="bg-gray-100 w-full h-40 sm:h-50 overflow-hidden rounded-lg">
+      <img
+        src={group.banner_url}
+        alt={group.name}
+        className="w-full h-full object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+      />
+    </div>
+  ) : (
+    <div
+      className={`w-full h-40 sm:h-50 flex items-center justify-center ${categoryInfo.color} overflow-hidden rounded-lg transition-transform duration-300 ease-in-out group-hover:scale-105`}
+    >
+      <span className="group_card_image">{categoryInfo.icon}</span>
+    </div>
+  )}
+</div>
 
       {/* Content */}
       <div className="p-4">
@@ -196,12 +161,19 @@ const GroupCard: React.FC<GroupCardProps> = ({
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-gray-900 text-lg hover:underline cursor-pointer"
+              <h3 className="font-semibold text-gray-900 text-lg hover:underline cursor-pointer truncate w-55"
                 onClick={() => handleViewGroup()}>
                 {group.name}
               </h3>
+               
               {group.is_verified && <span className="text-primary-600">✓</span>}
             </div>
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+            <Calendar className="w-4 h-4" />
+            {formatDistanceToNow(new Date(group.created_at), {
+              addSuffix: true,
+            })}
+          </div>
 
             {/* <span
               className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium mt-1 ${categoryInfo.color}`}
@@ -251,12 +223,12 @@ const GroupCard: React.FC<GroupCardProps> = ({
         </div>
 
         {/* Description */}
-        <p className="text-sm text-gray-600 mb-4 line-clamp-3 h-15">
+        <p className="text-sm text-gray-600 mb-4 line-clamp-2 h-10">
           {group.description}
         </p>
 
         {/* Stats */}
-        <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-4">
+        <div className="flex flex-wrap gap-2 text-sm text-gray-500 mb-4">
           <div className="flex items-center gap-1">
             <Users className="w-4 h-4" />
             {group.member_count} members
@@ -269,12 +241,12 @@ const GroupCard: React.FC<GroupCardProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-1">
+          {/* <div className="flex items-center gap-1">
             <Calendar className="w-4 h-4" />
             {formatDistanceToNow(new Date(group.created_at), {
               addSuffix: true,
             })}
-          </div>
+          </div> */}
         </div>
 
         {/* Actions */}
@@ -284,7 +256,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
               onClick={() => openGroupChat(group.id, group.name)}
               className="btn-primary w-full flex items-center justify-center gap-2"
             >
-              <MessageCircle className="w-4 h-4" />
+              <MessageCircle className="w-4 h-4 " />
               Open Group Chat
             </button>
           ) : user ? (

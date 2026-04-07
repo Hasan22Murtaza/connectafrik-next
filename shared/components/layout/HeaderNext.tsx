@@ -119,7 +119,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-    <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
+    <header className="sticky top-0 z-50  dark:bg-slate-900/80 backdrop-blur-md shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
       <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
@@ -170,7 +170,7 @@ const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Navigation and User Menu - Pinned to right */}
-          <div className=" flex items-center space-x-1 sm:space-x-2 lg:space-x-4 ml-auto ">
+          <div className=" flex items-center gap-2 sm:gap-3 ml-auto ">
             {user ? (
               <>
                 {/* Navigation Links - Hidden on mobile, visible on desktop */}
