@@ -355,9 +355,14 @@ const MyOrders: React.FC = () => {
     <div className="min-h-screen  max-w-full  px-3 sm:px-6 py-6">
       {/* Header */}
       <div className="">
-        <div className="flex items-center space-x-2 mb-6">
+        <div className="mb-6">
+        <div className="flex items-center space-x-2 ">
           <ShoppingBag className="w-7 h-7 text-primary-600" />
           <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
+        </div>
+        <p className="text-gray-600">
+          Manage your orders and track their status.
+        </p>
         </div>
 
         {/* Stats */}
