@@ -253,7 +253,7 @@ export function GroupDetailPageShimmer() {
 /** Product card grid shimmer. Pass count from useShimmerCount(). */
 export function MarketplaceGridShimmer({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 sm:gap-4 w-full min-w-0">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
@@ -333,15 +333,11 @@ export function FriendsGridShimmer({ count = 8 }: { count?: number }) {
 /** Full-page shimmer for marketplace product detail loading. */
 export function ProductDetailPageShimmer() {
   return (
-    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <div className="min-h-screen max-w-full 2xl:max-w-screen-2xl mx-auto w-full">
+      <div className=" sticky top-0 z-10">
         <div className="px-3 sm:px-4">
           <div className="flex items-center justify-between h-14 sm:h-16 min-w-0">
             <div className="h-5 w-32 sm:w-40 animate-shimmer rounded min-w-0" />
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              <div className="h-9 w-9 rounded-full animate-shimmer" />
-              <div className="h-9 w-9 rounded-full animate-shimmer" />
-            </div>
           </div>
         </div>
       </div>
@@ -412,7 +408,7 @@ export function ProductDetailPageShimmer() {
 /** Order card grid shimmer. Pass count from useShimmerCountMd(). */
 export function MyOrdersGridShimmer({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}

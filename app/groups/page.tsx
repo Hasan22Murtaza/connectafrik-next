@@ -257,7 +257,7 @@ const GroupsPage: React.FC = () => {
   // Sidebar content as plain JSX — avoids recreating a component type every
   // render which would cause React to fully unmount/remount the sidebar DOM.
   const sidebarContent = (
-    <div className="space-y-4">
+    <div className="space-y-4 ">
       {/* Groups Header */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-gray-600">Groups</h2>
@@ -479,7 +479,7 @@ const GroupsPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen px-2 sm:px-6 py-5 w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen px-2 sm:px-6 py-5 w-full min-w-0">
       <div>
         {/* Mobile Header */}
         <div className="lg:hidden mb-4">
@@ -557,10 +557,8 @@ const GroupsPage: React.FC = () => {
 
         <div className="flex gap-4 lg:gap-6">
           {/* Left Sidebar - Desktop */}
-          <div className="hidden lg:block w-80 shrink-0">
-            <div className="sticky top-4 space-y-4">
+          <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto bg-[#F8FAFC] p-4 rounded-2xl">
               {sidebarContent}
-            </div>
           </div>
 
 

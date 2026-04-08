@@ -191,45 +191,50 @@ const MyOrders: React.FC = () => {
     return (
       <div
         key={order.id}
-        className="bg-white rounded-lg border border-gray-200  hover:shadow-md hover:border-primary-200 transition-all"
+        className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)]   hover:shadow-md hover:border-primary-200 transition-all"
       >
         <div className="relative">
-  {/* Image + Status */}
-  <div className="relative w-full h-48 mb-3 overflow-hidden rounded-t-lg bg-gray-50 flex items-center justify-center">
-    {order.product_image ? (
-      <img
-        src={order.product_image}
-        alt={order.product_title}
-        className="w-full h-full object-cover rounded-t-lg transition-transform duration-300 hover:scale-105"
-      />
-    ) : (
-      <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-        <ShoppingBag className="w-8 h-8 text-gray-400" />
-      </div>
-    )}
+          {/* Image + Status */}
+          <div className="relative w-full h-48 mb-3 overflow-hidden rounded-t-lg bg-gray-50 flex items-center justify-center">
+            {order.product_image ? (
+              <img
+                src={order.product_image}
+                alt={order.product_title}
+                className="w-full h-full object-cover rounded-t-lg transition-transform duration-300 hover:scale-105"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
+                <ShoppingBag className="w-8 h-8 text-gray-400" />
+              </div>
+            )}
 
-    {/* Status badge on image top-right */}
-    <div
-      className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium border flex items-center gap-1 ${getStatusColor(
-        order.status
-      )}`}
-    >
-      {getStatusIcon(order.status)}
-      <span className="capitalize">{order.status}</span>
-    </div>
-  </div>
+            {/* Status badge on image top-right */}
+            <div
+              className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium border flex items-center gap-1 ${getStatusColor(
+                order.status
+              )}`}
+            >
+              {getStatusIcon(order.status)}
+              <span className="capitalize">{order.status}</span>
+            </div>
+          </div>
 
-  {/* Title + Order Number */}
-  <div className="px-4">
-    <h3 className="font-semibold text-gray-900 mb-1 sm:text-lg text-sm truncate max-w-[300px] hover:text-orange-500 cursor-pointer" title={order.product_title}>
-      {order.product_title}
-    </h3>
-    <p className="text-sm text-gray-500">
-      <span className="font-bold text-black">Order # : </span>
-      {order.order_number}
-    </p>
-  </div>
-</div>
+          {/* Title + Order Number */}
+          <div className="px-4">
+            <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-gray-900 mb-1 sm:text-lg text-sm truncate max-w-[300px] hover:text-orange-500 cursor-pointer" title={order.product_title}>
+              {order.product_title}
+            </h3>
+            <div>
+             
+            </div>
+            </div>
+            <p className="text-sm text-gray-500">
+              <span className="font-bold text-black">Order # : </span>
+              {order.order_number}
+            </p>
+          </div>
+        </div>
 
 
         <div className="flex p-4">
@@ -250,18 +255,19 @@ const MyOrders: React.FC = () => {
                   {order.total_amount.toLocaleString()}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Payment Status</p>
-                <p
-                  className={`text-sm font-medium ${
-                    order.payment_status === "completed"
-                      ? "text-green-600"
+              {!isSale && (
+                <div>
+                  <p className="text-xs text-gray-500">Payment Status</p>
+                  <p
+                    className={`text-sm font-medium ${order.payment_status === "completed"
+                        ? "text-green-600"
                       : "text-yellow-600"
-                  }`}
+                    }`}
                 >
                   {order.payment_status === "completed" ? "✓ Paid" : "Pending"}
                 </p>
               </div>
+              )}
               <div>
                 <p className="text-xs text-gray-500">Order Date</p>
                 <p className=" text-[12px] font-medium text-gray-900">
@@ -296,42 +302,42 @@ const MyOrders: React.FC = () => {
             </div>
 
             {/* Other Party Info */}
-            
-              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                <div className="flex items-center space-x-2">
-                  {otherParty?.avatar_url ? (
-                    <img
-                      src={otherParty?.avatar_url}
-                      alt={otherParty?.full_name}
-                      className="w-6 h-6 rounded-full"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
-                      <span className="text-xs font-medium text-primary-600">
-                        {otherParty?.full_name?.charAt(0) || "U"}
-                      </span>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-xs text-gray-800 font-medium">
-                      {isSale ? "Buyer" : "Seller"}:
-                    </span>
-                    <span className="text-xs text-gray-800 ">
-                      {otherParty?.full_name || otherParty?.username || "Unknown"}
+
+            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+              <div className="flex items-center space-x-2">
+                {otherParty?.avatar_url ? (
+                  <img
+                    src={otherParty?.avatar_url}
+                    alt={otherParty?.full_name}
+                    className="w-6 h-6 rounded-full"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
+                    <span className="text-xs font-medium text-primary-600">
+                      {otherParty?.full_name?.charAt(0) || "U"}
                     </span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                
-                  <button
-                    onClick={() => router.push(`/my-orders/${order.id}`)}
-                    className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                  >
-                    View Details
-                  </button>
+                )}
+                <div>
+                  <span className="text-xs text-gray-800 font-medium">
+                    {isSale ? "Buyer" : "Seller"}:
+                  </span>
+                  <span className="text-xs text-gray-800 ">
+                    {otherParty?.full_name || otherParty?.username || "Unknown"}
+                  </span>
                 </div>
               </div>
-            
+              <div className="flex items-center gap-2">
+
+                <button
+                  onClick={() => router.push(`/my-orders/${order.id}`)}
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                >
+                  View Details
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -346,100 +352,98 @@ const MyOrders: React.FC = () => {
     activeTab === "purchases" ? stats.purchases.totalSpent : stats.sales.totalEarned;
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen  max-w-full  px-3 sm:px-6 py-6">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
-          <div className="flex items-center space-x-2 mb-6">
-            <ShoppingBag className="w-7 h-7 text-primary-600" />
-            <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-          </div>
+      <div className="">
+        <div className="flex items-center space-x-2 mb-6">
+          <ShoppingBag className="w-7 h-7 text-primary-600" />
+          <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
+        </div>
 
-          {/* Stats */}
+        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-6">
-  {/* Total (changes by active tab) */}
-  <div className="bg-primary-50 rounded-lg p-2 sm:p-4">
-    <div className="flex items-center space-x-1 mb-1">
-      {activeTab === "purchases" ? (
-        <ShoppingCart className="w-6 h-6 text-primary-600" />
-      ) : (
-        <Package className="w-6 h-6 text-primary-600" />
-      )}
-      <p className="text-sm text-primary-600 font-medium">
-        {primaryLabel}
-      </p>
-    </div>
-    <p className="text-2xl font-bold text-primary-700">
-      {activeStats.total}
-    </p>
-  </div>
-
-  {/* Pending */}
-  <div className="bg-yellow-50 rounded-lg p-2 sm:p-4">
-    <div className="flex items-center space-x-1 mb-1">
-      <Clock className="w-6 h-6 text-yellow-600" />
-      <p className="text-sm text-yellow-600 font-medium">Pending</p>
-    </div>
-    <p className="text-2xl font-bold text-yellow-700">
-      {activeStats.pending}
-    </p>
-  </div>
-
-  {/* Completed */}
-  <div className="bg-green-50 rounded-lg p-2 sm:p-4">
-    <div className="flex items-center space-x-1 mb-1">
-      <CheckCircle className="w-6 h-6 text-green-600" />
-      <p className="text-sm text-green-600 font-medium">Completed</p>
-    </div>
-    <p className="text-2xl font-bold text-green-700">
-      {activeStats.completed}
-    </p>
-  </div>
-
-  {/* Amount */}
-  <div className="bg-primary-200 rounded-lg p-2 sm:p-4">
-    <div className="flex items-center space-x-1 mb-1">
-      <TrendingUp className="w-6 h-6 text-primary-700" />
-      <p className="text-sm text-primary-700 font-medium">{amountLabel}</p>
-    </div>
-    <p className="text-2xl font-bold text-primary-700">
-      ${amountValue.toLocaleString()}
-    </p>
-  </div>
-</div>
-
-          {/* Tabs */}
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-            <button
-              onClick={() => setActiveTab("purchases")}
-              className={`flex-1 py-2 sm:px-4 px-2 rounded-md font-medium transition-colors ${
-                activeTab === "purchases"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              My Purchases ({stats.purchases.total})
-            </button>
-            <button
-              onClick={() => setActiveTab("sales")}
-              className={`flex-1 py-2 sm:px-4 px-2 rounded-md font-medium transition-colors ${
-                activeTab === "sales"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              My Sales ({stats.sales.total})
-            </button>
+          {/* Total (changes by active tab) */}
+          <div className="bg-primary-50 rounded-lg p-2 sm:p-4">
+            <div className="flex items-center space-x-1 mb-1">
+              {activeTab === "purchases" ? (
+                <ShoppingCart className="w-6 h-6 text-primary-600" />
+              ) : (
+                <Package className="w-6 h-6 text-primary-600" />
+              )}
+              <p className="text-sm text-primary-600 font-medium">
+                {primaryLabel}
+              </p>
+            </div>
+            <p className="text-2xl font-bold text-primary-700">
+              {activeStats.total}
+            </p>
           </div>
+
+          {/* Pending */}
+          <div className="bg-yellow-50 rounded-lg p-2 sm:p-4">
+            <div className="flex items-center space-x-1 mb-1">
+              <Clock className="w-6 h-6 text-yellow-600" />
+              <p className="text-sm text-yellow-600 font-medium">Pending</p>
+            </div>
+            <p className="text-2xl font-bold text-yellow-700">
+              {activeStats.pending}
+            </p>
+          </div>
+
+          {/* Completed */}
+          <div className="bg-green-50 rounded-lg p-2 sm:p-4">
+            <div className="flex items-center space-x-1 mb-1">
+              <CheckCircle className="w-6 h-6 text-green-600" />
+              <p className="text-sm text-green-600 font-medium">Completed</p>
+            </div>
+            <p className="text-2xl font-bold text-green-700">
+              {activeStats.completed}
+            </p>
+          </div>
+
+          {/* Amount */}
+          <div className="bg-primary-200 rounded-lg p-2 sm:p-4">
+            <div className="flex items-center space-x-1 mb-1">
+              <TrendingUp className="w-6 h-6 text-primary-700" />
+              <p className="text-sm text-primary-700 font-medium">{amountLabel}</p>
+            </div>
+            <p className="text-2xl font-bold text-primary-700">
+              ${amountValue.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex space-x-1 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab("purchases")}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'purchases'
+                    ? 'bg-primary-600 text-white'
+                    : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+                }`}
+          >
+            My Purchases ({stats.purchases.total})
+          </button>
+          <button
+            onClick={() => setActiveTab("sales")}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  activeTab === 'sales'
+                    ? 'bg-primary-600 text-white'
+                    : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+                }`}
+          >
+            My Sales ({stats.sales.total})
+          </button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
+      <div className="pt-6">
         {loading ? (
           <MyOrdersGridShimmer count={shimmerCount} />
         ) : currentOrders.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
             {currentOrders.map((order) =>
               renderOrderCard(order, activeTab === "sales")
             )}
