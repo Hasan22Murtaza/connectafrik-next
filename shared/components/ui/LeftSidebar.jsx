@@ -4,10 +4,10 @@ import { BsShop } from "react-icons/bs";
 import {
   FaRegUser
 } from "react-icons/fa";
-import { FiVideo } from "react-icons/fi";
+import { FiBookmark, FiVideo } from "react-icons/fi";
 import { HiOutlineUserGroup } from "react-icons/hi";
-import { IoBookmarkOutline } from "react-icons/io5";
 import { RiHandbagLine } from "react-icons/ri";
+
 
 
 const shortcuts = [
@@ -15,7 +15,7 @@ const shortcuts = [
   { name: "Groups", to: "/groups", icon: HiOutlineUserGroup },
   { name: "Marketplace", to: "/marketplace", icon: BsShop },
   { name: "My Orders", to: "/my-orders", icon: RiHandbagLine },
-  { name: "Saved", to: "/saved", icon: IoBookmarkOutline },
+  { name: "Saved", to: "/saved", icon: FiBookmark },
   { name: "Video", to: "/video", icon: FiVideo },
 ];
 
