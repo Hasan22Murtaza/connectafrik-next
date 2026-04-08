@@ -1,21 +1,33 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { formatDistanceToNow } from 'date-fns'
 import { 
   User, Lock, Bell, Shield, Eye, 
   Globe, Users, Camera, Save,
-  Trash2, AlertTriangle, Download, Settings
+  Trash2, AlertTriangle, Download, Settings, Monitor
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import type { ProfileVisibilityLevel } from '@/shared/types'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, ApiError } from '@/lib/api-client'
 import NotificationManager from '@/shared/components/ui/NotificationManager'
+import {
+  buildClientSessionDeviceLabelAsync,
+  getSessionIdFromAccessToken,
+} from '@/shared/utils/sessionDeviceLabel'
 import toast from 'react-hot-toast'
 
+type ListedAuthSession = {
+  id: string
+  device_label: string
+  ip: string | null
+  last_active_at: string
+}
+
 const ProfileSettings: React.FC = () => {
-  const { user, signOut } = useAuth()
+  const { user, session, signOut, signOutAllDevices } = useAuth()
   const { profile, updateProfile } = useProfile()
   const { uploadFile } = useFileUpload()
   
@@ -81,6 +93,60 @@ const ProfileSettings: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showNotificationManager, setShowNotificationManager] = useState(false)
+  const [authSessions, setAuthSessions] = useState<ListedAuthSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
+
+  const currentAuthSessionId = getSessionIdFromAccessToken(session?.access_token ?? null)
+
+  const loadAuthSessions = useCallback(async () => {
+    if (!user) return
+    setSessionsLoading(true)
+    try {
+      if (typeof navigator !== 'undefined') {
+        const deviceLabel = await buildClientSessionDeviceLabelAsync()
+        await apiClient
+          .post('/api/auth/sessions/heartbeat', {
+            deviceLabel,
+            userAgent: navigator.userAgent,
+          })
+          .catch(() => {})
+      }
+      const res = await apiClient.get<{ sessions: ListedAuthSession[]; count: number }>('/api/auth/sessions')
+      setAuthSessions(res.sessions)
+    } catch (e) {
+      const msg =
+        e instanceof ApiError ? e.message : 'Could not load active sessions.'
+      toast.error(msg)
+      setAuthSessions([])
+    } finally {
+      setSessionsLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (activeTab === 'security' && user) {
+      void loadAuthSessions()
+    }
+  }, [activeTab, user, loadAuthSessions])
+
+  const handleRevokeAuthSession = async (sessionId: string) => {
+    setRevokingSessionId(sessionId)
+    try {
+      await apiClient.delete(`/api/auth/sessions/${sessionId}`)
+      toast.success('That device has been signed out.')
+      if (sessionId === currentAuthSessionId) {
+        await signOut()
+      } else {
+        await loadAuthSessions()
+      }
+    } catch (e) {
+      const msg = e instanceof ApiError ? e.message : 'Could not sign out that device.'
+      toast.error(msg)
+    } finally {
+      setRevokingSessionId(null)
+    }
+  }
 
   const countries = [
     'Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi',
@@ -711,11 +777,82 @@ const ProfileSettings: React.FC = () => {
                       </label>
                     </div>
 
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-start gap-3">
+                        <Monitor className="w-5 h-5 text-gray-600 shrink-0 mt-0.5" aria-hidden />
+                        <div>
+                          <h3 className="font-medium text-gray-900">Where you&apos;re logged in</h3>
+                          <p className="text-sm text-gray-500">
+                            {sessionsLoading
+                              ? 'Loading sessions…'
+                              : `${authSessions.length} active ${authSessions.length === 1 ? 'session' : 'sessions'}`}
+                          </p>
+                        </div>
+                      </div>
+                      <ul className="divide-y divide-gray-100">
+                        {sessionsLoading && authSessions.length === 0 ? (
+                          <li className="p-4 text-sm text-gray-500">Loading sessions…</li>
+                        ) : authSessions.length === 0 ? (
+                          <li className="p-4 text-sm text-gray-500">No active sessions found.</li>
+                        ) : (
+                          authSessions.map((s) => {
+                            const isCurrent = currentAuthSessionId === s.id
+                            let lastActiveLabel = ''
+                            try {
+                              lastActiveLabel = formatDistanceToNow(new Date(s.last_active_at), {
+                                addSuffix: true,
+                              })
+                            } catch {
+                              lastActiveLabel = ''
+                            }
+                            return (
+                              <li
+                                key={s.id}
+                                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4"
+                              >
+                                <div className="min-w-0">
+                                  <div className="font-medium text-gray-900 truncate">{s.device_label}</div>
+                                  <div className="text-sm text-gray-500 mt-0.5">
+                                    {s.ip ? `IP ${s.ip} · ` : ''}
+                                    {lastActiveLabel ? `Active ${lastActiveLabel}` : null}
+                                  </div>
+                                  {isCurrent ? (
+                                    <span className="inline-block mt-1 text-xs font-medium text-orange-600">
+                                      This device
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={revokingSessionId === s.id}
+                                  onClick={() => handleRevokeAuthSession(s.id)}
+                                  className="btn-secondary text-sm px-4 py-2 shrink-0 disabled:opacity-50"
+                                >
+                                  {revokingSessionId === s.id ? 'Signing out…' : 'Log out'}
+                                </button>
+                              </li>
+                            )
+                          })
+                        )}
+                      </ul>
+                    </div>
+
                     <div className="flex justify-between items-center flex-wrap gap-4">
                       <div className="flex  gap-4">
                         <button className="btn-secondary w-full sm:w-auto">Change Password</button>
                         <button
-                          onClick={signOut}
+                          type="button"
+                          onClick={() => {
+                            if (
+                              typeof window !== 'undefined' &&
+                              !window.confirm(
+                                'Sign out on every device? You will need to sign in again on each one.'
+                              )
+                            ) {
+                              return
+                            }
+                            void signOutAllDevices()
+                          }}
                           className="btn-secondary w-full sm:w-auto"
                         >
                           Sign Out All Devices

@@ -14,7 +14,10 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>
+  /** Ends this browser/session only (other devices stay signed in). */
   signOut: () => Promise<void>
+  /** Ends every session for this account on all devices. */
+  signOutAllDevices: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -107,10 +110,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
-    // Deactivate FCM token so push notifications are not sent to this user until they log in again
     await deactivateTokenOnLogout().catch(() => {})
-    // Keep other devices/browsers signed in; only end this local session.
     await supabase.auth.signOut({ scope: 'local' })
+    router.push('/')
+  }
+
+  const signOutAllDevices = async () => {
+    await deactivateTokenOnLogout().catch(() => {})
+    await supabase.auth.signOut({ scope: 'global' })
     router.push('/')
   }
 
@@ -123,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     resetPassword,
     updatePassword,
     signOut,
+    signOutAllDevices,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
