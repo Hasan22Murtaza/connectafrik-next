@@ -1,9 +1,15 @@
 import { NextRequest } from 'next/server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { createAuthenticatedClient } from '@/lib/supabase-server'
+import {
+  getAuthenticatedUser,
+  getAccessTokenFromRequest,
+  updateUserPasswordViaGotrue,
+} from '@/lib/supabase-server'
 
 export async function POST(request: NextRequest) {
   try {
+    await getAuthenticatedUser(request)
+
     const body = await request.json()
     const password = typeof body?.password === 'string' ? body.password : ''
 
@@ -11,23 +17,26 @@ export async function POST(request: NextRequest) {
       return errorResponse('Password is required', 400)
     }
 
-    const supabase = createAuthenticatedClient(request)
-    const { error } = await supabase.auth.updateUser({
-      password,
-    })
+    const accessToken = getAccessTokenFromRequest(request)
+    if (!accessToken) {
+      return unauthorizedResponse()
+    }
+
+    const { error } = await updateUserPasswordViaGotrue(accessToken, password)
 
     if (error) {
-      return errorResponse(error.message, 400)
+      return errorResponse(error, 400)
     }
 
     return jsonResponse({ updated: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (
-      error?.message === 'Missing Authorization header' ||
-      error?.message === 'Unauthorized'
+      error instanceof Error &&
+      (error.message === 'Missing Authorization header' || error.message === 'Unauthorized')
     ) {
       return unauthorizedResponse()
     }
-    return errorResponse(error?.message || 'Failed to update password', 500)
+    const message = error instanceof Error ? error.message : 'Failed to update password'
+    return errorResponse(message, 500)
   }
 }

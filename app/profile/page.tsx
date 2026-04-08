@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
-  User, Lock, Bell, Shield, Eye, 
+  User, Lock, Bell, Shield, Eye, EyeOff,
   Globe, Users, Camera, Save,
-  Trash2, AlertTriangle, Download, Settings, Monitor
+  Trash2, AlertTriangle, Download, Settings, Monitor, X
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
@@ -96,6 +96,20 @@ const ProfileSettings: React.FC = () => {
   const [authSessions, setAuthSessions] = useState<ListedAuthSession[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    current: '',
+    next: '',
+    confirm: '',
+  })
+  const [passwordBusy, setPasswordBusy] = useState(false)
+  const [showPwCurrent, setShowPwCurrent] = useState(false)
+  const [showPwNew, setShowPwNew] = useState(false)
+  const [showPwConfirm, setShowPwConfirm] = useState(false)
+
+  const canChangePassword =
+    Boolean(user?.email?.trim()) &&
+    Boolean(user?.identities?.some((i) => i.provider === 'email'))
 
   const currentAuthSessionId = getSessionIdFromAccessToken(session?.access_token ?? null)
 
@@ -145,6 +159,49 @@ const ProfileSettings: React.FC = () => {
       toast.error(msg)
     } finally {
       setRevokingSessionId(null)
+    }
+  }
+
+  useEffect(() => {
+    if (!showChangePasswordModal) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowPwCurrent(false)
+        setShowPwNew(false)
+        setShowPwConfirm(false)
+        setShowChangePasswordModal(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showChangePasswordModal])
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (passwordForm.next !== passwordForm.confirm) {
+      toast.error('New passwords do not match.')
+      return
+    }
+    if (passwordForm.next.length < 8) {
+      toast.error('New password must be at least 8 characters.')
+      return
+    }
+    setPasswordBusy(true)
+    try {
+      await apiClient.post<{ updated: boolean }>('/api/auth/change-password', {
+        currentPassword: passwordForm.current,
+        newPassword: passwordForm.next,
+      })
+      toast.success('Password updated successfully.')
+      setPasswordForm({ current: '', next: '', confirm: '' })
+      setShowPwCurrent(false)
+      setShowPwNew(false)
+      setShowPwConfirm(false)
+      setShowChangePasswordModal(false)
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Could not change password.')
+    } finally {
+      setPasswordBusy(false)
     }
   }
 
@@ -839,7 +896,27 @@ const ProfileSettings: React.FC = () => {
 
                     <div className="flex justify-between items-center flex-wrap gap-4">
                       <div className="flex  gap-4">
-                        <button className="btn-secondary w-full sm:w-auto">Change Password</button>
+                        <button
+                          type="button"
+                          disabled={!canChangePassword}
+                          title={
+                            canChangePassword
+                              ? undefined
+                              : 'Only available when you signed up with email and password.'
+                          }
+                          onClick={() => {
+                            if (!canChangePassword) {
+                              toast.error(
+                                'Password change is only for accounts that use email sign-in.'
+                              )
+                              return
+                            }
+                            setShowChangePasswordModal(true)
+                          }}
+                          className="btn-secondary w-full sm:w-auto disabled:opacity-50"
+                        >
+                          Change Password
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -913,6 +990,144 @@ const ProfileSettings: React.FC = () => {
 
       {showNotificationManager && (
         <NotificationManager onClose={() => setShowNotificationManager(false)} />
+      )}
+
+      {showChangePasswordModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowPwCurrent(false)
+              setShowPwNew(false)
+              setShowPwConfirm(false)
+              setShowChangePasswordModal(false)
+            }
+          }}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200"
+            role="dialog"
+            aria-labelledby="change-password-title"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h2 id="change-password-title" className="text-lg font-semibold text-gray-900">
+                Change password
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPwCurrent(false)
+                  setShowPwNew(false)
+                  setShowPwConfirm(false)
+                  setShowChangePasswordModal(false)
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleChangePasswordSubmit} className="p-4 space-y-4">
+              <p className="text-sm text-gray-600">
+                Enter your current password, then choose a new one (at least 8 characters).
+              </p>
+              <div>
+                <label htmlFor="cp-current" className="block text-sm font-medium text-gray-700 mb-1">
+                  Current password
+                </label>
+                <div className="relative">
+                  <input
+                    id="cp-current"
+                    type={showPwCurrent ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    value={passwordForm.current}
+                    onChange={(e) => setPasswordForm((p) => ({ ...p, current: e.target.value }))}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwCurrent((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    aria-label={showPwCurrent ? 'Hide password' : 'Show password'}
+                  >
+                    {showPwCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="cp-new" className="block text-sm font-medium text-gray-700 mb-1">
+                  New password
+                </label>
+                <div className="relative">
+                  <input
+                    id="cp-new"
+                    type={showPwNew ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={passwordForm.next}
+                    onChange={(e) => setPasswordForm((p) => ({ ...p, next: e.target.value }))}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwNew((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    aria-label={showPwNew ? 'Hide new password' : 'Show new password'}
+                  >
+                    {showPwNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="cp-confirm" className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm new password
+                </label>
+                <div className="relative">
+                  <input
+                    id="cp-confirm"
+                    type={showPwConfirm ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={passwordForm.confirm}
+                    onChange={(e) => setPasswordForm((p) => ({ ...p, confirm: e.target.value }))}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwConfirm((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    aria-label={showPwConfirm ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showPwConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPwCurrent(false)
+                    setShowPwNew(false)
+                    setShowPwConfirm(false)
+                    setShowChangePasswordModal(false)
+                  }}
+                  className="btn-secondary px-4 py-2"
+                  disabled={passwordBusy}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary px-4 py-2" disabled={passwordBusy}>
+                  {passwordBusy ? 'Saving…' : 'Update password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
