@@ -119,7 +119,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-    <header className="sticky top-0 z-50  dark:bg-slate-900/80 backdrop-blur-md shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
+    <header className="sticky top-0 z-50  bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
       <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
@@ -162,7 +162,7 @@ const Header: React.FC<HeaderProps> = ({
           {user && (
             <button
               onClick={() => setShowMobileSearch(true)}
-              className="md:hidden p-2 text-gray-600 hover:text-[#FF6900] transition-colors"
+              className="md:hidden p-2 text-gray-600 hover:text-primary-600 transition-colors"
               aria-label="Open search"
             >
               <Search className="w-5 h-5" />
@@ -174,7 +174,7 @@ const Header: React.FC<HeaderProps> = ({
             {user ? (
               <>
                 {/* Navigation Links - Hidden on mobile, visible on desktop */}
-                <nav className="sm:!block !hidden lg:flex items-center">
+                <nav className="md:block hidden lg:flex items-center">
                   <ul className="flex items-center space-x-8 pr-4 sm:pr-14 pt-3">
 
                     {/* Feed */}
@@ -182,15 +182,15 @@ const Header: React.FC<HeaderProps> = ({
                       <Link
                         href="/feed"
                         className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/feed"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
                           }`}
                       >
                         <Home className="w-12" />
                         <span className="text-sm font-medium">Feed</span>
 
                         <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-[#FF6900] rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                             }`}
@@ -203,15 +203,15 @@ const Header: React.FC<HeaderProps> = ({
                       <Link
                         href="/memories/foryou"
                         className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname.startsWith("/memories")
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
                           }`}
                       >
                         <Video className="w-12" />
                         <span className="text-sm font-medium">Reels</span>
 
                         <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-[#FF6900] rounded-full transition-all duration-300 ease-in-out ${pathname.startsWith("/memories")
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname.startsWith("/memories")
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                             }`}
@@ -224,15 +224,15 @@ const Header: React.FC<HeaderProps> = ({
                       <Link
                         href="/politics"
                         className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/politics"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
                           }`}
                       >
                         <Landmark className="w-12" />
                         <span className="text-sm font-medium">Politics</span>
 
                         <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-[#FF6900] rounded-full transition-all duration-300 ease-in-out ${pathname === "/politics"
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/politics"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                             }`}
@@ -245,15 +245,15 @@ const Header: React.FC<HeaderProps> = ({
                       <Link
                         href="/culture"
                         className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/culture"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
                           }`}
                       >
                         <Palette className="w-12" />
                         <span className="text-sm font-medium">Culture</span>
 
                         <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-[#FF6900] rounded-full transition-all duration-300 ease-in-out ${pathname === "/culture"
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/culture"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                             }`}
@@ -266,15 +266,15 @@ const Header: React.FC<HeaderProps> = ({
                       <Link
                         href="/groups"
                         className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/groups"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
                           }`}
                       >
                         <Users className="w-12" />
                         <span className="text-sm font-medium">Groups</span>
 
                         <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-[#FF6900] rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                             }`}
@@ -295,7 +295,7 @@ const Header: React.FC<HeaderProps> = ({
                         setShowNotifications(false);
                         setShowCalls(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
                     >
                       <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadMessages > 0 && (
@@ -319,7 +319,7 @@ const Header: React.FC<HeaderProps> = ({
                         setShowNotifications(false);
                         setShowInbox(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
                     >
                       <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -338,7 +338,7 @@ const Header: React.FC<HeaderProps> = ({
                         setShowInbox(false);
                         setShowCalls(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
                     >
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadNotificationCount > 0 && (
@@ -446,7 +446,7 @@ const Header: React.FC<HeaderProps> = ({
     </header>
       {/* Mobile Navigation */}
       {user && !pathname?.startsWith("/memories") && (
-        <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1 z-20">
+        <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1 z-50">
           <nav className="w-full">
             <ul className="flex justify-between w-full px-2">
               {/* Feed */}
@@ -454,8 +454,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/feed"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/feed"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Home className="w-6 h-6" />
@@ -467,8 +467,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/memories/foryou"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname()?.startsWith("/memories")
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Video className="w-6 h-6" />
@@ -480,8 +480,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/politics"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/politics"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Landmark className="w-6 h-6" />
@@ -493,8 +493,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/culture"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/culture"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Palette className="w-6 h-6" />
@@ -506,8 +506,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/groups"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/groups"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Users className="w-6 h-6" />

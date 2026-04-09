@@ -402,16 +402,16 @@ const FriendsPage: React.FC = () => {
                     className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg
                     transition-all duration-300 ease-in-out
                     ${isActive
-                        ? "bg-orange-50 text-[#FF6900]"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-[#FF6900]"
+                        ? "bg-orange-50 text-primary-600"
+                        : "text-gray-700 hover:bg-gray-100 hover:text-primary-600"
                       }`}
                   >
                     <span
                       className={`absolute left-0 top-0 h-full w-[3px] rounded-r
           transition-all duration-300 ease-in-out
           ${isActive
-                          ? "bg-[#FF6900] opacity-100 scale-y-100"
-                          : "bg-[#FF6900] opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+                          ? "bg-primary-600 opacity-100 scale-y-100"
+                          : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
                         }`}
                     />
 
@@ -419,8 +419,8 @@ const FriendsPage: React.FC = () => {
                       <Icon
                         className={`text-md transition-all duration-300 ease-in-out
             ${isActive
-                            ? "text-[#FF6900] scale-110"
-                            : "text-gray-500 group-hover:text-[#FF6900] group-hover:scale-110"
+                            ? "text-primary-600 scale-110"
+                            : "text-gray-500 group-hover:text-primary-600 group-hover:scale-110"
                           }`}
                       />
                       <span className="font-medium transition-all duration-300 ease-in-out group-hover:translate-x-1">
@@ -429,7 +429,7 @@ const FriendsPage: React.FC = () => {
                     </div>
 
                     {item.key === "requests" && requests.length > 0 && (
-                      <span className="bg-[#FF6900] text-white text-xs px-2 py-0.5 rounded-full">
+                      <span className="bg-primary-600 text-white text-xs px-2 py-0.5 rounded-full">
                         {requests.length}
                       </span>
                     )}
@@ -489,7 +489,7 @@ const FriendsPage: React.FC = () => {
                   <h2 className="text-2xl font-semibold text-gray-600">Friend Requests</h2>
                   <button
                     onClick={() => setActiveSection("requests")}
-                    className="text-[#FF6900] hover:text-orange-700 font-medium hover:underline duration-300 "
+                    className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
                   >
                     See all
                   </button>
@@ -526,7 +526,7 @@ const FriendsPage: React.FC = () => {
                           {/* Content */}
                           <div className="p-4">
                             <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-[#FF6900] transition-colors">
+                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {request.requester?.full_name || "Unknown User"}
                               </h3>
                             </Link>
@@ -569,7 +569,7 @@ const FriendsPage: React.FC = () => {
                       <div className="flex justify-center mt-6">
                         <button
                           onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
-                          className="flex items-center space-x-1 text-[#FF6900] hover:text-orange-700 font-medium"
+                          className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
                         >
                           <span>See more</span>
                           <ChevronDown className="w-4 h-4" />
@@ -594,7 +594,7 @@ const FriendsPage: React.FC = () => {
                   <h2 className="text-2xl font-semibold text-gray-600">People You May Know</h2>
                   <button
                     onClick={() => setActiveSection("suggestions")}
-                    className="text-[#FF6900] hover:text-orange-700 font-medium hover:underline duration-300 "
+                    className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
                   >
                     See all
                   </button>
@@ -631,7 +631,7 @@ const FriendsPage: React.FC = () => {
                           {/* Content */}
                           <div className="p-4">
                             <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-[#FF6900] transition-colors">
+                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {suggestion.full_name || "Unknown User"}
                               </h3>
                             </Link>
@@ -667,7 +667,7 @@ const FriendsPage: React.FC = () => {
                       <div className="flex justify-center mt-6">
                         <button
                           onClick={() => setSuggestionsDisplayLimit(prev => prev + 20)}
-                          className="flex items-center space-x-1 text-[#FF6900] hover:text-orange-700 font-medium"
+                          className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
                         >
                           <span>See more</span>
                           <ChevronDown className="w-4 h-4" />
@@ -693,7 +693,7 @@ const FriendsPage: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-semibold text-gray-600">Friend Requests</h2>
-                <button className="text-[#FF6900] hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => setActiveSection("home")}>
+                <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => setActiveSection("home")}>
                   See all
                 </button>
               </div>
@@ -728,7 +728,7 @@ const FriendsPage: React.FC = () => {
                       {/* Content */}
                       <div className="p-4">
                         <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-[#FF6900] transition-colors">
+                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                             {request.requester?.full_name || "Unknown User"}
                           </h3>
                         </Link>
@@ -824,7 +824,7 @@ const FriendsPage: React.FC = () => {
                       {/* Content */}
                       <div className="p-4">
                         <Link href={`/user/${friend.username || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-1 hover:text-[#FF6900] transition-colors">
+                          <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
                             {friend.full_name || "Unknown User"}
                           </h3>
                         </Link>
@@ -909,7 +909,7 @@ const FriendsPage: React.FC = () => {
                       {/* Content */}
                       <div className="p-4">
                         <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-[#FF6900] transition-colors">
+                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                             {suggestion.full_name || "Unknown User"}
                           </h3>
                         </Link>
@@ -988,18 +988,18 @@ const FriendsPage: React.FC = () => {
                                     className="w-14 h-14 rounded-full object-cover ring-2 ring-orange-300"
                                   />
                                 ) : (
-                                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-[#FF6900] bg-orange-100 ring-2 ring-orange-300">
+                                  <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-primary-600 bg-orange-100 ring-2 ring-orange-300">
                                     {friend.full_name?.charAt(0) || "U"}
                                   </div>
                                 )}
                               </Link>
                               <div className="flex-1 min-w-0">
                                 <Link href={`/user/${friend.username || ""}`}>
-                                  <h4 className="font-semibold text-gray-900 truncate hover:text-[#FF6900] transition-colors">
+                                  <h4 className="font-semibold text-gray-900 truncate hover:text-primary-600 transition-colors">
                                     {friend.full_name}
                                   </h4>
                                 </Link>
-                                <p className="text-sm text-[#FF6900] font-medium flex items-center space-x-1">
+                                <p className="text-sm text-primary-600 font-medium flex items-center space-x-1">
                                   <Cake className="w-4 h-4" />
                                   <span>Birthday today!</span>
                                 </p>
@@ -1057,7 +1057,7 @@ const FriendsPage: React.FC = () => {
                                 </Link>
                                 <div className="flex-1 min-w-0">
                                   <Link href={`/user/${friend.username || ""}`}>
-                                    <h4 className="font-semibold text-gray-900 truncate hover:text-[#FF6900] transition-colors">
+                                    <h4 className="font-semibold text-gray-900 truncate hover:text-primary-600 transition-colors">
                                       {friend.full_name}
                                     </h4>
                                   </Link>
@@ -1121,7 +1121,7 @@ const FriendsPage: React.FC = () => {
                                 </Link>
                                 <div className="flex-1 min-w-0">
                                   <Link href={`/user/${friend.username || ""}`}>
-                                    <h4 className="font-semibold text-gray-900 truncate hover:text-[#FF6900] transition-colors">
+                                    <h4 className="font-semibold text-gray-900 truncate hover:text-primary-600 transition-colors">
                                       {friend.full_name}
                                     </h4>
                                   </Link>

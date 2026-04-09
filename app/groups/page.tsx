@@ -273,14 +273,14 @@ const GroupsPage: React.FC = () => {
           className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
     transition-all duration-300 ease-in-out
     ${view === "feed"
-              ? "bg-orange-50 text-[#FF6900]"
-              : "text-gray-600 hover:bg-gray-100 hover:text-[#FF6900]"
+              ? "bg-orange-50 text-primary-600"
+              : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
             }
     `}
         >
           {/* LEFT LINE */}
           <span
-            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-[#FF6900]
+            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
       transition-all duration-300 ease-in-out
       ${view === "feed"
                 ? "opacity-100 scale-y-100"
@@ -303,13 +303,13 @@ const GroupsPage: React.FC = () => {
           className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
     transition-all duration-300 ease-in-out
     ${view === "discover"
-              ? "bg-orange-50 text-[#FF6900]"
-              : "text-gray-600 hover:bg-gray-100 hover:text-[#FF6900]"
+              ? "bg-orange-50 text-primary-600"
+              : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
             }
     `}
         >
           <span
-            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-[#FF6900]
+            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
       transition-all duration-300 ease-in-out
       ${view === "discover"
                 ? "opacity-100 scale-y-100"
@@ -333,13 +333,13 @@ const GroupsPage: React.FC = () => {
             className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
       transition-all duration-300 ease-in-out
       ${view === "my-groups"
-                ? "bg-orange-50 text-[#FF6900]"
-                : "text-gray-600 hover:bg-gray-100 hover:text-[#FF6900]"
+                ? "bg-orange-50 text-primary-600"
+                : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
               }
       `}
           >
             <span
-              className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-[#FF6900]
+              className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
         transition-all duration-300 ease-in-out
         ${view === "my-groups"
                   ? "opacity-100 scale-y-100"

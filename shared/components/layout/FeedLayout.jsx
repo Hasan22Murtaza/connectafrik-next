@@ -154,7 +154,7 @@ const FeedLayout = ({ children }) => {
   return (
     <div className="flex min-h-screen px-1 sm:px-6 ">
       {/* Left Sidebar - Hidden on mobile, visible on desktop */}
-      <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[91vh] bg-[#F8FAFC] rounded-2xl">
+      <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[calc(100vh-80px)] bg-[#F8FAFC] rounded-2xl">
         <LeftSidebar onlineContacts={onlineFriends} />
       </div>
 
@@ -164,7 +164,7 @@ const FeedLayout = ({ children }) => {
       </main>
 
       {/* Right Sidebar - Hidden on mobile, visible on desktop */}
-      <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[91vh] bg-[#F8FAFC] rounded-2xl">
+      <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[calc(100vh-73px)] bg-[#F8FAFC] rounded-2xl">
         <RightSidebar
           birthdays={birthdays}
           contacts={friendsList}

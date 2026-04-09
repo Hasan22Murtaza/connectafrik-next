@@ -75,7 +75,7 @@ export function useFeedShimmerCount() {
 /** Single post card shimmer (group feed / group detail posts). */
 export function PostCardShimmer() {
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden w-full min-w-0">
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden w-full min-w-0 ">
       <div className="p-2 sm:p-3 border-b border-gray-100">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full animate-shimmer shrink-0 flex-shrink-0" />

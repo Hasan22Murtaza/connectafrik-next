@@ -88,13 +88,13 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors
                       ${
                         isActive
-                          ? 'bg-orange-50 text-[#ff6900]'
+                          ? 'bg-orange-50 text-primary-600'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <item.icon
                       className={`w-5 h-5 ${
-                        isActive ? 'text-[#ff6900]' : 'text-gray-500'
+                        isActive ? 'text-primary-600' : 'text-gray-500'
                       }`}
                     />
                     {item.label}

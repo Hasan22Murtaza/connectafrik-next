@@ -40,8 +40,8 @@ const LeftSidebar = () => {
                 transition-all duration-300 ease-in-out
                 ${
                   isActive
-                    ? "bg-orange-50 text-[#FF6900]"
-                    : "text-gray-500 hover:bg-gray-100 hover:text-[#FF6900]"
+                    ? "bg-primary-100 text-primary-600"
+                    : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
                 } 
                 hover:translate-x-1`}
               >
@@ -51,8 +51,8 @@ const LeftSidebar = () => {
                   transition-all duration-300 ease-in-out
                   ${
                     isActive
-                      ? "bg-[#FF6900] opacity-100 scale-y-100"
-                      : "bg-[#FF6900] opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+                      ? "bg-primary-600 opacity-100 scale-y-100"
+                      : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
                   }`}
                 ></span>
 

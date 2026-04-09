@@ -196,11 +196,13 @@ const MarketplacePage: React.FC = () => {
       <div className="flex gap-4 min-w-0 w-full">
         {/* Sidebar */}
         <aside
-          className={`fixed md:relative inset-y-0 left-0 z-60
+          className={`fixed md:relative inset-y-0 left-0 z-40
           w-[280px] shrink-0 bg-[#F8FAFC] rounded-0 md:rounded-2xl
           px-4 py-6
-          top-0
+          sm:top-0
+          top-12
           md:h-screen
+          h-[calc(100vh-6rem)]
           scrollbar-hover
           overflow-y-auto
           transform transition-transform duration-300
@@ -246,8 +248,8 @@ const MarketplacePage: React.FC = () => {
                       className={`group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer
             transition-all duration-300 ease-in-out
             ${isActive
-                          ? "bg-orange-50 text-[#FF6900]"
-                          : "text-gray-500 hover:bg-gray-100 hover:text-[#FF6900]"
+                          ? "bg-orange-50 text-primary-600"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
                         }
             `}
                     >
@@ -256,8 +258,8 @@ const MarketplacePage: React.FC = () => {
                         className={`absolute left-0 top-0 h-full w-[3px] rounded-r
               transition-all duration-300 ease-in-out
               ${isActive
-                            ? "bg-[#FF6900] opacity-100 scale-y-100"
-                            : "bg-[#FF6900] opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+                            ? "bg-primary-600 opacity-100 scale-y-100"
+                            : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
                           }`}
                       ></span>
 
@@ -296,8 +298,8 @@ const MarketplacePage: React.FC = () => {
                       className={`group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer
             transition-all duration-300 ease-in-out
             ${isActive
-                          ? "bg-orange-50 text-[#FF6900]"
-                          : "text-gray-500 hover:bg-gray-100 hover:text-[#FF6900]"
+                          ? "bg-orange-50 text-primary-600"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
                         }
             `}
                     >
@@ -306,8 +308,8 @@ const MarketplacePage: React.FC = () => {
                         className={`absolute left-0 top-0 h-full w-[3px] rounded-r
               transition-all duration-300 ease-in-out
               ${isActive
-                            ? "bg-[#FF6900] opacity-100 scale-y-100"
-                            : "bg-[#FF6900] opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+                            ? "bg-primary-600 opacity-100 scale-y-100"
+                            : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
                           }`}
                       ></span>
 

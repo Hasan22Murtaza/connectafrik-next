@@ -81,7 +81,7 @@ const DetailRow = ({ icon: Icon, children }: { icon: React.ElementType; children
 )
 
 const ProfileSkeleton = () => (
-  <div className="min-h-screen px-4">
+  <div className="min-h-screen px-4 mt-4">
     <div className=" w-full mx-auto">
       <div className="bg-white shadow-sm border-b border-gray-200 rounded-2xl">
         <div className="px-4 sm:px-6 py-5">
@@ -403,7 +403,7 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="min-h-screen  pb-20 sm:pb-8 px-4">
       
-      <div className="">
+      <div className=" mt-4">
         <div className="bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)] rounded-2xl">
         <div className="px-4 sm:px-6 pt-4 pb-3 sm:py-5">
           <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
