@@ -1,19 +1,16 @@
 import { Search, X } from 'lucide-react';
 import React from 'react';
 
-function isInThisMeeting(
-  person: { full_name?: string; username?: string },
+/** In-meeting detection uses ids only (VideoSDK `participantId` = app user id). */
+function isUserInThisMeetingById(
+  userId: string | undefined,
   sdkParticipants: any[],
+  inCallUserIds: string[],
 ): boolean {
-  const fn = (person.full_name || '').trim().toLowerCase();
-  const un = (person.username || '').trim().toLowerCase();
-  return sdkParticipants.some((p: any) => {
-    const dn = String(p?.displayName || '').trim().toLowerCase();
-    if (!dn) return false;
-    if (fn && dn === fn) return true;
-    if (un && dn === un) return true;
-    return false;
-  });
+  if (userId == null || userId === '') return false;
+  const uid = String(userId);
+  if (inCallUserIds.some((id) => String(id) === uid)) return true;
+  return sdkParticipants.some((p: any) => p?.id != null && String(p.id) === uid);
 }
 
 interface AddPeoplePanelProps {
@@ -80,10 +77,9 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
           <p className="text-xs text-gray-500 text-center mt-4">No users found</p>
         ) : (
           addPeopleResults.map((person: any) => {
-            const inThisMeeting =
-              (person.id && inCallUserIds.includes(person.id)) ||
-              isInThisMeeting(person, participants);
-            const onAnotherCall = Boolean(busyByUserId[person.id]) && !inThisMeeting;
+            const inThisMeeting = isUserInThisMeetingById(person.id, participants, inCallUserIds);
+            const onAnotherCall =
+              Boolean(person.id && busyByUserId[String(person.id)]) && !inThisMeeting;
             const cannotInvite = inThisMeeting || onAnotherCall || invitingUserId === person.id;
             return (
               <button

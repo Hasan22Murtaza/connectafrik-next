@@ -125,6 +125,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(0);
   const [presenterName, setPresenterName] = useState('');
+  /** Local video PiP: drag offset from default top-right anchor (px). */
+  const [pipTranslate, setPipTranslate] = useState({ tx: 0, ty: 0 });
+  const [pipDragging, setPipDragging] = useState(false);
+  const pipTranslateRef = useRef(pipTranslate);
+  pipTranslateRef.current = pipTranslate;
 
   // --------------------------------------------------------------------------
   // Refs — give async callbacks access to the latest values without stale closures
@@ -793,12 +798,76 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   // Reset to page 0 when participants join/leave
   useEffect(() => { setGroupPage(0); }, [remoteParticipantIds.length]);
 
+  const meetingSurfaceRef = useRef<HTMLDivElement>(null);
+  const pipWrapRef = useRef<HTMLDivElement>(null);
+  const pipPointerIdRef = useRef<number | null>(null);
+  const pipDragStartRef = useRef<{ cx: number; cy: number; tx: number; ty: number } | null>(null);
+
+  const clampPipTranslate = useCallback((tx: number, ty: number) => {
+    const surface = meetingSurfaceRef.current;
+    const pip = pipWrapRef.current;
+    if (!surface || !pip) return { tx, ty };
+    const sw = surface.clientWidth;
+    const sh = surface.clientHeight;
+    const pw = pip.offsetWidth;
+    const ph = pip.offsetHeight;
+    const m = 12;
+    const baseLeft = sw - m - pw;
+    const baseTop = m;
+    const l = baseLeft + tx;
+    const t = baseTop + ty;
+    const cl = Math.min(Math.max(l, m), sw - m - pw);
+    const ct = Math.min(Math.max(t, m), sh - m - ph);
+    return { tx: cl - baseLeft, ty: ct - baseTop };
+  }, []);
+
+  useEffect(() => {
+    const onResize = () => {
+      setPipTranslate((p) => clampPipTranslate(p.tx, p.ty));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [clampPipTranslate]);
+
+  const onPipPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    pipPointerIdRef.current = e.pointerId;
+    setPipDragging(true);
+    const p = pipTranslateRef.current;
+    pipDragStartRef.current = { cx: e.clientX, cy: e.clientY, tx: p.tx, ty: p.ty };
+  }, []);
+
+  const onPipPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.pointerId !== pipPointerIdRef.current || !pipDragStartRef.current) return;
+      const s = pipDragStartRef.current;
+      const dx = e.clientX - s.cx;
+      const dy = e.clientY - s.cy;
+      setPipTranslate(clampPipTranslate(s.tx + dx, s.ty + dy));
+    },
+    [clampPipTranslate],
+  );
+
+  const onPipPointerUp = useCallback((e: React.PointerEvent) => {
+    if (e.pointerId !== pipPointerIdRef.current) return;
+    pipPointerIdRef.current = null;
+    pipDragStartRef.current = null;
+    setPipDragging(false);
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   // --------------------------------------------------------------------------
   // Render
   // --------------------------------------------------------------------------
   return (
     <div className="w-full h-full overflow-hidden">
       <div
+        ref={meetingSurfaceRef}
         className="relative w-full h-screen overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
       >
@@ -898,14 +967,31 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-        {/* ── Local video PiP (1-on-1 video, no screen share) ──────────── */}
+        {/* ── Local video PiP (1-on-1 video, no screen share) — draggable ─ */}
         {localId &&
           callType === 'video' &&
           !gridLayout &&
           !remotePresenter &&
           isVideoEnabled &&
           callStatus === 'connected' && (
-            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-20 h-28 sm:w-24 sm:h-32 md:w-32 md:h-44 rounded-lg overflow-hidden border border-white sm:border-2 shadow-xl ring-1 ring-white/20 hover:scale-105 transition-transform duration-200 z-20">
+            <div
+              ref={pipWrapRef}
+              role="region"
+              aria-label="Your camera preview — drag to move on screen"
+              title="Drag to move"
+              className={`absolute top-3 right-3 z-20 w-20 h-28 touch-none select-none rounded-lg border border-white shadow-xl ring-1 ring-white/20 sm:h-32 sm:w-24 md:h-44 md:w-32 sm:border-2 ${
+                pipDragging
+                  ? 'cursor-grabbing overflow-hidden'
+                  : 'cursor-grab overflow-hidden transition-transform duration-200 hover:scale-105'
+              }`}
+              style={{
+                transform: `translate3d(${pipTranslate.tx}px, ${pipTranslate.ty}px, 0)`,
+              }}
+              onPointerDown={onPipPointerDown}
+              onPointerMove={onPipPointerMove}
+              onPointerUp={onPipPointerUp}
+              onPointerCancel={onPipPointerUp}
+            >
               <ParticipantTile
                 participantId={localId}
                 isLocal

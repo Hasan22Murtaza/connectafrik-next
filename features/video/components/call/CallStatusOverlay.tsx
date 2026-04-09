@@ -105,11 +105,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
                   {formatDuration(callDuration)}
                 </div>
               </div>
-            ) : (
-              <div className="space-y-2 flex">
-                <div className="absolute bottom-0 left-2 sm:left-4 text-xs sm:text-sm md:text-base font-bold tracking-wider text-slate-800 font-mono tabular-nums z-30">{formatDuration(callDuration)}</div>
-              </div>
-            )
+            ) : null
           )}
           {callStatus === 'ended' && (
             <div>

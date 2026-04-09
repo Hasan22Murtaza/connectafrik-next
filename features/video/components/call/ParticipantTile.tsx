@@ -98,9 +98,24 @@ const ParticipantTile = React.memo(function ParticipantTile({
         <VideoPlayer
           participantId={participantId}
           type="video"
-          className="absolute inset-0 w-full h-full"
+          className="absolute inset-0 h-full w-full min-h-0 min-w-0"
+          containerStyle={{
+            width: '100%',
+            height: '100%',
+            minHeight: 0,
+            minWidth: 0,
+            overflow: 'hidden',
+          }}
           videoStyle={{
+            display: 'block',
             objectFit: 'cover',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: '100%',
+            height: '100%',
+            minWidth: '100%',
+            minHeight: '100%',
             transform: isLocal ? 'scaleX(-1) translateZ(0)' : 'translateZ(0)',
             willChange: 'transform',
             backfaceVisibility: 'hidden',

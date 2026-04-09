@@ -51,12 +51,31 @@ function pickPrimaryIncoming(
 
 const GlobalCallNotification: React.FC = () => {
   const { callRequests, currentUser, clearCallRequest } = useProductionChat()
+  const callRequestsRef = useRef(callRequests)
+  const currentUserIdRef = useRef<string | undefined>(undefined)
+  callRequestsRef.current = callRequests
+  currentUserIdRef.current = currentUser?.id
+
   const isRingtoneActiveRef = useRef(false)
   /** Popup we opened; reuse + focus instead of window.open again (same name reloads the accept page). */
   const callPopupRef = useRef<Window | null>(null)
   /** Set only after window.open succeeds (avoids Strict Mode / re-render skipping the open). */
   const openedIncomingSignatureRef = useRef<string>('')
   const popupOpeningForSignatureRef = useRef<string>('')
+  /** Prevents ringing again after CALL_STATUS active (effect replays when e.g. profile name loads). */
+  const answeredIncomingRingtoneRef = useRef<Set<string>>(new Set())
+
+  const suppressKeyForIncoming = (threadId: string, callId: string) =>
+    callId.trim() ? `${threadId}|${callId.trim()}` : `${threadId}|`
+
+  const shouldSuppressRingtone = (threadId: string, callId: string) => {
+    const s = answeredIncomingRingtoneRef.current
+    const c = callId.trim()
+    if (c && s.has(`${threadId}|${c}`)) return true
+    // Accept postMessage omitted callId — only then we suppress by thread.
+    if (s.has(`${threadId}|`)) return true
+    return false
+  }
 
   const startCallRingtone = () => {
     if (isRingtoneActiveRef.current) return
@@ -102,6 +121,11 @@ const GlobalCallNotification: React.FC = () => {
 
     const { threadId, callRequest } = primaryIncoming
     const roomId = callRequest.roomId || ''
+    const cid = callRequest.callId || ''
+
+    if (shouldSuppressRingtone(threadId, cid)) {
+      return
+    }
 
     if (openedIncomingSignatureRef.current === incomingSignature) {
       const w = callPopupRef.current
@@ -176,16 +200,35 @@ const GlobalCallNotification: React.FC = () => {
 
       if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'active' && event.data?.threadId) {
         const activeThreadId = String(event.data.threadId)
-        const currentIncomingThreadId = primaryIncoming?.threadId
-        const openedForThread =
-          openedIncomingSignatureRef.current.length > 0 &&
-          openedIncomingSignatureRef.current.startsWith(`${activeThreadId}|`)
-        if (currentIncomingThreadId === activeThreadId || openedForThread) {
+        const activeCallId =
+          typeof event.data.callId === 'string' && event.data.callId.trim()
+            ? event.data.callId.trim()
+            : ''
+        const uid = currentUserIdRef.current
+        const reqs = callRequestsRef.current
+        const req = reqs[activeThreadId]
+        const hasIncoming =
+          Boolean(req?.callerId && uid && req.callerId !== uid)
+        const sig = openedIncomingSignatureRef.current
+        const openedForThread = sig.length > 0 && sig.startsWith(`${activeThreadId}|`)
+        const openedForCall =
+          Boolean(activeCallId) && sig.split('|')[1] === activeCallId
+
+        if (hasIncoming || openedForThread || openedForCall) {
+          answeredIncomingRingtoneRef.current.add(suppressKeyForIncoming(activeThreadId, activeCallId))
           stopCallRingtone()
+          // Drop incoming row immediately so the ringtone effect does not call
+          // startCallRingtone() again while call_sessions realtime catches up.
+          clearCallRequest(activeThreadId)
         }
       }
 
       if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'ended' && event.data?.threadId) {
+        const endedTid = String(event.data.threadId)
+        const prefix = `${endedTid}|`
+        answeredIncomingRingtoneRef.current = new Set(
+          [...answeredIncomingRingtoneRef.current].filter((k) => !k.startsWith(prefix)),
+        )
         clearIncomingPopupGuard()
         clearCallRequest(event.data.threadId)
         openedIncomingSignatureRef.current = ''
@@ -196,7 +239,7 @@ const GlobalCallNotification: React.FC = () => {
     }
     window.addEventListener('message', handleMessage)
     return () => window.removeEventListener('message', handleMessage)
-  }, [clearCallRequest, primaryIncoming?.threadId])
+  }, [clearCallRequest])
 
   return null
 }

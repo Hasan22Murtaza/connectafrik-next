@@ -212,8 +212,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   }, [signalIncomingTerminal]);
 
   // ── Incoming call: ring immediately; token is fetched only on Accept ────────
+  // `token` must be in deps: otherwise when callbacks re-create (auth/hydration),
+  // this effect re-runs and starts the ringtone again after Accept.
   useEffect(() => {
-    if (!isOpen || !isIncoming) return;
+    if (!isOpen || !isIncoming || token) return;
     setPrePhase('ringing');
     if (roomIdHint) setMeetingId(roomIdHint);
 
@@ -232,7 +234,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
         callTimeoutRef.current = null;
       }
     };
-  }, [isOpen, isIncoming, roomIdHint, stopRingtone, handleIncomingNoAnswer]);
+  }, [isOpen, isIncoming, token, roomIdHint, stopRingtone, handleIncomingNoAnswer]);
 
   // ── Accept handler (incoming ring phase) — fetches token then shows meeting ─
   const handleAccept = useCallback(async () => {
@@ -247,9 +249,20 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     // We do this here (not inside onMeetingJoined) so the ringtone stops the
     // moment the receiver taps Accept, even before VideoSDK finishes joining.
     if (typeof window !== 'undefined' && threadId) {
-      const payload = { type: 'CALL_STATUS', status: 'active', threadId };
+      const cid = (callIdHint || '').trim();
+      const payload = {
+        type: 'CALL_STATUS',
+        status: 'active',
+        threadId,
+        ...(cid ? { callId: cid } : {}),
+      };
       try { window.postMessage(payload, window.location.origin); } catch { /* ignore */ }
       try { if (window.opener && !window.opener.closed) window.opener.postMessage(payload, window.location.origin); } catch { /* ignore */ }
+      try {
+        if (window.parent !== window && !window.parent.closed) {
+          window.parent.postMessage(payload, window.location.origin);
+        }
+      } catch { /* ignore */ }
     }
     try {
       const { token: tok, userId: joinUid } = await getToken(meetingId);
@@ -262,7 +275,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
       setPrePhase('error');
       setErrorMsg(err.message || 'Failed to connect');
     }
-  }, [isAcceptingCall, meetingId, threadId, getToken, stopRingtone]);
+  }, [isAcceptingCall, meetingId, threadId, callIdHint, getToken, stopRingtone]);
 
   // ── Early return: modal is closed ──────────────────────────────────────────
   if (!isOpen) return null;
