@@ -44,6 +44,9 @@ import CallControls from './CallControls';
 import CallStatusOverlay from './CallStatusOverlay';
 import AddPeoplePanel from './AddPeoplePanel';
 import MessageInput from './MessageInput';
+import { LocalAdaptiveSendQuality } from './LocalAdaptiveSendQuality';
+
+const LAST_PARTICIPANT_AUTO_END_MS = 5000;
 
 // ---------------------------------------------------------------------------
 // Broadcast call-active / call-ended to parent/opener tab via postMessage
@@ -230,6 +233,35 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     [setCallStatusSafe, onClose],
   );
 
+  const clearRemoteDisconnectTimer = useCallback(() => {
+    if (remoteDisconnectTimerRef.current) {
+      clearTimeout(remoteDisconnectTimerRef.current);
+      remoteDisconnectTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleAutoEndWhenAlone = useCallback(() => {
+    if (remoteDisconnectTimerRef.current) return;
+    remoteDisconnectTimerRef.current = setTimeout(async () => {
+      remoteDisconnectTimerRef.current = null;
+      if (!isMountedRef.current || callStatusRef.current !== 'connected') return;
+      const lid = localParticipantRef.current?.id;
+      const keys = [...participantsRef.current.keys()];
+      const remoteCount = lid ? keys.filter((id) => id !== lid).length : keys.length;
+      if (remoteCount !== 0) return;
+      const activeCallId = callIdRef.current || callIdHint || '';
+      if (threadId && currentUserId && activeCallId) {
+        await patchCallSessionWithRetry(threadId, {
+          call_id: activeCallId,
+          event: 'end',
+          duration_seconds: callDurationRef.current,
+        });
+      }
+      setCallStatusSafe('ended');
+      setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
+    }, LAST_PARTICIPANT_AUTO_END_MS);
+  }, [callIdHint, currentUserId, onClose, setCallStatusSafe, threadId]);
+
   // --------------------------------------------------------------------------
   // useMeeting — central react-sdk hook
   // NOTE: meeting auto-joins via joinWithoutUserInteraction={true} on MeetingProvider.
@@ -331,10 +363,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     // Remote participant joined the room
     onParticipantJoined: () => {
       if (!isMountedRef.current) return;
-      if (remoteDisconnectTimerRef.current) {
-        clearTimeout(remoteDisconnectTimerRef.current);
-        remoteDisconnectTimerRef.current = null;
-      }
+      clearRemoteDisconnectTimer();
       // Outgoing call: first remote joins → stop ringback, enter connecting_media
       if (!isIncomingRef.current) {
         if (ringbackRef.current) { ringbackRef.current.stop(); ringbackRef.current = null; }
@@ -353,21 +382,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         const lid = localParticipantRef.current?.id;
         const keys = [...participantsRef.current.keys()];
         const remoteCount = lid ? keys.filter((id) => id !== lid).length : keys.length;
-        // Start 15s auto-close grace period for 1-on-1 calls
+        // If everyone else left (group or 1:1), end the call after a short grace period.
         if (remoteCount === 0 && callStatusRef.current === 'connected') {
-          remoteDisconnectTimerRef.current = setTimeout(async () => {
-            if (!isMountedRef.current || callStatusRef.current !== 'connected') return;
-            const activeCallId = callIdRef.current || callIdHint || '';
-            if (threadId && currentUserId && activeCallId) {
-              await patchCallSessionWithRetry(threadId, {
-                call_id: activeCallId,
-                event: 'end',
-                duration_seconds: callDurationRef.current,
-              });
-            }
-            setCallStatusSafe('ended');
-            setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
-          }, 15000);
+          scheduleAutoEndWhenAlone();
         }
       }, 300);
     },
@@ -400,6 +417,30 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   // Keep refs in sync with latest SDK state
   useEffect(() => { participantsRef.current = participants; }, [participants]);
   useEffect(() => { localParticipantRef.current = localParticipant; }, [localParticipant]);
+
+  // Fallback for SDK timing/order edge-cases:
+  // if callbacks are missed but participant map reaches 0 remotes while connected,
+  // still auto-end the call.
+  useEffect(() => {
+    if (callStatus !== 'connected') {
+      clearRemoteDisconnectTimer();
+      return;
+    }
+    const lid = localParticipant?.id;
+    const remoteN = lid
+      ? [...participants.keys()].filter((id) => id !== lid).length
+      : participants.size;
+    if (remoteN === 0) scheduleAutoEndWhenAlone();
+    else clearRemoteDisconnectTimer();
+  }, [
+    callStatus,
+    participants,
+    localParticipant?.id,
+    scheduleAutoEndWhenAlone,
+    clearRemoteDisconnectTimer,
+  ]);
+
+  useEffect(() => () => clearRemoteDisconnectTimer(), [clearRemoteDisconnectTimer]);
 
   // --------------------------------------------------------------------------
   // 20-second safety timeout: if the meeting never joins after mounting,
@@ -1055,6 +1096,13 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         )}
 
         {/* ── Connected controls bar ───────────────────────────────────── */}
+        {localId &&
+          callType === 'video' &&
+          callStatus === 'connected' &&
+          localWebcamOn && (
+            <LocalAdaptiveSendQuality participantId={localId} active />
+          )}
+
         {callStatus === 'connected' && (
           <CallControls
             isMuted={isMuted}

@@ -23,6 +23,7 @@ import { MeetingProvider } from '@videosdk.live/react-sdk';
 import { supabase } from '@/lib/supabase';
 import { stopAll as stopAllRingtones, playRingtone } from '@/features/video/services/ringtoneService';
 import { patchCallSessionWithRetry } from '@/features/chat/services/callSessionRealtime';
+import { inferMeetingMaxResolution } from '@/features/video/services/adaptiveCallQuality';
 import type { VideoSDKCallModalProps } from './call/types';
 import CallStatusOverlay from './call/CallStatusOverlay';
 import IncomingCallControls from './call/IncomingCallControls';
@@ -366,6 +367,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           mode: 'SEND_AND_RECV' as const,
           multiStream: false,
           debugMode: false,
+          maxResolution:
+            callType === 'video' ? inferMeetingMaxResolution() : undefined,
         }}
         token={token}
         joinWithoutUserInteraction
