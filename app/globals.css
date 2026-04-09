@@ -226,6 +226,14 @@ body {
   scrollbar-color: #d1d5dc transparent;
 }
 
+.scrollbar-hover-thin{
+  scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
+}
+.scrollbar-hover-thin:hover {
+  scrollbar-color:  #d1d5dc transparent;
+}
 .group_card_image svg {
   width: 40px;
   height: 40px;
