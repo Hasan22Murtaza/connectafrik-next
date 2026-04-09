@@ -1,3 +1,5 @@
+import { apiClient, ApiError } from '@/lib/api-client'
+
 /** Lightweight message shape used by call signal subscribers (matches ChatMessage fields used by useVideoCall). */
 export interface CallSignalMessage {
   id: string
@@ -201,4 +203,32 @@ export function callSessionUpdateToChatMessage(
     read_by: [],
     is_deleted: false,
   }
+}
+
+/** PATCH call_sessions with short retries when the row is not visible yet (POST still in flight). */
+export async function patchCallSessionWithRetry(
+  threadId: string,
+  payload: {
+    call_id: string
+    event: 'accept' | 'declined' | 'end' | 'missed'
+    duration_seconds?: number
+  },
+  options?: { maxAttempts?: number },
+): Promise<boolean> {
+  const maxAttempts = options?.maxAttempts ?? 5
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, payload)
+      return true
+    } catch (e) {
+      const st = e instanceof ApiError ? e.status : 0
+      const canRetry = st === 404 && attempt < maxAttempts - 1
+      if (!canRetry) {
+        console.warn('[call_sessions] PATCH failed', { threadId, payload, status: st, e })
+        return false
+      }
+      await new Promise((r) => setTimeout(r, 300 * (attempt + 1)))
+    }
+  }
+  return false
 }

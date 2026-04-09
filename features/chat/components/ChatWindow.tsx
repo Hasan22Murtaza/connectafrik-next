@@ -527,6 +527,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setIsIncomingCall(false);
       setActiveRoomId(null);
       userInitiatedCall.current = false;
+      toast.error(error instanceof Error ? error.message : "Could not start the call.");
     }
   };
 

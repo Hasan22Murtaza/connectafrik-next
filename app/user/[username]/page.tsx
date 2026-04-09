@@ -289,7 +289,9 @@ const UserProfilePage: React.FC = () => {
       const tid = await startChatWithMembers([{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }], { participant_ids: [profile.id], openInDock: true })
       if (tid) { await startCall(tid, isVideoCall ? 'video' : 'audio', profile.id, profile.full_name, profile.avatar_url || undefined); toast.success(`${isVideoCall ? 'Video' : 'Audio'} call started`) }
       else toast.error('Failed to create chat thread')
-    } catch { toast.error('Failed to start call') }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to start call')
+    }
   }
 
   const updatePost = useCallback((id: string, fn: (p: PostWithAuthor) => PostWithAuthor) => {
