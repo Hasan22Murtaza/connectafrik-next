@@ -81,9 +81,9 @@ const DetailRow = ({ icon: Icon, children }: { icon: React.ElementType; children
 )
 
 const ProfileSkeleton = () => (
-  <div className="min-h-screen px-4 mt-4">
-    <div className=" w-full mx-auto">
-      <div className="bg-white shadow-sm border-b border-gray-200 rounded-2xl">
+  <div className="min-h-screen bg-[#f0f2f5]">
+    <div className="max-w-[940px] w-full mx-auto">
+      <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="px-4 sm:px-6 py-5">
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-center sm:items-start">
             <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-300 animate-pulse" />
@@ -99,13 +99,13 @@ const ProfileSkeleton = () => (
         </div>
       </div>
       <div className="mt-4 w-full flex flex-col lg:flex-row gap-4">
-        <div className="w-full lg:w-[300px] ">
-          <div className="bg-white shadow-sm p-4 space-y-3 rounded-2xl">
+        <div className="w-full lg:w-[300px]">
+          <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
             {[1, 2, 3, 4].map((i) => <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${90 - i * 15}%` }} />)}
           </div>
         </div>
-        <div className="flex-1 space-y-4 ">
-          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+        <div className="flex-1 space-y-4">
+          <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
               <div className="space-y-2 flex-1">
@@ -357,11 +357,11 @@ const UserProfilePage: React.FC = () => {
 
   if (!profile) return (
     <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-8 max-w-md text-center">
+      <div className="bg-white rounded-xl shadow-sm p-8 max-w-md text-center">
         <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
           <Users className="w-10 h-10 text-gray-300" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-600 mb-2">User not found</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">User not found</h1>
         <p className="text-gray-500 mb-6">The user you&apos;re looking for doesn&apos;t exist or may have been removed.</p>
         <button onClick={() => router.push('/feed')} className="h-10 px-6 bg-[#F97316] text-white text-sm font-semibold rounded-lg hover:bg-[#ea580c] transition">Back to Feed</button>
       </div>
@@ -378,11 +378,11 @@ const UserProfilePage: React.FC = () => {
 
   if (!canView) return (
     <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)]  p-8 max-w-md text-center">
+      <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md text-center">
         <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-6">
           <span className="text-4xl font-bold text-gray-400">{profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}</span>
         </div>
-        <h1 className="text-xl font-semibold text-gray-600 mb-2">This content isn&apos;t available</h1>
+        <h1 className="text-xl font-bold text-gray-900 mb-2">This content isn&apos;t available</h1>
         <p className="text-gray-600 mb-6">This person only shares content with a small group of people, or the link may be broken.</p>
         <button onClick={() => router.push('/feed')} className="px-5 py-2.5 bg-[#F97316] text-white rounded-full font-semibold hover:bg-[#ea580c] transition">Go to Feed</button>
       </div>
@@ -401,10 +401,9 @@ const UserProfilePage: React.FC = () => {
   const btnGray = `${btnBase} bg-[#e4e6eb] text-gray-900 hover:bg-[#d8dadf]`
 
   return (
-    <div className="min-h-screen  pb-20 sm:pb-8 px-4">
-      
-      <div className=" mt-4">
-        <div className="bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)] rounded-2xl">
+    <div className="min-h-screen bg-[#f0f2f5] pb-20 sm:pb-8">
+      <div className="max-w-[940px] w-full mx-auto">
+        <div className="bg-white shadow-sm">
         <div className="px-4 sm:px-6 pt-4 pb-3 sm:py-5">
           <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
             <div className="flex-shrink-0">
@@ -417,7 +416,7 @@ const UserProfilePage: React.FC = () => {
 
             <div className="flex-1 min-w-0 text-center sm:text-left">
               <div className="flex flex-wrap items-baseline gap-x-2 justify-center sm:justify-start">
-                <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-semibold text-gray-600 leading-tight">{profile.full_name}</h1>
+                <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-bold text-gray-900 leading-tight">{profile.full_name}</h1>
                 <div className="flex items-center gap-1">
                   {profile.is_verified && (
                     <div className="w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center">
@@ -542,9 +541,9 @@ const UserProfilePage: React.FC = () => {
 
         <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
 
-          <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
-            <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-4">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-600 mb-3">Personal details</h2>
+          <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-4 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
+            <div className="bg-white sm:rounded-lg shadow-sm p-4">
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-3">Personal details</h2>
               {profile.bio && <p className="text-sm text-gray-700 text-center leading-relaxed mb-3 pb-3 border-b border-gray-200">{profile.bio}</p>}
               <div className="space-y-2.5">
                 {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
@@ -556,8 +555,8 @@ const UserProfilePage: React.FC = () => {
             </div>
 
             {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-              <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-4">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-600">Friends</h2>
+              <div className="bg-white sm:rounded-lg shadow-sm p-4">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900">Friends</h2>
                 <p className="text-[13px] text-gray-500 mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {mutualFriends.slice(0, 6).map((f) => (
@@ -577,9 +576,9 @@ const UserProfilePage: React.FC = () => {
             )}
 
             {allPhotos.length > 0 && (
-              <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-4">
+              <div className="bg-white sm:rounded-lg shadow-sm p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-600">Photos</h2>
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900">Photos</h2>
                   <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
                 </div>
                 <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">

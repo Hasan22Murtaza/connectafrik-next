@@ -96,7 +96,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                     <ReactionIcon
                       type={group.type}
                       size={22}
-                      className="cursor-pointer noto-color-emoji-regular"
+                      className="cursor-pointer"
                     />
                     <ReactionTooltip
                       users={group.users || []}
@@ -152,7 +152,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
               onMouseEnter={handleLikeHover}
               onMouseLeave={handleLikeLeave}
             >
-              <div className="flex items-center bg-white rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.05)] px-2 py-1 gap-1">
+              <div className="flex items-center bg-white rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.05)] px-0.5 py-0.5">
                 {PICKER_REACTIONS.map((kind, index) => {
                   return (
                     <button
@@ -161,7 +161,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                         e.stopPropagation()
                         handleReactionSelect(kind)
                       }}
-                      className="group/reaction noto-color-emoji-regular relative flex items-center justify-center w-[32px] h-[32px] rounded-full cursor-pointer transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.15] hover:-translate-y-1.5 active:scale-100"
+                      className="group/reaction relative flex items-center justify-center w-[32px] h-[32px] rounded-full cursor-pointer transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.15] hover:-translate-y-1.5 active:scale-100"
                     >
                       <div className="animate-[reactionBounceIn_350ms_cubic-bezier(0.34,1.56,0.64,1)_both]" style={{ animationDelay: `${index * 30 + 80}ms` }}>
                         <ReactionIcon type={kind} size={30} />

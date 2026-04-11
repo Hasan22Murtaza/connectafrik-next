@@ -519,7 +519,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             {stats.unread > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="text-sm text-primary-600 hover:text-primary-600 font-medium"
+                className="text-sm text-[#FF6900] hover:text-orange-700 font-medium"
               >
                 Mark all as read
               </button>
@@ -560,7 +560,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                 >
                   <div className="flex items-start space-x-2 sm:space-x-3">
                     <div className="flex-shrink-0 mt-1">
-                      <Bell className="w-4 h-4 text-primary-600" aria-hidden />
+                      <Bell className="w-4 h-4 text-[#FF6900]" aria-hidden />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -568,7 +568,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                           {stripLeadingEmoji(notification.title)}
                         </p>
                         {!notification.is_read && (
-                          <div className="w-2 h-2 bg-primary-600 rounded-full"></div>
+                          <div className="w-2 h-2 bg-[#FF6900] rounded-full"></div>
                         )}
                       </div>
                       <p className="text-sm text-gray-600 mt-1 break-words overflow-hidden">
@@ -596,7 +596,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
             <Link
               href="/notifications"
               onClick={onClose}
-              className="block w-full text-center text-sm text-primary-600 hover:text-orange-700 font-medium"
+              className="block w-full text-center text-sm text-[#FF6900] hover:text-orange-700 font-medium"
             >
               View all notifications
             </Link>

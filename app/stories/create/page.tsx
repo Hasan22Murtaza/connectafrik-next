@@ -252,7 +252,7 @@ export default function CreateStoryPage() {
               <button
                 onClick={uploadStory}
                 disabled={isUploading || !canSubmit}
-                className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-primary-600 hover:bg-[#ea580c] active:bg-[#c2410c] disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md disabled:shadow-none transition-all flex items-center gap-1.5 sm:gap-2"
+                className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-[#FF6900] hover:bg-[#ea580c] active:bg-[#c2410c] disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md disabled:shadow-none transition-all flex items-center gap-1.5 sm:gap-2"
               >
                 {isUploading ? (
                   <>

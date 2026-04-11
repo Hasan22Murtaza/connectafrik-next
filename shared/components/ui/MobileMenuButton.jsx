@@ -7,7 +7,6 @@ const MobileMenuButton = () => {
   const [isOpen, setIsOpen] = useState(false)
   const [showUserSearch, setShowUserSearch] = useState(false)
   const router = useRouter()
-  console.log('setIsOpen:', isOpen) // Debug log to check re-renders
 
   const shortcuts = [
     { icon: Search, label: 'Search Users', action: 'search', color: 'text-green-600' },
@@ -35,7 +34,7 @@ const MobileMenuButton = () => {
       {/* Floating Hamburger Button - Only visible on mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="lg:hidden fixed bottom-5 right-4 z-40 bg-primary-600 text-white p-4 rounded-full shadow-lg hover:bg-orange-600/50 transition-all duration-300 hover:scale-110"
+        className="lg:hidden fixed bottom-5 right-4 z-40 bg-[#ff6900] text-white p-4 rounded-full shadow-lg hover:bg-orange-600/50 transition-all duration-300 hover:scale-110"
         aria-label="Toggle mobile menu"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}

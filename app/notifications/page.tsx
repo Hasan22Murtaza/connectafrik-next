@@ -451,7 +451,7 @@ const NotificationsPage: React.FC = () => {
         <div className="bg-white rounded-xl sm:rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 mb-3 sm:mb-6">
           <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-              <Bell className="w-5 h-5 sm:w-8 sm:h-8 text-primary-600 flex-shrink-0" />
+              <Bell className="w-5 h-5 sm:w-8 sm:h-8 text-[#FF6900] flex-shrink-0" />
               <div className="min-w-0">
                 <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Notifications</h1>
                 <p className="text-xs sm:text-sm text-gray-500">
@@ -462,7 +462,7 @@ const NotificationsPage: React.FC = () => {
             {stats.unread > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="flex items-center justify-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 bg-primary-600 text-white text-xs sm:text-sm rounded-lg hover:bg-orange-600 active:bg-orange-700 transition-colors whitespace-nowrap flex-shrink-0"
+                className="flex items-center justify-center space-x-1.5 sm:space-x-2 px-3 sm:px-4 py-2 bg-[#FF6900] text-white text-xs sm:text-sm rounded-lg hover:bg-orange-600 active:bg-orange-700 transition-colors whitespace-nowrap flex-shrink-0"
               >
                 <CheckCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Mark all as read</span>
@@ -527,7 +527,7 @@ const NotificationsPage: React.FC = () => {
                   <div className="flex items-start space-x-3 sm:space-x-4">
                     <div className="flex-shrink-0 mt-0.5">
                       <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-50 flex items-center justify-center">
-                        <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" aria-hidden />
+                        <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-[#FF6900]" aria-hidden />
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -538,7 +538,7 @@ const NotificationsPage: React.FC = () => {
                               {stripLeadingEmoji(notification.title)}
                             </h3>
                             {!notification.is_read && (
-                              <span className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></span>
+                              <span className="w-2 h-2 bg-[#FF6900] rounded-full flex-shrink-0"></span>
                             )}
                           </div>
                           <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2 leading-relaxed">
@@ -555,7 +555,7 @@ const NotificationsPage: React.FC = () => {
                                 e.stopPropagation()
                                 markAsRead(notification.id)
                               }}
-                              className="p-2 text-gray-400 hover:text-primary-600 hover:bg-orange-50 active:bg-orange-100 rounded-full transition-colors"
+                              className="p-2 text-gray-400 hover:text-[#FF6900] hover:bg-orange-50 active:bg-orange-100 rounded-full transition-colors"
                               title="Mark as read"
                             >
                               <Check className="w-4 h-4" />

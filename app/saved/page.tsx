@@ -223,7 +223,8 @@ const SavedPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen px-4 sm:px-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4">
         <div className="border-b border-gray-200">
           <div className="py-6">
             <div className="flex items-center justify-between mb-6">
@@ -244,8 +245,8 @@ const SavedPage: React.FC = () => {
                 onClick={() => setActiveTab('products')}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                   activeTab === 'products'
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+                    ? 'bg-primary-100 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <ShoppingBag className="w-4 h-4" />
@@ -257,8 +258,8 @@ const SavedPage: React.FC = () => {
                 onClick={() => setActiveTab('posts')}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
                   activeTab === 'posts'
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+                    ? 'bg-primary-100 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -275,7 +276,7 @@ const SavedPage: React.FC = () => {
             </div>
           ) : activeTab === 'products' ? (
             savedProducts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {savedProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -343,6 +344,7 @@ const SavedPage: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
     </div>
   )
 }

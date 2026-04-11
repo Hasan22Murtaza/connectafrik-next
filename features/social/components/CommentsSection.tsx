@@ -443,7 +443,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
   const totalReactions = reactionEmojis.reduce((sum, r) => sum + r.count, 0)
 
   return (
-    <div className={depth > 0 ? 'ml-2 mt-2' : 'mt-1'}>
+    <div className={depth > 0 ? 'ml-8 mt-1' : 'mt-1'}>
       <div className="flex gap-2">
         {/* Avatar */}
         <div className="flex-shrink-0 pt-0.5">

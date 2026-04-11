@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
 import {
   ArrowLeft,
   ShoppingBag,
@@ -12,9 +11,6 @@ import {
   Phone,
   Truck,
   Shield,
-  Eye,
-  CalendarHeart,
-  Calendar,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
@@ -149,7 +145,7 @@ const ProductDetailPage: React.FC = () => {
 
   if (!product) {
     return (
-      <div className="min-h-screen  px-2 sm:px-4 w-full min-w-0">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 w-full min-w-0">
         <ShoppingBag className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400 mb-4" />
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">
           Product not found
@@ -168,9 +164,9 @@ const ProductDetailPage: React.FC = () => {
   const hasMultipleImages = images.length > 1;
 
   return (
-    <div className="min-h-screen max-w-full 2xl:max-w-screen-2xl mx-auto w-full  px-2 sm:px-4 min-w-0">
+    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
       {/* Header */}
-      <div className=" border-gray-200 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="px-3 sm:px-4 w-full min-w-0">
           <div className="flex items-center justify-between h-14 sm:h-16 min-w-0 gap-2">
             <button
@@ -181,17 +177,36 @@ const ProductDetailPage: React.FC = () => {
               <span className="hidden sm:inline truncate">Back to Marketplace</span>
               <span className="sm:hidden">Back</span>
             </button>
-
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <button
+                onClick={handleShare}
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full"
+                aria-label="Share"
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleSave}
+                className={`p-2 rounded-full ${
+                  isSaved
+                    ? "text-red-600 bg-red-50"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+                aria-label={isSaved ? "Unsave" : "Save"}
+              >
+                <Heart className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Product Details */}
-      <div className="px-3 sm:px-4 py-4 sm:py-12 w-full min-w-0">
+      <div className="px-3 sm:px-4 py-6 sm:py-12 w-full min-w-0">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Images */}
-          <div className="space-y-3 sm:space-y-4 min-w-0 w-full max-w-xl ">
-            <div className="relative  lg:mx-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 pt-[50%]">
+          <div className="space-y-3 sm:space-y-4 min-w-0">
+            <div className="relative w-full max-w-xl mx-auto lg:mx-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 pt-[50%]">
               <img
                 src={
                   images[selectedImage] ||
@@ -202,15 +217,16 @@ const ProductDetailPage: React.FC = () => {
               />
             </div>
             {hasMultipleImages && (
-              <div className="flex gap-4 flex-wrap">
+              <div className="grid grid-cols-4 gap-2">
                 {images.map((image, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedImage(index)}
-                    className={`border-2 rounded-2xl overflow-hidden aspect-square max-h-20 sm:max-h-24 ${selectedImage === index
-                        ? "border-[#FF6900]"
+                    className={`border-2 rounded-lg overflow-hidden aspect-square max-h-20 sm:max-h-24 ${
+                      selectedImage === index
+                        ? "border-primary-600"
                         : "border-gray-200"
-                      }`}
+                    }`}
                   >
                     <img
                       src={image}
@@ -226,51 +242,23 @@ const ProductDetailPage: React.FC = () => {
           {/* Product Info */}
           <div className="space-y-4 sm:space-y-6 min-w-0">
             <div>
-              <div className="flex items-start justify-between gap-4">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">
-                  {product.title}
-                </h1>
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                  <button
-                    onClick={handleShare}
-                    className="p-2 text-gray-600 hover:text-orange-600 hover:bg-gray-100 rounded-full"
-                    aria-label="Share"
-                  >
-                    <Share2 className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    className={`p-2 rounded-full ${isSaved
-                        ? "text-white bg-primary-600"
-                        : "text-gray-600 hover:text-orange-600 hover:bg-gray-100"
-                      }`}
-                    aria-label={isSaved ? "Unsave" : "Save"}
-                  >
-                    <Heart className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 min-w-0">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 break-words">
+                {product.title}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-gray-600 min-w-0">
                 <span className="flex items-center shrink-0">
                   <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mr-1 shrink-0" />
                   <span className="truncate">{product.location || "Location not specified"}</span>
                 </span>
-                <span className="shrink-0 flex items-center">
-                  <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1 shrink-0" />
-                  {product.views_count || 0} views
-                </span>
-                <span className="shrink-0 flex items-center">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 mr-1 shrink-0" />
-                  Listed {formatDistanceToNow(new Date(product.created_at), { addSuffix: true })}
-                </span>
+                <span className="shrink-0">•</span>
+                <span className="shrink-0">{product.views_count || 0} views</span>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-3 sm:p-4 space-y-3 min-w-0 shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
+            <div className="bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3 min-w-0">
               <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Product Details</h3>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-                <div className="min-w-0 flex items-center ">
+                <div className="min-w-0">
                   <span className="text-gray-900 font-bold">Category:</span>
                   <span className="ml-1 sm:ml-2 text-gray-600 capitalize truncate block">
                     {product.category}
@@ -297,7 +285,10 @@ const ProductDetailPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              <h4 className="font-semibold text-gray-900 text-sm sm:text-base">Description</h4>
+            </div>
+
+            <div className="min-w-0">
+              <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Description</h3>
               <p className="text-gray-600 whitespace-pre-wrap text-sm sm:text-base break-words">
                 {product.description}
               </p>
@@ -307,10 +298,8 @@ const ProductDetailPage: React.FC = () => {
               {product.currency} {product.price.toLocaleString()}
             </div>
 
-            
-
             {/* Seller Info */}
-            <div className="bg-white  rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-3 sm:p-4 min-w-0">
+            <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4 min-w-0">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4">
                 <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                   Seller Information
@@ -326,7 +315,8 @@ const ProductDetailPage: React.FC = () => {
                 <img
                   src={
                     product.seller?.avatar_url ||
-                    `https://ui-avatars.com/api/?name=${product.seller?.full_name || "User"
+                    `https://ui-avatars.com/api/?name=${
+                      product.seller?.full_name || "User"
                     }&background=random`
                   }
                   alt={product.seller?.full_name || "Seller"}

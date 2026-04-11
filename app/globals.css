@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap");
 @import "tailwindcss";
 
 :root {
@@ -18,7 +17,7 @@
   --african-green-light: #22c55e;
   --african-green-dark: #15803d;
   /* Orange - Primary brand color */
-  --african-orange: #ff6900;
+  --african-orange: #FF6900;
   --african-orange-light: #fb923c;
   --african-orange-dark: #ea580c;
   color-scheme: light;
@@ -38,15 +37,9 @@
   }
 }
 
-.noto-color-emoji-regular {
-  font-family: "Noto Color Emoji", sans-serif;
-  font-weight: 400;
-  font-style: normal;
-}
-
 body {
   font-family: var(--font-poppins), sans-serif;
-  color: #111827;
+  color: #111827;    
   background-color: #ffffff;
 }
 
@@ -55,7 +48,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 16px;
+  padding:9px 16px;
   background-color: var(--african-orange);
   color: white;
   font-weight: 600;
@@ -66,7 +59,7 @@ body {
 }
 
 .btn-primary:hover {
-  background-color: var(--african-orange-dark);
+  background-color: #ea580c;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
@@ -74,8 +67,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 9px 16px;
-  background-color: #d1d5dc;
+    padding:9px 16px;
+  background-color: #D1D5DC;
   color: #374151;
   font-weight: 600;
   border: none;
@@ -91,13 +84,14 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+
 .btn-sm-primary {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  display: inline-flex;
+  padding: 0.5rem 1rem;   
+  font-size: 0.875rem;   
+    display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--african-orange);
+   background-color: var(--african-orange);
   color: white;
   font-weight: 600;
   border-radius: 0.5rem;
@@ -107,17 +101,17 @@ body {
 }
 
 .btn-sm-primary:hover {
-  background-color: var(--african-orange-dark);
+  background-color: #ea580c;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .btn-sm-secondary {
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  display: inline-flex;
+   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background-color: #d1d5dc;
+  background-color: #D1D5DC;
   color: #374151;
   font-weight: 600;
   border: none;
@@ -132,29 +126,22 @@ body {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+
+
 /* Card Styles */
 .card {
   background: white;
   border-radius: 0.75rem;
   padding: 1rem;
-  box-shadow:
-    0 1px 3px 0 rgba(0, 0, 0, 0.1),
-    0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   transition: all 0.2s;
 }
 
 /* Utility Classes */
-
 .text-primary-600 {
-  color: var(--african-orange);
+  color: #f97316 ;
 }
-.hover\:text-primary-600:hover {
-  color: var(--african-orange-dark);
-}
-.group:hover .group-hover\:text-primary-600 {
-  color: var(--primary-600);
-}
-.text-primary-700 {
+.text-primary-700{
   color: var(--primary-700);
 }
 
@@ -173,11 +160,12 @@ body {
   background-color: #f97316;
 }
 .bg-primary-600 {
-  background-color: var(--african-orange);
+  background-color: #ea580c;
 }
 .hover\:bg-primary-600:hover {
-  background-color: var(--african-orange-dark);
+  background-color: #ea580c;
 }
+
 
 .hover\:bg-primary-200:hover {
   background-color: #fed7aa;
@@ -199,7 +187,7 @@ body {
   border-radius: 0.5rem;
   font-size: 1rem;
   transition: all 0.2s;
-  background-color: #f9fafb;
+  background-color: #F9FAFB;
   color: #111827;
 }
 
@@ -217,30 +205,26 @@ body {
   --tw-gradient-to: rgba(22, 163, 74, 0.1);
 }
 
+
+
 .scrollbar-hover {
   scrollbar-color: transparent transparent;
   transition: scrollbar-color 0.3s ease;
 }
 
 .scrollbar-hover:hover {
-  scrollbar-color: #d1d5dc transparent;
+  scrollbar-color: #D1D5DC transparent;
 }
 
-.scrollbar-hover-thin{
-  scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.3s ease;
-}
-.scrollbar-hover-thin:hover {
-  scrollbar-color:  #d1d5dc transparent;
-}
-.group_card_image svg {
+
+
+.group_card_image svg{
   width: 40px;
   height: 40px;
 }
 
 a,
-button {
+button{
   cursor: pointer;
 }
 .scrollbar-hide::-webkit-scrollbar {
@@ -248,8 +232,8 @@ button {
   -webkit-overflow-scrolling: touch;
 }
 .scrollbar-hide {
-  -ms-overflow-style: none !important; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 /* Shimmer skeleton animation */
@@ -262,7 +246,12 @@ button {
   }
 }
 .animate-shimmer {
-  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background: linear-gradient(
+    90deg,
+    #f3f4f6 25%,
+    #e5e7eb 50%,
+    #f3f4f6 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
 }
@@ -316,12 +305,8 @@ button {
 
 /* Screen share smooth transitions */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideDown {
@@ -345,3 +330,4 @@ button {
     transform: translateX(0);
   }
 }
+

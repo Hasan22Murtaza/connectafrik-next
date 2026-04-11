@@ -1,20 +1,20 @@
 'use client'
 
-import {
-  Search,
-  X
-} from 'lucide-react'
-import { usePathname, useRouter } from 'next/navigation'
 import React, { useState } from 'react'
-import { UserSearch } from './UserSearch'
-import { BsShop } from "react-icons/bs";
 import {
-  FaRegUser
-} from "react-icons/fa";
-import { FiVideo } from "react-icons/fi";
-import { IoBookmarkOutline } from "react-icons/io5";
-import { MdOutlineGroups2 } from "react-icons/md";
-import { RiHandbagLine } from "react-icons/ri";
+  X,
+  Users,
+  UserPlus,
+  ShoppingBag,
+  Clock,
+  Bookmark,
+  Video,
+  Search,
+  Users2,
+  Package,
+} from 'lucide-react'
+import { useRouter, usePathname } from 'next/navigation'
+import { UserSearch } from './UserSearch'
 
 type MobileSideDrawerProps = {
   isOpen: boolean
@@ -26,17 +26,18 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
   onClose,
 }) => {
   const [showUserSearch, setShowUserSearch] = useState(false)
+
   const router = useRouter()
   const pathname = usePathname()
 
   const shortcuts = [
     { icon: Search, label: 'Search Users', action: 'search' },
-    { icon: FaRegUser, label: 'Friends', path: '/friends' },
-    { icon: MdOutlineGroups2, label: 'Groups', path: '/groups' },
-    { icon: BsShop, label: 'Marketplace', path: '/marketplace' },
-    { icon: RiHandbagLine, label: 'My Orders', path: '/my-orders' },
-    { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
-    { icon: FiVideo, label: 'Video', path: '/video' },
+    { icon: Users, label: 'Friends', path: '/friends' },
+    { icon: Users2, label: 'Groups', path: '/groups' },
+    { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace' },
+    { icon: Package, label: 'My Orders', path: '/my-orders' },
+    { icon: Bookmark, label: 'Saved', path: '/saved' },
+    { icon: Video, label: 'Video', path: '/video' },
   ]
 
   const handleClick = (item: any) => {
@@ -57,7 +58,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={onClose}
         />
       )}
@@ -88,13 +89,13 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors
                       ${
                         isActive
-                          ? 'bg-orange-50 text-primary-600'
+                          ? 'bg-orange-50 text-[#ff6900]'
                           : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
                     <item.icon
                       className={`w-5 h-5 ${
-                        isActive ? 'text-primary-600' : 'text-gray-500'
+                        isActive ? 'text-[#ff6900]' : 'text-gray-500'
                       }`}
                     />
                     {item.label}

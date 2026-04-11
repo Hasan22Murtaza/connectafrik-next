@@ -135,13 +135,13 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-primary-600">
-          <h2 className="text-xl font-semibold text-white">Create Event</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Create Event</h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-200 transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <X className="w-5 h-5 " />
+            <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
@@ -156,7 +156,7 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
               type="text"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
-              className="input-field"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Enter event title"
               maxLength={200}
               required
@@ -174,7 +174,7 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
             <textarea
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              className="input-field min-h-[100px] resize-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[100px] resize-none"
               placeholder="Describe your event..."
               maxLength={2000}
               required
@@ -199,7 +199,7 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
                     onClick={() => handleInputChange('event_type', type.value)}
                     className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all ${
                       formData.event_type === type.value
-                        ? 'border-orange-500 bg-primary-50'
+                        ? 'border-primary-500 bg-primary-50'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -227,7 +227,7 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
                 type="datetime-local"
                 value={formData.start_time}
                 onChange={(e) => handleInputChange('start_time', e.target.value)}
-                className="input-field"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 required
               />
             </div>
@@ -239,7 +239,7 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
                 type="datetime-local"
                 value={formData.end_time}
                 onChange={(e) => handleInputChange('end_time', e.target.value)}
-                className="input-field"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 min={formData.start_time}
               />
             </div>
@@ -255,16 +255,16 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
                 type="text"
                 value={formData.location}
                 onChange={(e) => handleInputChange('location', e.target.value)}
-                className="input-field flex-1"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder={formData.is_virtual ? "Meeting link (Zoom, Google Meet, etc.)" : "Physical location"}
                 disabled={formData.is_virtual && !formData.location}
               />
               <button
                 type="button"
                 onClick={() => handleInputChange('is_virtual', !formData.is_virtual)}
-                className={`p-3 rounded-lg border-2 transition-colors ${
+                className={`p-2 rounded-lg border-2 transition-colors ${
                   formData.is_virtual
-                    ? 'border-orange-500 bg-primary-50 text-primary-600'
+                    ? 'border-primary-500 bg-primary-50 text-primary-600'
                     : 'border-gray-300 text-gray-600'
                 }`}
                 title={formData.is_virtual ? 'Virtual Event' : 'In-Person Event'}
@@ -290,7 +290,7 @@ const CreateGroupEventModal: React.FC<CreateGroupEventModalProps> = ({
               type="number"
               value={formData.max_attendees}
               onChange={(e) => handleInputChange('max_attendees', parseInt(e.target.value) || 100)}
-              className="input-field"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               min={1}
               max={10000}
             />

@@ -70,7 +70,7 @@ export function MemoriesNav({ variant }: Props) {
         <Link
           href={HREF.foryou}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'foryou' ? 'text-primary-600' : 'text-white/90'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'foryou' ? 'text-[#FF6900]' : 'text-white/90'}`}
         >
           <Home className="h-4 w-4" strokeWidth={2} />
           <span>For You</span>
@@ -78,7 +78,7 @@ export function MemoriesNav({ variant }: Props) {
         <Link
           href={HREF.explore}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'explore' ? 'text-primary-600' : 'text-white/90'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'explore' ? 'text-[#FF6900]' : 'text-white/90'}`}
         >
           <Compass className="h-4 w-4" strokeWidth={2} />
           <span>Explore</span>
@@ -93,7 +93,7 @@ export function MemoriesNav({ variant }: Props) {
         <Link
           href={HREF.following}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'following' ? 'text-primary-600' : 'text-white/90'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'following' ? 'text-[#FF6900]' : 'text-white/90'}`}
         >
           <Users className="h-4 w-4" strokeWidth={2} />
           <span>Following</span>
@@ -101,7 +101,7 @@ export function MemoriesNav({ variant }: Props) {
         <Link
           href={HREF.mine}
           scroll={false}
-          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'mine' ? 'text-primary-600' : 'text-white/90'}`}
+          className={`flex flex-col items-center gap-0.5 py-1 ${active === 'mine' ? 'text-[#FF6900]' : 'text-white/90'}`}
         >
           <Video className="h-4 w-4" strokeWidth={2} />
           <span>My videos</span>
