@@ -32,12 +32,12 @@ export async function POST(request: NextRequest) {
           : 'ConnectAfrik SES test email.',
     })
 
-    if (ok) {
+    if (ok.ok) {
       return NextResponse.json({ success: true, to: to.trim() })
     }
 
     return NextResponse.json(
-      { error: 'Failed to send; check server logs and SES configuration' },
+      { error: ok.error || 'Failed to send; check server logs and SES configuration' },
       { status: 500 }
     )
   } catch (e: unknown) {

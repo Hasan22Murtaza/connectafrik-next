@@ -70,6 +70,67 @@ export const sendEmail = async (options: SendEmailOptions): Promise<SendEmailRes
   }
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+export type PostCreatedEmailVariant = 'author' | 'friend'
+
+/** Email when a feed post is created: confirmation to author or alert to a friend. */
+export const sendPostCreatedEmail = async (
+  to: string,
+  variant: PostCreatedEmailVariant,
+  params: { authorName: string; postPreview: string; postId: string }
+): Promise<boolean> => {
+  const { authorName, postPreview, postId } = params
+  const safeAuthor = escapeHtml(authorName)
+  const safePreview = escapeHtml(postPreview)
+  const base = (BASE_URL || '').replace(/\/$/, '')
+  const postUrl = `${base}/post/${postId}`
+
+  const subject =
+    variant === 'author'
+      ? 'Your post is live on ConnectAfrik'
+      : `${authorName} shared a new post on ConnectAfrik`
+
+  const headline =
+    variant === 'author' ? 'Your post is published' : `${safeAuthor} shared a new post`
+
+  const lead =
+    variant === 'author'
+      ? `<p>Hi ${safeAuthor},</p><p>Your post is now live on ConnectAfrik.</p>`
+      : `<p>Hi,</p><p><strong>${safeAuthor}</strong> shared a new post you might want to see.</p>`
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #FF6B35;">${headline}</h1>
+    ${lead}
+    <p style="background: #f9f9f9; padding: 16px; border-radius: 8px;"><strong>${safePreview}</strong></p>
+    <p><a href="${postUrl}" style="display: inline-block; background: #FF6B35; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">View post</a></p>
+    <p style="color: #666; font-size: 0.9em;">ConnectAfrik</p>
+  </div>
+</body>
+</html>`
+
+  const textLead =
+    variant === 'author'
+      ? `Hi ${authorName},\n\nYour post is now live on ConnectAfrik.\n\n`
+      : `Hi,\n\n${authorName} shared a new post you might want to see.\n\n`
+
+  const textBody = `${textLead}${postPreview}\n\nView: ${postUrl}\n`
+
+  const r = await sendEmail({ to, subject, htmlBody, textBody })
+  return r.ok
+}
+
 /**
  * Send order confirmation email to buyer
  */
