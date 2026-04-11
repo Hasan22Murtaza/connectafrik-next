@@ -198,7 +198,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow">
+        <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden  hover:shadow-lg transition-shadow">
           <button onClick={onView} className="absolute inset-0 cursor-pointer">
             {isTextStory ? (
               <div
@@ -262,7 +262,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
 
   return (
     <button onClick={onCreate} className="flex-shrink-0 w-[90px] sm:w-[112px]">
-      <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer bg-white border border-gray-200">
+      <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden  cursor-pointer bg-white border border-gray-200">
         <div className="absolute top-0 left-0 right-0 h-[110px] sm:h-[140px]">
           {avatarUrl ? (
             <img src={avatarUrl} alt="Your profile" className="w-full h-full object-cover" loading="lazy" />
@@ -274,13 +274,13 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
         </div>
 
         <div className="absolute top-[92px] sm:top-[120px] left-1/2 -translate-x-1/2 z-10">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-[3px] sm:border-4 border-white bg-white shadow-lg">
-            <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-primary-500" />
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-white group  hover:bg-primary-600 shadow-md duration-300 transition-colors">
+            <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600 group-hover:text-white" />
           </div>
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 h-[50px] sm:h-[60px] bg-white flex items-end justify-center pb-2 sm:pb-3">
-          <p className="text-gray-900 text-[10px] sm:text-xs font-semibold text-center">Create<br />story</p>
+          <p className="text-gray-900 text-[10px] sm:text-xs font-semibold text-center">Create story</p>
         </div>
       </div>
     </button>
@@ -515,7 +515,7 @@ const StoriesBar: React.FC = () => {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 relative">
+      <div className="bg-white rounded-xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-3 sm:p-4 relative">
         {showLeftArrow && (
           <button
             onClick={() => scroll('left')}

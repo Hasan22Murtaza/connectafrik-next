@@ -457,7 +457,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
         {profile?.avatar_url ? (
           <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 shrink-0" />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shrink-0 ring-2 ring-gray-100">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br bg-primary-600 flex items-center justify-center shrink-0 ring-2 ring-gray-100">
             <span className="text-white font-semibold text-sm">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
           </div>
         )}

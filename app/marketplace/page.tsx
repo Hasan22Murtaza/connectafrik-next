@@ -11,6 +11,7 @@ import {
   Plus,
   Search,
   ShoppingBag,
+  Tag,
   TrendingUp,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,6 +22,21 @@ import {
   MarketplaceGridShimmer,
   MarketplacePageShimmer,
 } from "@/shared/components/ui/ShimmerLoaders";
+import { BsShop } from "react-icons/bs";
+import {
+  FiGrid,
+  FiShoppingBag,
+  FiFeather,
+  FiSmartphone,
+  FiCoffee,
+  FiHeart,
+  FiHome,
+  FiBookOpen,
+  FiImage,
+  FiGift,
+  FiTool,
+  FiPackage,
+} from "react-icons/fi";
 
 const MarketplacePage: React.FC = () => {
   const { user } = useAuth();
@@ -40,18 +56,18 @@ const MarketplacePage: React.FC = () => {
   const shimmerCount = useShimmerCount();
 
   const categories = [
-    { value: "", label: "All Categories", emoji: "🛍️" },
-    { value: "fashion", label: "Fashion", emoji: "👗" },
-    { value: "crafts", label: "Crafts", emoji: "🎨" },
-    { value: "electronics", label: "Electronics", emoji: "📱" },
-    { value: "food", label: "Food & Beverages", emoji: "🍽️" },
-    { value: "beauty", label: "Beauty & Care", emoji: "💄" },
-    { value: "home", label: "Home & Living", emoji: "🏠" },
-    { value: "books", label: "Books", emoji: "📚" },
-    { value: "art", label: "Art", emoji: "🖼️" },
-    { value: "jewelry", label: "Jewelry", emoji: "💎" },
-    { value: "services", label: "Services", emoji: "🔧" },
-    { value: "other", label: "Other", emoji: "📦" },
+    { value: "", label: "All Categories", icon: FiGrid },
+    { value: "fashion", label: "Fashion", icon: FiShoppingBag },
+    { value: "crafts", label: "Crafts", icon: FiFeather },
+    { value: "electronics", label: "Electronics", icon: FiSmartphone },
+    { value: "food", label: "Food & Beverages", icon: FiCoffee },
+    { value: "beauty", label: "Beauty & Care", icon: FiHeart },
+    { value: "home", label: "Home & Living", icon: FiHome },
+    { value: "books", label: "Books", icon: FiBookOpen },
+    { value: "art", label: "Art", icon: FiImage },
+    { value: "jewelry", label: "Jewelry", icon: FiGift },
+    { value: "services", label: "Services", icon: FiTool },
+    { value: "other", label: "Other", icon: FiPackage },
   ];
 
   const currencies = [
@@ -146,44 +162,47 @@ const MarketplacePage: React.FC = () => {
 
   const featuredProducts = products.filter((p) => p.is_featured).slice(0, 3);
 
-    const handleSaveProduct = async (productId: string) => {
-      if (!user) {
-        toast.error('Please sign in to save products')
-        return
-      }
-  
-      try {
-        const product = products.find(p => p.id === productId)
-        if (!product) return
-
-        const res = await apiClient.post<{ saved: boolean }>(`/api/marketplace/${productId}/save`)
-        toast.success(res.saved ? 'Product saved!' : 'Product removed from saved items')
-
-        setProducts(products.map(p =>
-          p.id === productId ? { ...p, is_saved: res.saved } : p
-        ))
-      } catch (error: any) {
-        console.error('Error saving product:', error)
-        toast.error('Failed to save product')
-      }
+  const handleSaveProduct = async (productId: string) => {
+    if (!user) {
+      toast.error('Please sign in to save products')
+      return
     }
-  
-    const handleViewProduct = async (productId: string) => {
-      router.push(`/marketplace/${productId}`)
+
+    try {
+      const product = products.find(p => p.id === productId)
+      if (!product) return
+
+      const res = await apiClient.post<{ saved: boolean }>(`/api/marketplace/${productId}/save`)
+      toast.success(res.saved ? 'Product saved!' : 'Product removed from saved items')
+
+      setProducts(products.map(p =>
+        p.id === productId ? { ...p, is_saved: res.saved } : p
+      ))
+    } catch (error: any) {
+      console.error('Error saving product:', error)
+      toast.error('Failed to save product')
     }
+  }
+
+  const handleViewProduct = async (productId: string) => {
+    router.push(`/marketplace/${productId}`)
+  }
+
+
+
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen px-4">
       <div className="flex gap-4 min-w-0 w-full">
         {/* Sidebar */}
         <aside
           className={`fixed md:relative inset-y-0 left-0 z-40
-          w-[280px] shrink-0 bg-white
+          w-[280px] shrink-0 bg-[#F8FAFC] rounded-0 md:rounded-2xl
           px-4 py-6
+          sm:top-0
           top-12
-          md:top-0
-          h-[90vh]
           md:h-screen
+          h-[calc(100vh-6rem)]
           scrollbar-hover
           overflow-y-auto
           transform transition-transform duration-300
@@ -200,11 +219,11 @@ const MarketplacePage: React.FC = () => {
 
           {/* Search */}
           <div className="mb-6">
-            <label className="text-sm font-medium text-gray-700">Search</label>
+            <label className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">Search</label>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
-                className="input-field !pl-8"
+                className="w-full px-4 py-3 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -214,50 +233,94 @@ const MarketplacePage: React.FC = () => {
 
           {/* Categories */}
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">
               Categories
             </h3>
-            <ul className="space-y-1">
-              {categories.map((c) => (
-                <li
-                  key={c.value}
-                  onClick={() => setSelectedCategory(c.value)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition
-                    ${
-                      selectedCategory === c.value
-                        ? "bg-primary-50 text-primary-600 font-medium"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }
-                  `}
-                >
-                  <span>{c.emoji}</span>
-                  <span className="text-sm">{c.label}</span>
-                </li>
-              ))}
+            <ul className="space-y-2">
+              {categories.map((c) => {
+                const isActive = selectedCategory === c.value;
+                const Icon = c.icon || Tag;
+
+                return (
+                  <li key={c.value}>
+                    <div
+                      onClick={() => setSelectedCategory(c.value)}
+                      className={`group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer
+            transition-all duration-300 ease-in-out
+            ${isActive
+                          ? "bg-orange-50 text-primary-600"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
+                        }
+            `}
+                    >
+                      {/* LEFT BORDER */}
+                      <span
+                        className={`absolute left-0 top-0 h-full w-[3px] rounded-r
+              transition-all duration-300 ease-in-out
+              ${isActive
+                            ? "bg-primary-600 opacity-100 scale-y-100"
+                            : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+                          }`}
+                      ></span>
+
+                      {/* ICON */}
+                      <Icon
+                        className={`text-lg transition-all duration-300 
+              group-hover:scale-110 
+              ${isActive ? "scale-110" : ""}`}
+                      />
+
+                      {/* TEXT */}
+                      <span className="text-sm font-medium transition-all duration-300 group-hover:translate-x-1">
+                        {c.label}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
           {/* Currency */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 mb-3">
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">
               Currency
             </h3>
-            <ul className="space-y-1">
-              {currencies.map((c) => (
-                <li
-                  key={c.value}
-                  onClick={() => setSelectedCurrency(c.value)}
-                  className={`px-3 py-2 rounded-lg cursor-pointer transition text-sm
-                    ${
-                      selectedCurrency === c.value
-                        ? "bg-primary-50 text-primary-600 font-medium"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }
-                  `}
-                >
-                  {c.label}
-                </li>
-              ))}
+
+            <ul className="space-y-2">
+              {currencies.map((c) => {
+                const isActive = selectedCurrency === c.value;
+
+                return (
+                  <li key={c.value}>
+                    <div
+                      onClick={() => setSelectedCurrency(c.value)}
+                      className={`group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer
+            transition-all duration-300 ease-in-out
+            ${isActive
+                          ? "bg-orange-50 text-primary-600"
+                          : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
+                        }
+            `}
+                    >
+                      {/* LEFT BORDER */}
+                      <span
+                        className={`absolute left-0 top-0 h-full w-[3px] rounded-r
+              transition-all duration-300 ease-in-out
+              ${isActive
+                            ? "bg-primary-600 opacity-100 scale-y-100"
+                            : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+                          }`}
+                      ></span>
+
+                      {/* TEXT */}
+                      <span className="text-sm font-medium transition-all duration-300 group-hover:translate-x-1">
+                        {c.label}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
 
@@ -286,8 +349,8 @@ const MarketplacePage: React.FC = () => {
         <main className="flex-1 px-3 sm:px-4 py-6 min-w-0 w-full">
           <div className="flex items-center justify-between mb-6 flex-wrap md:flex-nowrap gap-4 ">
             <div className="max-w-3xl">
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <ShoppingBag className="text-primary-600" />
+              <h1 className="text-2xl font-semibold text-gray-600 flex items-center gap-2">
+                <BsShop className="text-primary-600" />
                 Marketplace
               </h1>
               <p className="text-gray-600 mt-1">
@@ -324,7 +387,7 @@ const MarketplacePage: React.FC = () => {
                 <h2 className="text-xl font-semibold">Featured Products</h2>
               </div>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {featuredProducts.map((p) => (
                   <ProductCard
                     key={p.id}
@@ -340,7 +403,7 @@ const MarketplacePage: React.FC = () => {
           {loading ? (
             <MarketplaceGridShimmer count={shimmerCount} />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {filteredProducts.map((p) => (
                 <ProductCard
                   onSave={handleSaveProduct}

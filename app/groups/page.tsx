@@ -172,15 +172,15 @@ const GroupsPage: React.FC = () => {
         prev.map((p: any) =>
           p.id === postId
             ? {
-                ...p,
-                likes_count:
-                  response.action === "added"
-                    ? p.likes_count + 1
-                    : response.action === "removed"
+              ...p,
+              likes_count:
+                response.action === "added"
+                  ? p.likes_count + 1
+                  : response.action === "removed"
                     ? Math.max(0, p.likes_count - 1)
                     : p.likes_count,
-                isLiked: response.action === "removed" ? false : true,
-              }
+              isLiked: response.action === "removed" ? false : true,
+            }
             : p,
         ),
       );
@@ -257,78 +257,103 @@ const GroupsPage: React.FC = () => {
   // Sidebar content as plain JSX — avoids recreating a component type every
   // render which would cause React to fully unmount/remount the sidebar DOM.
   const sidebarContent = (
-    <div className="space-y-4">
+    <div className="space-y-4 ">
       {/* Groups Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Groups</h2>
-      
+        <h2 className="text-2xl font-semibold text-gray-600">Groups</h2>
+
       </div>
 
-      {/* Search Bar */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-        <input
-          type="text"
-          placeholder="Search groups"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-          className="  w-full
-    pl-10 pe-4 py-2
-    border border-gray-300
-    rounded-full
-    text-base
-    bg-gray-50
-    text-gray-900
-    transition-all duration-200
-    focus:outline-none
-    focus:border-orange-500
-    focus:ring-3 focus:ring-orange-500/10"
-        />
-      </div>
 
       {/* Navigation */}
-      <div className="space-y-1 mb-4">
+      <div className="space-y-4">
+        {/* FEED */}
         <button
-          onClick={() => {
-            handleViewChange("feed");
-          }}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-            view === "feed"
-              ? "bg-orange-50 text-orange-600 font-semibold"
-              : "text-gray-700 hover:bg-gray-100"
-          }`}
+          onClick={() => handleViewChange("feed")}
+          className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
+    transition-all duration-300 ease-in-out
+    ${view === "feed"
+              ? "bg-orange-50 text-primary-600"
+              : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
+            }
+    `}
         >
-          <FileText className="w-5 h-5" />
-          <span>Your feed</span>
+          {/* LEFT LINE */}
+          <span
+            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
+      transition-all duration-300 ease-in-out
+      ${view === "feed"
+                ? "opacity-100 scale-y-100"
+                : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+              }`}
+          ></span>
+
+          <FileText
+            className={`w-5 h-5 transition-all duration-300 group-hover:scale-110 ${view === "feed" ? "scale-110" : ""
+              }`}
+          />
+          <span className="font-medium transition-all duration-300 group-hover:translate-x-1">
+            Your feed
+          </span>
         </button>
+
+        {/* DISCOVER */}
         <button
-          onClick={() => {
-            handleViewChange("discover");
-          }}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-            view === "discover"
-              ? "bg-orange-50 text-orange-600 font-semibold"
-              : "text-gray-700 hover:bg-gray-100"
-          }`}
+          onClick={() => handleViewChange("discover")}
+          className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
+    transition-all duration-300 ease-in-out
+    ${view === "discover"
+              ? "bg-orange-50 text-primary-600"
+              : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
+            }
+    `}
         >
-          <Compass className="w-5 h-5" />
-          <span>Discover</span>
+          <span
+            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
+      transition-all duration-300 ease-in-out
+      ${view === "discover"
+                ? "opacity-100 scale-y-100"
+                : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+              }`}
+          ></span>
+
+          <Compass
+            className={`w-5 h-5 transition-all duration-300 group-hover:scale-110 ${view === "discover" ? "scale-110" : ""
+              }`}
+          />
+          <span className="font-medium transition-all duration-300 group-hover:translate-x-1">
+            Discover
+          </span>
         </button>
+
+        {/* GROUPS */}
         {user && (
           <button
-            onClick={() => {
-              handleViewChange("my-groups");
-
-            }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-              view === "my-groups"
-                ? "bg-orange-50 text-orange-600 font-semibold"
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
+            onClick={() => handleViewChange("my-groups")}
+            className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
+      transition-all duration-300 ease-in-out
+      ${view === "my-groups"
+                ? "bg-orange-50 text-primary-600"
+                : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
+              }
+      `}
           >
-            <Users className="w-5 h-5" />
-            <span>Your groups</span>
+            <span
+              className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
+        transition-all duration-300 ease-in-out
+        ${view === "my-groups"
+                  ? "opacity-100 scale-y-100"
+                  : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+                }`}
+            ></span>
+
+            <Users
+              className={`w-5 h-5 transition-all duration-300 group-hover:scale-110 ${view === "my-groups" ? "scale-110" : ""
+                }`}
+            />
+            <span className="font-medium transition-all duration-300 group-hover:translate-x-1">
+              Your groups
+            </span>
           </button>
         )}
       </div>
@@ -358,7 +383,7 @@ const GroupsPage: React.FC = () => {
                 key={group.id}
                 onClick={() => {
                   handleViewGroup(group.id);
-    
+
                 }}
                 className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
               >
@@ -370,9 +395,9 @@ const GroupsPage: React.FC = () => {
                       className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
-                   <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
-                    {group.name.charAt(0).toUpperCase()}
-                  </span>
+                    <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
+                      {group.name.charAt(0).toUpperCase()}
+                    </span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -415,7 +440,7 @@ const GroupsPage: React.FC = () => {
                 key={group.id}
                 onClick={() => {
                   handleViewGroup(group.id);
-    
+
                 }}
                 className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
               >
@@ -427,9 +452,9 @@ const GroupsPage: React.FC = () => {
                       className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
-                  <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
-                    {group.name.charAt(0).toUpperCase()}
-                  </span>
+                    <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
+                      {group.name.charAt(0).toUpperCase()}
+                    </span>
 
                   )}
                 </div>
@@ -454,13 +479,13 @@ const GroupsPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6 w-full min-w-0">
+    <div className="min-h-screen px-2 sm:px-6 py-5 w-full min-w-0">
+      <div>
         {/* Mobile Header */}
         <div className="lg:hidden mb-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-bold text-gray-900">Groups</h1>
+              <h1 className="text-xl font-semibold text-gray-600">Groups</h1>
             </div>
             {user && (
               <button
@@ -477,7 +502,7 @@ const GroupsPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search groups"
+              placeholder="Search groups..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleSearch()}
@@ -500,32 +525,29 @@ const GroupsPage: React.FC = () => {
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => handleViewChange("feed")}
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300  ${
-                view === "feed"
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300  ${view === "feed"
                   ? "text-orange-600 bg-orange-100"
                   : "text-gray-700 hover:bg-gray-100 "
-              }`}
+                }`}
             >
               Your feed
             </button>
             <button
               onClick={() => handleViewChange("discover")}
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300 ${
-                view === "discover"
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300 ${view === "discover"
                   ? "text-orange-600 bg-orange-100"
                   : "text-gray-700 hover:bg-gray-100"
-              }`}
+                }`}
             >
               Discover
             </button>
             {user && (
               <button
                 onClick={() => handleViewChange("my-groups")}
-                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300 ${
-                  view === "my-groups"
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300 ${view === "my-groups"
                     ? "text-orange-600 bg-orange-100"
-                    : "text-gray-700 hover:bg-gray-100" 
-                }`}
+                    : "text-gray-700 hover:bg-gray-100"
+                  }`}
               >
                 Your groups
               </button>
@@ -535,24 +557,22 @@ const GroupsPage: React.FC = () => {
 
         <div className="flex gap-4 lg:gap-6">
           {/* Left Sidebar - Desktop */}
-          <div className="hidden lg:block w-80 shrink-0">
-            <div className="sticky top-4 space-y-4">
+          <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto bg-[#F8FAFC] p-4 rounded-2xl">
               {sidebarContent}
-            </div>
           </div>
 
 
           {/* Main Content */}
-          <div className="flex-1 min-w-0 w-full lg:w-auto">
+          <div className="flex-1 ">
             {view === "feed" && (
-              <div className="max-w-2xl mx-auto w-full min-w-0">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
+              <div className="">
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-600 mb-4 sm:mb-6">
                   Recent activity
                 </h2>
                 {activityLoading ? (
                   <GroupsFeedShimmer />
                 ) : recentActivity.length === 0 ? (
-                  <div className="bg-white rounded-lg shadow-sm p-6 sm:p-12 text-center">
+                  <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6 sm:p-12 text-center">
                     <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
                       No recent activity
@@ -573,7 +593,7 @@ const GroupsPage: React.FC = () => {
                     {recentActivity.map((post: any) => (
                       <div
                         key={post.id}
-                        className="bg-white rounded-lg shadow-sm overflow-hidden"
+                        className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden"
                       >
                         <div className="p-2 sm:p-3 border-b border-gray-200">
                           <button
@@ -620,17 +640,29 @@ const GroupsPage: React.FC = () => {
             )}
 
             {view === "discover" && (
-              <div className="max-w-4xl mx-auto w-full min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+              <div className="">
+                <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-600">
                     Discover Groups
                   </h2>
+                  {/* Search Bar */}
+                  <div className="relative max-w-full w-md ">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search groups..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                      className=" w-full px-4 py-3 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                    />
+                  </div>
                 </div>
 
                 {loading ? (
                   <GroupsGridShimmer count={shimmerCount} />
                 ) : filteredGroups.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                     {filteredGroups.map((group) => (
                       <GroupCard
                         key={group.id}
@@ -667,14 +699,30 @@ const GroupsPage: React.FC = () => {
             )}
 
             {view === "my-groups" && (
-              <div className="max-w-4xl mx-auto w-full min-w-0">
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">
-                  Your Groups
-                </h2>
+              <div className="">
+                <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-600 ">
+                    Your Groups
+                  </h2>
+                  {/* Search Bar */}
+                  <div className="relative max-w-full ">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Search groups..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                      className=" w-full px-4 py-3 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                    />
+                  </div>
+
+                </div>
+
                 {loading ? (
                   <GroupsGridShimmer count={shimmerCount} />
                 ) : filteredGroups.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                     {filteredGroups.map((group) => (
                       <GroupCard
                         key={group.id}

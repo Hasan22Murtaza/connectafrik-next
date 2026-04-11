@@ -40,7 +40,7 @@ const Header: React.FC<HeaderProps> = ({
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
-  const {} = useProductionChat();
+  const { } = useProductionChat();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -118,11 +118,12 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm ">
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
+    <>
+    <header className="sticky top-0 z-50  bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
+      <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
         <div className="flex items-center h-14 sm:h-16">
           {/* Logo - Pinned to left */}
-          <Link href="/" className="flex-shrink-0 ">  
+          <Link href="/" className="flex-shrink-0 ">
             <img src="/assets/images/logo_2.png" alt="" className="w-16" />
           </Link>
 
@@ -133,8 +134,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
                 <input
                   type="text"
-                  placeholder="Search connectafrik"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F97316] focus:border-transparent"
+                  placeholder="Search connectAfrik..."
+                  className="w-full px-4 py-3 pl-10 bg-[#EEF1F4] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
                   value={searchTerm}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   onFocus={() => {
@@ -143,7 +144,7 @@ const Header: React.FC<HeaderProps> = ({
                     }
                   }}
                 />
-                
+
                 {/* Search Results Dropdown */}
                 {showSearchResults && (
                   <SearchResultsDropdown
@@ -161,7 +162,7 @@ const Header: React.FC<HeaderProps> = ({
           {user && (
             <button
               onClick={() => setShowMobileSearch(true)}
-              className="md:hidden p-2 text-gray-600 hover:text-[#FF6900] transition-colors"
+              className="md:hidden p-2 text-gray-600 hover:text-primary-600 transition-colors"
               aria-label="Open search"
             >
               <Search className="w-5 h-5" />
@@ -169,27 +170,31 @@ const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Navigation and User Menu - Pinned to right */}
-          <div className=" flex items-center space-x-1 sm:space-x-2 lg:space-x-4 ml-auto">
+          <div className=" flex items-center gap-2 sm:gap-3 ml-auto ">
             {user ? (
               <>
                 {/* Navigation Links - Hidden on mobile, visible on desktop */}
-                <nav className="sm:!block !hidden lg:flex items-center ">
-                  <ul className="flex items-center space-x-8 pr-10 pt-3">
+                <nav className="md:block hidden lg:flex items-center">
+                  <ul className="flex items-center space-x-8 pr-4 sm:pr-14 pt-3">
+
                     {/* Feed */}
                     <li className="relative">
                       <Link
                         href="/feed"
-                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
-                          pathname === "/feed"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
-                        }`}
+                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/feed"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                          }`}
                       >
                         <Home className="w-12" />
                         <span className="text-sm font-medium">Feed</span>
-                        {pathname === "/feed" && (
-                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
-                        )}
+
+                        <span
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                            }`}
+                        />
                       </Link>
                     </li>
 
@@ -197,17 +202,20 @@ const Header: React.FC<HeaderProps> = ({
                     <li className="relative">
                       <Link
                         href="/memories/foryou"
-                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
-                          pathname.startsWith("/memories")
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
-                        }`}
+                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname.startsWith("/memories")
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                          }`}
                       >
                         <Video className="w-12" />
                         <span className="text-sm font-medium">Reels</span>
-                        {pathname.startsWith("/memories") && (
-                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
-                        )}
+
+                        <span
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname.startsWith("/memories")
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                            }`}
+                        />
                       </Link>
                     </li>
 
@@ -215,17 +223,20 @@ const Header: React.FC<HeaderProps> = ({
                     <li className="relative">
                       <Link
                         href="/politics"
-                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
-                          pathname === "/politics"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
-                        }`}
+                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/politics"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                          }`}
                       >
                         <Landmark className="w-12" />
                         <span className="text-sm font-medium">Politics</span>
-                        {pathname === "/politics" && (
-                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
-                        )}
+
+                        <span
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/politics"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                            }`}
+                        />
                       </Link>
                     </li>
 
@@ -233,17 +244,20 @@ const Header: React.FC<HeaderProps> = ({
                     <li className="relative">
                       <Link
                         href="/culture"
-                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
-                          pathname === "/culture"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
-                        }`}
+                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/culture"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                          }`}
                       >
                         <Palette className="w-12" />
                         <span className="text-sm font-medium">Culture</span>
-                        {pathname === "/culture" && (
-                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
-                        )}
+
+                        <span
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/culture"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                            }`}
+                        />
                       </Link>
                     </li>
 
@@ -251,47 +265,29 @@ const Header: React.FC<HeaderProps> = ({
                     <li className="relative">
                       <Link
                         href="/groups"
-                        className={`flex flex-col items-center gap-1 pb-2 transition-colors ${
-                          pathname === "/groups"
-                            ? "text-[#FF6900]"
-                            : "text-gray-600 hover:text-[#FF6900]"
-                        }`}
+                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/groups"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                          }`}
                       >
                         <Users className="w-12" />
                         <span className="text-sm font-medium">Groups</span>
-                        {pathname === "/groups" && (
-                          <span className="absolute bottom-0 left-0 w-full h-[2px] bg-primary-600 rounded-full" />
-                        )}
+
+                        <span
+                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                            }`}
+                        />
                       </Link>
                     </li>
+
                   </ul>
                 </nav>
 
                 {/* Notifications & Messaging */}
                 <div className="flex items-center space-x-2 sm:space-x-2  border-gray-200">
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setShowNotifications(!showNotifications);
-                        setShowInbox(false);
-                        setShowCalls(false);
-                      }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
-                    >
-                      <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                      {unreadNotificationCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                          {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                        </span>
-                      )}
-                    </button>
-                    <NotificationDropdown
-                      isOpen={showNotifications}
-                      onClose={() => setShowNotifications(false)}
-                      onUnreadCountChange={setUnreadNotificationCount}
-                    />
-                  </div>
-
+                  
                   <div className="relative">
                     <button
                       onClick={() => {
@@ -299,7 +295,7 @@ const Header: React.FC<HeaderProps> = ({
                         setShowNotifications(false);
                         setShowCalls(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
                     >
                       <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                       {unreadMessages > 0 && (
@@ -323,7 +319,7 @@ const Header: React.FC<HeaderProps> = ({
                         setShowNotifications(false);
                         setShowInbox(false);
                       }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-[#FF6900] transition-colors"
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
                     >
                       <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
@@ -334,10 +330,33 @@ const Header: React.FC<HeaderProps> = ({
                       />
                     )}
                   </div>
+
+                  <div className="relative">
+                    <button
+                      onClick={() => {
+                        setShowNotifications(!showNotifications);
+                        setShowInbox(false);
+                        setShowCalls(false);
+                      }}
+                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                    >
+                      <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+                      {unreadNotificationCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                          {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                        </span>
+                      )}
+                    </button>
+                    <NotificationDropdown
+                      isOpen={showNotifications}
+                      onClose={() => setShowNotifications(false)}
+                      onUnreadCountChange={setUnreadNotificationCount}
+                    />
+                  </div>
                 </div>
 
                 {/* User Menu */}
-                <div className="relative group ml-1 sm:ml-2  pl-1 sm:pl-2 lg:pl-4 sm:border-l border-0 border-gray-200">
+                <div className="relative group ">
                   <button
                     onClick={() => setIsUserMenuOpen((prev) => !prev)}
                     onBlur={(e) => {
@@ -354,22 +373,21 @@ const Header: React.FC<HeaderProps> = ({
                         className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="w-8 h-8 sm:w-6 sm:h-6 lg:w-8 lg:h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                        <User className="w-3 h-3 sm:w-3 sm:h-3 lg:w-4 lg:h-4 text-gray-600" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10  bg-gray-300 rounded-full flex items-center justify-center  uppercase">
+                        {profile?.username.slice(0, 1) || "User"}
                       </div>
                     )}
-                    <span className="hidden md:block text-sm font-medium text-gray-700">
+                    {/* <span className="hidden md:block text-sm font-medium text-gray-700">
                       {profile?.username || "User"}
-                    </span>
+                    </span> */}
                   </button>
 
                   <div
                     className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200
-                          ${
-                            isUserMenuOpen
-                              ? "opacity-100 visible"
-                              : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
-                          }
+                          ${isUserMenuOpen
+                        ? "opacity-100 visible"
+                        : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
+                      }
                         `}
                   >
                     <div className="py-2">
@@ -424,20 +442,21 @@ const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
+    
+    </header>
       {/* Mobile Navigation */}
       {user && !pathname?.startsWith("/memories") && (
-        <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1">
+        <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1 z-50">
           <nav className="w-full">
             <ul className="flex justify-between w-full px-2">
               {/* Feed */}
               <li>
                 <Link
                   href="/feed"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
-                    usePathname() === "/feed"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
-                  }`}
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/feed"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
+                    }`}
                 >
                   <Home className="w-6 h-6" />
                 </Link>
@@ -447,11 +466,10 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/memories/foryou"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
-                    usePathname()?.startsWith("/memories")
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
-                  }`}
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname()?.startsWith("/memories")
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
+                    }`}
                 >
                   <Video className="w-6 h-6" />
                 </Link>
@@ -461,11 +479,10 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/politics"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
-                    usePathname() === "/politics"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
-                  }`}
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/politics"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
+                    }`}
                 >
                   <Landmark className="w-6 h-6" />
                 </Link>
@@ -475,11 +492,10 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/culture"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
-                    usePathname() === "/culture"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
-                  }`}
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/culture"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
+                    }`}
                 >
                   <Palette className="w-6 h-6" />
                 </Link>
@@ -489,11 +505,10 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/groups"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${
-                    usePathname() === "/groups"
-                      ? "text-[#FF6900]"
-                      : "text-gray-500 hover:text-[#FF6900]"
-                  }`}
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/groups"
+                      ? "text-primary-600"
+                      : "text-gray-500 hover:text-primary-600"
+                    }`}
                 >
                   <Users className="w-6 h-6" />
                 </Link>
@@ -514,7 +529,8 @@ const Header: React.FC<HeaderProps> = ({
         isOpen={showMobileSearch}
         onClose={() => setShowMobileSearch(false)}
       />
-    </header>
+    </>
+    
   );
 };
 
