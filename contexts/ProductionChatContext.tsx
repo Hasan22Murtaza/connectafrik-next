@@ -482,6 +482,21 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }
       }
 
+      if (resolvedTargetUserId && !isGroupCall) {
+        try {
+          const busyRes = await apiClient.post<{ busy: Record<string, boolean> }>(
+            '/api/chat/calls/busy-status',
+            { user_ids: [resolvedTargetUserId] },
+          )
+          if (busyRes.busy?.[resolvedTargetUserId]) {
+            throw new Error('This person is already in a call.')
+          }
+        } catch (e) {
+          if (e instanceof Error && e.message === 'This person is already in a call.') throw e
+          console.warn('[startCall] busy check failed; continuing', e)
+        }
+      }
+
       const roomResponse = await fetch('/api/videosdk/room', {
         method: 'POST',
         headers: {
@@ -515,12 +530,23 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         isGroupCall,
       }
 
+      // Persist call_sessions before opening the popup so end/missed/declined PATCH never hits 404.
+      await apiClient.post(`/api/chat/threads/${threadId}/call-sessions`, {
+        call_id: callId,
+        call_type: type,
+        room_id: roomId,
+        token,
+        target_user_id: resolvedTargetUserId || undefined,
+        is_group_call: isGroupCall,
+        caller_name: currentUser?.name || 'Unknown',
+        caller_avatar_url: currentUser?.avatarUrl || '',
+      })
+
       setCallRequests(prev => ({
         ...prev,
         [threadId]: callRequest
       }))
 
-      // Open call window immediately after room creation (do not block on signaling/push work)
       if (typeof window !== 'undefined') {
         const { openCallWindow } = await import('@/shared/utils/callWindow')
 
@@ -619,22 +645,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           }
         }))
       }
-      console.log('currentUser', currentUser)
-      // Signal in background: call_sessions row + push (no chat_messages spam)
-      void apiClient
-        .post(`/api/chat/threads/${threadId}/call-sessions`, {
-          call_id: callId,
-          call_type: type,
-          room_id: roomId,
-          token,
-          target_user_id: resolvedTargetUserId || undefined,
-          is_group_call: isGroupCall,
-          caller_name: currentUser?.name || 'Unknown',
-          caller_avatar_url: currentUser?.avatarUrl || '',
-        })
-        .catch((msgError) => {
-          console.warn('⚠️ Failed to create call session:', msgError)
-        })
     } catch (error) {
       console.error('Failed to start call:', error)
       throw error // Re-throw so caller can handle it

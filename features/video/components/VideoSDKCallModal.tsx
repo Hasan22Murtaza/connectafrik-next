@@ -1,381 +1,397 @@
-import { PhoneOff } from 'lucide-react';
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  AddPeoplePanel,
-  CallControls,
-  CallStatusOverlay,
-  IncomingCallControls,
-  MessageInput,
-  ParticipantVideo,
-  ScreenShareOverlay,
-  useVideoCall,
-} from './call';
-import type { VideoSDKCallModalProps } from './call';
+/**
+ * VideoSDKCallModal — the outermost call surface component.
+ *
+ * Split into two clear phases:
+ *
+ * 1. Pre-call phase (handled here, outside MeetingProvider):
+ *    - Outgoing: fetches a VideoSDK token + room ID, shows "Connecting…" spinner.
+ *    - Incoming: plays ringtone, shows the ringing screen; fetches token only after
+ *      the user taps Accept so the meeting is joined immediately on accept.
+ *
+ * 2. In-call phase (delegated to MeetingContainer inside MeetingProvider):
+ *    - MeetingProvider initialises the VideoSDK React SDK with the resolved token
+ *      and meeting ID.
+ *    - MeetingContainer owns `useMeeting`, event handling, signaling, and rendering.
+ *
+ * This separation keeps MeetingProvider unmounted until we have a valid token,
+ * which avoids initialisation errors and makes reconnect logic straightforward.
+ */
+'use client';
 
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { MeetingProvider } from '@videosdk.live/react-sdk';
+import { supabase } from '@/lib/supabase';
+import { stopAll as stopAllRingtones, playRingtone } from '@/features/video/services/ringtoneService';
+import { patchCallSessionWithRetry } from '@/features/chat/services/callSessionRealtime';
+import { inferMeetingMaxResolution } from '@/features/video/services/adaptiveCallQuality';
+import type { VideoSDKCallModalProps } from './call/types';
+import CallStatusOverlay from './call/CallStatusOverlay';
+import IncomingCallControls from './call/IncomingCallControls';
+import MeetingContainer from './call/MeetingContainer';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function safeDecode(str: string | undefined): string {
+  if (!str) return 'Unknown';
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
-  const vc = useVideoCall(props);
-  const [groupPage, setGroupPage] = useState(0);
-  const [screenShareVisibleParticipantIds, setScreenShareVisibleParticipantIds] = useState<string[]>([]);
+  const {
+    isOpen,
+    onClose,
+    callType,
+    callerName,
+    recipientName,
+    callerAvatarUrl,
+    recipientAvatarUrl,
+    isIncoming = false,
+    onAccept,
+    onReject,
+    onCallEnd,
+    threadId,
+    currentUserId,
+    roomIdHint,
+    callIdHint,
+  } = props;
 
-  // Don't render if not open
-  if (!props.isOpen && vc.callStatus === 'connecting') return null;
-  if (!props.isOpen) return null;
+  // ── Decoded display strings (URL-encoded params from the call window route) ─
+  const decodedCallerName = safeDecode(callerName);
+  const decodedRecipientName = safeDecode(recipientName);
+  const decodedCallerAvatarUrl = callerAvatarUrl ? safeDecode(callerAvatarUrl) : '';
+  const decodedRecipientAvatarUrl = recipientAvatarUrl ? safeDecode(recipientAvatarUrl) : '';
 
-  const userInitial = useMemo(() => (vc.user?.user_metadata?.full_name || 'Y')[0].toUpperCase(), [vc.user?.user_metadata?.full_name]);
-  const groupLayout = useMemo(() => {
-    const isGroupGallery =
-      vc.participants.length > 1 && (vc.callType === 'video' || vc.callType === 'audio');
-    if (!isGroupGallery) return null;
-    const maxTilesPerPage = 9;
-    const maxRemotePerPage = Math.max(1, maxTilesPerPage - 1); // keep local tile on every page
-    const remoteTiles = vc.participants.map((p: any) => {
-      const participantStream = vc.participantVideoMap.get(p.id) || null;
-      const hasVideo =
-        vc.callType === 'video' && !!participantStream?.getVideoTracks?.().length;
-      return {
-        id: p.id as string,
-        displayName: (p.displayName || 'Participant') as string,
-        stream: participantStream as MediaStream | null,
-        isLocal: false,
-        hasVideo,
-      };
-    });
-    const pageCount = Math.max(1, Math.ceil(remoteTiles.length / maxRemotePerPage));
-    const pageIndex = Math.min(groupPage, pageCount - 1);
-    const start = pageIndex * maxRemotePerPage;
-    const visibleRemoteTiles = remoteTiles.slice(start, start + maxRemotePerPage);
-    const localTile = {
-      id: 'local',
-      displayName: (vc.user?.user_metadata?.full_name || 'You') as string,
-      stream: vc.localStream,
-      isLocal: true,
-      hasVideo:
-        vc.callType === 'video' &&
-        vc.isVideoEnabled &&
-        !!(vc.localStream?.getVideoTracks()?.length),
+  // ── Pre-call state ──────────────────────────────────────────────────────────
+  const [token, setToken] = useState<string | null>(null);
+  /** Same as Supabase `profiles.id` / `call_sessions.participants` — VideoSDK `participantId`. */
+  const [sdkParticipantUserId, setSdkParticipantUserId] = useState<string | null>(null);
+  const [meetingId, setMeetingId] = useState<string | null>(
+    roomIdHint ?? null,
+  );
+  const [prePhase, setPrePhase] = useState<'connecting' | 'ringing' | 'error'>(
+    'connecting',
+  );
+  const [errorMsg, setErrorMsg] = useState('');
+  const [isAcceptingCall, setIsAcceptingCall] = useState(false);
+
+  const isMountedRef = useRef(true);
+  const hasInitRef = useRef(false);
+  const ringtoneRef = useRef<{ stop: () => void } | null>(null);
+  const callTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
     };
-    const tiles = [...visibleRemoteTiles, localTile];
-    const total = tiles.length;
-    const cols = total <= 2 ? 2 : total <= 4 ? 2 : total <= 9 ? 3 : total <= 16 ? 4 : 5;
-    const rows = Math.ceil(total / cols);
-    return {
-      tiles,
-      total,
-      cols,
-      rows,
-      pageIndex,
-      pageCount,
-      visibleRemoteParticipantIds: visibleRemoteTiles.map((tile) => tile.id),
-    };
-  }, [vc.callType, vc.participants, vc.participantVideoMap, vc.user?.user_metadata?.full_name, vc.localStream, vc.isVideoEnabled, groupPage]);
+  }, []);
 
   useEffect(() => {
-    setGroupPage(0);
-  }, [vc.callType, vc.participants.length]);
+    if (!isOpen) setSdkParticipantUserId(null);
+  }, [isOpen]);
 
-  useEffect(() => {
-    if (!groupLayout) return;
-    if (groupPage !== groupLayout.pageIndex) {
-      setGroupPage(groupLayout.pageIndex);
-    }
-  }, [groupLayout, groupPage]);
-
-  useEffect(() => {
-    if (vc.callType === 'audio') {
-      if (groupLayout) {
-        vc.setVisibleRemoteParticipantIds(groupLayout.visibleRemoteParticipantIds);
-        return;
+  // ── Token fetcher ───────────────────────────────────────────────────────────
+  // Resolve userId from Supabase session here (not only from props). The call popup
+  // often mounts before AuthContext hydrates `user?.id`, and JSON.stringify drops
+  // `undefined` userId — the API then returns 400 "Missing roomId or userId".
+  const getToken = useCallback(
+    async (rid: string): Promise<{ token: string; userId: string }> => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      const resolvedUserId =
+        (currentUserId && String(currentUserId).trim()) ||
+        session?.user?.id ||
+        '';
+      if (!resolvedUserId) {
+        throw new Error('You must be signed in to start a call.');
       }
-      vc.setVisibleRemoteParticipantIds(vc.participants.map((p: any) => p.id));
-      return;
-    }
 
-    if (vc.callType !== 'video') {
-      vc.setVisibleRemoteParticipantIds([]);
-      return;
-    }
+      const res = await fetch('/api/videosdk/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
+        body: JSON.stringify({ roomId: rid, userId: resolvedUserId }),
+      });
 
-    if (vc.remoteScreenShareStream) {
-      vc.setVisibleRemoteParticipantIds(screenShareVisibleParticipantIds);
-      return;
-    }
-    if (vc.isScreenSharing) {
-      vc.setVisibleRemoteParticipantIds(vc.participants.map((p: any) => p.id));
-      return;
-    }
+      const payload = await res.json().catch(() => ({}));
 
-    if (groupLayout) {
-      vc.setVisibleRemoteParticipantIds(groupLayout.visibleRemoteParticipantIds);
-      return;
-    }
+      if (!res.ok) {
+        const apiErr =
+          typeof payload?.error === 'string' ? payload.error : null;
+        throw new Error(apiErr || 'Failed to get VideoSDK token');
+      }
 
-    vc.setVisibleRemoteParticipantIds(vc.participants.map((p: any) => p.id));
-  }, [
-    vc.callType,
-    vc.remoteScreenShareStream,
-    vc.isScreenSharing,
-    vc.participants,
-    vc.setVisibleRemoteParticipantIds,
-    groupLayout,
-    screenShareVisibleParticipantIds,
-  ]);
+      if (!payload?.token || typeof payload.token !== 'string') {
+        throw new Error('Invalid token response');
+      }
+      return { token: payload.token, userId: resolvedUserId };
+    },
+    [currentUserId],
+  );
+
+  // ── Ringtone helpers ────────────────────────────────────────────────────────
+  const stopRingtone = useCallback(() => {
+    if (ringtoneRef.current) {
+      ringtoneRef.current.stop();
+      ringtoneRef.current = null;
+    }
+    stopAllRingtones();
+  }, []);
+
+  // ── Outgoing call: fetch token + optional room immediately on open ──────────
+  useEffect(() => {
+    if (!isOpen || isIncoming || hasInitRef.current) return;
+    hasInitRef.current = true;
+
+    const init = async () => {
+      try {
+        setPrePhase('connecting');
+        let rid = roomIdHint;
+        if (!rid) {
+          const res = await fetch('/api/videosdk/room', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (!res.ok) throw new Error('Failed to create call room');
+          const data = await res.json();
+          rid = data.roomId as string | undefined;
+          if (!rid) throw new Error('No room ID returned');
+        }
+        const { token: tok, userId: joinUid } = await getToken(rid);
+        if (!isMountedRef.current) return;
+        setSdkParticipantUserId(joinUid);
+        setMeetingId(rid);
+        setToken(tok);
+      } catch (err: any) {
+        if (!isMountedRef.current) return;
+        // Allow retry when `currentUserId` hydrates after first paint or user refreshes.
+        hasInitRef.current = false;
+        setPrePhase('error');
+        setErrorMsg(err.message || 'Failed to connect');
+      }
+    };
+
+    init();
+  }, [isOpen, isIncoming, roomIdHint, getToken, currentUserId]);
+
+  // ── Incoming ring: PATCH uses accept | declined | end | missed (no legacy reject)
+  const signalIncomingTerminal = useCallback(
+    async (event: 'declined' | 'missed') => {
+      stopRingtone();
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+      const activeCallId = callIdHint || '';
+      if (threadId && activeCallId) {
+        await patchCallSessionWithRetry(threadId, { call_id: activeCallId, event });
+      }
+      onReject?.();
+      setTimeout(() => onClose(), 500);
+    },
+    [stopRingtone, callIdHint, threadId, onReject, onClose],
+  );
+
+  const handleReject = useCallback(() => {
+    void signalIncomingTerminal('declined');
+  }, [signalIncomingTerminal]);
+
+  const handleIncomingNoAnswer = useCallback(() => {
+    void signalIncomingTerminal('missed');
+  }, [signalIncomingTerminal]);
+
+  // ── Incoming call: ring immediately; token is fetched only on Accept ────────
+  // `token` must be in deps: otherwise when callbacks re-create (auth/hydration),
+  // this effect re-runs and starts the ringtone again after Accept.
+  useEffect(() => {
+    if (!isOpen || !isIncoming || token) return;
+    setPrePhase('ringing');
+    if (roomIdHint) setMeetingId(roomIdHint);
+
+    playRingtone().then((r) => {
+      if (isMountedRef.current) ringtoneRef.current = r;
+    });
+
+    callTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) handleIncomingNoAnswer();
+    }, 45_000);
+
+    return () => {
+      stopRingtone();
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+    };
+  }, [isOpen, isIncoming, token, roomIdHint, stopRingtone, handleIncomingNoAnswer]);
+
+  // ── Accept handler (incoming ring phase) — fetches token then shows meeting ─
+  const handleAccept = useCallback(async () => {
+    if (isAcceptingCall || !meetingId) return;
+    setIsAcceptingCall(true);
+    stopRingtone();
+    if (callTimeoutRef.current) {
+      clearTimeout(callTimeoutRef.current);
+      callTimeoutRef.current = null;
+    }
+    // Immediately tell the parent window to stop the incoming ringtone.
+    // We do this here (not inside onMeetingJoined) so the ringtone stops the
+    // moment the receiver taps Accept, even before VideoSDK finishes joining.
+    if (typeof window !== 'undefined' && threadId) {
+      const cid = (callIdHint || '').trim();
+      const payload = {
+        type: 'CALL_STATUS',
+        status: 'active',
+        threadId,
+        ...(cid ? { callId: cid } : {}),
+      };
+      try { window.postMessage(payload, window.location.origin); } catch { /* ignore */ }
+      try { if (window.opener && !window.opener.closed) window.opener.postMessage(payload, window.location.origin); } catch { /* ignore */ }
+      try {
+        if (window.parent !== window && !window.parent.closed) {
+          window.parent.postMessage(payload, window.location.origin);
+        }
+      } catch { /* ignore */ }
+    }
+    try {
+      const { token: tok, userId: joinUid } = await getToken(meetingId);
+      if (!isMountedRef.current) return;
+      setSdkParticipantUserId(joinUid);
+      setToken(tok);
+    } catch (err: any) {
+      if (!isMountedRef.current) return;
+      setIsAcceptingCall(false);
+      setPrePhase('error');
+      setErrorMsg(err.message || 'Failed to connect');
+    }
+  }, [isAcceptingCall, meetingId, threadId, callIdHint, getToken, stopRingtone]);
+
+  // ── Early return: modal is closed ──────────────────────────────────────────
+  if (!isOpen) return null;
+
+  // ── Pre-call: incoming — ringing screen ────────────────────────────────────
+  if (isIncoming && !token) {
+    return (
+      <div
+        className="fixed inset-0 z-[9999] animate-fadeIn"
+        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+      >
+        <CallStatusOverlay
+          callStatus="ringing"
+          callType={callType}
+          callDuration={0}
+          formatDuration={() => '00:00'}
+          isIncoming
+          decodedCallerName={decodedCallerName}
+          decodedRecipientName={decodedRecipientName}
+          decodedCallerAvatarUrl={decodedCallerAvatarUrl}
+          decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
+          isScreenSharing={false}
+          remoteScreenShareStream={null}
+        />
+        <IncomingCallControls
+          isAcceptingCall={isAcceptingCall}
+          onAccept={handleAccept}
+          onReject={handleReject}
+        />
+      </div>
+    );
+  }
+
+  // ── Pre-call: outgoing — connecting / error screen ─────────────────────────
+  if (!token || !meetingId) {
+    return (
+      <div
+        className="fixed inset-0 z-[9999]"
+        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+      >
+        {prePhase === 'error' ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-800 p-8 text-center">
+            <div className="text-lg font-semibold">Connection Failed</div>
+            <div className="text-sm text-slate-600">{errorMsg}</div>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-red-500 text-white rounded-full text-sm font-medium hover:bg-red-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <CallStatusOverlay
+            callStatus="connecting"
+            callType={callType}
+            callDuration={0}
+            formatDuration={() => '00:00'}
+            isIncoming={false}
+            decodedCallerName={decodedCallerName}
+            decodedRecipientName={decodedRecipientName}
+            decodedCallerAvatarUrl={decodedCallerAvatarUrl}
+            decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
+            isScreenSharing={false}
+            remoteScreenShareStream={null}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ── In-call: VideoSDK MeetingProvider wraps the call UI ────────────────────
+  // Resolve the local participant's display name for the SDK (prefers URL param,
+  // falls back to 'User' so the SDK always gets a non-empty string).
+  const localDisplayName =
+    decodedCallerName && decodedCallerName !== 'Unknown'
+      ? decodedCallerName
+      : 'User';
 
   return (
     <div className="fixed inset-0 z-[9999] animate-fadeIn">
-      <div className="w-full h-full overflow-hidden">
-        {/* Video/Audio Content - Fullscreen */}
-        <div
-          className="relative w-full h-screen overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
-        >
-          {/* Remote Video - 1-on-1 call (single full-screen, HD) */}
-          {vc.remoteStreams.length > 0 && vc.callType === 'video' && vc.participants.length <= 1 && (
-            <div className="w-full h-full">
-              <video
-                ref={vc.remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-                style={{ willChange: 'transform', backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
-              />
-            </div>
-          )}
-
-          {/* Teams-style Video Gallery - Group call (2+ remote participants + local) */}
-          {groupLayout && (
-              <div
-                className="relative w-full h-full flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
-                style={{
-                  gap: '4px',
-                  background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
-                }}
-              >
-                {groupLayout.tiles.map((tile) => (
-                  <div
-                    key={tile.id}
-                    className="relative overflow-hidden rounded-md sm:rounded-lg"
-                    style={{
-                      width: `calc(${100 / groupLayout.cols}% - 6px)`,
-                      height: `calc(${100 / groupLayout.rows}% - 6px)`,
-                      background: 'rgba(15, 23, 42, 0.58)',
-                      minHeight: 0,
-                    }}
-                  >
-                    {tile.hasVideo && tile.stream ? (
-                      <ParticipantVideo
-                        stream={tile.stream}
-                        muted={tile.isLocal}
-                        mirrored={tile.isLocal}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(15, 23, 42, 0.58)' }}>
-                        <div
-                          className={`rounded-full flex items-center justify-center ${
-                            groupLayout.total <= 4
-                              ? 'w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24'
-                              : groupLayout.total <= 9
-                                ? 'w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20'
-                                : 'w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14'
-                          }`}
-                          style={{
-                            background: tile.isLocal
-                              ? 'linear-gradient(135deg, #5b5fc7, #4f46e5)'
-                              : 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-                          }}
-                        >
-                          <span
-                            className={`font-semibold text-white ${
-                              groupLayout.total <= 4
-                                ? 'text-xl sm:text-2xl md:text-3xl'
-                                : groupLayout.total <= 9
-                                  ? 'text-lg sm:text-xl md:text-2xl'
-                                  : 'text-base sm:text-lg'
-                            }`}
-                          >
-                            {tile.displayName[0].toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2 text-[10px] sm:text-xs text-white/90 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 sm:px-2 sm:py-1 rounded">
-                      {tile.isLocal ? 'You' : tile.displayName}
-                    </div>
-                  </div>
-                ))}
-
-                {groupLayout.pageCount > 1 && (
-                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 flex items-center gap-2 bg-black/60 text-white rounded-full px-2.5 py-1.5 backdrop-blur-sm border border-white/20">
-                    <button
-                      onClick={() => setGroupPage((prev) => Math.max(0, prev - 1))}
-                      disabled={groupLayout.pageIndex === 0}
-                      className="text-xs px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Previous participants page"
-                    >
-                      Prev
-                    </button>
-                    <span className="text-[10px] sm:text-xs tabular-nums">
-                      {groupLayout.pageIndex + 1}/{groupLayout.pageCount}
-                    </span>
-                    <button
-                      onClick={() => setGroupPage((prev) => Math.min(groupLayout.pageCount - 1, prev + 1))}
-                      disabled={groupLayout.pageIndex >= groupLayout.pageCount - 1}
-                      className="text-xs px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                      aria-label="Next participants page"
-                    >
-                      Next
-                    </button>
-                  </div>
-                )}
-              </div>
-          )}
-
-          {/* Local Video PiP - only for 1-on-1 calls; hidden during group calls (local is in grid) and screen share */}
-          {vc.localStream && vc.callType === 'video' && vc.localStream.getVideoTracks().length > 0 && !vc.remoteScreenShareStream && vc.participants.length <= 1 && (
-            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 w-20 h-28 sm:w-24 sm:h-32 md:w-32 md:h-44 lg:w-36 lg:h-48 bg-gray-800 rounded-lg md:rounded-xl overflow-hidden border border-white sm:border-2 shadow-xl sm:shadow-2xl ring-1 ring-white/20 sm:ring-2 hover:scale-105 transition-transform duration-200">
-              <video
-                ref={vc.localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover"
-                style={{ willChange: 'transform', backfaceVisibility: 'hidden', transform: 'translateZ(0)' }}
-              />
-            </div>
-          )}
-
-          {/* Participants Count - hidden during screen share (shown in banner instead) */}
-          {vc.callStatus === 'connected' && !vc.remoteScreenShareStream && !vc.isScreenSharing && (() => {
-            const displayCount = vc.getParticipantCount();
-            if (displayCount <= 2) return null;
-            return (
-              <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-black/60 backdrop-blur-md text-white px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-4 md:py-2 rounded-full text-[10px] sm:text-xs md:text-sm font-medium shadow-lg border border-white/20">
-                <span className="flex items-center gap-1 sm:gap-2">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></span>
-                  <span className="hidden sm:inline">{displayCount} participant{displayCount > 1 ? 's' : ''}</span>
-                  <span className="sm:hidden">{displayCount}</span>
-                </span>
-              </div>
-            );
-          })()}
-
-          <audio ref={vc.remoteAudioRef} autoPlay playsInline className="hidden" />
-
-          {/* Call Status Overlay */}
-          <CallStatusOverlay
-            callStatus={vc.callStatus}
-            callType={vc.callType}
-            callDuration={vc.callDuration}
-            formatDuration={vc.formatDuration}
-            isIncoming={vc.isIncoming}
-            decodedCallerName={vc.decodedCallerName}
-            decodedRecipientName={vc.decodedRecipientName}
-            decodedCallerAvatarUrl={vc.decodedCallerAvatarUrl}
-            decodedRecipientAvatarUrl={vc.decodedRecipientAvatarUrl}
-            isScreenSharing={vc.isScreenSharing}
-            remoteScreenShareStream={vc.remoteScreenShareStream}
-            showConnectedGroupGallery={!!groupLayout && vc.callStatus === 'connected'}
-          />
-
-          {/* Accept/Reject Buttons for incoming calls */}
-          {vc.callStatus === 'ringing' && vc.isIncoming && (
-            <IncomingCallControls
-              isAcceptingCall={vc.isAcceptingCall}
-              onAccept={vc.handleAcceptCall}
-              onReject={vc.handleRejectCall}
-            />
-          )}
-
-          {/* Screen Share Overlay (remote + local banner) */}
-          <ScreenShareOverlay
-            remoteScreenShareStream={vc.remoteScreenShareStream}
-            screenShareParticipantName={vc.screenShareParticipantName}
-            isScreenSharing={vc.isScreenSharing}
-            callDuration={vc.callDuration}
-            formatDuration={vc.formatDuration}
-            getParticipantCount={vc.getParticipantCount}
-            localStream={vc.localStream}
-            callType={vc.callType}
-            participants={vc.participants}
-            participantVideoMap={vc.participantVideoMap}
-            userInitial={userInitial}
-            onStopSharing={vc.toggleScreenShare}
-            onVisibleParticipantIdsChange={setScreenShareVisibleParticipantIds}
-          />
-
-          {/* End Call Button Overlay - Inside video section for outgoing calls */}
-          {vc.callStatus === 'ringing' && !vc.isIncoming && (
-            <div className="absolute bottom-0 left-0 right-0 flex justify-center items-center pb-4 sm:pb-6 md:pb-8 mb-20 sm:mb-0 px-4 z-30 pointer-events-auto">
-              <div className="flex flex-col items-center gap-3">
-                <button
-                  onClick={vc.handleEndCall}
-                  className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-3 sm:p-4 md:p-5 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
-                  title="Drop Call"
-                  aria-label="Drop call"
-                >
-                  <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Controls Overlay */}
-          {vc.callStatus === 'connected' && (
-            <CallControls
-              isMuted={vc.isMuted}
-              isVideoEnabled={vc.isVideoEnabled}
-              isScreenSharing={vc.isScreenSharing}
-              remoteScreenShareStream={vc.remoteScreenShareStream}
-              screenShareParticipantName={vc.screenShareParticipantName}
-              speakerLevel={vc.speakerLevel}
-              callType={vc.callType}
-              showMessageInput={vc.showMessageInput}
-              showAddPeople={vc.showAddPeople}
-              onToggleMute={vc.toggleMute}
-              onToggleVideo={vc.toggleVideo}
-              onToggleScreenShare={vc.toggleScreenShare}
-              onToggleSpeaker={vc.toggleSpeaker}
-              onToggleMessageInput={() => vc.setShowMessageInput(!vc.showMessageInput)}
-              onToggleAddPeople={() => vc.setShowAddPeople(!vc.showAddPeople)}
-              onEndCall={vc.handleEndCall}
-            />
-          )}
-        </div>
-
-        {/* Add People Panel */}
-        {vc.showAddPeople && (
-          <AddPeoplePanel
-            addPeopleSearch={vc.addPeopleSearch}
-            addPeopleResults={vc.addPeopleResults}
-            participants={vc.participants}
-            invitingUserId={vc.invitingUserId}
-            onSearchChange={(value) => vc.setAddPeopleSearch(value)}
-            onClose={() => {
-              vc.setShowAddPeople(false);
-              vc.setAddPeopleSearch('');
-            }}
-            onInvite={vc.handleInviteToCall}
-          />
-        )}
-
-        {/* Controls */}
-        <div className="p-2 sm:p-3 md:p-4 lg:p-6">
-          {vc.callStatus === 'connected' && (
-            <div className="space-y-2 sm:space-y-3 md:space-y-4">
-              {vc.showMessageInput && (
-                <MessageInput
-                  messageText={vc.messageText}
-                  onMessageChange={(value) => vc.setMessageText(value)}
-                  onSend={vc.handleSendMessage}
-                  onClose={() => {
-                    vc.setShowMessageInput(false);
-                    vc.setMessageText('');
-                  }}
-                />
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <MeetingProvider
+        config={{
+          meetingId,
+          micEnabled: true,
+          webcamEnabled: callType === 'video',
+          name: localDisplayName,
+          ...(sdkParticipantUserId ? { participantId: sdkParticipantUserId } : {}),
+          mode: 'SEND_AND_RECV' as const,
+          multiStream: false,
+          debugMode: false,
+          maxResolution:
+            callType === 'video' ? inferMeetingMaxResolution() : undefined,
+        }}
+        token={token}
+        joinWithoutUserInteraction
+      >
+        <MeetingContainer
+          isOpen={isOpen}
+          onClose={onClose}
+          callType={callType}
+          isIncoming={isIncoming}
+          onAccept={onAccept}
+          onCallEnd={onCallEnd}
+          threadId={threadId}
+          currentUserId={currentUserId}
+          roomIdHint={roomIdHint}
+          callIdHint={callIdHint}
+          meetingId={meetingId}
+          resolvedCallerName={localDisplayName}
+          decodedCallerName={decodedCallerName}
+          decodedRecipientName={decodedRecipientName}
+          decodedCallerAvatarUrl={decodedCallerAvatarUrl}
+          decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
+        />
+      </MeetingProvider>
     </div>
   );
 };

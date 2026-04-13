@@ -26,7 +26,7 @@ const IncomingCallControls: React.FC<IncomingCallControlsProps> = ({
           title={isAcceptingCall ? 'Connecting...' : 'Answer Call'}
           aria-label={isAcceptingCall ? 'Connecting...' : 'Answer call'}
         >
-          <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rotate-180" />
+          <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
         </button>
         <button
           onClick={onReject}
@@ -34,7 +34,7 @@ const IncomingCallControls: React.FC<IncomingCallControlsProps> = ({
           title="Decline Call"
           aria-label="Decline call"
         >
-          <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
+          <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 rotate-180" />
         </button>
       </div>
     </div>
