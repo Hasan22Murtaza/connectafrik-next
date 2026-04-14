@@ -32,6 +32,27 @@ export interface NotificationPayload {
   requireInteraction?: boolean
   silent?: boolean
   vibrate?: number[]
+  /** Auth session UUID (JWT `session_id`); merged into FCM `data` with optional label lookup. */
+  device_session_id?: string
+  /** User id that owns the row in `auth_session_device_labels` (e.g. callee who accepted/declined). */
+  device_session_actor_id?: string
+}
+
+function stringifyFcmDataValues(obj: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined || v === null) continue
+    if (typeof v === 'string') out[k] = v
+    else if (typeof v === 'number' || typeof v === 'boolean') out[k] = String(v)
+    else {
+      try {
+        out[k] = JSON.stringify(v)
+      } catch {
+        out[k] = String(v)
+      }
+    }
+  }
+  return out
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -134,6 +155,40 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const rawPushData: Record<string, unknown> =
+      body.data && typeof body.data === 'object' && !Array.isArray(body.data)
+        ? { ...(body.data as Record<string, unknown>) }
+        : {}
+
+    const deviceSessionId =
+      typeof body.device_session_id === 'string' && body.device_session_id.trim()
+        ? body.device_session_id.trim()
+        : ''
+    const deviceSessionActorId =
+      typeof body.device_session_actor_id === 'string' && body.device_session_actor_id.trim()
+        ? body.device_session_actor_id.trim()
+        : ''
+
+    if (deviceSessionId && deviceSessionActorId) {
+      rawPushData.device_session_id = deviceSessionId
+      const { data: labelRow } = await supabase
+        .from('auth_session_device_labels')
+        .select('device_label')
+        .eq('user_id', deviceSessionActorId)
+        .eq('session_id', deviceSessionId)
+        .maybeSingle()
+      const rawLabel =
+        labelRow &&
+        typeof labelRow === 'object' &&
+        'device_label' in labelRow &&
+        typeof (labelRow as { device_label: unknown }).device_label === 'string'
+          ? (labelRow as { device_label: string }).device_label.trim()
+          : ''
+      if (rawLabel) rawPushData.device_session_label = rawLabel
+    }
+
+    const fcmStringData = stringifyFcmDataValues(rawPushData)
+
     // Step 1: Create notification record in database (unless skip_db is true)
     let notificationId: string | null = null
     if (!skip_db) {
@@ -144,7 +199,7 @@ export async function POST(request: NextRequest) {
           type: canonicalType,
           title,
           message: notificationBody,
-          data: { ...(body.data || {}), type: canonicalType },
+          data: { ...rawPushData, type: canonicalType },
           is_read: false
         })
         .select('id')
@@ -237,7 +292,7 @@ export async function POST(request: NextRequest) {
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
 
       data: {
-        ...(body.data || {}),
+        ...fcmStringData,
         title: body.title,
         body: notificationBody,
         // No large image in notifications — keep them clean and compact
