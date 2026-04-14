@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
       const blocked = check_user_ids.some((id) => busy[id])
       if (blocked) {
         return NextResponse.json(
-          { error: 'This person is already in a call.' },
+          { error: 'On an other call.' },
           { status: 409, headers: corsHeaders },
         )
       }
