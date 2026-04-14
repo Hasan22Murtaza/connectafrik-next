@@ -559,7 +559,7 @@ const GroupDetailPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="px-4 py-6">
+      <div className="py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
        
           {/* Center Content */}
