@@ -94,17 +94,48 @@ export const initialize = async (): Promise<boolean> => {
     await navigator.serviceWorker.ready
 
     messaging = getMessaging(firebaseApp)
-    
-    // Set up message listener for foreground messages.
-    // Do NOT call registration.showNotification() here: the service worker already shows
-    // the notification for the same push, so showing again would cause duplicate notifications.
-    // Use in-app UI (toast, banner) here if you want to surface the message when the app is open.
-    onMessage(messaging, (payload) => {
-      if (payload.data && typeof window !== 'undefined') {
-        // Optional: dispatch a custom event so the app can show in-app UI (e.g. toast)
-        window.dispatchEvent(
-          new CustomEvent('fcm-foreground-message', { detail: payload })
-        )
+
+    // Foreground: FCM delivers here only (not to the SW push handler). Background: SW shows notifications.
+    onMessage(messaging, async (payload) => {
+      if (!payload.data || typeof window === 'undefined') return
+
+      window.dispatchEvent(
+        new CustomEvent('fcm-foreground-message', { detail: payload })
+      )
+
+      const d = payload.data
+      const t = String(d.type || d.status || d.call_status || '')
+        .trim()
+        .toLowerCase()
+      const lastSignal = String(d.last_signal || '')
+        .trim()
+        .toLowerCase()
+      const isActive = t === 'active' || lastSignal === 'active'
+      if (
+        isActive &&
+        registration &&
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'granted'
+      ) {
+        try {
+                   const tid = String(d.thread_id || d.threadId || d.chat_thread_id || '').trim()
+          const activeTag =
+            d.tag && String(d.tag).startsWith('call-status-')
+              ? d.tag
+              : tid
+                ? `call-status-active-${tid}`
+                : 'connectafrik-notification'
+          await registration.showNotification(d.title || 'ConnectAfrik', {
+            body: d.body || '',
+            icon: d.icon || '/assets/images/logo.png',
+            badge: d.badge || '/assets/images/logo.png',
+            tag: activeTag,
+            data: { ...d },
+            renotify: true,
+          })
+        } catch (e) {
+          console.error('FCM foreground: showNotification (call accepted) failed', e)
+        }
       }
     })
 

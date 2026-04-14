@@ -198,14 +198,26 @@ const GlobalCallNotification: React.FC = () => {
     const applyCallStatus = (payload: any) => {
       if (!payload || payload.type !== 'CALL_STATUS') return
 
-      if (payload.status === 'active' && payload.threadId) {
-        const activeThreadId = String(payload.threadId)
+      if (payload.status === 'active') {
         const activeCallId =
           typeof payload.callId === 'string' && payload.callId.trim()
             ? payload.callId.trim()
             : ''
+        let activeThreadId = payload.threadId ? String(payload.threadId) : ''
         const uid = currentUserIdRef.current
         const reqs = callRequestsRef.current
+        if (!activeThreadId && activeCallId) {
+          for (const tid of Object.keys(reqs)) {
+            const r = reqs[tid]
+            const rid = typeof r?.callId === 'string' ? r.callId.trim() : ''
+            if (rid && rid === activeCallId) {
+              activeThreadId = tid
+              break
+            }
+          }
+        }
+        if (!activeThreadId) return
+
         const req = reqs[activeThreadId]
         const hasIncoming =
           Boolean(req?.callerId && uid && req.callerId !== uid)
@@ -247,13 +259,39 @@ const GlobalCallNotification: React.FC = () => {
       applyCallStatus(event.data)
     }
 
+    /** Foreground web tab: FCM delivers to onMessage, not the service worker push handler. */
+    const handleFcmForeground = (event: Event) => {
+      const detail = (event as CustomEvent<{ data?: Record<string, string> }>).detail
+      const data = detail?.data
+      if (!data || typeof data !== 'object') return
+      const t = String(data.type || data.status || data.call_status || '')
+        .trim()
+        .toLowerCase()
+      const last = String(data.last_signal || '')
+        .trim()
+        .toLowerCase()
+      if (t !== 'active' && last !== 'active') return
+      const threadId = String(
+        data.thread_id || data.threadId || data.chat_thread_id || '',
+      ).trim()
+      const callId = String(data.call_id || data.callId || '').trim()
+      applyCallStatus({
+        type: 'CALL_STATUS',
+        status: 'active',
+        ...(threadId ? { threadId } : {}),
+        ...(callId ? { callId } : {}),
+      })
+    }
+
     window.addEventListener('message', handleWindowMessage)
+    window.addEventListener('fcm-foreground-message', handleFcmForeground)
     if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
       navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
     }
 
     return () => {
       window.removeEventListener('message', handleWindowMessage)
+      window.removeEventListener('fcm-foreground-message', handleFcmForeground)
       if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
         navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
       }
