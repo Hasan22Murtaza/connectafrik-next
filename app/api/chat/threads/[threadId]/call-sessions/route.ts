@@ -285,6 +285,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = await request.json()
 
     const call_id = typeof body.call_id === 'string' ? body.call_id.trim() : ''
+    const device_session_id =
+      typeof body.device_session_id === 'string' && body.device_session_id.trim()
+        ? body.device_session_id.trim()
+        : ''
     const event = body.event as string | undefined
     const duration_seconds =
       typeof body.duration_seconds === 'number' && Number.isFinite(body.duration_seconds)
@@ -430,6 +434,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               : status === 'active'
                 ? 'Call accepted'
                 : 'Missed Call'
+        let deviceSessionLabel = ''
+        if (device_session_id && (status === 'active' || status === 'declined')) {
+          const { data: labelRow } = await serviceClient
+            .from('auth_session_device_labels')
+            .select('device_label')
+            .eq('user_id', user.id)
+            .eq('session_id', device_session_id)
+            .maybeSingle()
+          const rawLabel =
+            labelRow &&
+            typeof labelRow === 'object' &&
+            'device_label' in labelRow &&
+            typeof (labelRow as { device_label: unknown }).device_label === 'string'
+              ? (labelRow as { device_label: string }).device_label.trim()
+              : ''
+          if (rawLabel) deviceSessionLabel = rawLabel
+        }
+
         const message =
           status === 'declined'
             ? `${actorName} declined your ${callType} call`
@@ -451,6 +473,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           caller_name: actorName,
           sent_at: new Date().toISOString(),
           url: threadId ? `/chat?thread=${threadId}` : '/feed',
+          ...(device_session_id && (status === 'active' || status === 'declined')
+            ? {
+                device_session_id,
+                ...(deviceSessionLabel ? { device_session_label: deviceSessionLabel } : {}),
+              }
+            : {}),
         })
 
         await Promise.allSettled(

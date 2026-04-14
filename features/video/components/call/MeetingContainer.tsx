@@ -25,6 +25,7 @@ import { useMeeting } from '@videosdk.live/react-sdk';
 import { PhoneOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import {
   callSessionRowToPollTerminalMessage,
@@ -105,7 +106,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   decodedCallerAvatarUrl,
   decodedRecipientAvatarUrl,
 }) => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const callSessionDeviceFields = useMemo(() => {
+    const id = getSessionIdFromAccessToken(session?.access_token ?? null);
+    return id ? { device_session_id: id } : {};
+  }, [session?.access_token]);
 
   // Keep latest isIncoming on a ref — VideoSDK may invoke useMeeting callbacks with
   // stale closures; reading this ref avoids the caller being treated like a callee
@@ -292,6 +297,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           void patchCallSessionWithRetry(threadId, {
             call_id: joinedCallId,
             event: 'accept',
+            ...callSessionDeviceFields,
           });
         }
       } else {
@@ -348,6 +354,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 await patchCallSessionWithRetry(threadId, {
                   call_id: activeCallId,
                   event: 'declined',
+                  ...callSessionDeviceFields,
                 });
               }
             }
@@ -685,6 +692,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           await patchCallSessionWithRetry(threadId, {
             call_id: activeCallId,
             event: 'declined',
+            ...callSessionDeviceFields,
           });
         }
       } catch { /* ignore signaling errors */ }
@@ -696,7 +704,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     onCallEnd?.();
     setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
   }, [callIdHint, roomIdHint, meetingId, threadId, currentUserId, callType, isIncoming,
-    leave, setCallStatusSafe, onCallEnd, onClose, user]);
+    leave, setCallStatusSafe, onCallEnd, onClose, user, callSessionDeviceFields]);
 
   const handleToggleMic = useCallback(() => toggleMic(), [toggleMic]);
 

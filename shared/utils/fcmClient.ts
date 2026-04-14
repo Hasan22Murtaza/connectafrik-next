@@ -110,31 +110,42 @@ export const initialize = async (): Promise<boolean> => {
       const lastSignal = String(d.last_signal || '')
         .trim()
         .toLowerCase()
-      const isActive = t === 'active' || lastSignal === 'active'
+      /** Foreground never hits the SW push handler; mirror call-status toasts (accept, decline, end, missed). */
+      const foregroundCallStatuses = new Set(['active', 'declined', 'ended', 'missed'])
+      const isCallStatusForeground =
+        foregroundCallStatuses.has(t) || foregroundCallStatuses.has(lastSignal)
       if (
-        isActive &&
+        isCallStatusForeground &&
         registration &&
         typeof Notification !== 'undefined' &&
         Notification.permission === 'granted'
       ) {
         try {
+          const statusKey =
+            foregroundCallStatuses.has(t) ? t : foregroundCallStatuses.has(lastSignal) ? lastSignal : t
           const tid = String(d.thread_id || d.threadId || d.chat_thread_id || '').trim()
-          const activeTag =
+          const statusTag =
             d.tag && String(d.tag).startsWith('call-status-')
               ? d.tag
-              : tid
-                ? `call-status-active-${tid}`
+              : tid && statusKey
+                ? `call-status-${statusKey}-${tid}`
                 : 'connectafrik-notification'
-          // `renotify` is valid in browsers but omitted from some TS lib.dom versions — avoid build failures on CI/Droplet.
+          const silent =
+            t === 'missed' ||
+            lastSignal === 'missed' ||
+            d.silent === 'true' ||
+            d.silent === true
+          // `renotify` omitted: not in all TS lib.dom NotificationOptions (breaks `next build` on some hosts).
           await registration.showNotification(d.title || 'ConnectAfrik', {
             body: d.body || '',
             icon: d.icon || '/assets/images/logo.png',
             badge: d.badge || '/assets/images/logo.png',
-            tag: activeTag,
+            tag: statusTag,
             data: { ...d },
+            ...(silent ? { silent: true } : {}),
           })
         } catch (e) {
-          console.error('FCM foreground: showNotification (call accepted) failed', e)
+          console.error('FCM foreground: showNotification (call status) failed', e)
         }
       }
     })

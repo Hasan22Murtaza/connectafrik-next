@@ -247,13 +247,58 @@ const GlobalCallNotification: React.FC = () => {
       applyCallStatus(event.data)
     }
 
+    /** Foreground FCM: same payloads as SW; dismiss outgoing/incoming UI when call ends or is accepted. */
+    const handleFcmForeground = (event: Event) => {
+      const detail = (event as CustomEvent<{ data?: Record<string, string> }>).detail
+      const data = detail?.data
+      if (!data || typeof data !== 'object') return
+      const t = String(data.type || data.status || data.call_status || '')
+        .trim()
+        .toLowerCase()
+      const last = String(data.last_signal || '')
+        .trim()
+        .toLowerCase()
+      const threadId = String(
+        data.thread_id || data.threadId || data.chat_thread_id || '',
+      ).trim()
+      const callIdRaw = data.call_id || data.callId || ''
+      const callId = typeof callIdRaw === 'string' ? callIdRaw.trim() : ''
+
+      if (t === 'active' || last === 'active') {
+        applyCallStatus({
+          type: 'CALL_STATUS',
+          status: 'active',
+          ...(threadId ? { threadId } : {}),
+          ...(callId ? { callId } : {}),
+        })
+        return
+      }
+      if (
+        t === 'declined' ||
+        last === 'declined' ||
+        t === 'ended' ||
+        last === 'ended'
+      ) {
+        if (threadId) {
+          applyCallStatus({
+            type: 'CALL_STATUS',
+            status: 'ended',
+            threadId,
+            ...(callId ? { callId } : {}),
+          })
+        }
+      }
+    }
+
     window.addEventListener('message', handleWindowMessage)
+    window.addEventListener('fcm-foreground-message', handleFcmForeground)
     if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
       navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
     }
 
     return () => {
       window.removeEventListener('message', handleWindowMessage)
+      window.removeEventListener('fcm-foreground-message', handleFcmForeground)
       if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
         navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
       }

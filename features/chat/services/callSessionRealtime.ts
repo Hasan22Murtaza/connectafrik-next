@@ -212,6 +212,8 @@ export async function patchCallSessionWithRetry(
     call_id: string
     event: 'accept' | 'declined' | 'end' | 'missed'
     duration_seconds?: number
+    /** Auth session row id (JWT `session_id`); included in accept/decline push payloads. */
+    device_session_id?: string
   },
   options?: { maxAttempts?: number },
 ): Promise<boolean> {

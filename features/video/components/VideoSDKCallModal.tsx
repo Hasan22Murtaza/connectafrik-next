@@ -23,6 +23,8 @@ import { MeetingProvider } from '@videosdk.live/react-sdk';
 import { supabase } from '@/lib/supabase';
 import { stopAll as stopAllRingtones, playRingtone } from '@/features/video/services/ringtoneService';
 import { patchCallSessionWithRetry } from '@/features/chat/services/callSessionRealtime';
+import { useAuth } from '@/contexts/AuthContext';
+import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
 import { inferMeetingMaxResolution } from '@/features/video/services/adaptiveCallQuality';
 import type { VideoSDKCallModalProps } from './call/types';
 import CallStatusOverlay from './call/CallStatusOverlay';
@@ -45,6 +47,7 @@ function safeDecode(str: string | undefined): string {
 // Component
 // ---------------------------------------------------------------------------
 const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
+  const { session } = useAuth();
   const {
     isOpen,
     onClose,
@@ -203,12 +206,20 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
       }
       const activeCallId = callIdHint || '';
       if (threadId && activeCallId) {
-        await patchCallSessionWithRetry(threadId, { call_id: activeCallId, event });
+        const sid =
+          event === 'declined'
+            ? getSessionIdFromAccessToken(session?.access_token ?? null)
+            : null;
+        await patchCallSessionWithRetry(threadId, {
+          call_id: activeCallId,
+          event,
+          ...(sid ? { device_session_id: sid } : {}),
+        });
       }
       onReject?.();
       setTimeout(() => onClose(), 500);
     },
-    [stopRingtone, callIdHint, threadId, onReject, onClose],
+    [stopRingtone, callIdHint, threadId, onReject, onClose, session?.access_token],
   );
 
   const handleReject = useCallback(() => {

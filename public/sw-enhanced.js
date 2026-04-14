@@ -23,7 +23,14 @@ self.addEventListener('push', (event) => {
 
   const title = notificationData.title || 'ConnectAfrik';
   const body = notificationData.body || '';
-  const type = notificationData.type || '';
+  const typeNorm = String(
+    notificationData.type || notificationData.status || notificationData.call_status || ''
+  )
+    .trim()
+    .toLowerCase();
+  const lastSignal = String(notificationData.last_signal || '')
+    .trim()
+    .toLowerCase();
   const tag = notificationData.tag || 'connectafrik-notification';
   const image = notificationData.image || '';
   const icon = notificationData.icon || '/assets/images/logo.png';
@@ -50,30 +57,34 @@ self.addEventListener('push', (event) => {
   const isRingingType = (t) => t === 'ringing';
   const isMissedType = (t) => t === 'missed';
   const isEndedType = (t) => t === 'ended';
-  const isActiveType = (t) => t === 'active';
+  const isActiveType = (t) => t === 'active' || lastSignal === 'active';
+  const isDeclinedType = (t) => t === 'declined' || lastSignal === 'declined';
 
   // Prevent delayed call-ended pushes from showing long after the call is over.
-  if (isEndedType(type) && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
+  if (isEndedType(typeNorm) && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
     console.log('[SW] Skipping stale call-ended notification');
     return;
   }
 
   // Cross-device call accepted signal: close ringing UI/notifications, don't show a new toast.
-  if (isActiveType(type)) {
-    const threadId = notificationData.thread_id || '';
-    const callId = notificationData.call_id || notificationData.callId || '';
+  if (isActiveType(typeNorm)) {
+    const threadId = String(notificationData.thread_id || notificationData.threadId || notificationData.chat_thread_id || '').trim();
+    const callId = String(notificationData.call_id || notificationData.callId || '').trim();
     event.waitUntil(
       (async () => {
         try {
           const ringingTag = threadId ? `incoming-call-${threadId}` : null;
           const notifications = await self.registration.getNotifications();
           notifications.forEach((n) => {
-            const sameThreadRinging =
-              n?.data?.type === 'ringing' &&
-              threadId &&
-              (n?.data?.thread_id || '') === threadId;
+            const d = n.data || {};
+            const nType = String(d.type || '').trim().toLowerCase();
+            if (nType !== 'ringing') return;
+            const nThread = String(d.thread_id || d.threadId || d.chat_thread_id || '').trim();
+            const nCall = String(d.call_id || d.callId || '').trim();
+            const sameThread = threadId && nThread === threadId;
+            const sameCall = callId && nCall === callId;
             const sameTag = ringingTag && n.tag === ringingTag;
-            if (sameThreadRinging || sameTag) {
+            if (sameThread || sameCall || sameTag) {
               n.close();
             }
           });
@@ -87,12 +98,77 @@ self.addEventListener('push', (event) => {
             client.postMessage({
               type: 'CALL_STATUS',
               status: 'active',
-              threadId,
+              ...(threadId ? { threadId } : {}),
               ...(callId ? { callId } : {}),
             });
           });
         } catch (error) {
           console.error('[SW] Failed to broadcast active call status:', error);
+        }
+      })()
+    );
+    return;
+  }
+
+  // Callee declined: notify caller, dismiss ringing (edge cases), sync open tabs.
+  if (isDeclinedType(typeNorm)) {
+    const threadId = String(notificationData.thread_id || notificationData.threadId || notificationData.chat_thread_id || '').trim();
+    const callId = String(notificationData.call_id || notificationData.callId || '').trim();
+    event.waitUntil(
+      (async () => {
+        try {
+          const ringingTag = threadId ? `incoming-call-${threadId}` : null;
+          const notifications = await self.registration.getNotifications();
+          notifications.forEach((n) => {
+            const d = n.data || {};
+            const nType = String(d.type || '').trim().toLowerCase();
+            if (nType !== 'ringing') return;
+            const nThread = String(d.thread_id || d.threadId || d.chat_thread_id || '').trim();
+            const nCall = String(d.call_id || d.callId || '').trim();
+            const sameThread = threadId && nThread === threadId;
+            const sameCall = callId && nCall === callId;
+            const sameTag = ringingTag && n.tag === ringingTag;
+            if (sameThread || sameCall || sameTag) {
+              n.close();
+            }
+          });
+        } catch (error) {
+          console.error('[SW] Failed to close ringing notifications on declined:', error);
+        }
+
+        try {
+          const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+          clientList.forEach((client) => {
+            client.postMessage({
+              type: 'CALL_STATUS',
+              status: 'ended',
+              ...(threadId ? { threadId } : {}),
+              ...(callId ? { callId } : {}),
+            });
+          });
+        } catch (error) {
+          console.error('[SW] Failed to broadcast declined call status:', error);
+        }
+
+        try {
+          const declineTag =
+            tag && String(tag).startsWith('call-status-')
+              ? tag
+              : threadId
+                ? `call-status-declined-${threadId}`
+                : 'connectafrik-notification';
+          await self.registration.showNotification(title, {
+            body,
+            icon,
+            badge,
+            tag: declineTag,
+            data: notificationData,
+            actions: [],
+            requireInteraction: false,
+            silent,
+          });
+        } catch (error) {
+          console.error('[SW] Failed to show declined notification:', error);
         }
       })()
     );
@@ -124,13 +200,13 @@ self.addEventListener('push', (event) => {
   }
 
   // Customize notification based on type (call_sessions.status + legacy payloads)
-  if (isRingingType(type)) {
+  if (isRingingType(typeNorm)) {
     // Incoming call: show Accept and Decline actions (no large image)
     actions = [
       { action: 'answer', title: 'Accept' },
       { action: 'decline', title: 'Decline' }
     ];
-  } else if (isMissedType(type)) {
+  } else if (isMissedType(typeNorm)) {
     // Missed call: NO action buttons — just a clean static notification
     actions = [];
   }
@@ -142,9 +218,9 @@ self.addEventListener('push', (event) => {
     tag, // Same tag replaces existing notification
     data: notificationData, // Pass all data for click handling
     actions,
-    requireInteraction: isRingingType(type) ? true : (requireInteraction && !isMissedType(type)),
-    silent: isMissedType(type) ? true : silent,
-    vibrate: isMissedType(type) ? undefined : vibrate,
+    requireInteraction: isRingingType(typeNorm) ? true : (requireInteraction && !isMissedType(typeNorm)),
+    silent: isMissedType(typeNorm) ? true : silent,
+    vibrate: isMissedType(typeNorm) ? undefined : vibrate,
     renotify: true, // Vibrate/sound even when replacing same-tag notification
   };
 
@@ -160,7 +236,7 @@ self.addEventListener('push', (event) => {
       await self.registration.showNotification(title, options);
 
       // Auto-dismiss short-lived call-ended notifications to reduce stale stacks.
-      if (isEndedType(type) && autoCloseMs && autoCloseMs > 0) {
+      if (isEndedType(typeNorm) && autoCloseMs && autoCloseMs > 0) {
         setTimeout(async () => {
           try {
             const notifications = await self.registration.getNotifications({ tag });
@@ -204,7 +280,10 @@ self.addEventListener('notificationclick', (event) => {
   } else if (action === 'decline' && data.type === 'ringing') {
     // Just close the notification — the call timeout will handle cleanup
     // Nothing else needed
-  } else if (data.type === 'missed') {
+  } else if (
+    data.type === 'missed' ||
+    String(data.type || '').trim().toLowerCase() === 'declined'
+  ) {
     // Open chat thread for missed call
     const threadId = data.thread_id;
     const url = threadId ? `/chat?thread=${threadId}` : '/feed';
