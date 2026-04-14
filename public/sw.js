@@ -23,11 +23,7 @@ self.addEventListener('push', (event) => {
 
   const title = notificationData.title || 'ConnectAfrik';
   const body = notificationData.body || '';
-  const type = String(
-    notificationData.type || notificationData.status || notificationData.call_status || ''
-  )
-    .trim()
-    .toLowerCase();
+  const type = notificationData.type || '';
   const tag = notificationData.tag || 'connectafrik-notification';
   const image = notificationData.image || '';
   const icon = notificationData.icon || '/assets/images/logo.png';
@@ -54,39 +50,30 @@ self.addEventListener('push', (event) => {
   const isRingingType = (t) => t === 'ringing';
   const isMissedType = (t) => t === 'missed';
   const isEndedType = (t) => t === 'ended';
-  const lastSignal = String(notificationData.last_signal || '')
-    .trim()
-    .toLowerCase();
-  const isActiveType = (t) => t === 'active' || lastSignal === 'active';
-  const extractThreadId = (d) =>
-    String(d.thread_id || d.threadId || d.chat_thread_id || '').trim();
-  const extractCallId = (d) => String(d.call_id || d.callId || '').trim();
-  console.log('[SW] Notification data:', notificationData);
+  const isActiveType = (t) => t === 'active';
+
   // Prevent delayed call-ended pushes from showing long after the call is over.
   if (isEndedType(type) && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
     console.log('[SW] Skipping stale call-ended notification');
     return;
   }
 
-  // Cross-device call accepted signal (e.g. answered on mobile): close ringing notifications, no new toast.
+  // Cross-device call accepted signal: close ringing UI/notifications, don't show a new toast.
   if (isActiveType(type)) {
-    const threadId = extractThreadId(notificationData);
-    const callId = extractCallId(notificationData);
+    const threadId = notificationData.thread_id || '';
+    const callId = notificationData.call_id || notificationData.callId || '';
     event.waitUntil(
       (async () => {
         try {
           const ringingTag = threadId ? `incoming-call-${threadId}` : null;
           const notifications = await self.registration.getNotifications();
           notifications.forEach((n) => {
-            const d = n.data || {};
-            const nType = String(d.type || '').trim().toLowerCase();
-            if (nType !== 'ringing') return;
-            const nThread = extractThreadId(d);
-            const nCall = extractCallId(d);
-            const sameThread = threadId && nThread === threadId;
-            const sameCall = callId && nCall === callId;
+            const sameThreadRinging =
+              n?.data?.type === 'ringing' &&
+              threadId &&
+              (n?.data?.thread_id || '') === threadId;
             const sameTag = ringingTag && n.tag === ringingTag;
-            if (sameThread || sameCall || sameTag) {
+            if (sameThreadRinging || sameTag) {
               n.close();
             }
           });
@@ -100,35 +87,12 @@ self.addEventListener('push', (event) => {
             client.postMessage({
               type: 'CALL_STATUS',
               status: 'active',
-              ...(threadId ? { threadId } : {}),
+              threadId,
               ...(callId ? { callId } : {}),
             });
           });
         } catch (error) {
           console.error('[SW] Failed to broadcast active call status:', error);
-        }
-
-        // Still show "Call accepted" to the caller / other devices (early return used to skip this entirely).
-        try {
-          const activeTag =
-            tag && String(tag).startsWith('call-status-')
-              ? tag
-              : threadId
-                ? `call-status-active-${threadId}`
-                : 'connectafrik-notification';
-          await self.registration.showNotification(title, {
-            body,
-            icon,
-            badge,
-            tag: activeTag,
-            data: notificationData,
-            actions: [],
-            requireInteraction: false,
-            silent,
-            renotify: true,
-          });
-        } catch (error) {
-          console.error('[SW] Failed to show call-accepted notification:', error);
         }
       })()
     );
