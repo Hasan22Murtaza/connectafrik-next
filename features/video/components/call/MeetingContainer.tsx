@@ -625,8 +625,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
       try {
         const exclude = (callIdRef.current || callIdHint || '').trim();
         const res = await apiClient.post<{ busy: Record<string, boolean> }>(
-          '/api/chat/calls/busy-status',
+          '/api/videosdk/room',
           {
+            busy_check: true,
             user_ids: ids,
             ...(exclude ? { exclude_call_id: exclude } : {}),
           },
@@ -735,8 +736,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
       const exclude = (callIdRef.current || callIdHint || '').trim();
       try {
         const busyRes = await apiClient.post<{ busy: Record<string, boolean> }>(
-          '/api/chat/calls/busy-status',
+          '/api/videosdk/room',
           {
+            busy_check: true,
             user_ids: [targetUser.id],
             ...(exclude ? { exclude_call_id: exclude } : {}),
           },

@@ -6,6 +6,7 @@ import { toCallSessionStatusMessageType } from '@/features/chat/services/callSes
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
+import toast from 'react-hot-toast'
 import {
   initializePresence,
   updatePresence as updatePresenceStatus,
@@ -446,67 +447,48 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         resolvedTargetUserId = ''
       }
       if (!isGroupCall && resolvedTargetUserId) {
-        // Validate target from cache when available to avoid an extra hot-path request.
         if (cachedParticipantIds.length > 0 && !cachedParticipantIds.includes(resolvedTargetUserId)) {
           throw new Error('Recipient ID not found in this chat. Call not sent.')
-        }
-        if (cachedParticipantIds.length === 0) {
-          const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
-            `/api/chat/threads/${threadId}/participants`,
-            { exclude_user_id: currentUser?.id || '' }
-          )
-          const participants = participantsResponse?.data ?? []
-          const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
-          if (!targetExists) throw new Error('Recipient ID not found in this chat. Call not sent.')
         }
       } else if (!isGroupCall && cachedParticipantIds.length === 1) {
         resolvedTargetUserId = cachedParticipantIds[0]
       } else if (!isGroupCall) {
-        // Fallback to participants API only when target cannot be inferred from already-loaded thread state.
-        const participantsResponse = await apiClient.get<{ data: { user_id: string }[] }>(
-          `/api/chat/threads/${threadId}/participants`,
-          { exclude_user_id: currentUser?.id || '' }
-        )
-        const participants = participantsResponse?.data ?? []
-        if (resolvedTargetUserId) {
-          const targetExists = participants.some((p) => p.user_id === resolvedTargetUserId)
-          if (!targetExists) throw new Error('Recipient ID not found in this chat. Call not sent.')
-        } else if (participants.length > 1) {
-          // Multiple recipients means this is a group call; broadcast signaling.
+        if (cachedParticipantIds.length > 1) {
           isGroupCall = true
           resolvedTargetUserId = ''
-        } else if (participants.length === 1 && participants[0]?.user_id) {
-          resolvedTargetUserId = participants[0].user_id
-        } else {
+        } else if (cachedParticipantIds.length === 1) {
+          resolvedTargetUserId = cachedParticipantIds[0]
+        } else if (!resolvedTargetUserId) {
           throw new Error('Recipient ID not found. Call not sent.')
         }
       }
 
-      if (resolvedTargetUserId && !isGroupCall) {
-        try {
-          const busyRes = await apiClient.post<{ busy: Record<string, boolean> }>(
-            '/api/chat/calls/busy-status',
-            { user_ids: [resolvedTargetUserId] },
-          )
-          if (busyRes.busy?.[resolvedTargetUserId]) {
-            throw new Error('This person is already in a call.')
-          }
-        } catch (e) {
-          if (e instanceof Error && e.message === 'This person is already in a call.') throw e
-          console.warn('[startCall] busy check failed; continuing', e)
-        }
-      }
-
+      const { data: { session } } = await supabase.auth.getSession()
+      const roomPayload =
+        resolvedTargetUserId && !isGroupCall
+          ? { check_user_ids: [resolvedTargetUserId] }
+          : {}
       const roomResponse = await fetch('/api/videosdk/room', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify(roomPayload),
       })
 
       if (!roomResponse.ok) {
-        const errorData = await roomResponse.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to create call room. Please try again.')
+        const errBody = (await roomResponse.json().catch(() => ({}))) as {
+          error?: string
+          message?: string
+        }
+        const msg =
+          typeof errBody.error === 'string'
+            ? errBody.error
+            : typeof errBody.message === 'string'
+              ? errBody.message
+              : 'Failed to create call room. Please try again.'
+        throw new Error(msg)
       }
 
       const roomData = await roomResponse.json()
@@ -647,7 +629,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
     } catch (error) {
       console.error('Failed to start call:', error)
-      throw error // Re-throw so caller can handle it
+      if (typeof window !== 'undefined') {
+        const msg =
+          error instanceof Error ? error.message : 'Could not start the call.'
+        toast.error(msg)
+      }
+      throw error
     } finally {
       callStartInFlightRef.current.delete(lockKey)
     }

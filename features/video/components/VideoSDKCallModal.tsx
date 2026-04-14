@@ -160,9 +160,16 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
         setPrePhase('connecting');
         let rid = roomIdHint;
         if (!rid) {
+          const { data: { session } } = await supabase.auth.getSession();
           const res = await fetch('/api/videosdk/room', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(session?.access_token
+                ? { Authorization: `Bearer ${session.access_token}` }
+                : {}),
+            },
+            body: JSON.stringify({}),
           });
           if (!res.ok) throw new Error('Failed to create call room');
           const data = await res.json();

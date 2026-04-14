@@ -238,8 +238,12 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     targetUserName?: string,
     targetUserAvatarUrl?: string
   ) => {
-    await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl)
-    onClose()
+    try {
+      await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl)
+      onClose()
+    } catch {
+      /* startCall shows toast */
+    }
   }
 
   const handleStartCallWithContact = async (contactId: string, contactName: string, contactAvatarUrl: string | undefined, type: 'audio' | 'video') => {
@@ -250,7 +254,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     }], { participant_ids: [contactId] })
 
     if (threadId) {
-      await startCall(threadId, type, contactId, contactName, contactAvatarUrl)
+      try {
+        await startCall(threadId, type, contactId, contactName, contactAvatarUrl)
+      } catch {
+        /* startCall shows toast */
+      }
     }
     onClose()
   }
