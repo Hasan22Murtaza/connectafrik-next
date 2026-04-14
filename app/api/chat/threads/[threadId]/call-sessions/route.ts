@@ -416,7 +416,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         null
 
       const recipients = await resolveTargetUserIds(serviceClient, threadId, user.id, targetUserId || undefined)
-      if (recipients.length > 0) {
+      const notificationRecipients =
+        nextStatus === 'active'
+          ? Array.from(new Set([...recipients, user.id]))
+          : recipients
+      if (notificationRecipients.length > 0) {
         const status = nextStatus as 'missed' | 'declined' | 'active' | 'ended'
         const title =
           status === 'declined'
@@ -435,8 +439,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                 ? `${actorName} accepted your ${callType} call`
                 : `${actorName} tried to ${callType} call you`
 
+        const pushType = status === 'active' ? 'answered_elsewhere' : status
         const pushData = toPushDataRecord({
-          type: status,
+          type: pushType,
+          call_status: status,
           call_type: callType,
           room_id: String(updated.room_id || ''),
           thread_id: threadId,
@@ -450,7 +456,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         })
 
         await Promise.allSettled(
-          recipients.map(async (user_id) => {
+          notificationRecipients.map(async (user_id) => {
             try {
               const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
                 method: 'POST',
@@ -460,6 +466,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                   title,
                   body: message,
                   notification_type: 'call',
+                  skip_db: status === 'active',
                   tag: `call-status-${status}-${threadId}`,
                   requireInteraction: false,
                   silent: false,

@@ -50,10 +50,53 @@ self.addEventListener('push', (event) => {
   const isRingingType = (t) => t === 'ringing';
   const isMissedType = (t) => t === 'missed';
   const isEndedType = (t) => t === 'ended';
+  const isActiveType = (t) => t === 'active';
+  const isAnsweredElsewhereType = (t) => t === 'answered_elsewhere';
 
   // Prevent delayed call-ended pushes from showing long after the call is over.
   if (isEndedType(type) && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
     console.log('[SW] Skipping stale call-ended notification');
+    return;
+  }
+
+  // Cross-device call accepted signal: close ringing UI/notifications, don't show a new toast.
+  if (isActiveType(type) || isAnsweredElsewhereType(type)) {
+    const threadId = notificationData.thread_id || '';
+    const callId = notificationData.call_id || notificationData.callId || '';
+    event.waitUntil(
+      (async () => {
+        try {
+          const ringingTag = threadId ? `incoming-call-${threadId}` : null;
+          const notifications = await self.registration.getNotifications();
+          notifications.forEach((n) => {
+            const sameThreadRinging =
+              n?.data?.type === 'ringing' &&
+              threadId &&
+              (n?.data?.thread_id || '') === threadId;
+            const sameTag = ringingTag && n.tag === ringingTag;
+            if (sameThreadRinging || sameTag) {
+              n.close();
+            }
+          });
+        } catch (error) {
+          console.error('[SW] Failed to close ringing notifications on active:', error);
+        }
+
+        try {
+          const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+          clientList.forEach((client) => {
+            client.postMessage({
+              type: 'CALL_STATUS',
+              status: 'active',
+              threadId,
+              ...(callId ? { callId } : {}),
+            });
+          });
+        } catch (error) {
+          console.error('[SW] Failed to broadcast active call status:', error);
+        }
+      })()
+    );
     return;
   }
 

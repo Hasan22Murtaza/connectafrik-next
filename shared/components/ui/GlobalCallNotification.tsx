@@ -195,14 +195,14 @@ const GlobalCallNotification: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return
+    const applyCallStatus = (payload: any) => {
+      if (!payload || payload.type !== 'CALL_STATUS') return
 
-      if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'active' && event.data?.threadId) {
-        const activeThreadId = String(event.data.threadId)
+      if (payload.status === 'active' && payload.threadId) {
+        const activeThreadId = String(payload.threadId)
         const activeCallId =
-          typeof event.data.callId === 'string' && event.data.callId.trim()
-            ? event.data.callId.trim()
+          typeof payload.callId === 'string' && payload.callId.trim()
+            ? payload.callId.trim()
             : ''
         const uid = currentUserIdRef.current
         const reqs = callRequestsRef.current
@@ -223,22 +223,41 @@ const GlobalCallNotification: React.FC = () => {
         }
       }
 
-      if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'ended' && event.data?.threadId) {
-        const endedTid = String(event.data.threadId)
+      if (payload.status === 'ended' && payload.threadId) {
+        const endedTid = String(payload.threadId)
         const prefix = `${endedTid}|`
         answeredIncomingRingtoneRef.current = new Set(
           [...answeredIncomingRingtoneRef.current].filter((k) => !k.startsWith(prefix)),
         )
         clearIncomingPopupGuard()
-        clearCallRequest(event.data.threadId)
+        clearCallRequest(payload.threadId)
         openedIncomingSignatureRef.current = ''
         popupOpeningForSignatureRef.current = ''
         callPopupRef.current = null
         stopCallRingtone()
       }
     }
-    window.addEventListener('message', handleMessage)
-    return () => window.removeEventListener('message', handleMessage)
+
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      applyCallStatus(event.data)
+    }
+
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      applyCallStatus(event.data)
+    }
+
+    window.addEventListener('message', handleWindowMessage)
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
+    }
+
+    return () => {
+      window.removeEventListener('message', handleWindowMessage)
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
+      }
+    }
   }, [clearCallRequest])
 
   return null
