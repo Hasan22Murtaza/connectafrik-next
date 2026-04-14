@@ -130,11 +130,12 @@ export const initialize = async (): Promise<boolean> => {
               : tid && statusKey
                 ? `call-status-${statusKey}-${tid}`
                 : 'connectafrik-notification'
+          const silentFlag = String(d.silent ?? '').trim().toLowerCase()
           const silent =
             t === 'missed' ||
             lastSignal === 'missed' ||
-            d.silent === 'true' ||
-            d.silent === true
+            silentFlag === 'true' ||
+            silentFlag === '1'
           // `renotify` omitted: not in all TS lib.dom NotificationOptions (breaks `next build` on some hosts).
           await registration.showNotification(d.title || 'ConnectAfrik', {
             body: d.body || '',
