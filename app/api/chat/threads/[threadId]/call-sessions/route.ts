@@ -439,10 +439,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                 ? `${actorName} accepted your ${callType} call`
                 : `${actorName} tried to ${callType} call you`
 
-        const pushType = status === 'active' ? 'answered_elsewhere' : status
         const pushData = toPushDataRecord({
-          type: pushType,
-          call_status: status,
+          type: status,
           call_type: callType,
           room_id: String(updated.room_id || ''),
           thread_id: threadId,

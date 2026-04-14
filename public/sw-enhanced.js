@@ -51,7 +51,6 @@ self.addEventListener('push', (event) => {
   const isMissedType = (t) => t === 'missed';
   const isEndedType = (t) => t === 'ended';
   const isActiveType = (t) => t === 'active';
-  const isAnsweredElsewhereType = (t) => t === 'answered_elsewhere';
 
   // Prevent delayed call-ended pushes from showing long after the call is over.
   if (isEndedType(type) && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
@@ -60,7 +59,7 @@ self.addEventListener('push', (event) => {
   }
 
   // Cross-device call accepted signal: close ringing UI/notifications, don't show a new toast.
-  if (isActiveType(type) || isAnsweredElsewhereType(type)) {
+  if (isActiveType(type)) {
     const threadId = notificationData.thread_id || '';
     const callId = notificationData.call_id || notificationData.callId || '';
     event.waitUntil(
