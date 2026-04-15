@@ -286,7 +286,6 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
     </button>
   )
 })
-
 CreateStoryCard.displayName = 'CreateStoryCard'
 
 const LoadingSkeleton: React.FC = React.memo(() => (
