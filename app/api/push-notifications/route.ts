@@ -189,6 +189,40 @@ export async function POST(request: NextRequest) {
 
     const fcmStringData = stringifyFcmDataValues(rawPushData)
 
+    // Birthday reminders: at most one per friend per day per "when" (today vs tomorrow) for this user.
+    if (canonicalType === 'birthday' && !skip_db) {
+      const dedupeKey =
+        rawPushData &&
+        typeof (rawPushData as { birthday_dedupe_key?: unknown }).birthday_dedupe_key === 'string'
+          ? String((rawPushData as { birthday_dedupe_key: string }).birthday_dedupe_key).trim()
+          : ''
+      if (dedupeKey) {
+        const { data: existingBirthday } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', user_id)
+          .eq('type', 'birthday')
+          .contains('data', { birthday_dedupe_key: dedupeKey })
+          .maybeSingle()
+
+        if (existingBirthday?.id) {
+          return NextResponse.json(
+            {
+              success: true,
+              duplicate: true,
+              message: 'Birthday notification already sent for this day',
+              notification_id: existingBirthday.id,
+              sent: 0,
+              failed: 0,
+              total: 0,
+              results: [],
+            },
+            { headers: corsHeaders }
+          )
+        }
+      }
+    }
+
     // Step 1: Create notification record in database (unless skip_db is true)
     let notificationId: string | null = null
     if (!skip_db) {

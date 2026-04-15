@@ -8,6 +8,12 @@ interface BirthdayUser {
   birthday: string
 }
 
+/** Local calendar YYYY-MM-DD for the viewer (used to dedupe birthday reminders on refresh). */
+const getViewerLocalDateKey = (): string => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const fetchAllBirthdayProfiles = async (): Promise<any[]> => {
   const allProfiles: any[] = []
   let page = 0
@@ -97,7 +103,8 @@ const createBirthdayNotification = async (
         birthday_username: birthdayUser.username,
         birthday_full_name: birthdayUser.full_name,
         when,
-        url: `/user/${birthdayUser.username}`
+        url: `/user/${birthdayUser.username}`,
+        birthday_dedupe_key: `${birthdayUser.id}:${when}:${getViewerLocalDateKey()}`,
       }
     })
   } catch (error) {
