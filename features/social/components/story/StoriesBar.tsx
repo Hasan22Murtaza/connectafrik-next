@@ -274,8 +274,8 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
         </div>
 
         <div className="absolute top-[92px] sm:top-[120px] left-1/2 -translate-x-1/2 z-10">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-[3px] sm:border-4 border-white bg-white shadow-lg">
-            <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-primary-500" />
+          <div className=" group  hover:bg-[#FF6900] w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-white  shadow-md duration-300 transition-colors">
+            <Plus className=" group-hover:text-white w-5 h-5 sm:w-6 sm:h-6 text-[#FF6900]" />
           </div>
         </div>
 
