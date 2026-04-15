@@ -287,7 +287,6 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
   )
 })
 CreateStoryCard.displayName = 'CreateStoryCard'
-
 const LoadingSkeleton: React.FC = React.memo(() => (
   <div className="bg-white rounded-xl p-3 sm:p-4">
     <div className="flex gap-1.5 sm:gap-2 overflow-hidden">
