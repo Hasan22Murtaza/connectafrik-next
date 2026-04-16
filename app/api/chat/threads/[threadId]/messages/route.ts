@@ -61,6 +61,7 @@ const enrichMessageResponse = async (serviceClient: any, message: any, fallbackR
     ...message,
     read_by: readBy.length ? readBy : [fallbackReaderId],
     attachments: attachmentsRes.data || [],
+    reactions: [],
   }
 }
 
@@ -125,10 +126,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const messageIds = list.map((m: any) => m.id)
-    const [readsRes, attachmentsRes] = await Promise.all([
+    const [readsRes, attachmentsRes, reactionsRes] = await Promise.all([
       serviceClient.from('message_reads').select('message_id, user_id').in('message_id', messageIds),
       serviceClient.from('message_attachments').select('*').in('message_id', messageIds),
+      serviceClient.from('message_reactions').select('message_id, emoji, user_id').in('message_id', messageIds),
     ])
+
+    if (reactionsRes.error) return errorResponse(reactionsRes.error.message, 400)
 
     const readByMessage = new Map<string, string[]>()
     for (const r of readsRes.data || []) {
@@ -143,11 +147,35 @@ export async function GET(request: NextRequest, context: RouteContext) {
       attachmentsByMessage.set(a.message_id, arr)
     }
 
-    const formatted = list.map((m: any) => ({
-      ...m,
-      read_by: readByMessage.get(m.id) || [],
-      attachments: attachmentsByMessage.get(m.id) || [],
-    }))
+    const reactionsByMessage = new Map<string, Map<string, { count: number; user_reacted: boolean }>>()
+    for (const reaction of reactionsRes.data || []) {
+      if (!reactionsByMessage.has(reaction.message_id)) {
+        reactionsByMessage.set(reaction.message_id, new Map())
+      }
+      const reactionMap = reactionsByMessage.get(reaction.message_id)!
+      const existing = reactionMap.get(reaction.emoji) || { count: 0, user_reacted: false }
+      reactionMap.set(reaction.emoji, {
+        count: existing.count + 1,
+        user_reacted: existing.user_reacted || reaction.user_id === user.id,
+      })
+    }
+
+    const formatted = list.map((m: any) => {
+      const reactionMap = reactionsByMessage.get(m.id) || new Map()
+      const reactions = Array.from(reactionMap.entries())
+        .map(([emoji, details]) => ({
+          emoji,
+          count: details.count,
+          user_reacted: details.user_reacted,
+        }))
+        .sort((a, b) => b.count - a.count)
+      return {
+        ...m,
+        read_by: readByMessage.get(m.id) || [],
+        attachments: attachmentsByMessage.get(m.id) || [],
+        reactions,
+      }
+    })
     // Preserve natural chat display (oldest -> newest) inside the fetched page.
     const chronological = [...formatted].reverse()
 
@@ -343,6 +371,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       ...message,
       read_by: [user.id],
       attachments: attData || [],
+      reactions: [],
     }
 
     return jsonResponse({ data: result }, 201)

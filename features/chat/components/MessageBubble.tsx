@@ -3,9 +3,14 @@ import type { ChatMessage, ChatAttachment } from "@/features/chat/services/supab
 import { toCallSessionStatusMessageType } from "@/features/chat/services/callSessionRealtime";
 import { formatDistanceToNow } from "date-fns";
 import { Download, FileText, MoreVertical, UserCircle } from "lucide-react";
-import React, { useState, useMemo } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { BsReply } from "react-icons/bs";
 import { RiShareForwardLine } from "react-icons/ri";
+import ReactionIcon, {
+  PICKER_REACTIONS,
+  KIND_TO_EMOJI,
+  type ReactionKind,
+} from "@/shared/components/ReactionIcon";
 
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<]+/gi;
 
@@ -51,6 +56,8 @@ interface MessageBubbleProps {
   participantPresence?: Record<string, 'online' | 'away' | 'busy' | 'offline'>; // Presence status of participants
   onReply?: (message: ChatMessage) => void;
   onDelete?: (messageId: string, deleteForEveryone: boolean) => void;
+  /** Toggle/add reaction (same emoji removes). */
+  onReact?: (messageId: string, emoji: string) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -61,11 +68,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   participantPresence = {},
   onReply,
   onDelete,
+  onReact,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const reactionPickerCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleReactionPickerEnter = useCallback(() => {
+    if (reactionPickerCloseTimer.current) {
+      clearTimeout(reactionPickerCloseTimer.current);
+      reactionPickerCloseTimer.current = null;
+    }
+    setShowReactionPicker(true);
+  }, []);
+
+  const handleReactionPickerLeave = useCallback(() => {
+    reactionPickerCloseTimer.current = setTimeout(() => {
+      setShowReactionPicker(false);
+    }, 280);
+  }, []);
 
   const minSwipeDistance = 50;
 
@@ -412,6 +436,95 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </div>
           )}
         </div>
+
+        {onReact && !isDeleted && (
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {message.reactions?.map((r) => (
+              <button
+                key={r.emoji}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReact(message.id, r.emoji);
+                }}
+                className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs transition-colors ${
+                  r.user_reacted
+                    ? isOwnMessage
+                      ? "border-orange-200 bg-orange-500/25 text-white"
+                      : "border-orange-300 bg-orange-50 dark:bg-orange-900/30 dark:border-orange-700"
+                    : isOwnMessage
+                      ? "border-orange-200/50 bg-orange-500/15 text-orange-50"
+                      : "border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600"
+                }`}
+              >
+                <span className="noto-color-emoji-regular leading-none">{r.emoji}</span>
+                {r.count > 1 && <span className="tabular-nums opacity-90">{r.count}</span>}
+              </button>
+            ))}
+
+            <div
+              className="relative"
+              onMouseEnter={handleReactionPickerEnter}
+              onMouseLeave={handleReactionPickerLeave}
+            >
+              {showReactionPicker && (
+                <div
+                  className="absolute bottom-full left-0 z-50 mb-2 animate-[reactionPickerIn_280ms_cubic-bezier(0.34,1.56,0.64,1)_both]"
+                  onMouseEnter={handleReactionPickerEnter}
+                  onMouseLeave={handleReactionPickerLeave}
+                >
+                  <div className="flex items-center gap-1 rounded-full bg-white px-2 py-1 shadow-[0_2px_12px_rgba(0,0,0,0.15),0_0_0_1px_rgba(0,0,0,0.05)] dark:bg-gray-900 dark:shadow-[0_2px_12px_rgba(0,0,0,0.4)]">
+                    {PICKER_REACTIONS.map((kind: ReactionKind, index: number) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowReactionPicker(false);
+                          onReact(message.id, KIND_TO_EMOJI[kind]);
+                        }}
+                        className="relative flex h-8 w-8 items-center justify-center rounded-full transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-1 hover:scale-[1.12] active:scale-100"
+                      >
+                        <span
+                          className="animate-[reactionBounceIn_350ms_cubic-bezier(0.34,1.56,0.64,1)_both]"
+                          style={{ animationDelay: `${index * 30 + 80}ms` }}
+                        >
+                          <ReactionIcon type={kind} size={28} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <style>{`
+                    @keyframes reactionPickerIn {
+                      from { opacity: 0; transform: scale(0.8) translateY(8px); }
+                      to { opacity: 1; transform: scale(1) translateY(0); }
+                    }
+                    @keyframes reactionBounceIn {
+                      0% { opacity: 0; transform: scale(0) translateY(12px); }
+                      60% { opacity: 1; transform: scale(1.15) translateY(-2px); }
+                      100% { opacity: 1; transform: scale(1) translateY(0); }
+                    }
+                  `}</style>
+                </div>
+              )}
+              {(isHovered || showReactionPicker) && (
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className={`rounded-full px-1.5 py-0.5 text-xs ${
+                    isOwnMessage
+                      ? "text-orange-100 hover:bg-orange-500/40"
+                      : "text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-600"
+                  }`}
+                  aria-label="Add reaction"
+                  title="React"
+                >
+                  +
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

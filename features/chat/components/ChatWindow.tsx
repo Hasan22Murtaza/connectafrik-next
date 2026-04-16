@@ -6,6 +6,7 @@ import {
   supabaseMessagingService,
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
+import { apiClient } from "@/lib/api-client";
 import { useMembers } from "@/shared/hooks/useMembers";
 import { useTypingIndicator } from "@/shared/hooks/useTypingIndicator";
 import {
@@ -488,6 +489,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const handleMessageReaction = async (messageId: string, emoji: string) => {
+    if (!currentUser) return;
+    try {
+      const data = await apiClient.post<{
+        action: string;
+        emoji: string;
+        reactions: { emoji: string; count: number; user_reacted: boolean }[];
+        totalCount: number;
+      }>(`/api/chat/threads/${threadId}/messages/${messageId}/reactions`, { emoji });
+      const msgs = getMessagesForThread(threadId);
+      setMessagesForThread(
+        threadId,
+        msgs.map((m) =>
+          m.id === messageId ? { ...m, reactions: data.reactions } : m
+        )
+      );
+    } catch {
+      toast.error("Could not update reaction");
+    }
+  };
+
   const handleClearAllMessages = async () => {
     if (!currentUser) return;
 
@@ -689,6 +711,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   participantPresence={participantPresenceMap}
                   onReply={handleReply}
                   onDelete={handleDelete}
+                  onReact={handleMessageReaction}
                 />
               );
             })

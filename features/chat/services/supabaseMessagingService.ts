@@ -23,6 +23,12 @@ export interface ChatAttachment {
   mimeType: string
 }
 
+export interface MessageReactionSummary {
+  emoji: string
+  count: number
+  user_reacted: boolean
+}
+
 export interface ChatMessage {
   id: string
   thread_id: string
@@ -39,6 +45,7 @@ export interface ChatMessage {
   attachments?: ChatAttachment[]
   sender?: ChatParticipant
   reply_to_id?: string
+  reactions?: MessageReactionSummary[]
 }
 
 export interface ChatThread {
@@ -663,6 +670,7 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
       avatarUrl: undefined,
     },
     reply_to_id: message.reply_to_id,
+    reactions: Array.isArray(message.reactions) ? message.reactions : [],
   }
 }
 
@@ -715,7 +723,8 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
       name: 'Loading...',
       avatarUrl: null
     }),
-    reply_to_id: message.reply_to_id
+    reply_to_id: message.reply_to_id,
+    reactions: [],
   }
 }
 
