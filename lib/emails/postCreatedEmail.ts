@@ -1,9 +1,8 @@
-import { SWIPPED, supportEmailHtml, supportEmailPlain } from './swippedTheme'
+import { SWIPPED, emailHeadlineHtml, emailLeadHtml, supportEmailPlain } from './swippedTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
 
 export type PostCreatedEmailVariant = 'author' | 'friend'
 
-/** Inner HTML — typography and CTA match Swipped `resetPasswordEmail.js`. */
 export function getPostCreatedEmailHtml(params: {
   variant: PostCreatedEmailVariant
   authorName: string
@@ -15,41 +14,58 @@ export function getPostCreatedEmailHtml(params: {
   const safePreview = escapeHtml(postPreview)
   const base = getAppBaseUrl()
   const postUrl = `${base}/post/${postId}`
-  const support = supportEmailHtml()
+  const supportPlain = supportEmailPlain()
 
-  const body =
-    variant === 'author'
-      ? `<p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      Your post is now live on ConnectAfrik.
-    </p>`
-      : `<p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      <strong>${safeAuthor}</strong> shared a new post you might want to see.
+  const supportBlock =
+    supportPlain &&
+    `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
+      Something look off? Reach us at <a href="mailto:${escapeHtml(supportPlain)}" style="color:${SWIPPED.link};">${escapeHtml(supportPlain)}</a>.
     </p>`
 
-  const greeting =
-    variant === 'author'
-      ? `<p style="font-size:20px;color:${SWIPPED.text};">Hi <b>${safeAuthor},</b></p>`
-      : `<p style="font-size:20px;color:${SWIPPED.text};">Hi,</p>`
+  if (variant === 'author') {
+    return `
+      ${emailHeadlineHtml('Your post is live')}
+      ${emailLeadHtml('It’s on your profile and in your followers’ feeds. Here’s a quick preview.')}
 
-  const supportLine = support
-    ? `<p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      Need help? Contact us at ${support}.
-    </p>`
-    : ''
+      <div style="background-color:${SWIPPED.blueBoxBg};padding:20px;border-radius:10px;margin:0 0 24px;border-left:4px solid ${SWIPPED.blueBorder};">
+        <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${SWIPPED.textSecondary};">Preview</p>
+        <p style="margin:0;font-size:15px;line-height:1.5;color:${SWIPPED.text};">${safePreview}</p>
+      </div>
+
+      <p style="text-align:center;margin:0 0 8px;">
+        <a href="${postUrl}" style="${SWIPPED.ctaInline}">View on ConnectAfrik</a>
+      </p>
+      <p style="text-align:center;margin:0;font-size:14px;color:${SWIPPED.textSecondary};">
+        Share the link or keep the conversation going in comments.
+      </p>
+
+      ${supportBlock || ''}
+
+      <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
+        Keep posting,<br />
+        <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
+      </p>
+    `
+  }
 
   return `
-    ${greeting}
-    ${body}
-    <div style="background-color:${SWIPPED.blueBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.blueBorder};">
-      <p style="margin:0;font-size:14px;color:${SWIPPED.text};"><strong>Post preview</strong></p>
-      <p style="margin:10px 0 0;font-size:14px;color:${SWIPPED.text};">${safePreview}</p>
+    ${emailHeadlineHtml(`${safeAuthor} shared something new`)}
+    ${emailLeadHtml('Open the post to read the full update and join the conversation.')}
+
+    <div style="background-color:${SWIPPED.blueBoxBg};padding:20px;border-radius:10px;margin:0 0 24px;border-left:4px solid ${SWIPPED.blueBorder};">
+      <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${SWIPPED.textSecondary};">From ${safeAuthor}</p>
+      <p style="margin:0;font-size:15px;line-height:1.5;color:${SWIPPED.text};">${safePreview}</p>
     </div>
-    <p style="text-align:center;padding-top:16px;">
+
+    <p style="text-align:center;margin:0;">
       <a href="${postUrl}" style="${SWIPPED.ctaInline}">View post</a>
     </p>
-    ${supportLine}
-    <p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      Thanks, <br> The ConnectAfrik Team
+
+    ${supportBlock || ''}
+
+    <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
+      See you in the feed,<br />
+      <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
     </p>
   `
 }
@@ -64,13 +80,31 @@ export function getPostCreatedEmailText(params: {
   const base = getAppBaseUrl()
   const postUrl = `${base}/post/${postId}`
   const support = supportEmailPlain()
+  const supportLine = support ? `\nHelp: ${support}\n` : ''
 
-  const textLead =
-    variant === 'author'
-      ? `Hi ${authorName},\n\nYour post is now live on ConnectAfrik.\n\n`
-      : `Hi,\n\n${authorName} shared a new post you might want to see.\n\n`
+  if (variant === 'author') {
+    return `Your post is live on ConnectAfrik
 
-  const supportLine = support ? `\nNeed help? Contact us at ${support}.\n` : ''
+Hi ${authorName},
 
-  return `${textLead}${postPreview}\n\nView: ${postUrl}${supportLine}\n\nThanks,\nThe ConnectAfrik Team\n`
+Your post is now visible on your profile and in feeds. Preview:
+
+${postPreview}
+
+View it here: ${postUrl}
+${supportLine}
+— The ConnectAfrik team
+`
+  }
+
+  return `New post from ${authorName}
+
+${authorName} shared an update you might want to see:
+
+${postPreview}
+
+Read it here: ${postUrl}
+${supportLine}
+— The ConnectAfrik team
+`
 }

@@ -86,9 +86,13 @@ export const sendEmail = async (options: SendEmailOptions): Promise<SendEmailRes
   }
 }
 
-/** Wrap inner HTML with the same layout as Swipped (header, content table, footer). */
-export function renderBrandEmailHtml(subject: string, innerContentHtml: string): string {
-  return EmailTemplate({ content: innerContentHtml, subject })
+/** Wrap inner HTML with brand shell (header, card, footer) and optional inbox preheader. */
+export function renderBrandEmailHtml(
+  subject: string,
+  innerContentHtml: string,
+  preheader?: string
+): string {
+  return EmailTemplate({ content: innerContentHtml, subject, preheader })
 }
 
 /** Email when a feed post is created: confirmation to author or alert to a friend. */
@@ -101,11 +105,16 @@ export const sendPostCreatedEmail = async (
 
   const subject =
     variant === 'author'
-      ? 'Your post is live on ConnectAfrik'
-      : `${authorName} shared a new post on ConnectAfrik`
+      ? 'Your post is live'
+      : `${authorName} shared a new post`
+
+  const preheader =
+    variant === 'author'
+      ? 'Tap to view your post and share it with your network.'
+      : `See what ${authorName} posted on ConnectAfrik.`
 
   const innerHtml = getPostCreatedEmailHtml({ variant, authorName, postPreview, postId })
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml)
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, preheader)
   const textBody = getPostCreatedEmailText({ variant, authorName, postPreview, postId })
 
   const r = await sendEmail({ to, subject, htmlBody, textBody })
@@ -126,9 +135,13 @@ export const sendOrderConfirmationEmail = async (
     buyerName: string
   }
 ): Promise<boolean> => {
-  const subject = `Order confirmed - ${orderDetails.orderNumber} - ConnectAfrik`
+  const subject = `Payment received · Order ${orderDetails.orderNumber}`
   const innerHtml = getOrderConfirmationEmailHtml(orderDetails)
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml)
+  const htmlBody = renderBrandEmailHtml(
+    subject,
+    innerHtml,
+    `We’ve got your order ${orderDetails.orderNumber}. The seller has been notified.`
+  )
   const textBody = getOrderConfirmationEmailText(orderDetails)
 
   const r = await sendEmail({
@@ -155,9 +168,13 @@ export const sendNewOrderNotificationEmail = async (
     sellerName: string
   }
 ): Promise<boolean> => {
-  const subject = `New order: ${orderDetails.productTitle} - ${orderDetails.orderNumber}`
+  const subject = `New sale · Order ${orderDetails.orderNumber}`
   const innerHtml = getNewOrderNotificationEmailHtml(orderDetails)
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml)
+  const htmlBody = renderBrandEmailHtml(
+    subject,
+    innerHtml,
+    `${orderDetails.buyerName} purchased ${orderDetails.productTitle}. Open your dashboard to fulfill it.`
+  )
   const textBody = getNewOrderNotificationEmailText(orderDetails)
 
   const r = await sendEmail({
@@ -173,9 +190,13 @@ export const sendNewOrderNotificationEmail = async (
  * Send welcome email to new users
  */
 export const sendWelcomeEmail = async (userEmail: string, userName: string): Promise<boolean> => {
-  const subject = "Welcome to ConnectAfrik — let's get started"
+  const subject = 'Welcome to ConnectAfrik'
   const innerHtml = getWelcomeEmailHtml(userName)
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml)
+  const htmlBody = renderBrandEmailHtml(
+    subject,
+    innerHtml,
+    'Your account is ready. Open the app to finish your profile and explore the feed.'
+  )
   const textBody = getWelcomeEmailText(userName)
 
   const r = await sendEmail({

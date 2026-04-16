@@ -1,33 +1,48 @@
 /**
- * Visual tokens aligned with Swipped (`new-iVan/lib/emails/*`) for consistent HTML emails.
+ * Email design tokens — readable in all major clients, aligned with ConnectAfrik branding.
  */
 import { escapeHtml } from './utils'
 
 export const SWIPPED = {
-  bodyBg: '#F5F9FF',
-  text: '#0e0e0e',
-  tagline: '#B1AED1',
-  ctaBg: '#0052cc',
+  bodyBg: '#f4f4f5',
+  cardBg: '#ffffff',
+  text: '#18181b',
+  textSecondary: '#52525b',
+  tagline: '#71717a',
+  link: '#ea580c',
+  ctaBg: '#ea580c',
   ctaText: '#ffffff',
-  /** Primary CTA — matches resetPasswordEmail.js */
+  ctaHover: '#c2410c',
+  /** Primary button (inline) */
   ctaInline:
-    'background-color:#0052cc;color:white;padding:12px 20px;border-radius:4px;text-decoration:none;',
-  /** Emphasized CTA — matches shopOrderPaymentEmail.js “Track your order” */
+    'background-color:#ea580c;color:#ffffff;padding:14px 28px;border-radius:9999px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;',
+  /** Secondary emphasis */
   ctaBold:
-    'background-color:#0052cc;color:white;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block;',
-  greenBoxBg: '#f8f9fa',
-  greenBorder: '#28a745',
-  blueBoxBg: '#e3f2fd',
-  blueBorder: '#2196f3',
-  paymentBoxBg: '#d4edda',
-  nextBoxBg: '#d1ecf1',
-  nextBorder: '#17a2b8',
-  warnBoxBg: '#fff3cd',
-  warnText: '#856404',
-  warnBorder: '#ffc107',
-  mutedFooter: '#6c757d',
-  borderSubtle: '#e9ecef',
+    'background-color:#ea580c;color:#ffffff;padding:14px 28px;border-radius:9999px;text-decoration:none;font-weight:600;font-size:15px;display:inline-block;',
+  greenBoxBg: '#f0fdf4',
+  greenBorder: '#22c55e',
+  blueBoxBg: '#eff6ff',
+  blueBorder: '#3b82f6',
+  paymentBoxBg: '#ecfdf5',
+  nextBoxBg: '#f0f9ff',
+  nextBorder: '#0ea5e9',
+  warnBoxBg: '#fffbeb',
+  warnText: '#92400e',
+  warnBorder: '#f59e0b',
+  mutedFooter: '#71717a',
+  borderSubtle: '#e4e4e7',
+  shadowCard: '0 1px 3px rgba(0,0,0,0.06)',
 } as const
+
+/** Large title — use once per email */
+export function emailHeadlineHtml(text: string): string {
+  return `<h1 style="margin:0 0 8px;font-size:24px;font-weight:700;line-height:1.25;color:${SWIPPED.text};letter-spacing:-0.02em;">${text}</h1>`
+}
+
+/** Subtitle under headline */
+export function emailLeadHtml(text: string): string {
+  return `<p style="margin:0 0 24px;font-size:16px;line-height:1.55;color:${SWIPPED.textSecondary};">${text}</p>`
+}
 
 /** Escaped support address for HTML, or empty if unset. */
 export function supportEmailHtml(): string {

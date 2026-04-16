@@ -1,8 +1,7 @@
 import { getCurrencySymbol } from './currency'
-import { SWIPPED, supportEmailHtml, supportEmailPlain } from './swippedTheme'
+import { SWIPPED, emailHeadlineHtml, emailLeadHtml, supportEmailPlain } from './swippedTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
 
-/** Seller notification — same Swipped-style coloured sections and blue CTA as shop/order emails. */
 export function getNewOrderNotificationEmailHtml(orderDetails: {
   orderNumber: string
   productTitle: string
@@ -17,67 +16,63 @@ export function getNewOrderNotificationEmailHtml(orderDetails: {
   const sym = getCurrencySymbol(currency)
   const base = getAppBaseUrl()
   const ordersUrl = `${base}/my-orders`
-  const support = supportEmailHtml()
   const amountStr = `${sym}${totalAmount.toLocaleString()}`
+  const supportPlain = supportEmailPlain()
+  const safeSeller = escapeHtml(sellerName)
+  const safeBuyer = escapeHtml(buyerName)
+  const safeOrder = escapeHtml(orderNumber)
+  const safeTitle = escapeHtml(productTitle)
 
-  const supportBlock = support
-    ? `<p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      Need help? Contact us at ${support}.
+  const supportHtml = supportPlain
+    ? `<p style="margin:20px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
+      Seller support: <a href="mailto:${escapeHtml(supportPlain)}" style="color:${SWIPPED.link};">${escapeHtml(supportPlain)}</a>
     </p>`
     : ''
 
   return `
-    <p style="font-size:20px;color:${SWIPPED.text};">Hi <b>${escapeHtml(sellerName)},</b></p>
+    ${emailHeadlineHtml(`You’ve got a new order, ${safeSeller}`)}
+    ${emailLeadHtml(
+      'Nice work — someone just bought from your shop. Here’s what you need at a glance.'
+    )}
 
-    <p style="font-size:16px;color:${SWIPPED.text};padding-top:16px;">
-      <strong>Congratulations! You have a new sale on ConnectAfrik.</strong>
-    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid ${SWIPPED.borderSubtle};border-radius:10px;">
+      <tr>
+        <td style="padding:18px 20px;background-color:${SWIPPED.greenBoxBg};">
+          <p style="margin:0;font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${SWIPPED.greenBorder};">Sale</p>
+          <p style="margin:8px 0 0;font-size:18px;font-weight:700;color:${SWIPPED.text};">${amountStr}</p>
+          <p style="margin:4px 0 0;font-size:14px;color:${SWIPPED.textSecondary};">Order ${safeOrder}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:18px 20px;">
+          <p style="margin:0 0 6px;font-size:14px;color:${SWIPPED.text};"><strong>Item:</strong> ${safeTitle}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:${SWIPPED.text};"><strong>Quantity:</strong> ${quantity}</p>
+          <p style="margin:0;font-size:14px;color:${SWIPPED.text};"><strong>Buyer:</strong> ${safeBuyer}</p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color:${SWIPPED.greenBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.greenBorder};">
-      <h3 style="margin:0 0 15px 0;color:${SWIPPED.greenBorder};font-size:18px;">Order information</h3>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Order number:</strong> ${escapeHtml(orderNumber)}</p>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Product:</strong> ${escapeHtml(productTitle)}</p>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Quantity:</strong> ${quantity}</p>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Buyer:</strong> ${escapeHtml(buyerName)}</p>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Amount:</strong> ${amountStr}</p>
-    </div>
-
-    <div style="background-color:${SWIPPED.warnBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.warnBorder};">
-      <h3 style="margin:0 0 15px 0;color:${SWIPPED.warnText};font-size:18px;">Action required</h3>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};">
-        • Contact the buyer to confirm shipping details<br />
-        • Prepare and pack the item<br />
-        • Update the order status once shipped
+    <div style="background-color:${SWIPPED.warnBoxBg};padding:18px 20px;border-radius:10px;border-left:4px solid ${SWIPPED.warnBorder};margin:0 0 20px;">
+      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${SWIPPED.warnText};">Suggested next steps</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${SWIPPED.textSecondary};">
+        Confirm shipping details with your buyer if needed, pack the order carefully, and mark it as shipped when it’s on the way so they can track it.
       </p>
     </div>
 
-    <div style="background-color:${SWIPPED.nextBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.nextBorder};">
-      <h3 style="margin:0 0 15px 0;color:${SWIPPED.nextBorder};font-size:18px;">Suggested next steps</h3>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};">
-        • Review order and shipping address<br />
-        • Ship the item and add tracking if available<br />
-        • Mark the order as shipped when done
-      </p>
-    </div>
-
-    <p style="text-align:center;padding-top:20px;">
-      <a href="${ordersUrl}" style="${SWIPPED.ctaBold}">
-        View order details
-      </a>
+    <p style="text-align:center;margin:0;">
+      <a href="${ordersUrl}" style="${SWIPPED.ctaBold}">Open order in dashboard</a>
     </p>
 
-    ${supportBlock}
+    ${supportHtml}
 
-    <p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      Thank you for being part of ConnectAfrik!<br />
-      The ConnectAfrik Team
+    <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
+      Keep selling,<br />
+      <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
     </p>
 
-    <div style="margin-top:30px;padding-top:20px;border-top:1px solid ${SWIPPED.borderSubtle};font-size:12px;color:${SWIPPED.mutedFooter};">
-      <p style="margin:0;">
-        This is an automated message about a new order. Manage orders from your ConnectAfrik dashboard.
-      </p>
-    </div>
+    <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:${SWIPPED.mutedFooter};text-align:center;">
+      This is an automated message about activity on your seller account.
+    </p>
   `
 }
 
@@ -95,31 +90,22 @@ export function getNewOrderNotificationEmailText(orderDetails: {
   const sym = getCurrencySymbol(currency)
   const base = getAppBaseUrl()
   const support = supportEmailPlain()
+  const supportLine = support ? `\nSeller support: ${support}\n` : ''
 
-  const supportLine = support ? `\nNeed help? ${support}\n` : ''
-
-  return `New order received!
+  return `New order — ${orderNumber}
 
 Hi ${sellerName},
 
-Congratulations! You have a new sale on ConnectAfrik.
+You have a new sale on ConnectAfrik.
 
-Order information:
-- Order number: ${orderNumber}
-- Product: ${productTitle}
-- Quantity: ${quantity}
-- Buyer: ${buyerName}
-- Amount: ${sym}${totalAmount.toLocaleString()}
+${productTitle} × ${quantity}
+Buyer: ${buyerName}
+Total: ${sym}${totalAmount.toLocaleString()}
 
-Action required:
-- Contact the buyer for shipping details
-- Prepare the item
-- Update order status once shipped
+Next steps: confirm details if needed, ship the order, and update the status in your dashboard.
 
-View orders: ${base}/my-orders
+View order: ${base}/my-orders
 ${supportLine}
-Thank you for being part of ConnectAfrik!
-
-The ConnectAfrik Team
+— The ConnectAfrik team
 `
 }

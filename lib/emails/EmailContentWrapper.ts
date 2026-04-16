@@ -1,19 +1,13 @@
-/** Inner content area — matches Swipped table layout for email clients. */
+import { SWIPPED } from './swippedTheme'
+
+/** Inner content card — centered, responsive width, works in Outlook-style table layouts. */
 export function EmailContentWrapper(content: string): string {
   return `
-      <table class="es-content" style="width:650px; margin:auto; background-color:white;">
+      <table role="presentation" class="es-content" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;margin:0 auto;background-color:${SWIPPED.cardBg};border-radius:12px;box-shadow:${SWIPPED.shadowCard};">
         <tbody>
           <tr>
-            <td align="center">
-              <table class="es-content-body" bgcolor="#ffffff" style="width:100%; background-color:white;">
-                <tbody>
-                  <tr>
-                    <td align="left" style="padding-left:30px;padding-right:30px;padding-bottom:40px;">
-                      ${content}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <td align="left" style="padding:32px 28px 36px;">
+              ${content}
             </td>
           </tr>
         </tbody>

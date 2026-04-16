@@ -1,5 +1,5 @@
 import { getCurrencySymbol } from './currency'
-import { SWIPPED, supportEmailHtml, supportEmailPlain } from './swippedTheme'
+import { SWIPPED, emailHeadlineHtml, emailLeadHtml, supportEmailPlain } from './swippedTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
 
 type OrderConfirmationDetails = {
@@ -11,173 +11,113 @@ type OrderConfirmationDetails = {
   buyerName: string
 }
 
-/** Same narrative as the plain-text email — used for `text/plain` and mirrored in HTML. */
 function getOrderConfirmationNarrativeText(d: OrderConfirmationDetails): string {
   const { orderNumber, productTitle, quantity, totalAmount, currency, buyerName } = d
   const sym = getCurrencySymbol(currency)
   const base = getAppBaseUrl()
   const support = supportEmailPlain()
-  const supportLine = support
-    ? `Questions? Contact us at ${support}.\n`
-    : `Questions? View your orders on ConnectAfrik.\n`
+  const supportLine = support ? `Questions? ${support}\n` : `Help: ${base}/support\n`
 
-  return `Order confirmed!
+  return `Payment received — order ${orderNumber}
 
-Thank you ${buyerName}!
+Hi ${buyerName},
 
-Great news! Your order has been confirmed and payment has been processed successfully.
+Thanks for your purchase. We’ve received your payment and shared the details with the seller.
 
-Order details:
-- Order number: ${orderNumber}
-- Product: ${productTitle}
-- Quantity: ${quantity}
+What you ordered
+• ${productTitle} × ${quantity}
 
-Payment:
-- Amount paid: ${sym}${totalAmount.toLocaleString()}
-- Status: Payment successful
+Paid
+• ${sym}${totalAmount.toLocaleString()} — successful
 
-What happens next:
-- The seller has been notified
-- You will receive tracking when the item ships
-- Check status in My Orders
+What happens next
+• The seller prepares your order
+• You’ll get tracking or updates when it ships
+• Track everything in My Orders: ${base}/my-orders
 
-View orders: ${base}/my-orders
+${supportLine}Thank you for supporting sellers on ConnectAfrik.
 
-${supportLine}Thank you for supporting African entrepreneurs!
-
-The ConnectAfrik Team
+— The ConnectAfrik team
 `
 }
 
-/** HTML block mirroring `getOrderConfirmationNarrativeText` (included in the same HTML email). */
-function getOrderConfirmationNarrativeHtml(d: OrderConfirmationDetails): string {
-  const { orderNumber, productTitle, quantity, totalAmount, currency, buyerName } = d
-  const sym = getCurrencySymbol(currency)
-  const base = getAppBaseUrl()
-  const ordersUrl = `${base}/my-orders`
-  const support = supportEmailPlain()
-  const supportLineHtml = support
-    ? `Questions? Contact us at ${escapeHtml(support)}.`
-    : `Questions? View your orders on ConnectAfrik.`
-
-  const safeName = escapeHtml(buyerName)
-  const safeOrder = escapeHtml(orderNumber)
-  const safeTitle = escapeHtml(productTitle)
-  const amountStr = `${sym}${totalAmount.toLocaleString()}`
-
-  return `
-    <div style="margin-top:28px;padding:20px;background-color:#f8f9fa;border-radius:8px;border:1px solid ${SWIPPED.borderSubtle};">
-      <p style="margin:0 0 12px;font-size:12px;color:${SWIPPED.mutedFooter};text-transform:uppercase;letter-spacing:0.04em;">Message summary</p>
-      <p style="margin:0 0 12px;font-size:16px;font-weight:bold;color:${SWIPPED.text};">Order confirmed!</p>
-      <p style="margin:0 0 16px;font-size:14px;color:${SWIPPED.text};">Thank you ${safeName}!</p>
-      <p style="margin:0 0 16px;font-size:14px;color:${SWIPPED.text};">
-        Great news! Your order has been confirmed and payment has been processed successfully.
-      </p>
-      <p style="margin:0 0 6px;font-size:14px;color:${SWIPPED.text};"><strong>Order details:</strong></p>
-      <p style="margin:0;font-size:14px;color:${SWIPPED.text};line-height:1.7;">
-        – Order number: ${safeOrder}<br />
-        – Product: ${safeTitle}<br />
-        – Quantity: ${quantity}
-      </p>
-      <p style="margin:16px 0 6px;font-size:14px;color:${SWIPPED.text};"><strong>Payment:</strong></p>
-      <p style="margin:0;font-size:14px;color:${SWIPPED.text};line-height:1.7;">
-        – Amount paid: ${amountStr}<br />
-        – Status: Payment successful
-      </p>
-      <p style="margin:16px 0 6px;font-size:14px;color:${SWIPPED.text};"><strong>What happens next:</strong></p>
-      <p style="margin:0;font-size:14px;color:${SWIPPED.text};line-height:1.7;">
-        – The seller has been notified<br />
-        – You will receive tracking when the item ships<br />
-        – Check status in My Orders
-      </p>
-      <p style="margin:16px 0 0;font-size:14px;color:${SWIPPED.text};">
-        View orders: <a href="${ordersUrl}" style="color:${SWIPPED.ctaBg};word-break:break-all;">${ordersUrl}</a>
-      </p>
-      <p style="margin:12px 0 0;font-size:14px;color:${SWIPPED.text};">${supportLineHtml}</p>
-      <p style="margin:16px 0 0;font-size:14px;color:${SWIPPED.text};">Thank you for supporting African entrepreneurs!</p>
-      <p style="margin:8px 0 0;font-size:14px;color:${SWIPPED.text};">The ConnectAfrik Team</p>
-    </div>
-  `
-}
-
-/** Buyer confirmation — section blocks match Swipped `shopOrderPaymentEmail.js`. */
 export function getOrderConfirmationEmailHtml(orderDetails: OrderConfirmationDetails): string {
   const { orderNumber, productTitle, quantity, totalAmount, currency, buyerName } = orderDetails
   const sym = getCurrencySymbol(currency)
   const base = getAppBaseUrl()
   const ordersUrl = `${base}/my-orders`
-  const support = supportEmailHtml()
+  const supportPlain = supportEmailPlain()
   const safeOrder = escapeHtml(orderNumber)
   const safeTitle = escapeHtml(productTitle)
   const safeName = escapeHtml(buyerName)
   const amountStr = `${sym}${totalAmount.toLocaleString()}`
 
-  const supportBlock = support
-    ? `<p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      Questions about your order? Reply to this email or contact us at ${support}.
+  const supportHtml = supportPlain
+    ? `<p style="margin:20px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
+      Need help with this order? Reply to this message or email
+      <a href="mailto:${escapeHtml(supportPlain)}" style="color:${SWIPPED.link};">${escapeHtml(supportPlain)}</a>.
     </p>`
-    : `<p style="font-size:14px;color:${SWIPPED.text};padding-top:16px;">
-      Questions about your order? Visit your orders page on ConnectAfrik.
+    : `<p style="margin:20px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
+      Questions? Visit your <a href="${ordersUrl}" style="color:${SWIPPED.link};">orders</a> page or our <a href="${base}/support" style="color:${SWIPPED.link};">help center</a>.
     </p>`
-
-  const narrativeMirror = getOrderConfirmationNarrativeHtml(orderDetails)
 
   return `
-    <p style="font-size:20px;color:${SWIPPED.text};">Thank you ${safeName}!</p>
+    ${emailHeadlineHtml(`Thanks, ${safeName} — you’re all set`)}
+    ${emailLeadHtml(
+      `We’ve received your payment for order <strong style="color:${SWIPPED.text};">${safeOrder}</strong>. The seller has been notified and will work on fulfilling it.`
+    )}
 
-    <p style="font-size:16px;color:${SWIPPED.text};padding-top:16px;">
-      <strong>Great news! Your order has been confirmed and payment has been processed successfully.</strong>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid ${SWIPPED.borderSubtle};border-radius:10px;overflow:hidden;">
+      <tr>
+        <td style="padding:18px 20px;background-color:${SWIPPED.greenBoxBg};border-bottom:1px solid ${SWIPPED.borderSubtle};">
+          <p style="margin:0;font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${SWIPPED.greenBorder};">Order summary</p>
+          <p style="margin:8px 0 0;font-size:16px;font-weight:600;color:${SWIPPED.text};">${safeTitle}</p>
+          <p style="margin:4px 0 0;font-size:14px;color:${SWIPPED.textSecondary};">Quantity: ${quantity}</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:18px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="font-size:14px;color:${SWIPPED.textSecondary};">Order number</td>
+              <td align="right" style="font-size:14px;font-weight:600;color:${SWIPPED.text};">${safeOrder}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:12px 0;border-bottom:1px solid ${SWIPPED.borderSubtle};"></td>
+            </tr>
+            <tr>
+              <td style="padding-top:12px;font-size:14px;color:${SWIPPED.textSecondary};">Amount paid</td>
+              <td align="right" style="padding-top:12px;font-size:16px;font-weight:700;color:${SWIPPED.text};">${amountStr}</td>
+            </tr>
+            <tr>
+              <td style="padding-top:6px;font-size:14px;color:${SWIPPED.textSecondary};">Status</td>
+              <td align="right" style="padding-top:6px;font-size:14px;font-weight:600;color:${SWIPPED.greenBorder};">Paid</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <div style="background-color:${SWIPPED.nextBoxBg};padding:18px 20px;border-radius:10px;border-left:4px solid ${SWIPPED.nextBorder};margin:0 0 24px;">
+      <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:${SWIPPED.text};">What happens next</p>
+      <p style="margin:0;font-size:14px;line-height:1.6;color:${SWIPPED.textSecondary};">
+        The seller will prepare your package. When it ships, you’ll see updates here — and you can always check status in <strong style="color:${SWIPPED.text};">My orders</strong>.
+      </p>
+    </div>
+
+    <p style="text-align:center;margin:0 0 8px;">
+      <a href="${ordersUrl}" style="${SWIPPED.ctaBold}">View order details</a>
+    </p>
+    <p style="text-align:center;margin:0;font-size:13px;color:${SWIPPED.mutedFooter};">
+      Save this email for your records.
     </p>
 
-    <div style="background-color:${SWIPPED.greenBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.greenBorder};">
-      <h3 style="margin:0 0 15px 0;color:${SWIPPED.greenBorder};font-size:18px;">Order details</h3>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Order number:</strong> ${safeOrder}</p>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Product:</strong> ${safeTitle}</p>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Quantity:</strong> ${quantity}</p>
-    </div>
+    ${supportHtml}
 
-    <div style="background-color:${SWIPPED.blueBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.blueBorder};">
-      <h3 style="margin:0 0 15px 0;color:${SWIPPED.blueBorder};font-size:18px;">Item</h3>
-      <p style="margin:0;font-size:14px;color:${SWIPPED.text};font-weight:bold;">${safeTitle}</p>
-      <p style="margin:5px 0 0;font-size:12px;color:${SWIPPED.mutedFooter};">Quantity: ${quantity}</p>
-    </div>
-
-    <div style="background-color:${SWIPPED.paymentBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.greenBorder};">
-      <h3 style="margin:0 0 15px 0;color:${SWIPPED.greenBorder};font-size:18px;">Payment confirmation</h3>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Amount paid:</strong> ${amountStr}</p>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};"><strong>Status:</strong> Payment successful</p>
-    </div>
-
-    <div style="background-color:${SWIPPED.nextBoxBg};padding:20px;border-radius:8px;margin:20px 0;border-left:4px solid ${SWIPPED.nextBorder};">
-      <h3 style="margin:0 0 15px 0;color:${SWIPPED.nextBorder};font-size:18px;">What happens next?</h3>
-      <p style="margin:5px 0;font-size:14px;color:${SWIPPED.text};">
-        • <strong>Order processing</strong> – The seller has been notified<br />
-        • <strong>Shipping</strong> – You will receive tracking information once the item ships<br />
-        • <strong>My orders</strong> – Check your order status anytime in My Orders
-      </p>
-    </div>
-
-    <p style="text-align:center;padding-top:20px;">
-      <a href="${ordersUrl}" style="${SWIPPED.ctaBold}">
-        View my orders
-      </a>
+    <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
+      With gratitude,<br />
+      <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
     </p>
-
-    <div style="background-color:${SWIPPED.warnBoxBg};padding:15px;border-radius:6px;margin:20px 0;border-left:4px solid ${SWIPPED.warnBorder};">
-      <p style="margin:0;font-size:14px;color:${SWIPPED.warnText};">
-        <strong>Important:</strong> Keep this email for your records. You can view order status on ConnectAfrik.
-      </p>
-    </div>
-
-    ${supportBlock}
-
-    ${narrativeMirror}
-
-    <div style="margin-top:30px;padding-top:20px;border-top:1px solid ${SWIPPED.borderSubtle};font-size:12px;color:${SWIPPED.mutedFooter};">
-      <p style="margin:0;">
-        This email confirms that order ${safeOrder} has been placed and payment processed. You can view this order in your account.
-      </p>
-    </div>
   `
 }
 
