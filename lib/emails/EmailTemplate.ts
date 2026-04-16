@@ -16,9 +16,10 @@ export type EmailTemplateOptions = {
  */
 export function EmailTemplate(options: EmailTemplateOptions): string {
   const { content, subject, preheader } = options
-  const pre = preheader?.trim()
+  const trimmedPreheader = preheader?.trim() ?? ''
+  const pre = trimmedPreheader
     ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#fff;opacity:0;">
-         ${escapeHtml(pre)}&#847;&zwnj;&nbsp;
+         ${escapeHtml(trimmedPreheader)}&#847;&zwnj;&nbsp;
        </div>`
     : ''
 
