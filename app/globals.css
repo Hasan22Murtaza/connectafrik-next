@@ -149,10 +149,10 @@ body {
   color: var(--african-orange);
 }
 .hover\:text-primary-600:hover {
-  color: var(--african-orange-dark);
+  color: var(--african-orange-dark) !important;
 }
 .group:hover .group-hover\:text-primary-600 {
-  color: var(--primary-600);
+  color: var(--primary-600) !important;
 }
 .text-primary-700 {
   color: var(--primary-700);
