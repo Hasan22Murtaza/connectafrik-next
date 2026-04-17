@@ -23,9 +23,9 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ friends, isOwnProfile }) => {
   const router = useRouter()
 
   return (
-    <div className="bg-white sm:rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden">
       <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-900">Friends</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-600">Friends</h2>
         {friends.length > 0 && (
           <span className="text-[13px] sm:text-sm text-gray-500">
             {friends.length} {friends.length === 1 ? 'friend' : 'friends'}

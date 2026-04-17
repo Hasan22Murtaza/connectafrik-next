@@ -200,9 +200,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
         const primary = otherParticipants[0] ?? (thread ? thread.participants[0] : null)
         const isGroup = thread
           ? thread.type === 'group' ||
-            Boolean(thread.group_id) ||
-            otherParticipants.length > 1 ||
-            Boolean((thread as any).isGroup)
+          Boolean(thread.group_id) ||
+          otherParticipants.length > 1 ||
+          Boolean((thread as any).isGroup)
           : entry.thread_type === 'group'
         const fallbackName = entry.contact_name || entry.thread_name || 'Unknown'
         const fallbackId = entry.contact_id || entry.thread_id
@@ -225,7 +225,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
   const handleOpenThread = async (threadId: string) => {
     // Find the thread in local threads or context threads
     const thread = threads.find(t => t.id === threadId) || contextThreads.find(t => t.id === threadId)
-    
+
     // Open the thread - this will add it to openThreads and trigger ChatDock to load it
     openThread(threadId)
     onClose()
@@ -295,129 +295,129 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               <ChatDropdownShimmer mode="call" count={4} />
             </>
           ) : (
-          <>
-          {sortedRecentCalls.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent</p>
-              <div className="space-y-2 sm:space-y-3">
-                {sortedRecentCalls.map((call) => (
-                  <div
-                    key={call.thread_id}
-                    className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors"
-                  >
-                    <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                      <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
-                        {call.avatarUrl ? (
-                          <img
-                            src={call.avatarUrl}
-                            alt={call.name}
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
-                            {call.name.charAt(0).toUpperCase()}
+            <>
+              {sortedRecentCalls.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent</p>
+                  <div className="space-y-2 sm:space-y-3">
+                    {sortedRecentCalls.map((call) => (
+                      <div
+                        key={call.thread_id}
+                        className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors"
+                      >
+                        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                          <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
+                            {call.avatarUrl ? (
+                              <img
+                                src={call.avatarUrl}
+                                alt={call.name}
+                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
+                                {call.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <Circle
+                              className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[(presence[call.id] || 'offline') as PresenceStatus]}`}
+                              fill="currentColor"
+                            />
                           </div>
-                        )}
-                        <Circle
-                          className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[(presence[call.id] || 'offline') as PresenceStatus]}`}
-                          fill="currentColor"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{call.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatDistanceToNow(new Date(call.created_at), { addSuffix: true })}
-                          {' · '}
-                          {call.call_type === 'video' ? 'Video call' : 'Voice call'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      <button
-                        onClick={() => handleStartCall(call.thread_id, 'audio', call.id, call.name, call.avatarUrl)}
-                        className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                        title="Start voice call"
-                      >
-                        <Phone className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleStartCall(call.thread_id, 'video', call.id, call.name, call.avatarUrl)}
-                        className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-purple-100 hover:text-purple-600 transition-colors"
-                        title="Start video call"
-                      >
-                        <Video className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-              {sortedRecentCalls.length > 0 ? 'Contacts' : 'Start a call'}
-            </p>
-            {availableContacts.length === 0 ? (
-              <div className="py-4 text-center text-sm text-gray-500">
-                No contacts available.
-              </div>
-            ) : (
-              <div className="space-y-2 sm:space-y-3">
-                {visibleContacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors"
-                  >
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <div className="relative w-8 h-8 sm:w-10 sm:h-10">
-                        {contact.avatarUrl ? (
-                          <img
-                            src={contact.avatarUrl}
-                            alt={contact.name}
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
-                            {contact.name.charAt(0).toUpperCase()}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{call.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {formatDistanceToNow(new Date(call.created_at), { addSuffix: true })}
+                              {' · '}
+                              {call.call_type === 'video' ? 'Video call' : 'Voice call'}
+                            </p>
                           </div>
-                        )}
-                        <Circle
-                          className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[contact.status]}`}
-                          fill="currentColor"
-                        />
+                        </div>
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <button
+                            onClick={() => handleStartCall(call.thread_id, 'audio', call.id, call.name, call.avatarUrl)}
+                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
+                            title="Start voice call"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleStartCall(call.thread_id, 'video', call.id, call.name, call.avatarUrl)}
+                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                            title="Start video call"
+                          >
+                            <Video className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{contact.name}</p>
-                        <p className="text-xs text-gray-500">{contact.status === 'online' ? 'Active now' : contact.status}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => handleStartCallWithContact(contact.id, contact.name, contact.avatarUrl || undefined, 'audio')}
-                        className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                        title="Start voice call"
-                      >
-                        <Phone className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleStartCallWithContact(contact.id, contact.name, contact.avatarUrl || undefined, 'video')}
-                        className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-purple-100 hover:text-purple-600 transition-colors"
-                        title="Start video call"
-                      >
-                        <Video className="w-4 h-4" />
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                  {sortedRecentCalls.length > 0 ? 'Contacts' : 'Start a call'}
+                </p>
+                {availableContacts.length === 0 ? (
+                  <div className="py-4 text-center text-sm text-gray-500">
+                    No contacts available.
+                  </div>
+                ) : (
+                  <div className="space-y-2 sm:space-y-3">
+                    {visibleContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="flex items-center justify-between py-2 cursor-pointer"
+                      >
+                        <div className="flex items-center space-x-2 sm:space-x-3">
+                          <div className="relative w-8 h-8 sm:w-10 sm:h-10">
+                            {contact.avatarUrl ? (
+                              <img
+                                src={contact.avatarUrl}
+                                alt={contact.name}
+                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
+                                {contact.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <Circle
+                              className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[contact.status]}`}
+                              fill="currentColor"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{contact.name}</p>
+                            <p className="text-xs text-gray-500">{contact.status === 'online' ? 'Active now' : contact.status}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleStartCallWithContact(contact.id, contact.name, contact.avatarUrl || undefined, 'audio')}
+                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
+                            title="Start voice call"
+                          >
+                            <Phone className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleStartCallWithContact(contact.id, contact.name, contact.avatarUrl || undefined, 'video')}
+                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-purple-100 hover:text-purple-600 transition-colors"
+                            title="Start video call"
+                          >
+                            <Video className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {callsLoadingMore && (
-            <div className="flex justify-center py-2">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-            </div>
-          )}
-          </>
+              {callsLoadingMore && (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                </div>
+              )}
+            </>
           )}
         </div>
       ) : (
@@ -449,7 +449,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
               return (
                 <div
                   key={thread.id}
-                  className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200  py-2 transition-colors"
+                  className="group flex items-center justify-between pb-2"
                 >
                   <button
                     onClick={() => handleOpenThread(thread.id)}
@@ -463,7 +463,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                           className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm ">
                           {threadDisplayName.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -472,16 +472,19 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                         fill="currentColor"
                       />
                     </div>
+
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">
+                      <p className="text-sm font-semibold text-gray-900 ">
                         {threadDisplayName}
                       </p>
+
                       <p className="text-xs text-gray-500">
                         {thread.last_message_preview
                           ? thread.last_message_preview
                           : `${otherParticipants.length} participant${otherParticipants.length !== 1 ? 's' : ''}`}
                       </p>
-                      <p className="text-xs text-gray-400">
+
+                      <p className="text-xs text-gray-400 ">
                         {lastActive && new Date(lastActive).getTime() > 0
                           ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
                           : 'No recent activity'}
@@ -491,7 +494,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
 
                   <button
                     onClick={() => handleOpenThread(thread.id)}
-                    className="w-9 h-9 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-primary-100 hover:text-primary-700 transition-colors"
+                    className="w-9 h-9 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full"
                     title="Open chat"
                   >
                     <MessageCircle className="w-4 h-4" />

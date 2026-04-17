@@ -93,7 +93,7 @@ const Advertisement: React.FC<AdProps> = ({ type, placement, className = '' }) =
   if (type === 'banner') {
     return (
       <div
-        className={`bg-gradient-to-br from-[#F97316]/40 via-[#149941]/40 to-[#0B7FB0]/30 text-white py-4 px-3 sm:px-6 rounded-lg shadow-md ${className} group`}
+        className={`bg-gradient-to-br from-[#F97316]/40 via-[#149941]/40 to-[#0B7FB0]/30 text-white py-4 px-3 sm:px-6  shadow-md ${className} group `}
       >
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap gap-2 justify-between w-full">

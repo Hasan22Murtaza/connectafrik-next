@@ -84,7 +84,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
 
   return (
     <div
-      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer group focus-within:ring-2 focus-within:ring-primary-500"
+      className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer group focus-within:ring-2 focus-within:ring-primary-500"
       onClick={() => onView(product.id)}
       role="article"
       aria-label={`${product.title} - ${getCurrencySymbol(product.currency)}${product.price.toLocaleString()}`}
@@ -119,8 +119,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
             }}
             className={`absolute top-2 right-2 p-2 rounded-full transition-colors ${
               product.is_saved
-                ? 'bg-red-500 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-100'
+                ? 'bg-primary-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-primary-600 hover:text-white duration-300'
             }`}
           >
             <Bookmark className={`w-4 h-4 ${product.is_saved ? 'fill-current' : ''}`} />
@@ -128,28 +128,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
         )}
 
         {/* Condition Badge */}
-        <div className={`absolute bottom-2 left-2 px-2 py-1 rounded text-xs font-medium ${getConditionColor(product.condition)}`}>
+        <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${getConditionColor(product.condition)}`}>
           {product.condition === 'like-new' ? 'Like New' : product.condition.charAt(0).toUpperCase() + product.condition.slice(1)}
         </div>
 
         {/* Stock Status */}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="bg-red-500 text-white px-4 py-2 rounded-lg font-bold">SOLD OUT</span>
+            <span className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold">SOLD OUT</span>
           </div>
-        )}
+       )}
 
         {/* Unavailable Status */}
         {!isOutOfStock && isUnavailable && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="bg-gray-600 text-white px-4 py-2 rounded-lg font-bold">UNAVAILABLE</span>
+            <span className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold">UNAVAILABLE</span>
           </div>
-        )}
+        )} 
 
         {/* Share Button */}
         <button
           onClick={handleShareProduct}
-          className="absolute top-2 left-2 p-2 rounded-full bg-white text-gray-600 hover:bg-gray-100 transition-colors shadow-md"
+          className="absolute top-12 right-2 p-2 rounded-full bg-white text-gray-600 hover:bg-primary-600 hover:text-white duration-300 transition-colors shadow-md"
           aria-label="Share product"
         >
           <Share2 className="w-4 h-4" />
@@ -159,9 +159,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
       {/* Product Details */}
       <div className="p-4">
         {/* Title */}
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#f97316] transition-colors h-15">
+        <div className='pb-1'>
+        <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 hover:underline transition-colors">
           {product.title}
         </h3>
+          <span className="text-xs text-gray-400">
+              {formatDistanceToNow(new Date(product.created_at), { addSuffix: true })}
+          </span>
+          </div>
 
         {/* Price */}
         <div className="flex items-center justify-between mb-3">
@@ -203,33 +208,34 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
 
      
 
-        {/* Seller Info */}
+       
+
+        {/* Action Buttons */}
+        <div className="flex gap-4  justify-between items-center border-t border-gray-100 pt-2">
+           {/* Seller Info */}
         {product.seller && (
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between ">
             <div className="flex items-center space-x-2">
               {product.seller.avatar_url ? (
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                 <img
                   src={product.seller.avatar_url}
                   alt={product.seller.full_name}
-                  className="w-6 h-6 rounded-full"
+                  className="w-full h-full rounded-full object-cover bg-gray-200"
                 />
+              </div>
               ) : (
-                <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
                   <span className="text-xs font-medium text-primary-600">
                     {product.seller.full_name.charAt(0)}
                   </span>
                 </div>
               )}
-              <span className="text-xs text-gray-600">{product.seller.full_name}</span>
+              <span className="text-xs text-gray-700 font-semibold truncate w-20">{product.seller.full_name}</span>
             </div>
-            <span className="text-xs text-gray-400">
-              {formatDistanceToNow(new Date(product.created_at), { addSuffix: true })}
-            </span>
+          
           </div>
         )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-3">
           {/* Buy Button */}
           <button
             onClick={(e) => {
@@ -242,8 +248,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
               setShowCheckout(true)
             }}
             disabled={isOutOfStock || isUnavailable || isOwnProduct}
-            className={`py-2 px-4 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors ${
-              isOwnProduct ? 'flex-1' : 'flex-[2]'
+            className={`py-2 px-2 rounded-lg  flex items-center justify-center space-x-1 transition-colors text-sm  ${
+              isOwnProduct ? 'flex-1' : 'w-fit'
             } ${
               isOutOfStock || isUnavailable || isOwnProduct
                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed'

@@ -7,7 +7,7 @@ import CommentsSection from '@/features/social/components/CommentsSection'
 import { useCultureStats } from '@/shared/hooks/useCultureStats'
 import { usePosts } from '@/shared/hooks/usePosts'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
-import { Camera, Globe, Heart, Plus, Users } from 'lucide-react'
+import { Camera, Filter, Globe, Heart, Plus, Users } from 'lucide-react'
 import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 
@@ -15,6 +15,7 @@ const CulturePage: React.FC = () => {
   const { user } = useAuth()
   const [showCreatePost, setShowCreatePost] = useState(false)
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
   const { totalPosts, enthusiastsCount, categoryCounts, featuredThisWeek, loading: statsLoading, error: statsError, refetch: refetchStats } = useCultureStats()
   const { posts, loading: postsLoading, loadingMore, hasMore, loadMore, createPost, toggleLike, sharePost, refetch, updatePostLikesCount } = usePosts('culture', {
@@ -78,42 +79,57 @@ const CulturePage: React.FC = () => {
   const formatStat = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-8">
+      <div className="max-w-full  px-4 sm:px-6 py-8">
         {/* Header Section */}
         <div className="mb-8">
-          <div className="flex sm:items-center items-start space-x-3 mb-4">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-              <Users className="w-6 h-6 text-green-600" />
+          <div className="flex items-center  justify-between space-x-3 mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-green-100 rounded-full  items-center justify-center shrink-0 hidden sm:flex">
+                <Users className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <h1 className="sm:text-3xl text-2xl font-bold text-gray-900">African Culture</h1>
+                <p className="text-gray-600 hidden sm:block">
+                  Celebrating the rich cultural heritage and diversity of the African continent
+                </p>
+                {statsError && (
+                  <p className="text-sm text-amber-600 mt-2">Stats: {statsError}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <h1 className="sm:text-3xl text-2xl font-bold text-gray-900">African Culture</h1>
-              <p className="text-gray-600">Celebrating the rich cultural heritage and diversity of the African continent</p>
-              {statsError && (
-                <p className="text-sm text-amber-600 mt-2">Stats: {statsError}</p>
-              )}
-            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCategoryModal(true)}
+              className="lg:hidden inline-flex text-green-600 bg-green-100 rounded-full p-3"
+              aria-label="Open categories filter"
+            >
+              <Filter className="w-5 h-5" />
+            </button>
+
+            
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="card text-center">
-              <Heart className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">
+          <div className="grid grid-cols-3 md:grid-cols-3 sm:gap-4 gap-2">
+            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+              <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
+              <div className="sm:text-2xl text-lg font-bold text-gray-900">
                 {statsLoading ? '—' : formatStat(totalPosts)}
               </div>
               <div className="text-sm text-gray-600">Cultural Shares</div>
             </div>
-            <div className="card text-center">
-              <Users className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">
+            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+              <Users className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
+              <div className="sm:text-2xl text-lg font-bold text-gray-900">
                 {statsLoading ? '—' : formatStat(enthusiastsCount)}
               </div>
               <div className="text-sm text-gray-600">Culture Enthusiasts</div>
             </div>
-            <div className="card text-center">
-              <Globe className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">
+            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+              <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
+              <div className="sm:text-2xl text-lg font-bold text-gray-900">
                 {statsLoading ? '—' : (totalPosts >= 1000 ? '1000+' : formatStat(totalPosts))}
               </div>
               <div className="text-sm text-gray-600">Traditions Shared</div>
@@ -123,10 +139,10 @@ const CulturePage: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-          <div className="lg:col-span-1">
+          <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 space-y-6">
               {/* Cultural Categories */}
-              <div className="card">
+              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
                 <h3 className="font-semibold text-gray-900 mb-4">Cultural Categories</h3>
                 <div className="space-y-1 mb-2">
                   <button
@@ -168,7 +184,7 @@ const CulturePage: React.FC = () => {
               </div>
 
               {/* Featured This Week */}
-              <div className="card">
+              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
                 <h3 className="font-semibold text-gray-900 mb-4">Featured This Week</h3>
                 <div className="space-y-3">
                   {statsLoading ? (
@@ -190,7 +206,7 @@ const CulturePage: React.FC = () => {
               </div>
 
               {/* Cultural Tips */}
-              <div className="card">
+              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
                 <h3 className="font-semibold text-gray-900 mb-4">Sharing Tips</h3>
                 <div className="space-y-2 text-sm text-gray-600">
                   <div className="flex items-start space-x-2">
@@ -218,12 +234,12 @@ const CulturePage: React.FC = () => {
           <div className="lg:col-span-3">
             {/* Create Post Button */}
             {!showCreatePost && (
-              <div className="card mb-6">
+              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] sm:p-4 p-2  mb-6">
                 <button
                   onClick={() => setShowCreatePost(true)}
-                  className="w-full flex items-center space-x-3 p-4 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                  className="w-full flex items-center space-x-3  text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
                 >
-                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                     <Plus className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
@@ -246,7 +262,7 @@ const CulturePage: React.FC = () => {
             )}
 
             {/* Cultural Spotlight */}
-            <div className="card mb-6 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 mb-6 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                   <Heart className="w-5 h-5 text-green-600" />
@@ -267,7 +283,7 @@ const CulturePage: React.FC = () => {
               {postsLoading ? (
                 <div className="space-y-6">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="card animate-pulse">
+                    <div key={i} className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
                       <div className="flex space-x-3 mb-4">
                         <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
                         <div className="flex-1">
@@ -289,7 +305,7 @@ const CulturePage: React.FC = () => {
                   ))}
                 </div>
               ) : posts.length === 0 && !postsLoading ? (
-                <div className="card text-center py-12">
+                <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center py-12">
                   <Users className="w-16 h-16 text-green-200 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No cultural shares yet</h3>
                   <p className="text-gray-600 mb-6">Be the first to share a piece of African culture!</p>
@@ -332,7 +348,7 @@ const CulturePage: React.FC = () => {
                   {loadingMore && (
                     <div className="space-y-6">
                       {Array.from({ length: 2 }).map((_, idx) => (
-                        <div key={idx} className="card animate-pulse">
+                        <div key={idx} className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
                           <div className="flex space-x-3 mb-4">
                             <div className="w-10 h-10 bg-gray-300 rounded-full" />
                             <div className="flex-1">
@@ -367,6 +383,83 @@ const CulturePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile category modal */}
+      {showCategoryModal && (
+        <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowCategoryModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-h-[80vh] w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 bg-green-100">
+              <div>
+                <h2 className="text-lg font-semibold text-green-600">Cultural Categories</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCategoryModal(false)}
+                className="text-green-600 hover:text-green-800 rounded-full p-2 transition-colors"
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSubcategory(null)
+                  setShowCategoryModal(false)
+                }}
+                className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  selectedSubcategory === null ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
+                }`}
+              >
+                <span className="font-medium text-gray-900 text-sm">All categories</span>
+                {totalPosts > 0 && (
+                  <span className="text-xs text-gray-500 ml-2">({totalPosts} posts)</span>
+                )}
+              </button>
+
+              {(statsLoading ? [] : categoryCounts).map((cat) => (
+                <button
+                  key={cat.slug}
+                  type="button"
+                  onClick={() => {
+                    setSelectedSubcategory(cat.slug)
+                    setShowCategoryModal(false)
+                  }}
+                  className={`w-full text-left p-3 rounded-lg transition-colors ${
+                    selectedSubcategory === cat.slug ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex gap-3">
+                    <span className="text-lg shrink-0">{cat.icon}</span>
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="font-medium text-gray-900 text-sm">{cat.name}</div>
+                      <div className="text-xs text-gray-500">{cat.description}</div>
+                      {cat.count > 0 && (
+                        <div className="text-xs text-green-600 font-medium">{cat.count} posts</div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-gray-200 p-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSubcategory(null)
+                  setShowCategoryModal(false)
+                }}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors"
+              >
+                Clear Filter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Desktop comment modal */}
       <div className="hidden lg:block">
         <CommentsSection
