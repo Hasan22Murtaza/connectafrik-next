@@ -26,10 +26,7 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
       </a>
     </div>
 
-    {/* Art of Ink Advertisement */}
-    <div className="mb-8">
-      <ArtOfInksAd type="sidebar" className="rounded-lg shadow-sm" />
-    </div>
+   
 
     {/* Friends/Contacts Section - Show friends with chat/call buttons */}
     {contacts && contacts.length > 0 && (
@@ -69,6 +66,10 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
           <li className="text-gray-400">No birthdays today</li>
         )}
       </ul>
+    </div>
+     {/* Art of Ink Advertisement */}
+     <div className="mb-8">
+      <ArtOfInksAd type="sidebar" className="rounded-lg shadow-sm" />
     </div>
     {ads && ads.length > 0 && (
       <div>
