@@ -1,4 +1,3 @@
-import { PeopleYouMayKnow } from '@/features/social/components/PeopleYouMayKnow';
 import ArtOfInksAd from '@/shared/components/ui/ArtOfInksAd';
 import OnlineContactsSection from '@/shared/components/ui/OnlineContactsSection';
 
@@ -30,11 +29,6 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
     {/* Art of Ink Advertisement */}
     <div className="mb-8">
       <ArtOfInksAd type="sidebar" className="rounded-lg shadow-sm" />
-    </div>
-
-    {/* People You May Know - Friend Recommendations */}
-    <div className="mb-8">
-      <PeopleYouMayKnow />
     </div>
 
     {/* Friends/Contacts Section - Show friends with chat/call buttons */}

@@ -11,12 +11,15 @@ import Advertisement from '@/shared/components/ui/Advertisement'
 import { StoriesBar } from '@/features/social/components/story'
 import CreatePost from '@/features/social/components/CreatePost'
 import { PostCard } from '@/features/social/components/PostCard'
+import { PeopleYouMayKnow } from '@/features/social/components/PeopleYouMayKnow'
+import { FeedReelsStrip } from '@/features/social/components/FeedReelsStrip'
 import ShareModal from '@/features/social/components/ShareModal'
 import { updateEngagementReward } from '@/features/social/services/fairnessRankingService'
 import { trackEvent } from '@/features/social/services/engagementTracking'
 import { sendNotification } from '@/shared/services/notificationService'
 import toast from 'react-hot-toast'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
+import { getResolvedFeedInlineIndices } from '@/lib/social/feedInlinePlacement'
 
 const FEED_CATEGORIES = [
   { id: 'all' as const, label: 'All Posts', icon: Globe },
@@ -70,6 +73,20 @@ const FeedPage: React.FC = () => {
       post.author?.username?.toLowerCase().includes(term)
     )
   }, [posts, searchTerm])
+
+  /** Seeded placement for PYMK + Reels strips (different pseudo-random gaps, no overlap). */
+  const feedInlineSeed = useMemo(
+    () => `${user?.id ?? 'guest'}|${activeCategory}|${searchTerm.trim() || '_'}|feed-inline-v1`,
+    [user?.id, activeCategory, searchTerm]
+  )
+
+  const { pymkAfterIndex, reelsAfterIndex } = useMemo(
+    () =>
+      getResolvedFeedInlineIndices(filteredPosts.length, feedInlineSeed, {
+        pymk: Boolean(user),
+      }),
+    [filteredPosts.length, feedInlineSeed, user]
+  )
 
   const memoizedMembers = useMemo(() => members, [members])
 
@@ -230,9 +247,9 @@ const FeedPage: React.FC = () => {
 
     return (
       <div className="space-y-2 sm:space-y-3">
-        {filteredPosts.map((post) => (
-          <PostCard
-              key={post.id}
+        {filteredPosts.map((post, index) => (
+          <React.Fragment key={post.id}>
+            <PostCard
               post={post}
               onLike={handleToggleLike}
               onComment={handleComment}
@@ -244,6 +261,17 @@ const FeedPage: React.FC = () => {
               canComment={post.canComment}
               canFollow={post.canFollow}
             />
+            {user && pymkAfterIndex !== null && index === pymkAfterIndex ? (
+              <div className="pt-1">
+                <PeopleYouMayKnow />
+              </div>
+            ) : null}
+            {reelsAfterIndex !== null && index === reelsAfterIndex ? (
+              <div className="pt-1">
+                <FeedReelsStrip />
+              </div>
+            ) : null}
+          </React.Fragment>
         ))}
 
         {/* Infinite scroll sentinel */}
