@@ -119,331 +119,332 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-    <header className="sticky top-0 z-50  bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
-      <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 lg:px-4 xl:px-8 overflow-visible">
-        <div className="flex items-center h-14 sm:h-16">
-          {/* Logo - Pinned to left */}
-          <Link href="/" className="flex-shrink-0 ">
-            <img src="/assets/images/logo_2.png" alt="" className="w-16" />
-          </Link>
+      <header className="sticky top-0 z-50  bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
+        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 overflow-visible">
+          <div className="flex items-center h-14 sm:h-16 justify-between gap-2 w-full">
+            <div className="flex items-center w-65 xl:w-80 2xl:w-[24rem]">
+            {/* Logo - Pinned to left */}
+            <Link href="/" className="flex-shrink-0 ">
+              <img src="/assets/images/logo_2.png" alt="" className="w-16" />
+            </Link>
 
-          {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
-          {user && (
-            <div className="hidden md:flex flex-1 max-w-lg mx-4 lg:mx-8">
-              <div className="relative w-full" ref={searchContainerRef}>
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-                <input
-                  type="text"
-                  placeholder="Search connectAfrik..."
-                  className="w-full px-4 py-3 pl-10 bg-[#EEF1F4] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  onFocus={() => {
-                    if (searchTerm.trim().length >= 2 && searchResults) {
-                      setShowSearchResults(true);
-                    }
-                  }}
-                />
-
-                {/* Search Results Dropdown */}
-                {showSearchResults && (
-                  <SearchResultsDropdown
-                    results={searchResults}
-                    isSearching={isSearching}
-                    searchTerm={searchTerm}
-                    onClose={() => setShowSearchResults(false)}
-                  />
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Mobile Search Button - Visible only on mobile when logged in */}
-          {user && (
-            <button
-              onClick={() => setShowMobileSearch(true)}
-              className="md:hidden p-2 text-gray-600 hover:text-primary-600 transition-colors"
-              aria-label="Open search"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-          )}
-
-          {/* Navigation and User Menu - Pinned to right */}
-          <div className=" flex items-center gap-2 sm:gap-3 ml-auto ">
-            {user ? (
-              <>
-                {/* Navigation Links - Hidden on mobile, visible on desktop */}
-                <nav className="md:block hidden lg:flex items-center">
-                  <ul className="flex items-center space-x-8 pr-4 sm:pr-14 pt-3">
-
-                    {/* Feed */}
-                    <li className="relative">
-                      <Link
-                        href="/feed"
-                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/feed"
-                            ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
-                          }`}
-                      >
-                        <Home className="w-12" />
-                        <span className="text-sm font-medium">Feed</span>
-
-                        <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                            }`}
-                        />
-                      </Link>
-                    </li>
-
-                    {/* Reels */}
-                    <li className="relative">
-                      <Link
-                        href="/memories/foryou"
-                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname.startsWith("/memories")
-                            ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
-                          }`}
-                      >
-                        <Video className="w-12" />
-                        <span className="text-sm font-medium">Reels</span>
-
-                        <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname.startsWith("/memories")
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                            }`}
-                        />
-                      </Link>
-                    </li>
-
-                    {/* Politics */}
-                    <li className="relative">
-                      <Link
-                        href="/politics"
-                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/politics"
-                            ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
-                          }`}
-                      >
-                        <Landmark className="w-12" />
-                        <span className="text-sm font-medium">Politics</span>
-
-                        <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/politics"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                            }`}
-                        />
-                      </Link>
-                    </li>
-
-                    {/* Culture */}
-                    <li className="relative">
-                      <Link
-                        href="/culture"
-                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/culture"
-                            ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
-                          }`}
-                      >
-                        <Palette className="w-12" />
-                        <span className="text-sm font-medium">Culture</span>
-
-                        <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/culture"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                            }`}
-                        />
-                      </Link>
-                    </li>
-
-                    {/* Groups */}
-                    <li className="relative">
-                      <Link
-                        href="/groups"
-                        className={`group flex flex-col items-center gap-1 pb-2 transition-colors ${pathname === "/groups"
-                            ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
-                          }`}
-                      >
-                        <Users className="w-12" />
-                        <span className="text-sm font-medium">Groups</span>
-
-                        <span
-                          className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                            }`}
-                        />
-                      </Link>
-                    </li>
-
-                  </ul>
-                </nav>
-
-                {/* Notifications & Messaging */}
-                <div className="flex items-center space-x-2 sm:space-x-2  border-gray-200">
-                  
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setShowInbox(!showInbox);
-                        setShowNotifications(false);
-                        setShowCalls(false);
-                      }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
-                    >
-                      <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                      {unreadMessages > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                          {unreadMessages > 99 ? "99+" : unreadMessages}
-                        </span>
-                      )}
-                    </button>
-                    {showInbox && (
-                      <ChatDropdown
-                        mode="chat"
-                        onClose={() => setShowInbox(false)}
-                      />
-                    )}
-                  </div>
-
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setShowCalls(!showCalls);
-                        setShowNotifications(false);
-                        setShowInbox(false);
-                      }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
-                    >
-                      <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-                    {showCalls && (
-                      <ChatDropdown
-                        mode="call"
-                        onClose={() => setShowCalls(false)}
-                      />
-                    )}
-                  </div>
-
-                  <div className="relative">
-                    <button
-                      onClick={() => {
-                        setShowNotifications(!showNotifications);
-                        setShowInbox(false);
-                        setShowCalls(false);
-                      }}
-                      className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
-                    >
-                      <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                      {unreadNotificationCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                          {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                        </span>
-                      )}
-                    </button>
-                    <NotificationDropdown
-                      isOpen={showNotifications}
-                      onClose={() => setShowNotifications(false)}
-                      onUnreadCountChange={setUnreadNotificationCount}
-                    />
-                  </div>
-                </div>
-
-                {/* User Menu */}
-                <div className="relative group ">
-                  <button
-                    onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                    onBlur={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget)) {
-                        setIsUserMenuOpen(false);
+            {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
+            {user && (
+              <div className="hidden md:flex  max-w-70  w-full">
+                <div className="relative w-full" ref={searchContainerRef}>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                  <input
+                    type="text"
+                    placeholder="Search connectAfrik..."
+                    className="w-full px-4 py-2.5 pl-10 bg-[#EEF1F4] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    onFocus={() => {
+                      if (searchTerm.trim().length >= 2 && searchResults) {
+                        setShowSearchResults(true);
                       }
                     }}
-                    className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-gray-50"
-                  >
-                    {profile?.avatar_url ? (
-                      <img
-                        src={profile.avatar_url}
-                        alt={profile.full_name}
-                        className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10  bg-gray-300 rounded-full flex items-center justify-center  uppercase">
-                        {profile?.username.slice(0, 1) || "User"}
-                      </div>
-                    )}
-                    {/* <span className="hidden md:block text-sm font-medium text-gray-700">
-                      {profile?.username || "User"}
-                    </span> */}
-                  </button>
+                  />
 
-                  <div
-                    className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200
-                          ${isUserMenuOpen
-                        ? "opacity-100 visible"
-                        : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
-                      }
-                        `}
-                  >
-                    <div className="py-2">
-                      <Link
-                        href="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        My Profile
-                      </Link>
-                      <Link
-                        href="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        Settings
-                      </Link>
-                      <hr className="my-1 border-gray-300" />
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center space-x-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
+                  {/* Search Results Dropdown */}
+                  {showSearchResults && (
+                    <SearchResultsDropdown
+                      results={searchResults}
+                      isSearching={isSearching}
+                      searchTerm={searchTerm}
+                      onClose={() => setShowSearchResults(false)}
+                    />
+                  )}
                 </div>
-
-                <button
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="sm:hidden text-gray-700 text-xl"
-                >
-                  <FaBars />
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center space-x-2 sm:space-x-4 pr-1  sm:pr-4 sm:border-r border-0 border-gray-200 ">
-                <Link
-                  href="/signin"
-                  className="btn-secondary !px-3 sm:px-5 sm:text-base text-sm"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/signup"
-                  className="btn-primary !px-3 sm:px-5 sm:text-base text-sm"
-                >
-                  Join Community
-                </Link>
               </div>
             )}
+
+            {/* Mobile Search Button - Visible only on mobile when logged in */}
+            {user && (
+              <button
+                onClick={() => setShowMobileSearch(true)}
+                className="md:hidden p-2 text-gray-600 hover:text-primary-600 transition-colors"
+                aria-label="Open search"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
+            </div>
+
+            {/* Navigation and User Menu - Pinned to right */}
+              {user ? (
+                <>
+                  {/* Navigation Links - Hidden on mobile, visible on desktop */}
+                  <nav className="md:block hidden flex-1 md:max-w-lg lg:max-w-lg 2xl:max-w-2xl mx-auto">
+                    <ul className="flex items-center gap-6  pt-3 justify-between  ">
+
+                      {/* Feed */}
+                      <li className="relative">
+                        <Link
+                          href="/feed"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/feed"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                            }`}
+                        >
+                          <Home className="w-12" />
+                          <span className="text-sm font-medium">Feed</span>
+
+                          <span
+                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                              }`}
+                          />
+                        </Link>
+                      </li>
+
+                      {/* Reels */}
+                      <li className="relative">
+                        <Link
+                          href="/memories/foryou"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname.startsWith("/memories")
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                            }`}
+                        >
+                          <Video className="w-12" />
+                          <span className="text-sm font-medium">Reels</span>
+
+                          <span
+                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname.startsWith("/memories")
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                              }`}
+                          />
+                        </Link>
+                      </li>
+
+                      {/* Politics */}
+                      <li className="relative">
+                        <Link
+                          href="/politics"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/politics"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                            }`}
+                        >
+                          <Landmark className="w-12" />
+                          <span className="text-sm font-medium">Politics</span>
+
+                          <span
+                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/politics"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                              }`}
+                          />
+                        </Link>
+                      </li>
+
+                      {/* Culture */}
+                      <li className="relative">
+                        <Link
+                          href="/culture"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/culture"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                            }`}
+                        >
+                          <Palette className="w-12" />
+                          <span className="text-sm font-medium">Culture</span>
+
+                          <span
+                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/culture"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                              }`}
+                          />
+                        </Link>
+                      </li>
+
+                      {/* Groups */}
+                      <li className="relative">
+                        <Link
+                          href="/groups"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/groups"
+                            ? "text-primary-600"
+                            : "text-gray-600 hover:text-primary-600"
+                            }`}
+                        >
+                          <Users className="w-12" />
+                          <span className="text-sm font-medium">Groups</span>
+
+                          <span
+                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
+                              ? "w-full"
+                              : "w-0 group-hover:w-full"
+                              }`}
+                          />
+                        </Link>
+                      </li>
+
+                    </ul>
+                  </nav>
+
+                  {/* Notifications & Messaging */}
+                  <div className="flex items-center space-x-2 sm:space-x-2  border-gray-200 w-65 xl:w-80  2xl:w-[24rem] justify-end">
+
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          setShowInbox(!showInbox);
+                          setShowNotifications(false);
+                          setShowCalls(false);
+                        }}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                        {unreadMessages > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                            {unreadMessages > 99 ? "99+" : unreadMessages}
+                          </span>
+                        )}
+                      </button>
+                      {showInbox && (
+                        <ChatDropdown
+                          mode="chat"
+                          onClose={() => setShowInbox(false)}
+                        />
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          setShowCalls(!showCalls);
+                          setShowNotifications(false);
+                          setShowInbox(false);
+                        }}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                      >
+                        <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                      {showCalls && (
+                        <ChatDropdown
+                          mode="call"
+                          onClose={() => setShowCalls(false)}
+                        />
+                      )}
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        onClick={() => {
+                          setShowNotifications(!showNotifications);
+                          setShowInbox(false);
+                          setShowCalls(false);
+                        }}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                      >
+                        <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
+                        {unreadNotificationCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                            {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                          </span>
+                        )}
+                      </button>
+                      <NotificationDropdown
+                        isOpen={showNotifications}
+                        onClose={() => setShowNotifications(false)}
+                        onUnreadCountChange={setUnreadNotificationCount}
+                      />
+                    </div>
+
+
+                    {/* User Menu */}
+                    <div className="relative group ">
+                      <button
+                        onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                        onBlur={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget)) {
+                            setIsUserMenuOpen(false);
+                          }
+                        }}
+                        className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 shrink-0"
+                      >
+                        {profile?.avatar_url ? (
+                          <img
+                            src={profile.avatar_url}
+                            alt={profile.full_name}
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 sm:w-10 sm:h-10  bg-gray-300 rounded-full flex items-center justify-center  uppercase">
+                            {profile?.username.slice(0, 1) || "User"}
+                          </div>
+                        )}
+                        {/* <span className="hidden md:block text-sm font-medium text-gray-700">
+                      {profile?.username || "User"}
+                    </span> */}
+                      </button>
+
+                      <div
+                        className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200
+                          ${isUserMenuOpen
+                            ? "opacity-100 visible"
+                            : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
+                          }
+                        `}
+                      >
+                        <div className="py-2">
+                          <Link
+                            href="/profile"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            My Profile
+                          </Link>
+                          <Link
+                            href="/profile"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            Settings
+                          </Link>
+                          <hr className="my-1 border-gray-300" />
+                          <button
+                            onClick={handleSignOut}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center space-x-2"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setMobileMenuOpen(true)}
+                      className="sm:hidden text-gray-700 text-xl"
+                    >
+                      <FaBars />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center space-x-2 sm:space-x-4 pr-1  sm:pr-4 sm:border-r border-0 border-gray-200 ">
+                  <Link
+                    href="/signin"
+                    className="btn-secondary !px-3 sm:px-5 sm:text-base text-sm"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="btn-primary !px-3 sm:px-5 sm:text-base text-sm"
+                  >
+                    Join Community
+                  </Link>
+                </div>
+              )}
           </div>
         </div>
-      </div>
 
-    
-    </header>
+
+      </header>
       {/* Mobile Navigation */}
       {user && !pathname?.startsWith("/memories") && (
         <div className="md:hidden fixed bottom-0 w-full  block bg-white border-t border-gray-200 py-1 z-50">
@@ -454,8 +455,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/feed"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/feed"
-                      ? "text-primary-600"
-                      : "text-gray-500 hover:text-primary-600"
+                    ? "text-primary-600"
+                    : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Home className="w-6 h-6" />
@@ -467,8 +468,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/memories/foryou"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname()?.startsWith("/memories")
-                      ? "text-primary-600"
-                      : "text-gray-500 hover:text-primary-600"
+                    ? "text-primary-600"
+                    : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Video className="w-6 h-6" />
@@ -480,8 +481,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/politics"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/politics"
-                      ? "text-primary-600"
-                      : "text-gray-500 hover:text-primary-600"
+                    ? "text-primary-600"
+                    : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Landmark className="w-6 h-6" />
@@ -493,8 +494,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/culture"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/culture"
-                      ? "text-primary-600"
-                      : "text-gray-500 hover:text-primary-600"
+                    ? "text-primary-600"
+                    : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Palette className="w-6 h-6" />
@@ -506,8 +507,8 @@ const Header: React.FC<HeaderProps> = ({
                 <Link
                   href="/groups"
                   className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/groups"
-                      ? "text-primary-600"
-                      : "text-gray-500 hover:text-primary-600"
+                    ? "text-primary-600"
+                    : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
                   <Users className="w-6 h-6" />
@@ -530,7 +531,7 @@ const Header: React.FC<HeaderProps> = ({
         onClose={() => setShowMobileSearch(false)}
       />
     </>
-    
+
   );
 };
 

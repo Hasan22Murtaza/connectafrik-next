@@ -152,14 +152,14 @@ const FeedLayout = ({ children }) => {
   }, [suggestedUsers])
 
   return (
-    <div className="flex min-h-screen px-1 sm:px-6 ">
+    <div className="flex min-h-screen px-1 sm:px-2 2xl:px-6 ">
       {/* Left Sidebar - Hidden on mobile, visible on desktop */}
       <div className="hidden lg:block overflow-y-auto sticky top-[73px] h-[calc(100vh-80px)] ">
         <LeftSidebar onlineContacts={onlineFriends} />
       </div>
 
       {/* Main Content - Full width on mobile, centered on desktop */}
-      <main className="flex-1 md:max-w-lg lg:max-w-4xl overflow-x-auto lg:mx-auto py-2 sm:py-4  px-2 sm:px-2 lg:px-4">
+      <main className="flex-1 md:max-w-lg lg:max-w-3xl overflow-x-auto lg:mx-auto py-2 sm:py-4  px-2 sm:px-2 lg:px-4">
         {children}
       </main>
 

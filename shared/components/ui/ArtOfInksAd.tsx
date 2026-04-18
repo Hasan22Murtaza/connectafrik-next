@@ -297,7 +297,7 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
               }}>Graphic Design Studio</p>
             </div>
           </div>
-          <div className="relative overflow-hidden">
+          <div className="relative ">
             <span className="bg-gradient-to-r from-white/25 to-white/15 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm border border-white/20 whitespace-nowrap shadow-inner" style={{
               boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1), 0 1px 2px rgba(255,255,255,0.2)'
             }}>

@@ -108,15 +108,14 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
   // }
 
   return (
-    <div className="mb-8">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="mb-6">
+      <div className="mb-2 flex items-center justify-between px-1">
         <h2 className="text-lg font-semibold text-gray-600">
           {title || (showAddFriendButton ? 'People You May Know' : 'Online Contacts')}
         </h2>
-        <span className="text-sm text-gray-500">{contacts.length}</span>
       </div>
 
-      <div className="space-y-1">
+      <div>
         {contacts.map((contact) => (
           <div
             key={contact.id}
@@ -138,7 +137,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
                   )}
                 </div>
                 <div
-                  className={`absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${getStatusColor(
+                  className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${getStatusColor(
                     contact.status
                   )}`}
                 ></div>

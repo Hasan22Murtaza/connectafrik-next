@@ -5,7 +5,7 @@ import OnlineContactsSection from '@/shared/components/ui/OnlineContactsSection'
 const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts = [] }) => {
 
   return (
-    <aside className="w-64 xl:w-96 2xl:w-[26rem] shrink-0  h-full overflow-y-auto py-6 px-4
+    <aside className="w-65 xl:w-80 2xl:w-[24rem] shrink-0  h-full overflow-y-auto py-6 
    scrollbar-hover">
       {/* DataAfrik Promotion */}
       <div className="mb-8">
@@ -32,25 +32,27 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
         </a>
       </div>
 
+      <div className="h-px bg-gray-200 w-full my-4"></div>
 
       <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4 text-gray-600">Birthdays</h2>
-      <ul className="space-y-2">
-        {birthdays.length > 0 ? (
-          birthdays.map((birthday) => {
-            const displayName = birthday?.full_name || birthday?.name || 'Community member';
-            return (
-              <li key={birthday.id || displayName} className="flex items-center space-x-2">
-                <span role="img" aria-label="birthday">🎂</span>
-                <span className="font-medium text-gray-800">{displayName}</span>
-              </li>
-            );
-          })
-        ) : (
-          <li className="text-gray-400">No birthdays today</li>
-        )}
-      </ul>
-    </div>
+        <h2 className="text-lg font-semibold mb-4 text-gray-600 ps-1">Birthdays</h2>
+        <ul className="space-y-2">
+          {birthdays.length > 0 ? (
+            birthdays.map((birthday) => {
+              const displayName = birthday?.full_name || birthday?.name || 'Community member';
+              return (
+                <li key={birthday.id || displayName} className="flex items-center space-x-2">
+                  <span role="img" aria-label="birthday">🎂</span>
+                  <span className="font-medium text-gray-800">{displayName}</span>
+                </li>
+              );
+            })
+          ) : (
+            <li className="text-gray-400">No birthdays today</li>
+          )}
+        </ul>
+      </div>
+      <div className="h-px bg-gray-200 w-full my-4"></div>
       {/* Friends/Contacts Section - Show friends with chat/call buttons */}
       {contacts && contacts.length > 0 && (
         <OnlineContactsSection
@@ -65,24 +67,26 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
         />
       )}
 
-     {/* Art of Ink Advertisement */}
-     <div className="mb-8">
-      <ArtOfInksAd type="sidebar" className="rounded-lg shadow-sm" />
-    </div>
-    {ads && ads.length > 0 && (
-      <div>
-        <h2 className="text-lg font-semibold mb-4 text-gray-600">Sponsored</h2>
-        <ul className="space-y-4">
-          {ads.map((ad) => (
-            <li key={ad.id} className="bg-gray-100 rounded p-3">
-              <a href={ad.url} target="_blank" rel="noopener noreferrer" className="block">
-                <img src={ad.image} alt={ad.title} className="w-full h-24 object-cover rounded mb-2" />
-                <div className="font-medium text-gray-700">{ad.title}</div>
-              </a>
-            </li>
-          ))}
-        </ul>
+      {/* Art of Ink Advertisement */}
+<div className="h-px bg-gray-200 w-full my-4"></div>
+
+      <div className="mb-8">
+        <ArtOfInksAd type="sidebar" className="rounded-lg shadow-sm" />
       </div>
+      {ads && ads.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-4 text-gray-600">Sponsored</h2>
+          <ul className="space-y-4">
+            {ads.map((ad) => (
+              <li key={ad.id} className="bg-gray-100 rounded p-3">
+                <a href={ad.url} target="_blank" rel="noopener noreferrer" className="block">
+                  <img src={ad.image} alt={ad.title} className="w-full h-24 object-cover rounded mb-2" />
+                  <div className="font-medium text-gray-700">{ad.title}</div>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </aside>
   );
