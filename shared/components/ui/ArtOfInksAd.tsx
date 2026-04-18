@@ -137,7 +137,7 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
               </div>
             </div>
           </div>
-          <div className="relative overflow-hidden">
+          <div className="relative ">
             <span className="bg-gradient-to-r from-violet-100 to-purple-100 border-2 border-violet-200 text-violet-800 px-4 py-2 rounded-full text-sm font-medium shadow-inner whitespace-nowrap backdrop-blur-sm">
               Sponsored
             </span>

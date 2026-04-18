@@ -248,7 +248,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Summary & Write Button */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow p-6 lg:sticky lg:top-28">
+          <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6 lg:sticky lg:top-28">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Customer Reviews</h2>
             <div className="flex flex-col items-start">
               <div className="text-4xl font-bold text-gray-900 mb-2">
@@ -288,7 +288,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         <div className="lg:col-span-2 space-y-6">
           {/* Write Review Form */}
           {showWriteReview && (
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-white rounded-2xl  shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-4">
                 {userReview ? 'Edit Your Review' : 'Write a Review'}
               </h3>
@@ -372,7 +372,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
           {/* Reviews List */}
           <div className="space-y-4">
             {reviews.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-8 text-center">
+              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-8 text-center">
                 <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews yet</h3>
                 <p className="text-gray-600">
@@ -381,7 +381,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               </div>
             ) : (
               reviews.map(review => (
-                <div key={review.id} className="bg-white rounded-lg shadow p-6">
+                <div key={review.id} className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6">
                   {/* Reviewer Info */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
