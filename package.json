@@ -38,7 +38,7 @@
     "react-phone-number-input": "^3.4.14",
     "stripe": "^20.0.0"
   },
-  "devDependenies": {
+  "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
