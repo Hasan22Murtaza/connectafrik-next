@@ -94,33 +94,33 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
     }
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'online':
-        return 'Active now'
-      case 'away':
-        return 'Away'
-      case 'busy':
-        return 'Do not disturb'
-      default:
-        return 'Offline'
-    }
-  }
+  // const getStatusText = (status: string) => {
+  //   switch (status) {
+  //     case 'online':
+  //       return 'Active now'
+  //     case 'away':
+  //       return 'Away'
+  //     case 'busy':
+  //       return 'Do not disturb'
+  //     default:
+  //       return 'Offline'
+  //   }
+  // }
 
   return (
     <div className="mb-8">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">
+        <h2 className="text-lg font-semibold text-gray-600">
           {title || (showAddFriendButton ? 'People You May Know' : 'Online Contacts')}
         </h2>
         <span className="text-sm text-gray-500">{contacts.length}</span>
       </div>
 
-      <div className="max-h-96 space-y-3 overflow-y-auto">
+      <div className="space-y-1">
         {contacts.map((contact) => (
           <div
             key={contact.id}
-            className="group flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-gray-50"
+            className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-200 cursor-pointer"
           >
             <div className="flex flex-1 items-center space-x-3">
               <div className="relative">
@@ -146,7 +146,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-gray-900">{contact.name}</p>
-                <p className="text-xs text-gray-500">{getStatusText(contact.status)}</p>
+                {/* <p className="text-xs text-gray-500">{getStatusText(contact.status)}</p> */}
               </div>
             </div>
 

@@ -216,7 +216,7 @@ const FeedPage: React.FC = () => {
   const renderPosts = () => {
     if (loading) {
       return (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="animate-pulse rounded-2xl border border-gray-200  p-4">
               <div className="flex items-center space-x-3">
@@ -246,7 +246,7 @@ const FeedPage: React.FC = () => {
     }
 
     return (
-      <div className="space-y-2 sm:space-y-3">
+      <div className="space-y-2 ">
         {filteredPosts.map((post, index) => (
           <React.Fragment key={post.id}>
             <PostCard
@@ -318,7 +318,7 @@ const FeedPage: React.FC = () => {
     <div className="min-h-screen max-w-full 4xl:max-w-screen-2xl mx-auto ">
 
       <FeedLayout>
-        <div className="w-full space-y-3 sm:space-y-6">
+        <div className="w-full space-y-3 ">
           {/* <div className="overflow-hidden rounded-2xl border border-gray-200 bg-gradient-to-r from-orange-100 to-green-100"> */}
             <Advertisement type="banner" placement="feed-top" className="rounded-2xl" />
           {/* </div> */}

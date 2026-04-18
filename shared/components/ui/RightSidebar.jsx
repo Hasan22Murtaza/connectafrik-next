@@ -34,7 +34,7 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
 
 
       <div className="mb-8">
-      <h2 className="text-lg font-semibold mb-4">Birthdays</h2>
+      <h2 className="text-lg font-semibold mb-4 text-gray-600">Birthdays</h2>
       <ul className="space-y-2">
         {birthdays.length > 0 ? (
           birthdays.map((birthday) => {
@@ -71,7 +71,7 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
     </div>
     {ads && ads.length > 0 && (
       <div>
-        <h2 className="text-lg font-semibold mb-4">Sponsored</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-600">Sponsored</h2>
         <ul className="space-y-4">
           {ads.map((ad) => (
             <li key={ad.id} className="bg-gray-100 rounded p-3">

@@ -27,7 +27,7 @@ const LeftSidebar = () => {
       <h2 className="text-md font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">
   Your Space
 </h2>
-      <ul className="space-y-4">
+      <ul className="space-y-3">
         {shortcuts.map((item) => {
           const isActive = pathname === item.to;
           const Icon = item.icon;
@@ -41,7 +41,7 @@ const LeftSidebar = () => {
                 ${
                   isActive
                     ? "bg-primary-100 text-primary-600"
-                    : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
+                    : "text-gray-500 hover:bg-gray-200 "
                 } 
                 hover:translate-x-1`}
               >
