@@ -32,54 +32,8 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
         </a>
       </div>
 
-      {/* Art of Ink Advertisement */}
+
       <div className="mb-8">
-        <ArtOfInksAd type="sidebar" className="rounded-lg shadow-sm" />
-      </div>
-
-      {/* People You May Know - Friend Recommendations */}
-      <div className="mb-8">
-        <PeopleYouMayKnow />
-      </div>
-
-      {/* Friends/Contacts Section - Show friends with chat/call buttons */}
-      {contacts && contacts.length > 0 && (
-        <OnlineContactsSection
-          contacts={contacts.map(c => ({
-            id: c.id,
-            name: c.full_name || c.name || 'Friend',
-            avatarUrl: c.avatar_url || c.avatarUrl,
-            status: c.status || 'online'
-          }))}
-          showAddFriendButton={false}
-          title="Friends"
-        />
-      )}
-
-   
-
-    {/* Friends/Contacts Section - Show friends with chat/call buttons */}
-    {contacts && contacts.length > 0 && (
-      <OnlineContactsSection
-        contacts={contacts.map(c => ({
-          id: c.id,
-          name: c.full_name || c.name || 'Friend',
-          avatarUrl: c.avatar_url || c.avatarUrl,
-          status: c.status || 'online'
-        }))}
-        showAddFriendButton={false}
-        title="Friends"
-      />
-    )}
-
-    {/* Online Contacts - Legacy support - REMOVED to prevent duplicate People You May Know */}
-    {/* 
-    {onlineContacts && onlineContacts.length > 0 && (
-      <OnlineContactsSection contacts={onlineContacts} showAddFriendButton={true} />
-    )}
-    */}
-
-    <div className="mb-8">
       <h2 className="text-lg font-semibold mb-4">Birthdays</h2>
       <ul className="space-y-2">
         {birthdays.length > 0 ? (
@@ -97,6 +51,20 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
         )}
       </ul>
     </div>
+      {/* Friends/Contacts Section - Show friends with chat/call buttons */}
+      {contacts && contacts.length > 0 && (
+        <OnlineContactsSection
+          contacts={contacts.map(c => ({
+            id: c.id,
+            name: c.full_name || c.name || 'Friend',
+            avatarUrl: c.avatar_url || c.avatarUrl,
+            status: c.status || 'online'
+          }))}
+          showAddFriendButton={false}
+          title="Contacts"
+        />
+      )}
+
      {/* Art of Ink Advertisement */}
      <div className="mb-8">
       <ArtOfInksAd type="sidebar" className="rounded-lg shadow-sm" />
