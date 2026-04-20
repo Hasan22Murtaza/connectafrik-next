@@ -274,7 +274,7 @@ const GroupsPage: React.FC = () => {
     transition-all duration-300 ease-in-out
     ${view === "feed"
               ? "bg-orange-50 text-primary-600"
-              : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
+              : "text-gray-600 hover:bg-orange-50 hover:text-primary-600"
             }
     `}
         >
@@ -304,7 +304,7 @@ const GroupsPage: React.FC = () => {
     transition-all duration-300 ease-in-out
     ${view === "discover"
               ? "bg-orange-50 text-primary-600"
-              : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
+              : "text-gray-600 hover:bg-orange-50 hover:text-primary-600"
             }
     `}
         >
@@ -334,7 +334,7 @@ const GroupsPage: React.FC = () => {
       transition-all duration-300 ease-in-out
       ${view === "my-groups"
                 ? "bg-orange-50 text-primary-600"
-                : "text-gray-600 hover:bg-gray-100 hover:text-primary-600"
+                : "text-gray-600 hover:bg-orange-50 hover:text-primary-600"
               }
       `}
           >
@@ -557,7 +557,7 @@ const GroupsPage: React.FC = () => {
 
         <div className="flex gap-4 lg:gap-6">
           {/* Left Sidebar - Desktop */}
-          <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto bg-[#F8FAFC] p-4 rounded-2xl">
+          <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto ">
               {sidebarContent}
           </div>
 

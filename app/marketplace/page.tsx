@@ -197,7 +197,7 @@ const MarketplacePage: React.FC = () => {
         {/* Sidebar */}
         <aside
           className={`fixed md:relative inset-y-0 left-0 z-40
-          w-[280px] shrink-0 bg-[#F8FAFC] rounded-0 md:rounded-2xl
+          w-[280px] shrink-0 
           px-4 py-6
           sm:top-0
           top-12

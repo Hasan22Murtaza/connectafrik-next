@@ -386,7 +386,7 @@ const FriendsPage: React.FC = () => {
       <div className="flex gap-6">
         {/* Left Sidebar */}
         <div className="hidden md:block w-64 shrink-0">
-          <div className="sticky top-18 h-[calc(100vh-6rem)] px-4 py-4 overflow-y-auto bg-[#F8FAFC] rounded-2xl">
+          <div className="sticky top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
             <h2 className="text-xl font-semibold text-gray-600 mb-6">Friends</h2>
 
 
@@ -403,7 +403,7 @@ const FriendsPage: React.FC = () => {
                     transition-all duration-300 ease-in-out
                     ${isActive
                         ? "bg-orange-50 text-primary-600"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-primary-600"
+                        : "text-gray-700 hover:bg-orange-50 hover:text-primary-600"
                       }`}
                   >
                     <span
