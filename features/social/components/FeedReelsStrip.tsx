@@ -94,17 +94,6 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
         )}
       </Link>
 
-      <button
-        type="button"
-        className="absolute top-1.5 right-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/55 transition-colors"
-        aria-label="Reel options"
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-        }}
-      >
-        <MoreVertical className="h-4 w-4" />
-      </button>
     </div>
   )
 }
