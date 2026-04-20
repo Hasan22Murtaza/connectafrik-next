@@ -303,7 +303,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                     {sortedRecentCalls.map((call) => (
                       <div
                         key={call.thread_id}
-                        className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors"
+                        className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors cursor-pointer"
                       >
                         <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
                           <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
@@ -332,7 +332,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => handleStartCall(call.thread_id, 'audio', call.id, call.name, call.avatarUrl)}
                             className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
@@ -391,7 +391,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                             <p className="text-xs text-gray-500">{contact.status === 'online' ? 'Active now' : contact.status}</p>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => handleStartCallWithContact(contact.id, contact.name, contact.avatarUrl || undefined, 'audio')}
                             className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
