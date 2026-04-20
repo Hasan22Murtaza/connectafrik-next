@@ -29,7 +29,7 @@ import FriendsTab from './components/FriendsTab'
 import ReelsTab from './components/ReelsTab'
 
 interface PostWithAuthor {
-  id: string; title: string; content: string
+  id: string; content: string
   category: 'politics' | 'culture' | 'general'
   author_id: string; created_at: string
   likes_count: number; comments_count: number; shares_count: number; views_count: number
@@ -339,7 +339,7 @@ const UserProfilePage: React.FC = () => {
     catch { toast.error('Failed to delete post') }
   }, [user, profile])
 
-  const handleEdit = useCallback(async (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+  const handleEdit = useCallback(async (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
     // PostCard already saves to DB; just update local state
     updatePost(postId, (p: any) => ({ ...p, ...updates }))
   }, [updatePost])

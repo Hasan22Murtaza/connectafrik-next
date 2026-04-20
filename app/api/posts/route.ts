@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const { title, content, category, media_type, media_urls, tags, location } = body
+    const { content, category, media_type, media_urls, tags, location } = body
 
     if (!content) {
       return errorResponse('Content is required', 400)
@@ -89,7 +89,6 @@ export async function POST(request: NextRequest) {
     const { data: post, error: insertError } = await supabase
       .from('posts')
       .insert({
-        title: title || '',
         content,
         category: category || 'general',
         media_type: media_type || 'none',
@@ -112,7 +111,6 @@ export async function POST(request: NextRequest) {
       data: {
         id: post.id,
         author_id: post.author_id,
-        title: post.title,
         content: post.content,
         category: post.category,
         tags: post.tags,
@@ -146,9 +144,8 @@ async function notifyFollowersAndFriends(supabase: any, user: any, post: any) {
   try {
     const serviceSupabase = createServiceClient()
     const authorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone'
-    const postTitle = post.title || post.content?.substring(0, 80) || 'a new post'
+    const postTitle = post.content?.substring(0, 80) || 'a new post'
     const postPreview =
-      (post.title && String(post.title).trim()) ||
       (post.content ? String(post.content).replace(/\s+/g, ' ').trim().slice(0, 120) : '') ||
       'New post'
 

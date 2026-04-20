@@ -13,7 +13,6 @@ import { PostCardShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 interface Post {
   id: string
-  title: string
   content: string
   category: string
   author_id: string
@@ -124,7 +123,7 @@ const PostDetailPage: React.FC = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: post.title || 'Check out this post',
+          title: post.content?.substring(0, 80) || 'Check out this post',
           text: post.content.substring(0, 100),
           url: shareUrl,
         })

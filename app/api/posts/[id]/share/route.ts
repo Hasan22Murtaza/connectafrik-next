@@ -66,7 +66,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 async function notifyShareAuthor(supabase: any, user: any, postId: string) {
   const { data: post } = await supabase
     .from('posts')
-    .select('author_id, title, content')
+    .select('author_id, content')
     .eq('id', postId)
     .single()
 
@@ -74,7 +74,7 @@ async function notifyShareAuthor(supabase: any, user: any, postId: string) {
 
   const { sendNotification } = await import('@/shared/services/notificationService')
   const actorName = user.user_metadata?.full_name || user.email || 'Someone'
-  const postTitle = post.title || post.content?.substring(0, 50) || 'your post'
+  const postTitle = post.content?.substring(0, 50) || 'your post'
 
   await sendNotification({
     user_id: post.author_id,

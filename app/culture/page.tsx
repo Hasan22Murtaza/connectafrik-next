@@ -261,22 +261,7 @@ const CulturePage: React.FC = () => {
               </div>
             )}
 
-            {/* Cultural Spotlight */}
-            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 mb-6 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <Heart className="w-5 h-5 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900">Cultural Spotlight</h3>
-              </div>
-              <p className="text-gray-700 mb-4">
-                This week we're celebrating the art of <strong>African Storytelling</strong>. 
-                Share your favorite folktales, proverbs, or family stories that have been passed down through generations.
-              </p>
-              <button className="text-green-600 font-medium text-sm hover:text-green-700">
-                Learn more about African storytelling traditions →
-              </button>
-            </div>
+          
 
             {/* Posts Feed */}
             <div>

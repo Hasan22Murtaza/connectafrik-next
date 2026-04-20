@@ -27,7 +27,6 @@ import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
 interface Post {
   id: string;
-  title: string;
   content: string;
   category: "politics" | "culture" | "general";
   author_id: string;
@@ -69,7 +68,7 @@ interface PostCardProps {
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
-  onEdit?: (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void;
+  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void;
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
@@ -188,7 +187,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   // Determine if this is a short text-only post (Facebook-style large text)
   const isShortTextPost = () => {
     const hasMedia = post.media_urls && post.media_urls.length > 0;
-    const fullText = (post.title || "") + " " + (post.content || "");
+    const fullText = (post.content || "").trim();
     const textLength = fullText.trim().length;
     return !hasMedia && textLength > 0 && textLength <= 150;
   };
@@ -384,7 +383,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const handleSaveEdit = async (postData: PostSubmitData) => {
     try {
       const updatePayload: Record<string, any> = {
-        title: postData.title,
         content: postData.content,
         category: postData.category,
         media_type: postData.media_type,
@@ -395,7 +393,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
       const response = await apiClient.patch<{
         data: {
-          title: string;
           content: string;
           category: "politics" | "culture" | "general";
           media_urls?: string[];
@@ -406,7 +403,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
       if (onEdit) {
         onEdit(post.id, {
-          title: response.data.title,
           content: response.data.content,
           category: response.data.category,
           media_urls: response.data.media_urls,
@@ -850,7 +846,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             <CreatePost
               editData={{
                 id: post.id,
-                title: post.title,
                 content: post.content,
                 category: post.category,
                 media_urls: post.media_urls ?? undefined,
@@ -873,11 +868,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               style={{ background: getPostBackground() || undefined }}
             >
               <div className="text-center">
-                {post.title && (
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 break-words drop-shadow-lg">
-                    {post.title}
-                  </h2>
-                )}
                 <p className="text-xl sm:text-2xl md:text-3xl font-semibold text-white leading-relaxed whitespace-pre-wrap break-words drop-shadow-lg">
                   {post.content}
                 </p>
@@ -886,11 +876,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           ) : (
             /* Regular post style */
             <div className="mb-2">
-              {post.title && (
-                <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
-                  {post.title}
-                </h2>
-              )}
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
                 {post.content}
               </p>

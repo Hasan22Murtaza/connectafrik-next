@@ -67,7 +67,6 @@ const FeedPage: React.FC = () => {
     if (!searchTerm.trim()) return posts
     const term = searchTerm.toLowerCase()
     return posts.filter((post) =>
-      post.title.toLowerCase().includes(term) ||
       post.content.toLowerCase().includes(term) ||
       post.author?.full_name?.toLowerCase().includes(term) ||
       post.author?.username?.toLowerCase().includes(term)
@@ -91,7 +90,6 @@ const FeedPage: React.FC = () => {
   const memoizedMembers = useMemo(() => members, [members])
 
   const handleCreatePost = useCallback(async (postData: {
-    title: string
     content: string
     category: 'politics' | 'culture' | 'general'
     media_type: 'image' | 'video' | 'none'
@@ -156,7 +154,7 @@ const FeedPage: React.FC = () => {
     }
   }, [deletePost])
 
-  const handleEdit = useCallback((postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+  const handleEdit = useCallback((postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
     updatePost(postId, updates)
   }, [updatePost])
 

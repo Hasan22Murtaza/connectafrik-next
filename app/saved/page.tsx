@@ -194,7 +194,6 @@ const SavedPage: React.FC = () => {
     (
       postId: string,
       updates: {
-        title: string
         content: string
         category: 'politics' | 'culture' | 'general'
         media_urls?: string[]

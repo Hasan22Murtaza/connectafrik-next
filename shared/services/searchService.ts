@@ -12,7 +12,6 @@ export interface SearchUser {
 
 export interface SearchPost {
   id: string
-  title: string
   content: string
   category: string
   author_id: string
@@ -72,7 +71,6 @@ const SEARCH_DEBOUNCE_MS = 250
 const USER_FIELDS = 'id, username, full_name, avatar_url, bio, follower_count'
 const POST_FIELDS = `
   id,
-  title,
   content,
   category,
   author_id,
@@ -124,7 +122,7 @@ const buildPostSearchQuery = (searchTerm: string, limit: number) => {
   return supabase
     .from('posts')
     .select(POST_FIELDS)
-    .or(`title.ilike.%${searchTerm}%,content.ilike.%${searchTerm}%`)
+    .or(`content.ilike.%${searchTerm}%`)
     .eq('is_deleted', false)
     .order('created_at', { ascending: false })
     .limit(limit)

@@ -117,7 +117,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
       data: {
         id: post.id,
         author_id: post.author_id,
-        title: post.title,
         content: post.content,
         category: post.category,
         tags: post.tags,
@@ -155,7 +154,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const allowedFields = ['title', 'content', 'category', 'media_urls', 'media_type', 'tags', 'location']
+    const allowedFields = ['content', 'category', 'media_urls', 'media_type', 'tags', 'location']
     const updates: Record<string, any> = {}
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
@@ -187,7 +186,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       data: {
         id: post.id,
         author_id: post.author_id,
-        title: post.title,
         content: post.content,
         category: post.category,
         tags: post.tags,

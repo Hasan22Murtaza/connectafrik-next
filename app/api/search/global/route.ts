@@ -8,7 +8,7 @@ const MIN_QUERY_LENGTH = 2
 
 const USER_FIELDS = 'id, username, full_name, avatar_url, bio, follower_count'
 const POST_FIELDS =
-  'id, title, content, category, author_id, created_at, likes_count, comments_count, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url)'
+  'id, content, category, author_id, created_at, likes_count, comments_count, author:profiles!posts_author_id_fkey(id, username, full_name, avatar_url)'
 const GROUP_FIELDS = 'id, name, description, category, avatar_url, member_count, is_public, created_at'
 const PRODUCT_FIELDS =
   'id, title, description, price, currency, category, condition, images, views_count, saves_count, created_at, seller_id'
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         supabase
           .from('posts')
           .select(POST_FIELDS)
-          .or(`title.ilike.%${q}%,content.ilike.%${q}%`)
+          .or(`content.ilike.%${q}%`)
           .eq('is_deleted', false)
           .order('created_at', { ascending: false })
           .limit(limit),

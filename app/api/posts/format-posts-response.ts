@@ -164,7 +164,6 @@ export async function formatPostsForClient(
     return {
       id: post.id,
       author_id: post.author_id,
-      title: post.title,
       content: post.content,
       category: post.category,
       tags: post.tags,

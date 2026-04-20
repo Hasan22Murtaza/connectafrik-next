@@ -77,7 +77,7 @@ const PostResultItem: React.FC<{
     </div>
     <div className="flex-1 min-w-0">
       <div className="font-semibold text-gray-900 truncate">
-        {post.title || post.content.substring(0, 50)}
+        {post.content.substring(0, 50)}
       </div>
       <div className="text-sm text-gray-500 truncate">
         {post.author.full_name} · {post.category}

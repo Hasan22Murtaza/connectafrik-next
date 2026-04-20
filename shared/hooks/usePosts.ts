@@ -7,7 +7,6 @@ const PAGE_SIZE = 10
 
 export interface Post {
   id: string
-  title: string
   content: string
   category: 'politics' | 'culture' | 'general'
   author_id: string
@@ -131,7 +130,6 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
   }, [loading, loadingMore, hasMore, fetchPosts])
 
   const createPost = async (postData: {
-    title: string
     content: string
     category: 'politics' | 'culture' | 'general'
     media_type: 'image' | 'video' | 'none'
@@ -240,7 +238,7 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     }
   }
 
-  const updatePost = (postId: string, updates: string | { title?: string; content?: string; category?: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; location?: string }) => {
+  const updatePost = (postId: string, updates: string | { content?: string; category?: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; location?: string }) => {
     setPosts(prev => prev.map(p => {
       if (p.id !== postId) return p
       if (typeof updates === 'string') {

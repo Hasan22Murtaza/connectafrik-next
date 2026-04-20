@@ -12,7 +12,8 @@ type MediaType = 'image' | 'video' | 'none'
 type Category = 'politics' | 'culture' | 'general'
 
 export interface PostSubmitData {
-  title: string
+  /** Only used when editing group_posts (still has title + content). */
+  title?: string
   content: string
   category: Category
   media_type: MediaType
@@ -23,9 +24,10 @@ export interface PostSubmitData {
 
 export interface EditPostData {
   id: string
-  title: string
   content: string
   category: Category
+  /** Legacy group post headline; merged into the single composer when present. */
+  title?: string
   media_urls?: string[] | null
   tags?: string[]
   location?: string
@@ -37,7 +39,30 @@ interface CreatePostProps {
   defaultCategory?: Category
   culturePageMode?: boolean
   politicsPageMode?: boolean
+  /** When true, first line → title, rest → content (group_posts table). */
+  groupPostEdit?: boolean
   editData?: EditPostData
+}
+
+/** Merge optional headline + body into one composer (feed legacy or group posts). */
+const mergeEditContent = (ed?: EditPostData): string => {
+  if (!ed) return ''
+  const t = ed.title?.trim() ?? ''
+  const c = (ed.content ?? '').trim()
+  if (t && c) return `${t}\n\n${c}`
+  return t || c
+}
+
+/** First line → title (max 200), remainder → body for group_posts updates. */
+const splitGroupPostBody = (text: string): { title: string; content: string } => {
+  const t = text.trim()
+  if (!t) return { title: '', content: '' }
+  const i = t.indexOf('\n')
+  if (i === -1) return { title: '', content: t }
+  return {
+    title: t.slice(0, i).trim().slice(0, 200),
+    content: t.slice(i + 1).trim(),
+  }
 }
 
 const VIDEO_REGEX = /\.(mp4|webm|ogg|mov)(\?|$)/i
@@ -107,6 +132,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
   defaultCategory,
   culturePageMode,
   politicsPageMode,
+  groupPostEdit,
   editData,
 }) => {
   const { user } = useAuth()
@@ -116,8 +142,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const isEditMode = !!editData
   const firstName = profile?.full_name?.split(' ')[0] || 'there'
 
-  const [title, setTitle] = useState(editData?.title ?? '')
-  const [content, setContent] = useState(editData?.content ?? '')
+  const [content, setContent] = useState(() => mergeEditContent(editData))
   const [category, setCategory] = useState<Category>(
     editData?.category ?? (culturePageMode ? 'culture' : politicsPageMode ? 'politics' : (defaultCategory ?? 'general'))
   )
@@ -148,7 +173,6 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
 
   const contentRef = useRef<HTMLTextAreaElement>(null)
-  const titleRef = useRef<HTMLInputElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
   const autocompleteServiceRef = useRef<any>(null)
   const placesServiceRef = useRef<any>(null)
@@ -160,7 +184,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const totalMediaCount = mediaFiles.length + existingImageUrls.length
   const hasMedia = totalMediaCount > 0 || !!videoUrl || existingVideoUrls.length > 0
   const effectiveCategory = culturePageMode ? 'culture' : politicsPageMode ? 'politics' : category
-  const isFormValid = title.trim().length >= 5 && content.trim().length >= 10 && !isSubmitting && !uploading
+  const isFormValid = content.trim().length >= 10 && !isSubmitting && !uploading
   const hasActiveVideo = videoUrl !== '' || existingVideoUrls.length > 0
 
   const autoResize = useCallback(() => {
@@ -171,7 +195,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
   }, [hasMedia])
 
   useEffect(() => { autoResize() }, [content, autoResize, hasMedia])
-  useEffect(() => { titleRef.current?.focus() }, [])
+  useEffect(() => { contentRef.current?.focus() }, [])
 
   // Load Google Maps Places script when location modal opens
   useEffect(() => {
@@ -362,9 +386,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!title.trim() || !content.trim()) return
-    if (title.trim().length < 5) return toast.error('Title must be at least 5 characters long')
-    if (content.trim().length < 10) return toast.error('Content must be at least 10 characters long')
+    if (!content.trim()) return
+    if (content.trim().length < 10) return toast.error('Your post must be at least 10 characters long')
     if (effectiveCategory === 'culture' && !cultureSubcategory) return toast.error('Please select a cultural category')
     if (effectiveCategory === 'politics' && !politicsSubcategory) return toast.error('Please select a political topic')
 
@@ -396,18 +419,24 @@ const CreatePost: React.FC<CreatePostProps> = ({
           : effectiveCategory === 'politics' && politicsSubcategory ? [politicsSubcategory]
             : undefined
 
-      await onSubmit({
-        title: title.trim(),
-        content: content.trim(),
+      const text = content.trim()
+      const payload: PostSubmitData = {
         category: effectiveCategory,
         media_type,
         media_urls: media_urls.length > 0 ? media_urls : undefined,
         tags,
         location: selectedLocation?.name || undefined,
-      })
+        ...(groupPostEdit
+          ? (() => {
+              const split = splitGroupPostBody(text)
+              return { title: split.title, content: split.content }
+            })()
+          : { content: text }),
+      }
+
+      await onSubmit(payload)
 
       if (!isEditMode) {
-        setTitle('')
         setContent('')
         setCategory(culturePageMode ? 'culture' : politicsPageMode ? 'politics' : 'general')
         setCultureSubcategory('')
@@ -533,34 +562,18 @@ const CreatePost: React.FC<CreatePostProps> = ({
         )}
 
         <div className="px-3 sm:px-4">
-          <input
-            ref={titleRef}
-            type="text"
-            placeholder={`What's on your mind, ${firstName}?`}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full text-sm sm:text-base font-semibold text-gray-900 placeholder-gray-400 border-0 focus:outline-none focus:ring-0 bg-transparent p-0"
-            maxLength={200}
-            required
-          />
-          <div className="flex items-center justify-between mt-0.5">
-            <div className="h-px flex-1 bg-gray-100" />
-            <span className={`text-[10px] tabular-nums ml-2 ${title.length > 180 ? 'text-red-400' : 'text-gray-300'}`}>{title.length}/200</span>
-          </div>
-        </div>
-
-        <div className="px-3 sm:px-4 mt-1">
           <textarea
             ref={contentRef}
-            placeholder="Share your thoughts, experiences, or insights..."
+            placeholder={`What's on your mind, ${firstName}?`}
             value={content}
             onChange={(e) => { setContent(e.target.value); autoResize() }}
-            className="w-full text-xs sm:text-sm text-gray-700 placeholder-gray-400 border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed"
+            className="w-full text-sm sm:text-base text-gray-900 placeholder-gray-400 border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed"
             maxLength={2000}
             style={{ minHeight: hasMedia ? '36px' : '80px' }}
             required
+            rows={1}
           />
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end mt-0.5">
             <span className={`text-[10px] tabular-nums ${content.length > 1900 ? 'text-red-400' : 'text-gray-300'}`}>{content.length}/2000</span>
           </div>
         </div>

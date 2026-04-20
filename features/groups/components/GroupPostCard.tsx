@@ -313,6 +313,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
           />
           <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl z-10">
             <CreatePost
+              groupPostEdit
               editData={{
                 id: post.id,
                 title: post.title,

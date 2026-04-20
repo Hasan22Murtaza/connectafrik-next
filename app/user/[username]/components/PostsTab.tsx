@@ -6,7 +6,7 @@ import { PostCard } from '@/features/social/components/PostCard'
 import CommentsSection from '@/features/social/components/CommentsSection'
 
 interface PostWithAuthor {
-  id: string; title: string; content: string
+  id: string; content: string
   category: 'politics' | 'culture' | 'general'
   author_id: string; created_at: string
   likes_count: number; comments_count: number; shares_count: number; views_count: number
@@ -37,7 +37,7 @@ interface PostsTabProps {
   onComment: (postId: string) => void
   onShare: (postId: string) => void
   onDelete?: (postId: string) => Promise<void>
-  onEdit?: (postId: string, updates: { title: string; content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void
+  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void
   onEmojiReaction: (postId: string, emoji: string) => void
   onCloseComments: () => void
 }

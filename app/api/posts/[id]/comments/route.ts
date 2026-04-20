@@ -201,7 +201,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { data: postData, error: postError } = await serviceClient
       .from('posts')
-      .select('id, author_id, title, content, comments_count')
+      .select('id, author_id, content, comments_count')
       .eq('id', postId)
       .single()
 
@@ -242,7 +242,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Notify post author when another user comments
     if (postData.author_id && postData.author_id !== user.id) {
       const actorName = user.user_metadata?.full_name || user.email || 'Someone'
-      const postTitle = postData.title || postData.content?.substring(0, 50) || 'your post'
+      const postTitle = postData.content?.substring(0, 50) || 'your post'
 
       await notificationService.sendNotification({
         user_id: postData.author_id,
