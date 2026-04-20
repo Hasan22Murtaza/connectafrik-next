@@ -17,9 +17,11 @@ import type { PresenceStatus } from "@/shared/types/chat";
 import {
   Minus,
   MoreVertical,
-  Paperclip,
+  Mic,
   Phone,
+  Plus,
   Send,
+  Square,
   Video,
   X
 } from "lucide-react";
@@ -30,7 +32,8 @@ import React, {
   useState
 } from "react";
 import { toast } from "react-hot-toast";
-import FileAttachment from "./FileAttachment";
+import ChatAttachmentMenu from "./ChatAttachmentMenu";
+import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
 import { MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
@@ -243,7 +246,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   );
   const [isIncomingCall, setIsIncomingCall] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
-  const [isFileAttachmentOpen, setIsFileAttachmentOpen] = useState(false);
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
+  const [webcamOpen, setWebcamOpen] = useState(false);
+  const [voiceRecording, setVoiceRecording] = useState(false);
+  const attachMenuRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaChunksRef = useRef<Blob[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
@@ -254,6 +263,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [historyPage, setHistoryPage] = useState(0);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     setHistoryPage(0);
@@ -404,9 +414,32 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
   }, [threadId, historyPage, isLoadingOlderMessages, hasOlderMessages, messages.length]);
 
-  if (!thread) return null;
+  useEffect(() => {
+    if (!attachmentMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setAttachmentMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [attachmentMenuOpen]);
 
-  const [isSending, setIsSending] = useState(false);
+  useEffect(() => {
+    return () => {
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state === "recording") {
+        try {
+          mr.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+  }, []);
+
+  if (!thread) return null;
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -563,8 +596,92 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleFilesSelected = (files: FileUploadResult[]) => {
     setPendingFiles((prev) => [...prev, ...files]);
-    setIsFileAttachmentOpen(false);
+    setAttachmentMenuOpen(false);
   };
+
+  const stopMediaStream = () => {
+    mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+    mediaStreamRef.current = null;
+  };
+
+  const startVoiceRecording = async () => {
+    if (typeof window === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toast.error("Voice recording is not supported here");
+      return;
+    }
+    if (voiceRecording || isSending) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      mediaChunksRef.current = [];
+      const mime =
+        typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm")
+            ? "audio/webm"
+            : "";
+      const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = mr;
+      mr.ondataavailable = (e) => {
+        if (e.data.size) mediaChunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        void (async () => {
+          const mimeType = mr.mimeType || "audio/webm";
+          stopMediaStream();
+          mediaRecorderRef.current = null;
+          setVoiceRecording(false);
+          const chunks = mediaChunksRef.current;
+          mediaChunksRef.current = [];
+          const blob = new Blob(chunks, { type: mimeType });
+          if (blob.size < 400) {
+            if (blob.size > 0) toast.error("Voice message too short");
+            return;
+          }
+          const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "m4a" : "webm";
+          const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
+          setIsSending(true);
+          try {
+            const results = await fileUploadService.fromFiles([file]);
+            const uploaded = await fileUploadService.uploadFiles(results);
+            await sendMessage(threadId, "", {
+              content: "",
+              attachments: uploaded.map((f) => ({
+                id: f.id,
+                name: f.name,
+                url: f.url,
+                type: f.type,
+                size: f.size,
+                mimeType: f.mimeType,
+              })),
+            });
+            fileUploadService.revokePreviews(results);
+            stopTyping();
+          } catch (err: any) {
+            toast.error(err?.message || "Failed to send voice message");
+          } finally {
+            setIsSending(false);
+          }
+        })();
+      };
+      mr.start(100);
+      setVoiceRecording(true);
+    } catch {
+      toast.error("Microphone access denied or unavailable");
+    }
+  };
+
+  const toggleVoiceRecording = () => {
+    const mr = mediaRecorderRef.current;
+    if (voiceRecording && mr && mr.state === "recording") {
+      mr.stop();
+      return;
+    }
+    void startVoiceRecording();
+  };
+
+  const showSendButton =
+    draft.trim().length > 0 || pendingFiles.length > 0;
 
   const removePendingFile = (index: number) => {
     setPendingFiles((prev) => {
@@ -755,46 +872,86 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         )}
 
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => setIsFileAttachmentOpen(true)}
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100"
-            aria-label="Attach file"
-          >
-            <Paperclip className="h-4 w-4" />
-          </button>
+        {voiceRecording && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
+            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
+            Recording… tap the stop button to send
+          </div>
+        )}
+
+        <div className="flex items-center gap-1.5">
+          <div className="relative flex-shrink-0" ref={attachMenuRef}>
+            <button
+              type="button"
+              onClick={() => setAttachmentMenuOpen((o) => !o)}
+              className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 ${
+                attachmentMenuOpen ? "ring-2 ring-primary-200" : ""
+              }`}
+              aria-label="Attach"
+              aria-expanded={attachmentMenuOpen}
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            {attachmentMenuOpen && (
+              <ChatAttachmentMenu
+                onFilesSelected={handleFilesSelected}
+                onClose={() => setAttachmentMenuOpen(false)}
+                onOpenCamera={() => setWebcamOpen(true)}
+              />
+            )}
+          </div>
           <input
             value={draft}
             onChange={(event) => {
               setDraft(event.target.value);
               handleTyping();
             }}
-            placeholder="Message..."
-            className=" w-full px-3 py-2 border border-gray-300 rounded-full text-gray-800 text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+            placeholder="Type a message"
+            className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-full text-gray-800 text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
           />
-          <button
-            type="submit"
-            disabled={isSending}
-            className="flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Send message"
-          >
-            {isSending ? (
-              <svg className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : (
-              <Send className="h-5 w-5 sm:h-4 sm:w-4" />
-            )}
-          </button>
+          {showSendButton ? (
+            <button
+              type="submit"
+              disabled={isSending}
+              className="flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Send message"
+            >
+              {isSending ? (
+                <svg className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <Send className="h-5 w-5 sm:h-4 sm:w-4" />
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={toggleVoiceRecording}
+              disabled={isSending}
+              className={`flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                voiceRecording
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-primary-600 hover:bg-primary-700"
+              }`}
+              aria-label={voiceRecording ? "Stop recording" : "Voice message"}
+              title={voiceRecording ? "Stop and send" : "Voice message"}
+            >
+              {voiceRecording ? (
+                <Square className="h-4 w-4 fill-current" />
+              ) : (
+                <Mic className="h-5 w-5 sm:h-4 sm:w-4" />
+              )}
+            </button>
+          )}
         </div>
       </form>
 
-      <FileAttachment
-        isOpen={isFileAttachmentOpen}
-        onClose={() => setIsFileAttachmentOpen(false)}
-        onFilesSelected={handleFilesSelected}
+      <ChatWebcamCapture
+        isOpen={webcamOpen}
+        onClose={() => setWebcamOpen(false)}
+        onCaptured={handleFilesSelected}
       />
     </div>
   );

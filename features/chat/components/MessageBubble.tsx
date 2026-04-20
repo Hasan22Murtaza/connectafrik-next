@@ -317,6 +317,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       );
                     }
 
+                    if (att.mimeType?.startsWith("audio/")) {
+                      return (
+                        <audio
+                          key={att.id}
+                          src={att.url}
+                          controls
+                          preload="metadata"
+                          className="w-full max-w-[min(100%,280px)]"
+                        />
+                      );
+                    }
+
                     // Generic file attachment
                     return (
                       <a
