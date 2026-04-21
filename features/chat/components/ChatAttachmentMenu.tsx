@@ -87,7 +87,7 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
   return (
     <>
       <div
-        className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-2xl border border-gray-200 bg-white py-1.5 shadow-xl"
+        className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-2xl border border-gray-200 bg-white py-1.5 shadow-xl p-1"
         role="menu"
         aria-label="Attach"
       >
@@ -96,7 +96,7 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
             key={item.key}
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm text-gray-800 transition-colors hover:bg-gray-50"
+            className="flex w-full items-center gap-2 px-2 py-1 text-left text-sm text-gray-800 transition-colors hover:bg-gray-100 rounded-2xl"
             onClick={() => item.onClick()}
           >
             <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 ${item.className}`}>
