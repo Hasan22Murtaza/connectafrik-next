@@ -36,6 +36,8 @@ export interface NotificationPayload {
   device_session_id?: string
   /** User id that owns the row in `auth_session_device_labels` (e.g. callee who accepted/declined). */
   device_session_actor_id?: string
+  /** Chat (or other) message id; merged into stored `data` and FCM `data` for deep-linking. */
+  message_id?: string
 }
 
 function stringifyFcmDataValues(obj: Record<string, unknown>): Record<string, string> {
@@ -159,6 +161,12 @@ export async function POST(request: NextRequest) {
       body.data && typeof body.data === 'object' && !Array.isArray(body.data)
         ? { ...(body.data as Record<string, unknown>) }
         : {}
+
+    const messageId =
+      typeof body.message_id === 'string' && body.message_id.trim()
+        ? body.message_id.trim()
+        : ''
+    if (messageId) rawPushData.message_id = messageId
 
     const deviceSessionId =
       typeof body.device_session_id === 'string' && body.device_session_id.trim()

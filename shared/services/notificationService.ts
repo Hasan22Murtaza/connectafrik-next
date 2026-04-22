@@ -19,6 +19,8 @@ export interface NotificationData {
   requireInteraction?: boolean
   silent?: boolean
   vibrate?: number[]
+  /** Chat (or other) message id; forwarded to `/api/push-notifications` for FCM + stored notification data. */
+  message_id?: string
 }
 
 export interface NotificationResponse {

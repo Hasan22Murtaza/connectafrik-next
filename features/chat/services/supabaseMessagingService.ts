@@ -160,11 +160,12 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
               title: senderName,
               body: messagePreview,
               notification_type: 'chat_message',
+              message_id: message.id,
               data: {
                 thread_id: message.thread_id,
                 sender_id: message.sender_id,
                 sender_name: senderName,
-              }
+              },
             })
           } catch (notificationError) {
             // Don't fail the message if notification fails
