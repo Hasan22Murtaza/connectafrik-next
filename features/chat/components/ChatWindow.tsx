@@ -37,6 +37,7 @@ import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
 import { MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 
 interface ChatWindowProps {
   threadId: string;
@@ -702,8 +703,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <div className="pointer-events-auto flex w-72 sm:w-80 max-w-full sm:max-w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
-      <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-2 py-3">
+    <div className="pointer-events-auto flex w-72 sm:w-80 max-w-full sm:max-w-full flex-col border border-1 border-gray-100  rounded-2xl  bg-white shadow-2xl">
+      <div className="flex items-center justify-between  bg-gray-50 rounded-tl-2xl rounded-tr-2xl  border-b border-gray-200 p-2">
         <div className="flex items-center space-x-3">
           <div className="relative h-10 w-10">
             {headerAvatarAvailable ? (
@@ -727,29 +728,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               {isSelfChat
                 ? "Save messages to yourself"
                 : (thread?.participants?.length ?? 0) > 2
-                ? `${thread?.participants?.length} participants`
-                : formatPresenceLabel(presenceStatus)}
+                  ? `${thread?.participants?.length} participants`
+                  : formatPresenceLabel(presenceStatus)}
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
-            <>
-              <button
-                onClick={() => handleStartCall("audio")}
-                className="text-gray-500 hover:text-[#f97316]"
-                title="Start voice call"
-              >
-                <Phone className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => handleStartCall("video")}
-                className="text-gray-500 hover:text-[#f97316]"
-                title="Start video call"
-              >
-                <Video className="h-4 w-4" />
-              </button>
-            </>
-
+        <div className="flex items-center gap-2">
+          <Tooltip text="Start audio call" position="top">
+            <button
+              onClick={() => handleStartCall("audio")}
+              className="text-gray-500 hover:text-[#f97316] transition"
+            >
+              <Phone className="h-4 w-4" />
+            </button>
+          </Tooltip>
+          <Tooltip text="Start video call" position="top">
+          <button
+            onClick={() => handleStartCall("video")}
+            className="text-gray-500 hover:text-[#f97316]"
+            title="Start video call"
+          >
+            <Video className="h-4 w-4" />
+          </button>
+          </Tooltip>
+          <Tooltip text="Minimize chat" position="top">
           <button
             onClick={handleToggleMinimize}
             className="text-gray-400 hover:text-gray-600"
@@ -757,6 +759,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <Minus className="h-4 w-4" />
           </button>
+          </Tooltip>
+          <Tooltip text="Close chat" position="top">
           <button
             onClick={() => onClose(threadId)}
             className="text-gray-400 hover:text-gray-600"
@@ -764,8 +768,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <X className="h-4 w-4" />
           </button>
+          </Tooltip>
 
           {visibleMessages.length > 0 && (
+            <Tooltip text="options" position="top">
             <div className="relative">
               <button
                 onClick={(event) => {
@@ -773,7 +779,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   setShowOptionsMenu(true);
                 }}
                 className="text-gray-400 hover:text-gray-600"
-                title="Options"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
@@ -792,6 +797,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 </div>
               )}
             </div>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -809,29 +815,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : (
           visibleMessages.map((message: ChatMessage) => {
-              const isOwn = message.sender_id === currentUser?.id;
+            const isOwn = message.sender_id === currentUser?.id;
 
-              const participantPresenceMap: Record<string, 'online' | 'away' | 'busy' | 'offline'> = {};
-              thread?.participants?.forEach((p: any) => {
-                participantPresenceMap[p.id] = presence[p.id] || 'offline';
-              });
+            const participantPresenceMap: Record<string, 'online' | 'away' | 'busy' | 'offline'> = {};
+            thread?.participants?.forEach((p: any) => {
+              participantPresenceMap[p.id] = presence[p.id] || 'offline';
+            });
 
-              return (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  isOwnMessage={isOwn}
-                  currentUserId={currentUser?.id || ""}
-                  threadParticipants={
-                    thread?.participants?.map((p: any) => p.id) || []
-                  }
-                  participantPresence={participantPresenceMap}
-                  onReply={handleReply}
-                  onDelete={handleDelete}
-                  onReact={handleMessageReaction}
-                />
-              );
-            })
+            return (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isOwnMessage={isOwn}
+                currentUserId={currentUser?.id || ""}
+                threadParticipants={
+                  thread?.participants?.map((p: any) => p.id) || []
+                }
+                participantPresence={participantPresenceMap}
+                onReply={handleReply}
+                onDelete={handleDelete}
+                onReact={handleMessageReaction}
+              />
+            );
+          })
         )}
         <div aria-hidden="true" />
       </div>
@@ -847,7 +853,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <form
         onSubmit={handleSend}
-        className="border-t border-gray-200 bg-white px-2 sm:px-3 py-2 sm:py-3"
+        className="rounded-bl-2xl rounded-br-2xl border-t border-gray-200 bg-white px-2 sm:px-3 py-2 sm:py-3"
       >
         {replyingTo && (
           <div className="mb-2 flex items-start gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-2 border-l-4 border-orange-500">
@@ -884,9 +890,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <button
               type="button"
               onClick={() => setAttachmentMenuOpen((o) => !o)}
-              className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 ${
-                attachmentMenuOpen ? "ring-2 ring-primary-200" : ""
-              }`}
+              className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 ${attachmentMenuOpen ? "ring-1 ring-orange-500 text-primary-600" : ""
+                }`}
               aria-label="Attach"
               aria-expanded={attachmentMenuOpen}
             >
@@ -930,11 +935,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               type="button"
               onClick={toggleVoiceRecording}
               disabled={isSending}
-              className={`flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed ${
-                voiceRecording
+              className={`flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed ${voiceRecording
                   ? "bg-red-600 hover:bg-red-700"
                   : "bg-primary-600 hover:bg-primary-700"
-              }`}
+                }`}
               aria-label={voiceRecording ? "Stop recording" : "Voice message"}
               title={voiceRecording ? "Stop and send" : "Voice message"}
             >

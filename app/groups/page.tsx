@@ -557,7 +557,7 @@ const GroupsPage: React.FC = () => {
 
         <div className="flex gap-4 lg:gap-6">
           {/* Left Sidebar - Desktop */}
-          <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto ">
+          <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto scrollbar-hover ">
               {sidebarContent}
           </div>
 

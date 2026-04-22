@@ -95,7 +95,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
   }
 
   return (
-    <div className="flex items-center justify-end mt-1">
+    <div className="flex items-end ">
       {getStatusIcon()}
     </div>
   )
