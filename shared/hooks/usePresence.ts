@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 
-export type PresenceStatusType = 'online' | 'away' | 'busy' | 'offline'
+/** WhatsApp-style: only online vs not (UI shows “last seen …” when not online). */
+export type PresenceStatusType = 'online' | 'offline'
 
 export type PresenceListItem = {
   id: string
@@ -13,16 +14,13 @@ export type PresenceListItem = {
   lastSeen: string
 }
 
-const IDLE_THRESHOLD = 5 * 60 * 1000
 const HEARTBEAT_INTERVAL = 45 * 1000
 const DATABASE_HEARTBEAT_INTERVAL = 60 * 1000
 
 /**
- * Derive status for another user from API profile fields (no Realtime).
+ * From `last_seen` only: recent → online, else offline (no away/busy).
  */
-export const calculateStatusFromLastSeen = (
-  lastSeen: string | null | undefined
-): PresenceStatusType => {
+export const calculateStatusFromLastSeen = (lastSeen: string | null | undefined): PresenceStatusType => {
   if (!lastSeen) return 'offline'
 
   const lastSeenTime = new Date(lastSeen).getTime()
@@ -30,27 +28,33 @@ export const calculateStatusFromLastSeen = (
   const diffMinutes = (now - lastSeenTime) / (1000 * 60)
 
   if (diffMinutes <= 5) return 'online'
-  if (diffMinutes <= 15) return 'away'
   return 'offline'
 }
 
 /**
- * Use profile `status` from API when set; otherwise infer from `last_seen`.
+ * Display for other users. Legacy `away` / `busy` in DB → infer from `last_seen` only.
  */
 export const deriveUserPresence = (row: {
   status?: string | null
   last_seen?: string | null
 }): PresenceStatusType => {
-  const s = row.status as PresenceStatusType | undefined
-  if (s && ['online', 'away', 'busy', 'offline'].includes(s)) {
-    return s
+  const s = row.status
+
+  if (s == null || s === '' || s === 'offline') {
+    return 'offline'
   }
-  return calculateStatusFromLastSeen(row.last_seen)
+  if (s === 'away' || s === 'busy') {
+    return row.last_seen ? calculateStatusFromLastSeen(row.last_seen) : 'offline'
+  }
+  if (row.last_seen) {
+    return calculateStatusFromLastSeen(row.last_seen)
+  }
+  if (s === 'online') {
+    return 'online'
+  }
+  return 'offline'
 }
 
-/**
- * WhatsApp-style "last seen …" line (time uses the runtime locale).
- */
 export const formatWhatsAppLastSeen = (
   iso: string | null | undefined,
   now: Date = new Date()
@@ -83,40 +87,36 @@ export const formatWhatsAppLastSeen = (
 }
 
 export const formatContactPresenceLine = (
-  status: PresenceStatusType,
+  /** Raw `profiles.status` (or pre-derived online | offline) */
+  status: PresenceStatusType | string | null | undefined,
   lastSeen: string | null | undefined,
   options?: { showLastSeen?: boolean; showOnline?: boolean }
 ): string => {
   const showOnline = options?.showOnline !== false
   const showLastSeen = options?.showLastSeen !== false
 
-  if (status === 'online' && showOnline) {
+  const display = deriveUserPresence({ status: status ?? null, last_seen: lastSeen })
+
+  if (display === 'online' && showOnline) {
     return 'Online'
   }
   if (!showLastSeen) {
-    if (status === 'offline') return 'Offline'
-    return 'Active'
+    return display === 'offline' ? 'Offline' : 'Online'
   }
   if (lastSeen) {
     return formatWhatsAppLastSeen(lastSeen)
   }
-  if (status === 'away' || status === 'busy') {
-    return 'last seen recently'
-  }
   return 'Offline'
 }
 
-/** Current user: PATCH /api/users/me (singleton behavior via refs, one active session per user id). */
+/** Current user: only `online` (and `last_seen` / `last_active_at`) or clear to `null` when leaving. */
 export const usePresence = () => {
   const { user } = useAuth()
   const [isInitialized, setIsInitialized] = useState(false)
 
   const lastDatabaseStatus = useRef<PresenceStatusType | null>(null)
   const lastDatabaseUpdateAt = useRef(0)
-  const lastActivityTime = useRef(Date.now())
-  const idleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const activityRemovers = useRef<Array<() => void>>([])
 
   const cachedAccessToken = useRef<string | null>(null)
   const lifecycleUserId = useRef<string | null>(null)
@@ -149,15 +149,14 @@ export const usePresence = () => {
         await refreshCachedAccessToken()
         const iso = new Date().toISOString()
         const body: {
-          status: PresenceStatusType
+          status: 'online' | null
           last_seen: string
           last_active_at?: string
         } = {
-          status,
           last_seen: iso,
-        }
-        if (status !== 'offline') {
-          body.last_active_at = iso
+          ...(status === 'offline'
+            ? { status: null as null }
+            : { status: 'online' as const, last_active_at: iso }),
         }
 
         await apiClient.patch('/api/users/me', body)
@@ -182,7 +181,7 @@ export const usePresence = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ status: 'offline', last_seen: iso }),
+        body: JSON.stringify({ status: null, last_seen: iso }),
       }).catch(() => {})
     }
     if (cachedAccessToken.current) {
@@ -228,67 +227,7 @@ export const usePresence = () => {
     [detachLifecycle, sendOfflineKeepalive, patchMyPresence]
   )
 
-  const setAway = useCallback(() => {
-    if (!user?.id) return
-    void patchMyPresence('away', { force: true })
-  }, [user?.id, patchMyPresence])
-
-  const setOnlineFromActivity = useCallback(() => {
-    if (!user?.id) return
-    void patchMyPresence('online')
-  }, [user?.id, patchMyPresence])
-
-  const setBusy = useCallback(() => {
-    if (!user?.id) return
-    void patchMyPresence('busy', { force: true })
-  }, [user?.id, patchMyPresence])
-
-  const clearActivityTracking = useCallback(() => {
-    activityRemovers.current.forEach((r) => r())
-    activityRemovers.current = []
-    if (idleTimeoutRef.current) {
-      clearTimeout(idleTimeoutRef.current)
-      idleTimeoutRef.current = null
-    }
-  }, [])
-
-  const startActivityTracking = useCallback(() => {
-    if (!user?.id) return
-    lastActivityTime.current = Date.now()
-    clearActivityTracking()
-
-    const handleActivity = () => {
-      lastActivityTime.current = Date.now()
-      if (lastDatabaseStatus.current === 'away') {
-        void patchMyPresence('online', { force: true })
-      }
-      if (idleTimeoutRef.current) {
-        clearTimeout(idleTimeoutRef.current)
-        idleTimeoutRef.current = null
-      }
-      idleTimeoutRef.current = setTimeout(() => {
-        void patchMyPresence('away', { force: true })
-      }, IDLE_THRESHOLD)
-    }
-
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'] as const
-    events.forEach((ev) => {
-      const fn = () => {
-        handleActivity()
-      }
-      document.addEventListener(ev, fn, { passive: true })
-      activityRemovers.current.push(() => {
-        document.removeEventListener(ev, fn)
-      })
-    })
-
-    idleTimeoutRef.current = setTimeout(() => {
-      void patchMyPresence('away', { force: true })
-    }, IDLE_THRESHOLD)
-  }, [user?.id, clearActivityTracking, patchMyPresence])
-
   const cleanupSession = useCallback(async () => {
-    clearActivityTracking()
     detachLifecycle()
     if (statusIntervalRef.current) {
       clearInterval(statusIntervalRef.current)
@@ -299,9 +238,8 @@ export const usePresence = () => {
     await refreshCachedAccessToken()
     sendOfflineKeepalive()
     cachedAccessToken.current = null
-  }, [clearActivityTracking, detachLifecycle, sendOfflineKeepalive, refreshCachedAccessToken])
+  }, [detachLifecycle, sendOfflineKeepalive, refreshCachedAccessToken])
 
-  // Session lifecycle: open → online, heartbeat, idle, close → offline (deps: user id only)
   useEffect(() => {
     if (!user?.id) {
       setIsInitialized(false)
@@ -316,7 +254,6 @@ export const usePresence = () => {
       await patchMyPresence('online', { force: true })
       if (cancelled) return
       setIsInitialized(true)
-      startActivityTracking()
       attachLifecycle(uid)
 
       statusIntervalRef.current = setInterval(() => {
@@ -333,21 +270,8 @@ export const usePresence = () => {
       void cleanupSession()
       setIsInitialized(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- single session per user id
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one session per user id
   }, [user?.id])
-
-  useEffect(() => {
-    const onVisibility = () => {
-      if (document.hidden) {
-        setAway()
-      } else {
-        setOnlineFromActivity()
-        startActivityTracking()
-      }
-    }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => document.removeEventListener('visibilitychange', onVisibility)
-  }, [setAway, setOnlineFromActivity, startActivityTracking])
 
   const updateStatus = useCallback(
     async (status: PresenceStatusType) => {
@@ -359,8 +283,6 @@ export const usePresence = () => {
   return {
     isInitialized,
     updateStatus,
-    setAway,
-    setBusy,
     formatWhatsAppLastSeen,
     formatContactPresenceLine,
   }

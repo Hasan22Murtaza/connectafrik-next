@@ -215,25 +215,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return name.charAt(0).toUpperCase();
   }, [isSelfChat, isGroupThread, currentUser?.name, primaryParticipant?.name, thread?.name]);
 
-  const participantStatuses = useMemo<PresenceStatus[]>(
-    () =>
-      otherParticipants.map(
-        (participant: any) =>
-          memberPresenceMap.get(participant.id) ?? "offline"
-      ),
-    [otherParticipants, memberPresenceMap]
-  );
-  const presenceStatus = useMemo<PresenceStatus>(() => {
-    if (participantStatuses.some((status) => status === "online"))
-      return "online";
-    if (participantStatuses.some((status) => status === "busy")) return "busy";
-    if (participantStatuses.some((status) => status === "away")) return "away";
-    return "offline";
-  }, [participantStatuses]);
-
-  const primaryLastSeen = useMemo(() => {
+  const primaryMember = useMemo(() => {
     if (!primaryParticipant?.id) return null;
-    return members.find((m) => m.id === primaryParticipant.id)?.last_seen ?? null;
+    return members.find((m) => m.id === primaryParticipant.id) ?? null;
   }, [primaryParticipant?.id, members]);
 
   const participantPresenceById = useMemo(() => {
@@ -250,8 +234,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const directSubtitle = useMemo(() => {
     if (isGroupThread) return null;
     if (!primaryParticipant?.id) return null;
-    return formatContactPresenceLine(presenceStatus, primaryLastSeen);
-  }, [isGroupThread, primaryParticipant?.id, presenceStatus, primaryLastSeen]);
+    return formatContactPresenceLine(
+      primaryMember?.status ?? null,
+      primaryMember?.last_seen ?? null
+    );
+  }, [isGroupThread, primaryParticipant?.id, primaryMember?.status, primaryMember?.last_seen]);
 
   const [draft, setDraft] = useState("");
   const [isCallOpen, setIsCallOpen] = useState(false);

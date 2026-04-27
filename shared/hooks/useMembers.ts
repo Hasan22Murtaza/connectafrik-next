@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { apiClient } from '@/lib/api-client'
-import type { PresenceStatus } from '@/shared/types/chat'
-
 export interface Member {
   id: string
   name: string
   avatar_url?: string
   username?: string
-  status?: PresenceStatus | null
+  /** Raw `profiles.status` (may be legacy values); use `deriveUserPresence` in UI. */
+  status?: string | null
   last_seen?: string | null
 }
 
@@ -41,7 +40,7 @@ export function useMembers(enabled: boolean = true) {
             name: normalizedName(profile.full_name, profile.username),
             avatar_url: profile.avatar_url ?? undefined,
             username: profile.username ?? undefined,
-            status: (profile.status ?? null) as PresenceStatus | null,
+            status: profile.status ?? null,
             last_seen: profile.last_seen ?? null,
           }))
         )

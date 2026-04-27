@@ -55,7 +55,7 @@ interface MessageBubbleProps {
   isOwnMessage: boolean;
   currentUserId: string;
   threadParticipants?: string[]; // Array of participant user IDs in this thread
-  participantPresence?: Record<string, 'online' | 'away' | 'busy' | 'offline'>; // Presence status of participants
+  participantPresence?: Record<string, 'online' | 'offline'>;
   onReply?: (message: ChatMessage) => void;
   onDelete?: (messageId: string, deleteForEveryone: boolean) => void;
   /** Toggle/add reaction (same emoji removes). */
@@ -203,7 +203,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     // If at least one is online, show "delivered" (message delivered but not read)
     const hasOnlineRecipient = otherParticipants.some((id) => {
       const status = participantPresence[id];
-      return status === 'online' || status === 'away' || status === 'busy';
+      return status === 'online';
     });
 
     if (hasOnlineRecipient) {

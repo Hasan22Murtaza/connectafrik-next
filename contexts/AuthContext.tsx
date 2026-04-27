@@ -5,6 +5,7 @@ import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { checkAndSetupFCMTokenOnLogin, deactivateTokenOnLogout } from '@/shared/utils/fcmClient'
+import { flushUserPresenceOnLeave } from '@/lib/flushUserPresenceOnLeave'
 
 interface AuthContextType {
   user: User | null
@@ -111,12 +112,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     await deactivateTokenOnLogout().catch(() => {})
+    await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'local' })
     router.push('/')
   }
 
   const signOutAllDevices = async () => {
     await deactivateTokenOnLogout().catch(() => {})
+    await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'global' })
     router.push('/')
   }

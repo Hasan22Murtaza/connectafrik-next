@@ -2,10 +2,12 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
+/** Client only uses `online` + `null` (left); keep legacy values for old rows / clients. */
 const VALID_STATUSES = ['online', 'away', 'busy', 'offline'] as const
 
 type PresenceBody = {
-  status?: string
+  /** Set to `null` when the user leaves / logs out so UI shows last_seen, not "online". */
+  status?: string | null
   last_seen?: string
   last_active_at?: string
 }
@@ -20,21 +22,25 @@ export async function PATCH(request: NextRequest) {
     const serviceClient = createServiceClient()
     const body = (await request.json()) as PresenceBody
 
-    const status = body.status
+    const { status } = body
     const last_seen = body.last_seen
     const last_active_at = body.last_active_at
 
-    if (status && !VALID_STATUSES.includes(status as (typeof VALID_STATUSES)[number])) {
-      return errorResponse('Invalid status. Must be one of: online, away, busy, offline', 400)
+    if (status !== undefined && status !== null) {
+      if (!VALID_STATUSES.includes(status as (typeof VALID_STATUSES)[number])) {
+        return errorResponse('Invalid status. Must be one of: online, away, busy, offline, or null', 400)
+      }
     }
 
-    if (status == null && last_seen == null && last_active_at == null) {
+    if (status === undefined && last_seen == null && last_active_at == null) {
       return errorResponse('Provide at least one of: status, last_seen, last_active_at', 400)
     }
 
-    const updateData: Record<string, string> = {}
+    const updateData: Record<string, string | null> = {}
 
-    if (status) updateData.status = status
+    if ('status' in body) {
+      updateData.status = body.status === null ? null : (status as string)
+    }
     if (last_active_at) updateData.last_active_at = last_active_at
     // WhatsApp-style "last seen" is stored on every touch; same as /api/users/me/presence
     updateData.last_seen = last_seen || new Date().toISOString()

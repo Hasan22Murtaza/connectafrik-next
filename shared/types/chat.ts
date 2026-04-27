@@ -1,6 +1,7 @@
 ﻿export type CallType = 'audio' | 'video'
 
-export type PresenceStatus = 'online' | 'offline' | 'away' | 'busy'
+/** WhatsApp-style: only online vs not (last seen in UI) */
+export type PresenceStatus = 'online' | 'offline'
 
 export interface ChatParticipant {
   id: string

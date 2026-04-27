@@ -7,7 +7,7 @@ interface OnlineContact {
   id: string
   name: string
   avatarUrl?: string
-  status: 'online' | 'away' | 'busy' | 'offline'
+  status: 'online' | 'offline'
   lastSeen?: string
 }
 

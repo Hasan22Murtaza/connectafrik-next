@@ -2,9 +2,9 @@ import React, { useMemo } from 'react'
 import { MessageCircle, Phone, Video } from 'lucide-react'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import { ChatParticipant, PresenceStatus } from '@/shared/types/chat'
+import { ChatParticipant } from '@/shared/types/chat'
 import { ChatThread } from '@/features/chat/services/supabaseMessagingService'
-import { formatContactPresenceLine, deriveUserPresence } from '@/shared/hooks/usePresence'
+import { formatContactPresenceLine } from '@/shared/hooks/usePresence'
 
 const ContactsRail: React.FC = () => {
   const { members, loading } = useMembers()
@@ -70,10 +70,10 @@ const ContactsRail: React.FC = () => {
 
     return contacts.map((contact) => {
       const member = memberMap.get(contact.id)
-      const derivedStatus: PresenceStatus = member
-        ? deriveUserPresence({ status: member.status, last_seen: member.last_seen })
-        : 'offline'
-      const line = formatContactPresenceLine(derivedStatus, member?.last_seen ?? null)
+      const line = formatContactPresenceLine(
+        member?.status ?? null,
+        member?.last_seen ?? null
+      )
 
       return (
         <div
