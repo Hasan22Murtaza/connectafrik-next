@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
+import {
+  initChatPresenceRealtime,
+  cleanupChatPresenceRealtime,
+  trackPresence,
+} from '@/shared/services/chatPresenceRealtime'
 
 /** WhatsApp-style: only online vs not (UI shows “last seen …” when not online). */
 export type PresenceStatusType = 'online' | 'offline'
@@ -236,6 +241,7 @@ export const usePresence = () => {
     lastDatabaseStatus.current = null
     lastDatabaseUpdateAt.current = 0
     await refreshCachedAccessToken()
+    await cleanupChatPresenceRealtime()
     sendOfflineKeepalive()
     cachedAccessToken.current = null
   }, [detachLifecycle, sendOfflineKeepalive, refreshCachedAccessToken])
@@ -253,12 +259,19 @@ export const usePresence = () => {
       await refreshCachedAccessToken()
       await patchMyPresence('online', { force: true })
       if (cancelled) return
+      try {
+        await initChatPresenceRealtime(uid)
+      } catch (e) {
+        console.error('initChatPresenceRealtime:', e)
+      }
+      if (cancelled) return
       setIsInitialized(true)
       attachLifecycle(uid)
 
       statusIntervalRef.current = setInterval(() => {
         if (lastDatabaseStatus.current === 'online') {
           void patchMyPresence('online')
+          void trackPresence(uid)
         }
       }, HEARTBEAT_INTERVAL)
     }

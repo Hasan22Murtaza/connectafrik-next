@@ -42,6 +42,10 @@ import {
   formatContactPresenceLine,
   deriveUserPresence,
 } from "@/shared/hooks/usePresence";
+import {
+  getPresentUserIds,
+  subscribeChatPresenceSync,
+} from "@/shared/services/chatPresenceRealtime";
 
 interface ChatWindowProps {
   threadId: string;
@@ -74,16 +78,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const { members } = useMembers();
 
-  const memberPresenceMap = useMemo(() => {
-    const map = new Map<string, PresenceStatus>();
-    members.forEach((member) => {
-      map.set(
-        member.id,
-        deriveUserPresence({ status: member.status, last_seen: member.last_seen })
-      );
-    });
-    return map;
-  }, [members]);
+  /** Supabase Realtime Presence: who is connected right now (same channel as usePresence). */
+  const [presentUserIds, setPresentUserIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const tick = () => setPresentUserIds(new Set(getPresentUserIds()));
+    tick();
+    return subscribeChatPresenceSync(tick);
+  }, [currentUser?.id]);
 
   // Typing indicator
   const { typingUserIds, handleTyping, stopTyping } = useTypingIndicator(
@@ -223,22 +225,35 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const participantPresenceById = useMemo(() => {
     const rec: Record<string, PresenceStatus> = {};
     thread?.participants?.forEach((p: { id: string }) => {
+      if (presentUserIds.has(p.id)) {
+        rec[p.id] = "online";
+        return;
+      }
       const m = members.find((mem) => mem.id === p.id);
       rec[p.id] = m
         ? deriveUserPresence({ status: m.status, last_seen: m.last_seen })
         : "offline";
     });
     return rec;
-  }, [thread?.participants, members]);
+  }, [thread?.participants, members, presentUserIds]);
 
   const directSubtitle = useMemo(() => {
     if (isGroupThread) return null;
     if (!primaryParticipant?.id) return null;
+    if (presentUserIds.has(primaryParticipant.id)) {
+      return "Online";
+    }
     return formatContactPresenceLine(
       primaryMember?.status ?? null,
       primaryMember?.last_seen ?? null
     );
-  }, [isGroupThread, primaryParticipant?.id, primaryMember?.status, primaryMember?.last_seen]);
+  }, [
+    isGroupThread,
+    primaryParticipant?.id,
+    primaryMember?.status,
+    primaryMember?.last_seen,
+    presentUserIds,
+  ]);
 
   const [draft, setDraft] = useState("");
   const [isCallOpen, setIsCallOpen] = useState(false);
