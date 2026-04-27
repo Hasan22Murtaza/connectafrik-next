@@ -21,7 +21,7 @@ const Footer: React.FC = () => {
       <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4">
         {/* Main Footer Content */}
         <div className=" px-4 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 gap-x-10 xl:gap-x-12">
             {/* Company Info */}
             <div className="space-y-4">
               <img src="/assets/images/logo_2.png" alt="" className="w-30" />
