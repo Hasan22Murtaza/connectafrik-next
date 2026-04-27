@@ -19,7 +19,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import { useProductionChat } from "@/contexts/ProductionChatContext";
 import ChatDropdown from "@/features/chat/components/ChatDropdown";
 import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
 import { FaBars } from "react-icons/fa";
@@ -40,7 +39,6 @@ const Header: React.FC<HeaderProps> = ({
   const router = useRouter();
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
-  const { } = useProductionChat();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showInbox, setShowInbox] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);

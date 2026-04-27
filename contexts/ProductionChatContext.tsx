@@ -7,12 +7,7 @@ import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
-import {
-  initializePresence,
-  updatePresence as updatePresenceStatus,
-  subscribeToPresenceChanges,
-  cleanup as cleanupPresence,
-} from '@/shared/services/presenceService'
+import { usePresence } from '@/shared/hooks/usePresence'
 
 interface ChatParticipant {
   id: string
@@ -43,8 +38,6 @@ export interface CallRequest {
 }
 
 interface ProductionChatContextType {
-  presence: Record<string, 'online' | 'away' | 'busy' | 'offline'>
-  updatePresence: (userId: string, status: 'online' | 'away' | 'busy' | 'offline') => void
   startChatWithMembers: (participants: ChatParticipant[], options?: ThreadOptions) => Promise<string | null>
   openThread: (threadId: string) => void
   startCall: (
@@ -95,7 +88,7 @@ export const useProductionChat = () => {
 
 export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth()
-  const [presence, setPresence] = useState<Record<string, 'online' | 'away' | 'busy' | 'offline'>>({})
+  usePresence()
   const [callRequests, setCallRequests] = useState<Record<string, CallRequest>>({})
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
@@ -154,13 +147,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       window.clearTimeout(timer)
     }
   }, [user])
-
-  const updatePresence = useCallback((userId: string, status: 'online' | 'away' | 'busy' | 'offline') => {
-    setPresence(prev => ({
-      ...prev,
-      [userId]: status
-    }))
-  }, [])
 
   const openThread = useCallback(async (threadId: string) => {
     const existingThread = threads.find(t => t.id === threadId)
@@ -973,33 +959,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   //   }
   // }, [currentUser, tryDispatchIncomingFromCallSession])
 
-  useEffect(() => {
-    if (!user?.id) return
-
-    const unsubscribe = subscribeToPresenceChanges((userId, status, lastSeen) => {
-      updatePresence(userId, status)
-    })
-
-    return () => {
-      unsubscribe()
-    }
-  }, [user?.id, updatePresence])
-
-  useEffect(() => {
-    if (!user?.id) return
-
-    initializePresence(user.id).then(() => {
-      updatePresence(user.id, 'online')
-    })
-
-    return () => {
-      cleanupPresence(user.id)
-    }
-  }, [user?.id, updatePresence])
-
   const value: ProductionChatContextType = {
-    presence,
-    updatePresence,
     startChatWithMembers,
     openThread,
     startCall,

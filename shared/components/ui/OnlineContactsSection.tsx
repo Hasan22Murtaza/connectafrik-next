@@ -81,19 +81,6 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online':
-        return 'bg-green-500'
-      case 'away':
-        return 'bg-yellow-500'
-      case 'busy':
-        return 'bg-red-500'
-      default:
-        return 'bg-gray-400'
-    }
-  }
-
   // const getStatusText = (status: string) => {
   //   switch (status) {
   //     case 'online':
@@ -122,25 +109,18 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
             className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-200 cursor-pointer"
           >
             <div className="flex flex-1 items-center space-x-3">
-              <div className="relative">
-                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200">
-                  {contact.avatarUrl ? (
-                    <img
-                      src={contact.avatarUrl}
-                      alt={contact.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-sm font-semibold text-gray-600">
-                      {contact.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div
-                  className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${getStatusColor(
-                    contact.status
-                  )}`}
-                ></div>
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+                {contact.avatarUrl ? (
+                  <img
+                    src={contact.avatarUrl}
+                    alt={contact.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-sm font-semibold text-gray-600">
+                    {contact.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
 
               <div className="min-w-0 flex-1">

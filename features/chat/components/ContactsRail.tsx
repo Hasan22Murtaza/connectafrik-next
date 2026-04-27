@@ -1,27 +1,14 @@
 import React, { useMemo } from 'react'
-import { MessageCircle, Phone, Video, Circle } from 'lucide-react'
+import { MessageCircle, Phone, Video } from 'lucide-react'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant, PresenceStatus } from '@/shared/types/chat'
 import { ChatThread } from '@/features/chat/services/supabaseMessagingService'
-
-const statusColor: Record<PresenceStatus, string> = {
-  online: 'text-green-500',
-  away: 'text-yellow-500',
-  busy: 'text-red-500',
-  offline: 'text-gray-300',
-}
-
-const statusLabel: Record<PresenceStatus, string> = {
-  online: 'Active',
-  away: 'Away',
-  busy: 'Busy',
-  offline: 'Offline',
-}
+import { formatContactPresenceLine, deriveUserPresence } from '@/shared/hooks/usePresence'
 
 const ContactsRail: React.FC = () => {
   const { members, loading } = useMembers()
-  const { threads, startChatWithMembers, startCall, presence, updatePresence } = useProductionChat()
+  const { threads, startChatWithMembers, startCall } = useProductionChat()
 
   const memberMap = useMemo(() => new Map(members.map((member) => [member.id, member])), [members])
 
@@ -53,14 +40,12 @@ const ContactsRail: React.FC = () => {
 
   const handleStartChat = async (contact: ChatParticipant) => {
     await startChatWithMembers([contact])
-    updatePresence(contact.id, 'online')
   }
 
   const handleStartCall = async (contact: ChatParticipant, type: 'audio' | 'video') => {
     try {
       const threadId = await ensureThread(contact)
       if (threadId) {
-        updatePresence(contact.id, 'online')
         await startCall(threadId, type, contact.id, contact.name, contact.avatarUrl)
       }
     } catch (error) {
@@ -71,7 +56,7 @@ const ContactsRail: React.FC = () => {
   const renderContacts = () => {
     if (loading) {
       return (
-        <div className="text-xs text-gray-400">Loading contacts�</div>
+        <div className="text-xs text-gray-400">Loading contacts…</div>
       )
     }
 
@@ -85,8 +70,10 @@ const ContactsRail: React.FC = () => {
 
     return contacts.map((contact) => {
       const member = memberMap.get(contact.id)
-      const fallbackStatus: PresenceStatus = (member?.status as PresenceStatus) || 'offline'
-      const derivedStatus: PresenceStatus = (presence[contact.id] as PresenceStatus) || fallbackStatus
+      const derivedStatus: PresenceStatus = member
+        ? deriveUserPresence({ status: member.status, last_seen: member.last_seen })
+        : 'offline'
+      const line = formatContactPresenceLine(derivedStatus, member?.last_seen ?? null)
 
       return (
         <div
@@ -107,10 +94,7 @@ const ContactsRail: React.FC = () => {
             )}
             <div>
               <p className="text-sm font-medium text-gray-900">{contact.name}</p>
-              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                <Circle className={`h-2 w-2 ${statusColor[derivedStatus]}`} fill="currentColor" />
-                <span>{statusLabel[derivedStatus]}</span>
-              </div>
+              <p className="text-xs text-gray-500">{line}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">

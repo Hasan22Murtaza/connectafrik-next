@@ -38,6 +38,10 @@ import FilePreview from "./FilePreview";
 import { MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
+import {
+  formatContactPresenceLine,
+  deriveUserPresence,
+} from "@/shared/hooks/usePresence";
 
 interface ChatWindowProps {
   threadId: string;
@@ -45,18 +49,6 @@ interface ChatWindowProps {
   onMinimize: (threadId: string) => void;
 }
 
-const formatPresenceLabel = (status?: string) => {
-  switch (status) {
-    case "online":
-      return "Active now";
-    case "away":
-      return "Away";
-    case "busy":
-      return "Do not disturb";
-    default:
-      return "Offline";
-  }
-};
 const MESSAGES_PAGE_SIZE = 50;
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -69,7 +61,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     getMessagesForThread,
     sendMessage,
     currentUser,
-    presence,
     callRequests,
     clearCallRequest,
     minimizedThreadIds,
@@ -83,14 +74,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const { members } = useMembers();
 
-  const memberStatusMap = useMemo(() => {
+  const memberPresenceMap = useMemo(() => {
     const map = new Map<string, PresenceStatus>();
     members.forEach((member) => {
-      if (member.status) {
-        map.set(member.id, member.status);
-      } else if (member.last_seen) {
-        map.set(member.id, "away");
-      }
+      map.set(
+        member.id,
+        deriveUserPresence({ status: member.status, last_seen: member.last_seen })
+      );
     });
     return map;
   }, [members]);
@@ -228,9 +218,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const participantStatuses = useMemo<PresenceStatus[]>(
     () =>
       otherParticipants.map(
-        (participant: any) => presence[participant.id] || "offline"
+        (participant: any) =>
+          memberPresenceMap.get(participant.id) ?? "offline"
       ),
-    [otherParticipants, presence]
+    [otherParticipants, memberPresenceMap]
   );
   const presenceStatus = useMemo<PresenceStatus>(() => {
     if (participantStatuses.some((status) => status === "online"))
@@ -239,6 +230,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (participantStatuses.some((status) => status === "away")) return "away";
     return "offline";
   }, [participantStatuses]);
+
+  const primaryLastSeen = useMemo(() => {
+    if (!primaryParticipant?.id) return null;
+    return members.find((m) => m.id === primaryParticipant.id)?.last_seen ?? null;
+  }, [primaryParticipant?.id, members]);
+
+  const participantPresenceById = useMemo(() => {
+    const rec: Record<string, PresenceStatus> = {};
+    thread?.participants?.forEach((p: { id: string }) => {
+      const m = members.find((mem) => mem.id === p.id);
+      rec[p.id] = m
+        ? deriveUserPresence({ status: m.status, last_seen: m.last_seen })
+        : "offline";
+    });
+    return rec;
+  }, [thread?.participants, members]);
+
+  const directSubtitle = useMemo(() => {
+    if (isGroupThread) return null;
+    if (!primaryParticipant?.id) return null;
+    return formatContactPresenceLine(presenceStatus, primaryLastSeen);
+  }, [isGroupThread, primaryParticipant?.id, presenceStatus, primaryLastSeen]);
 
   const [draft, setDraft] = useState("");
   const [isCallOpen, setIsCallOpen] = useState(false);
@@ -729,7 +742,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 ? "Save messages to yourself"
                 : (thread?.participants?.length ?? 0) > 2
                   ? `${thread?.participants?.length} participants`
-                  : formatPresenceLabel(presenceStatus)}
+                  : (directSubtitle ?? "Offline")}
             </div>
           </div>
         </div>
@@ -817,11 +830,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           visibleMessages.map((message: ChatMessage) => {
             const isOwn = message.sender_id === currentUser?.id;
 
-            const participantPresenceMap: Record<string, 'online' | 'away' | 'busy' | 'offline'> = {};
-            thread?.participants?.forEach((p: any) => {
-              participantPresenceMap[p.id] = presence[p.id] || 'offline';
-            });
-
             return (
               <MessageBubble
                 key={message.id}
@@ -831,7 +839,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 threadParticipants={
                   thread?.participants?.map((p: any) => p.id) || []
                 }
-                participantPresence={participantPresenceMap}
+                participantPresence={participantPresenceById}
                 onReply={handleReply}
                 onDelete={handleDelete}
                 onReact={handleMessageReaction}

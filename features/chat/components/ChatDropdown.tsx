@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { MessageCircle, Phone, Video, Circle, Loader2 } from 'lucide-react'
+import { MessageCircle, Phone, Video, Loader2 } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { PresenceStatus, ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'
@@ -13,15 +13,8 @@ interface ChatDropdownProps {
   mode?: 'chat' | 'call'
 }
 
-const statusColor: Record<PresenceStatus, string> = {
-  online: 'text-green-500',
-  away: 'text-yellow-500',
-  busy: 'text-red-500',
-  offline: 'text-gray-300',
-}
-
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) => {
-  const { openThread, startCall, startChatWithMembers, presence, currentUser, threads: contextThreads } = useProductionChat()
+  const { openThread, startCall, startChatWithMembers, currentUser, threads: contextThreads } = useProductionChat()
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [recentCallEntries, setRecentCallEntries] = useState<RecentCallEntry[]>([])
   const [threadsLoading, setThreadsLoading] = useState(true)
@@ -165,7 +158,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
             id: participant.id,
             name: participant.name || 'ConnectAfrik Member',
             avatarUrl: participant.avatarUrl,
-            status: (presence[participant.id] || 'offline') as PresenceStatus,
+            status: 'offline' as PresenceStatus,
           })
         }
       }
@@ -178,13 +171,13 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
           id: call.contact_id,
           name: call.contact_name || 'ConnectAfrik Member',
           avatarUrl: call.contact_avatar_url || undefined,
-          status: (presence[call.contact_id] || 'offline') as PresenceStatus,
+          status: 'offline' as PresenceStatus,
         })
       }
     }
 
     return Array.from(contactMap.values())
-  }, [threads, contextThreads, recentCallEntries, currentUser?.id, presence])
+  }, [threads, contextThreads, recentCallEntries, currentUser?.id])
 
   const visibleContacts = useMemo(() => availableContacts.slice(0, contactsVisible), [availableContacts, contactsVisible])
   const contactsHasMore = contactsVisible < availableContacts.length
@@ -318,10 +311,6 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                                 {call.name.charAt(0).toUpperCase()}
                               </div>
                             )}
-                            <Circle
-                              className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[(presence[call.id] || 'offline') as PresenceStatus]}`}
-                              fill="currentColor"
-                            />
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-gray-900 truncate">{call.name}</p>
@@ -381,14 +370,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                                 {contact.name.charAt(0).toUpperCase()}
                               </div>
                             )}
-                            <Circle
-                              className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[contact.status]}`}
-                              fill="currentColor"
-                            />
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-gray-900">{contact.name}</p>
-                            <p className="text-xs text-gray-500">{contact.status === 'online' ? 'Active now' : contact.status}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -435,7 +419,6 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                 (participant: ChatParticipant) => participant.id !== currentUser?.id
               )
               const primary = otherParticipants[0] ?? thread.participants[0]
-              const status = presence[primary?.id ?? ''] || 'offline'
               const lastActive = thread.last_message_at
               const isGroup =
                 thread.type === 'group' ||
@@ -467,10 +450,6 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                           {threadDisplayName.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <Circle
-                        className={`w-2.5 h-2.5 absolute bottom-0 right-0 ${statusColor[status as PresenceStatus]}`}
-                        fill="currentColor"
-                      />
                     </div>
 
                     <div>

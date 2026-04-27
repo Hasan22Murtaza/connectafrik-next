@@ -110,31 +110,4 @@ export const socialService = {
     return { data, error };
   },
 
-  initPresence(userId: string) {
-    const channel = supabase.channel("presence#global", {
-      config: {
-        presence: {
-          key: userId,
-        },
-      },
-    });
-
-    channel.on("presence", { event: "sync" }, () => {});
-
-    channel.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") {
-        channel.track({ last_seen: new Date().toISOString() });
-        try {
-          await apiClient.patch('/api/users/me/presence', {
-            status: 'online',
-            last_seen: new Date().toISOString(),
-          });
-        } catch {
-          // Non-blocking
-        }
-      }
-    });
-
-    return channel;
-  },
 };

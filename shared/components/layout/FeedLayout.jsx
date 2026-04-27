@@ -2,11 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react'
 import LeftSidebar from '@/shared/components/ui/LeftSidebar'
 import RightSidebar from '@/shared/components/ui/RightSidebar'
 import MobileMenuButton from '@/shared/components/ui/MobileMenuButton'
-import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { checkUpcomingBirthdays } from '@/shared/services/birthdayNotificationService'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
-import { calculateStatusFromLastSeen } from '@/shared/services/presenceService'
+import { deriveUserPresence } from '@/shared/hooks/usePresence'
 
 const placeholderAds = [
   { id: 'ad1', title: 'Build your own AI Agent!', url: 'https://getodin.ai', image: '/assets/images/odin.png' },
@@ -14,7 +13,6 @@ const placeholderAds = [
 ]
 
 const FeedLayout = ({ children }) => {
-  const { presence, updatePresence } = useProductionChat()
   const { user } = useAuth()
   const [friends, setFriends] = useState([])
   const [suggestedUsers, setSuggestedUsers] = useState([])
@@ -33,12 +31,6 @@ const FeedLayout = ({ children }) => {
         const suggested = await friendRequestService.getSuggestedUsers(20)
 
         if (!isMounted) return
-
-        // Update presence for all friends - calculate from last_seen
-        friendsList.forEach((friend) => {
-          const calculatedStatus = calculateStatusFromLastSeen(friend.last_seen) || friend.status || 'offline'
-          updatePresence(friend.id, calculatedStatus)
-        })
 
         setFriends(friendsList)
         setSuggestedUsers(suggested)
@@ -77,7 +69,7 @@ const FeedLayout = ({ children }) => {
     return () => {
       isMounted = false
     }
-  }, [updatePresence])
+  }, [])
 
   // Check for upcoming birthdays and send notifications (dedup handled in service)
   useEffect(() => {
@@ -100,14 +92,10 @@ const FeedLayout = ({ children }) => {
     checkBirthdays()
   }, [user?.id])
 
-  // Format friends for display (with presence status)
+  // Format friends (status from friends API: status + last_seen)
   const friendsWithPresence = useMemo(() => {
     return friends.map((friend) => {
-      // Use presence from context if available, otherwise calculate from last_seen
-      const status = presence[friend.id] || 
-                     calculateStatusFromLastSeen(friend.last_seen) || 
-                     friend.status || 
-                     'offline'
+      const status = deriveUserPresence({ status: friend.status, last_seen: friend.last_seen })
       return {
         id: friend.id,
         name: friend.full_name,
@@ -118,7 +106,7 @@ const FeedLayout = ({ children }) => {
         lastSeen: friend.last_seen,
       }
     })
-  }, [friends, presence])
+  }, [friends])
 
   // Online friends only (for left sidebar)
   const onlineFriends = useMemo(
