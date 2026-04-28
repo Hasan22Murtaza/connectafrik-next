@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
+import { LocationSearch } from '@/shared/components/ui/LocationSearch'
 
 const Signup: React.FC = () => {
   const router = useRouter()
@@ -20,7 +21,12 @@ const Signup: React.FC = () => {
     birthYear: '',
     gender: '',
     customGender: '',
-    country: ''
+    formattedAddress: '',
+    address: '',
+    city: '',
+    state: '',
+    zipcode: '',
+    country: '',
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -108,8 +114,8 @@ const Signup: React.FC = () => {
       return
     }
 
-    if (!formData.country) {
-      toast.error('Please select your location')
+    if (!formData.formattedAddress.trim() || !formData.country) {
+      toast.error('Choose your location from the search suggestions')
       return
     }
 
@@ -125,7 +131,11 @@ const Signup: React.FC = () => {
         last_name: formData.lastName,
         birthday: birthday,
         gender: formData.gender === 'custom' ? formData.customGender : formData.gender,
-        country: formData.country
+        address: formData.address.trim() || null,
+        city: formData.city.trim() || null,
+        state: formData.state.trim() || null,
+        zipcode: formData.zipcode.trim() || null,
+        country: formData.country,
       }
 
       if (isEmailInput) {
@@ -220,22 +230,6 @@ const Signup: React.FC = () => {
   const days = Array.from({ length: 31 }, (_, i) => i + 1)
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: 120 }, (_, i) => currentYear - i)
-
-  const locations = [
-    // African Countries
-    'Ghana', 'Nigeria', 'Kenya', 'South Africa', 'Ethiopia', 'Egypt',
-    'Tanzania', 'Uganda', 'Algeria', 'Morocco', 'Angola', 'Sudan',
-    'Mozambique', 'Madagascar', 'Cameroon', 'Ivory Coast', 'Niger',
-    'Burkina Faso', 'Mali', 'Malawi', 'Zambia', 'Senegal', 'Somalia',
-    'Chad', 'Zimbabwe', 'Guinea', 'Rwanda', 'Benin', 'Tunisia',
-    'Burundi', 'Togo', 'Sierra Leone', 'Libya', 'Liberia', 'Mauritania',
-    'Congo', 'Namibia', 'Botswana', 'Gabon', 'Gambia', 'Guinea-Bissau',
-    'Equatorial Guinea', 'Mauritius', 'Eswatini', 'Djibouti', 'Comoros',
-    'Cape Verde', 'São Tomé and Príncipe', 'Seychelles',
-    // Other Regions & Countries
-    'United States of America', 'United Kingdom', 'France', 'Germany',
-    'Australia', 'India', 'China', 'Europe', 'Asia', 'Caribbean', 'Other'
-  ].sort()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
@@ -444,23 +438,30 @@ const Signup: React.FC = () => {
                 )}
               </div>
 
-              {/* Country */}
-              <div>
-                <select
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
-                  required
-                >
-                  <option value="">Select your location</option>
-                  {locations.map((location) => (
-                    <option key={location} value={location}>
-                      {location}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <LocationSearch
+                label="Location"
+                required
+                value={{
+                  formattedAddress: formData.formattedAddress,
+                  address: formData.address,
+                  city: formData.city,
+                  state: formData.state,
+                  zipcode: formData.zipcode,
+                  country: formData.country,
+                }}
+                onChange={(loc) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    formattedAddress: loc.formattedAddress,
+                    address: loc.address,
+                    city: loc.city,
+                    state: loc.state,
+                    zipcode: loc.zipcode,
+                    country: loc.country,
+                  }))
+                }
+                fieldClassName="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+              />
 
               {/* Policy Text */}
               <div className="space-y-2 pt-2">

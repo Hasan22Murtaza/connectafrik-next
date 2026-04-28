@@ -5,6 +5,7 @@ import { MapPin, Calendar, Users, MessageSquare } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { UserProfileWithVisibility } from '@/shared/types'
 import type { VisibleProfileFields } from '@/shared/utils/visibilityUtils'
+import { getProfileLocationDisplayLine } from '@/shared/types/location'
 
 const fmt = (n: number) => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
@@ -27,6 +28,8 @@ interface AboutTabProps {
 }
 
 const AboutTab: React.FC<AboutTabProps> = ({ profile, visibleFields }) => {
+  const livesInLine = getProfileLocationDisplayLine(profile)
+
   return (
     <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden">
       <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
@@ -46,11 +49,11 @@ const AboutTab: React.FC<AboutTabProps> = ({ profile, visibleFields }) => {
               From <span className="font-semibold">{profile.country}</span>
             </AboutDetailRow>
           )}
-          {visibleFields.location && (profile as UserProfileWithVisibility).location && (
+          {visibleFields.location && livesInLine ? (
             <AboutDetailRow icon={MapPin}>
-              Lives in <span className="font-semibold">{(profile as UserProfileWithVisibility).location}</span>
+              Lives in <span className="font-semibold">{livesInLine}</span>
             </AboutDetailRow>
-          )}
+          ) : null}
           <AboutDetailRow icon={Calendar}>
             <span suppressHydrationWarning>
               Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}

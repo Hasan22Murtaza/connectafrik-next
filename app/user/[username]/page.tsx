@@ -22,6 +22,7 @@ import ShareModal from '@/features/social/components/ShareModal'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { sendNotification } from '@/shared/services/notificationService'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
+import { getProfileLocationDisplayLine } from '@/shared/types/location'
 import PostsTab from './components/PostsTab'
 import AboutTab from './components/AboutTab'
 import PhotosTab from './components/PhotosTab'
@@ -156,6 +157,11 @@ const UserProfilePage: React.FC = () => {
       (p.media_urls || []).filter(isVideo).map((url) => ({ url, postId: p.id, content: p.content, author: p.author }))
     ), [posts]
   )
+
+  const profileLivesInLine = useMemo(() => {
+    if (!profile) return ''
+    return getProfileLocationDisplayLine(profile)
+  }, [profile])
 
   useEffect(() => { if (username) fetchUserProfile() }, [username])
   useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
@@ -550,7 +556,11 @@ const UserProfilePage: React.FC = () => {
               {profile.bio && <p className="text-sm text-gray-700 text-center leading-relaxed mb-3 pb-3 border-b border-gray-200">{profile.bio}</p>}
               <div className="space-y-2.5">
                 {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
-                {visibleFields.location && (profile as UserProfileWithVisibility).location && <DetailRow icon={MapPin}>Lives in <span className="font-semibold">{(profile as UserProfileWithVisibility).location}</span></DetailRow>}
+                {visibleFields.location && profileLivesInLine ? (
+                  <DetailRow icon={MapPin}>
+                    Lives in <span className="font-semibold">{profileLivesInLine}</span>
+                  </DetailRow>
+                ) : null}
                 <DetailRow icon={Calendar}><span suppressHydrationWarning>Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}</span></DetailRow>
                 <DetailRow icon={Users}><span className="font-semibold">{profile.posts_count}</span> posts</DetailRow>
               </div>

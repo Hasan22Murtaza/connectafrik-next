@@ -78,9 +78,11 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const updates = { ...body, updated_at: new Date().toISOString() }
+    const updates = { ...body, updated_at: new Date().toISOString() } as Record<string, unknown>
     delete updates.id
     delete updates.created_at
+    delete updates.location
+    delete updates.region
 
     const { data: profile, error } = await supabase
       .from('profiles')

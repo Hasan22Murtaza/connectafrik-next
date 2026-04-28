@@ -18,6 +18,8 @@ import {
   getSessionIdFromAccessToken,
 } from '@/shared/utils/sessionDeviceLabel'
 import toast from 'react-hot-toast'
+import { LocationSearch } from '@/shared/components/ui/LocationSearch'
+import { profileLocationFromDb } from '@/shared/types/location'
 
 type ListedAuthSession = {
   id: string
@@ -35,6 +37,11 @@ const ProfileSettings: React.FC = () => {
     username: '',
     full_name: '',
     bio: '',
+    formattedAddress: '',
+    address: '',
+    city: '',
+    state: '',
+    zipcode: '',
     country: '',
     birthday: ''
   })
@@ -205,26 +212,19 @@ const ProfileSettings: React.FC = () => {
     }
   }
 
-  const countries = [
-    'Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi',
-    'Cameroon', 'Cape Verde', 'Central African Republic', 'Chad', 'Comoros',
-    'Democratic Republic of Congo', 'Republic of Congo', 'Djibouti', 'Egypt',
-    'Equatorial Guinea', 'Eritrea', 'Eswatini', 'Ethiopia', 'Gabon', 'Gambia',
-    'Ghana', 'Guinea', 'Guinea-Bissau', 'Ivory Coast', 'Kenya', 'Lesotho',
-    'Liberia', 'Libya', 'Madagascar', 'Malawi', 'Mali', 'Mauritania', 'Mauritius',
-    'Morocco', 'Mozambique', 'Namibia', 'Niger', 'Nigeria', 'Rwanda',
-    'São Tomé and Príncipe', 'Senegal', 'Seychelles', 'Sierra Leone', 'Somalia',
-    'South Africa', 'South Sudan', 'Sudan', 'Tanzania', 'Togo', 'Tunisia',
-    'Uganda', 'Zambia', 'Zimbabwe'
-  ]
-
   useEffect(() => {
     if (profile) {
+      const loc = profileLocationFromDb(profile)
       setProfileForm({
         username: profile.username || '',
         full_name: profile.full_name || '',
         bio: profile.bio || '',
-        country: profile.country || '',
+        formattedAddress: loc.formattedAddress,
+        address: loc.address,
+        city: loc.city,
+        state: loc.state,
+        zipcode: loc.zipcode,
+        country: loc.country,
         birthday: profile.birthday || ''
       })
 
@@ -268,7 +268,17 @@ const ProfileSettings: React.FC = () => {
   const handleProfileUpdate = async () => {
     setIsSaving(true)
     try {
-      const { error } = await updateProfile(profileForm)
+      const { error } = await updateProfile({
+        username: profileForm.username,
+        full_name: profileForm.full_name,
+        bio: profileForm.bio,
+        address: profileForm.address,
+        city: profileForm.city,
+        state: profileForm.state,
+        zipcode: profileForm.zipcode,
+        country: profileForm.country,
+        birthday: profileForm.birthday,
+      })
       if (error) {
         toast.error(error)
       } else {
@@ -515,20 +525,31 @@ const ProfileSettings: React.FC = () => {
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Country
-                      </label>
-                      <select
-                        value={profileForm.country}
-                        onChange={(e) => setProfileForm({ ...profileForm, country: e.target.value })}
-                        className="input-field"
-                      >
-                        <option value="">Select Country</option>
-                        {countries.map(country => (
-                          <option key={country} value={country}>{country}</option>
-                        ))}
-                      </select>
+                    <div className="md:col-span-2">
+                      <LocationSearch
+                        label="Location"
+                        value={{
+                          formattedAddress: profileForm.formattedAddress,
+                          address: profileForm.address,
+                          city: profileForm.city,
+                          state: profileForm.state,
+                          zipcode: profileForm.zipcode,
+                          country: profileForm.country,
+                        }}
+                        onChange={(loc) =>
+                          setProfileForm((prev) => ({
+                            ...prev,
+                            formattedAddress: loc.formattedAddress,
+                            address: loc.address,
+                            city: loc.city,
+                            state: loc.state,
+                            zipcode: loc.zipcode,
+                            country: loc.country,
+                          }))
+                        }
+                        className="[&_p]:text-gray-500"
+                        fieldClassName="input-field"
+                      />
                     </div>
 
                     <div>

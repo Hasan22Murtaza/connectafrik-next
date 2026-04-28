@@ -29,6 +29,11 @@ export interface Profile {
   last_name?: string
   avatar_url?: string
   country?: string
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  zipcode?: string | null
+  location?: string | null
   bio?: string
   birthday?: string
   gender?: string
@@ -73,7 +78,12 @@ export interface UserProfile {
   avatar_url: string | null
   bio: string | null
   country: string | null
-  location: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  zipcode?: string | null
+  /** Optional DB column; otherwise use structured address fields. */
+  location?: string | null
   website: string | null
   birthday: string | null
   gender: string | null
