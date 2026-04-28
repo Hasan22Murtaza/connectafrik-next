@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { filterThreadIdsAccessibleToUser } from '@/lib/chatThreadAccess'
 
 /** Ringing sessions for threads the user is in, excluding sessions they started (for accept UI + poll fallback). */
 export async function GET(request: NextRequest) {
@@ -13,7 +14,8 @@ export async function GET(request: NextRequest) {
       .select('thread_id')
       .eq('user_id', user.id)
 
-    const threadIds = [...new Set((parts || []).map((p: { thread_id: string }) => p.thread_id).filter(Boolean))]
+    const rawThreadIds = [...new Set((parts || []).map((p: { thread_id: string }) => p.thread_id).filter(Boolean))]
+    const threadIds = await filterThreadIdsAccessibleToUser(serviceClient, user.id, rawThreadIds)
     if (threadIds.length === 0) {
       return jsonResponse({ sessions: [] })
     }

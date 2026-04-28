@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
 import { getReactionEmoji } from '@/shared/utils/reactionUtils'
 
 type RouteContext = { params: Promise<{ threadId: string; messageId: string }> }
@@ -24,14 +25,8 @@ async function assertThreadParticipant(
   threadId: string,
   userId: string
 ) {
-  const { data: participant } = await serviceClient
-    .from('chat_participants')
-    .select('id')
-    .eq('thread_id', threadId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (!participant) {
+  const ok = await requireChatThreadAccess(serviceClient, userId, threadId)
+  if (!ok) {
     return { ok: false as const, status: 404, message: 'Thread not found or access denied' }
   }
   return { ok: true as const }

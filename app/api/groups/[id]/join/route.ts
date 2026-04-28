@@ -1,7 +1,11 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { lookupGroupChatThreadId } from '@/lib/chatThreadLookup'
+import {
+  ensureChatParticipantsForThread,
+  insertGroupMembershipSystemMessage,
+} from '@/lib/groupChatSystemMessages'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -80,11 +84,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
       })
 
     const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
+
+    if (threadId) {
+      try {
+        const serviceClient = createServiceClient()
+        await ensureChatParticipantsForThread(serviceClient, threadId, [user.id])
+        await insertGroupMembershipSystemMessage(serviceClient, {
+          threadId,
+          subjectUserId: user.id,
+          kind: 'joined',
+        })
+      } catch (chatErr) {
+        console.error('Group join: chat thread sync failed', chatErr)
+      }
+    }
+
     return jsonResponse({
       data: {
         membership,
         member_count: memberCount,
         threadId,
+        group_chat_notified: Boolean(threadId),
       },
     })
   } catch (error: any) {

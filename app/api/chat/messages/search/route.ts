@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { filterThreadIdsAccessibleToUser, requireChatThreadAccess } from '@/lib/chatThreadAccess'
 
 const MESSAGE_SELECT = `
   *,
@@ -21,20 +22,16 @@ export async function GET(request: NextRequest) {
 
     let threadIds: string[] | null = null
     if (threadId) {
-      const { data: participant } = await serviceClient
-        .from('chat_participants')
-        .select('id')
-        .eq('thread_id', threadId)
-        .eq('user_id', user.id)
-        .maybeSingle()
-      if (!participant) return errorResponse('Thread not found or access denied', 404)
+      const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
+      if (!allowed) return errorResponse('Thread not found or access denied', 404)
       threadIds = [threadId]
     } else {
       const { data: participantRows } = await serviceClient
         .from('chat_participants')
         .select('thread_id')
         .eq('user_id', user.id)
-      threadIds = participantRows ? participantRows.map((p: any) => p.thread_id) : []
+      const raw = participantRows ? participantRows.map((p: { thread_id: string }) => p.thread_id) : []
+      threadIds = await filterThreadIdsAccessibleToUser(serviceClient, user.id, raw)
     }
 
     if (!threadIds || threadIds.length === 0) {

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 
@@ -16,14 +17,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('message_ids is required and must be a non-empty array', 400)
     }
 
-    const { data: participant } = await serviceClient
-      .from('chat_participants')
-      .select('id')
-      .eq('thread_id', threadId)
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (!participant) {
+    const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
+    if (!allowed) {
       return errorResponse('Thread not found or access denied', 404)
     }
 

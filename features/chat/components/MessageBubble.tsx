@@ -159,6 +159,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   }
 
+  if (
+    message.message_type === "group_member_joined" ||
+    message.message_type === "group_member_left"
+  ) {
+    return (
+      <div className="flex justify-center mb-3">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs">
+          <span>{message.content}</span>
+        </div>
+      </div>
+    );
+  }
+
   const systemMessageTypes = [
     "initiated",
     "ringing",

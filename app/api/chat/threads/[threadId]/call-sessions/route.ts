@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 
@@ -53,13 +54,7 @@ async function resolveTargetUserIds(
 }
 
 async function assertThreadMember(serviceClient: ServiceClient, threadId: string, userId: string) {
-  const { data: participant } = await serviceClient
-    .from('chat_participants')
-    .select('id')
-    .eq('thread_id', threadId)
-    .eq('user_id', userId)
-    .maybeSingle()
-  return Boolean(participant)
+  return requireChatThreadAccess(serviceClient, userId, threadId)
 }
 
 async function touchThreadPreview(

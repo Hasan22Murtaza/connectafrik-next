@@ -192,13 +192,20 @@ export const useGroups = () => {
     if (!user) throw new Error('Must be logged in to leave a group')
 
     try {
-      await apiClient.post(`/api/groups/${groupId}/leave`)
+      const data = await apiClient.post<{
+        thread_id: string | null
+        receives_group_messages?: boolean
+      }>(`/api/groups/${groupId}/leave`)
 
       setGroups(prev =>
         prev.map(group =>
           group.id === groupId ? { ...group, member_count: Math.max(0, (group.member_count ?? 0) - 1), membership: undefined } : group
         )
       )
+
+      if (typeof window !== 'undefined' && data.thread_id) {
+        window.dispatchEvent(new CustomEvent('groupChatLeft', { detail: { threadId: data.thread_id } }))
+      }
 
       toast.success('Left group successfully!')
     } catch (err: any) {

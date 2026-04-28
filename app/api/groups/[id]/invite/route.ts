@@ -2,6 +2,10 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { lookupGroupChatThreadId } from '@/lib/chatThreadLookup'
+import {
+  ensureChatParticipantsForThread,
+  insertGroupMembershipSystemMessage,
+} from '@/lib/groupChatSystemMessages'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -102,13 +106,31 @@ export async function POST(request: NextRequest, context: RouteContext) {
     await serviceClient.from('groups').update({ member_count: memberCount }).eq('id', groupId)
 
     const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
+    const newlyAddedIds = [...insertIds, ...reactivatedIds]
+
+    if (threadId && newlyAddedIds.length > 0) {
+      try {
+        await ensureChatParticipantsForThread(serviceClient, threadId, newlyAddedIds)
+        for (const uid of newlyAddedIds) {
+          await insertGroupMembershipSystemMessage(serviceClient, {
+            threadId,
+            subjectUserId: uid,
+            kind: 'joined',
+          })
+        }
+      } catch (chatErr) {
+        console.error('Group invite: chat thread sync failed', chatErr)
+      }
+    }
+
     return jsonResponse({
-      added_user_ids: [...insertIds, ...reactivatedIds],
+      added_user_ids: newlyAddedIds,
       already_member_user_ids: alreadyActiveIds,
       added_count: insertIds.length + reactivatedIds.length,
       already_member_count: alreadyActiveIds.length,
       member_count: memberCount,
       threadId,
+      group_chat_notified: Boolean(threadId && newlyAddedIds.length > 0),
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

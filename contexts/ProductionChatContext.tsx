@@ -5,7 +5,7 @@ import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/ch
 import { toCallSessionStatusMessageType } from '@/features/chat/services/callSessionRealtime'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, ApiError } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
 
@@ -149,6 +149,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [user])
 
   const openThread = useCallback(async (threadId: string) => {
+    supabaseMessagingService.allowRealtimeForThread(threadId)
+
     const existingThread = threads.find(t => t.id === threadId)
     
     if (!existingThread && currentUser) {
@@ -186,6 +188,28 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [])
 
+  const handleGroupChatLeft = useCallback(
+    (e: Event) => {
+      const tid = (e as CustomEvent<{ threadId?: string }>).detail?.threadId
+      if (!tid) return
+      supabaseMessagingService.denyRealtimeForThread(tid)
+      closeThread(tid)
+      setThreads((prev) => prev.filter((t) => t.id !== tid))
+      setMessages((prev) => {
+        const { [tid]: _removed, ...rest } = prev
+        return rest
+      })
+    },
+    [closeThread]
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = handleGroupChatLeft as EventListener
+    window.addEventListener('groupChatLeft', handler)
+    return () => window.removeEventListener('groupChatLeft', handler)
+  }, [handleGroupChatLeft])
+
   const getThreadById = useCallback((threadId: string) => {
     return threads.find(t => t.id === threadId)
   }, [threads])
@@ -218,6 +242,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       })
     } catch (error) {
       console.error('Error sending message:', error)
+      if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
+        toast.error('You can no longer send messages in this chat')
+        return
+      }
       const fallbackMessage: ChatMessage = {
         id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         thread_id: threadId,

@@ -6,11 +6,18 @@ import {
   callSessionInsertToChatMessage,
   callSessionUpdateToChatMessage,
 } from '@/features/chat/services/callSessionRealtime'
+import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
 
 /** call_sessions.status-aligned message_type values (signaling; excluded from generic chat push). */
 const ALL_CALL_SIGNAL_MESSAGE_TYPES: string[] = [
   'initiated', 'ringing', 'active', 'declined', 'ended', 'missed', 'failed',
 ]
+
+const SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES = new Set<string>([
+  ...ALL_CALL_SIGNAL_MESSAGE_TYPES,
+  GROUP_MEMBER_JOINED,
+  GROUP_MEMBER_LEFT,
+])
 
 export interface ChatParticipant extends BaseParticipant {}
 
@@ -105,6 +112,8 @@ type CallSignalSubscriber = (message: ChatMessage) => void
 const threadSubscribers = new Map<string, Set<ThreadSubscriber>>()
 const messageSubscribers = new Map<string, Set<MessageSubscriber>>()
 const threadMessageChannels = new Map<string, any>()
+/** Block postgres_changes delivery for threads the user left (e.g. group chat after leave). */
+const deniedRealtimeThreadIds = new Set<string>()
 
 // Real-time subscriptions
 let threadsSubscription: any = null
@@ -126,7 +135,7 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
 
   // Send push notification for new messages (excluding call signaling). Skip when skipPush is true
   // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
-  if (!options?.skipPush && !ALL_CALL_SIGNAL_MESSAGE_TYPES.includes(message.message_type || '')) {
+  if (!options?.skipPush && !SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(message.message_type || '')) {
     try {
       const res = await apiClient.get<{ data: { user_id: string }[] }>(
         `/api/chat/threads/${message.thread_id}/participants`,
@@ -468,6 +477,7 @@ const cleanupSubscriptions = () => {
     try { supabase.removeChannel(channel) } catch {}
   })
   threadMessageChannels.clear()
+  deniedRealtimeThreadIds.clear()
 }
 
 // Format thread data from Supabase
@@ -1218,6 +1228,7 @@ export const supabaseMessagingService = {
             filter: `thread_id=eq.${threadId}`,
           },
           async (payload) => {
+            if (deniedRealtimeThreadIds.has(threadId)) return
             const message = payload.new as any
             try {
               const { data: fullMessage } = await supabase
@@ -1404,5 +1415,15 @@ export const supabaseMessagingService = {
       console.error('Error fetching users by IDs:', error)
       return []
     }
+  },
+
+  /** Stop applying incoming realtime rows to UI (call when user leaves a group chat thread). */
+  denyRealtimeForThread(threadId: string) {
+    deniedRealtimeThreadIds.add(threadId)
+  },
+
+  /** Allow realtime again after the user regains thread access (e.g. re-joined group). */
+  allowRealtimeForThread(threadId: string) {
+    deniedRealtimeThreadIds.delete(threadId)
   },
 }

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { filterThreadIdsAccessibleToUser } from '@/lib/chatThreadAccess'
 
 /** Align API message_type with call_sessions.status (Postgres check constraint). */
 function statusToMessageType(status: string | null | undefined): string {
@@ -33,7 +34,8 @@ export async function GET(request: NextRequest) {
       .select('thread_id')
       .eq('user_id', user.id)
 
-    const threadIds = participantRows ? participantRows.map((p: any) => p.thread_id) : []
+    const rawThreadIds = participantRows ? participantRows.map((p: { thread_id: string }) => p.thread_id) : []
+    const threadIds = await filterThreadIdsAccessibleToUser(serviceClient, user.id, rawThreadIds)
     if (threadIds.length === 0) {
       return jsonResponse({
         data: [],
