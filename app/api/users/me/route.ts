@@ -13,6 +13,29 @@ type PresenceBody = {
 }
 
 /**
+ * GET /api/users/me — full `profiles` row for the authenticated user (settings, marketplace bank fields, etc.).
+ */
+export async function GET(_request: NextRequest) {
+  try {
+    const { user } = await getAuthenticatedUser(_request)
+    const serviceClient = createServiceClient()
+
+    const { data, error } = await serviceClient.from('profiles').select('*').eq('id', user.id).single()
+
+    if (error) return errorResponse(error.message, 400)
+    if (!data) return errorResponse('Profile not found', 404)
+
+    // Nested `data` matches apiClient.handleResponse + useProfile / marketplace helpers (res.data).
+    return jsonResponse({ data })
+  } catch (error: any) {
+    if (error?.message === 'Unauthorized' || error?.message === 'Missing Authorization header') {
+      return unauthorizedResponse()
+    }
+    return errorResponse(error?.message || 'Internal server error', 500)
+  }
+}
+
+/**
  * PATCH /api/users/me — update current user profile fields used for presence (status, last_seen, last_active_at).
  * Called when the app opens (online), on heartbeats, and when the tab closes (offline + last_seen).
  */
