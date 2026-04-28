@@ -546,80 +546,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (typeof window !== 'undefined') {
         const { openCallWindow } = await import('@/shared/utils/callWindow')
 
-        // Resolve recipient/group name from already-loaded thread state (no extra fetch in hot path)
-        const getParticipantId = (p: any) => p?.id || p?.user_id || p?.user?.id || p?.profile?.id || ''
-        const isMissingName = (value?: string | null) => {
-          const normalized = (value || '').trim().toLowerCase()
-          return !normalized || normalized === 'unknown'
-        }
-        const getParticipantName = (p: any) =>
-          (
-            p?.name ||
-            p?.fullName ||
-            p?.full_name ||
-            p?.display_name ||
-            p?.username ||
-            p?.user?.full_name ||
-            p?.user?.fullName ||
-            p?.user?.username ||
-            p?.profile?.full_name ||
-            p?.profile?.fullName ||
-            p?.profile?.username ||
-            ''
-          ).toString().trim()
-        const getParticipantAvatar = (p: any) =>
-          (
-            p?.avatarUrl ||
-            p?.avatar_url ||
-            p?.user?.avatarUrl ||
-            p?.user?.avatar_url ||
-            p?.profile?.avatarUrl ||
-            p?.profile?.avatar_url ||
-            ''
-          ).toString().trim()
-        const directRecipient =
-          thread?.participants?.find((p: any) => getParticipantId(p) === resolvedTargetUserId) ||
-          thread?.participants?.find((p: any) => getParticipantId(p) !== (currentUser?.id || ''))
-        const recipientFromKnownThreads =
-          resolvedTargetUserId
-            ? threads
-                .flatMap((t: any) => t?.participants || [])
-                .find((p: any) => {
-                  const pid = getParticipantId(p)
-                  const pname = getParticipantName(p)
-                  return pid === resolvedTargetUserId && !isMissingName(pname)
-                })
-            : null
-        const knownThreadsRecipientName = getParticipantName(recipientFromKnownThreads)
-        const directRecipientName = getParticipantName(directRecipient)
-        const directRecipientAvatar = getParticipantAvatar(directRecipient)
-        const knownThreadsRecipientAvatar = getParticipantAvatar(recipientFromKnownThreads)
-        const resolvedDirectName = !isMissingName(targetUserName)
-          ? (targetUserName || '').trim()
-          : !isMissingName(knownThreadsRecipientName)
-          ? knownThreadsRecipientName
-          : !isMissingName(directRecipientName)
-          ? directRecipientName
-          : !isMissingName(thread?.name)
-          ? (thread?.name || '').trim()
-          : 'Recipient'
-        const resolvedDirectAvatarUrl =
-          (targetUserAvatarUrl || '').trim() ||
-          knownThreadsRecipientAvatar ||
-          directRecipientAvatar ||
-          ''
-        const recipientName = isGroupCall
-          ? (thread?.name || 'Group Call')
-          : resolvedDirectName
-
         openCallWindow({
           roomId,
           callType: type,
           threadId,
-          callerName: currentUser?.name || 'Unknown',
-          recipientName,
-          callerAvatarUrl: currentUser?.avatarUrl || '',
-          recipientAvatarUrl: isGroupCall ? '' : resolvedDirectAvatarUrl,
           isGroupCall,
           isIncoming: false,
           callerId: currentUser?.id,

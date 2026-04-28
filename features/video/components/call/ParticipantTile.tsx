@@ -6,8 +6,30 @@
  * for reactive state. A manual <audio> element is kept for mic playback so we
  * can control speaker volume without a wrapper component.
  */
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParticipant, VideoPlayer } from '@videosdk.live/react-sdk';
+
+function profileImageUrlFromMeta(meta: unknown): string {
+  let o: Record<string, unknown> | null = null;
+  if (typeof meta === 'string') {
+    try {
+      const p = JSON.parse(meta) as unknown;
+      if (p && typeof p === 'object' && !Array.isArray(p)) o = p as Record<string, unknown>;
+    } catch {
+      return '';
+    }
+  } else if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+    o = meta as Record<string, unknown>;
+  }
+  if (!o) return '';
+  const raw =
+    o.profileImage ??
+    o.profile_image ??
+    o.avatarUrl ??
+    o.avatar_url ??
+    o.picture;
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : '';
+}
 
 export interface ParticipantTileProps {
   participantId: string;
@@ -40,10 +62,19 @@ const ParticipantTile = React.memo(function ParticipantTile({
     micOn,
     displayName,
     isActiveSpeaker,
+    participant,
   } = useParticipant(participantId);
+
+  const metaData = participant?.metaData;
 
   const name = displayName || 'Participant';
   const initial = name.trim().charAt(0).toUpperCase();
+  const avatarFromMeta = profileImageUrlFromMeta(metaData);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoadFailed(false);
+  }, [avatarFromMeta, participantId]);
 
   // Attach mic stream to audio element (remote participants only — never local to avoid echo)
   useEffect(() => {
@@ -123,19 +154,28 @@ const ParticipantTile = React.memo(function ParticipantTile({
         />
       )}
 
-      {/* Avatar placeholder — shown when camera is off */}
+      {/* Avatar / profile image — shown when camera is off (VideoSDK metaData e.g. profileImage) */}
       {!webcamOn && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div
-            className={`rounded-full flex items-center justify-center ${avatarSizeClass}`}
-            style={{
-              background: isLocal
-                ? 'linear-gradient(135deg, #5b5fc7, #4f46e5)'
-                : 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-            }}
-          >
-            <span className="font-semibold text-white">{initial}</span>
-          </div>
+          {avatarFromMeta && !avatarLoadFailed ? (
+            <img
+              src={avatarFromMeta}
+              alt=""
+              className={`rounded-full object-cover ${avatarSizeClass}`}
+              onError={() => setAvatarLoadFailed(true)}
+            />
+          ) : (
+            <div
+              className={`rounded-full flex items-center justify-center ${avatarSizeClass}`}
+              style={{
+                background: isLocal
+                  ? 'linear-gradient(135deg, #5b5fc7, #4f46e5)'
+                  : 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+              }}
+            >
+              <span className="font-semibold text-white">{initial}</span>
+            </div>
+          )}
         </div>
       )}
 

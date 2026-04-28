@@ -1,39 +1,28 @@
 /**
- * Opens a new window for video/audio calls (like Facebook calls)
+ * Opens a new window for video/audio calls (like Facebook calls).
+ * Identity (names/avatars) is not passed on the URL — the call page hydrates
+ * from `/api/chat/threads/.../call-sessions` and thread data.
  */
 export function openCallWindow(params: {
   roomId: string
   callType: 'audio' | 'video'
   threadId: string
-  callerName: string
-  recipientName: string
-  callerAvatarUrl?: string
-  recipientAvatarUrl?: string
   isGroupCall?: boolean
   isIncoming: boolean
   callerId?: string
   callId?: string
 }) {
-  const { roomId, callType, threadId, callerName, recipientName, callerAvatarUrl, recipientAvatarUrl, isGroupCall, isIncoming, callerId, callId } = params
-  
-  // Build URL with query parameters
+  const { roomId, callType, threadId, isGroupCall, isIncoming, callerId, callId } = params
+
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const url = new URL(`${baseUrl}/call/${roomId}`)
   url.searchParams.set('call', 'true')
   url.searchParams.set('type', callType)
   url.searchParams.set('threadId', threadId)
-  url.searchParams.set('callerName', encodeURIComponent(callerName))
-  url.searchParams.set('recipientName', encodeURIComponent(recipientName))
-  if (callerAvatarUrl) {
-    url.searchParams.set('callerAvatarUrl', encodeURIComponent(callerAvatarUrl))
-  }
-  if (recipientAvatarUrl) {
-    url.searchParams.set('recipientAvatarUrl', encodeURIComponent(recipientAvatarUrl))
-  }
   if (typeof isGroupCall === 'boolean') {
     url.searchParams.set('isGroupCall', isGroupCall ? 'true' : 'false')
   }
-  url.searchParams.set('isIncoming', isIncoming.toString())
+  url.searchParams.set('isIncoming', String(isIncoming))
   if (callerId) {
     url.searchParams.set('callerId', callerId)
   }
@@ -41,16 +30,13 @@ export function openCallWindow(params: {
     url.searchParams.set('callId', callId)
   }
 
-  // Open new window with specific dimensions (like Facebook)
   const width = 1200
-  // Calculate height based on device screen height (80% of screen height, min 600, max 1000)
   const screenHeight = window.screen.height
   const calculatedHeight = Math.min(Math.max(screenHeight * 0.8, 600), 1000)
   const height = Math.round(calculatedHeight)
   const left = (window.screen.width - width) / 2
   const top = (window.screen.height - height) / 2
 
-  // Include callId when present so a new ring does not reuse the same named window (which reloads the page).
   const windowName = callId ? `call-${roomId}-${callId}` : `call-${roomId}`
 
   const callWindow = window.open(
@@ -78,7 +64,6 @@ export function openCallWindow(params: {
     return null
   }
 
-  // Focus the new window
   callWindow.focus()
 
   return callWindow

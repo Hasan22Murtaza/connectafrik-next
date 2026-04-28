@@ -164,9 +164,6 @@ const GlobalCallNotification: React.FC = () => {
             roomId,
             callType: callRequest.type,
             threadId,
-            callerName: callRequest.callerName || 'Unknown',
-            recipientName: currentUser?.name || 'You',
-            callerAvatarUrl: callRequest.callerAvatarUrl,
             isGroupCall: callRequest.isGroupCall === true,
             isIncoming: true,
             callerId: callRequest.callerId,
@@ -186,7 +183,7 @@ const GlobalCallNotification: React.FC = () => {
         startCallRingtone()
       })
     }
-  }, [incomingSignature, primaryIncoming, currentUser?.name])
+  }, [incomingSignature, primaryIncoming])
 
   useEffect(() => {
     return () => {

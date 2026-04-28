@@ -134,7 +134,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
       typeof body.target_user_id === 'string' && body.target_user_id.trim() ? body.target_user_id.trim() : undefined
     const is_group_call = body.is_group_call === true
     const caller_name = typeof body.caller_name === 'string' ? body.caller_name : user.email || 'Someone'
-    const caller_avatar_url = typeof body.caller_avatar_url === 'string' ? body.caller_avatar_url : ''
+    let caller_avatar_url = typeof body.caller_avatar_url === 'string' ? body.caller_avatar_url.trim() : ''
+    if (!caller_avatar_url) {
+      const { data: prof } = await serviceClient
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (prof?.avatar_url && typeof prof.avatar_url === 'string') {
+        caller_avatar_url = prof.avatar_url.trim()
+      }
+    }
 
     if (!call_id || !call_type || !room_id) {
       return errorResponse('call_id, call_type, and room_id are required', 400)

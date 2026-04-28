@@ -66,7 +66,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     callIdHint,
   } = props;
 
-  // ── Decoded display strings (URL-encoded params from the call window route) ─
+  // ── Display props (hydrated on `/call/...` from call-sessions + thread API) ─
   const decodedCallerName = safeDecode(callerName);
   const decodedRecipientName = safeDecode(recipientName);
   const decodedCallerAvatarUrl = callerAvatarUrl ? safeDecode(callerAvatarUrl) : '';
@@ -366,12 +366,22 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   }
 
   // ── In-call: VideoSDK MeetingProvider wraps the call UI ────────────────────
-  // Resolve the local participant's display name for the SDK (prefers URL param,
-  // falls back to 'User' so the SDK always gets a non-empty string).
-  const localDisplayName =
-    decodedCallerName && decodedCallerName !== 'Unknown'
+  /** Local participant display name for VideoSDK: callee uses recipient*, caller uses caller*. */
+  const localDisplayName = isIncoming
+    ? decodedRecipientName && decodedRecipientName !== 'Unknown'
+      ? decodedRecipientName
+      : 'User'
+    : decodedCallerName && decodedCallerName !== 'Unknown'
       ? decodedCallerName
       : 'User';
+
+  const localAvatarForSdk = (
+    isIncoming ? decodedRecipientAvatarUrl : decodedCallerAvatarUrl
+  ).trim();
+
+  /** VideoSDK optional join payload: must be a plain object when provided (e.g. profile image URL). */
+  const meetingMetaData: Record<string, string> =
+    localAvatarForSdk.length > 0 ? { profileImage: localAvatarForSdk } : {};
 
   return (
     <div className="fixed inset-0 z-[9999] animate-fadeIn">
@@ -381,6 +391,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           micEnabled: true,
           webcamEnabled: callType === 'video',
           name: localDisplayName,
+          metaData: meetingMetaData,
           ...(sdkParticipantUserId ? { participantId: sdkParticipantUserId } : {}),
           mode: 'SEND_AND_RECV' as const,
           multiStream: false,

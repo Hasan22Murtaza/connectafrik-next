@@ -262,18 +262,16 @@ self.addEventListener('notificationclick', (event) => {
   notification.close();
 
   if (action === 'answer' && data.type === 'ringing') {
-    // Open call window
+    // Open call window (names/avatars load from call-sessions API)
     const roomId = data.room_id;
     const callType = data.call_type || 'audio';
     const threadId = data.thread_id || '';
-    const callerName = data.caller_name || 'Unknown';
-    const callerAvatarUrl = data.caller_avatar_url || '';
     const url = data.url || `/call/${roomId}`;
-    
+
     const callId = data.call_id || data.callId || '';
     const groupParam = data.is_group_call === true || data.isGroupCall === true ? '&isGroupCall=true' : '';
-    const callUrl = `${self.location.origin}${url}?call=true&type=${callType}&threadId=${threadId}&callerName=${encodeURIComponent(callerName)}&recipientName=${encodeURIComponent('You')}&isIncoming=true&callerId=${data.caller_id || ''}${callerAvatarUrl ? `&callerAvatarUrl=${encodeURIComponent(callerAvatarUrl)}` : ''}${callId ? `&callId=${encodeURIComponent(callId)}` : ''}${groupParam}`;
-    
+    const callUrl = `${self.location.origin}${url}?call=true&type=${callType}&threadId=${encodeURIComponent(threadId)}&isIncoming=true&callerId=${encodeURIComponent(data.caller_id || '')}${callId ? `&callId=${encodeURIComponent(callId)}` : ''}${groupParam}`;
+
     event.waitUntil(
       clients.openWindow(callUrl)
     );
