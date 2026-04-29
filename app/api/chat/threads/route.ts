@@ -13,6 +13,7 @@ const THREAD_SELECT = `
   last_message_preview,
   last_message_at,
   last_activity_at,
+  unread_count,
   created_at,
   updated_at,
   chat_participants(
@@ -22,6 +23,7 @@ const THREAD_SELECT = `
 `
 
 const mapRpcRowsToThreadShape = (rows: any[]) => {
+  console.log('rows111', rows)
   return rows.map((row: any) => {
     const lastTimestamp = row.last_message_at ?? new Date().toISOString()
     return {
@@ -193,38 +195,12 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const fetchedThreadIds = threads.map((t: any) => t.id)
-
-    let unreadByThread: Record<string, number> = {}
-    const { data: unreadMsgs } = await serviceClient
-      .from('chat_messages')
-      .select('id, thread_id')
-      .in('thread_id', fetchedThreadIds)
-      .eq('is_deleted', false)
-      .neq('sender_id', user.id)
-
-    if (unreadMsgs && unreadMsgs.length > 0) {
-      const messageIds = unreadMsgs.map((m: any) => m.id)
-      const { data: readData } = await serviceClient
-        .from('message_reads')
-        .select('message_id')
-        .eq('user_id', user.id)
-        .in('message_id', messageIds)
-
-      const readSet = new Set((readData || []).map((r: any) => r.message_id))
-      for (const m of unreadMsgs) {
-        if (!readSet.has(m.id)) {
-          unreadByThread[m.thread_id] = (unreadByThread[m.thread_id] || 0) + 1
-        }
-      }
-    }
-
     const result = threads.map((t: any) => {
       const { group_banner, ...rest } = t
       return {
         ...rest,
         banner_url: group_banner?.banner_url ?? null,
-        unread_count: unreadByThread[t.id] || 0,
+        unread_count: typeof t.unread_count === 'number' ? t.unread_count : 0,
       }
     })
 

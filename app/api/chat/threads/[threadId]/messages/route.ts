@@ -326,7 +326,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse(msgError?.message || 'Failed to send message', 400)
     }
 
-    await Promise.all([
+    const [readsRes, threadRes, bumpRes] = await Promise.all([
       serviceClient.from('message_reads').insert({ message_id: message.id, user_id: user.id }),
       serviceClient
         .from('chat_threads')
@@ -337,7 +337,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
           updated_at: now,
         })
         .eq('id', threadId),
+      serviceClient.rpc('chat_bump_unread_for_recipients', {
+        p_thread_id: threadId,
+        p_sender_id: user.id,
+      }),
     ])
+    if (readsRes.error) return errorResponse(readsRes.error.message, 400)
+    if (threadRes.error) return errorResponse(threadRes.error.message, 400)
+    if (bumpRes.error) {
+      console.error('chat_bump_unread_for_recipients', bumpRes.error)
+    }
 
     if (attachments && attachments.length > 0) {
       await serviceClient.from('message_attachments').insert(

@@ -23,28 +23,18 @@ const THREAD_SELECT = `
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 
-async function computeUnreadCount(
+async function getMyThreadUnreadCount(
   serviceClient: ReturnType<typeof createServiceClient>,
   userId: string,
   threadId: string
 ): Promise<number> {
-  const { data: unreadMessages } = await serviceClient
-    .from('chat_messages')
-    .select('id')
+  const { data: row } = await serviceClient
+    .from('chat_participants')
+    .select('unread_count')
     .eq('thread_id', threadId)
-    .eq('is_deleted', false)
-    .neq('sender_id', userId)
-
-  if (!unreadMessages || unreadMessages.length === 0) return 0
-
-  const messageIds = unreadMessages.map((m: { id: string }) => m.id)
-  const { data: readRows } = await serviceClient
-    .from('message_reads')
-    .select('message_id')
     .eq('user_id', userId)
-    .in('message_id', messageIds)
-  const readSet = new Set((readRows || []).map((r: { message_id: string }) => r.message_id))
-  return unreadMessages.filter((m: { id: string }) => !readSet.has(m.id)).length
+    .maybeSingle()
+  return typeof row?.unread_count === 'number' ? row.unread_count : 0
 }
 
 function threadToResponseBody(thread: Record<string, unknown>, unread_count: number) {
@@ -87,7 +77,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found', 404)
     }
 
-    const unread_count = await computeUnreadCount(serviceClient, user.id, threadId)
+    const unread_count = await getMyThreadUnreadCount(serviceClient, user.id, threadId)
     return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, unread_count))
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
@@ -144,7 +134,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse(error?.message || 'Failed to update thread', 400)
     }
 
-    const unread_count = await computeUnreadCount(serviceClient, user.id, threadId)
+    const unread_count = await getMyThreadUnreadCount(serviceClient, user.id, threadId)
     return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, unread_count))
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

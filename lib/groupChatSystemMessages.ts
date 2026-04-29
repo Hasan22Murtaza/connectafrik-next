@@ -94,6 +94,12 @@ export async function insertGroupMembershipSystemMessage(
     user_id: params.subjectUserId,
   })
 
+  const { error: bumpErr } = await serviceClient.rpc('chat_bump_unread_for_recipients', {
+    p_thread_id: params.threadId,
+    p_sender_id: params.subjectUserId,
+  })
+  if (bumpErr) console.error('chat_bump_unread_for_recipients (system message)', bumpErr)
+
   return { id: message.id }
 }
 
