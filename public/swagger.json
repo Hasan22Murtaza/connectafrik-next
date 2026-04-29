@@ -86,7 +86,8 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/Participant" }
           },
-          "unread_count": { "type": "integer" }
+          "unread_count": { "type": "integer" },
+          "archived": { "type": "boolean", "description": "When true, thread is archived (chat_threads.archived)" }
         }
       },
       "Participant": {
@@ -769,6 +770,44 @@
         "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "responses": {
           "200": { "description": "Thread details", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Thread" } } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/archive": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Set thread archived flag",
+        "description": "Updates chat_threads.archived for this thread. Requires thread participation.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["archived"],
+                "properties": { "archived": { "type": "boolean", "description": "true to archive, false to restore" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated thread (same shape as GET /chat/threads/{threadId})",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Thread" }, "meta": { "type": "object" } }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "404": { "$ref": "#/components/responses/NotFound" },
           "500": { "$ref": "#/components/responses/ServerError" }

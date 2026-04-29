@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { MessageCircle, Phone, Video, Loader2 } from 'lucide-react'
+import { ChevronDown, MessageCircle, Phone, Video, Loader2 } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { PresenceStatus, ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'
@@ -11,6 +11,87 @@ const PAGE_SIZE = 10
 interface ChatDropdownProps {
   onClose: () => void
   mode?: 'chat' | 'call'
+}
+
+type ChatDropdownThreadRowProps = {
+  thread: ChatThread
+  currentUser: { id: string } | null | undefined
+  onOpen: (threadId: string) => void
+  subdued?: boolean
+}
+
+const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
+  thread,
+  currentUser,
+  onOpen,
+  subdued,
+}) => {
+  const otherParticipants = thread.participants.filter(
+    (participant: ChatParticipant) => participant.id !== currentUser?.id
+  )
+  const primary = otherParticipants[0] ?? thread.participants[0]
+  const lastActive = thread.last_message_at
+  const isGroup =
+    thread.type === 'group' ||
+    Boolean(thread.group_id) ||
+    otherParticipants.length > 1 ||
+    Boolean((thread as any).isGroup)
+  const threadDisplayName = isGroup && thread.name ? thread.name : primary?.name || thread.name || 'Conversation'
+  const listAvatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl
+
+  return (
+    <div
+      className={`group flex items-center justify-between pb-2 ${subdued ? 'opacity-85' : ''}`}
+    >
+      <button
+        type="button"
+        onClick={() => onOpen(thread.id)}
+        className="flex items-center space-x-2 sm:space-x-3 text-left min-w-0"
+      >
+        <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
+          {listAvatarUrl ? (
+            <img
+              src={listAvatarUrl}
+              alt={threadDisplayName}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm ">
+              {threadDisplayName.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900 line-clamp-1">{threadDisplayName}</p>
+
+          <p className="text-xs text-gray-500 line-clamp-1">
+            {subdued ? (
+              <span className="text-gray-400">Archived · </span>
+            ) : null}
+            {thread.last_message_preview
+              ? thread.last_message_preview
+              : `${otherParticipants.length} participant${otherParticipants.length !== 1 ? 's' : ''}`}
+          </p>
+
+          <p className="text-xs text-gray-400 ">
+            {lastActive && new Date(lastActive).getTime() > 0
+              ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
+              : 'No recent activity'}
+          </p>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onOpen(thread.id)}
+        className="w-9 h-9 shrink-0 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
+        title="Open chat"
+      >
+        <MessageCircle className="w-4 h-4" />
+      </button>
+    </div>
+  )
 }
 
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) => {
@@ -138,19 +219,41 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     }
   }, [mode, loadMoreThreads, loadMoreCalls, loadMoreContacts, callsHasMore])
 
+  const mergedThreads = useMemo(() => {
+    const map = new Map<string, ChatThread>()
+    for (const t of threads) {
+      map.set(t.id, t)
+    }
+    for (const t of contextThreads) {
+      map.set(t.id, t)
+    }
+    return Array.from(map.values())
+  }, [threads, contextThreads])
+
   const sortedThreads = useMemo(() => {
-    return [...threads].sort((a, b) => {
+    return [...mergedThreads].sort((a, b) => {
       const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
       const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
       return dateB - dateA
     })
-  }, [threads])
+  }, [mergedThreads])
+
+  const activeThreads = useMemo(
+    () => sortedThreads.filter((t) => !t.archived),
+    [sortedThreads]
+  )
+
+  const archivedThreads = useMemo(
+    () => sortedThreads.filter((t) => t.archived === true),
+    [sortedThreads]
+  )
+
+  const [archivedExpanded, setArchivedExpanded] = useState(false)
 
   const availableContacts = useMemo(() => {
     const contactMap = new Map<string, { id: string; name: string; avatarUrl?: string; status: PresenceStatus }>()
-    const allThreads = [...threads, ...contextThreads]
 
-    for (const thread of allThreads) {
+    for (const thread of mergedThreads) {
       for (const participant of thread.participants || []) {
         if (!participant?.id || participant.id === currentUser?.id) continue
         if (!contactMap.has(participant.id)) {
@@ -177,16 +280,15 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     }
 
     return Array.from(contactMap.values())
-  }, [threads, contextThreads, recentCallEntries, currentUser?.id])
+  }, [mergedThreads, recentCallEntries, currentUser?.id])
 
   const visibleContacts = useMemo(() => availableContacts.slice(0, contactsVisible), [availableContacts, contactsVisible])
   const contactsHasMore = contactsVisible < availableContacts.length
 
   const sortedRecentCalls = useMemo(() => {
-    const allThreads = [...threads, ...contextThreads]
     return recentCallEntries
       .map(entry => {
-        const thread = allThreads.find(t => t.id === entry.thread_id)
+        const thread = mergedThreads.find(t => t.id === entry.thread_id)
         const otherParticipants = thread
           ? thread.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id)
           : []
@@ -213,13 +315,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
         }
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }, [recentCallEntries, threads, contextThreads, currentUser?.id])
+  }, [recentCallEntries, mergedThreads, currentUser?.id])
 
   const handleOpenThread = async (threadId: string) => {
-    // Find the thread in local threads or context threads
-    const thread = threads.find(t => t.id === threadId) || contextThreads.find(t => t.id === threadId)
-
-    // Open the thread - this will add it to openThreads and trigger ChatDock to load it
     openThread(threadId)
     onClose()
   }
@@ -408,79 +506,49 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
         // Chat mode: Show existing threads
         threadsLoading ? (
           <ChatDropdownShimmer mode="chat" count={4} />
-        ) : sortedThreads.length === 0 ? (
+        ) : mergedThreads.length === 0 ? (
           <div className="py-6 text-center text-sm text-gray-500">
             No conversations yet. Start a chat from the feed or contacts.
           </div>
         ) : (
           <div ref={scrollContainerRef} onScroll={handleScroll} className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto custom-scrollbar scrollbar-hide">
-            {sortedThreads.map((thread) => {
-              const otherParticipants = thread.participants.filter(
-                (participant: ChatParticipant) => participant.id !== currentUser?.id
-              )
-              const primary = otherParticipants[0] ?? thread.participants[0]
-              const lastActive = thread.last_message_at
-              const isGroup =
-                thread.type === 'group' ||
-                Boolean(thread.group_id) ||
-                otherParticipants.length > 1 ||
-                Boolean((thread as any).isGroup)
-              const threadDisplayName = (isGroup && thread.name) ? thread.name : (primary?.name || thread.name || 'Conversation')
-              const listAvatarUrl =
-                isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl
-
-              return (
-                <div
-                  key={thread.id}
-                  className="group flex items-center justify-between pb-2"
+            {activeThreads.length === 0 && archivedThreads.length > 0 && (
+              <p className="text-xs text-gray-500 px-1 pb-1">
+                No active chats — open <span className="font-medium">Archived</span> below.
+              </p>
+            )}
+            {activeThreads.map((thread) => (
+              <ChatDropdownThreadRow
+                key={thread.id}
+                thread={thread}
+                currentUser={currentUser}
+                onOpen={handleOpenThread}
+              />
+            ))}
+            {archivedThreads.length > 0 && (
+              <div className="pt-1 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setArchivedExpanded((e) => !e)}
+                  className="flex w-full items-center gap-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 hover:text-gray-700"
                 >
-                  <button
-                    onClick={() => handleOpenThread(thread.id)}
-                    className="flex items-center space-x-2 sm:space-x-3 text-left"
-                  >
-                    <div className="relative w-8 h-8 sm:w-10 sm:h-10">
-                      {listAvatarUrl ? (
-                        <img
-                          src={listAvatarUrl}
-                          alt={threadDisplayName}
-                          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm ">
-                          {threadDisplayName.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 ">
-                        {threadDisplayName}
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        {thread.last_message_preview
-                          ? thread.last_message_preview
-                          : `${otherParticipants.length} participant${otherParticipants.length !== 1 ? 's' : ''}`}
-                      </p>
-
-                      <p className="text-xs text-gray-400 ">
-                        {lastActive && new Date(lastActive).getTime() > 0
-                          ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
-                          : 'No recent activity'}
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleOpenThread(thread.id)}
-                    className="w-9 h-9 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full"
-                    title="Open chat"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </button>
-                </div>
-              )
-            })}
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 transition-transform ${archivedExpanded ? '' : '-rotate-90'}`}
+                  />
+                  Archived ({archivedThreads.length})
+                </button>
+                {archivedExpanded &&
+                  archivedThreads.map((thread) => (
+                    <ChatDropdownThreadRow
+                      key={thread.id}
+                      thread={thread}
+                      currentUser={currentUser}
+                      onOpen={handleOpenThread}
+                      subdued
+                    />
+                  ))}
+              </div>
+            )}
             {threadsLoadingMore && (
               <div className="flex justify-center py-2">
                 <Loader2 className="w-5 h-5 animate-spin text-gray-400" />

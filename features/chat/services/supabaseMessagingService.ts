@@ -63,6 +63,8 @@ export interface ChatThread {
   last_message_preview: string | null
   last_message_at: string
   unread_count: number
+  /** From `chat_threads.archived` — thread hidden from default lists when true */
+  archived?: boolean
   created_at: string
   updated_at: string
   /** Set when this thread is the canonical chat for a group */
@@ -298,6 +300,7 @@ const createLocalThread = (currentUser: ChatParticipant, options: CreateThreadOp
     last_message_preview: null,
     last_message_at: timestamp,
     unread_count: 0,
+    archived: false,
     created_at: timestamp,
     updated_at: timestamp,
   }
@@ -580,6 +583,7 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     last_message_preview: thread.last_message_preview,
     last_message_at: lastMessageAt,
     unread_count: unreadCount || 0,
+    archived: typeof thread.archived === 'boolean' ? thread.archived : false,
     created_at: thread.created_at,
     updated_at: thread.updated_at || lastMessageAt,
     group_id: thread.group_id ?? null,
@@ -608,6 +612,7 @@ const loadThreadsViaRpc = async (
         name: thread.thread_name,
         title: thread.thread_name,
         type: thread.thread_type,
+        archived: typeof thread.archived === 'boolean' ? thread.archived : false,
         last_message_preview: thread.last_message_content,
         last_message_at: lastTimestamp,
         last_activity_at: lastTimestamp,
@@ -793,6 +798,27 @@ export const supabaseMessagingService = {
     } catch (error) {
       console.error('fetchThreadDetail:', error)
       return null
+    }
+  },
+
+  /** Sets `chat_threads.archived` via POST /api/chat/threads/:id/archive */
+  async setThreadArchived(
+    threadId: string,
+    currentUserId: string,
+    archived: boolean
+  ): Promise<ChatThread | null> {
+    if (!threadId?.trim() || !currentUserId) return null
+    try {
+      const res = await apiClient.post<{ data: any; meta?: unknown }>(
+        `/api/chat/threads/${threadId}/archive`,
+        { archived }
+      )
+      const raw = (res as any)?.data
+      if (!raw?.id) return null
+      return formatThread(raw, currentUserId)
+    } catch (error) {
+      console.error('setThreadArchived:', error)
+      throw error
     }
   },
 

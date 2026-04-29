@@ -15,6 +15,8 @@ import {
 } from "@/shared/services/fileUploadService";
 import type { PresenceStatus } from "@/shared/types/chat";
 import {
+  Archive,
+  ArchiveRestore,
   Minus,
   MoreVertical,
   Mic,
@@ -23,7 +25,7 @@ import {
   Send,
   Square,
   Video,
-  X
+  X,
 } from "lucide-react";
 import React, {
   useEffect,
@@ -74,6 +76,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     clearMessagesForUser,
     markMessageDeletedForUser,
     setMessagesForThread,
+    setThreadArchived,
   } = useProductionChat();
 
   const { members } = useMembers();
@@ -559,6 +562,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const handleArchiveToggle = async () => {
+    if (!thread) return;
+    const nextArchived = !thread.archived;
+    try {
+      await setThreadArchived(threadId, nextArchived);
+      toast.success(nextArchived ? "Chat archived" : "Chat restored");
+      setShowOptionsMenu(false);
+    } catch {
+      toast.error("Could not update archive");
+    }
+  };
+
   const handleClearAllMessages = async () => {
     if (!currentUser) return;
 
@@ -785,35 +800,59 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </button>
           </Tooltip>
 
-          {visibleMessages.length > 0 && (
-            <Tooltip text="options" position="top">
+          <Tooltip text="Chat options" position="top">
             <div className="relative">
               <button
+                type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  setShowOptionsMenu(true);
+                  setShowOptionsMenu((open) => !open);
                 }}
                 className="text-gray-400 hover:text-gray-600"
+                aria-expanded={showOptionsMenu}
+                aria-haspopup="menu"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
               {showOptionsMenu && (
                 <div
                   ref={menuRef}
-                  className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[180px]"
+                  role="menu"
+                  className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[200px]"
                 >
                   <button
-                    onClick={handleClearAllMessages}
-                    className="w-full px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void handleArchiveToggle()}
+                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
                   >
-                    <X className="h-4 w-4" />
-                    <span>Clear All Chat</span>
+                    {thread.archived ? (
+                      <>
+                        <ArchiveRestore className="h-4 w-4 shrink-0" />
+                        <span>Unarchive chat</span>
+                      </>
+                    ) : (
+                      <>
+                        <Archive className="h-4 w-4 shrink-0" />
+                        <span>Archive chat</span>
+                      </>
+                    )}
                   </button>
+                  {visibleMessages.length > 0 && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void handleClearAllMessages()}
+                      className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
+                    >
+                      <X className="h-4 w-4 shrink-0" />
+                      <span>Clear All Chat</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
-            </Tooltip>
-          )}
+          </Tooltip>
         </div>
       </div>
 

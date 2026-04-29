@@ -14,6 +14,7 @@ const THREAD_SELECT = `
   last_message_at,
   last_activity_at,
   unread_count,
+  archived,
   created_at,
   updated_at,
   chat_participants(
@@ -31,6 +32,7 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
       type: row.thread_type,
       title: row.thread_name,
       name: row.thread_name,
+      archived: typeof row.archived === 'boolean' ? row.archived : false,
       last_message_preview: row.last_message_content,
       last_message_at: lastTimestamp,
       last_activity_at: lastTimestamp,

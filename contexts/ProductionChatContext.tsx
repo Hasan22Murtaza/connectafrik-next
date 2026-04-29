@@ -59,6 +59,7 @@ interface ProductionChatContextType {
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
+  setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
   clearMessagesForUser: (threadId: string, userId: string) => void
   markMessageDeletedForUser: (threadId: string, messageId: string, userId: string) => void
   setMessagesForThread: (threadId: string, messages: ChatMessage[]) => void
@@ -604,6 +605,21 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     })
   }, [])
 
+  const setThreadArchived = useCallback(async (threadId: string, archived: boolean) => {
+    if (!currentUser) return
+    const updated = await supabaseMessagingService.setThreadArchived(threadId, currentUser.id, archived)
+    if (!updated) return
+    setThreads((prev) => {
+      const idx = prev.findIndex((t) => t.id === threadId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = updated
+        return next
+      }
+      return [...prev, updated]
+    })
+  }, [currentUser])
+
   const tryDispatchIncomingFromCallSession = useCallback(
     (row: Record<string, any>) => {
       if (!currentUser) return
@@ -944,6 +960,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     minimizedThreadIds,
     markThreadRead,
     threads,
+    setThreadArchived,
     clearMessagesForUser,
     markMessageDeletedForUser,
     setMessagesForThread
