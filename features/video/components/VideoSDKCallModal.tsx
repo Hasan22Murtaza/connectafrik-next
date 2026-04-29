@@ -63,6 +63,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     threadId,
     currentUserId,
     roomIdHint,
+    tokenHint,
     callIdHint,
   } = props;
 
@@ -98,7 +99,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   }, []);
 
   useEffect(() => {
-    if (!isOpen) setSdkParticipantUserId(null);
+    if (!isOpen) {
+      setSdkParticipantUserId(null);
+      hasInitRef.current = false;
+    }
   }, [isOpen]);
 
   // ── Token fetcher ───────────────────────────────────────────────────────────
@@ -153,9 +157,43 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     stopAllRingtones();
   }, []);
 
-  // ── Outgoing call: fetch token + optional room immediately on open ──────────
+  // ── Outgoing call: prefer token+room from parent (saves a round-trip); else fetch ─
   useEffect(() => {
-    if (!isOpen || isIncoming || hasInitRef.current) return;
+    if (!isOpen || isIncoming) return;
+
+    const hint = (tokenHint || '').trim();
+    const ridFromHint = (roomIdHint || '').trim();
+
+    if (hint && ridFromHint) {
+      let cancelled = false;
+      (async () => {
+        try {
+          setPrePhase('connecting');
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (cancelled || !isMountedRef.current) return;
+          const uid =
+            (currentUserId && String(currentUserId).trim()) ||
+            sessionData.session?.user?.id ||
+            '';
+          if (!uid) return;
+          if (hasInitRef.current) return;
+          hasInitRef.current = true;
+          setSdkParticipantUserId(uid);
+          setMeetingId(ridFromHint);
+          setToken(hint);
+        } catch (err: any) {
+          if (!isMountedRef.current || cancelled) return;
+          hasInitRef.current = false;
+          setPrePhase('error');
+          setErrorMsg(err?.message || 'Failed to connect');
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (hasInitRef.current) return;
     hasInitRef.current = true;
 
     const init = async () => {
@@ -172,12 +210,26 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
                 ? { Authorization: `Bearer ${session.access_token}` }
                 : {}),
             },
-            body: JSON.stringify({}),
+            body: JSON.stringify({ include_participant_token: true }),
           });
           if (!res.ok) throw new Error('Failed to create call room');
           const data = await res.json();
           rid = data.roomId as string | undefined;
           if (!rid) throw new Error('No room ID returned');
+          const preTok = typeof data.token === 'string' ? data.token : '';
+          if (preTok) {
+            const { data: s2 } = await supabase.auth.getSession();
+            const uid =
+              (currentUserId && String(currentUserId).trim()) ||
+              s2.session?.user?.id ||
+              '';
+            if (!uid) throw new Error('You must be signed in to start a call.');
+            if (!isMountedRef.current) return;
+            setSdkParticipantUserId(uid);
+            setMeetingId(rid);
+            setToken(preTok);
+            return;
+          }
         }
         const { token: tok, userId: joinUid } = await getToken(rid);
         if (!isMountedRef.current) return;
@@ -194,7 +246,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     };
 
     init();
-  }, [isOpen, isIncoming, roomIdHint, getToken, currentUserId]);
+  }, [isOpen, isIncoming, roomIdHint, tokenHint, getToken, currentUserId]);
 
   // ── Incoming ring: PATCH uses accept | declined | end | missed (no legacy reject)
   const signalIncomingTerminal = useCallback(

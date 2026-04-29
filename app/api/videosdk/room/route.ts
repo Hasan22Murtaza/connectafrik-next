@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
+import { generateVideosdkParticipantJwt } from '@/lib/videosdk-participant-jwt'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { getBusyMapForUserIds } from '@/lib/call-session-busy'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
@@ -26,8 +27,10 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
+  let authedUserId: string
   try {
-    await getAuthenticatedUser(request)
+    const { user } = await getAuthenticatedUser(request)
+    authedUserId = user.id
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : ''
     if (msg === 'Unauthorized' || msg === 'Missing Authorization header') {
@@ -74,6 +77,8 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const include_participant_token = body.include_participant_token === true
+
   if (check_user_ids.length > 0) {
     try {
       const serviceClient = createServiceClient()
@@ -113,7 +118,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Creating VideoSDK room...')
 
-    const token = jwt.sign(
+    const apiAuthToken = jwt.sign(
       {
         apikey: VIDEOSDK_API_KEY,
         permissions: ['allow_join', 'allow_mod'],
@@ -129,7 +134,7 @@ export async function POST(request: NextRequest) {
     const response = await fetch('https://api.videosdk.live/v2/rooms', {
       method: 'POST',
       headers: {
-        Authorization: token,
+        Authorization: apiAuthToken,
         'Content-Type': 'application/json',
       },
     })
@@ -177,7 +182,17 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('VideoSDK room created successfully:', data.roomId)
-    return NextResponse.json({ roomId: data.roomId }, { headers: corsHeaders })
+
+    const json: { roomId: string; token?: string } = { roomId: data.roomId }
+    if (include_participant_token) {
+      try {
+        json.token = await generateVideosdkParticipantJwt(data.roomId, authedUserId)
+      } catch (e) {
+        console.error('[videosdk/room] participant token failed', e)
+      }
+    }
+
+    return NextResponse.json(json, { headers: corsHeaders })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('Room creation error:', error)

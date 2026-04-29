@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -35,6 +35,21 @@ function parseSessionMetadata(raw: unknown): Record<string, unknown> {
   return {}
 }
 
+/** Outgoing call: one-time read of token staged by the opener tab (avoids a duplicate /token round-trip). */
+function readAndRemoveCallBootstrap(callId: string): string | undefined {
+  if (typeof window === 'undefined') return undefined
+  try {
+    const k = `videosdk_call_bootstrap:${callId}`
+    const raw = sessionStorage.getItem(k)
+    if (!raw) return undefined
+    sessionStorage.removeItem(k)
+    const o = JSON.parse(raw) as { token?: string }
+    return typeof o.token === 'string' ? o.token : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export default function CallWindowPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -42,6 +57,10 @@ export default function CallWindowPage() {
   const { user, loading: authLoading } = useAuth()
 
   const [callDisplay, setCallDisplay] = useState<CallDisplay | null>(null)
+  /** Pre-issued VideoSDK JWT for outgoing calls (from sessionStorage). */
+  const [joinTokenHint, setJoinTokenHint] = useState<string | undefined>(undefined)
+  const outgoingBootstrapCallIdRef = useRef<string | null>(null)
+  const outgoingBootstrapTokenRef = useRef<string | undefined>(undefined)
 
   const roomId = params?.roomId as string
   const callParam = searchParams?.get('call') ?? 'true'
@@ -80,6 +99,19 @@ export default function CallWindowPage() {
     const localName = currentUserName
     const localAvatar = localAvatarFromAuth
 
+    if (outgoingBootstrapCallIdRef.current !== callId) {
+      outgoingBootstrapCallIdRef.current = callId
+      outgoingBootstrapTokenRef.current = undefined
+    }
+
+    if (!isIncoming && callId.trim() && outgoingBootstrapTokenRef.current === undefined) {
+      outgoingBootstrapTokenRef.current = readAndRemoveCallBootstrap(callId.trim())
+    }
+
+    setJoinTokenHint(
+      !isIncoming && callId.trim() ? outgoingBootstrapTokenRef.current : undefined,
+    )
+
     if (!callId.trim()) {
       setCallDisplay({
         callerName: isIncoming ? 'Unknown' : localName,
@@ -91,36 +123,33 @@ export default function CallWindowPage() {
     }
 
     ;(async () => {
+      type ThreadData = {
+        name?: string | null
+        title?: string | null
+        chat_participants?: Array<{
+          user?: {
+            id?: string
+            full_name?: string | null
+            username?: string | null
+            avatar_url?: string | null
+          }
+        }>
+      }
+
+      const loadThread = () =>
+        apiClient.get<{ data: ThreadData; meta?: unknown }>(`/api/chat/threads/${threadId}`)
+
       try {
-        const { session: row } = await apiClient.get<{ session: Record<string, unknown> | null }>(
-          `/api/chat/threads/${threadId}/call-sessions`,
-          { call_id: callId }
-        )
-        if (cancelled) return
-
-        const meta = parseSessionMetadata(row?.metadata)
-        const callerNameMeta = typeof meta.callerName === 'string' ? meta.callerName : ''
-        let callerAvatarMeta = typeof meta.callerAvatarUrl === 'string' ? meta.callerAvatarUrl : ''
-        const targetUserId = typeof meta.targetUserId === 'string' ? meta.targetUserId.trim() : ''
-        const isGroupFromMeta = meta.isGroupCall === true
-
-        type ThreadData = {
-          name?: string | null
-          title?: string | null
-          chat_participants?: Array<{
-            user?: {
-              id?: string
-              full_name?: string | null
-              username?: string | null
-              avatar_url?: string | null
-            }
-          }>
-        }
-
-        const loadThread = () =>
-          apiClient.get<{ data: ThreadData; meta?: unknown }>(`/api/chat/threads/${threadId}`)
-
         if (isIncoming) {
+          const { session: row } = await apiClient.get<{ session: Record<string, unknown> | null }>(
+            `/api/chat/threads/${threadId}/call-sessions`,
+            { call_id: callId }
+          )
+          if (cancelled) return
+
+          const meta = parseSessionMetadata(row?.metadata)
+          const callerNameMeta = typeof meta.callerName === 'string' ? meta.callerName : ''
+          let callerAvatarMeta = typeof meta.callerAvatarUrl === 'string' ? meta.callerAvatarUrl : ''
           const createdBy = typeof row?.created_by === 'string' ? row.created_by : ''
           let recipientAv = localAvatar
           callerAvatarMeta = (callerAvatarMeta || '').trim()
@@ -152,10 +181,20 @@ export default function CallWindowPage() {
           return
         }
 
-        const group = isGroupCallHint || isGroupFromMeta
-
-        const threadBundle = await loadThread()
+        const [{ session: row }, threadBundle] = await Promise.all([
+          apiClient.get<{ session: Record<string, unknown> | null }>(
+            `/api/chat/threads/${threadId}/call-sessions`,
+            { call_id: callId }
+          ),
+          loadThread(),
+        ])
         if (cancelled) return
+
+        const meta = parseSessionMetadata(row?.metadata)
+        const targetUserId = typeof meta.targetUserId === 'string' ? meta.targetUserId.trim() : ''
+        const isGroupFromMeta = meta.isGroupCall === true
+
+        const group = isGroupCallHint || isGroupFromMeta
 
         const t = threadBundle.data
 
@@ -259,6 +298,7 @@ export default function CallWindowPage() {
             threadId={threadId}
             currentUserId={user?.id}
             roomIdHint={roomId}
+            tokenHint={joinTokenHint}
             callIdHint={callId}
           />
         ) : (

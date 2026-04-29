@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { apiClient, ApiError } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
+import { openCallWindow } from '@/shared/utils/callWindow'
 
 interface ChatParticipant {
   id: string
@@ -478,10 +479,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       const { data: { session } } = await supabase.auth.getSession()
-      const roomPayload =
-        resolvedTargetUserId && !isGroupCall
+      const roomPayload = {
+        ...(resolvedTargetUserId && !isGroupCall
           ? { check_user_ids: [resolvedTargetUserId] }
-          : {}
+          : {}),
+        include_participant_token: true,
+      }
       const roomResponse = await fetch('/api/videosdk/room', {
         method: 'POST',
         headers: {
@@ -544,7 +547,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }))
 
       if (typeof window !== 'undefined') {
-        const { openCallWindow } = await import('@/shared/utils/callWindow')
+        if (token && callId) {
+          try {
+            sessionStorage.setItem(
+              `videosdk_call_bootstrap:${callId}`,
+              JSON.stringify({ token }),
+            )
+          } catch {
+            /* ignore quota or private mode */
+          }
+        }
 
         openCallWindow({
           roomId,
