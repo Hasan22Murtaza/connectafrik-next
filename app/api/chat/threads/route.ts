@@ -13,7 +13,6 @@ const THREAD_SELECT = `
   last_message_preview,
   last_message_at,
   last_activity_at,
-  unread_count,
   archived,
   created_at,
   updated_at,
@@ -38,7 +37,7 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
       last_activity_at: lastTimestamp,
       created_at: lastTimestamp,
       updated_at: lastTimestamp,
-      unread_count: typeof row.unread_count === 'number' ? row.unread_count : 0,
+      unread_count: 0,
       chat_participants: Array.isArray(row.participants)
         ? row.participants.map((participant: any) => ({
             user_id: participant.id,
@@ -54,6 +53,25 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
         : [],
     }
   })
+}
+
+async function getUnreadByThreadIdForUser(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  userId: string,
+  threadIds: string[]
+): Promise<Map<string, number>> {
+  if (threadIds.length === 0) return new Map()
+  const { data } = await serviceClient
+    .from('chat_participants')
+    .select('thread_id, unread_count')
+    .eq('user_id', userId)
+    .in('thread_id', threadIds)
+  const m = new Map<string, number>()
+  for (const row of data ?? []) {
+    const tid = row.thread_id as string
+    m.set(tid, typeof row.unread_count === 'number' ? row.unread_count : 0)
+  }
+  return m
 }
 
 const getThreadActivityTime = (thread: any) => {
@@ -112,7 +130,7 @@ export async function GET(request: NextRequest) {
 
     const { data: participantRows, error: partError } = await serviceClient
       .from('chat_participants')
-      .select('thread_id')
+      .select('thread_id, unread_count')
       .eq('user_id', user.id)
 
     if (partError) {
@@ -125,6 +143,15 @@ export async function GET(request: NextRequest) {
         const rows = Array.isArray(rpcData) ? rpcData : []
         const normalized = mapRpcRowsToThreadShape(rows)
         const deduped = deduplicateThreadsByParticipants(normalized)
+        const rpcUnread = await getUnreadByThreadIdForUser(
+          serviceClient,
+          user.id,
+          deduped.map((t: { id?: string }) => t.id).filter((id): id is string => typeof id === 'string')
+        )
+        for (const t of deduped) {
+          const id = typeof t?.id === 'string' ? t.id : ''
+          t.unread_count = id ? rpcUnread.get(id) ?? 0 : 0
+        }
         return jsonResponse({
           data: deduped.slice(from, to + 1),
           meta: {
@@ -143,6 +170,13 @@ export async function GET(request: NextRequest) {
         meta: { page, pageSize: limit, hasMore: false },
       })
     }
+
+    const myUnreadByThreadId = new Map<string, number>(
+      participantRows.map((p: { thread_id: string; unread_count?: number | null }) => [
+        p.thread_id,
+        typeof p.unread_count === 'number' ? p.unread_count : 0,
+      ])
+    )
 
     const rawThreadIds = [...new Set(participantRows.map((p: { thread_id: string }) => p.thread_id))]
     const threadIds = await filterThreadIdsAccessibleToUser(serviceClient, user.id, rawThreadIds)
@@ -202,7 +236,7 @@ export async function GET(request: NextRequest) {
       return {
         ...rest,
         banner_url: group_banner?.banner_url ?? null,
-        unread_count: typeof t.unread_count === 'number' ? t.unread_count : 0,
+        unread_count: myUnreadByThreadId.get(t.id) ?? 0,
       }
     })
 
