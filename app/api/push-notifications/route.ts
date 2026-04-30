@@ -17,7 +17,7 @@ export interface NotificationPayload {
   body: string
   // Notification type for database storage
   notification_type?: NotificationType
-  // Optional: skip database storage (for push-only scenarios)
+  // Optional: skip database storage (for push-only scenarios). For type `chat_message`, DB rows are never created here — FCM only.
   skip_db?: boolean
   icon?: string
   image?: string
@@ -231,9 +231,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 1: Create notification record in database (unless skip_db is true)
+    // Step 1: Create notification record in database (unless skip_db is true).
+    // chat_message is always push-only — no notifications row (in-app list uses chat unread state elsewhere).
+    const persistToDb = !skip_db && canonicalType !== 'chat_message'
+
     let notificationId: string | null = null
-    if (!skip_db) {
+    if (persistToDb) {
       const { data: notification, error: dbError } = await supabase
         .from('notifications')
         .insert({
