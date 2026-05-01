@@ -406,28 +406,6 @@ const findLocalMessageById = (messageId: string): ChatMessage | undefined => {
   return undefined
 }
 
-const searchLocalMessages = (query: string, userId: string, threadId?: string): ChatMessage[] => {
-  const normalized = query.toLowerCase()
-  const targetThreadIds = threadId
-    ? [threadId]
-    : getLocalThreadsForUser(userId).map((thread) => thread.id)
-
-  const results: ChatMessage[] = []
-
-  targetThreadIds.forEach((id) => {
-    const messages = localMessages.get(id) ?? []
-    messages.forEach((message) => {
-      const content = message.content ?? ''
-      if (!message.is_deleted && content.toLowerCase().includes(normalized)) {
-        results.push(message)
-      }
-    })
-  })
-
-  return results
-}
-
-
 // Initialize real-time subscriptions
 const initializeSubscriptions = async (currentUser: ChatParticipant) => {
   if (!currentUser) return
@@ -1172,24 +1150,6 @@ export const supabaseMessagingService = {
     } catch (error) {
       console.error('Error in canDeleteForEveryone:', error)
       return false
-    }
-  },
-
-  async searchMessages(query: string, userId: string, threadId?: string): Promise<ChatMessage[]> {
-    if (fallbackEnabled) {
-      return searchLocalMessages(query, userId, threadId)
-    }
-
-    try {
-      const params: Record<string, string> = { q: query }
-      if (threadId) params.thread_id = threadId
-      const res = await apiClient.get<{ data: any[] }>('/api/chat/messages/search', params)
-      const messages = res?.data ?? []
-      return messages.map((m: any) => mapApiMessageToChatMessage(m))
-    } catch (error) {
-      console.error('Error in searchMessages:', error)
-      activateFallback(error)
-      return searchLocalMessages(query, userId, threadId)
     }
   },
 

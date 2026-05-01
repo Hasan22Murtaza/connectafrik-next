@@ -714,23 +714,6 @@
         }
       }
     },
-    "/chat/messages/search": {
-      "get": {
-        "tags": ["Chat"],
-        "summary": "Search messages",
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [
-          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Search term" },
-          { "name": "thread_id", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Scope search to a specific thread" }
-        ],
-        "responses": {
-          "200": { "description": "Search results (max 50)", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } } } } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "500": { "$ref": "#/components/responses/ServerError" }
-        }
-      }
-    },
     "/chat/threads": {
       "get": {
         "tags": ["Chat"],

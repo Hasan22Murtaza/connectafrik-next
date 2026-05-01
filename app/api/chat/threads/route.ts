@@ -23,7 +23,6 @@ const THREAD_SELECT = `
 `
 
 const mapRpcRowsToThreadShape = (rows: any[]) => {
-  console.log('rows111', rows)
   return rows.map((row: any) => {
     const lastTimestamp = row.last_message_at ?? new Date().toISOString()
     return {
