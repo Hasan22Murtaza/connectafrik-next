@@ -18,6 +18,7 @@ import {
   Archive,
   ArchiveRestore,
   ChevronLeft,
+  Images,
   Minus,
   MoreVertical,
   Mic,
@@ -38,6 +39,7 @@ import React, {
 } from "react";
 import { toast } from "react-hot-toast";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
+import ChatMediaGallery from "./ChatMediaGallery";
 import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
 import { MessageBubble } from "./MessageBubble";
@@ -297,6 +299,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
   const userInitiatedCall = useRef(false);
   const lastIncomingCallSyncKeyRef = useRef<string>("");
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -318,6 +321,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setSearchPage(0);
     setSearchHasOlder(false);
     setSearchLoading(false);
+    setShowMediaGallery(false);
   }, [threadId]);
 
   useEffect(() => {
@@ -886,7 +890,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <div className="pointer-events-auto flex w-72 sm:w-80 max-w-full sm:max-w-full flex-col border border-1 border-gray-100  rounded-2xl  bg-white shadow-2xl">
+    <div className="pointer-events-auto relative flex w-72 sm:w-80 max-w-full sm:max-w-full flex-col border border-1 border-gray-100  rounded-2xl  bg-white shadow-2xl">
       <div className="flex items-center justify-between  bg-gray-50 rounded-tl-2xl rounded-tr-2xl  border-b border-gray-200 p-2">
         <div className="flex items-center space-x-3">
           <div className="relative h-10 w-10">
@@ -981,6 +985,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   >
                     <Search className="h-4 w-4 shrink-0" />
                     <span>Search</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setShowMediaGallery(true);
+                      setShowOptionsMenu(false);
+                    }}
+                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
+                  >
+                    <Images className="h-4 w-4 shrink-0" />
+                    <span>{isGroupThread ? "Group media" : "Media"}</span>
                   </button>
                   <button
                     type="button"
@@ -1218,6 +1234,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         isOpen={webcamOpen}
         onClose={() => setWebcamOpen(false)}
         onCaptured={handleFilesSelected}
+      />
+
+      <ChatMediaGallery
+        threadId={threadId}
+        open={showMediaGallery}
+        onClose={() => setShowMediaGallery(false)}
+        isGroupChat={isGroupThread}
       />
     </div>
   );
