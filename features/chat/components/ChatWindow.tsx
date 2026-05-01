@@ -17,17 +17,20 @@ import type { PresenceStatus } from "@/shared/types/chat";
 import {
   Archive,
   ArchiveRestore,
+  ChevronLeft,
   Minus,
   MoreVertical,
   Mic,
   Phone,
   Plus,
+  Search,
   Send,
   Square,
   Video,
   X,
 } from "lucide-react";
 import React, {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -104,6 +107,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       !message.deleted_for?.includes(currentUser.id)
     );
   }, [messages, currentUser?.id]);
+
+  const [showMessageSearch, setShowMessageSearch] = useState(false);
+  const [messageSearchDraft, setMessageSearchDraft] = useState("");
+  const [messageSearchKeyword, setMessageSearchKeyword] = useState("");
+  const [searchMessages, setSearchMessages] = useState<ChatMessage[]>([]);
+  const [searchPage, setSearchPage] = useState(0);
+  const [searchHasOlder, setSearchHasOlder] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const searchVisibleMessages = useMemo(() => {
+    if (!currentUser) return searchMessages;
+    return searchMessages.filter(
+      (message: ChatMessage) => !message.deleted_for?.includes(currentUser.id)
+    );
+  }, [searchMessages, currentUser?.id]);
+
+  const displayMessages = messageSearchKeyword.trim()
+    ? searchVisibleMessages
+    : visibleMessages;
   const pendingCall = callRequests[threadId];
   const pendingCallType = pendingCall?.type;
   const pendingRoomId = pendingCall?.roomId;
@@ -289,57 +311,154 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setHasOlderMessages(true);
     setIsLoadingOlderMessages(false);
     isPrependingHistoryRef.current = false;
+    setShowMessageSearch(false);
+    setMessageSearchDraft("");
+    setMessageSearchKeyword("");
+    setSearchMessages([]);
+    setSearchPage(0);
+    setSearchHasOlder(false);
+    setSearchLoading(false);
   }, [threadId]);
 
-  const loadOlderMessages = async () => {
-    if (!threadId || isLoadingOlderMessages || !hasOlderMessages) return;
+  useEffect(() => {
+    if (!threadId || !messageSearchKeyword.trim()) {
+      setSearchMessages([]);
+      setSearchPage(0);
+      setSearchHasOlder(false);
+      setSearchLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const kw = messageSearchKeyword.trim();
+    setSearchLoading(true);
+    void (async () => {
+      try {
+        const { messages: found, hasMore } = await supabaseMessagingService.getThreadMessages(threadId, {
+          limit: MESSAGES_PAGE_SIZE,
+          page: 0,
+          keyword: kw,
+        });
+        if (cancelled) return;
+        setSearchMessages(found);
+        setSearchPage(0);
+        setSearchHasOlder(hasMore);
+      } catch (e) {
+        console.error("Message search failed:", e);
+        if (!cancelled) {
+          setSearchMessages([]);
+          setSearchHasOlder(false);
+        }
+      } finally {
+        if (!cancelled) setSearchLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [threadId, messageSearchKeyword]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!threadId || isLoadingOlderMessages) return;
     const scrollEl = messagesScrollRef.current;
     if (!scrollEl) return;
+
+    const keyword = messageSearchKeyword.trim();
+    if (keyword) {
+      if (!searchHasOlder) return;
+    } else if (!hasOlderMessages) {
+      return;
+    }
 
     setIsLoadingOlderMessages(true);
     const prevScrollHeight = scrollEl.scrollHeight;
     const prevScrollTop = scrollEl.scrollTop;
-    const nextPage = historyPage + 1;
 
     try {
-      const olderMessages = await supabaseMessagingService.getThreadMessages(threadId, {
-        page: nextPage,
-        limit: MESSAGES_PAGE_SIZE,
-      });
+      if (keyword) {
+        const nextPage = searchPage + 1;
+        const { messages: olderMessages, hasMore } = await supabaseMessagingService.getThreadMessages(threadId, {
+          page: nextPage,
+          limit: MESSAGES_PAGE_SIZE,
+          keyword,
+        });
 
-      if (!olderMessages.length) {
-        setHasOlderMessages(false);
-        return;
+        if (!olderMessages.length) {
+          setSearchHasOlder(false);
+          return;
+        }
+        if (!hasMore) {
+          setSearchHasOlder(false);
+        }
+
+        isPrependingHistoryRef.current = true;
+        setSearchMessages((prev) => {
+          const mergedMap = new Map<string, ChatMessage>();
+          prev.forEach((msg) => mergedMap.set(msg.id, msg));
+          olderMessages.forEach((msg) => mergedMap.set(msg.id, msg));
+          return Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+        setSearchPage(nextPage);
+
+        requestAnimationFrame(() => {
+          const node = messagesScrollRef.current;
+          if (!node) return;
+          const heightDiff = node.scrollHeight - prevScrollHeight;
+          node.scrollTop = prevScrollTop + heightDiff;
+          isPrependingHistoryRef.current = false;
+        });
+      } else {
+        const nextPage = historyPage + 1;
+        const { messages: olderMessages, hasMore } = await supabaseMessagingService.getThreadMessages(threadId, {
+          page: nextPage,
+          limit: MESSAGES_PAGE_SIZE,
+        });
+
+        if (!olderMessages.length) {
+          setHasOlderMessages(false);
+          return;
+        }
+        if (!hasMore) {
+          setHasOlderMessages(false);
+        }
+
+        const currentMessages = getMessagesForThread(threadId);
+        const mergedMap = new Map<string, ChatMessage>();
+        currentMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
+        olderMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
+        const merged = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+
+        isPrependingHistoryRef.current = true;
+        setMessagesForThread(threadId, merged);
+        setHistoryPage(nextPage);
+
+        requestAnimationFrame(() => {
+          const node = messagesScrollRef.current;
+          if (!node) return;
+          const heightDiff = node.scrollHeight - prevScrollHeight;
+          node.scrollTop = prevScrollTop + heightDiff;
+          isPrependingHistoryRef.current = false;
+        });
       }
-      if (olderMessages.length < MESSAGES_PAGE_SIZE) {
-        setHasOlderMessages(false);
-      }
-
-      const currentMessages = getMessagesForThread(threadId);
-      const mergedMap = new Map<string, ChatMessage>();
-      currentMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
-      olderMessages.forEach((msg: ChatMessage) => mergedMap.set(msg.id, msg));
-      const merged = Array.from(mergedMap.values()).sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
-
-      isPrependingHistoryRef.current = true;
-      setMessagesForThread(threadId, merged);
-      setHistoryPage(nextPage);
-
-      requestAnimationFrame(() => {
-        const node = messagesScrollRef.current;
-        if (!node) return;
-        const heightDiff = node.scrollHeight - prevScrollHeight;
-        node.scrollTop = prevScrollTop + heightDiff;
-        isPrependingHistoryRef.current = false;
-      });
     } catch (error) {
       console.error("Error loading older messages:", error);
     } finally {
       setIsLoadingOlderMessages(false);
     }
-  };
+  }, [
+    threadId,
+    isLoadingOlderMessages,
+    hasOlderMessages,
+    historyPage,
+    messageSearchKeyword,
+    searchHasOlder,
+    searchPage,
+    getMessagesForThread,
+    setMessagesForThread,
+  ]);
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -408,14 +527,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   useEffect(() => {
     const el = messagesScrollRef.current;
-    if (!el || visibleMessages.length === 0) return;
+    if (!el || displayMessages.length === 0) return;
     if (isPrependingHistoryRef.current) return;
     const scrollToBottom = () => {
       el.scrollTop = el.scrollHeight;
     };
     scrollToBottom();
     requestAnimationFrame(scrollToBottom);
-  }, [threadId, visibleMessages.length]);
+  }, [threadId, displayMessages.length]);
 
   useEffect(() => {
     const el = messagesScrollRef.current;
@@ -431,7 +550,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return () => {
       el.removeEventListener("scroll", handleScroll);
     };
-  }, [threadId, historyPage, isLoadingOlderMessages, hasOlderMessages, messages.length]);
+  }, [loadOlderMessages]);
 
   useEffect(() => {
     if (!attachmentMenuOpen) return;
@@ -459,6 +578,40 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, []);
 
   if (!thread) return null;
+
+  const closeMessageSearch = () => {
+    setShowMessageSearch(false);
+    setMessageSearchDraft("");
+    setMessageSearchKeyword("");
+    setSearchMessages([]);
+    setSearchPage(0);
+    setSearchHasOlder(false);
+    setSearchLoading(false);
+  };
+
+  const openMessageSearchFromMenu = () => {
+    setShowMessageSearch(true);
+    setShowOptionsMenu(false);
+  };
+
+  const clearMessageSearch = () => {
+    setMessageSearchDraft("");
+    setMessageSearchKeyword("");
+    setSearchMessages([]);
+    setSearchPage(0);
+    setSearchHasOlder(false);
+    setSearchLoading(false);
+  };
+
+  const applyMessageSearch = () => {
+    const trimmed = messageSearchDraft.trim();
+    setMessageSearchKeyword(trimmed);
+    if (!trimmed) {
+      setSearchMessages([]);
+      setSearchHasOlder(false);
+      setSearchLoading(false);
+    }
+  };
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -823,6 +976,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   <button
                     type="button"
                     role="menuitem"
+                    onClick={() => openMessageSearchFromMenu()}
+                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
+                  >
+                    <Search className="h-4 w-4 shrink-0" />
+                    <span>Search</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
                     onClick={() => void handleArchiveToggle()}
                     className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
                   >
@@ -856,19 +1018,70 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </div>
 
+      {showMessageSearch && (
+        <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50 px-1.5 py-1.5">
+          <button
+            type="button"
+            onClick={closeMessageSearch}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-700 hover:bg-gray-200/80"
+            aria-label="Close search"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <input
+            type="search"
+            value={messageSearchDraft}
+            onChange={(e) => setMessageSearchDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyMessageSearch();
+              }
+            }}
+            placeholder="Search…"
+            autoFocus
+            className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-[#f97316] focus:outline-none focus:ring-1 focus:ring-orange-200"
+            aria-label="Search messages in this chat"
+          />
+          <button
+            type="button"
+            onClick={applyMessageSearch}
+            className="shrink-0 rounded-lg bg-primary-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-primary-700"
+          >
+            Find
+          </button>
+          {(messageSearchDraft.trim() || messageSearchKeyword.trim()) && (
+            <button
+              type="button"
+              onClick={clearMessageSearch}
+              className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+              aria-label="Clear search"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       <div
         ref={messagesScrollRef}
         className="flex h-[250px] sm:h-[290px] flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3"
       >
         {isLoadingOlderMessages && (
-          <div className="py-1 text-center text-xs text-gray-500">Loading older messages...</div>
+          <div className="py-1 text-center text-xs text-gray-500">
+            {messageSearchKeyword.trim() ? "Loading older matches..." : "Loading older messages..."}
+          </div>
         )}
-        {visibleMessages.length === 0 ? (
+        {searchLoading && messageSearchKeyword.trim() ? (
+          <div className="py-12 text-center text-sm text-gray-500">Searching messages...</div>
+        ) : displayMessages.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-500">
-            Send a message to kick off the conversation.
+            {messageSearchKeyword.trim()
+              ? `No messages match "${messageSearchKeyword.trim()}".`
+              : "Send a message to kick off the conversation."}
           </div>
         ) : (
-          visibleMessages.map((message: ChatMessage) => {
+          displayMessages.map((message: ChatMessage) => {
             const isOwn = message.sender_id === currentUser?.id;
 
             return (

@@ -800,26 +800,50 @@ export const supabaseMessagingService = {
     }
   },
 
-  async getThreadMessages(threadId: string, options?: { limit?: number; page?: number }): Promise<ChatMessage[]> {
+  async getThreadMessages(
+    threadId: string,
+    options?: { limit?: number; page?: number; keyword?: string }
+  ): Promise<{ messages: ChatMessage[]; hasMore: boolean }> {
     const limit = options?.limit ?? 50
     const page = options?.page ?? 0
+    const keyword = options?.keyword?.trim()
+    const params: Record<string, string | number | boolean | undefined> = { limit, page }
+    if (keyword) params.keyword = keyword
+
     try {
-      const res = await apiClient.get<{ data?: any[] } | any[]>(
-        `/api/chat/threads/${threadId}/messages`,
-        { limit, page }
-      )
-      const payload = res as any
-      const messages = Array.isArray(payload) ? payload : (Array.isArray(payload?.data) ? payload.data : [])
+      const res = await apiClient.get<{
+        data?: any[]
+        hasMore?: boolean
+      }>(`/api/chat/threads/${threadId}/messages`, params)
+      const payload = res as Record<string, unknown>
+      const rawList = Array.isArray(payload)
+        ? payload
+        : (Array.isArray(payload?.data) ? payload.data : []) as any[]
+      const hasMore =
+        typeof payload?.hasMore === 'boolean'
+          ? payload.hasMore
+          : rawList.length >= limit
       if (fallbackEnabled) {
         fallbackEnabled = false
       }
-      return messages.map((m: any) => mapApiMessageToChatMessage(m))
+      return {
+        messages: rawList.map((m: any) => mapApiMessageToChatMessage(m)),
+        hasMore,
+      }
     } catch (error) {
       console.error('Error in getThreadMessages:', error)
       activateFallback(error)
-      const list = localMessages.get(threadId) ?? []
+      let list = localMessages.get(threadId) ?? []
+      if (keyword) {
+        const k = keyword.toLowerCase()
+        list = list.filter((m) => (m.content || '').toLowerCase().includes(k))
+      }
       const from = page * limit
-      return list.slice(from, from + limit)
+      const slice = list.slice(from, from + limit)
+      return {
+        messages: slice,
+        hasMore: from + slice.length < list.length,
+      }
     }
   },
 

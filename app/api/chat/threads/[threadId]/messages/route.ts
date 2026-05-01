@@ -18,6 +18,7 @@ const DEDUPED_CALL_SIGNAL_TYPES = new Set([
 ])
 const ROOM_FALLBACK_DEDUPE_WINDOW_MS = 5 * 60 * 1000
 const TERMINAL_CONFLICT_WINDOW_MS = 90 * 1000
+const MAX_MESSAGE_KEYWORD_LENGTH = 200
 const CALL_TERMINAL_CONFLICT_TYPES = ['declined', 'ended'] as const
 type CallIdentity = { callId: string; roomId: string }
 
@@ -92,20 +93,35 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const from = page * limit
     const to = from + limit - 1
 
+    const keywordRaw = (searchParams.get('keyword') ?? searchParams.get('q') ?? '').trim()
+    const keyword =
+      keywordRaw.length > MAX_MESSAGE_KEYWORD_LENGTH
+        ? keywordRaw.slice(0, MAX_MESSAGE_KEYWORD_LENGTH)
+        : keywordRaw
+
+    let messagesQuery = serviceClient
+      .from('chat_messages')
+      .select(MESSAGE_SELECT)
+      .eq('thread_id', threadId)
+      .eq('is_deleted', false)
+    let countQuery = serviceClient
+      .from('chat_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('thread_id', threadId)
+      .eq('is_deleted', false)
+
+    if (keyword.length > 0) {
+      const pattern = `%${keyword}%`
+      messagesQuery = messagesQuery.ilike('content', pattern)
+      countQuery = countQuery.ilike('content', pattern)
+    }
+
     const [messagesRes, countRes] = await Promise.all([
-      serviceClient
-        .from('chat_messages')
-        .select(MESSAGE_SELECT)
-        .eq('thread_id', threadId)
-        .eq('is_deleted', false)
+      messagesQuery
         // Fetch newest slice first so page 0 contains latest messages.
         .order('created_at', { ascending: false })
         .range(from, to),
-      serviceClient
-        .from('chat_messages')
-        .select('id', { count: 'exact', head: true })
-        .eq('thread_id', threadId)
-        .eq('is_deleted', false),
+      countQuery,
     ])
 
     const { data: messages, error } = messagesRes

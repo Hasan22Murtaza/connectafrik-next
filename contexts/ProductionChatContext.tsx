@@ -705,7 +705,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       for (const threadId of openThreads) {
         try {
-          const threadMessages = await supabaseMessagingService.getThreadMessages(threadId)
+          const { messages: threadMessages } = await supabaseMessagingService.getThreadMessages(threadId)
           setMessages(prev => {
             const current = prev[threadId] || []
             if (current.length === 0) {
