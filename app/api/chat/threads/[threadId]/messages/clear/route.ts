@@ -16,13 +16,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found or access denied', 404)
     }
 
-    const { data: clearedCount, error } = await serviceClient.rpc('clear_thread_messages_for_user', {
-      p_thread_id: threadId,
-      p_user_id: user.id,
-    })
+    const { data: clearedCount, error } = await serviceClient.rpc(
+      'clear_thread_messages_for_user',
+      {
+        p_thread_id: threadId,
+        p_user_id: user.id,
+      }
+    )
     if (error) return errorResponse(error.message, 400)
 
-    return jsonResponse({ cleared_count: Number(clearedCount || 0) })
+    return jsonResponse({ cleared_count: Number(clearedCount ?? 0) })
   } catch (error: any) {
     if (error?.message === 'Unauthorized' || error?.message === 'Missing Authorization header') {
       return unauthorizedResponse()

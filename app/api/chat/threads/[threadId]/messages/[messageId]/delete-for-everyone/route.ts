@@ -39,6 +39,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         updated_at: now,
       })
       .eq('id', messageId)
+      .eq('thread_id', threadId)
 
     if (updateError) return errorResponse(updateError.message, 400)
 

@@ -50,6 +50,19 @@ function linkifyContent(text: string, isOwn: boolean): React.ReactNode[] {
   return parts.length > 0 ? parts : [text];
 }
 
+function isEditableTextMessage(m: ChatMessage): boolean {
+  if (m.is_deleted) return false;
+  const t = m.message_type || "text";
+  return t === "text";
+}
+
+function isForwardableChatMessage(m: ChatMessage): boolean {
+  if (m.is_deleted) return false;
+  const hasText = Boolean(m.content?.trim());
+  const hasAtt = Boolean(m.attachments && m.attachments.length > 0);
+  return hasText || hasAtt;
+}
+
 interface MessageBubbleProps {
   message: ChatMessage;
   isOwnMessage: boolean;
@@ -57,8 +70,12 @@ interface MessageBubbleProps {
   threadParticipants?: string[]; // Array of participant user IDs in this thread
   participantPresence?: Record<string, 'online' | 'offline'>;
   onReply?: (message: ChatMessage) => void;
+  onForward?: (message: ChatMessage) => void;
   onDelete?: (messageId: string, deleteForEveryone: boolean) => void;
-  /** Toggle/add reaction (same emoji removes). */
+  /** Opens WhatsApp-style composer edit mode (sender-only from parent). */
+  onBeginEdit?: (message: ChatMessage) => void;
+  /** Message id whose text is currently open in the composer (subtle bubble highlight). */
+  composerEditingMessageId?: string | null;
   onReact?: (messageId: string, emoji: string) => void;
 }
 
@@ -69,7 +86,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   threadParticipants = [],
   participantPresence = {},
   onReply,
+  onForward,
   onDelete,
+  onBeginEdit,
+  composerEditingMessageId = null,
   onReact,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -116,15 +136,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setShowMenu(true);
-  };
-
   const handleDelete = (deleteForEveryone: boolean) => {
     if (onDelete) {
       onDelete(message.id, deleteForEveryone);
     }
+    setShowMenu(false);
+  };
+
+  const startComposerEdit = () => {
+    if (!isOwnMessage || !onBeginEdit || !isEditableTextMessage(message)) return;
+    onBeginEdit(message);
     setShowMenu(false);
   };
 
@@ -145,6 +166,28 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const isDeleted = message.is_deleted;
   const isDeletedForMe = message.deleted_for?.includes(currentUserId) ?? false;
+
+  const canEditMessage =
+    isOwnMessage && Boolean(onBeginEdit) && isEditableTextMessage(message);
+  const canDeleteForEveryone = isOwnMessage && Boolean(onDelete);
+  const canDeleteForMe = Boolean(onDelete);
+  const canForward =
+    Boolean(onForward) && isForwardableChatMessage(message);
+  const showOverflowMenu =
+    canEditMessage || canDeleteForMe || canForward;
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!showOverflowMenu) return;
+    setShowMenu(true);
+  };
+
+  const handleForwardClick = () => {
+    if (onForward && isForwardableChatMessage(message)) {
+      onForward(message);
+    }
+    setShowMenu(false);
+  };
 
   if (isDeletedForMe) return null;
 
@@ -229,6 +272,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const messageStatus = getMessageStatus();
 
+  const showEditedBadge = Boolean(message.is_edited);
+  const showForwardBadge = Boolean(message.is_forward);
+
+  const isComposerEditingThis =
+    Boolean(composerEditingMessageId) &&
+    composerEditingMessageId === message.id &&
+    !isDeleted;
+
   return (
     <div
       className={`flex ${isOwnMessage ? "justify-end" : "justify-start"
@@ -285,9 +336,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {/* Message Content */}
         <div
-          className={`rounded-2xl px-3 py-1  relative ${isOwnMessage
+          className={`rounded-2xl px-3 py-1  relative transition-shadow ${isOwnMessage
               ? "bg-orange-500 text-white rounded-br-none "
               : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-none"
+            } ${
+              isComposerEditingThis
+                ? "ring-2 ring-amber-300 dark:ring-amber-500/70 ring-offset-2 ring-offset-white dark:ring-offset-gray-950 shadow-md"
+                : ""
             }`}
         >
           {isDeleted ? (
@@ -296,7 +351,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </p>
           ) : (
             <>
-              {/* Attachments */}
               {message.attachments && message.attachments.length > 0 && (
                 <div className="mb-1 space-y-2">
                   {message.attachments.map((att: ChatAttachment) => {
@@ -375,23 +429,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </div>
               )}
 
-              {/* Text content */}
-              {message.content && (
-                <p className="text-sm break-words">{linkifyContent(message.content, isOwnMessage)}</p>
-              )}
+              {message.content ? (
+                    <p className="text-sm break-words">
+                      {linkifyContent(message.content, isOwnMessage)}
+                    </p>
+                  ) : null}
             </>
           )}
 
           {/* Timestamp and Status */}
           <div
             className={`flex items-center justify-between mt-1 gap-2 ${isOwnMessage
-                ? "text-orange-100"
-                : "text-gray-500 dark:text-gray-400"
-              }`}
+                  ? "text-orange-100"
+                  : "text-gray-500 dark:text-gray-400"
+                }`}
           >
-            <span className="text-xs">
-              {format(new Date(message.created_at), "hh:mm a")}
-            </span>
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
+              <span className="text-[11px] shrink-0 tabular-nums">
+                {format(new Date(message.created_at), "HH:mm")}
+              </span>
+              {showForwardBadge && (
+                <span className="text-[11px] leading-none opacity-70 lowercase">
+                  forwarded
+                </span>
+              )}
+              {showEditedBadge && (
+                <span className="text-[11px] leading-none opacity-70 lowercase">
+                  edited
+                </span>
+              )}
+            </div>
             <MessageStatusIndicator
               status={messageStatus}
               isOwnMessage={isOwnMessage}
@@ -407,10 +474,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     `}
 
             >
-              {/* Three Dots */}
-              {isOwnMessage && onDelete && (
+              {showOverflowMenu && (
                 <div className="relative">
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu((prev) => !prev);
@@ -424,16 +491,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               {/* Reply */}
               {onReply && (
                 <button
+                  type="button"
                   onClick={handleReply}
                   className="text-gray-800 hover:text-orange-500 transition p-1.5 hover:bg-gray-100 rounded-full"
+                  title="Reply"
                 >
-                  {isOwnMessage ? (
-                    <BsReply className="w-4 h-4" />
-                  ) : (
-                    <RiShareForwardLine className="w-4 h-4" />
-                  )}
+                  <BsReply className="w-4 h-4" />
                 </button>
               )}
+              {canForward ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onForward) onForward(message);
+                  }}
+                  className="text-gray-800 hover:text-orange-500 transition p-1.5 hover:bg-gray-100 rounded-full"
+                  title="Forward"
+                >
+                  <RiShareForwardLine className="w-4 h-4" />
+                </button>
+              ) : null}
 
               {/* Emoji / Reaction */}
               {onReact && (
@@ -474,23 +552,56 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
             </div>
           )}
-           {/* Menu */}
-                  {showMenu && (
-                    <div className="absolute top-full right-10 w-40 rounded-2xl bg-gray-100 dark:bg-gray-800 shadow-sm z-[9999] p-1">
-                      <button
-                        onClick={() => handleDelete(false)}
-                        className="w-full p-1 text-left text-sm text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl"
-                      >
-                        Delete for Me
-                      </button>
-                      <button
-                        onClick={() => handleDelete(true)}
-                        className="w-full p-1 text-left text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-2xl"
-                      >
-                        Delete for Everyone
-                      </button>
-                    </div>
-                  )}
+          {showMenu && showOverflowMenu && (
+            <div
+              className={`absolute top-full z-[9999] mt-1 w-40 rounded-2xl bg-gray-100 dark:bg-gray-800 shadow-sm p-1 ${
+                isOwnMessage ? "right-0" : "left-0"
+              }`}
+            >
+              {canEditMessage ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startComposerEdit();
+                  }}
+                  className="w-full p-1 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl"
+                >
+                  Edit
+                </button>
+              ) : null}
+              {canForward ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleForwardClick();
+                  }}
+                  className="w-full p-1 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl"
+                >
+                  Forward
+                </button>
+              ) : null}
+              {canDeleteForMe ? (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(false)}
+                  className="w-full p-1 text-left text-sm text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl"
+                >
+                  Delete for Me
+                </button>
+              ) : null}
+              {canDeleteForEveryone ? (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(true)}
+                  className="w-full p-1 text-left text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-2xl"
+                >
+                  Delete for Everyone
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
 
       </div>

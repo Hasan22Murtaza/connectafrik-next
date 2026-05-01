@@ -4,16 +4,19 @@
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import {
   supabaseMessagingService,
+  chatUserIdsEqual,
+  getChatMessageAuthorId,
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
 import { apiClient } from "@/lib/api-client";
-import { useMembers } from "@/shared/hooks/useMembers";
+import { useMembers, type Member } from "@/shared/hooks/useMembers";
 import { useTypingIndicator } from "@/shared/hooks/useTypingIndicator";
 import {
   FileUploadResult,
   fileUploadService,
 } from "@/shared/services/fileUploadService";
 import type { PresenceStatus } from "@/shared/types/chat";
+import type { ChatParticipant } from "@/shared/types/chat";
 import {
   Archive,
   ArchiveRestore,
@@ -23,6 +26,7 @@ import {
   MoreVertical,
   Mic,
   Phone,
+  Pencil,
   Pin,
   PinOff,
   Plus,
@@ -62,6 +66,40 @@ interface ChatWindowProps {
   onMinimize: (threadId: string) => void;
 }
 
+function buildForwardPayload(message: ChatMessage): {
+  text: string;
+  attachments?: {
+    id: string;
+    name: string;
+    url: string;
+    type: "image" | "video" | "file";
+    size: number;
+    mimeType: string;
+  }[];
+} {
+  const senderName = message.sender?.name?.trim() || "Someone";
+  const body = message.content?.trim() || "";
+  const att = message.attachments ?? [];
+  let main = body;
+  if (!main && att.length > 0) {
+    main = att.map((a) => `📎 ${a.name}`).join("\n");
+  }
+  if (!main) main = "Message";
+  const text = `Forwarded from ${senderName}:\n\n${main}`;
+  if (!att.length) return { text };
+  return {
+    text,
+    attachments: att.map((a) => ({
+      id: a.id,
+      name: a.name,
+      url: a.url,
+      type: a.type,
+      size: a.size,
+      mimeType: a.mimeType,
+    })),
+  };
+}
+
 const MESSAGES_PAGE_SIZE = 50;
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -85,6 +123,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setMessagesForThread,
     setThreadArchived,
     setThreadPinned,
+    threads,
+    startChatWithMembers,
   } = useProductionChat();
 
   const { members } = useMembers();
@@ -131,6 +171,36 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const displayMessages = messageSearchKeyword.trim()
     ? searchVisibleMessages
     : visibleMessages;
+
+  const forwardCandidateThreads = useMemo(() => {
+    return threads
+      .filter((t) => t.id !== threadId)
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.last_message_at).getTime() -
+          new Date(a.last_message_at).getTime()
+      );
+  }, [threads, threadId]);
+
+  const directChatPeerIds = useMemo(() => {
+    const set = new Set();
+    if (!currentUser?.id) return set;
+    for (const t of threads) {
+      const others = t.participants.filter(
+        (p: ChatParticipant) => p.id !== currentUser.id
+      );
+      const isGroup =
+        t.type === "group" ||
+        Boolean(t.group_id) ||
+        others.length > 1;
+      if (!isGroup && others.length === 1) {
+        set.add(others[0].id);
+      }
+    }
+    return set;
+  }, [threads, currentUser?.id]);
+
   const pendingCall = callRequests[threadId];
   const pendingCallType = pendingCall?.type;
   const pendingRoomId = pendingCall?.roomId;
@@ -301,6 +371,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(
+    null
+  );
+  const [forwardSearch, setForwardSearch] = useState("");
+  /** WhatsApp-style: message loaded into composer for PATCH save on Send */
+  const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
+    null
+  );
+  const draftBeforeComposerEditRef = useRef("");
+  const composerInputRef = useRef<HTMLInputElement>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const userInitiatedCall = useRef(false);
@@ -325,7 +405,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setSearchHasOlder(false);
     setSearchLoading(false);
     setShowMediaGallery(false);
+    setEditingMessage(null);
+    draftBeforeComposerEditRef.current = "";
+    setForwardingMessage(null);
+    setForwardSearch("");
   }, [threadId]);
+
+  useEffect(() => {
+    if (forwardingMessage) setForwardSearch("");
+  }, [forwardingMessage]);
 
   useEffect(() => {
     if (!threadId || !messageSearchKeyword.trim()) {
@@ -468,6 +556,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ]);
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const clearChatInFlightRef = useRef(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -622,9 +711,41 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isSending) return;
+
+    if (editingMessage) {
+      const text = draft.trim();
+      if (!text) return;
+      if (pendingFiles.length > 0) {
+        toast.error("Remove attachments before saving an edited message.");
+        return;
+      }
+      setIsSending(true);
+      try {
+        const updated = await supabaseMessagingService.updateMessage(
+          threadId,
+          editingMessage.id,
+          text
+        );
+        const msgs = getMessagesForThread(threadId);
+        setMessagesForThread(
+          threadId,
+          msgs.map((m) => (m.id === editingMessage.id ? updated : m))
+        );
+        setEditingMessage(null);
+        draftBeforeComposerEditRef.current = "";
+        setDraft("");
+        stopTyping();
+      } catch {
+        toast.error("Could not update message");
+      } finally {
+        setIsSending(false);
+      }
+      return;
+    }
+
     const text = draft.trim();
     if (!text && pendingFiles.length === 0) return;
-    if (isSending) return;
 
     setIsSending(true);
     try {
@@ -665,9 +786,174 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const cancelComposerEdit = useCallback(() => {
+    setEditingMessage(null);
+    setDraft(draftBeforeComposerEditRef.current);
+    draftBeforeComposerEditRef.current = "";
+  }, []);
+
+  const beginComposerEdit = useCallback((message: ChatMessage) => {
+    draftBeforeComposerEditRef.current = draft;
+    setEditingMessage(message);
+    setReplyingTo(null);
+    setForwardingMessage(null);
+    fileUploadService.revokePreviews(pendingFiles);
+    setPendingFiles([]);
+    setAttachmentMenuOpen(false);
+    setDraft(message.content ?? "");
+    requestAnimationFrame(() => {
+      composerInputRef.current?.focus();
+      composerInputRef.current?.select?.();
+    });
+  }, [draft, pendingFiles]);
+
+  useEffect(() => {
+    if (!editingMessage) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancelComposerEdit();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editingMessage, cancelComposerEdit]);
+
+  useEffect(() => {
+    if (!forwardingMessage) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setForwardingMessage(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [forwardingMessage]);
+
   const handleReply = (message: ChatMessage) => {
+    if (editingMessage) {
+      const restore = draftBeforeComposerEditRef.current;
+      draftBeforeComposerEditRef.current = "";
+      setEditingMessage(null);
+      setDraft(restore);
+    }
+    setForwardingMessage(null);
     setReplyingTo(message);
   };
+
+  const openForwardPicker = useCallback((message: ChatMessage) => {
+    if (editingMessage) {
+      const restore = draftBeforeComposerEditRef.current;
+      draftBeforeComposerEditRef.current = "";
+      setEditingMessage(null);
+      setDraft(restore);
+    }
+    setReplyingTo(null);
+    setForwardingMessage(message);
+  }, [editingMessage]);
+
+  const cancelForwardPicker = useCallback(() => {
+    setForwardingMessage(null);
+    setForwardSearch("");
+  }, []);
+
+  const sendForwardedToThread = useCallback(
+    async (targetThreadId: string) => {
+      if (!forwardingMessage) return;
+      const payload = buildForwardPayload(forwardingMessage);
+      setForwardingMessage(null);
+      setForwardSearch("");
+      setIsSending(true);
+      try {
+        await sendMessage(targetThreadId, payload.text, {
+          attachments: payload.attachments,
+          is_forward: true,
+        });
+        toast.success("Message forwarded");
+        void openThread(targetThreadId);
+      } catch {
+        toast.error("Could not forward message");
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [forwardingMessage, sendMessage, openThread]
+  );
+
+  const forwardSearchLower = forwardSearch.trim().toLowerCase();
+
+  const filteredForwardThreads = useMemo(() => {
+    if (!forwardSearchLower) return forwardCandidateThreads;
+    return forwardCandidateThreads.filter((t) => {
+      const otherParticipants = t.participants.filter(
+        (p: ChatParticipant) => p.id !== currentUser?.id
+      );
+      const primary = otherParticipants[0] ?? t.participants[0];
+      const isGroup =
+        t.type === "group" ||
+        Boolean(t.group_id) ||
+        otherParticipants.length > 1;
+      const label = (
+        isGroup && t.name ? t.name : primary?.name || t.name || "Conversation"
+      ).toLowerCase();
+      const preview = (t.last_message_preview || "").toLowerCase();
+      return (
+        label.includes(forwardSearchLower) ||
+        preview.includes(forwardSearchLower)
+      );
+    });
+  }, [forwardCandidateThreads, forwardSearchLower, currentUser?.id]);
+
+  const filteredForwardContacts = useMemo(() => {
+    let list = members.filter(
+      (m) => m.id !== currentUser?.id && !directChatPeerIds.has(m.id)
+    );
+    list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (forwardSearchLower) {
+      list = list.filter((m) => {
+        const n = m.name.toLowerCase();
+        const u = (m.username || "").toLowerCase();
+        return (
+          n.includes(forwardSearchLower) || u.includes(forwardSearchLower)
+        );
+      });
+    }
+    return list;
+  }, [members, currentUser?.id, directChatPeerIds, forwardSearchLower]);
+
+  const forwardToMember = useCallback(
+    async (member: Member) => {
+      if (!forwardingMessage) return;
+      const payload = buildForwardPayload(forwardingMessage);
+      setForwardingMessage(null);
+      setForwardSearch("");
+      setIsSending(true);
+      try {
+        const participant: ChatParticipant = {
+          id: member.id,
+          name: member.name,
+          avatarUrl: member.avatar_url,
+        };
+        const newThreadId = await startChatWithMembers([participant], {
+          participant_ids: [member.id],
+          openInDock: false,
+        });
+        if (!newThreadId) throw new Error("no thread");
+        await sendMessage(newThreadId, payload.text, {
+          attachments: payload.attachments,
+          is_forward: true,
+        });
+        toast.success("Message forwarded");
+        void openThread(newThreadId);
+      } catch {
+        toast.error("Could not forward message");
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [forwardingMessage, startChatWithMembers, sendMessage, openThread]
+  );
 
   const handleDelete = async (
     messageId: string,
@@ -748,6 +1034,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleClearAllMessages = async () => {
     if (!currentUser) return;
+    if (clearChatInFlightRef.current) return;
 
     const confirmed = window.confirm(
       "Are you sure you want to clear all messages in this chat? This will only clear them for you."
@@ -755,7 +1042,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     if (!confirmed) return;
 
-    let prevMessagesForThread: ChatMessage[] | null = null
+    clearChatInFlightRef.current = true;
+    let prevMessagesForThread: ChatMessage[] | null = null;
     try {
       prevMessagesForThread = getMessagesForThread(threadId);
 
@@ -768,11 +1056,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       toast.success("All messages cleared");
       setShowOptionsMenu(false);
-    } catch (error) {
+    } catch {
       if (prevMessagesForThread) {
         setMessagesForThread(threadId, prevMessagesForThread);
       }
       toast.error("Failed to clear messages");
+    } finally {
+      clearChatInFlightRef.current = false;
     }
   };
 
@@ -884,7 +1174,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   const showSendButton =
-    draft.trim().length > 0 || pendingFiles.length > 0;
+    editingMessage !== null
+      ? true
+      : draft.trim().length > 0 || pendingFiles.length > 0;
+
+  const composerSendDisabled =
+    editingMessage !== null && draft.trim().length === 0;
 
   const removePendingFile = (index: number) => {
     setPendingFiles((prev) => {
@@ -1131,7 +1426,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : (
           displayMessages.map((message: ChatMessage) => {
-            const isOwn = message.sender_id === currentUser?.id;
+            const isOwn = chatUserIdsEqual(
+              getChatMessageAuthorId(message),
+              currentUser?.id
+            );
 
             return (
               <MessageBubble
@@ -1144,7 +1442,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 }
                 participantPresence={participantPresenceById}
                 onReply={handleReply}
+                onForward={openForwardPicker}
                 onDelete={handleDelete}
+                onBeginEdit={beginComposerEdit}
+                composerEditingMessageId={editingMessage?.id ?? null}
                 onReact={handleMessageReaction}
               />
             );
@@ -1156,7 +1457,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* WhatsApp-style typing indicator */}
       <TypingIndicator isTyping={typingUserIds.length > 0} />
 
-      {pendingFiles.length > 0 && (
+      {pendingFiles.length > 0 && !editingMessage && (
         <div className="border-t border-gray-100 px-4 pb-3">
           <FilePreview files={pendingFiles} onRemove={removePendingFile} />
         </div>
@@ -1166,7 +1467,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onSubmit={handleSend}
         className="rounded-bl-2xl rounded-br-2xl border-t border-gray-200 bg-white px-2 sm:px-3 py-2 sm:py-3"
       >
-        {replyingTo && (
+        {editingMessage ? (
+          <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200/80 bg-amber-50/90 dark:border-orange-900/70 dark:bg-orange-950/45 px-2.5 py-2 border-l-[3px] border-l-teal-500 dark:border-l-teal-500">
+            <Pencil className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400 mt-0.5" aria-hidden />
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-teal-800 dark:text-teal-300">
+                Editing message
+              </div>
+              <div className="text-xs text-teal-900/85 dark:text-teal-100/80 truncate mt-0.5 font-medium">
+                {editingMessage.is_deleted ? (
+                  "This message was deleted"
+                ) : (
+                  editingMessage.content?.replace(/\s+/g, " ").trim() || "Media"
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={cancelComposerEdit}
+              className="flex-shrink-0 rounded-full p-1 text-teal-800 hover:bg-amber-100 dark:text-teal-200 dark:hover:bg-orange-900/60 transition"
+              aria-label="Discard edit"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : replyingTo ? (
           <div className="mb-2 flex items-start gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-2 border-l-4 border-orange-500">
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -1187,7 +1512,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <X className="h-4 w-4" />
             </button>
           </div>
-        )}
+        ) : null}
 
         {voiceRecording && (
           <div className="mb-2 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
@@ -1200,11 +1525,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <div className="relative flex-shrink-0" ref={attachMenuRef}>
             <button
               type="button"
-              onClick={() => setAttachmentMenuOpen((o) => !o)}
-              className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 ${attachmentMenuOpen ? "ring-1 ring-orange-500 text-primary-600" : ""
+              onClick={() => !editingMessage && setAttachmentMenuOpen((o) => !o)}
+              disabled={!!editingMessage}
+              className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none ${attachmentMenuOpen ? "ring-1 ring-orange-500 text-primary-600" : ""
                 }`}
               aria-label="Attach"
               aria-expanded={attachmentMenuOpen}
+              title={
+                editingMessage
+                  ? "Finish editing before attaching files"
+                  : undefined
+              }
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -1217,20 +1548,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
           </div>
           <input
+            ref={composerInputRef}
             value={draft}
             onChange={(event) => {
               setDraft(event.target.value);
               handleTyping();
             }}
-            placeholder="Type a message"
+            placeholder={editingMessage ? "Edit message" : "Message"}
+            aria-label={
+              editingMessage ? "Editing message — press Escape to discard" : "Message input"
+            }
             className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-full text-gray-800 text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
           />
           {showSendButton ? (
             <button
               type="submit"
-              disabled={isSending}
+              disabled={isSending || composerSendDisabled}
               className="flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Send message"
+              aria-label={
+                editingMessage ? "Done editing — save changes" : "Send message"
+              }
             >
               {isSending ? (
                 <svg className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -1245,13 +1582,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <button
               type="button"
               onClick={toggleVoiceRecording}
-              disabled={isSending}
-              className={`flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed ${voiceRecording
+              disabled={isSending || !!editingMessage}
+              className={`flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed ${voiceRecording
                   ? "bg-red-600 hover:bg-red-700"
                   : "bg-primary-600 hover:bg-primary-700"
                 }`}
               aria-label={voiceRecording ? "Stop recording" : "Voice message"}
-              title={voiceRecording ? "Stop and send" : "Voice message"}
+              title={
+                editingMessage
+                  ? "Finish editing before sending a voice message"
+                  : voiceRecording
+                  ? "Stop and send"
+                  : "Voice message"
+              }
             >
               {voiceRecording ? (
                 <Square className="h-4 w-4 fill-current" />
@@ -1275,6 +1618,180 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onClose={() => setShowMediaGallery(false)}
         isGroupChat={isGroupThread}
       />
+
+      {forwardingMessage ? (
+        <div
+          className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/45 sm:items-center sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Forward message"
+          onClick={cancelForwardPicker}
+        >
+          <div
+            className="flex h-[min(88vh,640px)] w-full max-w-md flex-col rounded-t-2xl border border-gray-200 bg-[#f0f2f5] shadow-2xl dark:border-gray-700 dark:bg-[#0b141a] sm:h-[min(560px,85vh)] sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center gap-1 border-b border-gray-200/80 bg-[#f0f2f5] px-1 py-2 dark:border-gray-800 dark:bg-[#202c33]">
+              <button
+                type="button"
+                onClick={cancelForwardPicker}
+                className="rounded-full p-2 text-[#111b21] hover:bg-black/5 dark:text-[#e9edef] dark:hover:bg-white/10"
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-7 w-7" strokeWidth={2} />
+              </button>
+              <h2 className="text-lg font-medium text-[#111b21] dark:text-[#e9edef]">
+                Forward message to
+              </h2>
+            </div>
+
+            <div className="shrink-0 border-b border-gray-200/80 bg-[#f0f2f5] px-3 pb-3 pt-1 dark:border-gray-800 dark:bg-[#202c33]">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={forwardSearch}
+                  onChange={(e) => setForwardSearch(e.target.value)}
+                  placeholder="Search contacts…"
+                  className="w-full rounded-lg border-0 bg-white py-2.5 pl-10 pr-3 text-sm text-[#111b21] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:bg-[#2a3942] dark:text-[#e9edef] dark:placeholder:text-gray-500"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-[#0b141a]">
+              {filteredForwardThreads.length === 0 &&
+              filteredForwardContacts.length === 0 ? (
+                <div className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                  {forwardSearchLower
+                    ? "No contacts or chats match your search."
+                    : "No other chats yet. Add contacts below will start a new chat when you forward."}
+                </div>
+              ) : null}
+
+              {filteredForwardThreads.length > 0 ? (
+                <div className="pb-2">
+                  <p className="sticky top-0 z-[1] bg-emerald-700/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white dark:bg-emerald-800/95">
+                    Recent chats
+                  </p>
+                  <ul className="divide-y divide-gray-100 dark:divide-gray-800/80">
+                    {filteredForwardThreads.map((t) => {
+                      const otherParticipants = t.participants.filter(
+                        (p: ChatParticipant) => p.id !== currentUser?.id
+                      );
+                      const primary =
+                        otherParticipants[0] ?? t.participants[0];
+                      const isGroup =
+                        t.type === "group" ||
+                        Boolean(t.group_id) ||
+                        otherParticipants.length > 1;
+                      const label =
+                        isGroup && t.name
+                          ? t.name
+                          : primary?.name || t.name || "Chat";
+                      const avatarUrl =
+                        isGroup && t.banner_url
+                          ? t.banner_url
+                          : primary?.avatarUrl;
+                      const subtitle =
+                        t.last_message_preview?.trim() ||
+                        (isGroup
+                          ? `${otherParticipants.length} participants`
+                          : "Tap to forward");
+
+                      return (
+                        <li key={t.id}>
+                          <button
+                            type="button"
+                            onClick={() => void sendForwardedToThread(t.id)}
+                            disabled={isSending}
+                            className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-[#202c33]"
+                          >
+                            <div className="relative h-12 w-12 shrink-0">
+                              {avatarUrl ? (
+                                <img
+                                  src={avatarUrl}
+                                  alt=""
+                                  className="h-12 w-12 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-300 text-lg font-semibold text-gray-600 dark:bg-gray-600 dark:text-gray-200">
+                                  {label.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium text-[#111b21] dark:text-[#e9edef]">
+                                {label}
+                              </p>
+                              <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                                {subtitle}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+
+              {filteredForwardContacts.length > 0 ? (
+                <div className="pb-4">
+                  <p className="sticky top-0 z-[1] bg-emerald-700/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white dark:bg-emerald-800/95">
+                    Contacts
+                  </p>
+                  <ul className="divide-y divide-gray-100 dark:divide-gray-800/80">
+                    {filteredForwardContacts.map((m) => {
+                      const presence = formatContactPresenceLine(
+                        m.status ?? null,
+                        m.last_seen ?? null
+                      );
+                      return (
+                        <li key={m.id}>
+                          <button
+                            type="button"
+                            onClick={() => void forwardToMember(m)}
+                            disabled={isSending}
+                            className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-[#202c33]"
+                          >
+                            <div className="relative h-12 w-12 shrink-0">
+                              {m.avatar_url ? (
+                                <img
+                                  src={m.avatar_url}
+                                  alt=""
+                                  className="h-12 w-12 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-300 text-lg font-semibold text-gray-600 dark:bg-gray-600 dark:text-gray-200">
+                                  {m.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium text-[#111b21] dark:text-[#e9edef]">
+                                {m.name}
+                              </p>
+                              <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                                {m.username
+                                  ? `@${m.username}`
+                                  : presence || "New chat"}
+                              </p>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

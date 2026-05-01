@@ -47,12 +47,28 @@ export interface ChatMessage {
   metadata?: Record<string, unknown>
   read_by: string[]
   is_deleted?: boolean
+  is_edited?: boolean
+  is_forward?: boolean
   deleted_for?: string[] // Array of user IDs who deleted this message for themselves
   deleted_at?: string
   attachments?: ChatAttachment[]
   sender?: ChatParticipant
   reply_to_id?: string
   reactions?: MessageReactionSummary[]
+}
+
+export function getChatMessageAuthorId(message: Pick<ChatMessage, 'sender_id' | 'sender'>): string {
+  const fromRow = typeof message.sender_id === 'string' ? message.sender_id.trim() : ''
+  if (fromRow) return fromRow
+  const fromSender = message.sender?.id != null ? String(message.sender.id).trim() : ''
+  return fromSender
+}
+
+export function chatUserIdsEqual(a: string | undefined | null, b: string | undefined | null): boolean {
+  const x = typeof a === 'string' ? a.trim() : ''
+  const y = typeof b === 'string' ? b.trim() : ''
+  if (!x || !y) return false
+  return x.toLowerCase() === y.toLowerCase()
 }
 
 export interface ChatThread {
@@ -93,6 +109,7 @@ export interface SendMessageOptions {
   metadata?: Record<string, unknown>
   message_type?: string
   reply_to_id?: string
+  is_forward?: boolean
 }
 
 export interface RecentCallEntry {
@@ -223,6 +240,8 @@ const localMessages = new Map<string, ChatMessage[]>()
 const localThreadKeys = new Map<string, string>()
 const canDeletePermissionCache = new Map<string, boolean>()
 const canDeletePermissionInFlight = new Map<string, Promise<boolean>>()
+/** One concurrent clear POST per thread (avoids duplicate API work if the handler fires twice). */
+const clearThreadMessagesForMeInFlight = new Map<string, Promise<void>>()
 
 const activateFallback = (reason: unknown) => {
   if (!fallbackEnabled) {
@@ -341,6 +360,8 @@ const createLocalMessage = (
     metadata: payload.metadata,
     read_by: [currentUser.id],
     is_deleted: false,
+    is_edited: false,
+    is_forward: Boolean(payload.is_forward),
     attachments: payload.attachments,
     sender: currentUser,
   }
@@ -681,6 +702,21 @@ const loadThreadsViaRpc = async (
   }
 }
 
+/** DB / Realtime may return jsonb uuid lists as arrays of strings — normalize for comparisons. */
+const coerceDeletedFor = (raw: unknown): string[] => {
+  if (raw == null) return []
+  if (Array.isArray(raw)) return raw.map((x) => String(x))
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw) as unknown
+      return Array.isArray(parsed) ? parsed.map((x) => String(x)) : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
 // Map API message response (already has read_by, attachments) to ChatMessage
 const mapApiMessageToChatMessage = (message: any): ChatMessage => {
   const sender = message.sender ?? message.sender_id
@@ -698,10 +734,15 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
       }))
     : []
 
+  const resolvedSenderId =
+    (message.sender_id != null && String(message.sender_id)) ||
+    (senderProfile?.id != null ? String(senderProfile.id) : '') ||
+    (typeof sender === 'string' ? sender : '')
+
   return {
     id: message.id,
     thread_id: message.thread_id,
-    sender_id: message.sender_id,
+    sender_id: resolvedSenderId,
     content: message.content ?? '',
     created_at: message.created_at,
     updated_at: message.updated_at,
@@ -709,7 +750,9 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
     metadata: message.metadata,
     read_by: Array.isArray(message.read_by) ? message.read_by : [],
     is_deleted: message.is_deleted,
-    deleted_for: message.deleted_for ?? [],
+    is_edited: Boolean(message.is_edited),
+    is_forward: Boolean(message.is_forward),
+    deleted_for: coerceDeletedFor(message.deleted_for),
     deleted_at: message.deleted_at,
     attachments,
     sender: senderProfile ? {
@@ -717,7 +760,7 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
       name: senderProfile.full_name || senderProfile.username || 'Loading...',
       avatarUrl: senderProfile.avatar_url ?? undefined,
     } : {
-      id: message.sender_id,
+      id: resolvedSenderId,
       name: 'Loading...',
       avatarUrl: undefined,
     },
@@ -740,10 +783,16 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
     .select('*')
     .eq('message_id', message.id)
 
+  const resolvedSenderId =
+    (message.sender_id != null && String(message.sender_id)) ||
+    (message.sender?.id != null && String(message.sender.id)) ||
+    (message.profiles?.id != null && String(message.profiles.id)) ||
+    ''
+
   return {
     id: message.id,
     thread_id: message.thread_id,
-    sender_id: message.sender_id,
+    sender_id: resolvedSenderId,
     content: message.content,
     created_at: message.created_at,
     updated_at: message.updated_at,
@@ -751,6 +800,8 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
     metadata: message.metadata,
     read_by: reads?.map(r => r.user_id) || [],
     is_deleted: message.is_deleted,
+    is_edited: Boolean(message.is_edited),
+    is_forward: Boolean(message.is_forward),
     deleted_for: message.deleted_for || [],
     deleted_at: message.deleted_at,
     attachments: attachments?.map(att => ({
@@ -771,7 +822,7 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
       name: message.profiles.full_name || message.profiles.username || 'Loading...',
       avatarUrl: message.profiles.avatar_url
     } : {
-      id: message.sender_id,
+      id: resolvedSenderId,
       name: 'Loading...',
       avatarUrl: null
     }),
@@ -989,6 +1040,7 @@ export const supabaseMessagingService = {
           metadata: payload.metadata,
           attachments: payload.attachments,
           reply_to_id: payload.reply_to_id,
+          ...(payload.is_forward === true ? { is_forward: true } : {}),
         }
       )
       const rawMessage = (res as any)?.data
@@ -1187,6 +1239,45 @@ export const supabaseMessagingService = {
     }
   },
 
+  async updateMessage(threadId: string, messageId: string, content: string): Promise<ChatMessage> {
+    const trimmed = typeof content === 'string' ? content.trim() : ''
+    if (!trimmed) throw new Error('Message content cannot be empty')
+
+    if (fallbackEnabled) {
+      const list = localMessages.get(threadId)
+      const idx = list?.findIndex((m) => m.id === messageId) ?? -1
+      if (!list || idx < 0) throw new Error('Message not found')
+      const prev = list[idx]
+      const now = new Date().toISOString()
+      const updated: ChatMessage = {
+        ...prev,
+        content: trimmed,
+        updated_at: now,
+        is_edited: true,
+      }
+      const next = [...list]
+      next[idx] = updated
+      localMessages.set(threadId, next)
+      notifyMessageSubscribers(updated, { skipPush: true })
+      return updated
+    }
+
+    try {
+      const res = await apiClient.patch<{ data: Record<string, unknown> }>(
+        `/api/chat/threads/${threadId}/messages/${messageId}`,
+        { content: trimmed }
+      )
+      const rawMessage = res.data
+      if (!rawMessage || typeof rawMessage !== 'object') throw new Error('No message returned')
+      const formattedMessage = mapApiMessageToChatMessage(rawMessage)
+
+      return formattedMessage
+    } catch (error) {
+      console.error('Error updating message:', error)
+      throw error
+    }
+  },
+
   async clearThreadMessagesForMe(threadId: string, _userId: string): Promise<void> {
     if (fallbackEnabled) {
       const threadMessages = localMessages.get(threadId) || []
@@ -1194,14 +1285,27 @@ export const supabaseMessagingService = {
       return
     }
 
-    try {
-      await apiClient.post(`/api/chat/threads/${threadId}/messages/clear`)
-    } catch (error) {
-      console.error('Error clearing thread messages for me:', error)
-      activateFallback(error)
-      const threadMessages = localMessages.get(threadId) || []
-      threadMessages.forEach((message) => deleteLocalMessage(message.id))
+    const existing = clearThreadMessagesForMeInFlight.get(threadId)
+    if (existing) {
+      await existing
+      return
     }
+
+    const pending = (async () => {
+      try {
+        await apiClient.post(`/api/chat/threads/${threadId}/messages/clear`)
+      } catch (error) {
+        console.error('Error clearing thread messages for me:', error)
+        activateFallback(error)
+        const threadMessages = localMessages.get(threadId) || []
+        threadMessages.forEach((message) => deleteLocalMessage(message.id))
+      } finally {
+        clearThreadMessagesForMeInFlight.delete(threadId)
+      }
+    })()
+
+    clearThreadMessagesForMeInFlight.set(threadId, pending)
+    await pending
   },
 
   async canDeleteForEveryone(
@@ -1306,6 +1410,38 @@ export const supabaseMessagingService = {
 
     if (!fallbackEnabled && !threadMessageChannels.has(threadId)) {
       const channelName = `chat_messages:${threadId}:${Date.now().toString(36)}`
+      /**
+       * INSERT: fetch joined row + receipts/attachments once (Realtime payload lacks joins).
+       * UPDATE: bulk row updates (e.g. clear chat for me) emit one event per row — hydrating each causes an N-way `chat_messages` storm; map the payload and merge client-side instead.
+       */
+      const hydrateThreadMessageInsert = async (row: Record<string, unknown>): Promise<void> => {
+        if (deniedRealtimeThreadIds.has(threadId)) return
+        try {
+          const { data: fullMessage } = await supabase
+            .from('chat_messages')
+            .select(`
+              *,
+              sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
+            `)
+            .eq('id', row.id as string)
+            .single()
+
+          const formattedMessage = fullMessage
+            ? await formatMessage(fullMessage)
+            : mapApiMessageToChatMessage(row)
+
+          notifyMessageSubscribers(formattedMessage, { skipPush: true })
+        } catch (error) {
+          console.warn('Realtime thread message hydration failed, using lightweight payload:', error)
+          notifyMessageSubscribers(mapApiMessageToChatMessage(row), { skipPush: true })
+        }
+      }
+
+      const relayThreadMessageUpdate = async (row: Record<string, unknown>): Promise<void> => {
+        if (deniedRealtimeThreadIds.has(threadId)) return
+        notifyMessageSubscribers(mapApiMessageToChatMessage(row), { skipPush: true })
+      }
+
       const channel = supabase
         .channel(channelName)
         .on(
@@ -1316,29 +1452,17 @@ export const supabaseMessagingService = {
             table: 'chat_messages',
             filter: `thread_id=eq.${threadId}`,
           },
-          async (payload) => {
-            if (deniedRealtimeThreadIds.has(threadId)) return
-            const message = payload.new as any
-            try {
-              const { data: fullMessage } = await supabase
-                .from('chat_messages')
-                .select(`
-                  *,
-                  sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
-                `)
-                .eq('id', message.id)
-                .single()
-
-              const formattedMessage = fullMessage
-                ? await formatMessage(fullMessage)
-                : mapApiMessageToChatMessage(message)
-
-              notifyMessageSubscribers(formattedMessage, { skipPush: true })
-            } catch (error) {
-              console.warn('Realtime thread message hydration failed, using lightweight payload:', error)
-              notifyMessageSubscribers(mapApiMessageToChatMessage(message), { skipPush: true })
-            }
-          }
+          async (payload) => hydrateThreadMessageInsert(payload.new as Record<string, unknown>)
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'chat_messages',
+            filter: `thread_id=eq.${threadId}`,
+          },
+          async (payload) => relayThreadMessageUpdate(payload.new as Record<string, unknown>)
         )
         .subscribe()
 

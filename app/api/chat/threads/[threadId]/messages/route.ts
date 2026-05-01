@@ -217,6 +217,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const metadata = body.metadata as Record<string, unknown> | undefined
     const attachments = body.attachments as { name: string; size: number; mimeType: string; url: string }[] | undefined
     const reply_to_id = body.reply_to_id as string | undefined
+    const is_forward = body.is_forward as boolean | undefined
 
     const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
     if (!allowed) {
@@ -334,6 +335,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         message_type: normalizedMessageType,
         metadata: metadata || null,
         reply_to_id: reply_to_id || null,
+        ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
       })
       .select(MESSAGE_SELECT)
       .single()

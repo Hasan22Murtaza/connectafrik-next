@@ -29,6 +29,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const { error } = await serviceClient.rpc('delete_message_for_user', {
       p_message_id: messageId,
       p_user_id: user.id,
+      p_thread_id: threadId,
     })
     if (error) return errorResponse(error.message, 400)
 

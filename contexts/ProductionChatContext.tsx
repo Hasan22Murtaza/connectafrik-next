@@ -10,6 +10,24 @@ import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
 import { openCallWindow } from '@/shared/utils/callWindow'
 
+/** Realtime UPDATEs use a lightweight mapper (no attachments/sender joins); preserve rich fields from cache. */
+function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): ChatMessage {
+  const incomingEmptyReads = !(incoming.read_by && incoming.read_by.length)
+  const incomingEmptyAttachments = !(incoming.attachments && incoming.attachments.length)
+  const incomingEmptyReactions = !(incoming.reactions && incoming.reactions.length)
+  const senderLooksStub =
+    incoming.sender?.name === 'Loading...' &&
+    incoming.sender?.id === incoming.sender_id
+
+  return {
+    ...incoming,
+    read_by: incomingEmptyReads ? prev.read_by : (incoming.read_by ?? []),
+    attachments: incomingEmptyAttachments ? prev.attachments : incoming.attachments,
+    reactions: incomingEmptyReactions ? prev.reactions : incoming.reactions,
+    sender: senderLooksStub ? prev.sender : incoming.sender,
+  }
+}
+
 interface ChatParticipant {
   id: string
   name: string
@@ -234,6 +252,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         reply_to_id: payload?.reply_to_id,
         message_type: payload?.message_type,
         metadata: payload?.metadata,
+        is_forward: payload?.is_forward === true,
       }, currentUser)
 
       setMessages(prev => {
@@ -311,16 +330,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     setMessages(prev => ({ ...prev, [threadId]: nextMessages }))
   }, [])
 
-  const clearMessagesForUser = useCallback((threadId: string, userId: string) => {
-    setMessages(prev => {
-      const current = prev[threadId] || []
-      const next = current.map(m => {
-        const deletedSet = new Set(Array.isArray(m.deleted_for) ? m.deleted_for : [])
-        deletedSet.add(userId)
-        return { ...m, deleted_for: Array.from(deletedSet) }
-      })
-      return { ...prev, [threadId]: next }
-    })
+  const clearMessagesForUser = useCallback((threadId: string, _userId: string) => {
+    setMessages(prev => ({ ...prev, [threadId]: [] }))
   }, [])
 
   const markMessageDeletedForUser = useCallback((threadId: string, messageId: string, userId: string) => {
@@ -763,7 +774,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
         setMessages(prev => {
           const current = prev[threadId] || []
-          if (current.some(m => m.id === message.id)) {
+          const idx = current.findIndex(m => m.id === message.id)
+          if (idx >= 0) {
+            const next = [...current]
+            next[idx] = mergeChatMessageRealtime(current[idx], message)
+            return { ...prev, [threadId]: next }
+          }
+          if (currentUser.id && message.deleted_for?.includes(currentUser.id)) {
             return prev
           }
           return { ...prev, [threadId]: [...current, message] }

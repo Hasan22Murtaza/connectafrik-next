@@ -22,6 +22,8 @@ export interface ChatMessage {
   metadata?: Record<string, unknown>
   read_by: string[]
   is_deleted?: boolean
+  is_edited?: boolean
+  is_forward?: boolean
   attachments?: ChatAttachment[]
   sender?: ChatParticipant
 }
