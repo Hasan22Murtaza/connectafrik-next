@@ -576,6 +576,24 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
   }
 }
 
+/** Intermediate shape from `get_user_threads` RPC before `formatThread`. */
+type RpcThreadBootstrap = {
+  id: string
+  name: string
+  title: string
+  type: unknown
+  archived: boolean
+  last_message_preview: unknown
+  last_message_at: string
+  last_activity_at: string
+  created_at: string
+  updated_at: string
+  unread_count: number
+  pinned: boolean
+  pinned_at: string | null
+  participants: unknown[]
+}
+
 const loadThreadsViaRpc = async (
   currentUserId: string,
   sortThreads: (threads: ChatThread[]) => ChatThread[]
@@ -589,7 +607,7 @@ const loadThreadsViaRpc = async (
       return sortThreads(getLocalThreadsForUser(currentUserId))
     }
 
-    const rpcThreads = (data ?? []).map((thread: any) => {
+    const rpcThreads: RpcThreadBootstrap[] = (data ?? []).map((thread: any): RpcThreadBootstrap => {
       const lastTimestamp = thread.last_message_at ?? new Date().toISOString()
 
       return {
