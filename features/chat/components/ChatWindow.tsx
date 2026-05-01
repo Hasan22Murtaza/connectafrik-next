@@ -23,6 +23,8 @@ import {
   MoreVertical,
   Mic,
   Phone,
+  Pin,
+  PinOff,
   Plus,
   Search,
   Send,
@@ -82,6 +84,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     markMessageDeletedForUser,
     setMessagesForThread,
     setThreadArchived,
+    setThreadPinned,
   } = useProductionChat();
 
   const { members } = useMembers();
@@ -731,6 +734,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const handlePinToggle = async () => {
+    if (!thread) return;
+    const nextPinned = !thread.pinned;
+    try {
+      await setThreadPinned(threadId, nextPinned);
+      toast.success(nextPinned ? "Chat pinned" : "Chat unpinned");
+      setShowOptionsMenu(false);
+    } catch {
+      toast.error("Could not update pin");
+    }
+  };
+
   const handleClearAllMessages = async () => {
     if (!currentUser) return;
 
@@ -997,6 +1012,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   >
                     <Images className="h-4 w-4 shrink-0" />
                     <span>{isGroupThread ? "Group media" : "Media"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => void handlePinToggle()}
+                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
+                  >
+                    {thread.pinned ? (
+                      <>
+                        <PinOff className="h-4 w-4 shrink-0" />
+                        <span>Unpin chat</span>
+                      </>
+                    ) : (
+                      <>
+                        <Pin className="h-4 w-4 shrink-0" />
+                        <span>Pin chat</span>
+                      </>
+                    )}
                   </button>
                   <button
                     type="button"

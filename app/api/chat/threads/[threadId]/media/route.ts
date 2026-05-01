@@ -85,6 +85,17 @@ const ATTACHMENT_SELECT = `
   )
 `
 
+/** Supabase may return `chat_messages` as an object or a one-element array depending on client/version. */
+function embeddedChatMessage(row: Record<string, unknown>): Record<string, unknown> | null {
+  const raw = row.chat_messages ?? row.message
+  if (raw == null) return null
+  if (Array.isArray(raw)) {
+    const first = raw[0]
+    return first && typeof first === 'object' ? (first as Record<string, unknown>) : null
+  }
+  return typeof raw === 'object' ? (raw as Record<string, unknown>) : null
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { threadId } = await context.params
@@ -208,7 +219,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const items: Record<string, unknown>[] = []
     for (const row of rows || []) {
-      const msg = row.chat_messages as Record<string, unknown> | null
+      const msg = embeddedChatMessage(row as Record<string, unknown>)
       if (!msg) continue
       if (isDeletedForUser(msg.deleted_for, user.id)) continue
 

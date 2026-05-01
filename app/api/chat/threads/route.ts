@@ -13,7 +13,6 @@ const THREAD_SELECT = `
   last_message_preview,
   last_message_at,
   last_activity_at,
-  archived,
   created_at,
   updated_at,
   chat_participants(
@@ -30,7 +29,7 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
       type: row.thread_type,
       title: row.thread_name,
       name: row.thread_name,
-      archived: typeof row.archived === 'boolean' ? row.archived : false,
+      archived: false,
       last_message_preview: row.last_message_content,
       last_message_at: lastTimestamp,
       last_activity_at: lastTimestamp,
@@ -54,21 +53,39 @@ const mapRpcRowsToThreadShape = (rows: any[]) => {
   })
 }
 
-async function getUnreadByThreadIdForUser(
+async function getParticipantPrefsForThreads(
   serviceClient: ReturnType<typeof createServiceClient>,
   userId: string,
   threadIds: string[]
-): Promise<Map<string, number>> {
+): Promise<
+  Map<
+    string,
+    {
+      unread_count: number
+      pinned: boolean
+      pinned_at: string | null
+      archived: boolean
+    }
+  >
+> {
   if (threadIds.length === 0) return new Map()
   const { data } = await serviceClient
     .from('chat_participants')
-    .select('thread_id, unread_count')
+    .select('thread_id, unread_count, pinned, pinned_at, archived')
     .eq('user_id', userId)
     .in('thread_id', threadIds)
-  const m = new Map<string, number>()
+  const m = new Map<
+    string,
+    { unread_count: number; pinned: boolean; pinned_at: string | null; archived: boolean }
+  >()
   for (const row of data ?? []) {
     const tid = row.thread_id as string
-    m.set(tid, typeof row.unread_count === 'number' ? row.unread_count : 0)
+    m.set(tid, {
+      unread_count: typeof row.unread_count === 'number' ? row.unread_count : 0,
+      pinned: Boolean(row.pinned),
+      pinned_at: typeof row.pinned_at === 'string' ? row.pinned_at : null,
+      archived: Boolean(row.archived),
+    })
   }
   return m
 }
@@ -129,7 +146,7 @@ export async function GET(request: NextRequest) {
 
     const { data: participantRows, error: partError } = await serviceClient
       .from('chat_participants')
-      .select('thread_id, unread_count')
+      .select('thread_id, unread_count, pinned, pinned_at, archived')
       .eq('user_id', user.id)
 
     if (partError) {
@@ -142,14 +159,18 @@ export async function GET(request: NextRequest) {
         const rows = Array.isArray(rpcData) ? rpcData : []
         const normalized = mapRpcRowsToThreadShape(rows)
         const deduped = deduplicateThreadsByParticipants(normalized)
-        const rpcUnread = await getUnreadByThreadIdForUser(
+        const rpcPrefs = await getParticipantPrefsForThreads(
           serviceClient,
           user.id,
           deduped.map((t: { id?: string }) => t.id).filter((id): id is string => typeof id === 'string')
         )
         for (const t of deduped) {
           const id = typeof t?.id === 'string' ? t.id : ''
-          t.unread_count = id ? rpcUnread.get(id) ?? 0 : 0
+          const pref = id ? rpcPrefs.get(id) : undefined
+          t.unread_count = pref?.unread_count ?? 0
+          t.pinned = pref?.pinned ?? false
+          t.pinned_at = pref?.pinned_at ?? null
+          t.archived = pref?.archived ?? false
         }
         return jsonResponse({
           data: deduped.slice(from, to + 1),
@@ -170,11 +191,24 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const myUnreadByThreadId = new Map<string, number>(
-      participantRows.map((p: { thread_id: string; unread_count?: number | null }) => [
-        p.thread_id,
-        typeof p.unread_count === 'number' ? p.unread_count : 0,
-      ])
+    const myPrefsByThreadId = new Map(
+      participantRows.map(
+        (p: {
+          thread_id: string
+          unread_count?: number | null
+          pinned?: boolean | null
+          pinned_at?: string | null
+          archived?: boolean | null
+        }) => [
+          p.thread_id,
+          {
+            unread_count: typeof p.unread_count === 'number' ? p.unread_count : 0,
+            pinned: Boolean(p.pinned),
+            pinned_at: typeof p.pinned_at === 'string' ? p.pinned_at : null,
+            archived: Boolean(p.archived),
+          },
+        ]
+      )
     )
 
     const rawThreadIds = [...new Set(participantRows.map((p: { thread_id: string }) => p.thread_id))]
@@ -232,10 +266,14 @@ export async function GET(request: NextRequest) {
 
     const result = threads.map((t: any) => {
       const { group_banner, ...rest } = t
+      const pref = myPrefsByThreadId.get(t.id)
       return {
         ...rest,
         banner_url: group_banner?.banner_url ?? null,
-        unread_count: myUnreadByThreadId.get(t.id) ?? 0,
+        unread_count: pref?.unread_count ?? 0,
+        pinned: pref?.pinned ?? false,
+        pinned_at: pref?.pinned_at ?? null,
+        archived: pref?.archived ?? false,
       }
     })
 

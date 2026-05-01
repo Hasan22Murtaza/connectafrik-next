@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { ChevronDown, MessageCircle, Phone, Video, Loader2 } from 'lucide-react'
+import { ChevronDown, MessageCircle, Phone, Pin, Video, Loader2 } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { PresenceStatus, ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'
@@ -63,7 +63,12 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
         </div>
 
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 line-clamp-1">{threadDisplayName}</p>
+          <p className="text-sm font-semibold text-gray-900 line-clamp-1 flex items-center gap-1">
+            {thread.pinned ? (
+              <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden />
+            ) : null}
+            <span className="truncate">{threadDisplayName}</span>
+          </p>
 
           <p className="text-xs text-gray-500 line-clamp-1">
             {subdued ? (
@@ -232,6 +237,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
 
   const sortedThreads = useMemo(() => {
     return [...mergedThreads].sort((a, b) => {
+      const pinA = a.pinned ? 1 : 0
+      const pinB = b.pinned ? 1 : 0
+      if (pinA !== pinB) return pinB - pinA
+      if (pinA && pinB) {
+        const tsA = a.pinned_at ? new Date(a.pinned_at).getTime() : 0
+        const tsB = b.pinned_at ? new Date(b.pinned_at).getTime() : 0
+        if (tsA !== tsB) return tsB - tsA
+      }
       const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
       const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
       return dateB - dateA

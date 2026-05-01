@@ -22,20 +22,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const body = await request.json()
-    const archived = body.archived
+    const pinned = body.pinned
 
-    if (typeof archived !== 'boolean') {
-      return errorResponse('archived is required and must be a boolean', 400)
+    if (typeof pinned !== 'boolean') {
+      return errorResponse('pinned is required and must be a boolean', 400)
     }
+
+    const pinnedAt = pinned ? new Date().toISOString() : null
 
     const { error: updateError } = await serviceClient
       .from('chat_participants')
-      .update({ archived })
+      .update({ pinned, pinned_at: pinnedAt })
       .eq('thread_id', threadId)
       .eq('user_id', user.id)
 
     if (updateError) {
-      return errorResponse(updateError.message || 'Failed to update archive state', 400)
+      return errorResponse(updateError.message || 'Failed to update pin state', 400)
     }
 
     const { data: thread, error } = await serviceClient
@@ -50,10 +52,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const prefs = await getMyThreadParticipantPrefs(serviceClient, user.id, threadId)
     return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, prefs))
-  } catch (error: any) {
-    if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
+  } catch (error: unknown) {
+    const err = error as { message?: string }
+    if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }
-    return errorResponse(error.message || 'Failed to archive thread', 500)
+    return errorResponse(err.message || 'Failed to pin thread', 500)
   }
 }

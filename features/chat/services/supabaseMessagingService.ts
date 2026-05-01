@@ -63,8 +63,11 @@ export interface ChatThread {
   last_message_preview: string | null
   last_message_at: string
   unread_count: number
-  /** From `chat_threads.archived` — thread hidden from default lists when true */
+  /** From current user's `chat_participants.archived` */
   archived?: boolean
+  /** From current user's `chat_participants.pinned` */
+  pinned?: boolean
+  pinned_at?: string | null
   created_at: string
   updated_at: string
   /** Set when this thread is the canonical chat for a group */
@@ -301,6 +304,8 @@ const createLocalThread = (currentUser: ChatParticipant, options: CreateThreadOp
     last_message_at: timestamp,
     unread_count: 0,
     archived: false,
+    pinned: false,
+    pinned_at: null,
     created_at: timestamp,
     updated_at: timestamp,
   }
@@ -562,6 +567,8 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     last_message_at: lastMessageAt,
     unread_count: unreadCount || 0,
     archived: typeof thread.archived === 'boolean' ? thread.archived : false,
+    pinned: typeof thread.pinned === 'boolean' ? thread.pinned : false,
+    pinned_at: typeof thread.pinned_at === 'string' ? thread.pinned_at : null,
     created_at: thread.created_at,
     updated_at: thread.updated_at || lastMessageAt,
     group_id: thread.group_id ?? null,
@@ -590,13 +597,15 @@ const loadThreadsViaRpc = async (
         name: thread.thread_name,
         title: thread.thread_name,
         type: thread.thread_type,
-        archived: typeof thread.archived === 'boolean' ? thread.archived : false,
+        archived: false,
         last_message_preview: thread.last_message_content,
         last_message_at: lastTimestamp,
         last_activity_at: lastTimestamp,
         created_at: lastTimestamp,
         updated_at: lastTimestamp,
         unread_count: typeof thread.unread_count === 'number' ? thread.unread_count : 0,
+        pinned: typeof thread.pinned === 'boolean' ? thread.pinned : false,
+        pinned_at: typeof thread.pinned_at === 'string' ? thread.pinned_at : null,
         participants: Array.isArray(thread.participants)
           ? thread.participants.map((participant: any) => ({
               user_id: participant.id,
@@ -610,6 +619,37 @@ const loadThreadsViaRpc = async (
           : [],
       }
     })
+
+    const threadIds = rpcThreads.map((t) => t.id).filter((id): id is string => typeof id === 'string' && id.length > 0)
+    if (threadIds.length > 0) {
+      const { data: prefRows } = await supabase
+        .from('chat_participants')
+        .select('thread_id, unread_count, pinned, pinned_at, archived')
+        .eq('user_id', currentUserId)
+        .in('thread_id', threadIds)
+
+      const prefMap = new Map(
+        (prefRows ?? []).map((r: any) => [
+          r.thread_id as string,
+          {
+            unread_count: typeof r.unread_count === 'number' ? r.unread_count : 0,
+            pinned: Boolean(r.pinned),
+            pinned_at: typeof r.pinned_at === 'string' ? r.pinned_at : null,
+            archived: Boolean(r.archived),
+          },
+        ])
+      )
+
+      for (const t of rpcThreads) {
+        const p = prefMap.get(t.id)
+        if (p) {
+          t.unread_count = p.unread_count
+          t.pinned = p.pinned
+          t.pinned_at = p.pinned_at
+          t.archived = p.archived
+        }
+      }
+    }
 
     const formattedThreads = await Promise.all(
       rpcThreads.map((threadRecord: any) => formatThread(threadRecord, currentUserId))
@@ -779,7 +819,7 @@ export const supabaseMessagingService = {
     }
   },
 
-  /** Sets `chat_threads.archived` via POST /api/chat/threads/:id/archive */
+  /** Sets this user's `chat_participants.archived` via POST /api/chat/threads/:id/archive */
   async setThreadArchived(
     threadId: string,
     currentUserId: string,
@@ -796,6 +836,27 @@ export const supabaseMessagingService = {
       return formatThread(raw, currentUserId)
     } catch (error) {
       console.error('setThreadArchived:', error)
+      throw error
+    }
+  },
+
+  /** Sets current user's `chat_participants.pinned` via POST /api/chat/threads/:id/pin */
+  async setThreadPinned(
+    threadId: string,
+    currentUserId: string,
+    pinned: boolean
+  ): Promise<ChatThread | null> {
+    if (!threadId?.trim() || !currentUserId) return null
+    try {
+      const res = await apiClient.post<{ data: any; meta?: unknown }>(
+        `/api/chat/threads/${threadId}/pin`,
+        { pinned }
+      )
+      const raw = (res as any)?.data
+      if (!raw?.id) return null
+      return formatThread(raw, currentUserId)
+    } catch (error) {
+      console.error('setThreadPinned:', error)
       throw error
     }
   },

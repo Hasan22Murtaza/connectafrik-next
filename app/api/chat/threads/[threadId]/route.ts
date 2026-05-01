@@ -10,7 +10,7 @@ import {
 
   CHAT_THREAD_DETAIL_SELECT,
 
-  getMyThreadUnreadCount,
+  getMyThreadParticipantPrefs,
 
   threadToResponseBody,
 
@@ -64,9 +64,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 
 
-    const unread_count = await getMyThreadUnreadCount(serviceClient, user.id, threadId)
+    const prefs = await getMyThreadParticipantPrefs(serviceClient, user.id, threadId)
 
-    return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, unread_count))
+    return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, prefs))
 
   } catch (error: any) {
 
@@ -178,9 +178,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
 
 
-    const unread_count = await getMyThreadUnreadCount(serviceClient, user.id, threadId)
+    const prefs = await getMyThreadParticipantPrefs(serviceClient, user.id, threadId)
 
-    return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, unread_count))
+    return jsonResponse(threadToResponseBody(thread as Record<string, unknown>, prefs))
 
   } catch (error: any) {
 

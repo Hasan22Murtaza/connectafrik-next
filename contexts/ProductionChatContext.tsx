@@ -60,6 +60,7 @@ interface ProductionChatContextType {
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
   setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
+  setThreadPinned: (threadId: string, pinned: boolean) => Promise<void>
   clearMessagesForUser: (threadId: string, userId: string) => void
   markMessageDeletedForUser: (threadId: string, messageId: string, userId: string) => void
   setMessagesForThread: (threadId: string, messages: ChatMessage[]) => void
@@ -620,6 +621,21 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     })
   }, [currentUser])
 
+  const setThreadPinned = useCallback(async (threadId: string, pinned: boolean) => {
+    if (!currentUser) return
+    const updated = await supabaseMessagingService.setThreadPinned(threadId, currentUser.id, pinned)
+    if (!updated) return
+    setThreads((prev) => {
+      const idx = prev.findIndex((t) => t.id === threadId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = updated
+        return next
+      }
+      return [...prev, updated]
+    })
+  }, [currentUser])
+
   const tryDispatchIncomingFromCallSession = useCallback(
     (row: Record<string, any>) => {
       if (!currentUser) return
@@ -961,6 +977,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     markThreadRead,
     threads,
     setThreadArchived,
+    setThreadPinned,
     clearMessagesForUser,
     markMessageDeletedForUser,
     setMessagesForThread
