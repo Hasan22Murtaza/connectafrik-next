@@ -7,8 +7,8 @@ console.log('Path keys count:', Object.keys(j.paths).length);
 console.log('Path keys:', Object.keys(j.paths));
 
 // Check the value of the single path
-const p = j.paths['/chat/calls/recent'];
-console.log('\nKeys in /chat/calls/recent:', Object.keys(p));
+const p = j.paths['/chat/calls'];
+console.log('\nKeys in /chat/calls:', Object.keys(p));
 
 // Check if there's nesting
 const getVal = p.get;

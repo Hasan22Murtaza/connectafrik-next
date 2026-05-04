@@ -118,7 +118,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const callStartInFlightRef = useRef<Set<string>>(new Set())
   /** Dedupes poll + Realtime so we do not open two modals for the same call_id. */
   const dispatchedIncomingCallIdsRef = useRef<Set<string>>(new Set())
-  /** Main window: pause /calls/incoming poll while a call is active (accept is signaled via postMessage). */
+  /** Main window: pause any call poll while a call is active (accept is signaled via postMessage). */
   const pauseIncomingCallsPollRef = useRef(false)
 
   const currentUser = useMemo(() => {
@@ -945,7 +945,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   //     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
   //     if (pauseIncomingCallsPollRef.current) return
   //     try {
-  //       const res = await apiClient.get<{ sessions: Record<string, any>[] }>('/api/chat/calls/incoming')
+  //       const res = await apiClient.get<{ sessions: Record<string, any>[] }>('…') // legacy incoming poll removed
   //       if (cancelled) return
   //       const sessions = res?.sessions ?? []
   //       for (const row of sessions) {

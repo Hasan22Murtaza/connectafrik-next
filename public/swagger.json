@@ -663,10 +663,11 @@
         }
       }
     },
-    "/chat/calls/recent": {
+    "/chat/calls": {
       "get": {
         "tags": ["Chat"],
-        "summary": "Get recent calls",
+        "summary": "Get call history",
+        "description": "Chronological call log (one row per call session), paginated.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [
           { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10, "minimum": 1, "maximum": 50 } },
@@ -674,7 +675,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of recent calls",
+            "description": "Paginated call history",
             "content": {
               "application/json": {
                 "schema": {
@@ -685,14 +686,17 @@
                       "items": {
                         "type": "object",
                         "properties": {
+                          "session_id": { "type": "string" },
                           "thread_id": { "type": "string", "format": "uuid" },
                           "created_at": { "type": "string", "format": "date-time" },
                           "message_type": { "type": "string" },
+                          "call_direction": { "type": "string", "enum": ["outgoing", "incoming", "missed"] },
+                          "call_type": { "type": "string", "enum": ["audio", "video"] },
                           "thread_name": { "type": "string", "nullable": true },
                           "contact_id": { "type": "string", "format": "uuid", "nullable": true },
                           "contact_name": { "type": "string", "nullable": true },
                           "contact_avatar_url": { "type": "string", "nullable": true },
-                          "status": { "type": "string", "enum": ["online", "away", "busy", "offline"] }
+                          "contact_status": { "type": "string", "enum": ["online", "away", "busy", "offline"] }
                         }
                       }
                     },

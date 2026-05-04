@@ -113,9 +113,12 @@ export interface SendMessageOptions {
 }
 
 export interface RecentCallEntry {
+  /** Stable row id for call history (one entry per call session). */
+  session_id: string
   thread_id: string
   created_at: string
   message_type: string
+  call_direction?: 'outgoing' | 'incoming' | 'missed'
   call_type: 'audio' | 'video'
   metadata?: Record<string, unknown>
   thread_name?: string | null
@@ -982,17 +985,22 @@ export const supabaseMessagingService = {
 
     try {
       const res = await apiClient.get<{ data: any[]; meta?: { page: number; pageSize: number; hasMore: boolean } }>(
-        '/api/chat/calls/recent',
+        '/api/chat/calls',
         { limit, page }
       )
       const list = res?.data ?? []
       return list.map((r: any) => {
         const meta = (r.metadata ?? {}) as Record<string, unknown>
+        const callType = (r.call_type === 'video' || meta.callType === 'video' ? 'video' : 'audio') as
+          | 'audio'
+          | 'video'
         return {
+          session_id: (r.session_id ?? `${r.thread_id}:${r.created_at}`) as string,
           thread_id: r.thread_id,
           created_at: r.created_at,
           message_type: r.message_type,
-          call_type: (meta.callType === 'video' ? 'video' : 'audio') as 'audio' | 'video',
+          call_direction: r.call_direction as 'outgoing' | 'incoming' | 'missed' | undefined,
+          call_type: callType,
           metadata: meta,
           thread_name: r.thread_name ?? null,
           thread_type: r.thread_type ?? null,

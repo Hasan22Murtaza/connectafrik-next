@@ -100,20 +100,26 @@ export function PostCardShimmer() {
 // ============== Chat dropdown ==============
 
 /** Single row: avatar circle + name + subtitle, optional right-side block (for call/chat buttons). */
-function ChatDropdownShimmerRow({ showActions = false }: { showActions?: boolean }) {
+function ChatDropdownShimmerRow({
+  showActions = false,
+  surface = "light",
+}: {
+  showActions?: boolean
+  surface?: "light" | "dark"
+}) {
+  const pulse = surface === "dark" ? "bg-[#2a3942] animate-pulse" : "animate-shimmer"
   return (
     <div className="flex items-center justify-between rounded-lg py-2">
       <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full animate-shimmer flex-shrink-0" />
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex-shrink-0 ${pulse}`} />
         <div className="min-w-0 space-y-1.5">
-          <div className="h-3.5 w-24 sm:w-32 max-w-full rounded animate-shimmer" />
-          <div className="h-3 w-16 sm:w-24 max-w-full rounded animate-shimmer" />
+          <div className={`h-3.5 w-24 sm:w-32 max-w-full rounded ${pulse}`} />
+          <div className={`h-3 w-16 sm:w-24 max-w-full rounded ${pulse}`} />
         </div>
       </div>
       {showActions && (
         <div className="flex items-center space-x-2 flex-shrink-0">
-          <div className="w-8 h-8 rounded-full animate-shimmer" />
-          <div className="w-8 h-8 rounded-full animate-shimmer" />
+          <div className={`w-8 h-8 rounded-full ${pulse}`} />
         </div>
       )}
     </div>
@@ -121,11 +127,23 @@ function ChatDropdownShimmerRow({ showActions = false }: { showActions?: boolean
 }
 
 /** List of chat/call dropdown rows. Use for Messenger or Calls dropdown loading. */
-export function ChatDropdownShimmer({ mode, count = 4 }: { mode: "chat" | "call"; count?: number }) {
+export function ChatDropdownShimmer({
+  mode,
+  count = 4,
+  surface = "light",
+}: {
+  mode: "chat" | "call"
+  count?: number
+  surface?: "light" | "dark"
+}) {
   return (
     <div className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-hidden">
       {Array.from({ length: count }).map((_, i) => (
-        <ChatDropdownShimmerRow key={i} showActions={mode === "call" || mode === "chat"} />
+        <ChatDropdownShimmerRow
+          key={i}
+          showActions={mode === "call"}
+          surface={surface}
+        />
       ))}
     </div>
   );

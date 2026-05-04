@@ -1,16 +1,26 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
-import { formatDistanceToNow } from 'date-fns'
-import { ChevronDown, MessageCircle, Phone, Pin, Video, Loader2 } from 'lucide-react'
+import { format, isToday, isYesterday, isThisYear } from 'date-fns'
+import { ChevronDown, Loader2, Pin, Search } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
-import { PresenceStatus, ChatParticipant } from '@/shared/types/chat'
-import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'
+import { ChatParticipant } from '@/shared/types/chat'
+import { supabaseMessagingService, ChatThread } from '@/features/chat/services/supabaseMessagingService'
 import { ChatDropdownShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 40
+
+function formatThreadListTime(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const t = d.getTime()
+  if (Number.isNaN(t) || t <= 0) return ''
+  if (isToday(d)) return format(d, 'HH:mm')
+  if (isYesterday(d)) return 'Yesterday'
+  if (isThisYear(d)) return format(d, 'MMM d')
+  return format(d, 'MMM d, yyyy')
+}
 
 interface ChatDropdownProps {
   onClose: () => void
-  mode?: 'chat' | 'call'
 }
 
 type ChatDropdownThreadRowProps = {
@@ -38,79 +48,73 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
     Boolean((thread as any).isGroup)
   const threadDisplayName = isGroup && thread.name ? thread.name : primary?.name || thread.name || 'Conversation'
   const listAvatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl
+  const unread = typeof thread.unread_count === 'number' ? thread.unread_count : 0
+  const timeLabel = formatThreadListTime(lastActive)
+  const preview =
+    thread.last_message_preview ||
+    `${otherParticipants.length} participant${otherParticipants.length !== 1 ? 's' : ''}`
 
   return (
-    <div
-      className={`group flex items-center justify-between pb-2 ${subdued ? 'opacity-85' : ''}`}
+    <button
+      type="button"
+      onClick={() => onOpen(thread.id)}
+      className={`flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-50 ${
+        subdued ? 'opacity-70' : ''
+      }`}
     >
-      <button
-        type="button"
-        onClick={() => onOpen(thread.id)}
-        className="flex items-center space-x-2 sm:space-x-3 text-left min-w-0"
-      >
-        <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
-          {listAvatarUrl ? (
-            <img
-              src={listAvatarUrl}
-              alt={threadDisplayName}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm ">
-              {threadDisplayName.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
+      <div className="relative h-12 w-12 shrink-0">
+        {listAvatarUrl ? (
+          <img
+            src={listAvatarUrl}
+            alt=""
+            className="h-12 w-12 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-base font-semibold text-primary-700">
+            {threadDisplayName.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </div>
 
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900 line-clamp-1 flex items-center gap-1">
-            {thread.pinned ? (
-              <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden />
-            ) : null}
+      <div className="min-w-0 flex-1 py-0.5">
+        <div className="flex items-start justify-between gap-2">
+          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-gray-900">
+            {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden /> : null}
             <span className="truncate">{threadDisplayName}</span>
           </p>
-
-          <p className="text-xs text-gray-500 line-clamp-1">
-            {subdued ? (
-              <span className="text-gray-400">Archived · </span>
-            ) : null}
-            {thread.last_message_preview
-              ? thread.last_message_preview
-              : `${otherParticipants.length} participant${otherParticipants.length !== 1 ? 's' : ''}`}
-          </p>
-
-          <p className="text-xs text-gray-400 ">
-            {lastActive && new Date(lastActive).getTime() > 0
-              ? formatDistanceToNow(new Date(lastActive), { addSuffix: true })
-              : 'No recent activity'}
-          </p>
+          {timeLabel ? (
+            <span
+              className={`shrink-0 text-xs tabular-nums ${
+                unread > 0 ? 'text-primary-600' : 'text-gray-400'
+              }`}
+            >
+              {timeLabel}
+            </span>
+          ) : null}
         </div>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onOpen(thread.id)}
-        className="w-9 h-9 shrink-0 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors"
-        title="Open chat"
-      >
-        <MessageCircle className="w-4 h-4" />
-      </button>
-    </div>
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <p className="min-w-0 flex-1 truncate text-sm text-gray-500">
+            {subdued ? <span className="text-gray-400">Archived · </span> : null}
+            {preview}
+          </p>
+          {unread > 0 ? (
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+              {unread > 99 ? '99+' : unread}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </button>
   )
 }
 
-const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) => {
-  const { openThread, startCall, startChatWithMembers, currentUser, threads: contextThreads } = useProductionChat()
+const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
+  const { openThread, currentUser, threads: contextThreads } = useProductionChat()
   const [threads, setThreads] = useState<ChatThread[]>([])
-  const [recentCallEntries, setRecentCallEntries] = useState<RecentCallEntry[]>([])
   const [threadsLoading, setThreadsLoading] = useState(true)
-  const [recentCallsLoading, setRecentCallsLoading] = useState(true)
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false)
-  const [callsLoadingMore, setCallsLoadingMore] = useState(false)
   const [threadsHasMore, setThreadsHasMore] = useState(true)
-  const [callsHasMore, setCallsHasMore] = useState(true)
-  const [callsPage, setCallsPage] = useState(0)
-  const [contactsVisible, setContactsVisible] = useState(PAGE_SIZE)
+  const [search, setSearch] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -145,29 +149,6 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     loadThreads()
   }, [currentUser])
 
-  useEffect(() => {
-    const loadRecentCalls = async () => {
-      if (mode !== 'call') {
-        setRecentCallsLoading(false)
-        return
-      }
-      if (!currentUser?.id) {
-        setRecentCallsLoading(false)
-        return
-      }
-      setRecentCallsLoading(true)
-      try {
-        const entries = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, 0)
-        setRecentCallEntries(entries)
-        setCallsPage(0)
-        setCallsHasMore(entries.length >= PAGE_SIZE)
-      } finally {
-        setRecentCallsLoading(false)
-      }
-    }
-    loadRecentCalls()
-  }, [currentUser?.id, mode])
-
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser || threadsLoadingMore || !threadsHasMore) return
     setThreadsLoadingMore(true)
@@ -187,42 +168,15 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
     }
   }, [currentUser, threads.length, threadsLoadingMore, threadsHasMore])
 
-  const loadMoreCalls = useCallback(async () => {
-    if (!currentUser?.id || callsLoadingMore || !callsHasMore) return
-    setCallsLoadingMore(true)
-    try {
-      const nextPage = callsPage + 1
-      const moreCalls = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, nextPage)
-      if (moreCalls.length < PAGE_SIZE) setCallsHasMore(false)
-      setRecentCallEntries(prev => {
-        const existingIds = new Set(prev.map(c => c.thread_id))
-        const deduped = moreCalls.filter(c => !existingIds.has(c.thread_id))
-        return [...prev, ...deduped]
-      })
-      setCallsPage(nextPage)
-    } finally {
-      setCallsLoadingMore(false)
-    }
-  }, [currentUser?.id, callsLoadingMore, callsHasMore, callsPage])
-
-  const loadMoreContacts = useCallback(() => {
-    setContactsVisible(prev => prev + PAGE_SIZE)
-  }, [])
-
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
-    if (scrollHeight - scrollTop - clientHeight < 80) {
-      if (mode === 'chat') {
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+      if (scrollHeight - scrollTop - clientHeight < 80) {
         loadMoreThreads()
-      } else {
-        if (callsHasMore) {
-          loadMoreCalls()
-        } else {
-          loadMoreContacts()
-        }
       }
-    }
-  }, [mode, loadMoreThreads, loadMoreCalls, loadMoreContacts, callsHasMore])
+    },
+    [loadMoreThreads]
+  )
 
   const mergedThreads = useMemo(() => {
     const map = new Map<string, ChatThread>()
@@ -263,274 +217,87 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
 
   const [archivedExpanded, setArchivedExpanded] = useState(false)
 
-  const availableContacts = useMemo(() => {
-    const contactMap = new Map<string, { id: string; name: string; avatarUrl?: string; status: PresenceStatus }>()
+  const query = search.trim().toLowerCase()
+  const filterThread = useCallback(
+    (t: ChatThread) => {
+      if (!query) return true
+      const others = t.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id)
+      const primary = others[0] ?? t.participants[0]
+      const isGroup =
+        t.type === 'group' || Boolean(t.group_id) || others.length > 1 || Boolean((t as any).isGroup)
+      const name =
+        isGroup && t.name ? t.name : primary?.name || t.name || ''
+      const preview = (t.last_message_preview || '').toLowerCase()
+      return name.toLowerCase().includes(query) || preview.includes(query)
+    },
+    [query, currentUser?.id]
+  )
 
-    for (const thread of mergedThreads) {
-      for (const participant of thread.participants || []) {
-        if (!participant?.id || participant.id === currentUser?.id) continue
-        if (!contactMap.has(participant.id)) {
-          contactMap.set(participant.id, {
-            id: participant.id,
-            name: participant.name || 'ConnectAfrik Member',
-            avatarUrl: participant.avatarUrl,
-            status: 'offline' as PresenceStatus,
-          })
-        }
-      }
-    }
-
-    for (const call of recentCallEntries) {
-      if (!call.contact_id || call.contact_id === currentUser?.id) continue
-      if (!contactMap.has(call.contact_id)) {
-        contactMap.set(call.contact_id, {
-          id: call.contact_id,
-          name: call.contact_name || 'ConnectAfrik Member',
-          avatarUrl: call.contact_avatar_url || undefined,
-          status: 'offline' as PresenceStatus,
-        })
-      }
-    }
-
-    return Array.from(contactMap.values())
-  }, [mergedThreads, recentCallEntries, currentUser?.id])
-
-  const visibleContacts = useMemo(() => availableContacts.slice(0, contactsVisible), [availableContacts, contactsVisible])
-  const contactsHasMore = contactsVisible < availableContacts.length
-
-  const sortedRecentCalls = useMemo(() => {
-    return recentCallEntries
-      .map(entry => {
-        const thread = mergedThreads.find(t => t.id === entry.thread_id)
-        const otherParticipants = thread
-          ? thread.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id)
-          : []
-        const primary = otherParticipants[0] ?? (thread ? thread.participants[0] : null)
-        const isGroup = thread
-          ? thread.type === 'group' ||
-          Boolean(thread.group_id) ||
-          otherParticipants.length > 1 ||
-          Boolean((thread as any).isGroup)
-          : entry.thread_type === 'group'
-        const fallbackName = entry.contact_name || entry.thread_name || 'Unknown'
-        const fallbackId = entry.contact_id || entry.thread_id
-        const groupBanner = isGroup ? thread?.banner_url || entry.banner_url || undefined : undefined
-        return {
-          ...entry,
-          name:
-            isGroup && (thread?.name || entry.thread_name)
-              ? thread?.name || entry.thread_name || fallbackName
-              : primary?.name || thread?.name || fallbackName,
-          avatarUrl: isGroup
-            ? groupBanner
-            : (primary?.avatarUrl || entry.contact_avatar_url || undefined),
-          id: primary?.id || fallbackId,
-        }
-      })
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-  }, [recentCallEntries, mergedThreads, currentUser?.id])
+  const filteredActive = useMemo(
+    () => activeThreads.filter(filterThread),
+    [activeThreads, filterThread]
+  )
+  const filteredArchived = useMemo(
+    () => archivedThreads.filter(filterThread),
+    [archivedThreads, filterThread]
+  )
 
   const handleOpenThread = async (threadId: string) => {
     openThread(threadId)
     onClose()
   }
 
-  const handleStartCall = async (
-    threadId: string,
-    type: 'audio' | 'video',
-    targetUserId?: string,
-    targetUserName?: string,
-    targetUserAvatarUrl?: string
-  ) => {
-    try {
-      await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl)
-      onClose()
-    } catch {
-      /* startCall shows toast */
-    }
-  }
-
-  const handleStartCallWithContact = async (contactId: string, contactName: string, contactAvatarUrl: string | undefined, type: 'audio' | 'video') => {
-    const threadId = await startChatWithMembers([{
-      id: contactId,
-      name: contactName,
-      avatarUrl: contactAvatarUrl
-    }], { participant_ids: [contactId] })
-
-    if (threadId) {
-      try {
-        await startCall(threadId, type, contactId, contactName, contactAvatarUrl)
-      } catch {
-        /* startCall shows toast */
-      }
-    }
-    onClose()
-  }
-
-  const title = mode === 'chat' ? 'Messenger' : 'Calls'
-  const subtitle = mode === 'chat' ? 'Recent messages and active contacts' : 'Start an audio or video call'
-
   return (
     <div
       ref={dropdownRef}
-      className="absolute sm:right-0 -right-6 mt-3 w-65 sm:w-80 max-w-[90vw] sm:max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-2xl p-3 sm:p-4 z-[120] transform -translate-x-0 sm:translate-x-0"
+      className="absolute sm:right-0 -right-6 z-[120] mt-3 w-65 max-w-[90vw] translate-x-0 transform rounded-xl border border-gray-200 bg-white p-3 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-4"
     >
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h4 className="font-semibold text-gray-900">{title}</h4>
-          <p className="text-xs text-gray-500">{subtitle}</p>
+      <div className="border-b border-gray-100 pb-3">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h4 className="text-lg font-semibold text-gray-900">Chats</h4>
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 text-sm font-medium text-primary-600 hover:text-primary-700"
+          >
+            Close
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          className="text-xs font-medium text-primary-600 hover:text-primary-700"
-        >
-          Close
-        </button>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search chats"
+            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 outline-none ring-0 focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
+            aria-label="Search chats"
+          />
+        </div>
       </div>
 
-      {mode === 'call' ? (
-        // Call mode: Show latest calls (Facebook-style) then contacts
-        <div className="space-y-4 max-h-64 sm:max-h-80 overflow-y-auto pr-1 custom-scrollbar" onScroll={handleScroll}>
-          {recentCallsLoading ? (
-            <>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent</p>
-              <ChatDropdownShimmer mode="call" count={2} />
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 mt-4">Contacts</p>
-              <ChatDropdownShimmer mode="call" count={4} />
-            </>
-          ) : (
-            <>
-              {sortedRecentCalls.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Recent</p>
-                  <div className="space-y-2 sm:space-y-3">
-                    {sortedRecentCalls.map((call) => (
-                      <div
-                        key={call.thread_id}
-                        className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors cursor-pointer"
-                      >
-                        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-                          <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
-                            {call.avatarUrl ? (
-                              <img
-                                src={call.avatarUrl}
-                                alt={call.name}
-                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
-                                {call.name.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-gray-900 truncate">{call.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {formatDistanceToNow(new Date(call.created_at), { addSuffix: true })}
-                              {' · '}
-                              {call.call_type === 'video' ? 'Video call' : 'Voice call'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleStartCall(call.thread_id, 'audio', call.id, call.name, call.avatarUrl)}
-                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                            title="Start voice call"
-                          >
-                            <Phone className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleStartCall(call.thread_id, 'video', call.id, call.name, call.avatarUrl)}
-                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-purple-100 hover:text-purple-600 transition-colors"
-                            title="Start video call"
-                          >
-                            <Video className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  {sortedRecentCalls.length > 0 ? 'Contacts' : 'Start a call'}
-                </p>
-                {availableContacts.length === 0 ? (
-                  <div className="py-4 text-center text-sm text-gray-500">
-                    No contacts available.
-                  </div>
-                ) : (
-                  <div className="space-y-2 sm:space-y-3">
-                    {visibleContacts.map((contact) => (
-                      <div
-                        key={contact.id}
-                        className="flex items-center justify-between py-2 cursor-pointer"
-                      >
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <div className="relative w-8 h-8 sm:w-10 sm:h-10">
-                            {contact.avatarUrl ? (
-                              <img
-                                src={contact.avatarUrl}
-                                alt={contact.name}
-                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold text-xs sm:text-sm">
-                                {contact.name.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-900">{contact.name}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleStartCallWithContact(contact.id, contact.name, contact.avatarUrl || undefined, 'audio')}
-                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                            title="Start voice call"
-                          >
-                            <Phone className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleStartCallWithContact(contact.id, contact.name, contact.avatarUrl || undefined, 'video')}
-                            className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-purple-100 hover:text-purple-600 transition-colors"
-                            title="Start video call"
-                          >
-                            <Video className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {callsLoadingMore && (
-                <div className="flex justify-center py-2">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                </div>
-              )}
-            </>
-          )}
+      {threadsLoading ? (
+        <ChatDropdownShimmer mode="chat" count={5} />
+      ) : mergedThreads.length === 0 ? (
+        <div className="py-6 text-center text-sm text-gray-500">
+          No conversations yet. Start a chat from the feed or contacts.
         </div>
       ) : (
-        // Chat mode: Show existing threads
-        threadsLoading ? (
-          <ChatDropdownShimmer mode="chat" count={4} />
-        ) : mergedThreads.length === 0 ? (
-          <div className="py-6 text-center text-sm text-gray-500">
-            No conversations yet. Start a chat from the feed or contacts.
-          </div>
-        ) : (
-          <div ref={scrollContainerRef} onScroll={handleScroll} className="space-y-2 sm:space-y-3 max-h-64 sm:max-h-80 overflow-y-auto custom-scrollbar scrollbar-hide">
-            {activeThreads.length === 0 && archivedThreads.length > 0 && (
-              <p className="text-xs text-gray-500 px-1 pb-1">
-                No active chats — open <span className="font-medium">Archived</span> below.
-              </p>
-            )}
-            {activeThreads.map((thread) => (
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="custom-scrollbar max-h-[min(70vh,22rem)] overflow-y-auto pt-1 sm:max-h-[min(70vh,24rem)]"
+        >
+          {filteredActive.length === 0 && filteredArchived.length === 0 && query ? (
+            <p className="py-6 text-center text-sm text-gray-500">No chats match your search.</p>
+          ) : null}
+          {activeThreads.length === 0 && archivedThreads.length > 0 && !query && (
+            <p className="pb-2 text-xs text-gray-500">
+              No active chats — open <span className="font-medium text-gray-700">Archived</span> below.
+            </p>
+          )}
+          <div className="divide-y divide-gray-100">
+            {filteredActive.map((thread) => (
               <ChatDropdownThreadRow
                 key={thread.id}
                 thread={thread}
@@ -538,42 +305,40 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose, mode = 'chat' }) =
                 onOpen={handleOpenThread}
               />
             ))}
-            {archivedThreads.length > 0 && (
-              <div className="pt-1 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setArchivedExpanded((e) => !e)}
-                  className="flex w-full items-center gap-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 hover:text-gray-700"
-                >
-                  <ChevronDown
-                    className={`h-4 w-4 shrink-0 transition-transform ${archivedExpanded ? '' : '-rotate-90'}`}
-                  />
-                  Archived ({archivedThreads.length})
-                </button>
-                {archivedExpanded &&
-                  archivedThreads.map((thread) => (
-                    <ChatDropdownThreadRow
-                      key={thread.id}
-                      thread={thread}
-                      currentUser={currentUser}
-                      onOpen={handleOpenThread}
-                      subdued
-                    />
-                  ))}
-              </div>
-            )}
-            {threadsLoadingMore && (
-              <div className="flex justify-center py-2">
-                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-              </div>
-            )}
           </div>
-        )
+          {archivedThreads.length > 0 && (
+            <div className="mt-1 border-t border-gray-100 pt-2">
+              <button
+                type="button"
+                onClick={() => setArchivedExpanded((e) => !e)}
+                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-700"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform ${archivedExpanded ? '' : '-rotate-90'}`}
+                />
+                Archived ({archivedThreads.length})
+              </button>
+              {archivedExpanded &&
+                filteredArchived.map((thread) => (
+                  <ChatDropdownThreadRow
+                    key={thread.id}
+                    thread={thread}
+                    currentUser={currentUser}
+                    onOpen={handleOpenThread}
+                    subdued
+                  />
+                ))}
+            </div>
+          )}
+          {threadsLoadingMore && (
+            <div className="flex justify-center py-3">
+              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
 }
 
 export default ChatDropdown
-
-

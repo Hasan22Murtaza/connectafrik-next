@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { useNotifications } from "@/shared/hooks/useNotifications";
 import ChatDropdown from "@/features/chat/components/ChatDropdown";
+import CallHistoryDropdown from "@/features/chat/components/CallHistoryDropdown";
 import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
 import { FaBars } from "react-icons/fa";
 import MobileSideDrawer from "../ui/MobileSideDrawer";
@@ -304,10 +305,7 @@ const Header: React.FC<HeaderProps> = ({
                         )}
                       </button>
                       {showInbox && (
-                        <ChatDropdown
-                          mode="chat"
-                          onClose={() => setShowInbox(false)}
-                        />
+                        <ChatDropdown onClose={() => setShowInbox(false)} />
                       )}
                     </div>
 
@@ -323,10 +321,7 @@ const Header: React.FC<HeaderProps> = ({
                         <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                       {showCalls && (
-                        <ChatDropdown
-                          mode="call"
-                          onClose={() => setShowCalls(false)}
-                        />
+                        <CallHistoryDropdown onClose={() => setShowCalls(false)} />
                       )}
                     </div>
 
