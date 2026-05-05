@@ -18,10 +18,12 @@ import {
 import type { PresenceStatus } from "@/shared/types/chat";
 import type { ChatParticipant } from "@/shared/types/chat";
 import {
+  CheckCheck,
   Archive,
   ArchiveRestore,
   ChevronLeft,
   Images,
+  Loader2,
   Minus,
   MoreVertical,
   Mic,
@@ -65,6 +67,60 @@ interface ChatWindowProps {
   onClose: (threadId: string) => void;
   onMinimize: (threadId: string) => void;
 }
+
+interface MessageInfoUser {
+  id: string;
+  username?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  display_name?: string | null;
+}
+
+interface MessageReceipt {
+  user_id: string;
+  read_at?: string | null;
+  delivered_at?: string | null;
+  user?: MessageInfoUser | null;
+}
+
+interface MessageInfoData {
+  id: string;
+  created_at?: string | null;
+  sent_at?: string | null;
+  read_count?: number;
+  delivered_count?: number;
+  read_receipts?: MessageReceipt[];
+  delivered_receipts?: MessageReceipt[];
+}
+
+const formatMessageInfoDate = (ts?: string | null): string => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toLocaleString();
+};
+
+const formatMessageInfoDateLabel = (ts?: string | null): string => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "long", day: "numeric" });
+};
+
+const formatMessageInfoTimeLabel = (ts?: string | null): string => {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
+
+const receiptDisplayName = (r: MessageReceipt): string =>
+  r.user?.display_name || r.user?.full_name || r.user?.username || "Unknown";
+
+const receiptInitial = (name: string): string => {
+  const trimmed = name.trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+};
 
 function buildForwardPayload(message: ChatMessage): {
   text: string;
@@ -383,6 +439,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const composerInputRef = useRef<HTMLInputElement>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
+  const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
+  const [messageInfoLoading, setMessageInfoLoading] = useState(false);
+  const [messageInfoError, setMessageInfoError] = useState<string | null>(null);
   const userInitiatedCall = useRef(false);
   const lastIncomingCallSyncKeyRef = useRef<string>("");
   const messagesScrollRef = useRef<HTMLDivElement>(null);
@@ -409,6 +469,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     draftBeforeComposerEditRef.current = "";
     setForwardingMessage(null);
     setForwardSearch("");
+    setInfoMessage(null);
+    setMessageInfo(null);
+    setMessageInfoLoading(false);
+    setMessageInfoError(null);
   }, [threadId]);
 
   useEffect(() => {
@@ -1008,6 +1072,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const openMessageInfo = useCallback(
+    async (message: ChatMessage) => {
+      setInfoMessage(message);
+      setMessageInfo(null);
+      setMessageInfoError(null);
+      setMessageInfoLoading(true);
+      try {
+        const data = await apiClient.get<MessageInfoData>(
+          `/api/chat/threads/${threadId}/messages/${message.id}/info`
+        );
+        setMessageInfo(data);
+      } catch (e: unknown) {
+        const msg =
+          e && typeof e === "object" && "message" in e
+            ? String((e as { message: string }).message)
+            : "Failed to load message info";
+        setMessageInfoError(msg);
+      } finally {
+        setMessageInfoLoading(false);
+      }
+    },
+    [threadId]
+  );
+
   const handleArchiveToggle = async () => {
     if (!thread) return;
     const nextArchived = !thread.archived;
@@ -1447,6 +1535,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 onBeginEdit={beginComposerEdit}
                 composerEditingMessageId={editingMessage?.id ?? null}
                 onReact={handleMessageReaction}
+                onShowInfo={(msg) => void openMessageInfo(msg)}
               />
             );
           })
@@ -1618,6 +1707,139 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onClose={() => setShowMediaGallery(false)}
         isGroupChat={isGroupThread}
       />
+
+      {infoMessage ? (
+        <div
+          className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-white"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Message info"
+        >
+          <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-gray-800 px-2 py-2 text-white">
+            <button
+              type="button"
+              onClick={() => {
+                setInfoMessage(null);
+                setMessageInfo(null);
+                setMessageInfoError(null);
+                setMessageInfoLoading(false);
+              }}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <CheckCheck className="h-5 w-5 shrink-0 opacity-90" />
+              <span className="truncate text-sm font-semibold">Message info</span>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-3 py-3">
+            {messageInfoLoading ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-14 text-gray-500">
+                <Loader2 className="h-7 w-7 animate-spin text-primary-600" />
+                <span className="text-xs">Loading message info…</span>
+              </div>
+            ) : messageInfoError ? (
+              <div className="py-4 text-center text-xs text-red-600">{messageInfoError}</div>
+            ) : (
+              <>
+                <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <div className="mb-1 text-[11px] font-semibold text-gray-500">
+                    Message
+                  </div>
+                  <div className="mb-2 flex justify-end">
+                    <div className="max-w-[85%] rounded-xl rounded-br-sm bg-emerald-500 px-3 py-2 text-sm text-white">
+                      {(infoMessage.content || "Media message").trim()}
+                      <div className="mt-1 text-right text-[11px] text-emerald-100">
+                        {formatMessageInfoTimeLabel(messageInfo?.sent_at || messageInfo?.created_at) ||
+                          "--:--"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-0.5 text-xs text-gray-600">
+                    <div>
+                      Sent:{" "}
+                      {formatMessageInfoDate(messageInfo?.sent_at || messageInfo?.created_at) || "-"}
+                    </div>
+                    <div>Read by: {messageInfo?.read_count ?? 0}</div>
+                    <div>Delivered to: {messageInfo?.delivered_count ?? 0}</div>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-emerald-700">Read by</h3>
+                    <CheckCheck className="h-4 w-4 text-emerald-700" />
+                  </div>
+                  {(messageInfo?.read_receipts ?? []).length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
+                      No reads yet
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                      {(messageInfo?.read_receipts ?? []).map((r) => (
+                        <div
+                          key={`read-${r.user_id}`}
+                          className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fuchsia-100 text-xs font-semibold text-fuchsia-700">
+                            {receiptInitial(receiptDisplayName(r))}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-gray-900">
+                              {receiptDisplayName(r)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {formatMessageInfoDateLabel(r.read_at)}{" "}
+                              {formatMessageInfoTimeLabel(r.read_at)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-emerald-700">Delivered to</h3>
+                    <CheckCheck className="h-4 w-4 text-emerald-700" />
+                  </div>
+                  {(messageInfo?.delivered_receipts ?? []).length === 0 ? (
+                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
+                      Everyone has read this message
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                      {(messageInfo?.delivered_receipts ?? []).map((r) => (
+                        <div
+                          key={`delivered-${r.user_id}`}
+                          className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">
+                            {receiptInitial(receiptDisplayName(r))}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-gray-900">
+                              {receiptDisplayName(r)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {formatMessageInfoDateLabel(r.delivered_at)}{" "}
+                              {formatMessageInfoTimeLabel(r.delivered_at)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {forwardingMessage ? (
         <div

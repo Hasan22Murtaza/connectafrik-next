@@ -174,6 +174,12 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         return aName.localeCompare(bName)
       })
 
+    const sent_at = (message.created_at as string | undefined) ?? null
+    const latest_read_at =
+      read_receipts.length > 0 ? read_receipts[read_receipts.length - 1]?.read_at ?? null : null
+    const latest_delivered_at =
+      delivered_receipts.length > 0 ? delivered_receipts[0]?.delivered_at ?? null : null
+
     let reply_to: {
       message_id: string
       content_preview: string
@@ -210,16 +216,20 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     }
 
     return jsonResponse({
-      data: {
-        ...message,
-        read_by: readBy,
-        attachments: attachmentsRes.data || [],
-        reactions,
-        reply_to,
-        read_receipts,
-        delivered_receipts,
-        can_delete_for_everyone: canDelete,
-      },
+      ...message,
+      read_by: readBy,
+      attachments: attachmentsRes.data || [],
+      reactions,
+      reply_to,
+      read_receipts,
+      delivered_receipts,
+      sent_at,
+      latest_read_at,
+      latest_delivered_at,
+      read_count: read_receipts.length,
+      delivered_count: delivered_receipts.length,
+      receipt_total: read_receipts.length + delivered_receipts.length,
+      can_delete_for_everyone: canDelete,
     })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {

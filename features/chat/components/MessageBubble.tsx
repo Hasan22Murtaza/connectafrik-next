@@ -77,6 +77,7 @@ interface MessageBubbleProps {
   /** Message id whose text is currently open in the composer (subtle bubble highlight). */
   composerEditingMessageId?: string | null;
   onReact?: (messageId: string, emoji: string) => void;
+  onShowInfo?: (message: ChatMessage) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -91,6 +92,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onBeginEdit,
   composerEditingMessageId = null,
   onReact,
+  onShowInfo,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -173,8 +175,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const canDeleteForMe = Boolean(onDelete);
   const canForward =
     Boolean(onForward) && isForwardableChatMessage(message);
+  const canShowInfo = isOwnMessage && Boolean(onShowInfo) && !isDeleted;
   const showOverflowMenu =
-    canEditMessage || canDeleteForMe || canForward;
+    canEditMessage || canDeleteForMe || canForward || canShowInfo;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -580,6 +583,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   className="w-full p-1 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl"
                 >
                   Forward
+                </button>
+              ) : null}
+              {canShowInfo ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShowInfo?.(message);
+                    setShowMenu(false);
+                  }}
+                  className="w-full p-1 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-2xl"
+                >
+                  Message info
                 </button>
               ) : null}
               {canDeleteForMe ? (
