@@ -2,7 +2,18 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Search } from "lucide-react";
+import {
+  Archive,
+  Bell,
+  BellOff,
+  Ban,
+  CheckCheck,
+  MoreVertical,
+  Pin,
+  PinOff,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import {
@@ -11,6 +22,7 @@ import {
 } from "@/features/chat/services/supabaseMessagingService";
 import type { ChatParticipant } from "@/shared/types/chat";
 import ChatWindow from "@/features/chat/components/ChatWindow";
+import { toast } from "react-hot-toast";
 
 const PAGE_SIZE = 60;
 
@@ -35,6 +47,8 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
+  const [mutedThreadIds, setMutedThreadIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const loadThreads = async () => {
@@ -57,11 +71,32 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
     void loadThreads();
   }, [currentUser]);
 
+  useEffect(() => {
+    if (!menuThreadId) return;
+    const closeMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-chat-menu]") || target?.closest("[data-chat-menu-trigger]")) {
+        return;
+      }
+      setMenuThreadId(null);
+    };
+    document.addEventListener("mousedown", closeMenu);
+    return () => document.removeEventListener("mousedown", closeMenu);
+  }, [menuThreadId]);
+
   const mergedThreads = useMemo(() => {
     const map = new Map<string, ChatThread>();
     for (const t of threads) map.set(t.id, t);
     for (const t of contextThreads) map.set(t.id, t);
     return Array.from(map.values()).sort((a, b) => {
+      const pinA = a.pinned ? 1 : 0;
+      const pinB = b.pinned ? 1 : 0;
+      if (pinA !== pinB) return pinB - pinA;
+      if (pinA && pinB) {
+        const pinnedAtA = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+        const pinnedAtB = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+        if (pinnedAtA !== pinnedAtB) return pinnedAtB - pinnedAtA;
+      }
       const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
       const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
       return bTime - aTime;
@@ -99,6 +134,83 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
       router.push(`/chat/${threadId}`);
     },
     [openThread, router]
+  );
+
+  const handleToggleArchive = useCallback(
+    async (thread: ChatThread) => {
+      if (!currentUser?.id) return;
+      try {
+        const nextArchived = !thread.archived;
+        const updated = await supabaseMessagingService.setThreadArchived(
+          thread.id,
+          currentUser.id,
+          nextArchived
+        );
+        if (updated) {
+          setThreads((prev) => prev.map((t) => (t.id === thread.id ? updated : t)));
+        }
+        toast.success(nextArchived ? "Chat archived" : "Chat restored");
+      } catch {
+        toast.error("Could not update archive");
+      } finally {
+        setMenuThreadId(null);
+      }
+    },
+    [currentUser?.id]
+  );
+
+  const handleTogglePin = useCallback(
+    async (thread: ChatThread) => {
+      if (!currentUser?.id) return;
+      try {
+        const nextPinned = !thread.pinned;
+        const updated = await supabaseMessagingService.setThreadPinned(
+          thread.id,
+          currentUser.id,
+          nextPinned
+        );
+        if (updated) {
+          setThreads((prev) => prev.map((t) => (t.id === thread.id ? updated : t)));
+        }
+        toast.success(nextPinned ? "Chat pinned" : "Chat unpinned");
+      } catch {
+        toast.error("Could not update pin");
+      } finally {
+        setMenuThreadId(null);
+      }
+    },
+    [currentUser?.id]
+  );
+;
+
+  const handleClear = useCallback(async (thread: ChatThread) => {
+    if (!currentUser?.id) return;
+    try {
+      await supabaseMessagingService.clearThreadMessagesForMe(thread.id, currentUser.id);
+      toast.success("Chat cleared");
+    } catch {
+      toast.error("Failed to clear chat");
+    } finally {
+      setMenuThreadId(null);
+    }
+  }, [currentUser?.id]);
+
+  const handleMenuAction = useCallback(
+    (
+      event: React.MouseEvent<HTMLButtonElement>,
+      thread: ChatThread,
+      action:
+        | "toggle-pin"
+        | "toggle-archive"
+        | "clear"
+    ) => {
+      event.stopPropagation();
+      if (action === "toggle-pin") void handleTogglePin(thread);
+      if (action === "toggle-archive") void handleToggleArchive(thread);
+
+      if (action === "clear") void handleClear(thread);
+    },
+    [handleClear, handleToggleArchive, handleTogglePin]
   );
 
   return (
@@ -139,11 +251,18 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
               const selected = selectedThreadId === thread.id;
 
               return (
-                <button
+                <div
                   key={thread.id}
-                  type="button"
                   onClick={() => openOnPage(thread.id)}
-                  className={`flex w-full items-start gap-3 border-b border-gray-100 px-4 py-3 text-left transition hover:bg-white ${
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openOnPage(thread.id);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`group relative flex w-full items-start gap-3 border-b border-gray-100 px-4 py-3 text-left transition hover:bg-white ${
                     selected ? "bg-white" : "bg-transparent"
                   }`}
                 >
@@ -158,16 +277,77 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-gray-900">{displayName}</p>
-                      <span className="shrink-0 text-xs text-gray-400">
+                      <p className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-gray-900">
+                        {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" /> : null}
+                        <span className="truncate">{displayName}</span>
+                      </p>
+                      <span
+                        className={`shrink-0 text-xs ${
+                          thread.unread_count > 0 ? "text-primary-600" : "text-gray-400"
+                        }`}
+                      >
                         {formatThreadListTime(thread.last_message_at)}
                       </span>
                     </div>
-                    <p className="truncate text-sm text-gray-500">
-                      {thread.last_message_preview || "Tap to open chat"}
-                    </p>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p className="truncate text-sm text-gray-500">
+                        {thread.last_message_preview || "Tap to open chat"}
+                      </p>
+                      {thread.unread_count > 0 ? (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      data-chat-menu-trigger
+                      aria-label="Chat actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                      }}
+                      className="rounded-full p-1.5 text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                    {menuThreadId === thread.id ? (
+                      <div
+                        data-chat-menu
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => handleMenuAction(e, thread, "toggle-pin")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                          <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleMenuAction(e, thread, "toggle-archive")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Archive className="h-4 w-4" />
+                          <span>{thread.archived ? "Unarchive chat" : "Archive chat"}</span>
+                        </button>
+                       
+                        <button
+                          type="button" 
+                          onClick={(e) => handleMenuAction(e, thread, "clear")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span>Clear chat</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
               );
             })
           )}
