@@ -64,8 +64,9 @@ import {
 
 interface ChatWindowProps {
   threadId: string;
-  onClose: (threadId: string) => void;
-  onMinimize: (threadId: string) => void;
+  onClose?: (threadId: string) => void;
+  onMinimize?: (threadId: string) => void;
+  variant?: "dock" | "page";
 }
 
 interface MessageInfoUser {
@@ -162,6 +163,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   threadId,
   onClose,
   onMinimize,
+  variant = "dock",
 }) => {
   const {
     getThreadById,
@@ -737,8 +739,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
   }, []);
 
-  if (!thread) return null;
-
   const closeMessageSearch = () => {
     setShowMessageSearch(false);
     setMessageSearchDraft("");
@@ -1283,13 +1283,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (minimizedThreadIds.includes(threadId)) {
       openThread(threadId);
     } else {
-      onMinimize(threadId);
+      onMinimize?.(threadId);
     }
   };
 
+  const isPageVariant = variant === "page";
+
   return (
-    <div className="pointer-events-auto relative flex w-72 sm:w-80 max-w-full sm:max-w-full flex-col border border-1 border-gray-100  rounded-2xl  bg-white shadow-2xl">
-      <div className="flex items-center justify-between  bg-gray-50 rounded-tl-2xl rounded-tr-2xl  border-b border-gray-200 p-2">
+    <div
+      className={`pointer-events-auto relative flex max-w-full flex-col border border-1 border-gray-100 bg-white shadow-2xl ${
+        isPageVariant
+          ? "h-full w-full rounded-none sm:rounded-2xl"
+          : "w-72 rounded-2xl sm:w-80 sm:max-w-full"
+      }`}
+    >
+      <div
+        className={`flex items-center justify-between bg-gray-50 border-b border-gray-200 p-2 ${
+          isPageVariant ? "sm:rounded-t-2xl" : "rounded-tl-2xl rounded-tr-2xl"
+        }`}
+      >
         <div className="flex items-center space-x-3">
           <div className="relative h-10 w-10">
             {headerAvatarAvailable ? (
@@ -1336,24 +1348,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <Video className="h-4 w-4" />
           </button>
           </Tooltip>
-          <Tooltip text="Minimize chat" position="top">
-          <button
-            onClick={handleToggleMinimize}
-            className="text-gray-400 hover:text-gray-600"
-            title="Minimize"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          </Tooltip>
-          <Tooltip text="Close chat" position="top">
-          <button
-            onClick={() => onClose(threadId)}
-            className="text-gray-400 hover:text-gray-600"
-            title="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          </Tooltip>
+          {!isPageVariant && (
+            <>
+              <Tooltip text="Minimize chat" position="top">
+              <button
+                onClick={handleToggleMinimize}
+                className="text-gray-400 hover:text-gray-600"
+                title="Minimize"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              </Tooltip>
+              <Tooltip text="Close chat" position="top">
+              <button
+                onClick={() => onClose?.(threadId)}
+                className="text-gray-400 hover:text-gray-600"
+                title="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              </Tooltip>
+            </>
+          )}
 
           <Tooltip text="Chat options" position="top">
             <div className="relative">
@@ -1497,7 +1513,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <div
         ref={messagesScrollRef}
-        className="flex h-[250px] sm:h-[290px] flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3"
+        className={`flex flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3 ${
+          isPageVariant ? "h-[calc(100vh-16rem)] sm:h-[calc(100vh-14rem)]" : "h-[250px] sm:h-[290px]"
+        }`}
       >
         {isLoadingOlderMessages && (
           <div className="py-1 text-center text-xs text-gray-500">
@@ -1554,7 +1572,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <form
         onSubmit={handleSend}
-        className="rounded-bl-2xl rounded-br-2xl border-t border-gray-200 bg-white px-2 sm:px-3 py-2 sm:py-3"
+        className={`border-t border-gray-200 bg-white px-2 py-2 sm:px-3 sm:py-3 ${
+          isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
+        }`}
       >
         {editingMessage ? (
           <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200/80 bg-amber-50/90 dark:border-orange-900/70 dark:bg-orange-950/45 px-2.5 py-2 border-l-[3px] border-l-teal-500 dark:border-l-teal-500">
