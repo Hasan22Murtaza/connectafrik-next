@@ -21,6 +21,8 @@ export interface NotificationData {
   vibrate?: number[]
   /** Chat (or other) message id; forwarded to `/api/push-notifications` for FCM + stored notification data. */
   message_id?: string
+  /** Optional sender profile image URL for chat notifications. */
+  sender_image?: string
 }
 
 export interface NotificationResponse {

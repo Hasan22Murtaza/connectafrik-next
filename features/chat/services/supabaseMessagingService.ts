@@ -178,6 +178,12 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
                           (message as any).sender?.username || 
                           (message as any).sender_name || 
                           'Someone'
+        const senderImage =
+          message.sender?.avatarUrl ||
+          (message as any).sender?.avatar_url ||
+          (message as any).sender?.avatarUrl ||
+          (message as any).profiles?.avatar_url ||
+          ''
         
         // Prepare message preview
         const messagePreview = message.content || 
@@ -195,10 +201,12 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
               body: messagePreview,
               notification_type: 'chat_message',
               message_id: message.id,
+              sender_image: senderImage || undefined,
               data: {
                 thread_id: message.thread_id,
                 sender_id: message.sender_id,
                 sender_name: senderName,
+                sender_image: senderImage || undefined,
               },
             })
           } catch (notificationError) {

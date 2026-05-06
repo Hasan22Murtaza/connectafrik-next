@@ -38,6 +38,8 @@ export interface NotificationPayload {
   device_session_actor_id?: string
   /** Chat (or other) message id; merged into stored `data` and FCM `data` for deep-linking. */
   message_id?: string
+  /** Optional sender profile image URL for chat notifications. */
+  sender_image?: string
 }
 
 function stringifyFcmDataValues(obj: Record<string, unknown>): Record<string, string> {
@@ -75,6 +77,7 @@ export async function POST(request: NextRequest) {
     console.log('📱 Push notification API called')
 
     const body = await request.json() as NotificationPayload
+    console.log('✅ Notification payload:', body)
     const { user_id, title, body: notificationBody, notification_type, skip_db } = body
 
     if (!user_id || !title || !notificationBody) {
@@ -161,6 +164,12 @@ export async function POST(request: NextRequest) {
       body.data && typeof body.data === 'object' && !Array.isArray(body.data)
         ? { ...(body.data as Record<string, unknown>) }
         : {}
+
+    const senderImage =
+      typeof body.sender_image === 'string' && body.sender_image.trim()
+        ? body.sender_image.trim()
+        : ''
+    if (senderImage && !rawPushData.sender_image) rawPushData.sender_image = senderImage
 
     const messageId =
       typeof body.message_id === 'string' && body.message_id.trim()
@@ -258,7 +267,6 @@ export async function POST(request: NextRequest) {
         console.log('✅ Notification created in database:', notificationId)
       }
     }
-
     // Step 2: Send FCM push notification
     const firebaseAdmin = getFirebaseAdmin()
     if (!firebaseAdmin) {
@@ -369,7 +377,8 @@ export async function POST(request: NextRequest) {
             },
             sound: body.silent ? undefined : 'default',
             badge: 1,
-            contentAvailable: true 
+            contentAvailable: true,
+            category: "CALL_CATEGORY",
           }
         }
       }  
