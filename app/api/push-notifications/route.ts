@@ -335,7 +335,10 @@ export async function POST(request: NextRequest) {
 
     // Prepare base FCM message payload
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
-
+      notification: {
+        title: title,
+        body: notificationBody,
+      },
       data: {
         ...fcmStringData,
         title: body.title,
@@ -360,6 +363,10 @@ export async function POST(request: NextRequest) {
       apns: {
         payload: {
           aps: {
+            alert: {
+              title: title,
+              body: notificationBody,
+            },
             sound: body.silent ? undefined : 'default',
             badge: 1,
             contentAvailable: true 
