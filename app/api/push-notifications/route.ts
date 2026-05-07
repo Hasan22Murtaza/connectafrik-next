@@ -109,7 +109,7 @@ async function sendVoipApns(params: {
 
   const provider = getApnProvider()
   const note = new apn.Notification()
-  note.topic = `${bundleId}.voip`
+  note.topic = `${bundleId}`
   ;(note as apn.Notification & { pushType?: string }).pushType = 'voip'
   note.priority = 10
   note.expiry = Math.floor(Date.now() / 1000) + 30
