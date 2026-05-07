@@ -1,6 +1,7 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
 // Dynamically import components that might have SSR issues
@@ -22,10 +23,12 @@ const DynamicGlobalCallNotification = dynamic(() => import('@/shared/components/
 
 export default function GlobalComponents() {
   const { user } = useAuth()
+  const pathname = usePathname()
+  const isChatPage = pathname?.startsWith('/chat')
 
   return (
     <>
-      {user && <DynamicChatDock />}
+      {/* {user && !isChatPage && <DynamicChatDock />} */}
       {/* {user && <DynamicMobileChatButton/>} */}
       {/* {user && <DynamicFriendRequestNotifications />} */}
       {user && <DynamicGlobalCallNotification />}

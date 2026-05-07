@@ -64,8 +64,9 @@ import {
 
 interface ChatWindowProps {
   threadId: string;
-  onClose: (threadId: string) => void;
-  onMinimize: (threadId: string) => void;
+  onClose?: (threadId: string) => void;
+  onMinimize?: (threadId: string) => void;
+  variant?: "dock" | "page";
 }
 
 interface MessageInfoUser {
@@ -162,6 +163,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   threadId,
   onClose,
   onMinimize,
+  variant = "dock",
 }) => {
   const {
     getThreadById,
@@ -737,8 +739,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
   }, []);
 
-  if (!thread) return null;
-
   const closeMessageSearch = () => {
     setShowMessageSearch(false);
     setMessageSearchDraft("");
@@ -1283,13 +1283,25 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (minimizedThreadIds.includes(threadId)) {
       openThread(threadId);
     } else {
-      onMinimize(threadId);
+      onMinimize?.(threadId);
     }
   };
 
+  const isPageVariant = variant === "page";
+
   return (
-    <div className="pointer-events-auto relative flex w-72 sm:w-80 max-w-full sm:max-w-full flex-col border border-1 border-gray-100  rounded-2xl  bg-white shadow-2xl">
-      <div className="flex items-center justify-between  bg-gray-50 rounded-tl-2xl rounded-tr-2xl  border-b border-gray-200 p-2">
+    <div
+      className={`pointer-events-auto relative flex max-w-full flex-col   ${
+        isPageVariant
+          ? "h-full w-full "
+          : "w-72 rounded-2xl sm:w-80 sm:max-w-full"
+      }`}
+    >
+      <div
+        className={`flex items-center justify-between border-b border-gray-200 bg-[#f7f8fa] p-2 ${
+          isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+        }`}
+      >
         <div className="flex items-center space-x-3">
           <div className="relative h-10 w-10">
             {headerAvatarAvailable ? (
@@ -1319,43 +1331,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Tooltip text="Start audio call" position="top">
             <button
               onClick={() => handleStartCall("audio")}
               className="text-gray-500 hover:text-[#f97316] transition"
             >
-              <Phone className="h-4 w-4" />
+              <Phone className="h-5 w-5" />
             </button>
-          </Tooltip>
-          <Tooltip text="Start video call" position="top">
           <button
             onClick={() => handleStartCall("video")}
             className="text-gray-500 hover:text-[#f97316]"
-            title="Start video call"
           >
-            <Video className="h-4 w-4" />
+            <Video className="h-5 w-5" />
           </button>
-          </Tooltip>
-          <Tooltip text="Minimize chat" position="top">
-          <button
-            onClick={handleToggleMinimize}
-            className="text-gray-400 hover:text-gray-600"
-            title="Minimize"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          </Tooltip>
-          <Tooltip text="Close chat" position="top">
-          <button
-            onClick={() => onClose(threadId)}
-            className="text-gray-400 hover:text-gray-600"
-            title="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-          </Tooltip>
+        
 
-          <Tooltip text="Chat options" position="top">
             <div className="relative">
               <button
                 type="button"
@@ -1367,7 +1356,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 aria-expanded={showOptionsMenu}
                 aria-haspopup="menu"
               >
-                <MoreVertical className="h-4 w-4" />
+                <MoreVertical className="h-5 w-5" />
               </button>
               {showOptionsMenu && (
                 <div
@@ -1402,7 +1391,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     onClick={() => void handlePinToggle()}
                     className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
                   >
-                    {thread.pinned ? (
+                    {thread?.pinned ? (
                       <>
                         <PinOff className="h-4 w-4 shrink-0" />
                         <span>Unpin chat</span>
@@ -1420,7 +1409,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     onClick={() => void handleArchiveToggle()}
                     className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
                   >
-                    {thread.archived ? (
+                    {thread?.archived ? (
                       <>
                         <ArchiveRestore className="h-4 w-4 shrink-0" />
                         <span>Unarchive chat</span>
@@ -1446,7 +1435,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 </div>
               )}
             </div>
-          </Tooltip>
         </div>
       </div>
 
@@ -1497,7 +1485,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <div
         ref={messagesScrollRef}
-        className="flex h-[250px] sm:h-[290px] flex-col space-y-3 sm:space-y-4 overflow-y-auto px-3 sm:px-4 py-2 sm:py-3"
+        className={`flex flex-col space-y-3 overflow-y-auto bg-[#f7f8fa] px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${
+          isPageVariant ? "h-[calc(100vh-16rem)] sm:h-[calc(100vh-14rem)]" : "h-[250px] sm:h-[290px]"
+        }`}
       >
         {isLoadingOlderMessages && (
           <div className="py-1 text-center text-xs text-gray-500">
@@ -1554,7 +1544,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <form
         onSubmit={handleSend}
-        className="rounded-bl-2xl rounded-br-2xl border-t border-gray-200 bg-white px-2 sm:px-3 py-2 sm:py-3"
+        className={`border-t border-gray-200 bg-[#f7f8fa] px-2 py-2 sm:px-3 sm:py-3 ${
+          isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
+        }`}
       >
         {editingMessage ? (
           <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200/80 bg-amber-50/90 dark:border-orange-900/70 dark:bg-orange-950/45 px-2.5 py-2 border-l-[3px] border-l-teal-500 dark:border-l-teal-500">
@@ -1616,7 +1608,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               type="button"
               onClick={() => !editingMessage && setAttachmentMenuOpen((o) => !o)}
               disabled={!!editingMessage}
-              className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-40 disabled:pointer-events-none ${attachmentMenuOpen ? "ring-1 ring-orange-500 text-primary-600" : ""
+              className={`flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#54656f] hover:bg-black/5 disabled:pointer-events-none disabled:opacity-40 ${attachmentMenuOpen ? "ring-1 ring-[#25d366] text-[#128c7e]" : ""
                 }`}
               aria-label="Attach"
               aria-expanded={attachmentMenuOpen}
@@ -1647,13 +1639,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             aria-label={
               editingMessage ? "Editing message — press Escape to discard" : "Message input"
             }
-            className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-full text-gray-800 text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+            className="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#d1d7db] focus:outline-none focus:shadow-[0_0_0_3px_rgba(37,211,102,0.14)]"
           />
           {showSendButton ? (
             <button
               type="submit"
               disabled={isSending || composerSendDisabled}
-              className="flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#25d366] text-white hover:bg-[#22c55e] active:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9"
               aria-label={
                 editingMessage ? "Done editing — save changes" : "Send message"
               }
@@ -1672,8 +1664,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               type="button"
               onClick={toggleVoiceRecording}
               disabled={isSending || !!editingMessage}
-              className={`flex h-10 w-10 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40 disabled:pointer-events-none disabled:cursor-not-allowed ${voiceRecording
-                  ? "bg-red-600 hover:bg-red-700"
+              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9 ${voiceRecording
+                  ? "bg-orange-600 hover:bg-orange-700"
                   : "bg-primary-600 hover:bg-primary-700"
                 }`}
               aria-label={voiceRecording ? "Stop recording" : "Voice message"}
