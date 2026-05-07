@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { format, isToday, isYesterday, isThisYear } from 'date-fns'
 import { ChevronDown, Loader2, Pin, Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread } from '@/features/chat/services/supabaseMessagingService'
@@ -109,6 +110,7 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
 }
 
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
+  const router = useRouter()
   const { openThread, currentUser, threads: contextThreads } = useProductionChat()
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [threadsLoading, setThreadsLoading] = useState(true)
@@ -244,6 +246,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
 
   const handleOpenThread = async (threadId: string) => {
     openThread(threadId)
+    router.push(`/chat/${threadId}`)
     onClose()
   }
 
