@@ -194,7 +194,7 @@ export default function ChatSidebar({
 
   return (
     <aside
-      className={`w-full max-w-sm shrink-0 border-r border-gray-200 bg-[#f7f8fa] ${
+      className={`w-full max-w-sm shrink-0 border-r border-gray-200 bg-[#f7f8fa]  ${
         selectedThreadId ? "hidden sm:block" : "block"
       }`}
     >

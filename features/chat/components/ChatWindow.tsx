@@ -1291,15 +1291,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`pointer-events-auto relative flex max-w-full flex-col border border-1 border-gray-200 bg-[#f7f8fa] shadow-2xl ${
+      className={`pointer-events-auto relative flex max-w-full flex-col   ${
         isPageVariant
-          ? "h-full w-full rounded-none sm:rounded-2xl"
+          ? "h-full w-full "
           : "w-72 rounded-2xl sm:w-80 sm:max-w-full"
       }`}
     >
       <div
         className={`flex items-center justify-between border-b border-gray-200 bg-[#f7f8fa] p-2 ${
-          isPageVariant ? "sm:rounded-t-2xl" : "rounded-tl-2xl rounded-tr-2xl"
+          isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
         }`}
       >
         <div className="flex items-center space-x-3">
@@ -1335,13 +1335,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               onClick={() => handleStartCall("audio")}
               className="text-gray-500 hover:text-[#f97316] transition"
             >
-              <Phone className="h-4 w-4" />
+              <Phone className="h-5 w-5" />
             </button>
           <button
             onClick={() => handleStartCall("video")}
             className="text-gray-500 hover:text-[#f97316]"
           >
-            <Video className="h-4 w-4" />
+            <Video className="h-5 w-5" />
           </button>
         
 
@@ -1356,7 +1356,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 aria-expanded={showOptionsMenu}
                 aria-haspopup="menu"
               >
-                <MoreVertical className="h-4 w-4" />
+                <MoreVertical className="h-5 w-5" />
               </button>
               {showOptionsMenu && (
                 <div
@@ -1665,8 +1665,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               onClick={toggleVoiceRecording}
               disabled={isSending || !!editingMessage}
               className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9 ${voiceRecording
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-[#25d366] hover:bg-[#22c55e]"
+                  ? "bg-orange-600 hover:bg-orange-700"
+                  : "bg-primary-600 hover:bg-primary-700"
                 }`}
               aria-label={voiceRecording ? "Stop recording" : "Voice message"}
               title={

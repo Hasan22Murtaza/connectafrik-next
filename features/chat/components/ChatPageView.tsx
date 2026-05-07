@@ -28,7 +28,7 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
   );
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-5rem)] w-full overflow-hidden border border-gray-200 bg-white shadow-sm">
+    <div className="mx-auto flex h-[calc(100vh-6rem)] w-full overflow-hidden rounded-none sm:rounded-2xl border border-1 border-gray-200 ">
       <ChatSidebar selectedThreadId={selectedThreadId} onOpenThread={openOnPage} />
 
       <main
