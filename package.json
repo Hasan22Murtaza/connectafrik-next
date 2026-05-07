@@ -22,6 +22,7 @@
     "@supabase/supabase-js": "^2.39.0",
     "@videosdk.live/js-sdk": "^0.5.3",
     "@videosdk.live/react-sdk": "^0.6.4",
+    "apn": "^2.2.0",
     "date-fns": "^4.1.0",
     "emoji-picker-react": "^4.16.1",
     "firebase": "^10.7.1",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
+import apn from 'apn'
 import { getFirebaseAdmin } from '../fcm/_utils'
 import type { NotificationType } from '@/shared/types/notifications'
 import { isCanonicalNotificationType } from '@/shared/types/notifications'
@@ -67,6 +68,85 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+type TokenKind = 'standard' | 'voip'
+
+let apnProvider: apn.Provider | null = null
+function getApnProvider(): apn.Provider {
+  if (apnProvider) return apnProvider
+
+  const keyPath = process.env.APNS_PRIVATE_KEY
+  const keyId = process.env.APNS_KEY_ID
+  const teamId = process.env.APNS_TEAM_ID
+
+  if (!keyPath || !keyId || !teamId) {
+    throw new Error('APNS_PRIVATE_KEY/APNS_KEY_ID/APNS_TEAM_ID are required for VoIP push')
+  }
+
+  apnProvider = new apn.Provider({
+    token: {
+      key: keyPath,
+      keyId,
+      teamId,
+    },
+    production: false,
+  })
+
+  return apnProvider
+}
+
+async function sendVoipApns(params: {
+  token: string
+  title: string
+  body: string
+  data: Record<string, string>
+  silent?: boolean
+}) {
+  const bundleId = process.env.IOS_BUNDLE_ID || process.env.APNS_BUNDLE_ID
+  if (!bundleId) {
+    throw new Error('IOS_BUNDLE_ID (or APNS_BUNDLE_ID) is required for VoIP push')
+  }
+
+  const provider = getApnProvider()
+  const note = new apn.Notification()
+  note.topic = `${bundleId}.voip`
+  ;(note as apn.Notification & { pushType?: string }).pushType = 'voip'
+  note.priority = 10
+  note.expiry = Math.floor(Date.now() / 1000) + 30
+  note.payload = {
+    ...params.data,
+  }
+  note.contentAvailable = true
+  note.alert = {
+    title: params.title,
+    body: params.body,
+  }
+  if (!params.silent) {
+    note.sound = 'default'
+  }
+
+  const result = await provider.send(note, params.token)
+
+  if (result.failed && result.failed.length > 0) {
+    const firstFailure = result.failed[0]
+    const reason =
+      typeof firstFailure === 'string'
+        ? firstFailure
+        : (firstFailure.response && firstFailure.response.reason) || firstFailure.error?.message || 'unknown reason'
+    throw new Error(`APNs VoIP failed: ${reason}`)
+  }
+}
+
+function closeApnProvider() {
+  try {
+    apnProvider?.shutdown()
+  } catch {}
+  apnProvider = null
+}
+
+process.on('beforeExit', closeApnProvider)
+process.on('SIGINT', closeApnProvider)
+process.on('SIGTERM', closeApnProvider)
 
 export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders })
@@ -289,7 +369,7 @@ export async function POST(request: NextRequest) {
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
-      .select('fcm_token, device_type, device_id, is_active')
+      .select('fcm_token, device_type, device_id, is_active, token_kind')
       .eq('user_id', user_id)
       .eq('is_active', true)
       .not('fcm_token', 'is', null)
@@ -313,7 +393,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Safety gate: send only for active tokens (supports boolean and string values).
-    const activeSubscriptions = (subscriptions || []).filter((sub) => sub.is_active === true || sub.is_active === 'true')
+    // VoIP tokens are call-only; non-call notifications use standard tokens only.
+    const activeSubscriptions = (subscriptions || []).filter((sub) => {
+      const isActive = sub.is_active === true || sub.is_active === 'true'
+      if (!isActive) return false
+      const tokenKind: TokenKind = sub.token_kind === 'voip' ? 'voip' : 'standard'
+      if (canonicalType === 'call') return true
+      return tokenKind !== 'voip'
+    })
 
     if (activeSubscriptions.length === 0) {
       return NextResponse.json(
@@ -336,17 +423,14 @@ export async function POST(request: NextRequest) {
     // Deduplicate by device_id so we send at most one notification per device (avoids duplicate toasts)
     const byDevice = new Map<string, (typeof activeSubscriptions)[0]>()
     for (const sub of activeSubscriptions) {
-      const key = sub.device_id || sub.fcm_token
+      const tokenKind = sub.token_kind === 'voip' ? 'voip' : 'standard'
+      const key = `${sub.device_id || sub.fcm_token}:${tokenKind}`
       if (!byDevice.has(key)) byDevice.set(key, sub)
     }
     const subscriptionsToSend = Array.from(byDevice.values())
 
     // Prepare base FCM message payload
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
-      notification: {
-        title: title,
-        body: notificationBody,
-      },
       data: {
         ...fcmStringData,
         title: body.title,
@@ -371,15 +455,9 @@ export async function POST(request: NextRequest) {
       apns: {
         payload: {
           aps: {
-            alert: {
-              title: title,
-              body: notificationBody,
-            },
             sound: body.silent ? undefined : 'default',
             badge: 1,
-            contentAvailable: true,
-            category: "CALL_CATEGORY",
-          }
+            contentAvailable: true          }
         }
       }  
     }
@@ -387,12 +465,37 @@ export async function POST(request: NextRequest) {
     const sendPromises = subscriptionsToSend.map(async (subscription) => {
       try {
         const fcmToken = subscription.fcm_token
+        const tokenKind: TokenKind = subscription.token_kind === 'voip' ? 'voip' : 'standard'
         
         if (!fcmToken) {
           return { 
             success: false, 
             endpoint: subscription.device_id || 'unknown', 
             error: 'FCM token not found' 
+          }
+        }
+
+        // iOS calls use APNs VoIP token path. Everything else keeps existing FCM flow.
+        if (canonicalType === 'call' && subscription.device_type === 'ios' && tokenKind === 'voip') {
+          await sendVoipApns({
+            token: fcmToken,
+            title,
+            body: notificationBody,
+            data: {
+              ...fcmStringData,
+              title: body.title,
+              body: notificationBody,
+              type: canonicalType,
+              timestamp: String(Date.now()),
+            },
+            silent: body.silent,
+          })
+          return {
+            success: true,
+            endpoint: subscription.device_id || fcmToken.substring(0, 50),
+            device_type: subscription.device_type,
+            token_kind: tokenKind,
+            messageId: 'apns-voip',
           }
         }
 
@@ -409,6 +512,7 @@ export async function POST(request: NextRequest) {
           success: true, 
           endpoint: subscription.device_id || fcmToken.substring(0, 50), 
           device_type: subscription.device_type,
+          token_kind: tokenKind,
           messageId: response 
         }
       } catch (error: any) {
@@ -432,6 +536,7 @@ export async function POST(request: NextRequest) {
           success: false, 
           endpoint: subscription.device_id || subscription.fcm_token?.substring(0, 50) || 'unknown', 
           device_type: subscription.device_type,
+          token_kind: subscription.token_kind === 'voip' ? 'voip' : 'standard',
           error: error.message || error.code 
         }
       }

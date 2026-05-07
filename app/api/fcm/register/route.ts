@@ -54,7 +54,8 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { fcm_token, device_type, device_id, user_id: providedUserId } = body
+    const { fcm_token, device_type, device_id, user_id: providedUserId, token_kind: incomingTokenKind } = body
+    const token_kind = incomingTokenKind === 'voip' ? 'voip' : 'standard'
 
     // Validate required fields
     if (!fcm_token || !device_type || !device_id) {
@@ -84,6 +85,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate token_kind
+    if (!['standard', 'voip'].includes(token_kind)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid token_kind. Must be one of: standard, voip'
+        },
+        {
+          status: 400,
+          headers: corsHeaders
+        }
+      )
+    }
+
     // Get user_id from authenticated user or from request body
     let user_id = providedUserId
     if (!user_id) {
@@ -107,8 +122,9 @@ export async function POST(request: NextRequest) {
     // A physical device should map to a single fcm_tokens row at any time.
     const { data: existingDeviceToken, error: checkError } = await supabase
       .from('fcm_tokens')
-      .select('id, fcm_token, is_active, user_id, device_id')
+      .select('id, fcm_token, is_active, user_id, device_id, token_kind')
       .eq('device_id', device_id)
+      .eq('token_kind', token_kind)
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -140,6 +156,7 @@ export async function POST(request: NextRequest) {
           fcm_token: fcm_token,
           is_active: true,
           device_type: device_type,
+          token_kind,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingDeviceToken.id)
@@ -170,6 +187,7 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString()
           })
           .eq('device_id', device_id)
+          .eq('token_kind', token_kind)
           .neq('id', resultData.id)
       }
     } else {
@@ -178,6 +196,7 @@ export async function POST(request: NextRequest) {
         user_id,
         fcm_token,
         device_type: device_type as 'web' | 'ios' | 'android',
+        token_kind: token_kind as 'standard' | 'voip',
         device_id,
         is_active: true,
         updated_at: new Date().toISOString()
@@ -195,8 +214,9 @@ export async function POST(request: NextRequest) {
         if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
           const { data: checkAgain, error: recheckError } = await supabase
             .from('fcm_tokens')
-            .select('id, user_id, fcm_token, is_active, device_id')
+            .select('id, user_id, fcm_token, is_active, device_id, token_kind')
             .eq('device_id', device_id)
+            .eq('token_kind', token_kind)
             .order('updated_at', { ascending: false })
             .limit(1)
             .maybeSingle()
@@ -223,6 +243,7 @@ export async function POST(request: NextRequest) {
                 fcm_token: fcm_token,
                 is_active: true,
                 device_type: device_type,
+                token_kind,
                 updated_at: new Date().toISOString()
               })
               .eq('id', checkAgain.id)
@@ -252,6 +273,7 @@ export async function POST(request: NextRequest) {
                   updated_at: new Date().toISOString()
                 })
                 .eq('device_id', device_id)
+                .eq('token_kind', token_kind)
                 .neq('id', resultData.id)
             }
           } else {
