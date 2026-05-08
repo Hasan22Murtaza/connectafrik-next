@@ -83,13 +83,15 @@ function getApnProvider(): apn.Provider {
     throw new Error('APNS_PRIVATE_KEY/APNS_KEY_ID/APNS_TEAM_ID are required for VoIP push')
   }
 
+  const useProduction = process.env.APNS_PRODUCTION === 'true'
+
   apnProvider = new apn.Provider({
     token: {
       key: keyPath,
       keyId,
       teamId,
     },
-    production: false,
+    production: useProduction,
   })
 
   return apnProvider
@@ -109,7 +111,7 @@ async function sendVoipApns(params: {
 
   const provider = getApnProvider()
   const note = new apn.Notification()
-  note.topic = `${bundleId}`
+  note.topic = `${bundleId}.voip`
   ;(note as apn.Notification & { pushType?: string }).pushType = 'voip'
   note.priority = 10
   note.expiry = Math.floor(Date.now() / 1000) + 30
@@ -398,7 +400,11 @@ export async function POST(request: NextRequest) {
       const isActive = sub.is_active === true || sub.is_active === 'true'
       if (!isActive) return false
       const tokenKind: TokenKind = sub.token_kind === 'voip' ? 'voip' : 'standard'
-      if (canonicalType === 'call') return true
+      if (canonicalType === 'call') {
+        // iOS calls should prefer VoIP channel to avoid duplicate ringing via standard FCM.
+        if (sub.device_type === 'ios') return tokenKind === 'voip'
+        return tokenKind !== 'voip'
+      }
       return tokenKind !== 'voip'
     })
 
