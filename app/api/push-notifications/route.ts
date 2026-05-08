@@ -69,8 +69,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-type TokenKind = 'standard' | 'voip'
-
 let apnProvider: apn.Provider | null = null
 function getApnProvider(): apn.Provider {
   if (apnProvider) return apnProvider
@@ -371,10 +369,9 @@ export async function POST(request: NextRequest) {
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
-      .select('fcm_token, voip_token, device_type, device_id, is_active, token_kind')
+      .select('fcm_token, voip_token, device_type, device_id, is_active')
       .eq('user_id', user_id)
       .eq('is_active', true)
-      .not('fcm_token', 'is', null)
 
     if (subscriptionError) {
       console.error('❌ Error fetching subscriptions:', subscriptionError)
@@ -395,17 +392,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Safety gate: send only for active tokens (supports boolean and string values).
-    // VoIP tokens are call-only; non-call notifications use standard tokens only.
     const activeSubscriptions = (subscriptions || []).filter((sub) => {
       const isActive = sub.is_active === true || sub.is_active === 'true'
       if (!isActive) return false
-      const tokenKind: TokenKind = sub.token_kind === 'voip' ? 'voip' : 'standard'
       if (canonicalType === 'call') {
-        // iOS calls can use either legacy token_kind='voip' rows or voip_token on standard row.
-        if (sub.device_type === 'ios') return tokenKind === 'voip' || !!sub.voip_token
-        return tokenKind !== 'voip'
+        // iOS calls must use voip_token; other platforms use fcm_token.
+        if (sub.device_type === 'ios') return !!sub.voip_token
+        return !!sub.fcm_token
       }
-      return tokenKind !== 'voip'
+      return !!sub.fcm_token
     })
 
     if (activeSubscriptions.length === 0) {
@@ -429,8 +424,7 @@ export async function POST(request: NextRequest) {
     // Deduplicate by device_id so we send at most one notification per device (avoids duplicate toasts)
     const byDevice = new Map<string, (typeof activeSubscriptions)[0]>()
     for (const sub of activeSubscriptions) {
-      const tokenKind = sub.token_kind === 'voip' ? 'voip' : 'standard'
-      const key = `${sub.device_id || sub.fcm_token}:${tokenKind}`
+      const key = `${sub.device_id || sub.fcm_token || sub.voip_token}`
       if (!byDevice.has(key)) byDevice.set(key, sub)
     }
     const subscriptionsToSend = Array.from(byDevice.values())
@@ -471,25 +465,15 @@ export async function POST(request: NextRequest) {
     const sendPromises = subscriptionsToSend.map(async (subscription) => {
       try {
         const fcmToken = subscription.fcm_token
-        const tokenKind: TokenKind = subscription.token_kind === 'voip' ? 'voip' : 'standard'
         const voipToken = typeof subscription.voip_token === 'string' ? subscription.voip_token : ''
-        
-        if (!fcmToken) {
-          return { 
-            success: false, 
-            endpoint: subscription.device_id || 'unknown', 
-            error: 'FCM token not found' 
-          }
-        }
 
-        // iOS calls use APNs VoIP token path. Everything else keeps existing FCM flow.
+        // iOS calls use APNs VoIP token path.
         if (
           canonicalType === 'call' &&
-          subscription.device_type === 'ios' &&
-          (tokenKind === 'voip' || !!voipToken)
+          subscription.device_type === 'ios' && !!voipToken
         ) {
           await sendVoipApns({
-            token: voipToken || fcmToken,
+            token: voipToken,
             title,
             body: notificationBody,
             data: {
@@ -505,8 +489,15 @@ export async function POST(request: NextRequest) {
             success: true,
             endpoint: subscription.device_id || fcmToken.substring(0, 50),
             device_type: subscription.device_type,
-            token_kind: tokenKind,
             messageId: 'apns-voip',
+          }
+        }
+
+        if (!fcmToken) {
+          return {
+            success: false,
+            endpoint: subscription.device_id || 'unknown',
+            error: 'FCM token not found'
           }
         }
 
@@ -547,7 +538,6 @@ export async function POST(request: NextRequest) {
           success: true, 
           endpoint: subscription.device_id || fcmToken.substring(0, 50), 
           device_type: subscription.device_type,
-          token_kind: tokenKind,
           messageId: response 
         }
       } catch (error: any) {
@@ -571,7 +561,6 @@ export async function POST(request: NextRequest) {
           success: false, 
           endpoint: subscription.device_id || subscription.fcm_token?.substring(0, 50) || 'unknown', 
           device_type: subscription.device_type,
-          token_kind: subscription.token_kind === 'voip' ? 'voip' : 'standard',
           error: error.message || error.code 
         }
       }
