@@ -54,8 +54,19 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { fcm_token, device_type, device_id, user_id: providedUserId, token_kind: incomingTokenKind } = body
+    const {
+      fcm_token,
+      device_type,
+      device_id,
+      user_id: providedUserId,
+      token_kind: incomingTokenKind,
+      voip_token: incomingVoipToken
+    } = body
     const token_kind = incomingTokenKind === 'voip' ? 'voip' : 'standard'
+    const voip_token =
+      typeof incomingVoipToken === 'string' && incomingVoipToken.trim()
+        ? incomingVoipToken.trim()
+        : null
 
     // Validate required fields
     if (!fcm_token || !device_type || !device_id) {
@@ -99,6 +110,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (device_type !== 'ios' && voip_token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'voip_token is only supported for ios device_type'
+        },
+        {
+          status: 400,
+          headers: corsHeaders
+        }
+      )
+    }
+
     // Get user_id from authenticated user or from request body
     let user_id = providedUserId
     if (!user_id) {
@@ -122,7 +146,7 @@ export async function POST(request: NextRequest) {
     // A physical device should map to a single fcm_tokens row at any time.
     const { data: existingDeviceToken, error: checkError } = await supabase
       .from('fcm_tokens')
-      .select('id, fcm_token, is_active, user_id, device_id, token_kind')
+      .select('id, fcm_token, voip_token, is_active, user_id, device_id, token_kind')
       .eq('device_id', device_id)
       .eq('token_kind', token_kind)
       .order('updated_at', { ascending: false })
@@ -154,6 +178,7 @@ export async function POST(request: NextRequest) {
         .update({
           user_id,
           fcm_token: fcm_token,
+          voip_token: device_type === 'ios' ? voip_token : null,
           is_active: true,
           device_type: device_type,
           token_kind,
@@ -195,6 +220,7 @@ export async function POST(request: NextRequest) {
       const tokenRecord = {
         user_id,
         fcm_token,
+        voip_token: device_type === 'ios' ? voip_token : null,
         device_type: device_type as 'web' | 'ios' | 'android',
         token_kind: token_kind as 'standard' | 'voip',
         device_id,
@@ -214,7 +240,7 @@ export async function POST(request: NextRequest) {
         if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
           const { data: checkAgain, error: recheckError } = await supabase
             .from('fcm_tokens')
-            .select('id, user_id, fcm_token, is_active, device_id, token_kind')
+            .select('id, user_id, fcm_token, voip_token, is_active, device_id, token_kind')
             .eq('device_id', device_id)
             .eq('token_kind', token_kind)
             .order('updated_at', { ascending: false })
@@ -241,6 +267,7 @@ export async function POST(request: NextRequest) {
               .update({
                 user_id,
                 fcm_token: fcm_token,
+                voip_token: device_type === 'ios' ? voip_token : null,
                 is_active: true,
                 device_type: device_type,
                 token_kind,
@@ -304,6 +331,89 @@ export async function POST(request: NextRequest) {
         }
       } else {
         resultData = insertedData?.[0]
+      }
+    }
+
+    // Backward compatibility: if an iOS VoIP token is provided, also maintain token_kind='voip'
+    // row so existing VoIP push flow keeps working while clients move to voip_token field.
+    if (device_type === 'ios' && voip_token) {
+      const { data: existingVoipRow, error: voipCheckError } = await supabase
+        .from('fcm_tokens')
+        .select('id')
+        .eq('device_id', device_id)
+        .eq('token_kind', 'voip')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (voipCheckError && voipCheckError.code !== 'PGRST116') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Error checking VoIP token row',
+            data: { error: voipCheckError.message }
+          },
+          {
+            status: 400,
+            headers: corsHeaders
+          }
+        )
+      }
+
+      if (existingVoipRow?.id) {
+        const { error: voipUpdateError } = await supabase
+          .from('fcm_tokens')
+          .update({
+            user_id,
+            fcm_token: voip_token,
+            voip_token,
+            is_active: true,
+            device_type: 'ios',
+            token_kind: 'voip',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingVoipRow.id)
+
+        if (voipUpdateError) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Error updating VoIP token row',
+              data: { error: voipUpdateError.message }
+            },
+            {
+              status: 400,
+              headers: corsHeaders
+            }
+          )
+        }
+      } else {
+        const { error: voipInsertError } = await supabase
+          .from('fcm_tokens')
+          .insert({
+            user_id,
+            fcm_token: voip_token,
+            voip_token,
+            device_type: 'ios',
+            token_kind: 'voip',
+            device_id,
+            is_active: true,
+            updated_at: new Date().toISOString()
+          })
+
+        if (voipInsertError) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Error inserting VoIP token row',
+              data: { error: voipInsertError.message }
+            },
+            {
+              status: 400,
+              headers: corsHeaders
+            }
+          )
+        }
       }
     }
 

@@ -371,7 +371,7 @@ export async function POST(request: NextRequest) {
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
-      .select('fcm_token, device_type, device_id, is_active, token_kind')
+      .select('fcm_token, voip_token, device_type, device_id, is_active, token_kind')
       .eq('user_id', user_id)
       .eq('is_active', true)
       .not('fcm_token', 'is', null)
@@ -401,8 +401,8 @@ export async function POST(request: NextRequest) {
       if (!isActive) return false
       const tokenKind: TokenKind = sub.token_kind === 'voip' ? 'voip' : 'standard'
       if (canonicalType === 'call') {
-        // iOS calls should prefer VoIP channel to avoid duplicate ringing via standard FCM.
-        if (sub.device_type === 'ios') return tokenKind === 'voip'
+        // iOS calls can use either legacy token_kind='voip' rows or voip_token on standard row.
+        if (sub.device_type === 'ios') return tokenKind === 'voip' || !!sub.voip_token
         return tokenKind !== 'voip'
       }
       return tokenKind !== 'voip'
@@ -472,6 +472,7 @@ export async function POST(request: NextRequest) {
       try {
         const fcmToken = subscription.fcm_token
         const tokenKind: TokenKind = subscription.token_kind === 'voip' ? 'voip' : 'standard'
+        const voipToken = typeof subscription.voip_token === 'string' ? subscription.voip_token : ''
         
         if (!fcmToken) {
           return { 
@@ -482,9 +483,13 @@ export async function POST(request: NextRequest) {
         }
 
         // iOS calls use APNs VoIP token path. Everything else keeps existing FCM flow.
-        if (canonicalType === 'call' && subscription.device_type === 'ios' && tokenKind === 'voip') {
+        if (
+          canonicalType === 'call' &&
+          subscription.device_type === 'ios' &&
+          (tokenKind === 'voip' || !!voipToken)
+        ) {
           await sendVoipApns({
-            token: fcmToken,
+            token: voipToken || fcmToken,
             title,
             body: notificationBody,
             data: {
@@ -506,8 +511,32 @@ export async function POST(request: NextRequest) {
         }
 
         // Create complete message with token
+        const iosOnlyMessageOverrides: Partial<admin.messaging.Message> =
+          subscription.device_type === 'ios'
+            ? {
+                notification: {
+                  title: body.title,
+                  body: notificationBody,
+                },
+                apns: {
+                  payload: {
+                    aps: {
+                      alert: {
+                        title: body.title,
+                        body: notificationBody,
+                      },
+                      sound: body.silent ? undefined : 'default',
+                      badge: 1,
+                      contentAvailable: true,
+                    },
+                  },
+                },
+              }
+            : {}
+
         const fcmMessage: admin.messaging.Message = {
           ...baseMessage,
+          ...iosOnlyMessageOverrides,
           token: fcmToken,
         }
 

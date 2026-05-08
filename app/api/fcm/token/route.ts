@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 
     let tokenQuery = supabase
       .from('fcm_tokens')
-      .select('id, fcm_token, device_type, device_id, token_kind, is_active, updated_at, created_at')
+      .select('id, fcm_token, voip_token, device_type, device_id, token_kind, is_active, updated_at, created_at')
       .eq('user_id', user_id)
 
     if (device_id) {
