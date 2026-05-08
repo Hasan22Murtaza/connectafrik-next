@@ -59,10 +59,8 @@ export async function POST(request: NextRequest) {
       device_type,
       device_id,
       user_id: providedUserId,
-      token_kind: incomingTokenKind,
       voip_token: incomingVoipToken
     } = body
-    const token_kind = incomingTokenKind === 'voip' ? 'voip' : 'standard'
     const voip_token =
       typeof incomingVoipToken === 'string' && incomingVoipToken.trim()
         ? incomingVoipToken.trim()
@@ -90,20 +88,6 @@ export async function POST(request: NextRequest) {
           error: 'Invalid device_type. Must be one of: web, ios, android' 
         },
         { 
-          status: 400,
-          headers: corsHeaders
-        }
-      )
-    }
-
-    // Validate token_kind
-    if (!['standard', 'voip'].includes(token_kind)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid token_kind. Must be one of: standard, voip'
-        },
-        {
           status: 400,
           headers: corsHeaders
         }
@@ -146,9 +130,8 @@ export async function POST(request: NextRequest) {
     // A physical device should map to a single fcm_tokens row at any time.
     const { data: existingDeviceToken, error: checkError } = await supabase
       .from('fcm_tokens')
-      .select('id, fcm_token, voip_token, is_active, user_id, device_id, token_kind')
+      .select('id, fcm_token, voip_token, is_active, user_id, device_id')
       .eq('device_id', device_id)
-      .eq('token_kind', token_kind)
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -181,7 +164,6 @@ export async function POST(request: NextRequest) {
           voip_token: device_type === 'ios' ? voip_token : null,
           is_active: true,
           device_type: device_type,
-          token_kind,
           updated_at: new Date().toISOString()
         })
         .eq('id', existingDeviceToken.id)
@@ -212,7 +194,6 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString()
           })
           .eq('device_id', device_id)
-          .eq('token_kind', token_kind)
           .neq('id', resultData.id)
       }
     } else {
@@ -222,7 +203,6 @@ export async function POST(request: NextRequest) {
         fcm_token,
         voip_token: device_type === 'ios' ? voip_token : null,
         device_type: device_type as 'web' | 'ios' | 'android',
-        token_kind: token_kind as 'standard' | 'voip',
         device_id,
         is_active: true,
         updated_at: new Date().toISOString()
@@ -240,9 +220,8 @@ export async function POST(request: NextRequest) {
         if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
           const { data: checkAgain, error: recheckError } = await supabase
             .from('fcm_tokens')
-            .select('id, user_id, fcm_token, voip_token, is_active, device_id, token_kind')
+            .select('id, user_id, fcm_token, voip_token, is_active, device_id')
             .eq('device_id', device_id)
-            .eq('token_kind', token_kind)
             .order('updated_at', { ascending: false })
             .limit(1)
             .maybeSingle()
@@ -270,7 +249,6 @@ export async function POST(request: NextRequest) {
                 voip_token: device_type === 'ios' ? voip_token : null,
                 is_active: true,
                 device_type: device_type,
-                token_kind,
                 updated_at: new Date().toISOString()
               })
               .eq('id', checkAgain.id)
@@ -300,7 +278,6 @@ export async function POST(request: NextRequest) {
                   updated_at: new Date().toISOString()
                 })
                 .eq('device_id', device_id)
-                .eq('token_kind', token_kind)
                 .neq('id', resultData.id)
             }
           } else {
@@ -331,89 +308,6 @@ export async function POST(request: NextRequest) {
         }
       } else {
         resultData = insertedData?.[0]
-      }
-    }
-
-    // Backward compatibility: if an iOS VoIP token is provided, also maintain token_kind='voip'
-    // row so existing VoIP push flow keeps working while clients move to voip_token field.
-    if (device_type === 'ios' && voip_token) {
-      const { data: existingVoipRow, error: voipCheckError } = await supabase
-        .from('fcm_tokens')
-        .select('id')
-        .eq('device_id', device_id)
-        .eq('token_kind', 'voip')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (voipCheckError && voipCheckError.code !== 'PGRST116') {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Error checking VoIP token row',
-            data: { error: voipCheckError.message }
-          },
-          {
-            status: 400,
-            headers: corsHeaders
-          }
-        )
-      }
-
-      if (existingVoipRow?.id) {
-        const { error: voipUpdateError } = await supabase
-          .from('fcm_tokens')
-          .update({
-            user_id,
-            fcm_token: voip_token,
-            voip_token,
-            is_active: true,
-            device_type: 'ios',
-            token_kind: 'voip',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingVoipRow.id)
-
-        if (voipUpdateError) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Error updating VoIP token row',
-              data: { error: voipUpdateError.message }
-            },
-            {
-              status: 400,
-              headers: corsHeaders
-            }
-          )
-        }
-      } else {
-        const { error: voipInsertError } = await supabase
-          .from('fcm_tokens')
-          .insert({
-            user_id,
-            fcm_token: voip_token,
-            voip_token,
-            device_type: 'ios',
-            token_kind: 'voip',
-            device_id,
-            is_active: true,
-            updated_at: new Date().toISOString()
-          })
-
-        if (voipInsertError) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Error inserting VoIP token row',
-              data: { error: voipInsertError.message }
-            },
-            {
-              status: 400,
-              headers: corsHeaders
-            }
-          )
-        }
       }
     }
 

@@ -493,13 +493,10 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        if (!fcmToken) {
-          return {
-            success: false,
-            endpoint: subscription.device_id || 'unknown',
-            error: 'FCM token not found'
-          }
-        }
+     
+
+        const isIosChatMessage =
+          subscription.device_type === 'ios' && canonicalType === 'chat_message'
 
         // Create complete message with token
         const iosOnlyMessageOverrides: Partial<admin.messaging.Message> =
@@ -510,6 +507,12 @@ export async function POST(request: NextRequest) {
                   body: notificationBody,
                 },
                 apns: {
+                  headers: isIosChatMessage
+                    ? {
+                        'apns-push-type': 'alert',
+                        'apns-priority': '10',
+                      }
+                    : undefined,
                   payload: {
                     aps: {
                       alert: {

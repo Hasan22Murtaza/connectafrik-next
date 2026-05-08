@@ -57,7 +57,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const providedUserId = searchParams.get('user_id')
     const device_id = searchParams.get('device_id')
-    const token_kind = searchParams.get('token_kind')
 
     // Get user_id from authenticated user or from query params
     let user_id = providedUserId || null
@@ -80,16 +79,12 @@ export async function GET(request: NextRequest) {
 
     let tokenQuery = supabase
       .from('fcm_tokens')
-      .select('id, fcm_token, voip_token, device_type, device_id, token_kind, is_active, updated_at, created_at')
+      .select('id, fcm_token, voip_token, device_type, device_id, is_active, updated_at, created_at')
       .eq('user_id', user_id)
 
     if (device_id) {
       tokenQuery = tokenQuery.eq('device_id', device_id)
     }
-    if (token_kind && ['standard', 'voip'].includes(token_kind)) {
-      tokenQuery = tokenQuery.eq('token_kind', token_kind)
-    }
-
     const { data: tokens, error } = await tokenQuery.order('updated_at', { ascending: false })
 
     if (error) {
