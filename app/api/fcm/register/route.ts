@@ -126,11 +126,11 @@ export async function POST(request: NextRequest) {
       user_id = user.id
     }
 
-    // Check if token record already exists for this device (global device uniqueness).
-    // A physical device should map to a single fcm_tokens row at any time.
-    const { data: existingDeviceToken, error: checkError } = await supabase
+    // One row per (user_id, device_id). Same user re-registering the same device updates in place.
+    const { data: existingByUserDevice, error: checkError } = await supabase
       .from('fcm_tokens')
       .select('id, fcm_token, voip_token, is_active, user_id, device_id')
+      .eq('user_id', user_id)
       .eq('device_id', device_id)
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
       user_id: string
       device_id: string
     } | null = null
-    if (!existingDeviceToken) {
+    if (!existingByUserDevice) {
       const { data: byToken, error: byTokenError } = await supabase
         .from('fcm_tokens')
         .select('id, fcm_token, voip_token, is_active, user_id, device_id')
@@ -187,13 +187,12 @@ export async function POST(request: NextRequest) {
       existingByUserToken = byToken
     }
 
-    const existingTokenRow = existingDeviceToken ?? existingByUserToken
+    const existingTokenRow = existingByUserDevice ?? existingByUserToken
 
     let resultData: any = null
 
     if (existingTokenRow) {
-      // Token record exists for this device, update it (including owner user_id)
-      // so we never create duplicate rows for the same device_id.
+      // Update the canonical row for this user+device, or the row holding this user+FCM token.
       const { data: updatedData, error: updateError } = await supabase
         .from('fcm_tokens')
         .update({
@@ -225,18 +224,18 @@ export async function POST(request: NextRequest) {
 
       resultData = updatedData?.[0]
       if (resultData?.id) {
-        // Safety cleanup for legacy duplicates: keep newest row active and deactivate others.
         await supabase
           .from('fcm_tokens')
           .update({
             is_active: false,
             updated_at: new Date().toISOString()
           })
+          .eq('user_id', user_id)
           .eq('device_id', device_id)
           .neq('id', resultData.id)
       }
     } else {
-      // No token record exists for this device_id, insert new one
+      // No row for this user+device (and no user+token row), insert
       const tokenRecord = {
         user_id,
         fcm_token,
@@ -255,11 +254,12 @@ export async function POST(request: NextRequest) {
       if (insertError) {
         console.error('❌ Error inserting FCM token:', insertError)
         
-        // If insert fails due to unique constraint, try to find and update by device_id
+        // Race or legacy row: resolve by (user_id, device_id) or (user_id, fcm_token)
         if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
-          const { data: byDevice, error: errDevice } = await supabase
+          const { data: byUserDevice, error: errUserDevice } = await supabase
             .from('fcm_tokens')
             .select('id, user_id, fcm_token, voip_token, is_active, device_id')
+            .eq('user_id', user_id)
             .eq('device_id', device_id)
             .order('updated_at', { ascending: false })
             .limit(1)
@@ -275,8 +275,8 @@ export async function POST(request: NextRequest) {
             .maybeSingle()
 
           const recheckError =
-            errDevice && errDevice.code !== 'PGRST116'
-              ? errDevice
+            errUserDevice && errUserDevice.code !== 'PGRST116'
+              ? errUserDevice
               : errUserToken && errUserToken.code !== 'PGRST116'
                 ? errUserToken
                 : null
@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
             )
           }
 
-          const checkAgain = byUserToken ?? byDevice
+          const checkAgain = byUserDevice ?? byUserToken
 
           if (checkAgain) {
             const { data: updateData, error: updateError2 } = await supabase
@@ -327,13 +327,13 @@ export async function POST(request: NextRequest) {
 
             resultData = updateData?.[0]
             if (resultData?.id) {
-              // Safety cleanup for legacy duplicates: keep newest row active and deactivate others.
               await supabase
                 .from('fcm_tokens')
                 .update({
                   is_active: false,
                   updated_at: new Date().toISOString()
                 })
+                .eq('user_id', user_id)
                 .eq('device_id', device_id)
                 .neq('id', resultData.id)
             }
@@ -365,6 +365,17 @@ export async function POST(request: NextRequest) {
         }
       } else {
         resultData = insertedData?.[0]
+        if (resultData?.id) {
+          await supabase
+            .from('fcm_tokens')
+            .update({
+              is_active: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', user_id)
+            .eq('device_id', device_id)
+            .neq('id', resultData.id)
+        }
       }
     }
 
