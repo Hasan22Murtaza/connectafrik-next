@@ -312,7 +312,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 title: ringTitle,
                 body: ringBody,
                 data: pushData,
-                silent: false,
               }).catch((voipErr) => {
                 console.error('APNs VoIP ringing push failed', {
                   user_id,

@@ -49,7 +49,14 @@ export function normalizeVoipDeviceToken(token: string): string {
 }
 
 /**
- * Same construction as `scripts/send-test-voip.cjs` (topic, expiry, payload, aps, VoIP headers).
+ * Builds a PushKit-compatible VoIP APNs notification.
+ *
+ * Important: Apple expects `apns-push-type: voip` pushes to drive **CallKit** for incoming calls.
+ * User-visible `aps.alert` / sound on VoIP pushes is discouraged, can duplicate UI, and is associated
+ * with throttling or degraded delivery when the app is not running.
+ *
+ * Call metadata lives in `payload` (root JSON keys next to `aps`); iOS reads them from PushKit's
+ * `dictionaryPayload`.
  */
 export function buildVoipApnsNotification(options: {
   bundleId: string
@@ -57,23 +64,17 @@ export function buildVoipApnsNotification(options: {
   body: string
   /** Custom JSON root fields (e.g. type, call id). */
   payload: Record<string, string>
-  silent?: boolean
 }): VoipNotification {
   const note = new apn.Notification() as VoipNotification
   note.topic = `${options.bundleId}.voip`
   note.priority = 10
-  note.expiry = Math.floor(Date.now() / 1000) + 30
+  // Give APNs a short retry window if the device is briefly unreachable (absolute UNIX time).
+  note.expiry = Math.floor(Date.now() / 1000) + 120
   note.payload = {
     ...options.payload,
   }
+  // Wakes the app for PushKit; UI is CallKit + optional FCM banner, not `aps.alert` here.
   note.contentAvailable = true
-  note.alert = {
-    title: options.title,
-    body: options.body,
-  }
-  if (!options.silent) {
-    note.sound = 'default'
-  }
 
   const origHeaders = note.headers.bind(note)
   note.headers = function apnsVoipHeaders() {
@@ -101,7 +102,6 @@ export async function sendVoipApnsPush(params: {
   title: string
   body: string
   data: Record<string, string>
-  silent?: boolean
 }): Promise<void> {
   const bundleId = process.env.IOS_BUNDLE_ID || process.env.APNS_BUNDLE_ID
   if (!bundleId) {
@@ -114,7 +114,6 @@ export async function sendVoipApnsPush(params: {
     title: params.title,
     body: params.body,
     payload: params.data,
-    silent: params.silent,
   })
 
   const provider = getApnsVoipProvider()
