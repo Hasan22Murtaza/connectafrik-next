@@ -73,7 +73,7 @@ let apnProvider: apn.Provider | null = null
 function getApnProvider(): apn.Provider {
   if (apnProvider) return apnProvider
 
-  const keyPath = process.env.APNS_PRIVATE_KEY
+  const keyPath = process.env.APNS_PRIVATE_KEY?.replace(/\\n/g, '\n')
   const keyId = process.env.APNS_KEY_ID
   const teamId = process.env.APNS_TEAM_ID
 
