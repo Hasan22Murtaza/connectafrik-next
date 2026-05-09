@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { sendVoipApnsPush } from '@/lib/apns-voip'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 
@@ -81,6 +82,38 @@ async function resolveActorName(serviceClient: ReturnType<typeof createServiceCl
     .eq('id', userId)
     .maybeSingle()
   return (data?.full_name || data?.username || 'Someone') as string
+}
+
+/** PushKit VoIP tokens for iOS devices (see `fcm_tokens.voip_token`). */
+async function fetchActiveVoipTokensForUser(serviceClient: ServiceClient, userId: string): Promise<string[]> {
+  const { data: rows, error } = await serviceClient
+    .from('fcm_tokens')
+    .select('voip_token, device_id, is_active, device_type')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .not('voip_token', 'is', null)
+
+  if (error || !rows?.length) return []
+
+  const seen = new Set<string>()
+  const tokens: string[] = []
+  for (const row of rows as Array<{
+    voip_token: string | null
+    device_id: string | null
+    is_active?: boolean | string
+    device_type?: string | null
+  }>) {
+    const isActive = row.is_active === true || row.is_active === 'true'
+    if (!isActive) continue
+    if (row.device_type && row.device_type !== 'ios') continue
+    const t = typeof row.voip_token === 'string' ? row.voip_token.trim() : ''
+    if (!t) continue
+    const key = `${row.device_id || t}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    tokens.push(t)
+  }
+  return tokens
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -231,6 +264,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         url: `/call/${room_id}`,
       })
 
+      const ringTitle = `Incoming ${call_type === 'video' ? 'Video' : 'Audio'} Call`
+      const ringBody = `${caller_name} is calling you...`
+
       await Promise.allSettled(
         recipients.map(async (user_id) => {
           try {
@@ -239,8 +275,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 user_id,
-                title: `Incoming ${call_type === 'video' ? 'Video' : 'Audio'} Call`,
-                body: `${caller_name} is calling you...`,
+                title: ringTitle,
+                body: ringBody,
                 notification_type: 'call',
                 skip_db: true,
                 tag: `incoming-call-${threadId}`,
@@ -267,6 +303,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
               user_id,
             })
           }
+
+          const voipTokens = await fetchActiveVoipTokensForUser(serviceClient, user_id)
+          await Promise.allSettled(
+            voipTokens.map((voipToken) =>
+              sendVoipApnsPush({
+                token: voipToken,
+                title: ringTitle,
+                body: ringBody,
+                data: pushData,
+                silent: false,
+              }).catch((voipErr) => {
+                console.error('APNs VoIP ringing push failed', {
+                  user_id,
+                  error: voipErr instanceof Error ? voipErr.message : String(voipErr),
+                })
+              })
+            )
+          )
         })
       )
     }
