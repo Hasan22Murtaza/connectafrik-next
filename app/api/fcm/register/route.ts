@@ -151,9 +151,47 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Same FCM string can be sent again with a new device_id; DB unique is (user_id, fcm_token).
+    let existingByUserToken: {
+      id: string
+      fcm_token: string
+      voip_token: string | null
+      is_active: boolean
+      user_id: string
+      device_id: string
+    } | null = null
+    if (!existingDeviceToken) {
+      const { data: byToken, error: byTokenError } = await supabase
+        .from('fcm_tokens')
+        .select('id, fcm_token, voip_token, is_active, user_id, device_id')
+        .eq('user_id', user_id)
+        .eq('fcm_token', fcm_token)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (byTokenError && byTokenError.code !== 'PGRST116') {
+        console.error('❌ Error checking for existing user FCM token:', byTokenError)
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Error checking for existing token',
+            data: { error: byTokenError.message }
+          },
+          {
+            status: 400,
+            headers: corsHeaders
+          }
+        )
+      }
+      existingByUserToken = byToken
+    }
+
+    const existingTokenRow = existingDeviceToken ?? existingByUserToken
+
     let resultData: any = null
 
-    if (existingDeviceToken) {
+    if (existingTokenRow) {
       // Token record exists for this device, update it (including owner user_id)
       // so we never create duplicate rows for the same device_id.
       const { data: updatedData, error: updateError } = await supabase
@@ -161,12 +199,13 @@ export async function POST(request: NextRequest) {
         .update({
           user_id,
           fcm_token: fcm_token,
+          device_id,
           voip_token: device_type === 'ios' ? voip_token : null,
           is_active: true,
           device_type: device_type,
           updated_at: new Date().toISOString()
         })
-        .eq('id', existingDeviceToken.id)
+        .eq('id', existingTokenRow.id)
         .select()
 
       if (updateError) {
@@ -218,7 +257,7 @@ export async function POST(request: NextRequest) {
         
         // If insert fails due to unique constraint, try to find and update by device_id
         if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
-          const { data: checkAgain, error: recheckError } = await supabase
+          const { data: byDevice, error: errDevice } = await supabase
             .from('fcm_tokens')
             .select('id, user_id, fcm_token, voip_token, is_active, device_id')
             .eq('device_id', device_id)
@@ -226,7 +265,22 @@ export async function POST(request: NextRequest) {
             .limit(1)
             .maybeSingle()
 
-          if (recheckError && recheckError.code !== 'PGRST116') {
+          const { data: byUserToken, error: errUserToken } = await supabase
+            .from('fcm_tokens')
+            .select('id, user_id, fcm_token, voip_token, is_active, device_id')
+            .eq('user_id', user_id)
+            .eq('fcm_token', fcm_token)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+
+          const recheckError =
+            errDevice && errDevice.code !== 'PGRST116'
+              ? errDevice
+              : errUserToken && errUserToken.code !== 'PGRST116'
+                ? errUserToken
+                : null
+          if (recheckError) {
             return NextResponse.json(
               { 
                 success: false,
@@ -240,12 +294,15 @@ export async function POST(request: NextRequest) {
             )
           }
 
+          const checkAgain = byUserToken ?? byDevice
+
           if (checkAgain) {
             const { data: updateData, error: updateError2 } = await supabase
               .from('fcm_tokens')
               .update({
                 user_id,
                 fcm_token: fcm_token,
+                device_id,
                 voip_token: device_type === 'ios' ? voip_token : null,
                 is_active: true,
                 device_type: device_type,
@@ -314,7 +371,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: existingDeviceToken ? 'FCM token updated successfully' : 'FCM token registered successfully',
+        message: existingTokenRow ? 'FCM token updated successfully' : 'FCM token registered successfully',
         data: resultData
       },
       {
