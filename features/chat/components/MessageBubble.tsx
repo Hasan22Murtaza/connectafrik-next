@@ -16,6 +16,7 @@ import {
 import {
   Bot,
   ChevronDown,
+  ChevronsRight,
   Copy,
   Download,
   FileText,
@@ -31,7 +32,7 @@ import {
   Trash2,
   UserCircle,
 } from "lucide-react";
-import React, { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import React, { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import ReactionIcon, {
   KIND_TO_EMOJI,
@@ -153,12 +154,61 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onBeginMessageSelectMode,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState<"above" | "below">("below");
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const reactionPickerCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bubbleBlockRef = useRef<HTMLDivElement | null>(null);
+  const messageMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const MENU_VIEWPORT_GAP = 8;
+  /** Conservative height for reactions + overflow menu so we pick above/below before paint. */
+  const ESTIMATED_MENU_HEIGHT = 320;
+
+  const computeMenuPlacement = useCallback((): "above" | "below" => {
+    const el = bubbleBlockRef.current;
+    if (!el) return "below";
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - MENU_VIEWPORT_GAP;
+    const spaceAbove = rect.top - MENU_VIEWPORT_GAP;
+    if (spaceBelow >= ESTIMATED_MENU_HEIGHT) return "below";
+    if (spaceAbove >= ESTIMATED_MENU_HEIGHT) return "above";
+    return spaceBelow >= spaceAbove ? "below" : "above";
+  }, []);
+
+  const toggleMessageMenu = useCallback(() => {
+    setShowMenu((open) => {
+      if (open) return false;
+      setMenuPlacement(computeMenuPlacement());
+      return true;
+    });
+  }, [computeMenuPlacement]);
+
+  const openMessageMenu = useCallback(() => {
+    setMenuPlacement(computeMenuPlacement());
+    setShowMenu(true);
+  }, [computeMenuPlacement]);
+
+  useLayoutEffect(() => {
+    if (!showMenu) return;
+    const el = bubbleBlockRef.current;
+    const menuEl = messageMenuRef.current;
+    if (!el || !menuEl) return;
+    const rect = el.getBoundingClientRect();
+    const menuHeight = menuEl.getBoundingClientRect().height;
+    const spaceBelow = window.innerHeight - rect.bottom - MENU_VIEWPORT_GAP;
+    const spaceAbove = rect.top - MENU_VIEWPORT_GAP;
+    const fitsBelow = spaceBelow >= menuHeight;
+    const fitsAbove = spaceAbove >= menuHeight;
+
+    setMenuPlacement((prev) => {
+      if (prev === "below" && !fitsBelow && (fitsAbove || spaceAbove >= spaceBelow)) return "above";
+      if (prev === "above" && !fitsAbove && (fitsBelow || spaceBelow > spaceAbove)) return "below";
+      return prev;
+    });
+  }, [showMenu, showReactionPicker]);
 
   const handleReactionPickerEnter = useCallback(() => {
     if (reactionPickerCloseTimer.current) {
@@ -251,7 +301,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!showOverflowMenu && !onReact) return;
-    setShowMenu(true);
+    openMessageMenu();
   };
 
   const handleForwardClick = () => {
@@ -444,8 +494,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isComposerEditingThis =
     Boolean(composerEditingMessageId) && composerEditingMessageId === message.id && !isDeleted;
 
-  const bubbleBg = isOwnMessage ? "bg-[#dcf8c6]" : "bg-white";
-  const tailFill = isOwnMessage ? "#dcf8c6" : "#ffffff";
+  const bubbleBg = isOwnMessage
+    ? showForwardBadge
+      ? "bg-[#e2f7cb]"
+      : "bg-[#dcf8c6]"
+    : "bg-white";
+  const tailFill = isOwnMessage ? (showForwardBadge ? "#e2f7cb" : "#dcf8c6") : "#ffffff";
 
   const handleBubbleClick = () => {
     if (selectionMode && onToggleMessageSelect) {
@@ -517,7 +571,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setShowMenu((prev) => !prev);
+                toggleMessageMenu();
               }}
               className={`absolute top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f5f6f6] ${
                 isOwnMessage ? "-left-9" : "-right-9"
@@ -530,7 +584,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
           {showMenu ? (
             <div
-              className={`absolute z-[10001] mb-1 flex flex-col items-stretch gap-1 ${isOwnMessage ? "bottom-full right-0 items-end" : "bottom-full left-0 items-start"}`}
+              ref={messageMenuRef}
+              className={`absolute z-[10001] flex flex-col items-stretch gap-1 ${isOwnMessage ? "right-0 items-end" : "left-0 items-start"} ${
+                menuPlacement === "below" ? "top-full mt-1" : "bottom-full mb-1"
+              }`}
               onClick={(e) => e.stopPropagation()}
               onMouseEnter={handleReactionPickerEnter}
               onMouseLeave={handleReactionPickerLeave}
@@ -648,17 +705,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             }
             className={`relative inline-block max-w-full ${selectionMode ? "cursor-pointer" : ""}`}
           >
-            <span
-              className={`pointer-events-none absolute top-0 z-0 h-[19px] w-[12px] overflow-visible ${isOwnMessage ? "-right-2" : "-left-2"}`}
-              aria-hidden
-            >
-              <svg width="12" height="19" viewBox="0 0 12 19" className="block h-full w-full">
-                <path
-                  d={isOwnMessage ? "M12 0 L12 19 Q6 14 0 10 L0 0 Z" : "M0 0 L0 19 Q6 14 12 10 L12 0 Z"}
-                  fill={tailFill}
-                />
-              </svg>
-            </span>
+           
 
             <div
               className={`relative z-[1] rounded-lg px-2.5 pb-1 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${
@@ -675,13 +722,24 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowMenu((prev) => !prev);
+                      toggleMessageMenu();
                     }}
                     className="flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f5f6f6]"
                     aria-label="Open message actions"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </button>
+                </div>
+              ) : null}
+
+              {showForwardBadge && !isDeleted ? (
+                <div className="mb-1 flex items-center gap-1 pr-1">
+                  <ChevronsRight
+                    className="h-3.5 w-3.5 shrink-0 text-[#5b6c66]"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <span className="text-[12px] italic leading-snug text-[#5b6c66]">Forwarded</span>
                 </div>
               ) : null}
 
@@ -767,9 +825,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
               <div className="mt-0.5 flex items-end justify-end gap-1 pl-6">
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
-                  {showForwardBadge ? (
-                    <span className="text-[11px] lowercase leading-none text-[#667781]">forwarded</span>
-                  ) : null}
                   {showEditedBadge ? (
                     <span className="text-[11px] lowercase leading-none text-[#667781]">edited</span>
                   ) : null}

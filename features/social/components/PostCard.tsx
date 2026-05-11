@@ -64,6 +64,8 @@ interface Post {
   canFollow?: boolean;
 }
 
+type PostMediaLayout = "single" | "grid";
+
 interface PostCardProps {
   post: Post;
   onLike: (postId: string) => void;
@@ -483,13 +485,35 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       .sort((a, b) => b.count - a.count);
   };
 
-  const renderMedia = (url: string, index: number) => {
+  const renderMedia = (url: string, index: number, layout: PostMediaLayout) => {
     if (isImageFile(url)) {
       // Find the index of this image within imageUrls (excluding videos)
       const imageIndex = imageUrls.indexOf(url);
+      if (layout === "single") {
+        return (
+          <div
+            className="relative w-full cursor-pointer group"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleImageClick(imageIndex >= 0 ? imageIndex : 0);
+            }}
+          >
+            <img
+              src={url}
+              alt={`Post media ${index + 1}`}
+              className="block w-full h-auto max-h-[560px] object-contain bg-neutral-100 transition-transform duration-200 group-hover:brightness-95"
+              loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+              }}
+            />
+          </div>
+        );
+      }
       return (
         <div
-          className="relative cursor-pointer group"
+          className="relative h-full w-full min-h-0 cursor-pointer group"
           onClick={(e) => {
             e.stopPropagation();
             handleImageClick(imageIndex >= 0 ? imageIndex : 0);
@@ -498,7 +522,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           <img
             src={url}
             alt={`Post media ${index + 1}`}
-            className="w-full h-auto max-h-96 object-cover transition-transform duration-200 group-hover:brightness-95"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-200 group-hover:brightness-95"
             loading="lazy"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -510,11 +534,29 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     }
 
     if (isVideoFile(url)) {
+      if (layout === "grid") {
+        return (
+          <div className="relative h-full w-full min-h-0 bg-black">
+            <video
+              src={url}
+              controls
+              className="absolute inset-0 h-full w-full object-cover"
+              preload="metadata"
+              onError={(e) => {
+                const target = e.target as HTMLVideoElement;
+                target.style.display = "none";
+              }}
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        );
+      }
       return (
         <video
           src={url}
           controls
-          className="w-full h-auto max-h-96"
+          className="block w-full h-auto max-h-[min(70dvh,560px)] bg-black"
           preload="metadata"
           onError={(e) => {
             const target = e.target as HTMLVideoElement;
@@ -527,7 +569,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     }
 
     return (
-      <div className="w-full h-32 bg-gray-100 flex items-center justify-center rounded-lg">
+      <div
+        className={`w-full bg-gray-100 flex items-center justify-center rounded-lg ${
+          layout === "grid" ? "h-full min-h-[4rem]" : "h-32"
+        }`}
+      >
         <span className="text-gray-500">Unsupported media file</span>
       </div>
     );
@@ -713,9 +759,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                               <span className="block text-sm font-semibold text-gray-900">
                                 Working…
                               </span>
-                              <span className="mt-0.5 block text-xs text-gray-500">
-                                Updating tap-in status
-                              </span>
+                             
                             </span>
                           </>
                         ) : isFollowing ? (
@@ -728,9 +772,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                               <span className="block text-sm font-semibold text-gray-900">
                                 UnTap In
                               </span>
-                              <span className="mt-0.5 block text-xs text-gray-500">
-                                Stop following this creator from your feed
-                              </span>
+                            
                             </span>
                           </>
                         ) : (
@@ -743,9 +785,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                               <span className="block text-sm font-semibold text-gray-900">
                                 Tap In
                               </span>
-                              <span className="mt-0.5 block text-xs text-gray-500">
-                                Follow this creator and see more of their posts
-                              </span>
+                              
                             </span>
                           </>
                         )}
@@ -777,9 +817,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                           <span className="block text-sm font-semibold text-gray-900">
                             Unsave post
                           </span>
-                          <span className="mt-0.5 block text-xs text-gray-500">
-                            Remove from your saved items
-                          </span>
+                          
                         </span>
                       </button>
                     ) : (
@@ -803,9 +841,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                           <span className="block text-sm font-semibold text-gray-900">
                             Save post
                           </span>
-                          <span className="mt-0.5 block text-xs text-gray-500">
-                            Add to your saved list
-                          </span>
+                          
                         </span>
                       </button>
                     )}
@@ -878,8 +914,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
             if (mediaCount === 1) {
               return (
-                <div className="overflow-hidden">
-                  {renderMedia(visibleMedia[0], 0)}
+                <div className="overflow-hidden rounded-lg">
+                  {renderMedia(visibleMedia[0], 0, "single")}
                 </div>
               );
             }
@@ -888,8 +924,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               return (
                 <div className="grid grid-cols-2 gap-0.5">
                   {visibleMedia.map((url, index) => (
-                    <div key={`${post.id}-media-${index}`} className="overflow-hidden aspect-square">
-                      {renderMedia(url, index)}
+                    <div
+                      key={`${post.id}-media-${index}`}
+                      className="relative min-h-0 overflow-hidden aspect-square"
+                    >
+                      {renderMedia(url, index, "grid")}
                     </div>
                   ))}
                 </div>
@@ -899,12 +938,15 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             if (mediaCount === 3) {
               return (
                 <div className="grid grid-cols-2 gap-0.5">
-                  <div className="col-span-2 overflow-hidden aspect-video">
-                    {renderMedia(visibleMedia[0], 0)}
+                  <div className="relative col-span-2 min-h-0 overflow-hidden aspect-video">
+                    {renderMedia(visibleMedia[0], 0, "grid")}
                   </div>
                   {visibleMedia.slice(1).map((url, index) => (
-                    <div key={`${post.id}-media-${index + 1}`} className="overflow-hidden aspect-square">
-                      {renderMedia(url, index + 1)}
+                    <div
+                      key={`${post.id}-media-${index + 1}`}
+                      className="relative min-h-0 overflow-hidden aspect-square"
+                    >
+                      {renderMedia(url, index + 1, "grid")}
                     </div>
                   ))}
                 </div>
@@ -915,8 +957,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             return (
               <div className="grid grid-cols-2 gap-0.5">
                 {visibleMedia.map((url, index) => (
-                  <div key={`${post.id}-media-${index}`} className="relative overflow-hidden aspect-square">
-                    {renderMedia(url, index)}
+                  <div
+                    key={`${post.id}-media-${index}`}
+                    className="relative min-h-0 overflow-hidden aspect-square"
+                  >
+                    {renderMedia(url, index, "grid")}
                     {/* +N overlay on the last visible image if there are more */}
                     {index === visibleMedia.length - 1 && extraCount > 0 && (
                       <div
