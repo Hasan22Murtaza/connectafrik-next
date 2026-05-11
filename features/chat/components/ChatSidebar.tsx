@@ -300,6 +300,14 @@ export default function ChatSidebar({
                       onClick={(e) => e.stopPropagation()}
                       className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
                     >
+                        <button
+                        type="button"
+                        onClick={(e) => onMenuAction(e, thread, "toggle-archive")}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Archive className="h-4 w-4" />
+                        <span>{thread.archived ? "Unarchive chat" : "Archive chat"}</span>
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => onMenuAction(e, thread, "toggle-pin")}
@@ -308,14 +316,7 @@ export default function ChatSidebar({
                         {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                         <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
                       </button>
-                      <button
-                        type="button"
-                        onClick={(e) => onMenuAction(e, thread, "toggle-archive")}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                      >
-                        <Archive className="h-4 w-4" />
-                        <span>{thread.archived ? "Unarchive chat" : "Archive chat"}</span>
-                      </button>
+                    
                       <button
                         type="button"
                         onClick={(e) => onMenuAction(e, thread, "clear")}

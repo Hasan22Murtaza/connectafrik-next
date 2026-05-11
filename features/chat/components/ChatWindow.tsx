@@ -18,39 +18,50 @@ import {
 import type { PresenceStatus } from "@/shared/types/chat";
 import type { ChatParticipant } from "@/shared/types/chat";
 import {
+  Ban,
+  BellOff,
   CheckCheck,
-  Archive,
-  ArchiveRestore,
   ChevronLeft,
-  Images,
+  ChevronRight,
+  Heart,
+  Info,
+  ListChecks,
   Loader2,
-  Minus,
-  MoreVertical,
   Mic,
+  MinusCircle,
+  MoreVertical,
   Phone,
   Pencil,
-  Pin,
-  PinOff,
   Plus,
   Search,
   Send,
   Square,
+  ThumbsDown,
+  Timer,
+  Trash2,
+  UserPlus,
   Video,
   X,
+  XCircle,
+  Pin,
+  PinOff,
 } from "lucide-react";
 import React, {
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState
 } from "react";
+import { isSameDay } from "date-fns";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
 import ChatMediaGallery from "./ChatMediaGallery";
 import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
-import { MessageBubble } from "./MessageBubble";
+import { ChatDateDivider, MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import {
@@ -61,6 +72,10 @@ import {
   getPresentUserIds,
   subscribeChatPresenceSync,
 } from "@/shared/services/chatPresenceRealtime";
+import type {
+  ChatHeaderOptionsMenuItem,
+  ChatHeaderOptionsMenuSection,
+} from "@/features/chat/types/chatHeaderOptionsMenu";
 
 interface ChatWindowProps {
   threadId: string;
@@ -179,11 +194,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     clearMessagesForUser,
     markMessageDeletedForUser,
     setMessagesForThread,
-    setThreadArchived,
     setThreadPinned,
     threads,
     startChatWithMembers,
+    closeThread,
   } = useProductionChat();
+
+  const router = useRouter();
+  const pathname = usePathname();
 
   const { members } = useMembers();
 
@@ -413,6 +431,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     presentUserIds,
   ]);
 
+  /** `/user/[username]` accepts handle, display name, or profile id (see user profile page). */
+  const peerProfileRouteSegment = useMemo(() => {
+    if (isGroupThread) return null;
+    if (isSelfChat) {
+      if (!currentUser?.id) return null;
+      const m = members.find((mem) => mem.id === currentUser.id);
+      if (m?.username?.trim()) return m.username.trim();
+      return currentUser.id;
+    }
+    if (!primaryParticipant?.id) return null;
+    const fromUsername =
+      primaryMember?.username?.trim() ||
+      String(
+        (primaryParticipant as { username?: string | null }).username ?? ""
+      ).trim();
+    if (fromUsername) return fromUsername;
+    const fromName = primaryParticipant.name?.trim();
+    if (fromName) return fromName;
+    return primaryParticipant.id;
+  }, [
+    isGroupThread,
+    isSelfChat,
+    currentUser?.id,
+    primaryParticipant,
+    primaryMember?.username,
+    members,
+  ]);
+
   const [draft, setDraft] = useState("");
   const [isCallOpen, setIsCallOpen] = useState(false);
   const [currentCallType, setCurrentCallType] = useState<"audio" | "video">(
@@ -440,6 +486,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerInputRef = useRef<HTMLInputElement>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [messageSelectionMode, setMessageSelectionMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
@@ -1096,18 +1144,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [threadId]
   );
 
-  const handleArchiveToggle = async () => {
-    if (!thread) return;
-    const nextArchived = !thread.archived;
-    try {
-      await setThreadArchived(threadId, nextArchived);
-      toast.success(nextArchived ? "Chat archived" : "Chat restored");
-      setShowOptionsMenu(false);
-    } catch {
-      toast.error("Could not update archive");
-    }
-  };
-
   const handlePinToggle = async () => {
     if (!thread) return;
     const nextPinned = !thread.pinned;
@@ -1279,13 +1315,134 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     });
   };
 
-  const handleToggleMinimize = () => {
-    if (minimizedThreadIds.includes(threadId)) {
-      openThread(threadId);
-    } else {
-      onMinimize?.(threadId);
-    }
-  };
+  const handleOpenThreadDetailPage = useCallback(() => {
+    if (!threadId?.trim()) return;
+    openThread(threadId);
+
+    const href = isGroupThread
+      ? `/chat/${encodeURIComponent(threadId)}`
+      : peerProfileRouteSegment
+        ? `/user/${encodeURIComponent(peerProfileRouteSegment)}`
+        : null;
+    if (!href) return;
+
+    const pathsEqual = (a: string, b: string) => {
+      if (a === b) return true;
+      try {
+        return decodeURIComponent(a) === decodeURIComponent(b);
+      } catch {
+        return false;
+      }
+    };
+    if (pathsEqual(pathname, href)) return;
+    router.push(href);
+  }, [
+    threadId,
+    openThread,
+    pathname,
+    router,
+    isGroupThread,
+    peerProfileRouteSegment,
+  ]);
+
+  const exitMessageSelectionMode = useCallback(() => {
+    setMessageSelectionMode(false);
+    setSelectedMessageIds([]);
+  }, []);
+
+  const handleCloseChatFromMenu = useCallback(() => {
+    setShowOptionsMenu(false);
+    exitMessageSelectionMode();
+    closeThread(threadId);
+    if (variant === "page") router.push("/chat");
+  }, [threadId, closeThread, variant, router, exitMessageSelectionMode]);
+
+  const handleDeleteChatFromMenu = useCallback(() => {
+    if (!window.confirm("Remove this chat from your chats list?")) return;
+    setShowOptionsMenu(false);
+    exitMessageSelectionMode();
+    closeThread(threadId);
+    if (variant === "page") router.push("/chat");
+    toast.success("Chat removed");
+  }, [threadId, closeThread, variant, router, exitMessageSelectionMode]);
+
+  const toggleMessageSelect = useCallback((messageId: string) => {
+    setSelectedMessageIds((prev) =>
+      prev.includes(messageId)
+        ? prev.filter((id) => id !== messageId)
+        : [...prev, messageId]
+    );
+  }, []);
+
+  const chatHeaderOptionsMenuSections = useMemo((): ChatHeaderOptionsMenuSection[] => {
+    const chevron = (
+      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+    );
+    const primary: ChatHeaderOptionsMenuItem[] = [
+      {
+        id: "contact",
+        label: "Contact info",
+        Icon: Info,
+        onClick: () => {
+          setShowOptionsMenu(false);
+          handleOpenThreadDetailPage();
+        },
+      },
+      {
+        id: "search",
+        label: "Search",
+        Icon: Search,
+        onClick: () => openMessageSearchFromMenu(),
+      },
+     
+     
+      {
+        id: "pin",
+        label: thread?.pinned ? "Unpin chat" : "Pin chat",
+        Icon: thread?.pinned ? PinOff : Pin,
+        onClick: () => void handlePinToggle(),
+      },
+      
+      {
+        id: "close",
+        label: "Close chat",
+        Icon: XCircle,
+        onClick: () => void handleCloseChatFromMenu(),
+      },
+    ];
+
+    const destructive: ChatHeaderOptionsMenuItem[] = [
+     
+      {
+        id: "clear",
+        label: "Clear chat",
+        Icon: MinusCircle,
+        disabled: visibleMessages.length === 0,
+        onClick: () => void handleClearAllMessages(),
+      },
+      {
+        id: "delete",
+        label: "Delete chat",
+        Icon: Trash2,
+        tone: "danger",
+        onClick: () => void handleDeleteChatFromMenu(),
+      },
+    ];
+
+    return [
+      { id: "primary", items: primary },
+      { id: "destructive", items: destructive },
+    ];
+  }, [
+    thread?.pinned,
+    visibleMessages.length,
+    openMessageSearchFromMenu,
+    handleOpenThreadDetailPage,
+    handlePinToggle,
+    handleClearAllMessages,
+    handleCloseChatFromMenu,
+    handleDeleteChatFromMenu,
+  ]);
 
   const isPageVariant = variant === "page";
 
@@ -1317,17 +1474,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </div>
             )}
           </div>
-          <div>
-            <div className="text-sm font-semibold text-gray-900 line-clamp-1">
+          <div className="cursor-pointer" onClick={handleOpenThreadDetailPage}
+            >
+            <div className="text-sm font-semibold text-gray-900 line-clamp-1" >
               {displayThreadName}
             </div>
-            <div className="text-xs text-gray-500">
+            <button
+              type="button"
+              className="block w-full text-left text-xs text-gray-500 hover:text-gray-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
+            >
               {isSelfChat
                 ? "Save messages to yourself"
                 : (thread?.participants?.length ?? 0) > 2
                   ? `${thread?.participants?.length} participants`
                   : (directSubtitle ?? "Offline")}
-            </div>
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -1362,81 +1523,75 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <div
                   ref={menuRef}
                   role="menu"
-                  className="absolute right-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[200px]"
+                  className="absolute right-0 top-full mt-1 z-50 min-w-[240px] rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800"
                 >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => openMessageSearchFromMenu()}
-                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
-                  >
-                    <Search className="h-4 w-4 shrink-0" />
-                    <span>Search</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setShowMediaGallery(true);
-                      setShowOptionsMenu(false);
-                    }}
-                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
-                  >
-                    <Images className="h-4 w-4 shrink-0" />
-                    <span>{isGroupThread ? "Group media" : "Media"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void handlePinToggle()}
-                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
-                  >
-                    {thread?.pinned ? (
-                      <>
-                        <PinOff className="h-4 w-4 shrink-0" />
-                        <span>Unpin chat</span>
-                      </>
-                    ) : (
-                      <>
-                        <Pin className="h-4 w-4 shrink-0" />
-                        <span>Pin chat</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => void handleArchiveToggle()}
-                    className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100"
-                  >
-                    {thread?.archived ? (
-                      <>
-                        <ArchiveRestore className="h-4 w-4 shrink-0" />
-                        <span>Unarchive chat</span>
-                      </>
-                    ) : (
-                      <>
-                        <Archive className="h-4 w-4 shrink-0" />
-                        <span>Archive chat</span>
-                      </>
-                    )}
-                  </button>
-                  {visibleMessages.length > 0 && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => void handleClearAllMessages()}
-                      className="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm text-red-600"
-                    >
-                      <X className="h-4 w-4 shrink-0" />
-                      <span>Clear All Chat</span>
-                    </button>
-                  )}
+                  {chatHeaderOptionsMenuSections.map((section, sectionIdx) => (
+                    <React.Fragment key={section.id}>
+                      {sectionIdx > 0 ? (
+                        <div
+                          role="separator"
+                          className="my-1 border-t border-gray-200 dark:border-gray-600"
+                        />
+                      ) : null}
+                      {section.items.map((item) => {
+                        const {
+                          id,
+                          label,
+                          Icon,
+                          tone = "default",
+                          trailing,
+                          disabled,
+                          onClick,
+                        } = item;
+                        const baseRow =
+                          "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug";
+                        const rowClass =
+                          disabled
+                            ? `${baseRow} cursor-not-allowed text-gray-400 opacity-60`
+                            : tone === "danger"
+                              ? `${baseRow} text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/80`
+                              : `${baseRow} text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700/80`;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            role="menuitem"
+                            disabled={disabled}
+                            onClick={onClick}
+                            className={rowClass}
+                          >
+                            <Icon className="h-[22px] w-[22px] shrink-0 opacity-90" />
+                            <span className="min-w-0 flex-1">{label}</span>
+                            {trailing ? (
+                              <span className="shrink-0">{trailing}</span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
                 </div>
               )}
             </div>
         </div>
       </div>
+
+      {messageSelectionMode && (
+        <div className="flex items-center justify-between gap-2 border-b border-amber-200/80 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <span className="font-medium">
+            {selectedMessageIds.length > 0
+              ? `${selectedMessageIds.length} selected`
+              : "Select messages"}
+          </span>
+          <button
+            type="button"
+            className="shrink-0 font-semibold text-primary-700 hover:text-primary-800"
+            onClick={() => exitMessageSelectionMode()}
+          >
+            Done
+          </button>
+        </div>
+      )}
 
       {showMessageSearch && (
         <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50 px-1.5 py-1.5">
@@ -1503,30 +1658,50 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               : "Send a message to kick off the conversation."}
           </div>
         ) : (
-          displayMessages.map((message: ChatMessage) => {
+          displayMessages.map((message: ChatMessage, index: number) => {
             const isOwn = chatUserIdsEqual(
               getChatMessageAuthorId(message),
               currentUser?.id
             );
+            const prev = displayMessages[index - 1];
+            const showDateDivider =
+              !prev ||
+              !isSameDay(
+                new Date(prev.created_at),
+                new Date(message.created_at)
+              );
 
             return (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                isOwnMessage={isOwn}
-                currentUserId={currentUser?.id || ""}
-                threadParticipants={
-                  thread?.participants?.map((p: any) => p.id) || []
-                }
-                participantPresence={participantPresenceById}
-                onReply={handleReply}
-                onForward={openForwardPicker}
-                onDelete={handleDelete}
-                onBeginEdit={beginComposerEdit}
-                composerEditingMessageId={editingMessage?.id ?? null}
-                onReact={handleMessageReaction}
-                onShowInfo={(msg) => void openMessageInfo(msg)}
-              />
+              <Fragment key={message.id}>
+                {showDateDivider ? (
+                  <ChatDateDivider dateIso={message.created_at} />
+                ) : null}
+                <MessageBubble
+                  message={message}
+                  isOwnMessage={isOwn}
+                  currentUserId={currentUser?.id || ""}
+                  threadParticipants={
+                    thread?.participants?.map((p: ChatParticipant) => p.id) || []
+                  }
+                  participantPresence={participantPresenceById}
+                  onReply={handleReply}
+                  onForward={openForwardPicker}
+                  onDelete={handleDelete}
+                  onBeginEdit={beginComposerEdit}
+                  composerEditingMessageId={editingMessage?.id ?? null}
+                  onReact={handleMessageReaction}
+                  onShowInfo={(msg) => void openMessageInfo(msg)}
+                  selectionMode={messageSelectionMode}
+                  isMessageSelected={selectedMessageIds.includes(message.id)}
+                  onToggleMessageSelect={toggleMessageSelect}
+                  onBeginMessageSelectMode={(messageId) => {
+                    setMessageSelectionMode(true);
+                    setSelectedMessageIds((prev) =>
+                      prev.includes(messageId) ? prev : [...prev, messageId]
+                    );
+                  }}
+                />
+              </Fragment>
             );
           })
         )}

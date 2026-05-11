@@ -23,7 +23,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
         return (
           <div className="flex items-center">
             <svg 
-              className="w-3 h-3 text-gray-400" 
+              className="w-3 h-3 text-[#8696a0]" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
@@ -39,7 +39,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
         return (
           <div className="flex items-center">
             <svg 
-              className="w-3 h-3 text-gray-400" 
+              className="w-3 h-3 text-[#8696a0]" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
@@ -50,7 +50,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
               />
             </svg>
             <svg 
-              className="w-3 h-3 text-gray-400 -ml-1" 
+              className="w-3 h-3 text-[#8696a0] -ml-1" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
@@ -66,7 +66,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
         return (
           <div className="flex items-center">
             <svg 
-              className="w-3 h-3 text-blue-700" 
+              className="w-3 h-3 text-[#53bdeb]" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
@@ -77,7 +77,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
               />
             </svg>
             <svg 
-              className="w-3 h-3 text-blue-700 -ml-1" 
+              className="w-3 h-3 text-[#53bdeb] -ml-1" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
