@@ -167,6 +167,7 @@ export async function formatPostsForClient(
       content: post.content,
       category: post.category,
       tags: post.tags,
+      background_id: post.background_id ?? null,
       media_urls: post.media_urls,
       media_type: post.media_type,
       likes_count: post.likes_count,

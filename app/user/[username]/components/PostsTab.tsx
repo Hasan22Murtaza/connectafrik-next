@@ -11,6 +11,7 @@ interface PostWithAuthor {
   author_id: string; created_at: string
   likes_count: number; comments_count: number; shares_count: number; views_count: number
   media_urls: string[] | null
+  background_id?: string | null
   author: { id: string; username: string; full_name: string; avatar_url: string | null; country: string | null }
   isLiked?: boolean
 }
@@ -37,7 +38,7 @@ interface PostsTabProps {
   onComment: (postId: string) => void
   onShare: (postId: string) => void
   onDelete?: (postId: string) => Promise<void>
-  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void
+  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => void
   onEmojiReaction: (postId: string, emoji: string) => void
   onCloseComments: () => void
 }

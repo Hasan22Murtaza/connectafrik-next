@@ -4,6 +4,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { sendPostCreatedEmail } from '@/shared/services/emailService'
 import { POST_SELECT, formatPostsForClient } from './format-posts-response'
+import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
 
 const PAGE_SIZE = 10
 
@@ -80,21 +81,29 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const { content, category, media_type, media_urls, tags, location } = body
+    const { content, category, media_type, media_urls, tags, location, background_id } = body
 
-    if (!content) {
-      return errorResponse('Content is required', 400)
+    const urls = Array.isArray(media_urls) ? media_urls : []
+    const mt = (media_type || (urls.length > 0 ? 'image' : 'none')) as string
+    const trimmedContent = typeof content === 'string' ? content.trim() : ''
+    const hasMediaPayload = urls.length > 0 || mt === 'image' || mt === 'video'
+    if (!hasMediaPayload && trimmedContent.length < 10) {
+      return errorResponse('Add at least 10 characters of text, or attach a photo or video', 400)
     }
+
+    const isTextOnly = urls.length === 0 && mt === 'none'
+    const resolvedBackgroundId = isTextOnly ? sanitizePostBackgroundId(background_id) : null
 
     const { data: post, error: insertError } = await supabase
       .from('posts')
       .insert({
-        content,
+        content: trimmedContent,
         category: category || 'general',
-        media_type: media_type || 'none',
-        media_urls: media_urls || [],
+        media_type: mt,
+        media_urls: urls,
         tags: tags || [],
         location: location || null,
+        background_id: resolvedBackgroundId,
         author_id: user.id,
       })
       .select(POST_SELECT_SINGLE)
@@ -114,6 +123,7 @@ export async function POST(request: NextRequest) {
         content: post.content,
         category: post.category,
         tags: post.tags,
+        background_id: post.background_id ?? null,
         media_urls: post.media_urls,
         media_type: post.media_type,
         likes_count: post.likes_count ?? 0,

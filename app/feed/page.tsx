@@ -154,7 +154,7 @@ const FeedPage: React.FC = () => {
     }
   }, [deletePost])
 
-  const handleEdit = useCallback((postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+  const handleEdit = useCallback((postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => {
     updatePost(postId, updates)
   }, [updatePost])
 

@@ -35,6 +35,7 @@ interface PostWithAuthor {
   author_id: string; created_at: string
   likes_count: number; comments_count: number; shares_count: number; views_count: number
   media_urls: string[] | null
+  background_id?: string | null
   author: { id: string; username: string; full_name: string; avatar_url: string | null; country: string | null }
   isLiked?: boolean
 }
@@ -345,7 +346,7 @@ const UserProfilePage: React.FC = () => {
     catch { toast.error('Failed to delete post') }
   }, [user, profile])
 
-  const handleEdit = useCallback(async (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => {
+  const handleEdit = useCallback(async (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => {
     // PostCard already saves to DB; just update local state
     updatePost(postId, (p: any) => ({ ...p, ...updates }))
   }, [updatePost])

@@ -199,6 +199,7 @@ const SavedPage: React.FC = () => {
         media_urls?: string[]
         media_type?: string
         tags?: string[]
+        background_id?: string | null
       }
     ) => {
       setSavedPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)))

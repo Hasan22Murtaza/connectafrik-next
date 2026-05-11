@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Image, MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search } from 'lucide-react'
+import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
@@ -7,6 +7,7 @@ import VideoUploader from '@/shared/components/ui/VideoUploader'
 import toast from 'react-hot-toast'
 import { CULTURE_SUBCATEGORIES, type CultureSubcategorySlug } from '@/shared/constants/culture'
 import { POLITICS_SUBCATEGORIES, type PoliticsSubcategorySlug } from '@/shared/constants/politics'
+import { POST_BACKGROUND_PRESETS, getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
 
 type MediaType = 'image' | 'video' | 'none'
 type Category = 'politics' | 'culture' | 'general'
@@ -20,6 +21,8 @@ export interface PostSubmitData {
   media_urls?: string[]
   tags?: string[]
   location?: string
+  /** Text-only feed posts: preset id from `POST_BACKGROUND_PRESETS`, or null to clear */
+  background_id?: string | null
 }
 
 export interface EditPostData {
@@ -31,6 +34,7 @@ export interface EditPostData {
   media_urls?: string[] | null
   tags?: string[]
   location?: string
+  background_id?: string | null
 }
 
 interface CreatePostProps {
@@ -171,6 +175,12 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const [loadingNearby, setLoadingNearby] = useState(false)
   const [mapsLoaded, setMapsLoaded] = useState(false)
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [selectedBackgroundId, setSelectedBackgroundId] = useState<string | null>(() => {
+    const urls = editData?.media_urls
+    if (urls && urls.length > 0) return null
+    return editData?.background_id ?? null
+  })
+  const [showBackgroundModal, setShowBackgroundModal] = useState(false)
 
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const locationInputRef = useRef<HTMLInputElement>(null)
@@ -184,8 +194,37 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const totalMediaCount = mediaFiles.length + existingImageUrls.length
   const hasMedia = totalMediaCount > 0 || !!videoUrl || existingVideoUrls.length > 0
   const effectiveCategory = culturePageMode ? 'culture' : politicsPageMode ? 'politics' : category
-  const isFormValid = content.trim().length >= 10 && !isSubmitting && !uploading
+  /** Text-only posts need 10+ chars; posts with photo/video can omit or shorten caption. */
+  const isFormValid =
+    (hasMedia || content.trim().length >= 10) && !isSubmitting && !uploading
   const hasActiveVideo = videoUrl !== '' || existingVideoUrls.length > 0
+  const selectedBgPreset = selectedBackgroundId ? getPostBackgroundPreset(selectedBackgroundId) : null
+  /** Full-screen Facebook-style shell when parent passes onCancel (feed, edit, culture, politics). */
+  const useModalShell = typeof onCancel === 'function'
+
+  useEffect(() => {
+    if (hasMedia) setSelectedBackgroundId(null)
+  }, [hasMedia])
+
+  useEffect(() => {
+    if (!useModalShell) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [useModalShell])
+
+  useEffect(() => {
+    if (!useModalShell || !onCancel) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (showLocationModal || showBackgroundModal) return
+      if (!isSubmitting && !uploading) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [useModalShell, onCancel, showLocationModal, showBackgroundModal, isSubmitting, uploading])
 
   const autoResize = useCallback(() => {
     const el = contentRef.current
@@ -386,8 +425,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!content.trim()) return
-    if (content.trim().length < 10) return toast.error('Your post must be at least 10 characters long')
+    const trimmed = content.trim()
+    if (!hasMedia && !trimmed) return
+    if (!hasMedia && trimmed.length < 10) return toast.error('Your post must be at least 10 characters long')
     if (effectiveCategory === 'culture' && !cultureSubcategory) return toast.error('Please select a cultural category')
     if (effectiveCategory === 'politics' && !politicsSubcategory) return toast.error('Please select a political topic')
 
@@ -419,7 +459,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
           : effectiveCategory === 'politics' && politicsSubcategory ? [politicsSubcategory]
             : undefined
 
-      const text = content.trim()
+      const text = trimmed
       const payload: PostSubmitData = {
         category: effectiveCategory,
         media_type,
@@ -432,6 +472,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               return { title: split.title, content: split.content }
             })()
           : { content: text }),
+        ...(!groupPostEdit ? { background_id: media_type === 'none' ? selectedBackgroundId : null } : {}),
       }
 
       await onSubmit(payload)
@@ -449,6 +490,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
         setUploadProgress('')
         setSelectedLocation(null)
         setShowLocationModal(false)
+        setSelectedBackgroundId(null)
+        setShowBackgroundModal(false)
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to save post')
@@ -481,35 +524,95 @@ const CreatePost: React.FC<CreatePostProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
-      <div className="flex items-center gap-3 px-3 pt-3 pb-2 sm:px-4 sm:pt-4">
-        {profile?.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 shrink-0" />
+    <>
+      {useModalShell && (
+        <button
+          type="button"
+          className="fixed inset-0 z-[10050] bg-black/60 backdrop-blur-[1px] transition-opacity sm:bg-black/50"
+          aria-label="Close dialog"
+          onClick={() => {
+            if (!isSubmitting && !uploading) onCancel?.()
+          }}
+        />
+      )}
+
+      <div
+        className={
+          useModalShell
+            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-visible rounded-t-[20px] border border-gray-200 bg-white shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
+            : 'relative overflow-visible rounded-xl border border-gray-100 bg-white shadow-sm'
+        }
+        {...(useModalShell ? { 'data-edit-modal': '' } : {})}
+        role={useModalShell ? 'dialog' : undefined}
+        aria-modal={useModalShell ? true : undefined}
+        aria-labelledby={useModalShell ? 'create-post-dialog-title' : undefined}
+        onClick={useModalShell ? (e) => e.stopPropagation() : undefined}
+      >
+        {useModalShell ? (
+          <>
+            <div className="relative flex shrink-0 items-center justify-center border-b border-gray-200 px-12 py-3">
+              <h2 id="create-post-dialog-title" className="text-center text-lg font-bold text-gray-900">
+                {isEditMode ? 'Edit post' : 'Create post'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isSubmitting && !uploading) onCancel?.()
+                }}
+                disabled={isSubmitting || uploading}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex shrink-0 items-start gap-3 border-b border-gray-100 px-4 py-3">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-gray-100" />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br bg-primary-600 ring-2 ring-gray-100">
+                  <span className="text-sm font-semibold text-white">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-semibold leading-tight text-gray-900">
+                  {profile?.full_name || 'User'}
+                  {selectedLocation && (
+                    <>
+                      <span className="font-normal text-gray-500"> · </span>
+                      <span className="font-medium text-[var(--african-orange)]">{selectedLocation.name}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </>
         ) : (
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br bg-primary-600 flex items-center justify-center shrink-0 ring-2 ring-gray-100">
-            <span className="text-white font-semibold text-sm">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
+          <div className="flex items-center gap-3 px-3 pt-3 pb-2 sm:px-4 sm:pt-4">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 shrink-0" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br bg-primary-600 flex items-center justify-center shrink-0 ring-2 ring-gray-100">
+                <span className="text-white font-semibold text-sm">{profile?.full_name?.charAt(0).toUpperCase() || 'U'}</span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm sm:text-base leading-tight">
+                {profile?.full_name || 'User'}
+                {selectedLocation && (
+                  <>
+                    <span className="font-normal text-gray-500"> is at </span>
+                    <span className="font-semibold text-gray-900">{selectedLocation.name}</span>
+                  </>
+                )}
+              </p>
+              <p className="text-xs text-gray-400 leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
+            </div>
           </div>
         )}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 text-sm sm:text-base leading-tight">
-            {profile?.full_name || 'User'}
-            {selectedLocation && (
-              <>
-                <span className="font-normal text-gray-500"> is at </span>
-                <span className="font-semibold text-gray-900">{selectedLocation.name}</span>
-              </>
-            )}
-          </p>
-          <p className="text-xs text-gray-400 leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
-        </div>
-        {onCancel && (
-          <button type="button" onClick={onCancel} disabled={isSubmitting} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors" aria-label="Close">
-            <X className="w-5 h-5" />
-          </button>
-        )}
-      </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className={useModalShell ? 'flex min-h-0 flex-1 flex-col' : undefined}>
+        <div className={useModalShell ? 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain' : undefined}>
         {!culturePageMode && !politicsPageMode && (
           <div className="px-3 sm:px-4 pb-2">
             <div className="flex flex-wrap gap-1.5">
@@ -562,20 +665,105 @@ const CreatePost: React.FC<CreatePostProps> = ({
         )}
 
         <div className="px-3 sm:px-4">
-          <textarea
-            ref={contentRef}
-            placeholder={`What's on your mind, ${firstName}?`}
-            value={content}
-            onChange={(e) => { setContent(e.target.value); autoResize() }}
-            className="w-full text-sm sm:text-base text-gray-900 placeholder-gray-400 border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed"
-            maxLength={2000}
-            style={{ minHeight: hasMedia ? '36px' : '80px' }}
-            required
-            rows={1}
-          />
-          <div className="flex items-center justify-end mt-0.5">
-            <span className={`text-[10px] tabular-nums ${content.length > 1900 ? 'text-red-400' : 'text-gray-300'}`}>{content.length}/2000</span>
+          <div
+            className={`rounded-xl transition-all ${selectedBgPreset ? 'px-3 py-3 sm:px-4 sm:py-4 ring-1 ring-black/10' : ''}`}
+            style={selectedBgPreset ? { background: selectedBgPreset.css } : undefined}
+          >
+            <textarea
+              ref={contentRef}
+              placeholder={`What's on your mind, ${firstName}?`}
+              value={content}
+              onChange={(e) => { setContent(e.target.value); autoResize() }}
+              className={`w-full text-sm sm:text-base border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed ${
+                selectedBgPreset
+                  ? `${selectedBgPreset.textClass} ${selectedBgPreset.placeholderClass}`
+                  : 'text-gray-900 placeholder-gray-400'
+              }`}
+              maxLength={2000}
+              style={{ minHeight: hasMedia ? '36px' : '80px' }}
+              required={!hasMedia}
+              rows={1}
+            />
           </div>
+
+          <div className="mt-2 flex min-h-[2.25rem] items-end justify-between gap-2">
+            <div className="flex shrink-0 items-center gap-2">
+              {!hasMedia && !groupPostEdit && (
+                <button
+                  type="button"
+                  title="Text backgrounds"
+                  onClick={() => setShowBackgroundModal(true)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-gradient-to-br from-pink-500 via-amber-300 to-cyan-400 shadow-sm transition-transform active:scale-95"
+                >
+                  <span className="font-serif text-sm font-bold leading-none text-white drop-shadow-sm">Aa</span>
+                </button>
+              )}
+            </div>
+            <div
+              className={`mb-0.5 flex-1 text-right text-[10px] tabular-nums ${
+                content.length > 1900
+                  ? 'text-red-400'
+                  : !selectedBgPreset
+                    ? 'text-gray-300'
+                    : selectedBgPreset.textClass.includes('text-gray-900')
+                      ? 'text-gray-500'
+                      : 'text-white/70'
+              }`}
+            >
+              {content.length}/2000
+            </div>
+          </div>
+
+          {showBackgroundModal && (
+                <div
+                  className="fixed inset-0 z-[10200] flex flex-col bg-white"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="choose-bg-title"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowBackgroundModal(false)}
+                      className="p-1 -ml-1 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+                      aria-label="Back"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <h2 id="choose-bg-title" className="font-bold text-base sm:text-lg text-gray-900 flex-1 text-center pr-8">
+                      Choose background
+                    </h2>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-4 py-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Decorative</p>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+                      <button
+                        type="button"
+                        title="No background"
+                        onClick={() => { setSelectedBackgroundId(null); setShowBackgroundModal(false) }}
+                        className={`flex aspect-square items-center justify-center rounded-xl border-2 bg-white transition-transform active:scale-95 ${
+                          selectedBackgroundId === null ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-gray-200'
+                        }`}
+                      >
+                        <Ban className="h-6 w-6 text-gray-400" />
+                      </button>
+                      {POST_BACKGROUND_PRESETS.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          title={p.label}
+                          onClick={() => { setSelectedBackgroundId(p.id); setShowBackgroundModal(false) }}
+                          className={`aspect-square rounded-xl border-2 transition-transform active:scale-95 ${
+                            selectedBackgroundId === p.id ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-gray-100'
+                          }`}
+                          style={{ background: p.css }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
         </div>
 
         {existingImageUrls.length > 0 && (
@@ -696,69 +884,103 @@ const CreatePost: React.FC<CreatePostProps> = ({
           </div>
         )}
 
-        <div className="mx-3 sm:mx-4 mt-2 h-px bg-gray-100" />
+        </div>
 
-        <div className="flex items-center justify-between px-1.5 sm:px-2 py-1.5">
-          <div className="flex items-center">
-            <label className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${totalMediaCount >= MAX_FILES ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-green-50 hover:text-green-600'}`}>
-              <Image className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-green-500" />
-              <span className="hidden sm:inline text-xs">Photo</span>
-              <input type="file" accept="image/*" multiple onChange={handleMediaUpload} className="hidden" disabled={totalMediaCount >= MAX_FILES || uploading || isSubmitting} />
-            </label>
+        <div className="mx-3 mt-3 shrink-0 sm:mx-4">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm sm:px-3.5">
+            <span className="text-[15px] font-semibold text-gray-900">Add to your post</span>
+            <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
+              <label
+                className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-gray-100 ${
+                  totalMediaCount >= MAX_FILES ? 'cursor-not-allowed opacity-40' : ''
+                }`}
+                title="Photo"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-green-100">
+                  <Images className="h-[18px] w-[18px] text-green-600" strokeWidth={2} />
+                </span>
+                <input type="file" accept="image/*" multiple onChange={handleMediaUpload} className="hidden" disabled={totalMediaCount >= MAX_FILES || uploading || isSubmitting} />
+              </label>
+              <button
+                type="button"
+                title="Video"
+                disabled={hasActiveVideo || uploading || isSubmitting}
+                onClick={() => setShowVideoUploader((v) => !v)}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 disabled:opacity-40 ${
+                  hasActiveVideo ? 'ring-2 ring-red-200' : ''
+                }`}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100">
+                  <Film className="h-[18px] w-[18px] text-violet-600" strokeWidth={2} />
+                </span>
+              </button>
+              <button
+                type="button"
+                title="Check in"
+                disabled={uploading || isSubmitting}
+                onClick={() => setShowLocationModal(true)}
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 disabled:opacity-40 ${
+                  selectedLocation ? 'ring-2 ring-orange-200' : ''
+                }`}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+                  <MapPin className="h-[18px] w-[18px] text-red-500" strokeWidth={2} />
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
 
+        {useModalShell ? (
+          <div className="shrink-0 border-t border-gray-100 bg-white px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
             <button
-              type="button"
-              onClick={() => setShowVideoUploader(!showVideoUploader)}
-              disabled={hasActiveVideo || uploading || isSubmitting}
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${hasActiveVideo || uploading || isSubmitting ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-red-50 hover:text-red-500'}`}
-            >
-              <Film className="w-[18px] h-[18px] sm:w-5 sm:h-5 text-red-400" />
-              <span className="hidden sm:inline text-xs">{hasActiveVideo ? 'Video added' : 'Video'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowLocationModal(true)}
-              disabled={uploading || isSubmitting}
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                selectedLocation
-                  ? 'text-orange-600 bg-orange-50'
-                  : uploading || isSubmitting
-                    ? 'text-gray-300 cursor-not-allowed'
-                    : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
+              type="submit"
+              disabled={!isFormValid}
+              className={`w-full rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 ${
+                isFormValid
+                  ? 'bg-[var(--african-orange)] text-white hover:bg-[var(--african-orange-dark)] shadow-sm'
+                  : 'cursor-not-allowed bg-gray-100 text-gray-400'
               }`}
             >
-              <MapPin className={`w-[18px] h-[18px] sm:w-5 sm:h-5 ${selectedLocation ? 'text-orange-500' : 'text-orange-400'}`} />
-              <span className="hidden sm:inline text-xs">{selectedLocation ? 'Location' : 'Check In'}</span>
+              {uploading || isSubmitting ? (
+                <span className="inline-flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  {uploading ? 'Uploading…' : isEditMode ? 'Saving…' : 'Posting…'}
+                </span>
+              ) : (
+                isEditMode ? 'Save' : 'Post'
+              )}
             </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={!isFormValid}
-            className={`inline-flex items-center gap-1.5 px-4 sm:px-5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 ${
-              isFormValid
-                ? 'bg-[var(--african-orange)] text-white hover:bg-[var(--african-orange-dark)] shadow-sm hover:shadow'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
-          >
-            {uploading || isSubmitting ? (
-              <>
-                <div className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                <span className="hidden sm:inline">{uploading ? 'Uploading' : isEditMode ? 'Saving' : 'Posting'}</span>
-              </>
-            ) : (
-              <>
-                {isEditMode ? <Save className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-                <span>{isEditMode ? 'Save' : 'Post'}</span>
-              </>
-            )}
-          </button>
-        </div>
+        ) : (
+          <div className="flex justify-end px-3 pb-3 pt-2 sm:px-4">
+            <button
+              type="submit"
+              disabled={!isFormValid}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-200 ${
+                isFormValid
+                  ? 'bg-[var(--african-orange)] text-white hover:bg-[var(--african-orange-dark)] shadow-sm hover:shadow'
+                  : 'cursor-not-allowed bg-gray-100 text-gray-400'
+              }`}
+            >
+              {uploading || isSubmitting ? (
+                <>
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  <span>{uploading ? 'Uploading' : isEditMode ? 'Saving' : 'Posting'}</span>
+                </>
+              ) : (
+                <>
+                  {isEditMode ? <Save className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                  <span>{isEditMode ? 'Save' : 'Post'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </form>
 
       {(uploadProgress || isSubmitting) && (
-        <div className="absolute inset-0 z-20 rounded-xl bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center">
+        <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/75 backdrop-blur-sm ${useModalShell ? 'rounded-t-[20px] sm:rounded-xl' : 'rounded-xl'}`}>
           <div className="h-10 w-10 rounded-full border-[3px] border-gray-200 border-t-[var(--african-orange)] animate-spin" />
           <span className="text-sm font-medium text-gray-700 mt-3">{uploadProgress || (isEditMode ? 'Saving...' : 'Creating post...')}</span>
         </div>
@@ -769,7 +991,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
       {/* Full-Screen Location Search Modal (Facebook-style) */}
       {showLocationModal && (
-        <div className="fixed inset-0 z-[9999] bg-white flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[10200] flex flex-col bg-white" onClick={(e) => e.stopPropagation()}>
           {/* Modal Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 shrink-0">
             <button
@@ -913,7 +1135,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }
 

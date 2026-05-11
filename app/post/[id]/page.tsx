@@ -22,6 +22,7 @@ interface Post {
   shares_count: number
   views_count: number
   media_urls: string[] | null
+  background_id?: string | null
   author: {
     id: string
     username: string

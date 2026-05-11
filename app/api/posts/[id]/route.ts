@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
 
 const POST_SELECT = `
   *,
@@ -129,6 +130,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         shares_count: post.shares_count,
         views_count: post.views_count + (userId && userId !== post.author_id ? 1 : 0),
         location: post.location,
+        background_id: post.background_id ?? null,
         created_at: post.created_at,
         author: post.author ? {
           id: post.author.id,
@@ -154,12 +156,37 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
-    const allowedFields = ['content', 'category', 'media_urls', 'media_type', 'tags', 'location']
+    const { data: existing, error: existingError } = await supabase
+      .from('posts')
+      .select('media_urls, media_type')
+      .eq('id', postId)
+      .eq('author_id', user.id)
+      .maybeSingle()
+
+    if (existingError || !existing) {
+      return errorResponse('Post not found or you are not the author', 404)
+    }
+
+    const allowedFields = ['content', 'category', 'media_urls', 'media_type', 'tags', 'location', 'background_id']
     const updates: Record<string, any> = {}
     for (const key of allowedFields) {
       if (body[key] !== undefined) {
         updates[key] = body[key]
       }
+    }
+
+    if (updates.background_id !== undefined) {
+      updates.background_id = sanitizePostBackgroundId(updates.background_id)
+    }
+
+    const mergedUrls = updates.media_urls !== undefined ? updates.media_urls : (existing.media_urls || [])
+    const mergedType = updates.media_type !== undefined ? updates.media_type : (existing.media_type || 'none')
+    const effectiveHasMedia =
+      (Array.isArray(mergedUrls) && mergedUrls.length > 0) ||
+      mergedType === 'image' ||
+      mergedType === 'video'
+    if (effectiveHasMedia) {
+      updates.background_id = null
     }
 
     if (Object.keys(updates).length === 0) {
@@ -198,6 +225,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         shares_count: post.shares_count ?? 0,
         views_count: post.views_count ?? 0,
         location: post.location,
+        background_id: post.background_id ?? null,
         created_at: post.created_at,
         author: post.author ? {
           id: post.author.id,

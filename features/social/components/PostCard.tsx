@@ -25,6 +25,7 @@ import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
+import { getPostBackgroundPreset, legacyGradientForPostId } from "@/features/social/constants/postBackgrounds";
 interface Post {
   id: string;
   content: string;
@@ -40,6 +41,7 @@ interface Post {
     location?: string;
   };
   media_urls: string[] | null;
+  background_id?: string | null;
   location?: string | null;
   likes_count: number;
   comments_count: number;
@@ -68,7 +70,7 @@ interface PostCardProps {
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
-  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[] }) => void;
+  onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => void;
   onEmojiReaction?: (postId: string, emoji: string) => void;
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
@@ -82,20 +84,6 @@ interface PostCardProps {
   /** Called after save/unsave API succeeds (e.g. remove card from Saved list). */
   onSaveStateChange?: (postId: string, saved: boolean) => void;
 }
-
-// Facebook-style background colors for short posts
-const POST_BACKGROUNDS = [
-  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", // Purple
-  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)", // Pink-Red
-  "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)", // Blue
-  "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)", // Green-Cyan
-  "linear-gradient(135deg, #fa709a 0%, #fee140 100%)", // Pink-Yellow
-  "linear-gradient(135deg, #30cfd0 0%, #330867 100%)", // Teal-Purple
-  "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)", // Mint-Pink
-  "linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)", // Coral-Pink
-  "linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)", // Peach
-  "linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)", // Red-Blue
-];
 
 export const PostCard: React.FC<PostCardProps> = React.memo(({
   post,
@@ -192,20 +180,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     return !hasMedia && textLength > 0 && textLength <= 150;
   };
 
+  const cardBackgroundPreset = getPostBackgroundPreset(post.background_id);
+  const useLegacyShortCard = !cardBackgroundPreset && isShortTextPost();
+  const showContentStyledCard = !!(cardBackgroundPreset || useLegacyShortCard);
+
   const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
     ssr: false,
   });
-
-  // Get a consistent background color for this post
-  const getPostBackground = () => {
-    if (!isShortTextPost()) return null;
-    // Use post ID to consistently select same color for same post
-    const hash = post.id.split("").reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
-    const index = Math.abs(hash) % POST_BACKGROUNDS.length;
-    return POST_BACKGROUNDS[index];
-  };
 
   // Track view when post comes into view
   useEffect(() => {
@@ -388,6 +369,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         media_type: postData.media_type,
         media_urls: postData.media_urls ?? [],
         location: postData.location || null,
+        background_id: postData.background_id ?? null,
         updated_at: new Date().toISOString(),
       };
 
@@ -398,6 +380,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           media_urls?: string[];
           media_type?: string;
           tags?: string[];
+          background_id?: string | null;
         };
       }>(`/api/posts/${post.id}`, updatePayload);
 
@@ -408,6 +391,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           media_urls: response.data.media_urls,
           media_type: response.data.media_type,
           tags: response.data.tags,
+          background_id: response.data.background_id ?? null,
         });
       }
 
@@ -680,9 +664,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         <span className="block text-sm font-semibold text-gray-900">
                           Edit post
                         </span>
-                        <span className="mt-0.5 block text-xs text-gray-500">
-                          Change text, media, or details
-                        </span>
+                     
                       </span>
                     </button>
                   </li>
@@ -701,9 +683,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         <span className="block text-sm font-semibold text-red-600">
                           Delete post
                         </span>
-                        <span className="mt-0.5 block text-xs text-red-500/90">
-                          Remove this post permanently
-                        </span>
+                       
                       </span>
                     </button>
                   </li>
@@ -837,44 +817,48 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         </div>
       </div>
 
-      {/* Edit Post Modal */}
+      {/* Edit post — CreatePost renders Facebook-style modal shell */}
       {isEditing && (
-        <div data-edit-modal className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleCancelEdit} />
-          {/* Modal */}
-          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl z-10">
-            <CreatePost
-              editData={{
-                id: post.id,
-                content: post.content,
-                category: post.category,
-                media_urls: post.media_urls ?? undefined,
-                location: post.location ?? undefined,
-              }}
-              onSubmit={handleSaveEdit}
-              onCancel={handleCancelEdit}
-            />
-          </div>
-        </div>
+        <CreatePost
+          editData={{
+            id: post.id,
+            content: post.content,
+            category: post.category,
+            media_urls: post.media_urls ?? undefined,
+            location: post.location ?? undefined,
+            background_id: post.background_id ?? null,
+          }}
+          onSubmit={handleSaveEdit}
+          onCancel={handleCancelEdit}
+        />
       )}
 
       {/* Content */}
       {!isEditing && (
         <>
-          {isShortTextPost() ? (
-            /* Facebook-style large text with gradient background */
-            <div
-              className="mb-4 rounded-xl p-8 min-h-[250px] flex items-center justify-center"
-              style={{ background: getPostBackground() || undefined }}
-            >
-              <div className="text-center">
-                <p className="text-xl sm:text-2xl md:text-3xl font-semibold text-white leading-relaxed whitespace-pre-wrap break-words drop-shadow-lg">
-                  {post.content}
-                </p>
+          {showContentStyledCard && (() => {
+            const preset = cardBackgroundPreset;
+            const blockBg = preset ? preset.css : legacyGradientForPostId(post.id);
+            const longBody = (post.content || "").trim().length > 150;
+            const minH = preset ? (longBody ? "min-h-[120px]" : "min-h-[220px]") : "min-h-[250px]";
+            const pad = preset && longBody ? "p-6 sm:p-8" : "p-8";
+            const textClass = preset
+              ? `${preset.textClass} ${longBody ? "text-base sm:text-lg font-medium text-left max-w-none" : "text-xl sm:text-2xl md:text-3xl font-semibold text-center"} leading-relaxed whitespace-pre-wrap break-words drop-shadow-lg`
+              : "text-xl sm:text-2xl md:text-3xl font-semibold text-white text-center leading-relaxed whitespace-pre-wrap break-words drop-shadow-lg";
+            return (
+              <div
+                className={`mb-4 rounded-xl ${pad} ${minH} flex items-center justify-center`}
+                style={{ background: blockBg }}
+              >
+                <div className={preset && longBody ? "w-full" : "text-center w-full"}>
+                  <p className={textClass}>
+                    {post.content}
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            /* Regular post style */
+            );
+          })()}
+          {!showContentStyledCard && (
             <div className="mb-2">
               <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
                 {post.content}
