@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   UserPlus, UserCheck, MessageCircle, Phone, Video, MoreHorizontal,
   MapPin, Calendar, Users,
@@ -15,7 +15,7 @@ import toast from 'react-hot-toast'
 import { formatDistanceToNow } from 'date-fns'
 import { UserProfileWithVisibility, MutualFriend } from '@/shared/types'
 import {
-  canViewProfile, canViewPost, canComment, canFollow, canSendMessage,
+  canViewProfile, canComment, canFollow, canSendMessage,
   getVisibleProfileFields, type VisibleProfileFieldsInput,
 } from '@/shared/utils/visibilityUtils'
 import ShareModal from '@/features/social/components/ShareModal'
@@ -43,6 +43,29 @@ interface PostWithAuthor {
 type TabId = 'posts' | 'about' | 'photos' | 'friends' | 'reels'
 type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends'
 
+/** Same as API `resolve-user-request` — path segment may be username or profile `id`. */
+const PROFILE_ROUTE_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Route param (`[username]`) may be a handle or `user_id` (UUID). It can also be over-encoded
+ * (`%2520`). Decode until stable; normalize UUID to lowercase for stable lookups.
+ */
+function normalizeProfileRouteSegment(raw: string): string {
+  let s = raw
+  for (let i = 0; i < 8; i++) {
+    try {
+      const next = decodeURIComponent(s)
+      if (next === s) break
+      s = next
+    } catch {
+      break
+    }
+  }
+  if (PROFILE_ROUTE_UUID_RE.test(s)) return s.toLowerCase()
+  return s
+}
+
 const TABS: { id: TabId; label: string }[] = [
   { id: 'posts', label: 'Posts' },
   { id: 'about', label: 'About' },
@@ -56,8 +79,6 @@ const fmt = (n: number) => {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}K`
   return String(n)
 }
-
-const isVideo = (url: string) => /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)($|\?)/i.test(url)
 
 const Spinner = ({ className = 'w-4 h-4' }: { className?: string }) => (
   <div className={`${className} border-2 border-current border-t-transparent rounded-full animate-spin`} />
@@ -126,16 +147,44 @@ const ProfileSkeleton = () => (
 const UserProfilePage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
-  const username = params?.username as string
+  const searchParams = useSearchParams()
+  const rawSegment = params?.username as string | undefined
+  const userIdQuery =
+    (searchParams.get('user_id')?.trim() || searchParams.get('userId')?.trim()) ?? ''
+
+  /** Username or profile UUID for `/api/users/:identifier/...`. Query `user_id` / `userId` wins when it is a valid UUID. */
+  const profileIdentifier = useMemo(() => {
+    if (userIdQuery && PROFILE_ROUTE_UUID_RE.test(userIdQuery)) return userIdQuery.toLowerCase()
+    if (rawSegment) return normalizeProfileRouteSegment(rawSegment)
+    return ''
+  }, [rawSegment, userIdQuery])
+
+  const identifierApiPath = useMemo(
+    () => (profileIdentifier ? encodeURIComponent(profileIdentifier) : ''),
+    [profileIdentifier]
+  )
   const { user } = useAuth()
   const { startChatWithMembers, openThread, startCall } = useProductionChat()
   const { members } = useMembers(false)
 
   const [profile, setProfile] = useState<UserProfileWithVisibility | null>(null)
   const [posts, setPosts] = useState<PostWithAuthor[]>([])
+  const [sidebarPhotos, setSidebarPhotos] = useState<{ url: string; postId: string }[]>([])
+  const [tabPhotos, setTabPhotos] = useState<{ url: string; postId: string }[]>([])
+  const [tabReels, setTabReels] = useState<{ url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]>([])
+  const [aboutForTab, setAboutForTab] = useState<UserProfileWithVisibility | null>(null)
   const [mutualFriends, setMutualFriends] = useState<MutualFriend[]>([])
   const [mutualFriendsCount, setMutualFriendsCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [postsTabLoading, setPostsTabLoading] = useState(false)
+  const [photosTabLoading, setPhotosTabLoading] = useState(false)
+  const [reelsTabLoading, setReelsTabLoading] = useState(false)
+  const [friendsTabLoading, setFriendsTabLoading] = useState(false)
+  const [postsTabFetched, setPostsTabFetched] = useState(false)
+  const [photosTabFetched, setPhotosTabFetched] = useState(false)
+  const [reelsTabFetched, setReelsTabFetched] = useState(false)
+  const [friendsTabFetched, setFriendsTabFetched] = useState(false)
+  const [aboutTabFetched, setAboutTabFetched] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
   const [isMutual, setIsMutual] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
@@ -148,29 +197,199 @@ const UserProfilePage: React.FC = () => {
   const [friendRequestId, setFriendRequestId] = useState<string | null>(null)
   const [friendLoading, setFriendLoading] = useState(false)
 
-  const allPhotos = useMemo(() =>
-    posts.filter((p) => p.media_urls?.length).flatMap((p) => (p.media_urls || []).map((url) => ({ url, postId: p.id }))),
-    [posts]
-  )
-
-  const allVideos = useMemo(() =>
-    posts.filter((p) => p.media_urls?.some(isVideo)).flatMap((p) =>
-      (p.media_urls || []).filter(isVideo).map((url) => ({ url, postId: p.id, content: p.content, author: p.author }))
-    ), [posts]
-  )
-
   const profileLivesInLine = useMemo(() => {
     if (!profile) return ''
     return getProfileLocationDisplayLine(profile)
   }, [profile])
 
-  useEffect(() => { if (username) fetchUserProfile() }, [username])
+  useEffect(() => { if (profileIdentifier) fetchUserProfile() }, [profileIdentifier])
   useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
+
+  useEffect(() => {
+    if (!profileIdentifier || !profile) return
+    setPosts([])
+    setSidebarPhotos([])
+    setTabPhotos([])
+    setTabReels([])
+    setAboutForTab(null)
+    setUserFriends([])
+    setPostsTabFetched(false)
+    setPhotosTabFetched(false)
+    setReelsTabFetched(false)
+    setFriendsTabFetched(false)
+    setAboutTabFetched(false)
+  }, [profileIdentifier, profile?.id])
+
+  useEffect(() => {
+    if (!profileIdentifier || !profile) return
+    const viewerId = user?.id ?? null
+    const ownerId = profile.id
+    const isOwn = viewerId === ownerId
+    const pv = profile.profile_visibility || 'public'
+    if (!isOwn && !canViewProfile(viewerId, ownerId, pv, isMutual)) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await apiClient.get<{ data: { url: string; postId: string }[] }>(
+          `/api/users/${identifierApiPath}/photos`,
+          { limit: 9, postLimit: 80 }
+        )
+        if (!cancelled) setSidebarPhotos(res.data || [])
+      } catch {
+        if (!cancelled) setSidebarPhotos([])
+      }
+    })()
+    return () => { cancelled = true }
+  }, [profileIdentifier, profile?.id, user?.id, isMutual, identifierApiPath])
+
+  useEffect(() => {
+    if (!profileIdentifier || !profile) return
+    const viewerId = user?.id ?? null
+    const ownerId = profile.id
+    const isOwn = viewerId === ownerId
+    const pv = profile.profile_visibility || 'public'
+    if (!isOwn && !canViewProfile(viewerId, ownerId, pv, isMutual)) return
+
+    if (activeTab === 'posts') {
+      if (postsTabFetched) return
+      let cancelled = false
+      ;(async () => {
+        setPostsTabLoading(true)
+        try {
+          const postsRes = await apiClient.get<{ data: PostWithAuthor[] }>(
+            `/api/users/${identifierApiPath}/posts`,
+            { limit: 20 }
+          )
+          if (cancelled) return
+          const rows = postsRes.data || []
+          const withAuthor = rows.map((p) => ({
+            ...p,
+            author: p.author || {
+              id: ownerId,
+              username: profile.username,
+              full_name: profile.full_name,
+              avatar_url: profile.avatar_url,
+              country: profile.country,
+            },
+          }))
+          setPosts(withAuthor)
+          setPostsTabFetched(true)
+        } catch (e) {
+          console.error(e)
+          if (!cancelled) {
+            setPosts([])
+            setPostsTabFetched(true)
+          }
+        } finally {
+          if (!cancelled) setPostsTabLoading(false)
+        }
+      })()
+      return () => { cancelled = true }
+    }
+
+    if (activeTab === 'photos') {
+      if (photosTabFetched) return
+      let cancelled = false
+      ;(async () => {
+        setPhotosTabLoading(true)
+        try {
+          const res = await apiClient.get<{ data: { url: string; postId: string }[] }>(
+            `/api/users/${identifierApiPath}/photos`,
+            { limit: 500, postLimit: 200 }
+          )
+          if (!cancelled) {
+            setTabPhotos(res.data || [])
+            setPhotosTabFetched(true)
+          }
+        } catch (e) {
+          console.error(e)
+          if (!cancelled) {
+            setTabPhotos([])
+            setPhotosTabFetched(true)
+          }
+        } finally {
+          if (!cancelled) setPhotosTabLoading(false)
+        }
+      })()
+      return () => { cancelled = true }
+    }
+
+    if (activeTab === 'reels') {
+      if (reelsTabFetched) return
+      let cancelled = false
+      ;(async () => {
+        setReelsTabLoading(true)
+        try {
+          const res = await apiClient.get<{
+            data: { url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]
+          }>(`/api/users/${identifierApiPath}/reels`, { postLimit: 200 })
+          if (!cancelled) {
+            setTabReels(res.data || [])
+            setReelsTabFetched(true)
+          }
+        } catch (e) {
+          console.error(e)
+          if (!cancelled) {
+            setTabReels([])
+            setReelsTabFetched(true)
+          }
+        } finally {
+          if (!cancelled) setReelsTabLoading(false)
+        }
+      })()
+      return () => { cancelled = true }
+    }
+
+    if (activeTab === 'friends') {
+      if (friendsTabFetched) return
+      let cancelled = false
+      ;(async () => {
+        setFriendsTabLoading(true)
+        try {
+          const res = await apiClient.get<{ data: any[] }>(`/api/users/${identifierApiPath}/friends`)
+          if (!cancelled) {
+            setUserFriends(res.data || [])
+            setFriendsTabFetched(true)
+          }
+        } catch (e) {
+          console.error(e)
+          if (!cancelled) {
+            setUserFriends([])
+            setFriendsTabFetched(true)
+          }
+        } finally {
+          if (!cancelled) setFriendsTabLoading(false)
+        }
+      })()
+      return () => { cancelled = true }
+    }
+
+    if (activeTab === 'about') {
+      if (aboutTabFetched) return
+      let cancelled = false
+      ;(async () => {
+        try {
+          const res = await apiClient.get<{ data: UserProfileWithVisibility }>(
+            `/api/users/${identifierApiPath}/about`
+          )
+          if (!cancelled) {
+            setAboutForTab(res.data)
+            setAboutTabFetched(true)
+          }
+        } catch (e) {
+          console.error(e)
+          if (!cancelled) setAboutTabFetched(true)
+        }
+      })()
+      return () => { cancelled = true }
+    }
+  }, [activeTab, profileIdentifier, identifierApiPath, profile, user?.id, isMutual, postsTabFetched, photosTabFetched, reelsTabFetched, friendsTabFetched, aboutTabFetched])
 
   const fetchUserProfile = async () => {
     try {
       setLoading(true)
-      const profileRes = await apiClient.get<{ data: any }>(`/api/users/${username}`)
+      const profileRes = await apiClient.get<{ data: any }>(`/api/users/${identifierApiPath}`)
       const profileData = profileRes.data
       if (!profileData) throw new Error('Not found')
       setProfile(profileData)
@@ -181,23 +400,11 @@ const UserProfilePage: React.FC = () => {
       const mutual = !isOwn && viewerId ? await checkIsMutual(viewerId, ownerId) : false
       setIsMutual(mutual)
 
-      const connectionsRes = await apiClient.get<{ data: any[] }>(`/api/users/${ownerId}/connections`)
-      setUserFriends(connectionsRes.data || [])
-
       const pv = profileData.profile_visibility || 'public'
-      const postVis = profileData.post_visibility || 'public'
       if (!isOwn && !canViewProfile(viewerId, ownerId, pv, mutual)) {
-        setPosts([]); setLoading(false); return
+        setLoading(false)
+        return
       }
-
-      const postsRes = await apiClient.get<{ data: any[] }>(`/api/users/${ownerId}/posts`, { limit: 20 })
-      const postsWithLikes: PostWithAuthor[] = (postsRes.data || []).map((p: any) => ({
-        ...p,
-        author: p.author || { id: ownerId, username: profileData.username, full_name: profileData.full_name, avatar_url: profileData.avatar_url, country: profileData.country },
-      }))
-
-      const canSeePost = (authorId: string) => canViewPost(viewerId, authorId, postVis, mutual)
-      setPosts(isOwn ? postsWithLikes : postsWithLikes.filter((p) => canSeePost(p.author_id)))
 
       if (user && !isOwn) {
         await checkFollowStatus()
@@ -342,7 +549,14 @@ const UserProfilePage: React.FC = () => {
 
   const handleDelete = useCallback(async (postId: string) => {
     if (!user || !profile || profile.id !== user.id) return
-    try { await apiClient.delete(`/api/posts/${postId}`); setPosts((p) => p.filter((x) => x.id !== postId)); toast.success('Post deleted') }
+    try {
+      await apiClient.delete(`/api/posts/${postId}`)
+      setPosts((p) => p.filter((x) => x.id !== postId))
+      setSidebarPhotos((prev) => prev.filter((x) => x.postId !== postId))
+      setTabPhotos((prev) => prev.filter((x) => x.postId !== postId))
+      setTabReels((prev) => prev.filter((x) => x.postId !== postId))
+      toast.success('Post deleted')
+    }
     catch { toast.error('Failed to delete post') }
   }, [user, profile])
 
@@ -574,7 +788,7 @@ const UserProfilePage: React.FC = () => {
                 <p className="text-[13px] text-gray-500 mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {mutualFriends.slice(0, 6).map((f) => (
-                    <button key={f.user_id} onClick={() => router.push(`/user/${f.username}`)} className="text-left group focus:outline-none">
+                    <button key={f.user_id} onClick={() => router.push(`/user/${f.username || f.user_id}`)} className="text-left group focus:outline-none">
                       <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
                         {f.avatar_url
                           ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover group-hover:brightness-95 transition" />
@@ -589,14 +803,14 @@ const UserProfilePage: React.FC = () => {
               </div>
             )}
 
-            {allPhotos.length > 0 && (
+            {sidebarPhotos.length > 0 && (
               <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base sm:text-lg font-semibold text-gray-600">Photos</h2>
                   <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
                 </div>
                 <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
-                  {allPhotos.slice(0, 9).map((p, i) => (
+                  {sidebarPhotos.slice(0, 9).map((p, i) => (
                     <div key={`sp-${p.postId}-${i}`} className="aspect-square bg-gray-100 cursor-pointer hover:brightness-90 transition overflow-hidden" onClick={() => setActiveTab('photos')}>
                       <img src={p.url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
@@ -608,38 +822,62 @@ const UserProfilePage: React.FC = () => {
 
           <div className="flex-1 min-w-0">
             {activeTab === 'posts' && (
-              <PostsTab
-                posts={posts}
-                isOwnProfile={Boolean(isOwnProfile)}
-                userId={user?.id}
-                profileId={profile.id}
-                showCommentsFor={showCommentsFor}
-                canCommentOnPost={canCommentOnPost}
-                canFollow={showFollowBtn}
-                onLike={handleLike}
-                onComment={handleComment}
-                onShare={handleShare}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-                onEmojiReaction={handleEmojiReaction}
-                onCloseComments={() => setShowCommentsFor(null)}
-              />
+              postsTabLoading && !postsTabFetched ? (
+                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                  <Spinner className="w-8 h-8 text-[#F97316]" />
+                </div>
+              ) : (
+                <PostsTab
+                  posts={posts}
+                  isOwnProfile={Boolean(isOwnProfile)}
+                  userId={user?.id}
+                  profileId={profile.id}
+                  showCommentsFor={showCommentsFor}
+                  canCommentOnPost={canCommentOnPost}
+                  canFollow={showFollowBtn}
+                  onLike={handleLike}
+                  onComment={handleComment}
+                  onShare={handleShare}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                  onEmojiReaction={handleEmojiReaction}
+                  onCloseComments={() => setShowCommentsFor(null)}
+                />
+              )
             )}
 
             {activeTab === 'about' && (
-              <AboutTab profile={profile} visibleFields={visibleFields} />
+              <AboutTab profile={(aboutForTab ?? profile)!} visibleFields={visibleFields} />
             )}
 
             {activeTab === 'photos' && (
-              <PhotosTab photos={allPhotos} isOwnProfile={Boolean(isOwnProfile)} />
+              photosTabLoading && !photosTabFetched ? (
+                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                  <Spinner className="w-8 h-8 text-[#F97316]" />
+                </div>
+              ) : (
+                <PhotosTab photos={tabPhotos} isOwnProfile={Boolean(isOwnProfile)} />
+              )
             )}
 
             {activeTab === 'friends' && (
-              <FriendsTab friends={userFriends} isOwnProfile={Boolean(isOwnProfile)} />
+              friendsTabLoading && !friendsTabFetched ? (
+                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                  <Spinner className="w-8 h-8 text-[#F97316]" />
+                </div>
+              ) : (
+                <FriendsTab friends={userFriends} isOwnProfile={Boolean(isOwnProfile)} />
+              )
             )}
 
             {activeTab === 'reels' && (
-              <ReelsTab videos={allVideos} isOwnProfile={Boolean(isOwnProfile)} />
+              reelsTabLoading && !reelsTabFetched ? (
+                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                  <Spinner className="w-8 h-8 text-[#F97316]" />
+                </div>
+              ) : (
+                <ReelsTab videos={tabReels} isOwnProfile={Boolean(isOwnProfile)} />
+              )
             )}
           </div>
         </div>

@@ -1,14 +1,11 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
+import { requireProfileAccess } from '../_shared/resolve-user-request'
 import { POST_SELECT, formatPostsForClient } from '../../../posts/format-posts-response'
 
 /** Profile "user's posts" — larger window than the global feed. */
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function GET(
   request: NextRequest,
@@ -16,36 +13,10 @@ export async function GET(
 ) {
   try {
     const { identifier } = await params
-    let viewerId: string | null = null
-    let supabase
+    const access = await requireProfileAccess(request, identifier)
+    if (!access.ok) return access.response
 
-    try {
-      const auth = await getAuthenticatedUser(request)
-      viewerId = auth.user.id
-      supabase = auth.supabase
-    } catch {
-      supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-    }
-
-    const isUUID = UUID_RE.test(identifier)
-    let ownerId: string
-
-    if (isUUID) {
-      ownerId = identifier
-    } else {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', identifier)
-        .single()
-      if (profileError || !profile) {
-        return errorResponse('User not found', 404)
-      }
-      ownerId = profile.id
-    }
+    const { supabase, viewerId, ownerId, profile } = access.ctx
 
     const { searchParams } = new URL(request.url)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
@@ -57,7 +28,6 @@ export async function GET(
     const from = page * limit
     const to = from + limit - 1
 
-    // Only posts this user authored (author_id = profile).
     const { data: postsData, error: postsError } = await supabase
       .from('posts')
       .select(POST_SELECT)
@@ -75,13 +45,27 @@ export async function GET(
       onlyAuthorId: ownerId,
     })
 
+    const ownerAuthor = {
+      id: ownerId,
+      username: (profile as { username?: string }).username,
+      full_name: (profile as { full_name?: string }).full_name,
+      avatar_url: (profile as { avatar_url?: string | null }).avatar_url ?? null,
+      country: (profile as { country?: string | null }).country ?? null,
+    }
+
+    const withAuthor = result.map((p: { author?: unknown }) => ({
+      ...p,
+      author: p.author || ownerAuthor,
+    }))
+
     return jsonResponse({
-      data: result,
+      data: withAuthor,
       page,
       pageSize: limit,
       hasMore: posts.length === limit,
     })
-  } catch (error: any) {
-    return errorResponse(error.message || 'Failed to fetch user posts', 500)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch user posts'
+    return errorResponse(message, 500)
   }
 }
