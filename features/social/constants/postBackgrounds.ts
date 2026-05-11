@@ -27,6 +27,16 @@ export const POST_BACKGROUND_PRESETS: PostBackgroundPreset[] = [
   { id: 'charcoal', label: 'Charcoal', css: 'linear-gradient(145deg, #1f2937 0%, #0f172a 100%)', textClass: 'text-white', placeholderClass: 'placeholder-white/55' },
   { id: 'sunset-stripes', label: 'Sunset', css: 'linear-gradient(120deg, #f59e0b 0%, #ec4899 40%, #8b5cf6 100%)', textClass: 'text-white', placeholderClass: 'placeholder-white/60' },
   { id: 'img-kente', label: 'Kente', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/kente.jpg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-1', label: 'Background 1', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg1.jpg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-2', label: 'Background 2', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg2.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-3', label: 'Background 3', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg3.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-4', label: 'Background 4', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg4.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-5', label: 'Background 5', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg5.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-6', label: 'Background 6', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg6.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-7', label: 'Background 7', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg7.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-8', label: 'Background 8', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg8.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-9', label: 'Background 9', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg9.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
+  { id: 'img-postbg-10', label: 'Background 10', css: "linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url('/assets/images/post-bg/postbg10.jpeg') center/cover no-repeat", textClass: 'text-white', placeholderClass: 'placeholder-white/70' },
 ]
 
 const PRESET_BY_ID = new Map(POST_BACKGROUND_PRESETS.map((p) => [p.id, p]))
