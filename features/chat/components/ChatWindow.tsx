@@ -3,49 +3,55 @@
 
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import {
-  supabaseMessagingService,
   chatUserIdsEqual,
   getChatMessageAuthorId,
+  supabaseMessagingService,
   type ChatMessage,
 } from "@/features/chat/services/supabaseMessagingService";
+import type {
+  ChatHeaderOptionsMenuItem,
+  ChatHeaderOptionsMenuSection,
+} from "@/features/chat/types/chatHeaderOptionsMenu";
 import { apiClient } from "@/lib/api-client";
 import { useMembers, type Member } from "@/shared/hooks/useMembers";
+import {
+  deriveUserPresence,
+  formatContactPresenceLine,
+} from "@/shared/hooks/usePresence";
 import { useTypingIndicator } from "@/shared/hooks/useTypingIndicator";
+import {
+  getPresentUserIds,
+  subscribeChatPresenceSync,
+} from "@/shared/services/chatPresenceRealtime";
 import {
   FileUploadResult,
   fileUploadService,
 } from "@/shared/services/fileUploadService";
-import type { PresenceStatus } from "@/shared/types/chat";
-import type { ChatParticipant } from "@/shared/types/chat";
+import type { ChatParticipant, PresenceStatus } from "@/shared/types/chat";
+import { isSameDay } from "date-fns";
 import {
-  Ban,
-  BellOff,
   CheckCheck,
   ChevronLeft,
   ChevronRight,
-  Heart,
   Info,
-  ListChecks,
   Loader2,
   Mic,
   MinusCircle,
   MoreVertical,
-  Phone,
   Pencil,
+  Phone,
+  Pin,
+  PinOff,
   Plus,
   Search,
   Send,
   Square,
-  ThumbsDown,
-  Timer,
   Trash2,
-  UserPlus,
   Video,
   X,
-  XCircle,
-  Pin,
-  PinOff,
+  XCircle
 } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import React, {
   Fragment,
   useCallback,
@@ -54,8 +60,6 @@ import React, {
   useRef,
   useState
 } from "react";
-import { isSameDay } from "date-fns";
-import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
 import ChatMediaGallery from "./ChatMediaGallery";
@@ -63,19 +67,6 @@ import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
 import { ChatDateDivider, MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
-import { Tooltip } from "@/shared/components/ui/Tooltip";
-import {
-  formatContactPresenceLine,
-  deriveUserPresence,
-} from "@/shared/hooks/usePresence";
-import {
-  getPresentUserIds,
-  subscribeChatPresenceSync,
-} from "@/shared/services/chatPresenceRealtime";
-import type {
-  ChatHeaderOptionsMenuItem,
-  ChatHeaderOptionsMenuSection,
-} from "@/features/chat/types/chatHeaderOptionsMenu";
 
 interface ChatWindowProps {
   threadId: string;
@@ -186,7 +177,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     sendMessage,
     currentUser,
     callRequests,
-    clearCallRequest,
     minimizedThreadIds,
     openThread,
     startCall,
@@ -205,7 +195,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const { members } = useMembers();
 
-  /** Supabase Realtime Presence: who is connected right now (same channel as usePresence). */
   const [presentUserIds, setPresentUserIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -280,8 +269,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const pendingCall = callRequests[threadId];
   const pendingCallType = pendingCall?.type;
   const pendingRoomId = pendingCall?.roomId;
-  const pendingCallerName = pendingCall?.callerName;
-  const pendingToken = pendingCall?.token;
   const pendingCallerId = pendingCall?.callerId;
   const currentUserId = currentUser?.id || null;
 
@@ -309,7 +296,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (isSelfChat) {
       return `${currentUser?.name || "You"} (Notes)`;
     }
-    // For group threads, prefer the thread/group name over a participant's name
     if (isGroupThread && thread?.name) {
       return thread.name;
     }
@@ -317,7 +303,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [isSelfChat, isGroupThread, primaryParticipant?.name, thread?.name, currentUser?.name]);
 
   const [headerImageFailed, setHeaderImageFailed] = useState(false);
-  /** Fetched banner; scoped by threadId so a switch never shows the previous chat's image */
   const [enrichedBanner, setEnrichedBanner] = useState<{
     threadId: string;
     url: string;
@@ -460,12 +445,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ]);
 
   const [draft, setDraft] = useState("");
-  const [isCallOpen, setIsCallOpen] = useState(false);
-  const [currentCallType, setCurrentCallType] = useState<"audio" | "video">(
-    "video"
-  );
-  const [isIncomingCall, setIsIncomingCall] = useState(false);
-  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [webcamOpen, setWebcamOpen] = useState(false);
   const [voiceRecording, setVoiceRecording] = useState(false);
@@ -486,7 +466,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerInputRef = useRef<HTMLInputElement>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
-  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
@@ -700,20 +679,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }
         lastIncomingCallSyncKeyRef.current = syncKey;
       }
-
-      setCurrentCallType(pendingCallType);
-      setIsCallOpen(true);
-      if (pendingRoomId) {
-        setActiveRoomId(pendingRoomId);
-      }
-      if (initiatedByCurrentUser) {
-        userInitiatedCall.current = true;
-      }
-      setIsIncomingCall(!initiatedByCurrentUser);
-    } else if (!userInitiatedCall.current) {
-      lastIncomingCallSyncKeyRef.current = "";
-      setIsIncomingCall(false);
-      setActiveRoomId(null);
     }
   }, [
     pendingCallType,
@@ -1194,21 +1159,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       userInitiatedCall.current = true;
       await startCall(threadId, type, primaryParticipant?.id, primaryParticipant?.name, primaryParticipant?.avatarUrl);
     } catch (error) {
-      setIsCallOpen(false);
-      setIsIncomingCall(false);
-      setActiveRoomId(null);
       userInitiatedCall.current = false;
     }
   };
 
-  const handleEndCall = () => {
-    setIsCallOpen(false);
-    setIsIncomingCall(false);
-    setCurrentCallType("video");
-    setActiveRoomId(null);
-    userInitiatedCall.current = false;
-    clearCallRequest(threadId);
-  };
 
   const handleFilesSelected = (files: FileUploadResult[]) => {
     setPendingFiles((prev) => [...prev, ...files]);
@@ -1344,7 +1298,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     peerProfileRouteSegment,
   ]);
 
-  
+
 
   const handleCloseChatFromMenu = useCallback(() => {
     setShowOptionsMenu(false);
@@ -1360,18 +1314,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     toast.success("Chat removed");
   }, [threadId, closeThread, variant, router]);
 
-  const toggleMessageSelect = useCallback((messageId: string) => {
-    setSelectedMessageIds((prev) =>
-      prev.includes(messageId)
-        ? prev.filter((id) => id !== messageId)
-        : [...prev, messageId]
-    );
-  }, []);
+
 
   const chatHeaderOptionsMenuSections = useMemo((): ChatHeaderOptionsMenuSection[] => {
-    const chevron = (
-      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-    );
+
     const primary: ChatHeaderOptionsMenuItem[] = [
       {
         id: "contact",
@@ -1388,15 +1334,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         Icon: Search,
         onClick: () => openMessageSearchFromMenu(),
       },
-     
-     
+
+
       {
         id: "pin",
         label: thread?.pinned ? "Unpin chat" : "Pin chat",
         Icon: thread?.pinned ? PinOff : Pin,
         onClick: () => void handlePinToggle(),
       },
-      
+
       {
         id: "close",
         label: "Close chat",
@@ -1406,7 +1352,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     ];
 
     const destructive: ChatHeaderOptionsMenuItem[] = [
-     
+
       {
         id: "clear",
         label: "Clear chat",
@@ -1442,16 +1388,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`pointer-events-auto relative flex max-w-full flex-col   ${
-        isPageVariant
+      className={`pointer-events-auto relative flex max-w-full flex-col   ${isPageVariant
           ? "h-full w-full "
           : "w-72 rounded-2xl sm:w-80 sm:max-w-full"
-      }`}
+        }`}
     >
       <div
-        className={`flex items-center justify-between border-b border-gray-200 bg-[#f7f8fa] p-2 ${
-          isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
-        }`}
+        className={`flex items-center justify-between border-b border-gray-200 bg-[#f7f8fa] p-2 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+          }`}
       >
         <div className="flex items-center space-x-3">
           <div className="relative h-10 w-10">
@@ -1469,7 +1413,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
           </div>
           <div className="cursor-pointer" onClick={handleOpenThreadDetailPage}
-            >
+          >
             <div className="text-sm font-semibold text-gray-900 line-clamp-1" >
               {displayThreadName}
             </div>
@@ -1486,91 +1430,91 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleStartCall("audio")}
-              className="text-gray-500 hover:text-[#f97316] transition"
-            >
-              <Phone className="h-5 w-5" />
-            </button>
+          <button
+            onClick={() => handleStartCall("audio")}
+            className="text-gray-500 hover:text-[#f97316] transition"
+          >
+            <Phone className="h-5 w-5" />
+          </button>
           <button
             onClick={() => handleStartCall("video")}
             className="text-gray-500 hover:text-[#f97316]"
           >
             <Video className="h-5 w-5" />
           </button>
-        
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setShowOptionsMenu((open) => !open);
-                }}
-                className="text-gray-400 hover:text-gray-600"
-                aria-expanded={showOptionsMenu}
-                aria-haspopup="menu"
+
+          <div className="relative">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowOptionsMenu((open) => !open);
+              }}
+              className="text-gray-400 hover:text-gray-600"
+              aria-expanded={showOptionsMenu}
+              aria-haspopup="menu"
+            >
+              <MoreVertical className="h-5 w-5" />
+            </button>
+            {showOptionsMenu && (
+              <div
+                ref={menuRef}
+                role="menu"
+                className="absolute right-0 top-full mt-1 z-50 min-w-[240px] rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800"
               >
-                <MoreVertical className="h-5 w-5" />
-              </button>
-              {showOptionsMenu && (
-                <div
-                  ref={menuRef}
-                  role="menu"
-                  className="absolute right-0 top-full mt-1 z-50 min-w-[240px] rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800"
-                >
-                  {chatHeaderOptionsMenuSections.map((section, sectionIdx) => (
-                    <React.Fragment key={section.id}>
-                      {sectionIdx > 0 ? (
-                        <div
-                          role="separator"
-                          className="my-1 border-t border-gray-200 dark:border-gray-600"
-                        />
-                      ) : null}
-                      {section.items.map((item) => {
-                        const {
-                          id,
-                          label,
-                          Icon,
-                          tone = "default",
-                          trailing,
-                          disabled,
-                          onClick,
-                        } = item;
-                        const baseRow =
-                          "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug";
-                        const rowClass =
-                          disabled
-                            ? `${baseRow} cursor-not-allowed text-gray-400 opacity-60`
-                            : tone === "danger"
-                              ? `${baseRow} text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/80`
-                              : `${baseRow} text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700/80`;
-                        return (
-                          <button
-                            key={id}
-                            type="button"
-                            role="menuitem"
-                            disabled={disabled}
-                            onClick={onClick}
-                            className={rowClass}
-                          >
-                            <Icon className="h-[22px] w-[22px] shrink-0 opacity-90" />
-                            <span className="min-w-0 flex-1">{label}</span>
-                            {trailing ? (
-                              <span className="shrink-0">{trailing}</span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-            </div>
+                {chatHeaderOptionsMenuSections.map((section, sectionIdx) => (
+                  <React.Fragment key={section.id}>
+                    {sectionIdx > 0 ? (
+                      <div
+                        role="separator"
+                        className="my-1 border-t border-gray-200 dark:border-gray-600"
+                      />
+                    ) : null}
+                    {section.items.map((item) => {
+                      const {
+                        id,
+                        label,
+                        Icon,
+                        tone = "default",
+                        trailing,
+                        disabled,
+                        onClick,
+                      } = item;
+                      const baseRow =
+                        "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug";
+                      const rowClass =
+                        disabled
+                          ? `${baseRow} cursor-not-allowed text-gray-400 opacity-60`
+                          : tone === "danger"
+                            ? `${baseRow} text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/80`
+                            : `${baseRow} text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700/80`;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          role="menuitem"
+                          disabled={disabled}
+                          onClick={onClick}
+                          className={rowClass}
+                        >
+                          <Icon className="h-[22px] w-[22px] shrink-0 opacity-90" />
+                          <span className="min-w-0 flex-1">{label}</span>
+                          {trailing ? (
+                            <span className="shrink-0">{trailing}</span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-   
+
 
       {showMessageSearch && (
         <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50 px-1.5 py-1.5">
@@ -1619,9 +1563,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <div
         ref={messagesScrollRef}
-        className={`flex flex-col space-y-3 overflow-y-auto bg-[#f7f8fa] px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${
-          isPageVariant ? "h-[calc(100vh-16rem)] sm:h-[calc(100vh-14rem)]" : "h-[250px] sm:h-[290px]"
-        }`}
+        className={`flex flex-col space-y-3 overflow-y-auto bg-[#f7f8fa] px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${isPageVariant ? "h-[calc(100vh-16rem)] sm:h-[calc(100vh-14rem)]" : "h-[250px] sm:h-[290px]"
+          }`}
       >
         {isLoadingOlderMessages && (
           <div className="py-1 text-center text-xs text-gray-500">
@@ -1688,9 +1631,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <form
         onSubmit={handleSend}
-        className={`border-t border-gray-200 bg-[#f7f8fa] px-2 py-2 sm:px-3 sm:py-3 ${
-          isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
-        }`}
+        className={`border-t border-gray-200 bg-[#f7f8fa] px-2 py-2 sm:px-3 sm:py-3 ${isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
+          }`}
       >
         {editingMessage ? (
           <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200/80 bg-amber-50/90 dark:border-orange-900/70 dark:bg-orange-950/45 px-2.5 py-2 border-l-[3px] border-l-teal-500 dark:border-l-teal-500">
@@ -1809,16 +1751,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               onClick={toggleVoiceRecording}
               disabled={isSending || !!editingMessage}
               className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9 ${voiceRecording
-                  ? "bg-orange-600 hover:bg-orange-700"
-                  : "bg-primary-600 hover:bg-primary-700"
+                ? "bg-orange-600 hover:bg-orange-700"
+                : "bg-primary-600 hover:bg-primary-700"
                 }`}
               aria-label={voiceRecording ? "Stop recording" : "Voice message"}
               title={
                 editingMessage
                   ? "Finish editing before sending a voice message"
                   : voiceRecording
-                  ? "Stop and send"
-                  : "Voice message"
+                    ? "Stop and send"
+                    : "Voice message"
               }
             >
               {voiceRecording ? (
@@ -2022,7 +1964,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
             <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-[#0b141a]">
               {filteredForwardThreads.length === 0 &&
-              filteredForwardContacts.length === 0 ? (
+                filteredForwardContacts.length === 0 ? (
                 <div className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                   {forwardSearchLower
                     ? "No contacts or chats match your search."

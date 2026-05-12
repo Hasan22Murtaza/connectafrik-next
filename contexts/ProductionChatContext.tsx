@@ -176,7 +176,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     
     if (!existingThread && currentUser) {
       try {
-        const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
+        const { threads: userThreads } = await supabaseMessagingService.getUserThreads(currentUser, {
+          limit: 100,
+          page: 0,
+        })
         const thread = userThreads.find(t => t.id === threadId)
         if (thread) {
           setThreads(prev => {
@@ -371,7 +374,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         return null
       }
 
-      const userThreads = await supabaseMessagingService.getUserThreads(currentUser)
+      const { threads: userThreads } = await supabaseMessagingService.getUserThreads(currentUser, {
+        limit: 100,
+        page: 0,
+      })
       const createdThread = userThreads.find(t => t.id === threadId)
 
       let threadToAdd: ChatThread | null = null

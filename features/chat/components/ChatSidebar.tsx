@@ -2,14 +2,13 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, MoreVertical, Pin, PinOff, Search, Trash2 } from "lucide-react";
+import { Archive, Loader2, MoreVertical, Pin, PinOff, Search, Trash2 } from "lucide-react";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { ChatThread, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";
 import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 
-const PAGE_SIZE = 60;
-const threadCacheByUserId = new Map<string, ChatThread[]>();
+const PAGE_SIZE = 40;
 
 function formatThreadListTime(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -34,38 +33,74 @@ export default function ChatSidebar({
   const { currentUser, threads: contextThreads } = useProductionChat();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [lastLoadedPage, setLastLoadedPage] = useState(-1);
   const [search, setSearch] = useState("");
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!currentUser?.id) {
+      setThreads([]);
+      setIsLoading(false);
+      setHasMore(false);
+      setLastLoadedPage(-1);
+      return;
+    }
+
+    let cancelled = false;
     const loadThreads = async () => {
-      if (!currentUser) {
-        setThreads([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const cached = threadCacheByUserId.get(currentUser.id);
-      if (cached) {
-        setThreads(cached);
-        setIsLoading(false);
-        return;
-      }
-
       setIsLoading(true);
+      setLastLoadedPage(-1);
       try {
-        const userThreads = await supabaseMessagingService.getUserThreads(
+        const { threads: rows, hasMore: more } = await supabaseMessagingService.getUserThreads(
           { id: currentUser.id, name: currentUser.name || "" },
           { limit: PAGE_SIZE, page: 0 }
         );
-        threadCacheByUserId.set(currentUser.id, userThreads);
-        setThreads(userThreads);
+        if (cancelled) return;
+        setThreads(rows);
+        setHasMore(more);
+        setLastLoadedPage(0);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     void loadThreads();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id]);
+
+  const loadMoreThreads = useCallback(async () => {
+    if (!currentUser?.id || isLoadingMore || !hasMore || lastLoadedPage < 0) return;
+    const nextPage = lastLoadedPage + 1;
+    setIsLoadingMore(true);
+    try {
+      const { threads: more, hasMore: moreLeft } = await supabaseMessagingService.getUserThreads(
+        { id: currentUser.id, name: currentUser.name || "" },
+        { limit: PAGE_SIZE, page: nextPage }
+      );
+      setHasMore(moreLeft);
+      setLastLoadedPage(nextPage);
+      setThreads((prev) => {
+        const seen = new Set(prev.map((t) => t.id));
+        const deduped = more.filter((t) => !seen.has(t.id));
+        return [...prev, ...deduped];
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentUser?.id, currentUser?.name, hasMore, isLoadingMore, lastLoadedPage]);
+
+  const handleThreadsScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      if (scrollHeight - scrollTop - clientHeight < 100) {
+        void loadMoreThreads();
+      }
+    },
+    [loadMoreThreads]
+  );
 
   useEffect(() => {
     if (!menuThreadId) return;
@@ -114,14 +149,7 @@ export default function ChatSidebar({
 
   const updateThreadState = useCallback((updated: ChatThread) => {
     setThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-    if (currentUser?.id) {
-      const cached = threadCacheByUserId.get(currentUser.id) ?? [];
-      threadCacheByUserId.set(
-        currentUser.id,
-        cached.map((t) => (t.id === updated.id ? updated : t))
-      );
-    }
-  }, [currentUser?.id]);
+  }, []);
 
   const handleToggleArchive = useCallback(
     async (thread: ChatThread) => {
@@ -140,7 +168,7 @@ export default function ChatSidebar({
         setMenuThreadId(null);
       }
     },
-    [currentUser?.id, threadCacheByUserId, updateThreadState]
+    [currentUser?.id, updateThreadState]
   );
 
   const handleTogglePin = useCallback(
@@ -160,7 +188,7 @@ export default function ChatSidebar({
         setMenuThreadId(null);
       }
     },
-    [currentUser?.id, threadCacheByUserId, updateThreadState]
+    [currentUser?.id, updateThreadState]
   );
 
   const handleClear = useCallback(
@@ -211,7 +239,10 @@ export default function ChatSidebar({
         </div>
       </div>
 
-      <div className="h-[calc(100%-7.75rem)] overflow-y-auto">
+      <div
+        className="h-[calc(100%-7.75rem)] overflow-y-auto"
+        onScroll={handleThreadsScroll}
+      >
         {isLoading ? (
           <div className="p-4 text-sm text-gray-500">Loading chats...</div>
         ) : filteredThreads.length === 0 ? (
@@ -332,6 +363,18 @@ export default function ChatSidebar({
             );
           })
         )}
+        {!isLoading && hasMore ? (
+          <div className="flex justify-center py-3 text-sm text-gray-500">
+            {isLoadingMore ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                Loading more…
+              </span>
+            ) : (
+              <span className="text-gray-400">Scroll for more</span>
+            )}
+          </div>
+        ) : null}
       </div>
     </aside>
   );

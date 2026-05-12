@@ -58,7 +58,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
       }
       setThreadsLoading(true)
       try {
-        const userThreads = await supabaseMessagingService.getUserThreads(
+        const { threads: userThreads } = await supabaseMessagingService.getUserThreads(
           { id: currentUser.id, name: currentUser.name || '' },
           { limit: PAGE_SIZE, page: 0 }
         )

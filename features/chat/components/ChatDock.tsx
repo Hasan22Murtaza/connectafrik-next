@@ -55,10 +55,13 @@ const ChatDock: React.FC = () => {
         // Then, load any missing threads from database
         const missingThreadIds = openThreads.filter(id => !threadMap.has(id))
         if (missingThreadIds.length > 0) {
-          const userThreads = await supabaseMessagingService.getUserThreads({
-            id: currentUser.id,
-            name: currentUser.name || '',
-          })
+          const { threads: userThreads } = await supabaseMessagingService.getUserThreads(
+            {
+              id: currentUser.id,
+              name: currentUser.name || '',
+            },
+            { limit: 100, page: 0 }
+          )
           userThreads.forEach(thread => {
             if (missingThreadIds.includes(thread.id)) {
               threadMap.set(thread.id, thread)

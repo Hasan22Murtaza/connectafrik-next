@@ -116,6 +116,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const [threadsLoading, setThreadsLoading] = useState(true)
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false)
   const [threadsHasMore, setThreadsHasMore] = useState(true)
+  const [threadsListLastPage, setThreadsListLastPage] = useState(-1)
   const [search, setSearch] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -134,16 +135,19 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     const loadThreads = async () => {
       if (!currentUser) {
         setThreadsLoading(false)
+        setThreadsListLastPage(-1)
         return
       }
       setThreadsLoading(true)
+      setThreadsListLastPage(-1)
       try {
-        const userThreads = await supabaseMessagingService.getUserThreads(
+        const { threads: userThreads, hasMore } = await supabaseMessagingService.getUserThreads(
           { id: currentUser.id, name: currentUser.name || '' },
           { limit: PAGE_SIZE, page: 0 }
         )
         setThreads(userThreads)
-        setThreadsHasMore(userThreads.length >= PAGE_SIZE)
+        setThreadsHasMore(hasMore)
+        setThreadsListLastPage(0)
       } finally {
         setThreadsLoading(false)
       }
@@ -152,14 +156,16 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   }, [currentUser])
 
   const loadMoreThreads = useCallback(async () => {
-    if (!currentUser || threadsLoadingMore || !threadsHasMore) return
+    if (!currentUser || threadsLoadingMore || !threadsHasMore || threadsListLastPage < 0) return
+    const nextPage = threadsListLastPage + 1
     setThreadsLoadingMore(true)
     try {
-      const moreThreads = await supabaseMessagingService.getUserThreads(
+      const { threads: moreThreads, hasMore } = await supabaseMessagingService.getUserThreads(
         { id: currentUser.id, name: currentUser.name || '' },
-        { limit: PAGE_SIZE, page: Math.floor(threads.length / PAGE_SIZE) }
+        { limit: PAGE_SIZE, page: nextPage }
       )
-      if (moreThreads.length < PAGE_SIZE) setThreadsHasMore(false)
+      setThreadsHasMore(hasMore)
+      setThreadsListLastPage(nextPage)
       setThreads(prev => {
         const existingIds = new Set(prev.map(t => t.id))
         const deduped = moreThreads.filter(t => !existingIds.has(t.id))
@@ -168,7 +174,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     } finally {
       setThreadsLoadingMore(false)
     }
-  }, [currentUser, threads.length, threadsLoadingMore, threadsHasMore])
+  }, [currentUser, threadsListLastPage, threadsLoadingMore, threadsHasMore])
 
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {

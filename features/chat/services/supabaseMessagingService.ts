@@ -843,10 +843,18 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
 }
 
 
+export type GetUserThreadsResult = {
+  threads: ChatThread[]
+  hasMore: boolean
+}
+
 export const supabaseMessagingService = {
-  async getUserThreads(currentUser?: ChatParticipant | null, options?: { limit?: number; page?: number }): Promise<ChatThread[]> {
+  async getUserThreads(
+    currentUser?: ChatParticipant | null,
+    options?: { limit?: number; page?: number }
+  ): Promise<GetUserThreadsResult> {
     if (!currentUser) {
-      return []
+      return { threads: [], hasMore: false }
     }
 
     const limit = options?.limit ?? 20
@@ -865,23 +873,30 @@ export const supabaseMessagingService = {
         fallbackEnabled = false
       }
       if (!threads.length) {
-        return []
+        const hasMoreFromMeta = typeof res?.meta?.hasMore === 'boolean' ? res.meta.hasMore : false
+        return { threads: [], hasMore: hasMoreFromMeta }
       }
       const formattedThreads = await Promise.all(
         threads.map((thread: any) => formatThread(thread, currentUser.id))
       )
       formattedThreads.sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
-      return formattedThreads
+      const hasMore =
+        typeof res?.meta?.hasMore === 'boolean' ? res.meta.hasMore : formattedThreads.length >= limit
+      return { threads: formattedThreads, hasMore }
     } catch (error: any) {
       const details = error?.details ?? error?.message
       if (isPolicyRecursionError(details ?? error)) {
-        return loadThreadsViaRpc(currentUser.id, sortThreads)
+        const all = await loadThreadsViaRpc(currentUser.id, sortThreads)
+        const from = page * limit
+        const slice = all.slice(from, from + limit)
+        return { threads: slice, hasMore: from + limit < all.length }
       }
       console.error('Error in getUserThreads:', error)
       activateFallback(error)
       const all = sortThreads(getLocalThreadsForUser(currentUser.id))
       const from = page * limit
-      return all.slice(from, from + limit)
+      const slice = all.slice(from, from + limit)
+      return { threads: slice, hasMore: from + limit < all.length }
     }
   },
 
