@@ -158,10 +158,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const reactionPickerCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bubbleBlockRef = useRef<HTMLDivElement | null>(null);
   const messageMenuRef = useRef<HTMLDivElement | null>(null);
+  const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({});
+
   const router = useRouter(); 
   const MENU_VIEWPORT_GAP = 8;
   /** Conservative height for reactions + overflow menu so we pick above/below before paint. */
   const ESTIMATED_MENU_HEIGHT = 320;
+  const MESSAGE_PREVIEW_LIMIT = 220;
 
   const computeMenuPlacement = useCallback((): "above" | "below" => {
     const el = bubbleBlockRef.current;
@@ -490,11 +493,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const bubbleBg = isOwnMessage
     ? showForwardBadge
-      ? "bg-[#e2f7cb]"
-      : "bg-[#dcf8c6]"
+      ? "bg-orange-50"
+      : "bg-orange-50/80"
     : "bg-white";
-  const tailFill = isOwnMessage ? (showForwardBadge ? "#e2f7cb" : "#dcf8c6") : "#ffffff";
-
+  const toggleExpanded = (messageId: string) => {
+    setExpandedMessages((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }));
+  };
+  
+  const isExpanded = expandedMessages[message.id];
+  const shouldTruncate =
+    message.content &&
+    message.content.length > MESSAGE_PREVIEW_LIMIT;
+  
+  const displayText =
+    shouldTruncate && !isExpanded
+      ? `${message.content.slice(0, MESSAGE_PREVIEW_LIMIT)}...`
+      : message.content;
 
   return (
     <div
@@ -768,11 +785,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     </div>
                   ) : null}
 
-                  {message.content ? (
-                    <p className="break-words pr-1 text-[14.2px] leading-[1.45] text-[#111b21]">
-                      {linkifyContent(message.content, isOwnMessage)}
+                {message.content ? (
+                  <div className="pr-1">
+                    <p className="break-words text-[14.2px] leading-[1.45] text-[#111b21] whitespace-pre-wrap">
+                      {linkifyContent(displayText || "", isOwnMessage)}
                     </p>
-                  ) : null}
+
+                    {shouldTruncate ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(message.id)}
+                        className="mt-1 text-[12px] font-medium text-orange-500 hover:underline"
+                      >
+                        {isExpanded ? "Read less" : "Read more"}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
                 </>
               )}
 
