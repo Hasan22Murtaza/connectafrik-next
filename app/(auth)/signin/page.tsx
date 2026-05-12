@@ -131,8 +131,8 @@ const SigninForm: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
       <div className="max-w-md w-full ">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
+        <div className="text-center mb-2">
+          <div className="flex items-center justify-center mb-2">
             <Link href={"/"}>
               <img src="/assets/images/logo_2.png" alt="" className="w-30" />
             </Link>
@@ -148,7 +148,7 @@ const SigninForm: React.FC = () => {
         {/* Form */}
         <div className="card ">
           {/* Login Method Toggle */}
-          <div className="flex gap-2 mb-4 p-1 bg-gray-100 rounded-lg">
+          <div className="flex gap-2 mb-2 p-1 bg-gray-100 rounded-lg">
             <button
               type="button"
               onClick={() => setLoginMethod("email")}
@@ -341,13 +341,6 @@ const SigninForm: React.FC = () => {
             </Link>
           </div>
 
-          {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-500">
-              Join thousands of Africans sharing their stories, culture, and
-              political insights
-            </p>
-          </div>
         </div>
       </div>
     </div>
