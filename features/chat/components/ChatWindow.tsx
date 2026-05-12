@@ -163,6 +163,19 @@ function buildForwardPayload(message: ChatMessage): {
   };
 }
 
+function newChatClientSendId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `cs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function sortChatWindowMessages(msgs: ChatMessage[]): ChatMessage[] {
+  return [...msgs].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+}
+
 const MESSAGES_PAGE_SIZE = 50;
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -823,15 +836,74 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const text = draft.trim();
     if (!text && pendingFiles.length === 0) return;
 
+    const filesSnapshot = [...pendingFiles];
+    const replyTarget = replyingTo;
+    let prependSendId: string | undefined;
+
+    if (filesSnapshot.length > 0 && currentUser) {
+      prependSendId = newChatClientSendId();
+      const optimisticId = `optimistic:${prependSendId}`;
+      const optimisticAttachments = filesSnapshot.map((f) => ({
+        id: f.id,
+        name: f.name,
+        url: f.url,
+        type: f.type,
+        size: f.size,
+        mimeType: f.mimeType,
+      }));
+      const optimisticMessage: ChatMessage = {
+        id: optimisticId,
+        thread_id: threadId,
+        sender_id: currentUser.id,
+        content: text,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        message_type: "text",
+        metadata: { __clientSendId: prependSendId },
+        read_by: [currentUser.id],
+        is_deleted: false,
+        is_edited: false,
+        attachments: optimisticAttachments,
+        sender: {
+          id: currentUser.id,
+          name: currentUser.name || "You",
+          avatarUrl: currentUser.avatarUrl,
+        },
+        reply_to_id: replyTarget?.id,
+        reactions: [],
+      };
+      setMessagesForThread(
+        threadId,
+        sortChatWindowMessages([...getMessagesForThread(threadId), optimisticMessage])
+      );
+    }
+
+    setDraft("");
+    setPendingFiles([]);
+    setReplyingTo(null);
+    stopTyping();
+
     setIsSending(true);
     try {
-      let uploadedAttachments = pendingFiles;
+      let uploadedAttachments = filesSnapshot;
 
-      if (pendingFiles.length > 0) {
+      if (filesSnapshot.length > 0) {
         try {
-          uploadedAttachments = await fileUploadService.uploadFiles(pendingFiles);
+          uploadedAttachments = await fileUploadService.uploadFiles(filesSnapshot);
         } catch (uploadError: any) {
           toast.error(uploadError.message || "Failed to upload files");
+          if (prependSendId) {
+            const msgs = getMessagesForThread(threadId).filter(
+              (m) =>
+                !(
+                  m.id.startsWith("optimistic:") &&
+                  (m.metadata as Record<string, unknown> | undefined)?.__clientSendId ===
+                    prependSendId
+                )
+            );
+            setMessagesForThread(threadId, msgs);
+          }
+          fileUploadService.revokePreviews(filesSnapshot);
           setIsSending(false);
           return;
         }
@@ -847,16 +919,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           size: f.size,
           mimeType: f.mimeType,
         })),
-        reply_to_id: replyingTo?.id,
+        reply_to_id: replyTarget?.id,
+        ...(prependSendId
+          ? {
+              metadata: { __clientSendId: prependSendId },
+              skipContextOptimistic: true,
+            }
+          : {}),
       });
 
-      fileUploadService.revokePreviews(pendingFiles);
-      setDraft("");
-      setPendingFiles([]);
-      setReplyingTo(null);
-      stopTyping();
+      fileUploadService.revokePreviews(filesSnapshot);
     } catch (error: any) {
       toast.error("Failed to send message");
+      if (prependSendId) {
+        const msgs = getMessagesForThread(threadId).filter(
+          (m) =>
+            !(
+              m.id.startsWith("optimistic:") &&
+              (m.metadata as Record<string, unknown> | undefined)?.__clientSendId ===
+                prependSendId
+            )
+        );
+        setMessagesForThread(threadId, msgs);
+      }
+      fileUploadService.revokePreviews(filesSnapshot);
     } finally {
       setIsSending(false);
     }
@@ -1211,8 +1297,46 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "m4a" : "webm";
           const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
           setIsSending(true);
+          let prependSendId: string | undefined;
+          let results: FileUploadResult[] = [];
           try {
-            const results = await fileUploadService.fromFiles([file]);
+            results = await fileUploadService.fromFiles([file]);
+            if (currentUser) {
+              prependSendId = newChatClientSendId();
+              const optimisticId = `optimistic:${prependSendId}`;
+              const optimisticAttachments = results.map((f) => ({
+                id: f.id,
+                name: f.name,
+                url: f.url,
+                type: f.type,
+                size: f.size,
+                mimeType: f.mimeType,
+              }));
+              const optimisticMessage: ChatMessage = {
+                id: optimisticId,
+                thread_id: threadId,
+                sender_id: currentUser.id,
+                content: "",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                message_type: "text",
+                metadata: { __clientSendId: prependSendId },
+                read_by: [currentUser.id],
+                is_deleted: false,
+                is_edited: false,
+                attachments: optimisticAttachments,
+                sender: {
+                  id: currentUser.id,
+                  name: currentUser.name || "You",
+                  avatarUrl: currentUser.avatarUrl,
+                },
+                reactions: [],
+              };
+              setMessagesForThread(
+                threadId,
+                sortChatWindowMessages([...getMessagesForThread(threadId), optimisticMessage])
+              );
+            }
             const uploaded = await fileUploadService.uploadFiles(results);
             await sendMessage(threadId, "", {
               content: "",
@@ -1224,11 +1348,35 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 size: f.size,
                 mimeType: f.mimeType,
               })),
+              ...(prependSendId
+                ? {
+                    metadata: { __clientSendId: prependSendId },
+                    skipContextOptimistic: true,
+                  }
+                : {}),
             });
             fileUploadService.revokePreviews(results);
             stopTyping();
           } catch (err: any) {
             toast.error(err?.message || "Failed to send voice message");
+            if (prependSendId) {
+              const msgs = getMessagesForThread(threadId).filter(
+                (m) =>
+                  !(
+                    m.id.startsWith("optimistic:") &&
+                    (m.metadata as Record<string, unknown> | undefined)?.__clientSendId ===
+                      prependSendId
+                  )
+              );
+              setMessagesForThread(threadId, msgs);
+            }
+            if (results.length > 0) {
+              try {
+                fileUploadService.revokePreviews(results);
+              } catch {
+                /* ignore */
+              }
+            }
           } finally {
             setIsSending(false);
           }

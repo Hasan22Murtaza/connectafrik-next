@@ -473,6 +473,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const getMessageStatus = (): "sending" | "sent" | "delivered" | "read" => {
     if (!isOwnMessage) return "sent";
+    if (message.id.startsWith("optimistic:")) return "sending";
     const otherParticipants = threadParticipants.filter((id) => id !== currentUserId);
     if (otherParticipants.length === 0) return "sent";
 

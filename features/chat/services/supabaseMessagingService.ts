@@ -112,6 +112,16 @@ export interface SendMessageOptions {
   is_forward?: boolean
 }
 
+/** Outbound call signal / system inserts — do not render optimistic “pending” bubbles for these. */
+export function shouldSkipOptimisticMessageSend(
+  payload?: Pick<SendMessageOptions, 'message_type'>
+): boolean {
+  const mt = payload?.message_type || 'text'
+  if (ALL_CALL_SIGNAL_MESSAGE_TYPES.includes(mt)) return true
+  if (mt === GROUP_MEMBER_JOINED || mt === GROUP_MEMBER_LEFT) return true
+  return false
+}
+
 export interface RecentCallEntry {
   /** Stable row id for call history (one entry per call session). */
   session_id: string

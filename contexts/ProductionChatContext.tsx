@@ -1,7 +1,12 @@
 'use client'
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react'
-import { ChatMessage, ChatThread, supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
+import {
+  ChatMessage,
+  ChatThread,
+  shouldSkipOptimisticMessageSend,
+  supabaseMessagingService,
+} from '@/features/chat/services/supabaseMessagingService'
 import { toCallSessionStatusMessageType } from '@/features/chat/services/callSessionRealtime'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -26,6 +31,25 @@ function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): Cha
     reactions: incomingEmptyReactions ? prev.reactions : incoming.reactions,
     sender: senderLooksStub ? prev.sender : incoming.sender,
   }
+}
+
+function sortChatMessagesByCreatedAt(messages: ChatMessage[]): ChatMessage[] {
+  return [...messages].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
+}
+
+function readClientSendId(metadata: ChatMessage['metadata']): string | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined
+  const raw = (metadata as Record<string, unknown>).__clientSendId
+  return typeof raw === 'string' && raw.length > 0 ? raw : undefined
+}
+
+function newClientSendId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `cs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
 }
 
 interface ChatParticipant {
@@ -248,43 +272,145 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       return
     }
 
-    try {
-      const message = await supabaseMessagingService.sendMessage(threadId, {
-        content: text,
-        attachments: payload?.attachments,
-        reply_to_id: payload?.reply_to_id,
-        message_type: payload?.message_type,
-        metadata: payload?.metadata,
-        is_forward: payload?.is_forward === true,
-      }, currentUser)
+    const skipContextOptimistic = payload?.skipContextOptimistic === true
+    const eligibleForOptimistic =
+      !shouldSkipOptimisticMessageSend(payload) && !skipContextOptimistic
 
-      setMessages(prev => {
+    const clientSendIdFromPayload = readClientSendId(payload?.metadata)
+    const clientSendId =
+      eligibleForOptimistic
+        ? newClientSendId()
+        : clientSendIdFromPayload
+
+    const removeOptimisticBySendId = (sendId: string | undefined) => {
+      if (!sendId) return
+      setMessages((prev) => {
         const current = prev[threadId] || []
-        if (current.some(m => m.id === message.id)) {
-          return prev
-        }
-        return { ...prev, [threadId]: [...current, message] }
+        const next = current.filter(
+          (m) =>
+            !(
+              m.id.startsWith('optimistic:') &&
+              readClientSendId(m.metadata) === sendId
+            )
+        )
+        if (next.length === current.length) return prev
+        return { ...prev, [threadId]: next }
       })
-    } catch (error) {
-      console.error('Error sending message:', error)
-      if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
-        toast.error('You can no longer send messages in this chat')
-        return
-      }
-      const fallbackMessage: ChatMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    }
+
+    if (eligibleForOptimistic && clientSendId) {
+      const optimisticId = `optimistic:${clientSendId}`
+      const optimisticMessage: ChatMessage = {
+        id: optimisticId,
         thread_id: threadId,
         sender_id: currentUser.id,
         content: text,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        message_type: payload?.message_type ?? 'text',
+        metadata: {
+          ...(typeof payload?.metadata === 'object' && payload.metadata ? payload.metadata : {}),
+          __clientSendId: clientSendId,
+        },
         read_by: [currentUser.id],
         is_deleted: false,
-        ...payload,
+        is_edited: false,
+        is_forward: payload?.is_forward === true,
+        attachments: payload?.attachments,
+        sender: {
+          id: currentUser.id,
+          name: currentUser.name || 'You',
+          avatarUrl: currentUser.avatarUrl,
+        },
+        reply_to_id: payload?.reply_to_id,
+        reactions: [],
       }
-      setMessages(prev => {
+      setMessages((prev) => {
         const current = prev[threadId] || []
-        return { ...prev, [threadId]: [...current, fallbackMessage] }
+        if (current.some((m) => m.id === optimisticId)) return prev
+        return {
+          ...prev,
+          [threadId]: sortChatMessagesByCreatedAt([...current, optimisticMessage]),
+        }
       })
+    }
+
+    const metadataForApi = {
+      ...(typeof payload?.metadata === 'object' && payload.metadata ? payload.metadata : {}),
+      ...(clientSendId ? { __clientSendId: clientSendId } : {}),
+    }
+
+    try {
+      const message = await supabaseMessagingService.sendMessage(
+        threadId,
+        {
+          content: text,
+          attachments: payload?.attachments,
+          reply_to_id: payload?.reply_to_id,
+          message_type: payload?.message_type,
+          metadata: metadataForApi,
+          is_forward: payload?.is_forward === true,
+        },
+        currentUser
+      )
+
+      setMessages((prev) => {
+        const current = prev[threadId] || []
+        const sendId = readClientSendId(message.metadata) ?? clientSendId
+
+        if (sendId) {
+          const withoutOptimistic = current.filter(
+            (m) =>
+              !(
+                m.id.startsWith('optimistic:') &&
+                readClientSendId(m.metadata) === sendId
+              )
+          )
+          const idx = withoutOptimistic.findIndex((m) => m.id === message.id)
+          if (idx >= 0) {
+            const next = [...withoutOptimistic]
+            next[idx] = mergeChatMessageRealtime(withoutOptimistic[idx], message)
+            return { ...prev, [threadId]: sortChatMessagesByCreatedAt(next) }
+          }
+          return {
+            ...prev,
+            [threadId]: sortChatMessagesByCreatedAt([...withoutOptimistic, message]),
+          }
+        }
+
+        if (current.some((m) => m.id === message.id)) {
+          const idx = current.findIndex((m) => m.id === message.id)
+          const next = [...current]
+          next[idx] = mergeChatMessageRealtime(current[idx], message)
+          return { ...prev, [threadId]: next }
+        }
+        return { ...prev, [threadId]: sortChatMessagesByCreatedAt([...current, message]) }
+      })
+    } catch (error) {
+      console.error('Error sending message:', error)
+      removeOptimisticBySendId(clientSendId)
+      if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
+        toast.error('You can no longer send messages in this chat')
+        return
+      }
+      if (!eligibleForOptimistic && !clientSendIdFromPayload) {
+        const fallbackMessage: ChatMessage = {
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          thread_id: threadId,
+          sender_id: currentUser.id,
+          content: text,
+          created_at: new Date().toISOString(),
+          read_by: [currentUser.id],
+          is_deleted: false,
+          ...payload,
+        }
+        setMessages((prev) => {
+          const current = prev[threadId] || []
+          return { ...prev, [threadId]: [...current, fallbackMessage] }
+        })
+      } else {
+        toast.error('Failed to send message')
+      }
     }
   }, [currentUser])
 
@@ -780,6 +906,19 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
         setMessages(prev => {
           const current = prev[threadId] || []
+          const incomingSendId = readClientSendId(message.metadata)
+          if (incomingSendId) {
+            const optIdx = current.findIndex(
+              (m) =>
+                m.id.startsWith('optimistic:') &&
+                readClientSendId(m.metadata) === incomingSendId
+            )
+            if (optIdx >= 0) {
+              const next = [...current]
+              next[optIdx] = mergeChatMessageRealtime(current[optIdx], message)
+              return { ...prev, [threadId]: sortChatMessagesByCreatedAt(next) }
+            }
+          }
           const idx = current.findIndex(m => m.id === message.id)
           if (idx >= 0) {
             const next = [...current]
@@ -789,7 +928,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           if (currentUser.id && message.deleted_for?.includes(currentUser.id)) {
             return prev
           }
-          return { ...prev, [threadId]: [...current, message] }
+          return { ...prev, [threadId]: sortChatMessagesByCreatedAt([...current, message]) }
         })
 
         // Incoming calls use call_sessions + tryDispatchIncomingFromCallSession only (no chat_messages).
