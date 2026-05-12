@@ -1873,13 +1873,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             aria-label={
               editingMessage ? "Editing message — press Escape to discard" : "Message input"
             }
-            className="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#d1d7db] focus:outline-none focus:shadow-[0_0_0_3px_rgba(37,211,102,0.14)]"
+            className="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#d1d7db] focus:outline-none "
           />
           {showSendButton ? (
             <button
               type="submit"
               disabled={isSending || composerSendDisabled}
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#25d366] text-white hover:bg-[#22c55e] active:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#22c55e] text-white hover:bg-[#22c55e] active:bg-[#22c55e] disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9"
               aria-label={
                 editingMessage ? "Done editing — save changes" : "Send message"
               }
