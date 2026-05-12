@@ -486,7 +486,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerInputRef = useRef<HTMLInputElement>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
-  const [messageSelectionMode, setMessageSelectionMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
@@ -1345,26 +1344,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     peerProfileRouteSegment,
   ]);
 
-  const exitMessageSelectionMode = useCallback(() => {
-    setMessageSelectionMode(false);
-    setSelectedMessageIds([]);
-  }, []);
+  
 
   const handleCloseChatFromMenu = useCallback(() => {
     setShowOptionsMenu(false);
-    exitMessageSelectionMode();
     closeThread(threadId);
     if (variant === "page") router.push("/chat");
-  }, [threadId, closeThread, variant, router, exitMessageSelectionMode]);
+  }, [threadId, closeThread, variant, router]);
 
   const handleDeleteChatFromMenu = useCallback(() => {
     if (!window.confirm("Remove this chat from your chats list?")) return;
     setShowOptionsMenu(false);
-    exitMessageSelectionMode();
     closeThread(threadId);
     if (variant === "page") router.push("/chat");
     toast.success("Chat removed");
-  }, [threadId, closeThread, variant, router, exitMessageSelectionMode]);
+  }, [threadId, closeThread, variant, router]);
 
   const toggleMessageSelect = useCallback((messageId: string) => {
     setSelectedMessageIds((prev) =>
@@ -1576,22 +1570,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       </div>
 
-      {messageSelectionMode && (
-        <div className="flex items-center justify-between gap-2 border-b border-amber-200/80 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-          <span className="font-medium">
-            {selectedMessageIds.length > 0
-              ? `${selectedMessageIds.length} selected`
-              : "Select messages"}
-          </span>
-          <button
-            type="button"
-            className="shrink-0 font-semibold text-primary-700 hover:text-primary-800"
-            onClick={() => exitMessageSelectionMode()}
-          >
-            Done
-          </button>
-        </div>
-      )}
+   
 
       {showMessageSearch && (
         <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50 px-1.5 py-1.5">
@@ -1691,15 +1670,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   composerEditingMessageId={editingMessage?.id ?? null}
                   onReact={handleMessageReaction}
                   onShowInfo={(msg) => void openMessageInfo(msg)}
-                  selectionMode={messageSelectionMode}
-                  isMessageSelected={selectedMessageIds.includes(message.id)}
-                  onToggleMessageSelect={toggleMessageSelect}
-                  onBeginMessageSelectMode={(messageId) => {
-                    setMessageSelectionMode(true);
-                    setSelectedMessageIds((prev) =>
-                      prev.includes(messageId) ? prev : [...prev, messageId]
-                    );
-                  }}
                 />
               </Fragment>
             );
@@ -1708,7 +1678,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <div aria-hidden="true" />
       </div>
 
-      {/* WhatsApp-style typing indicator */}
       <TypingIndicator isTyping={typingUserIds.length > 0} />
 
       {pendingFiles.length > 0 && !editingMessage && (

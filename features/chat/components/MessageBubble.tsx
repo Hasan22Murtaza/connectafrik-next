@@ -40,6 +40,7 @@ import ReactionIcon, {
   type ReactionKind,
 } from "@/shared/components/ReactionIcon";
 import { TbMoodPlus } from "react-icons/tb";
+import { useRouter } from "next/navigation";
 
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<]+/gi;
 
@@ -131,8 +132,6 @@ interface MessageBubbleProps {
   onShowInfo?: (message: ChatMessage) => void;
   selectionMode?: boolean;
   isMessageSelected?: boolean;
-  onToggleMessageSelect?: (messageId: string) => void;
-  onBeginMessageSelectMode?: (messageId: string) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -149,9 +148,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onReact,
   onShowInfo,
   selectionMode = false,
-  isMessageSelected = false,
-  onToggleMessageSelect,
-  onBeginMessageSelectMode,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPlacement, setMenuPlacement] = useState<"above" | "below">("below");
@@ -162,7 +158,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const reactionPickerCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bubbleBlockRef = useRef<HTMLDivElement | null>(null);
   const messageMenuRef = useRef<HTMLDivElement | null>(null);
-
+  const router = useRouter(); 
   const MENU_VIEWPORT_GAP = 8;
   /** Conservative height for reactions + overflow menu so we pick above/below before paint. */
   const ESTIMATED_MENU_HEIGHT = 320;
@@ -295,8 +291,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canForward ||
     canShowInfo ||
     canCopy ||
-    Boolean(onReply) ||
-    Boolean(onBeginMessageSelectMode);
+    Boolean(onReply);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -420,7 +415,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     onBeginEdit,
     onDelete,
     onShowInfo,
-    onBeginMessageSelectMode,
     canCopy,
     canForward,
     canEditMessage,
@@ -501,11 +495,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     : "bg-white";
   const tailFill = isOwnMessage ? (showForwardBadge ? "#e2f7cb" : "#dcf8c6") : "#ffffff";
 
-  const handleBubbleClick = () => {
-    if (selectionMode && onToggleMessageSelect) {
-      onToggleMessageSelect(message.id);
-    }
-  };
 
   return (
     <div
@@ -520,26 +509,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         setShowReactionPicker(false);
       }}
     >
-      {selectionMode ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleMessageSelect?.(message.id);
-          }}
-          className={`mb-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 ${
-            isMessageSelected ? "border-[#00a884] bg-[#00a884]" : "border-[#8696a0] bg-white"
-          }`}
-          aria-label={isMessageSelected ? "Deselect message" : "Select message"}
-          aria-pressed={isMessageSelected}
-        >
-          {isMessageSelected ? (
-            <span className="text-[10px] font-bold text-white" aria-hidden>
-              ✓
-            </span>
-          ) : null}
-        </button>
-      ) : null}
+    
 
       <div
         className={`relative min-w-0 max-w-[min(78%,420px)] flex-1 ${isOwnMessage ? "ml-auto flex flex-col items-end" : "mr-auto flex flex-col items-start"}`}
@@ -551,7 +521,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             ) : (
               <UserCircle className="h-5 w-5 text-[#8696a0]" />
             )}
-            <span className="truncate text-xs font-medium text-[#54656f]">{message.sender.name}</span>
+            <span className="truncate text-xs font-medium text-[#54656f] cursor-pointer hover:underline" onClick={() => router.push(`/user/${message?.sender?.id}`)}>{message.sender?.name}</span>
           </div>
         ) : null}
 
@@ -689,23 +659,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </div>
           ) : null}
 
-          <div
-            role={selectionMode ? "button" : undefined}
-            tabIndex={selectionMode ? 0 : undefined}
-            onClick={selectionMode ? handleBubbleClick : undefined}
-            onKeyDown={
-              selectionMode
-                ? (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleBubbleClick();
-                    }
-                  }
-                : undefined
-            }
-            className={`relative inline-block max-w-full ${selectionMode ? "cursor-pointer" : ""}`}
-          >
-           
 
             <div
               className={`relative z-[1] rounded-lg px-2.5 pb-1 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${
@@ -714,7 +667,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 isComposerEditingThis
                   ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-[#e5ddd5]"
                   : ""
-              } ${isMessageSelected && selectionMode ? "ring-2 ring-[#00a884]" : ""}`}
+              }`}
             >
               {isHovered && !isDeleted && (showOverflowMenu || onReact) && !selectionMode ? (
                 <div className="absolute right-1 top-1 z-20">
@@ -835,7 +788,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
               </div>
             </div>
-          </div>
         </div>
       </div>
     </div>
