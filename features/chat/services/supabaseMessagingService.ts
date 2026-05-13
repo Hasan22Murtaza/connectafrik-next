@@ -1178,7 +1178,7 @@ export const supabaseMessagingService = {
               if (!response.success) {
                 throw new Error(response.error || `Failed to send ${messageType} notification`)
               }
-              console.log(`📞 Sent ${messageType} notification to ${participant.user_id}`)
+              console.log(` Sent ${messageType} notification to ${participant.user_id}`)
             }))
 
             const failedCount = notificationResults.filter((result) => result.status === 'rejected').length
@@ -1225,6 +1225,11 @@ export const supabaseMessagingService = {
       console.error('Error in markMessagesAsRead:', error)
       markLocalMessagesAsRead(threadId, userId)
     }
+  },
+
+  /** Re-sync this user's `chat_participants.unread_count` from `message_reads` (e.g. list showed unread before messages loaded). */
+  async recalculateThreadUnreadForMe(threadId: string): Promise<void> {
+    await apiClient.post(`/api/chat/threads/${threadId}/read`, { recalculate: true })
   },
 
   async deleteMessage(messageId: string): Promise<void> {

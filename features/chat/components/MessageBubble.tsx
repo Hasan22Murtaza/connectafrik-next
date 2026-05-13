@@ -23,6 +23,9 @@ import {
   Forward,
   Info,
   Pencil,
+  PhoneIncoming,
+  PhoneMissed,
+  PhoneOutgoing,
   Pin,
   Reply,
   Smile,
@@ -63,7 +66,7 @@ export function ChatDateDivider({ dateIso }: { dateIso: string }) {
   const label = formatChatDateDividerLabel(new Date(dateIso));
   return (
     <div className="flex justify-center py-2">
-      <span className="rounded-lg bg-white/95 px-3 py-1 text-[11.5px] font-medium uppercase tracking-wide text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+      <span className="rounded-[7.5px] bg-white px-3 py-1 text-[12.5px] font-medium text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
         {label}
       </span>
     </div>
@@ -115,6 +118,31 @@ function isForwardableChatMessage(m: ChatMessage): boolean {
   const hasText = Boolean(m.content?.trim());
   const hasAtt = Boolean(m.attachments && m.attachments.length > 0);
   return hasText || hasAtt;
+}
+
+/** WhatsApp-style voice / missed call row inside a bubble */
+function getCallBubblePresentation(
+  message: ChatMessage,
+): { variant: "missed" | "voice"; title: string; subtitle: string } | null {
+  const mt = (message.message_type || "").toLowerCase();
+  const content = (message.content || "").trim();
+  const contentLower = content.toLowerCase();
+
+  if (mt === "missed" || contentLower === "missed call") {
+    return {
+      variant: "missed",
+      title: "Missed voice call",
+      subtitle: "Click to call back",
+    };
+  }
+  if (mt === "declined") {
+    return {
+      variant: "voice",
+      title: "Voice call",
+      subtitle: content || "No answer",
+    };
+  }
+  return null;
 }
 
 interface MessageBubbleProps {
@@ -438,7 +466,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     return (
       <div className="mb-3 flex justify-center">
         <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
-          <span>{message.content || "📞 Call ended"}</span>
+          <span>{message.content || "Call ended"}</span>
         </div>
       </div>
     );
@@ -458,9 +486,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     "initiated",
     "ringing",
     "active",
-    "declined",
     "ended",
-    "missed",
     "failed",
     "call_notification",
     "hand_raised",
@@ -492,11 +518,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isComposerEditingThis =
     Boolean(composerEditingMessageId) && composerEditingMessageId === message.id && !isDeleted;
 
-  const bubbleBg = isOwnMessage
-    ? showForwardBadge
-      ? "bg-orange-50"
-      : "bg-orange-50/80"
-    : "bg-white";
+  const callPresentation =
+    !isDeleted && !(message.attachments && message.attachments.length > 0)
+      ? getCallBubblePresentation(message)
+      : null;
+
+  /** WhatsApp outgoing / incoming bubble fill */
+  const bubbleBg = isOwnMessage ? "bg-[#dcf8c6]" : "bg-white";
+  const forwardAccent =
+    showForwardBadge && isOwnMessage ? "border-l-[3px] border-[#25d366] pl-[9px]" : "";
   const toggleExpanded = (messageId: string) => {
     setExpandedMessages((prev) => ({
       ...prev,
@@ -546,7 +576,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {message.reply_to_id ? (
           <div
             className={`mb-1 max-w-full rounded-md border-l-[3px] p-2 ${
-              isOwnMessage ? "border-[#25d366] bg-[#c8edc1]/90" : "border-[#00a884] bg-white/80"
+              isOwnMessage ? "border-[#25d366] bg-[#b8e995]/50" : "border-[#25d366] bg-white/90"
             }`}
           >
             <div className="text-[11px] italic text-[#667781]">Replying to a message</div>
@@ -679,8 +709,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
 
             <div
-              className={`relative z-[1] rounded-lg px-2.5 pb-1 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${
-                isOwnMessage ? "rounded-tr-sm" : "rounded-tl-sm"
+              className={`relative z-[1] overflow-visible rounded-[7.5px] px-2.5 pb-1.5 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${forwardAccent} ${
+                isOwnMessage
+                  ? "after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[#dcf8c6]"
+                  : "before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-white"
               } ${
                 isComposerEditingThis
                   ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-[#e5ddd5]"
@@ -716,6 +748,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
               {isDeleted ? (
                 <p className="pr-1 text-sm italic text-[#667781]">This message was deleted</p>
+              ) : callPresentation ? (
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
+                    {callPresentation.variant === "missed" ? (
+                      <PhoneMissed className="h-[22px] w-[22px] text-[#ea0038]" strokeWidth={2} aria-hidden />
+                    ) : isOwnMessage ? (
+                      <PhoneOutgoing className="h-[21px] w-[21px] text-[#111b21]" strokeWidth={2} aria-hidden />
+                    ) : (
+                      <PhoneIncoming className="h-[21px] w-[21px] text-[#111b21]" strokeWidth={2} aria-hidden />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p className="text-[15px] font-medium leading-snug text-[#111b21]">{callPresentation.title}</p>
+                    <p className="mt-0.5 text-[13px] leading-snug text-[#667781]">{callPresentation.subtitle}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
+                    <div className="flex items-end justify-end gap-1">
+                      {showEditedBadge ? (
+                        <span className="text-[11px] lowercase leading-none text-[#667781]">edited</span>
+                      ) : null}
+                      <span className="shrink-0 text-[11px] tabular-nums text-[#667781]">
+                        {format(new Date(message.created_at), "HH:mm")}
+                      </span>
+                      <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <>
                   {message.attachments && message.attachments.length > 0 ? (
@@ -786,37 +845,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     </div>
                   ) : null}
 
-                {message.content ? (
-                  <div className="pr-1">
-                    <p className="break-words text-[14.2px] leading-[1.45] text-[#111b21] whitespace-pre-wrap">
-                      {linkifyContent(displayText || "", isOwnMessage)}
-                    </p>
+                  {message.content ? (
+                    <div className="pr-1">
+                      <p className="break-words text-[14.2px] leading-[1.45] text-[#111b21] whitespace-pre-wrap">
+                        {linkifyContent(displayText || "", isOwnMessage)}
+                      </p>
 
-                    {shouldTruncate ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleExpanded(message.id)}
-                        className="mt-1 text-[12px] font-medium text-orange-500 hover:underline"
-                      >
-                        {isExpanded ? "Read less" : "Read more"}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
+                      {shouldTruncate ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(message.id)}
+                          className={`mt-1 text-[12px] font-medium hover:underline ${
+                            isOwnMessage ? "text-[#027eb5] hover:text-[#026aa1]" : "text-blue-600 hover:text-blue-800"
+                          }`}
+                        >
+                          {isExpanded ? "Read less" : "Read more"}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </>
               )}
 
-              <div className="mt-0.5 flex items-end justify-end gap-1 pl-6">
-                <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
-                  {showEditedBadge ? (
-                    <span className="text-[11px] lowercase leading-none text-[#667781]">edited</span>
-                  ) : null}
-                  <span className="shrink-0 text-[11px] tabular-nums text-[#667781]">
-                    {format(new Date(message.created_at), "HH:mm")}
-                  </span>
+              {!callPresentation ? (
+                <div className="mt-0.5 flex items-end justify-end gap-1 pl-6">
+                  <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
+                    {showEditedBadge ? (
+                      <span className="text-[11px] lowercase leading-none text-[#667781]">edited</span>
+                    ) : null}
+                    <span className="shrink-0 text-[11px] tabular-nums text-[#667781]">
+                      {format(new Date(message.created_at), "HH:mm")}
+                    </span>
+                  </div>
+                  <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
                 </div>
-                <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
-              </div>
+              ) : null}
             </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   shouldSkipOptimisticMessageSend,
   supabaseMessagingService,
 } from '@/features/chat/services/supabaseMessagingService'
+import { CHAT_THREAD_MARKED_READ_EVENT } from '@/features/chat/threadReadEvents'
 import { toCallSessionStatusMessageType } from '@/features/chat/services/callSessionRealtime'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -138,6 +139,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
+  const messagesRef = useRef<Record<string, ChatMessage[]>>({})
   const callRequestsRef = useRef<Record<string, CallRequest>>({})
   const callStartInFlightRef = useRef<Set<string>>(new Set())
   /** Dedupes poll + Realtime so we do not open two modals for the same call_id. */
@@ -162,6 +164,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     callRequestsRef.current = callRequests
   }, [callRequests])
+
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   // Preload call-related chunks/sdk during idle time so call startup is faster.
   useEffect(() => {
@@ -416,42 +422,65 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const markThreadRead = useCallback(async (threadId: string) => {
     if (!currentUser) return
-    
+
+    const threadMessages = messagesRef.current[threadId] || []
+    const unreadMessageIds = threadMessages
+      .filter((msg: ChatMessage) => {
+        if (!msg.id || String(msg.id).startsWith('optimistic:')) return false
+        return (
+          msg.sender_id !== currentUser.id &&
+          (!msg.read_by || !msg.read_by.includes(currentUser.id))
+        )
+      })
+      .map((msg: ChatMessage) => msg.id)
+
+    let priorUnreadFromState = 0
+    setThreads((prev) => {
+      const idx = prev.findIndex((t) => t.id === threadId)
+      if (idx < 0) return prev
+      priorUnreadFromState = prev[idx].unread_count ?? 0
+      if (priorUnreadFromState === 0) return prev
+      const next = [...prev]
+      next[idx] = { ...prev[idx], unread_count: 0 }
+      return next
+    })
+
+    if (
+      typeof window !== 'undefined' &&
+      (unreadMessageIds.length > 0 || priorUnreadFromState > 0)
+    ) {
+      window.dispatchEvent(
+        new CustomEvent(CHAT_THREAD_MARKED_READ_EVENT, { detail: { threadId } })
+      )
+    }
+
     try {
-      const threadMessages = messages[threadId] || []
-      const unreadMessageIds = threadMessages
-        .filter((msg: ChatMessage) => {
-          return msg.sender_id !== currentUser.id && 
-                 (!msg.read_by || !msg.read_by.includes(currentUser.id))
-        })
-        .map((msg: ChatMessage) => msg.id)
-      
       if (unreadMessageIds.length > 0) {
-        await supabaseMessagingService.markMessagesAsRead(threadId, unreadMessageIds, currentUser.id)
-        
-        setMessages(prev => {
+        await supabaseMessagingService.markMessagesAsRead(
+          threadId,
+          unreadMessageIds,
+          currentUser.id
+        )
+
+        setMessages((prev) => {
           const current = prev[threadId] || []
           return {
             ...prev,
             [threadId]: current.map((msg: ChatMessage) => {
-              if (unreadMessageIds.includes(msg.id)) {
-                const updatedReadBy = msg.read_by || []
-                if (!updatedReadBy.includes(currentUser.id)) {
-                  return {
-                    ...msg,
-                    read_by: [...updatedReadBy, currentUser.id]
-                  }
-                }
-              }
-              return msg
-            })
+              if (!unreadMessageIds.includes(msg.id)) return msg
+              const updatedReadBy = msg.read_by || []
+              if (updatedReadBy.includes(currentUser.id)) return msg
+              return { ...msg, read_by: [...updatedReadBy, currentUser.id] }
+            }),
           }
         })
+      } else if (priorUnreadFromState > 0) {
+        await supabaseMessagingService.recalculateThreadUnreadForMe(threadId)
       }
     } catch (error) {
       console.error('Error marking thread as read:', error)
     }
-  }, [currentUser, messages])
+  }, [currentUser])
 
   const minimizedThreadIds: string[] = []
 

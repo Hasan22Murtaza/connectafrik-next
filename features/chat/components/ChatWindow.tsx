@@ -703,12 +703,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ]);
 
   useEffect(() => {
-    if (
-      thread &&
-      !minimizedThreadIds.includes(threadId) &&
-      messages.length > 0
-    ) {
-      markThreadRead(threadId);
+    if (thread && !minimizedThreadIds.includes(threadId)) {
+      void markThreadRead(threadId);
     }
   }, [threadId, thread, minimizedThreadIds, messages.length, markThreadRead]);
 

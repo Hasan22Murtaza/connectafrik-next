@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread } from '@/features/chat/services/supabaseMessagingService'
+import { CHAT_THREAD_MARKED_READ_EVENT } from '@/features/chat/threadReadEvents'
 import { ChatDropdownShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 const PAGE_SIZE = 40
@@ -120,6 +121,17 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const [search, setSearch] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onMarkedRead = (event: Event) => {
+      const tid = (event as CustomEvent<{ threadId?: string }>).detail?.threadId
+      if (!tid) return
+      setThreads((prev) => prev.map((t) => (t.id === tid ? { ...t, unread_count: 0 } : t)))
+    }
+    window.addEventListener(CHAT_THREAD_MARKED_READ_EVENT, onMarkedRead as EventListener)
+    return () =>
+      window.removeEventListener(CHAT_THREAD_MARKED_READ_EVENT, onMarkedRead as EventListener)
+  }, [])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

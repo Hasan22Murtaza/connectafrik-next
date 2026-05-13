@@ -5,6 +5,7 @@ import { format, isThisYear, isToday, isYesterday } from "date-fns";
 import { Archive, Loader2, MoreVertical, Pin, PinOff, Search, Trash2 } from "lucide-react";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { ChatThread, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";
+import { CHAT_THREAD_MARKED_READ_EVENT } from "@/features/chat/threadReadEvents";
 import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 
@@ -69,7 +70,7 @@ export default function ChatSidebar({
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.id]);
+  }, []);
 
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser?.id || isLoadingMore || !hasMore || lastLoadedPage < 0) return;
@@ -101,6 +102,19 @@ export default function ChatSidebar({
     },
     [loadMoreThreads]
   );
+
+  useEffect(() => {
+    const onMarkedRead = (event: Event) => {
+      const tid = (event as CustomEvent<{ threadId?: string }>).detail?.threadId;
+      if (!tid) return;
+      setThreads((prev) =>
+        prev.map((t) => (t.id === tid ? { ...t, unread_count: 0 } : t))
+      );
+    };
+    window.addEventListener(CHAT_THREAD_MARKED_READ_EVENT, onMarkedRead as EventListener);
+    return () =>
+      window.removeEventListener(CHAT_THREAD_MARKED_READ_EVENT, onMarkedRead as EventListener);
+  }, []);
 
   useEffect(() => {
     if (!menuThreadId) return;
@@ -293,23 +307,25 @@ export default function ChatSidebar({
                       {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" /> : null}
                       <span className="truncate">{displayName}</span>
                     </p>
-                    <span
-                      className={`shrink-0 text-xs ${
-                        thread.unread_count > 0 ? "text-primary-600" : "text-gray-400"
-                      }`}
-                    >
-                      {formatThreadListTime(thread.last_message_at)}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <span
+                        className={`text-xs tabular-nums ${
+                          thread.unread_count > 0 ? "text-primary-600" : "text-gray-400"
+                        }`}
+                      >
+                        {formatThreadListTime(thread.last_message_at)}
+                      </span>
+                      {thread.unread_count > 0 ? (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="mt-0.5 flex items-center justify-between gap-2">
+                  <div className="mt-0.5">
                     <p className="truncate text-sm text-gray-500">
                       {thread.last_message_preview || "Tap to open chat"}
                     </p>
-                    {thread.unread_count > 0 ? (
-                      <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
-                        {thread.unread_count > 99 ? "99+" : thread.unread_count}
-                      </span>
-                    ) : null}
                   </div>
                 </div>
                 <div className="relative">
