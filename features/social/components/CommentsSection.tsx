@@ -14,6 +14,10 @@ interface CommentsSectionProps {
   onClose: () => void
   /** When false, composer is hidden and message shown (e.g. post owner turned off comments). Default true. */
   canComment?: boolean
+  /** Top-level comments from the post list/detail payload; avoids an initial GET /comments when non-empty. */
+  initialComments?: any[] | null
+  /** Post `comments_count` — drives "Load more" before the comments API is hit. */
+  totalCommentsCount?: number
 }
 
 type ComposerAttachment =
@@ -54,7 +58,14 @@ const getUserInitial = (user: User | null): string => {
   return displayName.charAt(0).toUpperCase() || 'C'
 }
 
-const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClose, canComment = true }) => {
+const CommentsSection: React.FC<CommentsSectionProps> = ({
+  postId,
+  isOpen,
+  onClose,
+  canComment = true,
+  initialComments,
+  totalCommentsCount,
+}) => {
   const { user } = useAuth()
   const {
     comments,
@@ -67,7 +78,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
     toggleCommentReaction,
     deleteComment,
     updateComment
-  } = useComments(postId)
+  } = useComments(postId, { initialComments, totalCommentsCount })
 
   const [newComment, setNewComment] = useState('')
   const [draftAttachments, setDraftAttachments] = useState<ComposerAttachment[]>([])
@@ -78,7 +89,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
   const [isComposerEmojiOpen, setIsComposerEmojiOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const draftAttachmentsRef = useRef<ComposerAttachment[]>([])
-  const commentInputRef = useRef<HTMLInputElement | null>(null)
 
   const commenterInitial = useMemo(() => getUserInitial(user), [user])
 
@@ -112,13 +122,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
       setReplyContent('')
     }
   }, [isOpen, resetComposer])
-
-  // Auto-focus comment input when section opens
-  useEffect(() => {
-    if (isOpen && commentInputRef.current) {
-      setTimeout(() => commentInputRef.current?.focus(), 100)
-    }
-  }, [isOpen])
 
   const handleEmojiSelect = (emoji: string) => {
     setNewComment(prev => `${prev}${emoji}`)
@@ -289,7 +292,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ postId, isOpen, onClo
           {/* Input bubble */}
           <form onSubmit={handleSubmitComment} className="relative flex flex-1 items-center">
             <input
-              ref={commentInputRef}
               type="text"
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}

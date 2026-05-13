@@ -1,5 +1,46 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+const LATEST_COMMENTS_PREVIEW = 3
+
+const COMMENT_PREVIEW_SELECT = `
+  id,
+  post_id,
+  content,
+  created_at,
+  parent_id,
+  author_id,
+  author:profiles!comments_author_id_fkey(
+    id,
+    username,
+    full_name,
+    avatar_url,
+    country,
+    is_verified
+  )
+`
+
+function mapCommentPreviewRow(row: any) {
+  const author = row.author
+  return {
+    id: row.id,
+    post_id: row.post_id,
+    content: row.content,
+    created_at: row.created_at,
+    parent_id: row.parent_id ?? null,
+    author_id: row.author_id,
+    author: author
+      ? {
+          id: author.id,
+          username: author.username,
+          full_name: author.full_name,
+          avatar_url: author.avatar_url,
+          country: author.country,
+          is_verified: author.is_verified ?? false,
+        }
+      : null,
+  }
+}
+
 export const POST_SELECT = `
   *,
   author:profiles!posts_author_id_fkey(
@@ -31,7 +72,7 @@ export type FormatPostsOptions = {
 }
 
 /**
- * Visibility filter, reactions, likes, follow flags, and optional saved state — same shape as GET /api/posts.
+ * Visibility filter, reactions, likes, follow flags, optional saved state, and up to three earliest top-level comments per post — same shape as GET /api/posts.
  */
 export async function formatPostsForClient(
   supabase: SupabaseClient,
@@ -146,6 +187,30 @@ export async function formatPostsForClient(
     }
   }
 
+  const latestCommentsByPostId = new Map<string, ReturnType<typeof mapCommentPreviewRow>[]>()
+  if (postIds.length > 0) {
+    const previewRows = await Promise.all(
+      postIds.map(async (postId: string) => {
+        const { data, error } = await supabase
+          .from('comments')
+          .select(COMMENT_PREVIEW_SELECT)
+          .eq('post_id', postId)
+          .eq('is_deleted', false)
+          .is('parent_id', null)
+          .order('created_at', { ascending: true })
+          .limit(LATEST_COMMENTS_PREVIEW)
+
+        if (error) {
+          return { postId, rows: [] as any[] }
+        }
+        return { postId, rows: data || [] }
+      })
+    )
+    for (const { postId, rows } of previewRows) {
+      latestCommentsByPostId.set(postId, rows.map(mapCommentPreviewRow))
+    }
+  }
+
   return filtered.map((post: any) => {
     const isMutual = mutualSet.has(post.author_id)
     const allowComments = post.author?.allow_comments ?? 'everyone'
@@ -172,6 +237,7 @@ export async function formatPostsForClient(
       media_type: post.media_type,
       likes_count: post.likes_count,
       comments_count: realCommentCount,
+      comments: latestCommentsByPostId.get(post.id) ?? [],
       shares_count: post.shares_count,
       views_count: post.views_count,
       location: post.location,

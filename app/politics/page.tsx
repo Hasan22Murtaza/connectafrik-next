@@ -87,6 +87,8 @@ const PoliticsPage: React.FC = () => {
 
   const formatStat = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))
 
+  const commentSheetPost = showCommentsFor != null ? posts.find((p) => p.id === showCommentsFor) : undefined
+
   return (
     <div className="min-h-screen ">
 
@@ -332,6 +334,8 @@ const PoliticsPage: React.FC = () => {
                             isOpen
                             onClose={() => setShowCommentsFor(null)}
                             canComment={(post as { canComment?: boolean }).canComment ?? true}
+                            initialComments={(post as { comments?: any[] | null }).comments}
+                            totalCommentsCount={post.comments_count}
                           />
                         </div>
                       )}
@@ -462,7 +466,9 @@ const PoliticsPage: React.FC = () => {
           postId={showCommentsFor ?? ''}
           isOpen={Boolean(showCommentsFor)}
           onClose={() => setShowCommentsFor(null)}
-          canComment={(posts.find((p) => p.id === showCommentsFor) as { canComment?: boolean } | undefined)?.canComment ?? true}
+          canComment={(commentSheetPost as { canComment?: boolean } | undefined)?.canComment ?? true}
+          initialComments={(commentSheetPost as { comments?: any[] | null } | undefined)?.comments}
+          totalCommentsCount={commentSheetPost?.comments_count}
         />
       </div>
     </div>

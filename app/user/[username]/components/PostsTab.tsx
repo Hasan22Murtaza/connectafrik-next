@@ -14,6 +14,7 @@ interface PostWithAuthor {
   background_id?: string | null
   author: { id: string; username: string; full_name: string; avatar_url: string | null; country: string | null }
   isLiked?: boolean
+  comments?: any[] | null
 }
 
 const EmptyState = ({ icon: Icon, title, sub }: { icon: React.ElementType; title: string; sub: string }) => (
@@ -93,6 +94,8 @@ const PostsTab: React.FC<PostsTabProps> = ({
               isOpen
               onClose={onCloseComments}
               canComment={canCommentOnPost(post.author_id)}
+              initialComments={post.comments}
+              totalCommentsCount={post.comments_count}
             />
           )}
         </React.Fragment>

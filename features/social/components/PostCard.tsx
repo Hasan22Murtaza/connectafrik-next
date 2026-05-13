@@ -62,6 +62,8 @@ interface Post {
   reactions_total_count?: number;
   canComment?: boolean;
   canFollow?: boolean;
+  /** Up to a few top-level comments from the feed/list API (see formatPostsForClient). */
+  comments?: any[] | null;
 }
 
 type PostMediaLayout = "single" | "grid";
@@ -1046,6 +1048,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             isOpen={true}
             onClose={() => setShowInlineComments(false)}
             canComment={canComment}
+            initialComments={post.comments}
+            totalCommentsCount={post.comments_count}
           />
         </div>
       )}

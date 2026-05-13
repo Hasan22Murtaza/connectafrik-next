@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
@@ -87,6 +87,16 @@ interface CommentsApiResponse {
 
 const COMMENT_MEDIA_BUCKET = 'post-images'
 const COMMENTS_PAGE_SIZE = 20
+
+/** Matches server preview cap in `format-posts-response.ts` (used when `totalCommentsCount` is omitted). */
+const COMMENT_PREVIEW_LIMIT = 3
+
+export type UseCommentsOptions = {
+  /** Top-level comment rows from the post payload (e.g. GET /api/posts). Skips initial GET /comments when non-empty. */
+  initialComments?: any[] | null
+  /** Post `comments_count` — used to decide if "Load more" should hit the comments API. */
+  totalCommentsCount?: number
+}
 
 const generateLocalId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -216,20 +226,19 @@ const processNewAttachments = async (attachments: CommentAttachmentInput[] = [],
 }
 
 
-export const useComments = (postId: string) => {
+export const useComments = (postId: string, options?: UseCommentsOptions) => {
   const { user } = useAuth()
+  const optionsRef = useRef(options)
+  optionsRef.current = options
+
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
-
-  useEffect(() => {
-    if (postId) {
-      fetchComments()
-    }
-  }, [postId, user])
+  const [listSource, setListSource] = useState<'seed' | 'api'>('api')
+  const lastBootstrappedPostIdRef = useRef<string | null>(null)
 
   const normalizeCommentTree = (comment: any): Comment => {
     const { text: parsedText, attachments } = parseCommentContent(comment.content)
@@ -250,6 +259,29 @@ export const useComments = (postId: string) => {
     }
   }
 
+  const normalizePreviewRow = (row: any): Comment => {
+    return normalizeCommentTree({
+      ...row,
+      post_id: row.post_id ?? postId,
+      likes_count: row.likes_count ?? 0,
+      replies_count: row.replies_count ?? 0,
+      is_deleted: row.is_deleted ?? false,
+      thread_depth: row.thread_depth ?? 0,
+      updated_at: row.updated_at ?? row.created_at,
+      author:
+        row.author ?? {
+          id: row.author_id ?? '',
+          username: 'member',
+          full_name: 'ConnectAfrik member',
+          avatar_url: null,
+          country: null,
+          is_verified: false,
+        },
+      reactions: row.reactions ?? [],
+      replies: row.replies ?? [],
+    })
+  }
+
   const mergeComments = (existing: Comment[], incoming: Comment[]): Comment[] => {
     if (incoming.length === 0) return existing
     const existingIds = new Set(existing.map(comment => comment.id))
@@ -258,6 +290,10 @@ export const useComments = (postId: string) => {
   }
 
   const fetchComments = async () => {
+    if (!postId) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       setError(null)
@@ -275,6 +311,7 @@ export const useComments = (postId: string) => {
       setComments(processedComments)
       setCurrentPage(response?.page || 1)
       setHasNextPage(Boolean(response?.hasMore))
+      setListSource('api')
 
     } catch (error: any) {
       setError(error.message)
@@ -283,8 +320,76 @@ export const useComments = (postId: string) => {
     }
   }
 
+  useEffect(() => {
+    if (!postId) {
+      lastBootstrappedPostIdRef.current = null
+      setComments([])
+      setLoading(false)
+      setHasNextPage(false)
+      setListSource('api')
+      setCurrentPage(1)
+      setError(null)
+      return
+    }
+
+    if (lastBootstrappedPostIdRef.current === postId) {
+      return
+    }
+    lastBootstrappedPostIdRef.current = postId
+
+    const { initialComments, totalCommentsCount } = optionsRef.current || {}
+    const hasSeed = Array.isArray(initialComments) && initialComments.length > 0
+
+    if (hasSeed) {
+      const processed = initialComments.map((row) => normalizePreviewRow(row))
+      setComments(processed)
+      setLoading(false)
+      setError(null)
+      setListSource('seed')
+      setCurrentPage(1)
+      if (typeof totalCommentsCount === 'number') {
+        setHasNextPage(totalCommentsCount > processed.length)
+      } else {
+        setHasNextPage(processed.length >= COMMENT_PREVIEW_LIMIT)
+      }
+      return
+    }
+
+    void fetchComments()
+  }, [postId, user?.id])
+
   const loadMoreComments = async () => {
-    if (!hasNextPage || isLoadingMore) return
+    if (!postId || isLoadingMore) return
+
+    if (listSource === 'seed') {
+      if (!hasNextPage) return
+      try {
+        setIsLoadingMore(true)
+        setError(null)
+
+        const response = await apiClient.get<CommentsApiResponse>(
+          `/api/posts/${postId}/comments`,
+          { page: 1, limit: COMMENTS_PAGE_SIZE }
+        )
+
+        const commentsData = response?.data || []
+        const processedComments = Array.isArray(commentsData)
+          ? commentsData.map(normalizeCommentTree)
+          : []
+
+        setComments(processedComments)
+        setCurrentPage(response?.page || 1)
+        setHasNextPage(Boolean(response?.hasMore))
+        setListSource('api')
+      } catch (error: any) {
+        setError(error.message)
+      } finally {
+        setIsLoadingMore(false)
+      }
+      return
+    }
+
+    if (!hasNextPage) return
 
     const nextPage = currentPage + 1
     try {
