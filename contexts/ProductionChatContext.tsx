@@ -83,7 +83,7 @@ export interface CallRequest {
 
 interface ProductionChatContextType {
   startChatWithMembers: (participants: ChatParticipant[], options?: ThreadOptions) => Promise<string | null>
-  openThread: (threadId: string) => void
+  openThread: (threadId: string, seedThread?: ChatThread | null) => void
   startCall: (
     threadId: string,
     type: 'audio' | 'video',
@@ -199,22 +199,32 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [user])
 
-  const openThread = useCallback(async (threadId: string) => {
+  const openThread = useCallback(async (threadId: string, seedThread?: ChatThread | null) => {
     supabaseMessagingService.allowRealtimeForThread(threadId)
 
-    const existingThread = threads.find(t => t.id === threadId)
-    
-    if (!existingThread && currentUser) {
+    if (seedThread?.id === threadId) {
+      setThreads((prev) => {
+        if (prev.some((t) => t.id === threadId)) return prev
+        return [...prev, seedThread]
+      })
+    }
+
+    const haveThread =
+      Boolean(seedThread?.id === threadId) || threads.some((t) => t.id === threadId)
+
+    if (!haveThread && currentUser) {
       try {
-        const { threads: userThreads } = await supabaseMessagingService.getUserThreads(currentUser, {
-          limit: 100,
-          page: 0,
-        })
-        const thread = userThreads.find(t => t.id === threadId)
+        let thread = await supabaseMessagingService.fetchThreadDetail(currentUser.id, threadId)
+        if (!thread) {
+          const { threads: userThreads } = await supabaseMessagingService.getUserThreads(currentUser, {
+            limit: 100,
+            page: 0,
+          })
+          thread = userThreads.find((t) => t.id === threadId) ?? null
+        }
         if (thread) {
-          setThreads(prev => {
-            const exists = prev.find(t => t.id === threadId)
-            if (exists) return prev
+          setThreads((prev) => {
+            if (prev.some((t) => t.id === threadId)) return prev
             return [...prev, thread]
           })
         }
@@ -222,8 +232,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         console.error('Error loading thread:', error)
       }
     }
-    
-    setOpenThreads(prev => {
+
+    setOpenThreads((prev) => {
       if (!prev.includes(threadId)) {
         return [...prev, threadId]
       }

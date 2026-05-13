@@ -9,7 +9,7 @@ import { CHAT_THREAD_MARKED_READ_EVENT } from "@/features/chat/threadReadEvents"
 import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 
-const PAGE_SIZE = 40;
+const PAGE_SIZE = 10;
 
 function formatThreadListTime(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -24,7 +24,8 @@ function formatThreadListTime(iso: string | null | undefined): string {
 
 interface ChatSidebarProps {
   selectedThreadId?: string;
-  onOpenThread: (threadId: string) => void;
+  /** Pass the row’s thread when opening from the list so the app shell does not refetch the full thread list (WhatsApp-style). */
+  onOpenThread: (threadId: string, seedThread?: ChatThread) => void;
 }
 
 export default function ChatSidebar({
@@ -70,7 +71,7 @@ export default function ChatSidebar({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUser?.id, currentUser?.name]);
 
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser?.id || isLoadingMore || !hasMore || lastLoadedPage < 0) return;
@@ -279,11 +280,11 @@ export default function ChatSidebar({
             return (
               <div
                 key={thread.id}
-                onClick={() => onOpenThread(thread.id)}
+                onClick={() => onOpenThread(thread.id, thread)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onOpenThread(thread.id);
+                    onOpenThread(thread.id, thread);
                   }
                 }}
                 role="button"

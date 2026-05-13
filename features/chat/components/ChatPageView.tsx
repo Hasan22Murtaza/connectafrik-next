@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import ChatWindow from "@/features/chat/components/ChatWindow";
 import ChatSidebar from "@/features/chat/components/ChatSidebar";
+import type { ChatThread } from "@/features/chat/services/supabaseMessagingService";
 
 interface ChatPageViewProps {
   selectedThreadId?: string;
@@ -20,9 +21,9 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
   }, [selectedThreadId, openThread]);
 
   const openOnPage = useCallback(
-    (threadId: string) => {
-      openThread(threadId);
-      router.push(`/chat/${threadId}`);
+    (threadId: string, seedThread?: ChatThread) => {
+      openThread(threadId, seedThread ?? null);
+      router.push(`/chat/${encodeURIComponent(threadId)}`);
     },
     [openThread, router]
   );

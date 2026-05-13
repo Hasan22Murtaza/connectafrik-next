@@ -140,7 +140,6 @@ function buildForwardPayload(message: ChatMessage): {
     mimeType: string;
   }[];
 } {
-  const senderName = message.sender?.name?.trim() || "Someone";
   const body = message.content?.trim() || "";
   const att = message.attachments ?? [];
   let main = body;
@@ -148,7 +147,7 @@ function buildForwardPayload(message: ChatMessage): {
     main = att.map((a) => `📎 ${a.name}`).join("\n");
   }
   if (!main) main = "Message";
-  const text = `Forwarded from ${senderName}:\n\n${main}`;
+  const text = main;
   if (!att.length) return { text };
   return {
     text,
