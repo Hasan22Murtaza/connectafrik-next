@@ -1,4 +1,7 @@
+'use client'
+
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { MessageCircle, Phone, Video, UserPlus } from 'lucide-react'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
@@ -26,6 +29,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
   showAddFriendButton = false,
   title,
 }) => {
+  const router = useRouter()
   const { startChatWithMembers, startCall } = useProductionChat()
   const [sendingRequest, setSendingRequest] = useState<Record<string, boolean>>({})
 
@@ -36,11 +40,14 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
         name: contact.name,
         avatarUrl: contact.avatarUrl,
       }
-      await startChatWithMembers([chatParticipant], { 
-        participant_ids: [chatParticipant.id], 
-        openInDock: true 
+      const threadId = await startChatWithMembers([chatParticipant], {
+        participant_ids: [chatParticipant.id],
+        openInDock: false,
       })
-      onStartChat?.(contact)
+      if (threadId) {
+        router.push(`/chat/${encodeURIComponent(threadId)}`)
+        onStartChat?.(contact)
+      }
     } catch (error) {
       // Failed to start chat
     }

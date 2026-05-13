@@ -164,7 +164,7 @@ const UserProfilePage: React.FC = () => {
     [profileIdentifier]
   )
   const { user } = useAuth()
-  const { startChatWithMembers, openThread, startCall } = useProductionChat()
+  const { startChatWithMembers, startCall } = useProductionChat()
   const { members } = useMembers(false)
 
   const [profile, setProfile] = useState<UserProfileWithVisibility | null>(null)
@@ -492,8 +492,11 @@ const UserProfilePage: React.FC = () => {
   const handleStartChat = async () => {
     if (!profile || !user) return
     try {
-      const tid = await startChatWithMembers([{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }], { participant_ids: [profile.id], openInDock: true })
-      if (tid) { openThread(tid); toast.success(`Chat opened with ${profile.full_name}`) }
+      const tid = await startChatWithMembers([{ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url || undefined }], { participant_ids: [profile.id], openInDock: false })
+      if (tid) {
+        router.push(`/chat/${encodeURIComponent(tid)}`)
+        toast.success(`Chat opened with ${profile.full_name}`)
+      }
     } catch { toast.error('Failed to start chat') }
   }
 
