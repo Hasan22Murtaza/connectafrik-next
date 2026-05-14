@@ -206,6 +206,15 @@ export async function POST(request: NextRequest) {
 
     const fcmStringData = stringifyFcmDataValues(rawPushData)
 
+    // Incoming call ring: iOS uses PushKit VoIP via `sendVoipApnsPush`; skip FCM to avoid duplicate / conflicting alerts.
+    const callRingDataType =
+      rawPushData.type != null ? String(rawPushData.type).trim().toLowerCase() : ''
+    const callRingNotificationType =
+      typeof notification_type === 'string' ? notification_type.trim().toLowerCase() : ''
+    const skipIosFcmForIncomingCallRing =
+      canonicalType === 'call' &&
+      (callRingDataType === 'ringing' || callRingNotificationType === 'ringing')
+
     // Birthday reminders: at most one per friend per day per "when" (today vs tomorrow) for this user.
     if (canonicalType === 'birthday' && !skip_db) {
       const dedupeKey =
@@ -380,6 +389,17 @@ export async function POST(request: NextRequest) {
     const sendPromises = subscriptionsToSend.map(async (subscription) => {
       try {
         const fcmToken = subscription.fcm_token
+
+        if (subscription.device_type === 'ios' && skipIosFcmForIncomingCallRing) {
+          console.log('Skipping FCM for iOS incoming call ring (VoIP handles ringing)')
+          return {
+            success: true,
+            skipped: true,
+            endpoint: subscription.device_id || fcmToken.substring(0, 50),
+            device_type: subscription.device_type,
+            messageId: 'skipped-ios-incoming-call-ring',
+          }
+        }
 
         const isIosChatMessage =
           subscription.device_type === 'ios' && canonicalType === 'chat_message'
