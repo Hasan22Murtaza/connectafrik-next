@@ -20,6 +20,7 @@ import { sendNotification } from '@/shared/services/notificationService'
 import toast from 'react-hot-toast'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import { getResolvedFeedInlineIndices } from '@/lib/social/feedInlinePlacement'
+import { FeedVideoAutoplayProvider } from '@/features/social/context/FeedVideoAutoplayContext'
 
 const FEED_CATEGORIES = [
   { id: 'all' as const, label: 'All Posts', icon: Globe },
@@ -258,6 +259,7 @@ const FeedPage: React.FC = () => {
               isPostLiked={post.isLiked}
               canComment={post.canComment}
               canFollow={post.canFollow}
+              feedVideoAutoplay
             />
             {user && pymkAfterIndex !== null && index === pymkAfterIndex ? (
               <div className="pt-1">
@@ -395,7 +397,9 @@ const FeedPage: React.FC = () => {
             </div>
           </section>
 
-          {renderPosts()}
+          <FeedVideoAutoplayProvider>
+            {renderPosts()}
+          </FeedVideoAutoplayProvider>
         </div>
       </FeedLayout>
       {activeSharePost && (

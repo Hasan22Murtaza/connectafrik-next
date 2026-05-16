@@ -26,6 +26,7 @@ import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
 import { getPostBackgroundPreset, legacyGradientForPostId } from "@/features/social/constants/postBackgrounds";
+import { FeedPostVideo } from "@/features/social/components/FeedPostVideo";
 interface Post {
   id: string;
   content: string;
@@ -87,6 +88,8 @@ interface PostCardProps {
   disablePostClick?: boolean;
   /** Called after save/unsave API succeeds (e.g. remove card from Saved list). */
   onSaveStateChange?: (postId: string, saved: boolean) => void;
+  /** Facebook-style muted autoplay when scrolled into view (requires FeedVideoAutoplayProvider). */
+  feedVideoAutoplay?: boolean;
 }
 
 export const PostCard: React.FC<PostCardProps> = React.memo(({
@@ -103,6 +106,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   canFollow = true,
   disablePostClick = false,
   onSaveStateChange,
+  feedVideoAutoplay = false,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -536,6 +540,16 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     }
 
     if (isVideoFile(url)) {
+      if (feedVideoAutoplay) {
+        return (
+          <FeedPostVideo
+            id={`${post.id}-${index}`}
+            src={url}
+            layout={layout}
+            altIndex={index}
+          />
+        );
+      }
       if (layout === "grid") {
         return (
           <div className="relative h-full w-full min-h-0 bg-black">
