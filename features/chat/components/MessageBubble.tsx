@@ -544,9 +544,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       ? `${message.content.slice(0, MESSAGE_PREVIEW_LIMIT)}...`
       : message.content;
 
+  const activeReactions = (message.reactions ?? [])
+    .filter((r) => r.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const reactionTotal = activeReactions.reduce((sum, r) => sum + r.count, 0);
+  const hasReactions = activeReactions.length > 0;
+
   return (
     <div
-      className={`relative mb-2 flex items-end gap-2 ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"}`}
+      className={`relative flex items-end gap-2 ${hasReactions ? "mb-4" : "mb-2"} ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -709,7 +715,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
 
             <div
-              className={`relative z-[1] overflow-visible rounded-[7.5px] px-2.5 pb-1.5 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${forwardAccent} ${
+              className={`relative z-[1] inline-block max-w-full overflow-visible rounded-[7.5px] px-2.5 pb-1.5 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${forwardAccent} ${
                 isOwnMessage
                   ? "after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[#dcf8c6]"
                   : "before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-white"
@@ -878,6 +884,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     </span>
                   </div>
                   <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
+                </div>
+              ) : null}
+
+              {hasReactions && !isDeleted ? (
+                <div
+                  role="group"
+                  aria-label="Message reactions"
+                  className={`absolute z-10 flex max-w-[min(100%,200px)] items-center rounded-full bg-white py-0.5 pl-1 pr-1.5 shadow-[0_1px_2px_rgba(11,20,26,0.14)] ring-1 ring-[#e9edef] ${
+                    isOwnMessage
+                      ? "bottom-0 left-2 translate-y-1/2"
+                      : "bottom-0 right-2 translate-y-1/2"
+                  }`}
+                >
+                  {activeReactions.slice(0, 3).map((reaction, index) => (
+                    <button
+                      key={reaction.emoji}
+                      type="button"
+                      disabled={!onReact}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReact?.(message.id, reaction.emoji);
+                      }}
+                      className={`flex shrink-0 items-center justify-center rounded-full p-px transition hover:bg-[#f0f2f5] disabled:cursor-default ${
+                        index > 0 ? "-ml-1" : ""
+                      }`}
+                      aria-label={`React ${reaction.emoji}, ${reaction.count}`}
+                    >
+                      <span className="text-[13px] leading-none">{reaction.emoji}</span>
+                    </button>
+                  ))}
+                  {reactionTotal > 1 ? (
+                    <span className="min-w-[10px] shrink-0 pl-0.5 text-[11px] font-normal tabular-nums leading-none text-[#667781]">
+                      {reactionTotal}
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
             </div>
