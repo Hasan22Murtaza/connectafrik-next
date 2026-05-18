@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { blockStateErrorMessage, getThreadBlockState } from '@/lib/chatThreadBlock'
 
 const MESSAGE_SELECT = `
   *,
@@ -222,6 +223,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
     if (!allowed) {
       return errorResponse('Thread not found or access denied', 404)
+    }
+
+    const blockState = await getThreadBlockState(serviceClient, threadId, user.id)
+    const blockMessage = blockStateErrorMessage(blockState)
+    if (blockMessage) {
+      return errorResponse(blockMessage, 403)
     }
 
     const safeContent = typeof content === 'string' ? content : ''

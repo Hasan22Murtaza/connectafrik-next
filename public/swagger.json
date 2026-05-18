@@ -87,7 +87,9 @@
             "items": { "$ref": "#/components/schemas/Participant" }
           },
           "unread_count": { "type": "integer" },
-          "archived": { "type": "boolean", "description": "When true, thread is archived (chat_threads.archived)" }
+          "archived": { "type": "boolean", "description": "When true, thread is archived for the current user (chat_participants.archived)" },
+          "is_block": { "type": "boolean", "description": "When true, the current user has blocked this thread's contact (chat_participants.is_block)" },
+          "blocked_by_other": { "type": "boolean", "description": "When true, another participant has blocked the current user in this thread" }
         }
       },
       "Participant": {
@@ -767,7 +769,7 @@
       "post": {
         "tags": ["Chat"],
         "summary": "Set thread archived flag",
-        "description": "Updates chat_threads.archived for this thread. Requires thread participation.",
+        "description": "Updates chat_participants.archived for the current user. Requires thread participation.",
         "security": [{ "BearerAuth": [] }],
         "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": {
@@ -778,6 +780,44 @@
                 "type": "object",
                 "required": ["archived"],
                 "properties": { "archived": { "type": "boolean", "description": "true to archive, false to restore" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated thread (same shape as GET /chat/threads/{threadId})",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Thread" }, "meta": { "type": "object" } }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
+    "/chat/threads/{threadId}/block": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Block or unblock a thread contact",
+        "description": "Updates chat_participants.is_block for the current user (WhatsApp-style per-user block). Requires thread participation.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["is_block"],
+                "properties": { "is_block": { "type": "boolean", "description": "true to block, false to unblock" } }
               }
             }
           }

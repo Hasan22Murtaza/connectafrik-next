@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/supabase-server'
+import { getThreadBlockState } from '@/lib/chatThreadBlock'
 
 export const CHAT_THREAD_DETAIL_SELECT = `
   id,
@@ -24,6 +25,8 @@ export type ThreadParticipantPrefs = {
   pinned: boolean
   pinned_at: string | null
   archived: boolean
+  is_block: boolean
+  blocked_by_other: boolean
 }
 
 export async function getMyThreadParticipantPrefs(
@@ -33,15 +36,18 @@ export async function getMyThreadParticipantPrefs(
 ): Promise<ThreadParticipantPrefs> {
   const { data: row } = await serviceClient
     .from('chat_participants')
-    .select('unread_count, pinned, pinned_at, archived')
+    .select('unread_count, pinned, pinned_at, archived, is_block')
     .eq('thread_id', threadId)
     .eq('user_id', userId)
     .maybeSingle()
+  const blockState = await getThreadBlockState(serviceClient, threadId, userId)
   return {
     unread_count: typeof row?.unread_count === 'number' ? row.unread_count : 0,
     pinned: Boolean(row?.pinned),
     pinned_at: typeof row?.pinned_at === 'string' ? row.pinned_at : null,
     archived: Boolean(row?.archived),
+    is_block: blockState.blockedByMe,
+    blocked_by_other: blockState.blockedByOther,
   }
 }
 
@@ -73,6 +79,8 @@ export function threadToResponseBody(thread: Record<string, unknown>, prefs: Thr
       pinned: prefs.pinned,
       pinned_at: prefs.pinned_at,
       archived: prefs.archived,
+      is_block: prefs.is_block,
+      blocked_by_other: prefs.blocked_by_other,
     },
     meta: {
       page: 0,

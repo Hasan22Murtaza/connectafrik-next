@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, Loader2, MoreVertical, Pin, PinOff, Search, Trash2 } from "lucide-react";
+import { Archive, Ban, ChevronDown, Loader2, MoreVertical, Pin, PinOff, Search, Trash2 } from "lucide-react";
+import { isDirectBlockableThread } from "@/features/chat/utils/threadHelpers";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { ChatThread, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";
 import { CHAT_THREAD_MARKED_READ_EVENT } from "@/features/chat/threadReadEvents";
@@ -40,6 +41,7 @@ export default function ChatSidebar({
   const [lastLoadedPage, setLastLoadedPage] = useState(-1);
   const [search, setSearch] = useState("");
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
+  const [blockedExpanded, setBlockedExpanded] = useState(false);
 
   useEffect(() => {
     if (!currentUser?.id) {
@@ -150,17 +152,38 @@ export default function ChatSidebar({
   }, [threads, contextThreads]);
 
   const query = search.trim().toLowerCase();
-  const filteredThreads = useMemo(() => {
-    return mergedThreads.filter((t) => {
-      if (t.archived) return false;
+
+  const matchesSearch = useCallback(
+    (t: ChatThread) => {
       if (!query) return true;
       const others = t.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id);
       const primary = others[0] ?? t.participants[0];
       const title = (primary?.name || t.name || "").toLowerCase();
       const preview = (t.last_message_preview || "").toLowerCase();
       return title.includes(query) || preview.includes(query);
-    });
-  }, [mergedThreads, query, currentUser?.id]);
+    },
+    [query, currentUser?.id]
+  );
+
+  const activeThreads = useMemo(
+    () => mergedThreads.filter((t) => !t.archived && !t.is_block),
+    [mergedThreads]
+  );
+
+  const blockedThreads = useMemo(
+    () => mergedThreads.filter((t) => !t.archived && t.is_block === true),
+    [mergedThreads]
+  );
+
+  const filteredActive = useMemo(
+    () => activeThreads.filter(matchesSearch),
+    [activeThreads, matchesSearch]
+  );
+
+  const filteredBlocked = useMemo(
+    () => blockedThreads.filter(matchesSearch),
+    [blockedThreads, matchesSearch]
+  );
 
   const updateThreadState = useCallback((updated: ChatThread) => {
     setThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -179,6 +202,40 @@ export default function ChatSidebar({
         toast.success(thread.archived ? "Chat restored" : "Chat archived");
       } catch {
         toast.error("Could not update archive");
+      } finally {
+        setMenuThreadId(null);
+      }
+    },
+    [currentUser?.id, updateThreadState]
+  );
+
+  const handleToggleBlock = useCallback(
+    async (thread: ChatThread) => {
+      if (!currentUser?.id) return;
+      const nextBlocked = !thread.is_block;
+      if (nextBlocked) {
+        const name =
+          thread.participants.find((p) => p.id !== currentUser.id)?.name ||
+          thread.name ||
+          "this contact";
+        const confirmed = window.confirm(
+          `Block ${name}? They will not be able to call or message you in this chat.`
+        );
+        if (!confirmed) {
+          setMenuThreadId(null);
+          return;
+        }
+      }
+      try {
+        const updated = await supabaseMessagingService.setThreadBlocked(
+          thread.id,
+          currentUser.id,
+          nextBlocked
+        );
+        if (updated) updateThreadState(updated);
+        toast.success(nextBlocked ? "Contact blocked" : "Contact unblocked");
+      } catch {
+        toast.error("Could not update block");
       } finally {
         setMenuThreadId(null);
       }
@@ -225,14 +282,15 @@ export default function ChatSidebar({
     (
       event: React.MouseEvent<HTMLButtonElement>,
       thread: ChatThread,
-      action: "toggle-pin" | "toggle-archive" | "clear"
+      action: "toggle-pin" | "toggle-archive" | "toggle-block" | "clear"
     ) => {
       event.stopPropagation();
       if (action === "toggle-pin") void handleTogglePin(thread);
       if (action === "toggle-archive") void handleToggleArchive(thread);
+      if (action === "toggle-block") void handleToggleBlock(thread);
       if (action === "clear") void handleClear(thread);
     },
-    [handleClear, handleToggleArchive, handleTogglePin]
+    [handleClear, handleToggleArchive, handleToggleBlock, handleTogglePin]
   );
 
   return (
@@ -260,10 +318,16 @@ export default function ChatSidebar({
       >
         {isLoading ? (
           <div className="p-4 text-sm text-gray-500">Loading chats...</div>
-        ) : filteredThreads.length === 0 ? (
+        ) : filteredActive.length === 0 && filteredBlocked.length === 0 ? (
           <div className="p-4 text-sm text-gray-500">No conversations found.</div>
         ) : (
-          filteredThreads.map((thread) => {
+          <>
+          {filteredActive.length === 0 && filteredBlocked.length > 0 && !query ? (
+            <p className="px-4 pb-2 text-xs text-gray-500">
+              No active chats — open <span className="font-medium text-gray-700">Blocked</span> below.
+            </p>
+          ) : null}
+          {filteredActive.map((thread) => {
             const others = thread.participants.filter(
               (participant: ChatParticipant) => participant.id !== currentUser?.id
             );
@@ -276,6 +340,7 @@ export default function ChatSidebar({
             const displayName = isGroup && thread.name ? thread.name : primary?.name || thread.name || "Chat";
             const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
             const selected = selectedThreadId === thread.id;
+            const canBlock = isDirectBlockableThread(thread, currentUser?.id);
 
             return (
               <div
@@ -364,7 +429,16 @@ export default function ChatSidebar({
                         {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                         <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
                       </button>
-                    
+                      {canBlock ? (
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "toggle-block")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          <Ban className="h-4 w-4" />
+                          <span>{thread.is_block ? "Unblock contact" : "Block contact"}</span>
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={(e) => onMenuAction(e, thread, "clear")}
@@ -378,7 +452,86 @@ export default function ChatSidebar({
                 </div>
               </div>
             );
-          })
+          })}
+          {blockedThreads.length > 0 ? (
+            <div className="border-t border-gray-200 px-4 pt-2">
+              <button
+                type="button"
+                onClick={() => setBlockedExpanded((e) => !e)}
+                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-700"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? "" : "-rotate-90"}`}
+                />
+                Blocked ({blockedThreads.length})
+              </button>
+              {blockedExpanded
+                ? filteredBlocked.map((thread) => {
+                    const others = thread.participants.filter(
+                      (participant: ChatParticipant) => participant.id !== currentUser?.id
+                    );
+                    const primary = others[0] ?? thread.participants[0];
+                    const displayName = primary?.name || thread.name || "Chat";
+                    const avatarUrl = primary?.avatarUrl;
+                    const selected = selectedThreadId === thread.id;
+
+                    return (
+                      <div
+                        key={`blocked-${thread.id}`}
+                        onClick={() => onOpenThread(thread.id, thread)}
+                        role="button"
+                        tabIndex={0}
+                        className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-gray-100 py-3 text-left opacity-80 transition hover:bg-white ${
+                          selected ? "bg-white" : ""
+                        }`}
+                      >
+                        <div className="h-11 w-11 shrink-0">
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-600">
+                              {displayName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-gray-700">{displayName}</p>
+                          <p className="truncate text-xs text-gray-500">Blocked · tap to manage</p>
+                        </div>
+                        <button
+                          type="button"
+                          data-chat-menu-trigger
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                          }}
+                          className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                        {menuThreadId === thread.id ? (
+                          <div
+                            data-chat-menu
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-4 top-10 z-20 w-52 rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => onMenuAction(e, thread, "toggle-block")}
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                              <Ban className="h-4 w-4" />
+                              <span>Unblock contact</span>
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                : null}
+            </div>
+          ) : null}
+          </>
         )}
         {!isLoading && hasMore ? (
           <div className="flex justify-center py-3 text-sm text-gray-500">

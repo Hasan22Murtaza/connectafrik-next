@@ -81,6 +81,10 @@ export interface ChatThread {
   unread_count: number
   /** From current user's `chat_participants.archived` */
   archived?: boolean
+  /** From current user's `chat_participants.is_block` */
+  is_block?: boolean
+  /** Another participant in this thread has blocked the current user */
+  blocked_by_other?: boolean
   /** From current user's `chat_participants.pinned` */
   pinned?: boolean
   pinned_at?: string | null
@@ -344,6 +348,8 @@ const createLocalThread = (currentUser: ChatParticipant, options: CreateThreadOp
     last_message_at: timestamp,
     unread_count: 0,
     archived: false,
+    is_block: false,
+    blocked_by_other: false,
     pinned: false,
     pinned_at: null,
     created_at: timestamp,
@@ -609,6 +615,9 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     last_message_at: lastMessageAt,
     unread_count: unreadCount || 0,
     archived: typeof thread.archived === 'boolean' ? thread.archived : false,
+    is_block: typeof thread.is_block === 'boolean' ? thread.is_block : false,
+    blocked_by_other:
+      typeof thread.blocked_by_other === 'boolean' ? thread.blocked_by_other : false,
     pinned: typeof thread.pinned === 'boolean' ? thread.pinned : false,
     pinned_at: typeof thread.pinned_at === 'string' ? thread.pinned_at : null,
     created_at: thread.created_at,
@@ -625,6 +634,8 @@ type RpcThreadBootstrap = {
   title: string
   type: unknown
   archived: boolean
+  is_block: boolean
+  blocked_by_other: boolean
   last_message_preview: unknown
   last_message_at: string
   last_activity_at: string
@@ -658,6 +669,8 @@ const loadThreadsViaRpc = async (
         title: thread.thread_name,
         type: thread.thread_type,
         archived: false,
+        is_block: false,
+        blocked_by_other: false,
         last_message_preview: thread.last_message_content,
         last_message_at: lastTimestamp,
         last_activity_at: lastTimestamp,
@@ -684,7 +697,7 @@ const loadThreadsViaRpc = async (
     if (threadIds.length > 0) {
       const { data: prefRows } = await supabase
         .from('chat_participants')
-        .select('thread_id, unread_count, pinned, pinned_at, archived')
+        .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
         .eq('user_id', currentUserId)
         .in('thread_id', threadIds)
 
@@ -696,9 +709,41 @@ const loadThreadsViaRpc = async (
             pinned: Boolean(r.pinned),
             pinned_at: typeof r.pinned_at === 'string' ? r.pinned_at : null,
             archived: Boolean(r.archived),
+            is_block: Boolean(r.is_block),
+            blocked_by_other: false,
           },
         ])
       )
+
+      if (threadIds.length > 0) {
+        const { data: blockRows } = await supabase
+          .from('chat_participants')
+          .select('thread_id, user_id, is_block')
+          .in('thread_id', threadIds)
+
+        const blockByThread = new Map<string, { blockedByMe: boolean; blockedByOther: boolean }>()
+        for (const tid of threadIds) {
+          blockByThread.set(tid, { blockedByMe: false, blockedByOther: false })
+        }
+        for (const row of blockRows ?? []) {
+          const tid = row.thread_id as string
+          const state = blockByThread.get(tid) ?? { blockedByMe: false, blockedByOther: false }
+          if (row.user_id === currentUserId) {
+            state.blockedByMe = Boolean(row.is_block)
+          } else if (row.is_block) {
+            state.blockedByOther = true
+          }
+          blockByThread.set(tid, state)
+        }
+
+        for (const t of rpcThreads) {
+          const block = blockByThread.get(t.id)
+          if (block) {
+            t.is_block = block.blockedByMe
+            t.blocked_by_other = block.blockedByOther
+          }
+        }
+      }
 
       for (const t of rpcThreads) {
         const p = prefMap.get(t.id)
@@ -707,6 +752,7 @@ const loadThreadsViaRpc = async (
           t.pinned = p.pinned
           t.pinned_at = p.pinned_at
           t.archived = p.archived
+          if (!t.is_block) t.is_block = p.is_block
         }
       }
     }
@@ -941,6 +987,27 @@ export const supabaseMessagingService = {
       return formatThread(raw, currentUserId)
     } catch (error) {
       console.error('setThreadArchived:', error)
+      throw error
+    }
+  },
+
+  /** Sets this user's `chat_participants.is_block` via POST /api/chat/threads/:id/block */
+  async setThreadBlocked(
+    threadId: string,
+    currentUserId: string,
+    is_block: boolean
+  ): Promise<ChatThread | null> {
+    if (!threadId?.trim() || !currentUserId) return null
+    try {
+      const res = await apiClient.post<{ data: any; meta?: unknown }>(
+        `/api/chat/threads/${threadId}/block`,
+        { is_block }
+      )
+      const raw = (res as any)?.data
+      if (!raw?.id) return null
+      return formatThread(raw, currentUserId)
+    } catch (error) {
+      console.error('setThreadBlocked:', error)
       throw error
     }
   },

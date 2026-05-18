@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { filterThreadIdsAccessibleToUser } from '@/lib/chatThreadAccess'
+import { getBlockStatesForThreads } from '@/lib/chatThreadBlock'
 
 const THREAD_SELECT = `
   id,
@@ -65,26 +66,41 @@ async function getParticipantPrefsForThreads(
       pinned: boolean
       pinned_at: string | null
       archived: boolean
+      is_block: boolean
+      blocked_by_other: boolean
     }
   >
 > {
   if (threadIds.length === 0) return new Map()
-  const { data } = await serviceClient
-    .from('chat_participants')
-    .select('thread_id, unread_count, pinned, pinned_at, archived')
-    .eq('user_id', userId)
-    .in('thread_id', threadIds)
+  const [{ data }, blockStates] = await Promise.all([
+    serviceClient
+      .from('chat_participants')
+      .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
+      .eq('user_id', userId)
+      .in('thread_id', threadIds),
+    getBlockStatesForThreads(serviceClient, userId, threadIds),
+  ])
   const m = new Map<
     string,
-    { unread_count: number; pinned: boolean; pinned_at: string | null; archived: boolean }
+    {
+      unread_count: number
+      pinned: boolean
+      pinned_at: string | null
+      archived: boolean
+      is_block: boolean
+      blocked_by_other: boolean
+    }
   >()
   for (const row of data ?? []) {
     const tid = row.thread_id as string
+    const block = blockStates.get(tid)
     m.set(tid, {
       unread_count: typeof row.unread_count === 'number' ? row.unread_count : 0,
       pinned: Boolean(row.pinned),
       pinned_at: typeof row.pinned_at === 'string' ? row.pinned_at : null,
       archived: Boolean(row.archived),
+      is_block: block?.blockedByMe ?? Boolean(row.is_block),
+      blocked_by_other: block?.blockedByOther ?? false,
     })
   }
   return m
@@ -146,7 +162,7 @@ export async function GET(request: NextRequest) {
 
     const { data: participantRows, error: partError } = await serviceClient
       .from('chat_participants')
-      .select('thread_id, unread_count, pinned, pinned_at, archived')
+      .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
       .eq('user_id', user.id)
 
     if (partError) {
@@ -171,6 +187,8 @@ export async function GET(request: NextRequest) {
           t.pinned = pref?.pinned ?? false
           t.pinned_at = pref?.pinned_at ?? null
           t.archived = pref?.archived ?? false
+          t.is_block = pref?.is_block ?? false
+          t.blocked_by_other = pref?.blocked_by_other ?? false
         }
         return jsonResponse({
           data: deduped.slice(from, to + 1),
@@ -191,6 +209,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    const rawThreadIds = [...new Set(participantRows.map((p: { thread_id: string }) => p.thread_id))]
+    const blockStates = await getBlockStatesForThreads(serviceClient, user.id, rawThreadIds)
+
     const myPrefsByThreadId = new Map(
       participantRows.map(
         (p: {
@@ -199,19 +220,24 @@ export async function GET(request: NextRequest) {
           pinned?: boolean | null
           pinned_at?: string | null
           archived?: boolean | null
-        }) => [
-          p.thread_id,
-          {
-            unread_count: typeof p.unread_count === 'number' ? p.unread_count : 0,
-            pinned: Boolean(p.pinned),
-            pinned_at: typeof p.pinned_at === 'string' ? p.pinned_at : null,
-            archived: Boolean(p.archived),
-          },
-        ]
+          is_block?: boolean | null
+        }) => {
+          const block = blockStates.get(p.thread_id)
+          return [
+            p.thread_id,
+            {
+              unread_count: typeof p.unread_count === 'number' ? p.unread_count : 0,
+              pinned: Boolean(p.pinned),
+              pinned_at: typeof p.pinned_at === 'string' ? p.pinned_at : null,
+              archived: Boolean(p.archived),
+              is_block: block?.blockedByMe ?? Boolean(p.is_block),
+              blocked_by_other: block?.blockedByOther ?? false,
+            },
+          ]
+        }
       )
     )
 
-    const rawThreadIds = [...new Set(participantRows.map((p: { thread_id: string }) => p.thread_id))]
     const threadIds = await filterThreadIdsAccessibleToUser(serviceClient, user.id, rawThreadIds)
     if (threadIds.length === 0) {
       return jsonResponse({
@@ -274,6 +300,8 @@ export async function GET(request: NextRequest) {
         pinned: pref?.pinned ?? false,
         pinned_at: pref?.pinned_at ?? null,
         archived: pref?.archived ?? false,
+        is_block: pref?.is_block ?? false,
+        blocked_by_other: pref?.blocked_by_other ?? false,
       }
     })
 

@@ -96,7 +96,11 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
           <p className="min-w-0 flex-1 truncate text-sm text-gray-500">
-            {subdued ? <span className="text-gray-400">Archived · </span> : null}
+            {subdued && thread.is_block ? (
+              <span className="text-gray-400">Blocked · </span>
+            ) : subdued ? (
+              <span className="text-gray-400">Archived · </span>
+            ) : null}
             {preview}
           </p>
           {unread > 0 ? (
@@ -226,7 +230,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   }, [mergedThreads])
 
   const activeThreads = useMemo(
-    () => sortedThreads.filter((t) => !t.archived),
+    () => sortedThreads.filter((t) => !t.archived && !t.is_block),
     [sortedThreads]
   )
 
@@ -235,7 +239,13 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     [sortedThreads]
   )
 
+  const blockedThreads = useMemo(
+    () => sortedThreads.filter((t) => !t.archived && t.is_block === true),
+    [sortedThreads]
+  )
+
   const [archivedExpanded, setArchivedExpanded] = useState(false)
+  const [blockedExpanded, setBlockedExpanded] = useState(false)
 
   const query = search.trim().toLowerCase()
   const filterThread = useCallback(
@@ -260,6 +270,10 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const filteredArchived = useMemo(
     () => archivedThreads.filter(filterThread),
     [archivedThreads, filterThread]
+  )
+  const filteredBlocked = useMemo(
+    () => blockedThreads.filter(filterThread),
+    [blockedThreads, filterThread]
   )
 
   const handleOpenThread = async (threadId: string) => {
@@ -309,7 +323,10 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           onScroll={handleScroll}
           className="custom-scrollbar max-h-[min(70vh,22rem)] overflow-y-auto pt-1 sm:max-h-[min(70vh,24rem)]"
         >
-          {filteredActive.length === 0 && filteredArchived.length === 0 && query ? (
+          {filteredActive.length === 0 &&
+          filteredArchived.length === 0 &&
+          filteredBlocked.length === 0 &&
+          query ? (
             <p className="py-6 text-center text-sm text-gray-500">No chats match your search.</p>
           ) : null}
           {activeThreads.length === 0 && archivedThreads.length > 0 && !query && (
@@ -327,6 +344,30 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
               />
             ))}
           </div>
+          {blockedThreads.length > 0 && (
+            <div className="mt-1 border-t border-gray-100 pt-2">
+              <button
+                type="button"
+                onClick={() => setBlockedExpanded((e) => !e)}
+                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-700"
+              >
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? '' : '-rotate-90'}`}
+                />
+                Blocked ({blockedThreads.length})
+              </button>
+              {blockedExpanded &&
+                filteredBlocked.map((thread) => (
+                  <ChatDropdownThreadRow
+                    key={thread.id}
+                    thread={thread}
+                    currentUser={currentUser}
+                    onOpen={handleOpenThread}
+                    subdued
+                  />
+                ))}
+            </div>
+          )}
           {archivedThreads.length > 0 && (
             <div className="mt-1 border-t border-gray-100 pt-2">
               <button

@@ -103,6 +103,7 @@ interface ProductionChatContextType {
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
   setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
+  setThreadBlocked: (threadId: string, is_block: boolean) => Promise<void>
   setThreadPinned: (threadId: string, pinned: boolean) => Promise<void>
   clearMessagesForUser: (threadId: string, userId: string) => void
   markMessageDeletedForUser: (threadId: string, messageId: string, userId: string) => void
@@ -803,6 +804,21 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     })
   }, [currentUser])
 
+  const setThreadBlocked = useCallback(async (threadId: string, is_block: boolean) => {
+    if (!currentUser) return
+    const updated = await supabaseMessagingService.setThreadBlocked(threadId, currentUser.id, is_block)
+    if (!updated) return
+    setThreads((prev) => {
+      const idx = prev.findIndex((t) => t.id === threadId)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = updated
+        return next
+      }
+      return [...prev, updated]
+    })
+  }, [currentUser])
+
   const setThreadPinned = useCallback(async (threadId: string, pinned: boolean) => {
     if (!currentUser) return
     const updated = await supabaseMessagingService.setThreadPinned(threadId, currentUser.id, pinned)
@@ -1178,6 +1194,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     markThreadRead,
     threads,
     setThreadArchived,
+    setThreadBlocked,
     setThreadPinned,
     clearMessagesForUser,
     markMessageDeletedForUser,

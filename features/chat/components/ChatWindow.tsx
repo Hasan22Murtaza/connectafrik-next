@@ -40,6 +40,7 @@ import {
   MoreVertical,
   Pencil,
   Phone,
+  Ban,
   Pin,
   PinOff,
   Plus,
@@ -67,6 +68,10 @@ import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
 import { ChatDateDivider, MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
+import {
+  isDirectBlockableThread,
+  isThreadMessagingBlocked,
+} from "@/features/chat/utils/threadHelpers";
 
 interface ChatWindowProps {
   threadId: string;
@@ -197,6 +202,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     markMessageDeletedForUser,
     setMessagesForThread,
     setThreadPinned,
+    setThreadBlocked,
     threads,
     startChatWithMembers,
     closeThread,
@@ -796,6 +802,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isSending) return;
+    if (messagingBlocked) {
+      toast.error(
+        blockedByMe
+          ? "Unblock this contact to send messages"
+          : "You cannot message this contact"
+      );
+      return;
+    }
 
     if (editingMessage) {
       const text = draft.trim();
@@ -925,7 +939,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       fileUploadService.revokePreviews(filesSnapshot);
     } catch (error: any) {
-      toast.error("Failed to send message");
+      const msg =
+        typeof error?.message === "string" && error.message.length > 0
+          ? error.message
+          : "Failed to send message";
+      toast.error(msg);
       if (prependSendId) {
         const msgs = getMessagesForThread(threadId).filter(
           (m) =>
@@ -1201,6 +1219,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const canBlockContact = isDirectBlockableThread(thread, currentUser?.id);
+  const messagingBlocked = isThreadMessagingBlocked(thread);
+  const blockedByMe = Boolean(thread?.is_block);
+  const blockedByOther = Boolean(thread?.blocked_by_other);
+
+  const handleBlockToggle = async () => {
+    if (!thread || !canBlockContact) return;
+    const nextBlocked = !thread.is_block;
+    if (nextBlocked) {
+      const confirmed = window.confirm(
+        `Block ${displayThreadName}? They will not be able to call or message you in this chat.`
+      );
+      if (!confirmed) return;
+    }
+    try {
+      await setThreadBlocked(threadId, nextBlocked);
+      toast.success(nextBlocked ? "Contact blocked" : "Contact unblocked");
+      setShowOptionsMenu(false);
+    } catch {
+      toast.error("Could not update block");
+    }
+  };
+
   const handleClearAllMessages = async () => {
     if (!currentUser) return;
     if (clearChatInFlightRef.current) return;
@@ -1399,7 +1440,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       : draft.trim().length > 0 || pendingFiles.length > 0;
 
   const composerSendDisabled =
-    editingMessage !== null && draft.trim().length === 0;
+    messagingBlocked || (editingMessage !== null && draft.trim().length === 0);
 
   const removePendingFile = (index: number) => {
     setPendingFiles((prev) => {
@@ -1485,6 +1526,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         Icon: thread?.pinned ? PinOff : Pin,
         onClick: () => void handlePinToggle(),
       },
+      ...(canBlockContact
+        ? [
+            {
+              id: "block",
+              label: thread?.is_block ? "Unblock contact" : "Block contact",
+              Icon: Ban,
+              onClick: () => void handleBlockToggle(),
+            } satisfies ChatHeaderOptionsMenuItem,
+          ]
+        : []),
 
       {
         id: "close",
@@ -1518,10 +1569,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     ];
   }, [
     thread?.pinned,
+    thread?.is_block,
+    canBlockContact,
     visibleMessages.length,
     openMessageSearchFromMenu,
     handleOpenThreadDetailPage,
     handlePinToggle,
+    handleBlockToggle,
     handleClearAllMessages,
     handleCloseChatFromMenu,
     handleDeleteChatFromMenu,
@@ -1574,14 +1628,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => handleStartCall("audio")}
-            className="text-gray-500 hover:text-[#f97316] transition"
+            disabled={messagingBlocked}
+            className="text-gray-500 transition hover:text-[#f97316] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Phone className="h-5 w-5" />
           </button>
           <button
+            type="button"
             onClick={() => handleStartCall("video")}
-            className="text-gray-500 hover:text-[#f97316]"
+            disabled={messagingBlocked}
+            className="text-gray-500 hover:text-[#f97316] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Video className="h-5 w-5" />
           </button>
@@ -1766,6 +1824,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <TypingIndicator isTyping={typingUserIds.length > 0} />
 
+      {messagingBlocked ? (
+        <div className="border-t border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">
+          {blockedByMe ? (
+            <p>
+              You blocked this contact.{" "}
+              {canBlockContact ? (
+                <button
+                  type="button"
+                  onClick={() => void handleBlockToggle()}
+                  className="font-medium text-primary-700 underline hover:text-primary-800"
+                >
+                  Unblock
+                </button>
+              ) : null}
+            </p>
+          ) : blockedByOther ? (
+            <p>You cannot message or call this contact.</p>
+          ) : null}
+        </div>
+      ) : null}
+
       {pendingFiles.length > 0 && !editingMessage && (
         <div className="border-t border-gray-100 px-4 pb-3">
           <FilePreview files={pendingFiles} onRemove={removePendingFile} />
@@ -1775,7 +1854,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <form
         onSubmit={handleSend}
         className={`border-t border-gray-200 bg-[#f7f8fa] px-2 py-2 sm:px-3 sm:py-3 ${isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
-          }`}
+          } ${messagingBlocked ? "pointer-events-none opacity-60" : ""}`}
       >
         {editingMessage ? (
           <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200/80 bg-amber-50/90 dark:border-orange-900/70 dark:bg-orange-950/45 px-2.5 py-2 border-l-[3px] border-l-teal-500 dark:border-l-teal-500">
@@ -1864,7 +1943,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               setDraft(event.target.value);
               handleTyping();
             }}
-            placeholder={editingMessage ? "Edit message" : "Message"}
+            placeholder={
+              messagingBlocked
+                ? blockedByMe
+                  ? "Unblock to message"
+                  : "Messaging unavailable"
+                : editingMessage
+                  ? "Edit message"
+                  : "Message"
+            }
+            disabled={messagingBlocked}
             aria-label={
               editingMessage ? "Editing message — press Escape to discard" : "Message input"
             }
