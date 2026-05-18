@@ -268,12 +268,34 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     [closeThread]
   )
 
+  const handleChatThreadDeleted = useCallback(
+    (e: Event) => {
+      const tid = (e as CustomEvent<{ threadId?: string }>).detail?.threadId
+      if (!tid) return
+      supabaseMessagingService.denyRealtimeForThread(tid)
+      closeThread(tid)
+      setThreads((prev) => prev.filter((t) => t.id !== tid))
+      setMessages((prev) => {
+        const { [tid]: _removed, ...rest } = prev
+        return rest
+      })
+    },
+    [closeThread]
+  )
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const handler = handleGroupChatLeft as EventListener
     window.addEventListener('groupChatLeft', handler)
     return () => window.removeEventListener('groupChatLeft', handler)
   }, [handleGroupChatLeft])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = handleChatThreadDeleted as EventListener
+    window.addEventListener('chatThreadDeleted', handler)
+    return () => window.removeEventListener('chatThreadDeleted', handler)
+  }, [handleChatThreadDeleted])
 
   const getThreadById = useCallback((threadId: string) => {
     return threads.find(t => t.id === threadId)

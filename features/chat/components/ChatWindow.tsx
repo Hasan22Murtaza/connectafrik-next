@@ -1490,13 +1490,44 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (variant === "page") router.push("/chat");
   }, [threadId, closeThread, variant, router]);
 
-  const handleDeleteChatFromMenu = useCallback(() => {
-    if (!window.confirm("Remove this chat from your chats list?")) return;
+  const handleDeleteChatFromMenu = useCallback(async () => {
+    if (!currentUser) return;
+    if (
+      !window.confirm(
+        "Delete this chat? It will be removed from your chats list and your message history will be cleared. The other person will not be affected."
+      )
+    ) {
+      return;
+    }
     setShowOptionsMenu(false);
-    closeThread(threadId);
-    if (variant === "page") router.push("/chat");
-    toast.success("Chat removed");
-  }, [threadId, closeThread, variant, router]);
+    const prevMessages = getMessagesForThread(threadId);
+    try {
+      clearMessagesForUser(threadId, currentUser.id);
+      await supabaseMessagingService.deleteThreadForMe(threadId, currentUser.id);
+      closeThread(threadId);
+      if (variant === "page") router.push("/chat");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("chatThreadDeleted", { detail: { threadId } })
+        );
+      }
+      toast.success("Chat deleted");
+    } catch {
+      if (prevMessages.length > 0) {
+        setMessagesForThread(threadId, prevMessages);
+      }
+      toast.error("Could not delete chat");
+    }
+  }, [
+    currentUser,
+    threadId,
+    getMessagesForThread,
+    clearMessagesForUser,
+    closeThread,
+    variant,
+    router,
+    setMessagesForThread,
+  ]);
 
 
 

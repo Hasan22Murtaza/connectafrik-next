@@ -841,6 +841,35 @@
         }
       }
     },
+    "/chat/threads/{threadId}/delete": {
+      "post": {
+        "tags": ["Chat"],
+        "summary": "Delete chat for me",
+        "description": "WhatsApp-style per-user delete: removes the thread from your chat list and clears your message history. Other participants are unaffected. The chat reappears when you or they send a new message.",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [{ "name": "threadId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Chat deleted for current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "deleted": { "type": "boolean" },
+                    "cleared_count": { "type": "integer", "description": "Number of messages hidden for this user" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
     "/chat/threads/{threadId}/read": {
       "post": {
         "tags": ["Chat"],

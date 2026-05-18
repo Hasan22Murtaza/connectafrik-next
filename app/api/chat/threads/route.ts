@@ -77,6 +77,7 @@ async function getParticipantPrefsForThreads(
       .from('chat_participants')
       .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
       .eq('user_id', userId)
+      .is('deleted_at', null)
       .in('thread_id', threadIds),
     getBlockStatesForThreads(serviceClient, userId, threadIds),
   ])
@@ -164,6 +165,7 @@ export async function GET(request: NextRequest) {
       .from('chat_participants')
       .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
       .eq('user_id', user.id)
+      .is('deleted_at', null)
 
     if (partError) {
       const isRecursion =
@@ -180,7 +182,11 @@ export async function GET(request: NextRequest) {
           user.id,
           deduped.map((t: { id?: string }) => t.id).filter((id): id is string => typeof id === 'string')
         )
-        for (const t of deduped) {
+        const visibleDeduped = deduped.filter((t: { id?: string }) => {
+          const id = typeof t?.id === 'string' ? t.id : ''
+          return Boolean(id && rpcPrefs.has(id))
+        })
+        for (const t of visibleDeduped) {
           const id = typeof t?.id === 'string' ? t.id : ''
           const pref = id ? rpcPrefs.get(id) : undefined
           t.unread_count = pref?.unread_count ?? 0
@@ -191,11 +197,11 @@ export async function GET(request: NextRequest) {
           t.blocked_by_other = pref?.blocked_by_other ?? false
         }
         return jsonResponse({
-          data: deduped.slice(from, to + 1),
+          data: visibleDeduped.slice(from, to + 1),
           meta: {
             page,
             pageSize: limit,
-            hasMore: deduped.length > to + 1,
+            hasMore: visibleDeduped.length > to + 1,
           },
         })
       }

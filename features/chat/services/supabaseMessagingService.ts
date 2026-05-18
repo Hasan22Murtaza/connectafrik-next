@@ -1012,6 +1012,22 @@ export const supabaseMessagingService = {
     }
   },
 
+  /** WhatsApp-style delete chat for me: hide from list and clear message history for current user. */
+  async deleteThreadForMe(threadId: string, _currentUserId: string): Promise<void> {
+    if (!threadId?.trim()) return
+    if (fallbackEnabled) {
+      const threadMessages = localMessages.get(threadId) || []
+      threadMessages.forEach((message) => deleteLocalMessage(message.id))
+      return
+    }
+    try {
+      await apiClient.post(`/api/chat/threads/${threadId}/delete`)
+    } catch (error) {
+      console.error('deleteThreadForMe:', error)
+      throw error
+    }
+  },
+
   /** Sets current user's `chat_participants.pinned` via POST /api/chat/threads/:id/pin */
   async setThreadPinned(
     threadId: string,
