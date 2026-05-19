@@ -27,11 +27,13 @@ interface ChatSidebarProps {
   selectedThreadId?: string;
   /** Pass the row’s thread when opening from the list so the app shell does not refetch the full thread list (WhatsApp-style). */
   onOpenThread: (threadId: string, seedThread?: ChatThread) => void;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export default function ChatSidebar({
   selectedThreadId,
   onOpenThread,
+  searchInputRef,
 }: ChatSidebarProps) {
   const { currentUser, threads: contextThreads } = useProductionChat();
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -304,9 +306,10 @@ export default function ChatSidebar({
         <div className="relative mt-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
+            ref={searchInputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search chats"
+            placeholder="Search or start a new chat"
             className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
           />
         </div>

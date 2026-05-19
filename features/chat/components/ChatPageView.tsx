@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
+import ChatCloseView from "@/features/chat/components/ChatCloseView";
 import ChatWindow from "@/features/chat/components/ChatWindow";
 import ChatSidebar from "@/features/chat/components/ChatSidebar";
 import type { ChatThread } from "@/features/chat/services/supabaseMessagingService";
@@ -14,6 +15,12 @@ interface ChatPageViewProps {
 export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
   const router = useRouter();
   const { openThread } = useProductionChat();
+  const sidebarSearchRef = useRef<HTMLInputElement>(null);
+
+  const focusSidebarSearch = useCallback(() => {
+    sidebarSearchRef.current?.focus();
+    sidebarSearchRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, []);
 
   useEffect(() => {
     if (!selectedThreadId) return;
@@ -30,7 +37,11 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
 
   return (
     <div className="mx-auto flex h-[calc(100vh-6rem)] w-full overflow-hidden rounded-none sm:rounded-2xl border border-1 border-gray-200 ">
-      <ChatSidebar selectedThreadId={selectedThreadId} onOpenThread={openOnPage} />
+      <ChatSidebar
+        selectedThreadId={selectedThreadId}
+        onOpenThread={openOnPage}
+        searchInputRef={sidebarSearchRef}
+      />
 
       <main
         className={`min-w-0 flex-1  ${
@@ -40,9 +51,7 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
         {selectedThreadId ? (
           <ChatWindow threadId={selectedThreadId} variant="page" />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-gray-500">
-            Select a chat to start messaging.
-          </div>
+          <ChatCloseView onFocusSearch={focusSidebarSearch} />
         )}
       </main>
     </div>
