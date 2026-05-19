@@ -79,14 +79,20 @@ async function buildGroupedReactions(
 
   const groups: Record<
     string,
-    { emoji: string; count: number; users: ProfileRow[]; currentUserReacted: boolean }
+    { emoji: string; type: string; count: number; users: ProfileRow[]; currentUserReacted: boolean }
   > = {}
   let totalCount = 0
 
   for (const r of rows) {
     if (!r.emoji || !r.user_id) continue
     if (!groups[r.emoji]) {
-      groups[r.emoji] = { emoji: r.emoji, count: 0, users: [], currentUserReacted: false }
+      groups[r.emoji] = {
+        emoji: r.emoji,
+        type: r.emoji,
+        count: 0,
+        users: [],
+        currentUserReacted: false,
+      }
     }
     groups[r.emoji].count++
     totalCount++
@@ -131,7 +137,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       const page = Math.max(parseInt(searchParams.get('page') || '0', 10) || 0, 0)
       const from = page * limit
       const to = from + limit - 1
-      const emojiFilter = searchParams.get('emoji')
+      const emojiFilter = searchParams.get('emoji') ?? searchParams.get('reaction_type')
 
       let query = serviceClient
         .from('message_reactions')
@@ -165,6 +171,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       const items = rows
         .filter((r) => r.user_id && profileMap.has(r.user_id))
         .map((r) => ({
+          reaction_type: r.emoji,
           emoji: r.emoji,
           user: profileMap.get(r.user_id!),
         }))

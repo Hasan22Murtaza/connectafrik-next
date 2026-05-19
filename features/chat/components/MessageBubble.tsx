@@ -44,6 +44,8 @@ import ReactionIcon, {
 } from "@/shared/components/ReactionIcon";
 import { TbMoodPlus } from "react-icons/tb";
 import { useRouter } from "next/navigation";
+import { apiClient } from "@/lib/api-client";
+import ReactionsModal, { type ReactionsModalGroup } from "@/shared/components/ReactionsModal";
 
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<]+/gi;
 
@@ -147,6 +149,7 @@ function getCallBubblePresentation(
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  threadId: string;
   isOwnMessage: boolean;
   currentUserId: string;
   threadParticipants?: string[];
@@ -164,6 +167,7 @@ interface MessageBubbleProps {
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
+  threadId,
   isOwnMessage,
   currentUserId,
   threadParticipants = [],
@@ -187,6 +191,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const bubbleBlockRef = useRef<HTMLDivElement | null>(null);
   const messageMenuRef = useRef<HTMLDivElement | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({});
+  const [showReactionsModal, setShowReactionsModal] = useState(false);
+  const [reactionModalGroups, setReactionModalGroups] = useState<ReactionsModalGroup[]>([]);
 
   const router = useRouter(); 
   const MENU_VIEWPORT_GAP = 8;
@@ -550,6 +556,43 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const reactionTotal = activeReactions.reduce((sum, r) => sum + r.count, 0);
   const hasReactions = activeReactions.length > 0;
 
+  const reactionsEndpoint = `/api/chat/threads/${threadId}/messages/${message.id}/reactions`;
+
+  const fallbackReactionGroups = useMemo<ReactionsModalGroup[]>(
+    () =>
+      activeReactions.map((r) => ({
+        type: r.emoji,
+        count: r.count,
+        users: [],
+      })),
+    [activeReactions]
+  );
+
+  const openReactionsModal = useCallback(async () => {
+    setShowReactionsModal(true);
+    setReactionModalGroups(fallbackReactionGroups);
+    try {
+      const res = await apiClient.get<{
+        data: Array<{
+          emoji?: string
+          type?: string
+          count: number
+          users: ReactionsModalGroup['users']
+        }>
+      }>(reactionsEndpoint);
+      const groups = (res?.data || []).map((g) => ({
+        type: g.type ?? g.emoji ?? '',
+        count: g.count,
+        users: g.users ?? [],
+      }));
+      if (groups.length > 0) {
+        setReactionModalGroups(groups);
+      }
+    } catch {
+      toast.error('Could not load reactions');
+    }
+  }, [reactionsEndpoint, fallbackReactionGroups]);
+
   return (
     <div
       className={`relative flex items-end gap-2 ${hasReactions ? "mb-4" : "mb-2"} ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"}`}
@@ -888,42 +931,52 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               ) : null}
 
               {hasReactions && !isDeleted ? (
-                <div
+                <button
+                  type="button"
                   role="group"
-                  aria-label="Message reactions"
-                  className={`absolute z-10 flex max-w-[min(100%,200px)] items-center rounded-full bg-white py-0.5 pl-1 pr-1.5 shadow-[0_1px_2px_rgba(11,20,26,0.14)] ring-1 ring-[#e9edef] ${
+                  aria-label="View message reactions"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void openReactionsModal();
+                  }}
+                  className={`absolute z-10 flex max-w-[min(100%,200px)] cursor-pointer items-center rounded-full bg-white py-0.5 pl-1 pr-1.5 shadow-[0_1px_2px_rgba(11,20,26,0.14)] ring-1 ring-[#e9edef] transition hover:bg-[#f7f8fa] ${
                     isOwnMessage
                       ? "bottom-0 left-2 translate-y-1/2"
                       : "bottom-0 right-2 translate-y-1/2"
                   }`}
                 >
                   {activeReactions.slice(0, 3).map((reaction, index) => (
-                    <button
+                    <span
                       key={reaction.emoji}
-                      type="button"
-                      disabled={!onReact}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onReact?.(message.id, reaction.emoji);
-                      }}
-                      className={`flex shrink-0 items-center justify-center rounded-full p-px transition hover:bg-[#f0f2f5] disabled:cursor-default ${
+                      className={`flex shrink-0 items-center justify-center rounded-full p-px ${
                         index > 0 ? "-ml-1" : ""
                       }`}
-                      aria-label={`React ${reaction.emoji}, ${reaction.count}`}
+                      aria-hidden
                     >
                       <span className="text-[13px] leading-none">{reaction.emoji}</span>
-                    </button>
+                    </span>
                   ))}
                   {reactionTotal > 1 ? (
                     <span className="min-w-[10px] shrink-0 pl-0.5 text-[11px] font-normal tabular-nums leading-none text-[#667781]">
                       {reactionTotal}
                     </span>
                   ) : null}
-                </div>
+                </button>
               ) : null}
             </div>
         </div>
       </div>
+
+      <ReactionsModal
+        isOpen={showReactionsModal}
+        onClose={() => setShowReactionsModal(false)}
+        reactionGroups={
+          reactionModalGroups.length > 0 ? reactionModalGroups : fallbackReactionGroups
+        }
+        reactionsEndpoint={reactionsEndpoint}
+        reactionDisplay="emoji"
+        onUserClick={(username) => router.push(`/profile/${username}`)}
+      />
     </div>
   );
 };

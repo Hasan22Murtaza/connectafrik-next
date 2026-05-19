@@ -1832,6 +1832,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 ) : null}
                 <MessageBubble
                   message={message}
+                  threadId={threadId}
                   isOwnMessage={isOwn}
                   currentUserId={currentUser?.id || ""}
                   threadParticipants={

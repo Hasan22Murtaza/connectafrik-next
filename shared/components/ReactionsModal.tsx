@@ -25,9 +25,13 @@ export interface ReactionsModalProps {
   onUserClick?: (username: string) => void
   /** API endpoint for paginated reactions, e.g. '/api/posts/{id}/reaction' */
   reactionsEndpoint?: string
+  /** Use native emoji for tabs/badges (chat messages) instead of reaction icons */
+  reactionDisplay?: 'icon' | 'emoji'
 }
 
 const PAGE_SIZE = 20
+
+const isEmojiReactionType = (type: string) => /\p{Extended_Pictographic}/u.test(type)
 
 const ReactionsModal: React.FC<ReactionsModalProps> = ({
   isOpen,
@@ -35,6 +39,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
   reactionGroups,
   onUserClick,
   reactionsEndpoint,
+  reactionDisplay = 'icon',
 }) => {
   const [activeTab, setActiveTab] = useState<string>('all')
   const [paginatedUsers, setPaginatedUsers] = useState<Array<ReactionsModalUser & { reaction_type: string }>>([])
@@ -64,14 +69,14 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
         params.reaction_type = tab
       }
 
-      const res = await apiClient.get<{ data: Array<{ reaction_type: string; user: ReactionsModalUser }>; hasMore: boolean }>(
-        reactionsEndpoint,
-        params
-      )
+      const res = await apiClient.get<{
+        data: Array<{ reaction_type?: string; emoji?: string; user: ReactionsModalUser }>
+        hasMore: boolean
+      }>(reactionsEndpoint, params)
 
       const newUsers = (res?.data || []).map((item) => ({
         ...item.user,
-        reaction_type: item.reaction_type,
+        reaction_type: item.reaction_type ?? item.emoji ?? '',
       }))
 
       if (replace) {
@@ -169,6 +174,17 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
   const users = usePaginated ? displayUsers : fallbackUsers
   const reactionMap = usePaginated ? userReactionMap : fallbackReactionMap
 
+  const renderReactionLabel = (type: string, size: number) => {
+    if (reactionDisplay === 'emoji' || isEmojiReactionType(type)) {
+      return (
+        <span className="inline-flex items-center justify-center leading-none select-none" style={{ fontSize: size }}>
+          {type}
+        </span>
+      )
+    }
+    return <ReactionIcon type={type} size={size} />
+  }
+
   if (!isOpen) return null
 
   return (
@@ -203,7 +219,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
                     : 'text-gray-500 border-transparent hover:bg-gray-50'
                 }`}
               >
-                <ReactionIcon type={group.type} size={20} />
+                {renderReactionLabel(group.type, 20)}
                 <span className="text-[15px] font-semibold">{group.count}</span>
               </button>
             ))}
@@ -257,7 +273,7 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
                       )}
                       {reactionType && (
                         <div className="absolute -bottom-0.5 -right-0.5 rounded-full bg-white p-[1px]">
-                          <ReactionIcon type={reactionType} size={16} />
+                          {renderReactionLabel(reactionType, 16)}
                         </div>
                       )}
                     </div>
