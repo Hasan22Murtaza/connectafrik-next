@@ -8,6 +8,7 @@ import {
   MapPin,
   Bookmark,
   BookmarkX,
+  Repeat2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,7 @@ import {
 import { logEngagementEvent } from "../services/engagementTracking";
 import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, ApiError } from "@/lib/api-client";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
@@ -65,7 +66,29 @@ interface Post {
   canFollow?: boolean;
   /** Up to a few top-level comments from the feed/list API (see formatPostsForClient). */
   comments?: any[] | null;
+  repost_of_id?: string | null;
+  reposted_post?: RepostedPost | null;
+  /** Current user already reposted this post to their feed */
+  is_reposted?: boolean;
 }
+
+type RepostedPost = {
+  id: string;
+  content: string;
+  category: "politics" | "culture" | "general";
+  media_urls: string[] | null;
+  media_type?: string | null;
+  background_id?: string | null;
+  location?: string | null;
+  created_at: string;
+  author: {
+    id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string | null;
+    country: string | null;
+  } | null;
+};
 
 type PostMediaLayout = "single" | "grid";
 
@@ -88,6 +111,8 @@ interface PostCardProps {
   disablePostClick?: boolean;
   /** Called after save/unsave API succeeds (e.g. remove card from Saved list). */
   onSaveStateChange?: (postId: string, saved: boolean) => void;
+  /** When set, handles repost API + feed update (e.g. from usePosts.repostPost). */
+  onRepost?: (postId: string) => Promise<void>;
   /** Facebook-style muted autoplay when scrolled into view (requires FeedVideoAutoplayProvider). */
   feedVideoAutoplay?: boolean;
 }
@@ -106,6 +131,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   canFollow = true,
   disablePostClick = false,
   onSaveStateChange,
+  onRepost,
   feedVideoAutoplay = false,
 }) => {
   const { user } = useAuth();
@@ -360,6 +386,28 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       return;
     }
     await persistPostSaveToggle();
+  };
+
+  const repostPostFromMenu = async () => {
+    if (!requireSignedIn()) return;
+    if (post.is_reposted) {
+      toast.success("You already reposted this post");
+      return;
+    }
+    try {
+      if (onRepost) {
+        await onRepost(post.id);
+      } else {
+        await apiClient.post<{ repost: Post }>(`/api/posts/${post.id}/repost`);
+      }
+      toast.success("Reposted to your feed");
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        toast.success("You already reposted this post");
+        return;
+      }
+      toast.error("Could not repost");
+    }
   };
 
   // Navigate to user profile
@@ -655,6 +703,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                 <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base !no-underline">
                   {post.author.full_name}
                 </h3>
+                {post.reposted_post && (
+                  <span className="text-gray-500 text-xs sm:text-sm">reposted</span>
+                )}
                 <span className="text-gray-500 truncate text-xs sm:text-sm">
                   @{post.author.username}
                 </span>
@@ -867,6 +918,30 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       </button>
                     )}
                   </li>
+                  <li role="none" className="list-none border-t border-gray-100">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void (async () => {
+                          await repostPostFromMenu();
+                          setShowMenu(false);
+                        })();
+                      }}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                    >
+                      <Repeat2
+                        className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-gray-900">
+                          {post.is_reposted ? "Reposted" : "Repost"}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
                 </>
               )}
             </ul>
@@ -938,6 +1013,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           })()}
           {!showContentStyledCard && (() => {
             const plainContent = (post.content || "").trim();
+            if (!plainContent) return null;
             const plainPreviewLen = 300;
             const showPlainReadToggle = plainContent.length > plainPreviewLen;
             const plainVisibleContent =
@@ -964,11 +1040,73 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               </div>
             );
           })()}
+
+          {post.reposted_post ? (
+            <div
+              role="link"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/post/${post.reposted_post!.id}`);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  router.push(`/post/${post.reposted_post!.id}`);
+                }
+              }}
+              className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3 cursor-pointer hover:bg-gray-100/80 transition-colors"
+            >
+              {post.reposted_post.author ? (
+                <div className="flex items-center gap-2 mb-2 min-w-0">
+                  {post.reposted_post.author.avatar_url ? (
+                    <img
+                      src={post.reposted_post.author.avatar_url}
+                      alt=""
+                      className="h-8 w-8 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-300 text-xs font-medium text-gray-600">
+                      {post.reposted_post.author.full_name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-900">
+                      {post.reposted_post.author.full_name}
+                    </p>
+                    <p className="truncate text-xs text-gray-500">
+                      @{post.reposted_post.author.username}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              {(post.reposted_post.content || "").trim() ? (
+                <p className="text-sm text-gray-700 line-clamp-4 whitespace-pre-wrap break-words">
+                  {post.reposted_post.content}
+                </p>
+              ) : null}
+              {post.reposted_post.media_urls &&
+                post.reposted_post.media_urls.length > 0 &&
+                isImageFile(post.reposted_post.media_urls[0]) && (
+                  <img
+                    src={post.reposted_post.media_urls[0]}
+                    alt=""
+                    className="mt-2 max-h-48 w-full rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                )}
+            </div>
+          ) : post.repost_of_id ? (
+            <p className="mb-3 text-sm text-gray-500 italic">
+              This post is no longer available
+            </p>
+          ) : null}
         </>
       )}
 
       {/* Media - style grid */}
-      {post.media_urls && post.media_urls.length > 0 && (
+      {!post.reposted_post && post.media_urls && post.media_urls.length > 0 && (
         <div className="mb-2 -mx-3 sm:-mx-4">
           {(() => {
             const mediaCount = post.media_urls!.length;

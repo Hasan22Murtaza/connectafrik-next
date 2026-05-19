@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, ApiError } from '@/lib/api-client'
 import type { ProfileVisibilityLevel } from '@/shared/types'
 
 const PAGE_SIZE = 10
@@ -37,6 +37,25 @@ export interface Post {
   is_saved?: boolean
   canComment?: boolean
   canFollow?: boolean
+  repost_of_id?: string | null
+  reposted_post?: {
+    id: string
+    content: string
+    category: 'politics' | 'culture' | 'general'
+    media_urls: string[] | null
+    media_type?: string | null
+    background_id?: string | null
+    location?: string | null
+    created_at: string
+    author: {
+      id: string
+      username: string
+      full_name: string
+      avatar_url: string | null
+      country: string | null
+    } | null
+  } | null
+  is_reposted?: boolean
 }
 
 export interface UsePostsOptions {
@@ -219,6 +238,27 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     }
   }
 
+  const repostPost = async (postId: string) => {
+    try {
+      const { repost } = await apiClient.post<{ repost: Post }>(`/api/posts/${postId}/repost`)
+      setPosts(prev => [
+        repost,
+        ...prev
+          .filter(p => p.id !== repost.id)
+          .map(p =>
+            p.id === postId
+              ? { ...p, is_reposted: true, shares_count: (p.shares_count || 0) + 1 }
+              : p
+          ),
+      ])
+      return { success: true, repost }
+    } catch (error) {
+      console.error('Error reposting:', error)
+      if (error instanceof ApiError) throw error
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to repost' }
+    }
+  }
+
   const deletePost = async (postId: string) => {
     try {
       if (!user) throw new Error('User not authenticated')
@@ -269,6 +309,7 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
     createPost,
     toggleLike,
     sharePost,
+    repostPost,
     deletePost,
     updatePost,
     updatePostLikesCount,

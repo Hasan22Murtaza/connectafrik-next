@@ -71,6 +71,28 @@ export type FormatPostsOptions = {
   onlyAuthorId?: string
 }
 
+function mapEmbeddedRepostPost(row: any) {
+  return {
+    id: row.id,
+    content: row.content,
+    category: row.category,
+    media_urls: row.media_urls,
+    media_type: row.media_type,
+    background_id: row.background_id ?? null,
+    location: row.location,
+    created_at: row.created_at,
+    author: row.author
+      ? {
+          id: row.author.id,
+          username: row.author.username,
+          full_name: row.author.full_name,
+          avatar_url: row.author.avatar_url,
+          country: row.author.country,
+        }
+      : null,
+  }
+}
+
 /**
  * Visibility filter, reactions, likes, follow flags, optional saved state, and up to three earliest top-level comments per post — same shape as GET /api/posts.
  */
@@ -211,6 +233,47 @@ export async function formatPostsForClient(
     }
   }
 
+  const repostSourceIds = [
+    ...new Set(filtered.filter((p: any) => !p.repost_of_id).map((p: any) => p.id)),
+  ]
+  let repostedByUserIds = new Set<string>()
+  if (userId && repostSourceIds.length > 0) {
+    const { data: userReposts } = await supabase
+      .from('posts')
+      .select('repost_of_id')
+      .eq('author_id', userId)
+      .eq('is_deleted', false)
+      .in('repost_of_id', repostSourceIds)
+    if (userReposts) {
+      repostedByUserIds = new Set(userReposts.map((r: any) => r.repost_of_id))
+    }
+  }
+
+  const embeddedSourceIds = [
+    ...new Set(filtered.map((p: any) => p.repost_of_id).filter(Boolean)),
+  ]
+  const embeddedById = new Map<string, ReturnType<typeof mapEmbeddedRepostPost>>()
+  if (embeddedSourceIds.length > 0) {
+    const { data: embeddedRows } = await supabase
+      .from('posts')
+      .select(
+        `
+        id, content, category, media_urls, media_type, background_id, location, created_at,
+        author:profiles!posts_author_id_fkey(
+          id, username, full_name, avatar_url, country
+        )
+      `
+      )
+      .in('id', embeddedSourceIds)
+      .eq('is_deleted', false)
+
+    if (embeddedRows) {
+      for (const row of embeddedRows) {
+        embeddedById.set(row.id, mapEmbeddedRepostPost(row))
+      }
+    }
+  }
+
   return filtered.map((post: any) => {
     const isMutual = mutualSet.has(post.author_id)
     const allowComments = post.author?.allow_comments ?? 'everyone'
@@ -261,6 +324,11 @@ export async function formatPostsForClient(
         userId && userId !== post.author_id
           ? computePermission(userId, post.author_id, allowFollows, isMutual)
           : false,
+      repost_of_id: post.repost_of_id ?? null,
+      reposted_post: post.repost_of_id
+        ? embeddedById.get(post.repost_of_id) ?? null
+        : null,
+      is_reposted: userId ? repostedByUserIds.has(post.id) : false,
     }
   })
 }

@@ -39,7 +39,7 @@ const FeedPage: React.FC = () => {
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [explorationBoost, setExplorationBoost] = useState(false)
 
-  const { posts, loading, loadingMore, hasMore, loadMore, createPost, toggleLike, deletePost, updatePost, updatePostLikesCount } = usePosts(activeCategory)
+  const { posts, loading, loadingMore, hasMore, loadMore, createPost, toggleLike, deletePost, updatePost, updatePostLikesCount, repostPost } = usePosts(activeCategory)
   const { members } = useMembers()
   const handleEmojiReaction = useEmojiReaction({ onLikesCountChange: updatePostLikesCount, trackEngagement: true })
 
@@ -128,6 +128,16 @@ const FeedPage: React.FC = () => {
       trackEvent.comment(user.id, postId)
     }
   }, [posts, user?.id])
+
+  const handleRepost = useCallback(
+    async (postId: string) => {
+      const result = await repostPost(postId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to repost')
+      }
+    },
+    [repostPost]
+  )
 
   const handleShare = useCallback((postId: string) => {
     const post = posts.find(p => p.id === postId)
@@ -253,6 +263,7 @@ const FeedPage: React.FC = () => {
               onLike={handleToggleLike}
               onComment={handleComment}
               onShare={handleShare}
+              onRepost={handleRepost}
               onDelete={handleDelete}
               onEdit={handleEdit}
               onEmojiReaction={handleEmojiReaction}
