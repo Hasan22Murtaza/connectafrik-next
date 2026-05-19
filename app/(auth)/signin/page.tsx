@@ -7,6 +7,7 @@ import { Globe, Eye, EyeOff, Mail, Lock, Phone } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api-client";
 import toast from "react-hot-toast";
+import { FcGoogle } from "react-icons/fc";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 
@@ -21,6 +22,37 @@ const SigninForm: React.FC = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("error") === "auth") {
+      toast.error("Google sign-in failed. Please try again.");
+    }
+  }, [searchParams]);
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const redirectTo = searchParams.get("redirect") || "/feed";
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      callbackUrl.searchParams.set("redirect", redirectTo);
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callbackUrl.toString(),
+        },
+      });
+
+      if (error) {
+        toast.error(error.message);
+        setIsGoogleLoading(false);
+      }
+    } catch {
+      toast.error("Failed to sign in with Google");
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -147,6 +179,25 @@ const SigninForm: React.FC = () => {
 
         {/* Form */}
         <div className="card ">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isGoogleLoading || isLoading}
+            className="w-full border border-gray-300 rounded-lg py-3 flex items-center justify-center gap-2 bg-white text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FcGoogle className="w-5 h-5" />
+            {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
+          </button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+
           {/* Login Method Toggle */}
           <div className="flex gap-2 mb-2 p-1 bg-gray-100 rounded-lg">
             <button
