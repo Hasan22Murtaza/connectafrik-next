@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
 import { getFirebaseAdmin } from '../fcm/_utils'
+import { sendVoipApnsPush } from '@/lib/apns-voip'
 import type { NotificationType } from '@/shared/types/notifications'
 import { isCanonicalNotificationType } from '@/shared/types/notifications'
 
@@ -67,6 +68,38 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+/** PushKit VoIP tokens for iOS devices (see `fcm_tokens.voip_token`). */
+async function fetchActiveVoipTokensForUser(userId: string): Promise<string[]> {
+  const { data: rows, error } = await supabase
+    .from('fcm_tokens')
+    .select('voip_token, device_id, is_active, device_type')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .not('voip_token', 'is', null)
+
+  if (error || !rows?.length) return []
+
+  const seen = new Set<string>()
+  const tokens: string[] = []
+  for (const row of rows as Array<{
+    voip_token: string | null
+    device_id: string | null
+    is_active?: boolean | string
+    device_type?: string | null
+  }>) {
+    const isActive = row.is_active === true || row.is_active === 'true'
+    if (!isActive) continue
+    if (row.device_type && row.device_type !== 'ios') continue
+    const t = typeof row.voip_token === 'string' ? row.voip_token.trim() : ''
+    if (!t) continue
+    const key = `${row.device_id || t}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    tokens.push(t)
+  }
+  return tokens
+}
 
 export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders })
@@ -206,7 +239,7 @@ export async function POST(request: NextRequest) {
 
     const fcmStringData = stringifyFcmDataValues(rawPushData)
 
-    // Incoming call ring: iOS uses PushKit VoIP via `sendVoipApnsPush`; skip FCM to avoid duplicate / conflicting alerts.
+    // Call events on iOS: PushKit VoIP (ringing from call-sessions; accept/decline here). Skip FCM on iOS to avoid duplicate UI.
     const callRingDataType =
       rawPushData.type != null ? String(rawPushData.type).trim().toLowerCase() : ''
     const callRingNotificationType =
@@ -214,6 +247,11 @@ export async function POST(request: NextRequest) {
     const skipIosFcmForIncomingCallRing =
       canonicalType === 'call' &&
       (callRingDataType === 'ringing' || callRingNotificationType === 'ringing')
+    const sendIosVoipForCallAcceptOrDecline =
+      canonicalType === 'call' &&
+      (callRingDataType === 'active' || callRingDataType === 'declined')
+    const skipIosFcmForVoipCall =
+      skipIosFcmForIncomingCallRing || sendIosVoipForCallAcceptOrDecline
 
     // Birthday reminders: at most one per friend per day per "when" (today vs tomorrow) for this user.
     if (canonicalType === 'birthday' && !skip_db) {
@@ -326,7 +364,7 @@ export async function POST(request: NextRequest) {
       return isActive && !!sub.fcm_token
     })
 
-    if (activeSubscriptions.length === 0) {
+    if (activeSubscriptions.length === 0 && !sendIosVoipForCallAcceptOrDecline) {
       return NextResponse.json(
         {
           success: notificationId !== null, // Success if notification was stored in DB
@@ -390,14 +428,17 @@ export async function POST(request: NextRequest) {
       try {
         const fcmToken = subscription.fcm_token
 
-        if (subscription.device_type === 'ios' && skipIosFcmForIncomingCallRing) {
-          console.log('Skipping FCM for iOS incoming call ring (VoIP handles ringing)')
+        if (subscription.device_type === 'ios' && skipIosFcmForVoipCall) {
+          const skipReason = sendIosVoipForCallAcceptOrDecline
+            ? 'skipped-ios-call-accept-decline-voip'
+            : 'skipped-ios-incoming-call-ring'
+          console.log(`Skipping FCM for iOS call push (${skipReason})`)
           return {
             success: true,
             skipped: true,
             endpoint: subscription.device_id || fcmToken.substring(0, 50),
             device_type: subscription.device_type,
-            messageId: 'skipped-ios-incoming-call-ring',
+            messageId: skipReason,
           }
         }
 
@@ -475,9 +516,64 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const results = await Promise.all(sendPromises)
-    const successful = results.filter(r => r.success).length
-    const failed = results.filter(r => !r.success).length
+    const fcmResults = activeSubscriptions.length > 0 ? await Promise.all(sendPromises) : []
+
+    let voipResults: Array<{
+      success: boolean
+      endpoint: string
+      device_type: string
+      messageId?: string
+      error?: string
+    }> = []
+
+    if (sendIosVoipForCallAcceptOrDecline) {
+      const voipTokens = await fetchActiveVoipTokensForUser(user_id)
+      const voipData: Record<string, string> = {
+        ...fcmStringData,
+        title: body.title,
+        body: notificationBody,
+        type: callRingDataType,
+      }
+
+      voipResults = await Promise.all(
+        voipTokens.map(async (voipToken) => {
+          const endpoint = voipToken.substring(0, 12)
+          try {
+            await sendVoipApnsPush({
+              token: voipToken,
+              title: body.title,
+              body: notificationBody,
+              data: voipData,
+            })
+            console.log(`✅ APNs VoIP call-status push sent (${callRingDataType})`)
+            return {
+              success: true,
+              endpoint,
+              device_type: 'ios-voip',
+              messageId: `voip-${callRingDataType}`,
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error)
+            console.error('APNs VoIP call-status push failed', {
+              user_id,
+              call_status: callRingDataType,
+              error: message,
+            })
+            return {
+              success: false,
+              endpoint,
+              device_type: 'ios-voip',
+              error: message,
+            }
+          }
+        })
+      )
+    }
+
+    const results = [...fcmResults, ...voipResults]
+    const successful = results.filter((r) => r.success).length
+    const failed = results.filter((r) => !r.success).length
+    const total = subscriptionsToSend.length + voipResults.length
 
     return NextResponse.json(
       {
@@ -485,7 +581,7 @@ export async function POST(request: NextRequest) {
         notification_id: notificationId,
         sent: successful,
         failed,
-        total: subscriptionsToSend.length,
+        total,
         results
       },
       {
