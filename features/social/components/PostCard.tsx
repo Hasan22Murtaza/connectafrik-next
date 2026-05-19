@@ -122,11 +122,16 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [postSaved, setPostSaved] = useState(post.is_saved ?? false);
+  const [isContentExpanded, setIsContentExpanded] = useState(false);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setPostSaved(post.is_saved ?? false);
   }, [post.id, post.is_saved]);
+
+  useEffect(() => {
+    setIsContentExpanded(false);
+  }, [post.id, post.content]);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
   const postOptionsMenuId = useId();
@@ -891,12 +896,21 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           {showContentStyledCard && (() => {
             const preset = cardBackgroundPreset;
             const blockBg = preset ? preset.css : legacyGradientForPostId(post.id);
-            const longBody = (post.content || "").trim().length > 150;
+            const contentText = (post.content || "").trim();
+            const longBody = contentText.length > 150;
+            const showStyledReadToggle = longBody;
+            const styledVisibleContent =
+              isContentExpanded || !showStyledReadToggle
+                ? post.content
+                : `${contentText.slice(0, 150).trimEnd()}…`;
             const minH = preset ? (longBody ? "min-h-[120px]" : "min-h-[220px]") : "min-h-[250px]";
             const pad = preset && longBody ? "p-6 sm:p-8" : "p-8";
             const textClass = preset
               ? `${preset.textClass} ${longBody ? "text-base sm:text-lg font-medium text-left max-w-none" : "text-xl sm:text-2xl md:text-3xl font-semibold text-center"} leading-relaxed whitespace-pre-wrap break-words drop-shadow-lg`
               : "text-xl sm:text-2xl md:text-3xl font-semibold text-white text-center leading-relaxed whitespace-pre-wrap break-words drop-shadow-lg";
+            const readToggleClass = preset
+              ? `${preset.textClass} mt-2 text-sm font-semibold opacity-90 underline-offset-2 hover:underline`
+              : "mt-2 text-sm font-semibold text-white opacity-90 underline-offset-2 hover:underline";
             return (
               <div
                 className={`mb-4 rounded-xl ${pad} ${minH} flex items-center justify-center`}
@@ -904,23 +918,56 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               >
                 <div className={preset && longBody ? "w-full" : "text-center w-full"}>
                   <p className={textClass}>
-                    {post.content}
+                    {styledVisibleContent}
                   </p>
+                  {showStyledReadToggle && (
+                    <button
+                      type="button"
+                      className={readToggleClass}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsContentExpanded((v) => !v);
+                      }}
+                    >
+                      {isContentExpanded ? "Read less" : "Read more"}
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })()}
-          {!showContentStyledCard && (
-            <div className="mb-2">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
-                {post.content}
-              </p>
-            </div>
-          )}
+          {!showContentStyledCard && (() => {
+            const plainContent = (post.content || "").trim();
+            const plainPreviewLen = 300;
+            const showPlainReadToggle = plainContent.length > plainPreviewLen;
+            const plainVisibleContent =
+              isContentExpanded || !showPlainReadToggle
+                ? post.content
+                : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
+            return (
+              <div className="mb-2">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
+                  {plainVisibleContent}
+                </p>
+                {showPlainReadToggle && (
+                  <button
+                    type="button"
+                    className="mt-1 text-sm font-semibold text-gray-500 hover:text-gray-700"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsContentExpanded((v) => !v);
+                    }}
+                  >
+                    {isContentExpanded ? "Read less" : "Read more"}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
 
-      {/* Media - Facebook style grid */}
+      {/* Media - style grid */}
       {post.media_urls && post.media_urls.length > 0 && (
         <div className="mb-2 -mx-3 sm:-mx-4">
           {(() => {
