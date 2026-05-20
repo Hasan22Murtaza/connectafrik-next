@@ -519,6 +519,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setMessageInfo(null);
     setMessageInfoLoading(false);
     setMessageInfoError(null);
+    setPendingFiles((prev) => {
+      fileUploadService.revokePreviews(prev);
+      return [];
+    });
+    setAttachmentMenuOpen(false);
   }, [threadId]);
 
   useEffect(() => {
@@ -747,8 +752,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setAttachmentMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("click", onDoc);
+    return () => document.removeEventListener("click", onDoc);
   }, [attachmentMenuOpen]);
 
   useEffect(() => {
@@ -1960,13 +1965,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             >
               <Plus className="h-5 w-5" />
             </button>
-            {attachmentMenuOpen && (
-              <ChatAttachmentMenu
-                onFilesSelected={handleFilesSelected}
-                onClose={() => setAttachmentMenuOpen(false)}
-                onOpenCamera={() => setWebcamOpen(true)}
-              />
-            )}
+            <ChatAttachmentMenu
+              open={attachmentMenuOpen}
+              onFilesSelected={handleFilesSelected}
+              onClose={() => setAttachmentMenuOpen(false)}
+              onOpenCamera={() => setWebcamOpen(true)}
+            />
           </div>
           <input
             ref={composerInputRef}

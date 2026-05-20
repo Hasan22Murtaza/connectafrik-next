@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useId } from "react";
 import {
   Camera,
   FileText,
@@ -13,129 +13,137 @@ import {
 } from "@/shared/services/fileUploadService";
 
 interface ChatAttachmentMenuProps {
+  open: boolean;
   onFilesSelected: (files: FileUploadResult[]) => void;
   onClose: () => void;
   /** Opens live webcam (getUserMedia); use on laptop/desktop instead of file input capture. */
   onOpenCamera?: () => void;
 }
 
+const stopMenuPointerBubble = (e: React.SyntheticEvent) => {
+  e.stopPropagation();
+};
+
 const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
+  open,
   onFilesSelected,
   onClose,
   onOpenCamera,
 }) => {
-  const docRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
-  const cameraFallbackRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLInputElement>(null);
+  const uid = useId();
+  const docInputId = `${uid}-doc`;
+  const galleryInputId = `${uid}-gallery`;
+  const cameraInputId = `${uid}-camera`;
+  const audioInputId = `${uid}-audio`;
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { files } = e.target;
+    // Snapshot before clearing — FileList is live and empties when value is reset.
+    const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!files?.length) return;
-    const results = await fileUploadService.fromFiles(files);
+    if (!picked.length) return;
+
+    const results = await fileUploadService.fromFiles(picked);
     if (results.length) {
       onFilesSelected(results);
       onClose();
     }
   };
 
-  const items: {
-    key: string;
-    label: string;
-    icon: React.ReactNode;
-    className: string;
-    onClick: () => void;
-  }[] = [
-    {
-      key: "doc",
-      label: "Document",
-      icon: <FileText className="h-5 w-5" />,
-      className: "text-violet-600",
-      onClick: () => docRef.current?.click(),
-    },
-    {
-      key: "gallery",
-      label: "Photos & videos",
-      icon: <ImageIcon className="h-5 w-5" />,
-      className: "text-sky-600",
-      onClick: () => galleryRef.current?.click(),
-    },
-    {
-      key: "camera",
-      label: "Camera",
-      icon: <Camera className="h-5 w-5" />,
-      className: "text-pink-600",
-      onClick: () => {
-        onClose();
-        if (onOpenCamera) {
-          onOpenCamera();
-        } else {
-          cameraFallbackRef.current?.click();
-        }
-      },
-    },
-    {
-      key: "audio",
-      label: "Audio",
-      icon: <Headphones className="h-5 w-5" />,
-      className: "text-orange-600",
-      onClick: () => audioRef.current?.click(),
-    },
-  ];
+  const handleCameraClick = () => {
+    if (onOpenCamera) {
+      onOpenCamera();
+      onClose();
+      return;
+    }
+    document.getElementById(cameraInputId)?.click();
+  };
+
+  const menuRowClass =
+    "flex w-full cursor-pointer items-center gap-2 rounded-2xl px-2 py-1 text-left text-sm text-gray-800 transition-colors hover:bg-gray-100";
 
   return (
     <>
-      <div
-        className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-2xl border border-gray-200 bg-white py-1.5 shadow-xl p-1"
-        role="menu"
-        aria-label="Attach"
-      >
-        {items.map((item) => (
+      {open ? (
+        <div
+          className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-2xl border border-gray-200 bg-white p-1 py-1.5 shadow-xl"
+          role="menu"
+          aria-label="Attach"
+          onMouseDown={stopMenuPointerBubble}
+          onPointerDown={stopMenuPointerBubble}
+        >
+          <label htmlFor={docInputId} role="menuitem" className={menuRowClass}>
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-violet-600">
+              <FileText className="h-5 w-5" />
+            </span>
+            <span className="font-medium">Document</span>
+          </label>
+
+          <label htmlFor={galleryInputId} role="menuitem" className={menuRowClass}>
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-sky-600">
+              <ImageIcon className="h-5 w-5" />
+            </span>
+            <span className="font-medium">Photos &amp; videos</span>
+          </label>
+
           <button
-            key={item.key}
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-2 py-1 text-left text-sm text-gray-800 transition-colors hover:bg-gray-100 rounded-2xl"
-            onClick={() => item.onClick()}
+            className={menuRowClass}
+            onClick={handleCameraClick}
           >
-            <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 ${item.className}`}>
-              {item.icon}
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-pink-600">
+              <Camera className="h-5 w-5" />
             </span>
-            <span className="font-medium">{item.label}</span>
+            <span className="font-medium">Camera</span>
           </button>
-        ))}
-      </div>
 
+          <label htmlFor={audioInputId} role="menuitem" className={menuRowClass}>
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-orange-600">
+              <Headphones className="h-5 w-5" />
+            </span>
+            <span className="font-medium">Audio</span>
+          </label>
+        </div>
+      ) : null}
+
+      {/* Keep inputs mounted so file picker + onChange still work after the menu closes */}
       <input
-        ref={docRef}
+        id={docInputId}
         type="file"
+        form=""
         className="hidden"
+        tabIndex={-1}
         multiple
         accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,.7z,application/*"
         onChange={handleChange}
       />
       <input
-        ref={galleryRef}
+        id={galleryInputId}
         type="file"
+        form=""
         className="hidden"
+        tabIndex={-1}
         multiple
         accept="image/*,video/*"
         onChange={handleChange}
       />
-      {/* Fallback when onOpenCamera is not provided (e.g. mobile file picker) */}
       <input
-        ref={cameraFallbackRef}
+        id={cameraInputId}
         type="file"
+        form=""
         className="hidden"
+        tabIndex={-1}
         accept="image/*"
         capture="environment"
         onChange={handleChange}
       />
       <input
-        ref={audioRef}
+        id={audioInputId}
         type="file"
+        form=""
         className="hidden"
+        tabIndex={-1}
+        multiple
         accept="audio/*"
         onChange={handleChange}
       />
