@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { CULTURE_SUBCATEGORIES, type CultureSubcategorySlug } from '@/shared/constants/culture'
 import { POLITICS_SUBCATEGORIES, type PoliticsSubcategorySlug } from '@/shared/constants/politics'
 import { POST_BACKGROUND_PRESETS, getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
+import { serializePostLocation } from '@/features/social/utils/postLocation'
 
 type MediaType = 'image' | 'video' | 'none'
 type Category = 'politics' | 'culture' | 'general'
@@ -193,10 +194,11 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const existingVideoUrls = existingMediaUrls.filter((u) => VIDEO_REGEX.test(u))
   const totalMediaCount = mediaFiles.length + existingImageUrls.length
   const hasMedia = totalMediaCount > 0 || !!videoUrl || existingVideoUrls.length > 0
+  const hasLocation = !!selectedLocation
   const effectiveCategory = culturePageMode ? 'culture' : politicsPageMode ? 'politics' : category
-  /** Text-only posts need 10+ chars; posts with photo/video can omit or shorten caption. */
+  /** Text-only posts need 10+ chars; photo/video or a check-in can omit caption. */
   const isFormValid =
-    (hasMedia || content.trim().length >= 10) && !isSubmitting && !uploading
+    (hasMedia || hasLocation || content.trim().length >= 10) && !isSubmitting && !uploading
   const hasActiveVideo = videoUrl !== '' || existingVideoUrls.length > 0
   const selectedBgPreset = selectedBackgroundId ? getPostBackgroundPreset(selectedBackgroundId) : null
   /** Full-screen Facebook-style shell when parent passes onCancel (feed, edit, culture, politics). */
@@ -426,8 +428,10 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = content.trim()
-    if (!hasMedia && !trimmed) return
-    if (!hasMedia && trimmed.length < 10) return toast.error('Your post must be at least 10 characters long')
+    if (!hasMedia && !hasLocation && !trimmed) return
+    if (!hasMedia && !hasLocation && trimmed.length < 10) {
+      return toast.error('Your post must be at least 10 characters long')
+    }
     if (effectiveCategory === 'culture' && !cultureSubcategory) return toast.error('Please select a cultural category')
     if (effectiveCategory === 'politics' && !politicsSubcategory) return toast.error('Please select a political topic')
 
@@ -465,7 +469,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
         media_type,
         media_urls: media_urls.length > 0 ? media_urls : undefined,
         tags,
-        location: selectedLocation?.name || undefined,
+        location: selectedLocation
+          ? serializePostLocation({
+              name: selectedLocation.name,
+              address: selectedLocation.address,
+              lat: selectedLocation.lat,
+              lng: selectedLocation.lng,
+            })
+          : undefined,
         ...(groupPostEdit
           ? (() => {
               const split = splitGroupPostBody(text)
@@ -611,7 +622,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
           </div>
         )}
 
-      <form onSubmit={handleSubmit} className={useModalShell ? 'flex min-h-0 flex-1 flex-col' : undefined}>
+      <form noValidate onSubmit={handleSubmit} className={useModalShell ? 'flex min-h-0 flex-1 flex-col' : undefined}>
         <div className={useModalShell ? 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain' : undefined}>
         {!culturePageMode && !politicsPageMode && (
           <div className="px-3 sm:px-4 pb-2">
@@ -681,7 +692,6 @@ const CreatePost: React.FC<CreatePostProps> = ({
               }`}
               maxLength={2000}
               style={{ minHeight: hasMedia ? '36px' : '80px' }}
-              required={!hasMedia}
               rows={1}
             />
           </div>

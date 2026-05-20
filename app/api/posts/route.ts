@@ -87,8 +87,13 @@ export async function POST(request: NextRequest) {
     const mt = (media_type || (urls.length > 0 ? 'image' : 'none')) as string
     const trimmedContent = typeof content === 'string' ? content.trim() : ''
     const hasMediaPayload = urls.length > 0 || mt === 'image' || mt === 'video'
-    if (!hasMediaPayload && trimmedContent.length < 10) {
-      return errorResponse('Add at least 10 characters of text, or attach a photo or video', 400)
+    const hasLocation =
+      typeof location === 'string' && location.trim().length > 0
+    if (!hasMediaPayload && !hasLocation && trimmedContent.length < 10) {
+      return errorResponse(
+        'Add at least 10 characters of text, attach media, or add a location',
+        400
+      )
     }
 
     const isTextOnly = urls.length === 0 && mt === 'none'

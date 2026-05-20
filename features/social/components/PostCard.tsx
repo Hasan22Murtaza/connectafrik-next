@@ -9,6 +9,7 @@ import {
   Bookmark,
   BookmarkX,
   Repeat2,
+  Globe,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -28,6 +29,8 @@ import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
 import { getPostBackgroundPreset, legacyGradientForPostId } from "@/features/social/constants/postBackgrounds";
 import { FeedPostVideo } from "@/features/social/components/FeedPostVideo";
+import { PostLocationCheckIn } from "@/features/social/components/PostLocationCheckIn";
+import { parsePostLocation } from "@/features/social/utils/postLocation";
 interface Post {
   id: string;
   content: string;
@@ -43,6 +46,7 @@ interface Post {
     location?: string;
   };
   media_urls: string[] | null;
+  media_type?: string | null;
   background_id?: string | null;
   location?: string | null;
   likes_count: number;
@@ -219,9 +223,16 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     return !hasMedia && textLength > 0 && textLength <= 150;
   };
 
+  const parsedLocation = parsePostLocation(post.location);
+  const hasPostMedia = !!(post.media_urls && post.media_urls.length > 0);
+  const showLocationCheckIn =
+    !!parsedLocation && !hasPostMedia && !post.reposted_post;
+
   const cardBackgroundPreset = getPostBackgroundPreset(post.background_id);
   const useLegacyShortCard = !cardBackgroundPreset && isShortTextPost();
-  const showContentStyledCard = !!(cardBackgroundPreset || useLegacyShortCard);
+  /** Decorative text backgrounds are disabled when a place is tagged (check-in style). */
+  const showContentStyledCard =
+    !parsedLocation && !!(cardBackgroundPreset || useLegacyShortCard);
 
   const EmojiPicker = dynamic(() => import("emoji-picker-react"), {
     ssr: false,
@@ -662,6 +673,36 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     router.push(`/post/${post.id}`)
   }
 
+  const renderPlainCaption = () => {
+    const plainContent = (post.content || "").trim();
+    if (!plainContent) return null;
+    const plainPreviewLen = 300;
+    const showPlainReadToggle = plainContent.length > plainPreviewLen;
+    const plainVisibleContent =
+      isContentExpanded || !showPlainReadToggle
+        ? post.content
+        : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
+    return (
+      <div className="mb-2">
+        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
+          {plainVisibleContent}
+        </p>
+        {showPlainReadToggle && (
+          <button
+            type="button"
+            className="mt-1 text-sm font-semibold text-gray-500 hover:text-gray-700"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsContentExpanded((v) => !v);
+            }}
+          >
+            {isContentExpanded ? "Read less" : "Read more"}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <article
       ref={postRef}
@@ -699,45 +740,83 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center space-x-2 flex-wrap">
-                <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base !no-underline">
-                  {post.author.full_name}
-                </h3>
-                {post.reposted_post && (
-                  <span className="text-gray-500 text-xs sm:text-sm">reposted</span>
-                )}
-                <span className="text-gray-500 truncate text-xs sm:text-sm">
-                  @{post.author.username}
-                </span>
-                {post.author.country && (
-                  <span className="text-gray-400 truncate text-xs sm:text-sm">
-                    • {post.author.country}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center space-x-2 mt-1 flex-wrap">
-                <time
-                  className="text-gray-500 text-xs sm:text-sm"
-                  dateTime={post.created_at}
-                >
-                  {formatDistanceToNow(new Date(post.created_at), {
-                    addSuffix: true,
-                  })}
-                </time>
-                {post.location && (
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(post.location)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center gap-1 text-orange-500 hover:text-orange-600 text-xs sm:text-sm transition-colors"
-                    title="Open in Google Maps"
-                  >
-                    <MapPin className="w-3 h-3" />
-                    <span className="truncate max-w-[150px] sm:max-w-[200px] underline">{post.location}</span>
-                  </a>
-                )}
-              </div>
+              {showLocationCheckIn && parsedLocation ? (
+                <>
+                  <div className="flex min-w-0 items-baseline text-sm sm:text-[15px] text-gray-900 leading-snug !no-underline">
+                    <span className="font-semibold shrink-0 whitespace-nowrap">
+                      {post.author.full_name}
+                    </span>
+                    <span className="text-gray-600 shrink-0 whitespace-nowrap mx-1">
+                      is at
+                    </span>
+                    <span
+                      className="font-semibold min-w-0 truncate"
+                      title={parsedLocation.display_name}
+                    >
+                      {parsedLocation.display_name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-gray-500 text-xs sm:text-sm">
+                    <time dateTime={post.created_at}>
+                      {formatDistanceToNow(new Date(post.created_at), {
+                        addSuffix: true,
+                      })}
+                    </time>
+                    {parsedLocation.map_title ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="truncate">{parsedLocation.map_title}</span>
+                      </>
+                    ) : null}
+                    <span aria-hidden>·</span>
+                    <Globe className="w-3.5 h-3.5 shrink-0" aria-label="Public" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center space-x-2 flex-wrap">
+                    <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base !no-underline">
+                      {post.author.full_name}
+                    </h3>
+                    {post.reposted_post && (
+                      <span className="text-gray-500 text-xs sm:text-sm">reposted</span>
+                    )}
+                    <span className="text-gray-500 truncate text-xs sm:text-sm">
+                      @{post.author.username}
+                    </span>
+                    {post.author.country && (
+                      <span className="text-gray-400 truncate text-xs sm:text-sm">
+                        • {post.author.country}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2 mt-1 flex-wrap">
+                    <time
+                      className="text-gray-500 text-xs sm:text-sm"
+                      dateTime={post.created_at}
+                    >
+                      {formatDistanceToNow(new Date(post.created_at), {
+                        addSuffix: true,
+                      })}
+                    </time>
+                    {parsedLocation && hasPostMedia && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsedLocation.display_name)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-orange-500 hover:text-orange-600 text-xs sm:text-sm transition-colors"
+                        title="Open in Google Maps"
+                      >
+                        <MapPin className="w-3 h-3" />
+                        <span className="truncate max-w-[150px] sm:max-w-[200px] underline">
+                          {parsedLocation.display_name}
+                        </span>
+                      </a>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </button>
         </div>
@@ -949,6 +1028,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         </div>
       </div>
 
+      {/* Caption above location check-in map */}
+      {!isEditing && showLocationCheckIn && renderPlainCaption()}
+
+      {!isEditing && showLocationCheckIn && parsedLocation && (
+        <PostLocationCheckIn location={parsedLocation} />
+      )}
+
       {/* Edit post — CreatePost renders Facebook-style modal shell */}
       {isEditing && (
         <CreatePost
@@ -1011,35 +1097,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               </div>
             );
           })()}
-          {!showContentStyledCard && (() => {
-            const plainContent = (post.content || "").trim();
-            if (!plainContent) return null;
-            const plainPreviewLen = 300;
-            const showPlainReadToggle = plainContent.length > plainPreviewLen;
-            const plainVisibleContent =
-              isContentExpanded || !showPlainReadToggle
-                ? post.content
-                : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
-            return (
-              <div className="mb-2">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
-                  {plainVisibleContent}
-                </p>
-                {showPlainReadToggle && (
-                  <button
-                    type="button"
-                    className="mt-1 text-sm font-semibold text-gray-500 hover:text-gray-700"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsContentExpanded((v) => !v);
-                    }}
-                  >
-                    {isContentExpanded ? "Read less" : "Read more"}
-                  </button>
-                )}
-              </div>
-            );
-          })()}
+          {!showContentStyledCard && !showLocationCheckIn && renderPlainCaption()}
 
           {post.reposted_post ? (
             <div
