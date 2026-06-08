@@ -35,8 +35,6 @@ import toast from "react-hot-toast";
 
 import ProductReviews from "@/features/marketplace/components/ProductReviews";
 
-import SmartCheckout from "@/features/marketplace/components/SmartCheckout";
-
 import { startMarketplaceConversation } from "@/features/marketplace/services/marketplaceInboxService";
 
 import { buildMarketplaceSeedThread } from "@/features/marketplace/utils/marketplaceChatThread";
@@ -70,8 +68,6 @@ const ProductDetailPage: React.FC = () => {
   const [isSaved, setIsSaved] = useState(false);
 
   const [selectedImage, setSelectedImage] = useState(0);
-
-  const [showCheckout, setShowCheckout] = useState(false);
 
   const [contactingSeller, setContactingSeller] = useState(false);
 
@@ -393,7 +389,7 @@ const ProductDetailPage: React.FC = () => {
 
     if (isOutOfStock || isUnavailable) return;
 
-    setShowCheckout(true);
+    router.push(`/marketplace/${id}/checkout`);
 
   };
 
@@ -898,26 +894,6 @@ const ProductDetailPage: React.FC = () => {
       </div>
 
 
-
-      <SmartCheckout
-
-        product={product}
-
-        isOpen={showCheckout}
-
-        onClose={() => setShowCheckout(false)}
-
-        onSuccess={() => {
-
-          setShowCheckout(false);
-
-          toast.success("Order placed successfully!");
-
-          router.push("/my-orders");
-
-        }}
-
-      />
 
     </div>
 

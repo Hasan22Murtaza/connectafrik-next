@@ -1,16 +1,17 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import type { Stripe, StripeElements } from '@stripe/stripe-js'
-import { X, ShoppingCart, MapPin, Phone, Info } from 'lucide-react'
+import { Phone } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import { Product } from '@/shared/types'
-import { getStripe, createStripePaymentIntent, calculateStripeFees } from '@/features/marketplace/services/stripeService'
+import { getStripe, createStripePaymentIntent } from '@/features/marketplace/services/stripeService'
+import CheckoutPageShell from '@/features/marketplace/components/CheckoutPageShell'
 import PhoneInput from 'react-phone-number-input'
 import 'react-phone-number-input/style.css'
-// Email functions moved to API routes
+import toast from 'react-hot-toast'
+
 const sendOrderConfirmationEmail = async (buyerEmail: string, orderDetails: any) => {
   try {
     const response = await fetch('/api/email/order-confirmation', {
@@ -38,36 +39,32 @@ const sendNewOrderNotificationEmail = async (sellerEmail: string, orderDetails: 
     return false
   }
 }
-import toast from 'react-hot-toast'
 
 interface StripeCheckoutProps {
   product: Product
-  isOpen: boolean
-  onClose: () => void
+  onCancel: () => void
   onSuccess: () => void
 }
 
-// Payment form component (must be inside Elements provider)
+const PHONE_INPUT_CLASS =
+  '[&_.PhoneInput]:flex [&_.PhoneInput]:items-center [&_.PhoneInput]:border [&_.PhoneInput]:border-gray-300 [&_.PhoneInput]:rounded-xl [&_.PhoneInput]:bg-gray-50 [&_.PhoneInput]:px-3 [&_.PhoneInput]:py-3 [&_.PhoneInputInput]:w-full [&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:focus:outline-none [&_.PhoneInputInput]:focus:ring-0 [&_.PhoneInputCountry]:mr-2 [&_.PhoneInput]:focus-within:border-primary-500 [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.12)]'
+
 const CheckoutForm: React.FC<{
   product: Product
   quantity: number
   totalAmount: number
-  shippingAddress: any
   buyerPhone: string
   notes: string
-  clientSecret: string
   onSuccess: () => void
-  onClose: () => void
+  onCancel: () => void
 }> = ({
   product,
   quantity,
   totalAmount,
-  shippingAddress,
   buyerPhone,
   notes,
-  clientSecret: _clientSecret,
   onSuccess,
-  onClose
+  onCancel,
 }) => {
   const { user } = useAuth()
   const stripe = useStripe()
@@ -77,14 +74,11 @@ const CheckoutForm: React.FC<{
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user) {
-      return
-    }
+    if (!user) return
 
     setIsProcessing(true)
 
     try {
-      // Confirm payment for real Stripe payments
       if (!stripe || !elements) {
         toast.error('Payment form is still initializing. Please wait a moment.')
         setIsProcessing(false)
@@ -94,7 +88,7 @@ const CheckoutForm: React.FC<{
       const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: typeof window !== 'undefined' ? window.location.href : '/marketplace', // Won't actually redirect
+          return_url: typeof window !== 'undefined' ? window.location.href : '/marketplace',
         },
         redirect: 'if_required'
       })
@@ -116,13 +110,12 @@ const CheckoutForm: React.FC<{
           unit_price: product.price,
           total_amount: totalAmount,
           currency: product.currency || 'USD',
-          shipping_address: shippingAddress.street ? shippingAddress : null,
+          shipping_address: null,
           buyer_phone: buyerPhone || null,
           notes: notes || null,
         })
 
         const order = result.data
-
         const buyerEmail = user?.user_metadata?.email || user?.email || 'support@connectafrik.com'
         const buyerName = user?.user_metadata?.full_name || user?.id || 'Customer'
         const sellerName = product.seller?.full_name || product.seller?.id || 'Seller'
@@ -150,7 +143,6 @@ const CheckoutForm: React.FC<{
 
         toast.success('Payment successful! Order created.')
         onSuccess()
-        onClose()
       } else {
         toast.error('Payment incomplete')
       }
@@ -163,29 +155,34 @@ const CheckoutForm: React.FC<{
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div>
+        <h3 className="text-base font-semibold text-gray-900">Payment</h3>
+        <p className="text-sm text-gray-500 mt-1">Pay securely with card or supported wallets.</p>
+      </div>
+
       <PaymentElement />
 
-      <div className="flex space-x-3">
+      <div className="flex flex-col-reverse sm:flex-row gap-3 pt-2">
         <button
           type="button"
-          onClick={onClose}
+          onClick={onCancel}
           disabled={isProcessing}
-          className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="flex-1 px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           type="submit"
-          disabled={isProcessing || (!stripe || !elements)}
-          className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isProcessing || !stripe || !elements}
+          className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isProcessing ? 'Processing...' : 'Pay Now'}
+          {isProcessing ? 'Processing...' : 'Complete purchase'}
         </button>
       </div>
 
       <p className="text-xs text-center text-gray-500">
-        🔒 Secure payment powered by Stripe. Your payment information is encrypted and secure.
+        Secure payment powered by Stripe.
       </p>
     </form>
   )
@@ -193,19 +190,11 @@ const CheckoutForm: React.FC<{
 
 const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   product,
-  isOpen,
-  onClose,
+  onCancel,
   onSuccess
 }) => {
   const { user } = useAuth()
   const [quantity, setQuantity] = useState(1)
-  const [shippingAddress, setShippingAddress] = useState({
-    street: '',
-    city: '',
-    state: '',
-    country: '',
-    postal_code: ''
-  })
   const [buyerPhone, setBuyerPhone] = useState('')
   const [notes, setNotes] = useState('')
   const [clientSecret, setClientSecret] = useState<string | null>(null)
@@ -214,360 +203,113 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
   const totalAmount = product.price * quantity
   const stripePromise = getStripe()
 
-  // Calculate commission breakdown
-  const commissionBreakdown = useMemo(() => {
-    const fees = calculateStripeFees(totalAmount, product.currency || 'USD')
+  const isFormValid = () =>
+    quantity > 0 &&
+    quantity <= (product.stock_quantity || Infinity) &&
+    buyerPhone.trim() !== ''
 
-    // Commission after platform's fee share
-    const commission_amount = Math.round((totalAmount * 0.05 - fees.platform_fee_share) * 100) / 100
-
-    // Seller payout after their fee share
-    const seller_payout = Math.round((totalAmount * 0.95 - fees.seller_fee_share) * 100) / 100
-
-    return {
-      total_amount: totalAmount,
-      commission_rate: 0.05,
-      commission_amount,
-      seller_payout,
-      ...fees
-    }
-  }, [totalAmount, product.currency])
-
-  // Create payment intent when form is valid
   useEffect(() => {
-    if (isOpen && user && buyerPhone.trim() && !clientSecret) {
-      setIsLoadingPayment(true)
-      createStripePaymentIntent(totalAmount, product.currency || 'USD', {
-        product_id: product.id,
-        product_title: product.title,
-        quantity: quantity.toString(),
-        buyer_id: user!.id,
-        buyer_email: user?.email || 'support@connectafrik.com'
-      }).then(result => {
-        if (result) {
-          setClientSecret(result.clientSecret)
-        } else {
-          toast.error('Failed to initialize payment')
-        }
-        setIsLoadingPayment(false)
-      })
+    setClientSecret(null)
+  }, [quantity, buyerPhone])
+
+  useEffect(() => {
+    if (!user || !buyerPhone.trim() || !isFormValid()) return
+
+    let cancelled = false
+    setIsLoadingPayment(true)
+
+    createStripePaymentIntent(totalAmount, product.currency || 'USD', {
+      product_id: product.id,
+      product_title: product.title,
+      quantity: quantity.toString(),
+      buyer_id: user.id,
+      buyer_email: user?.email || 'support@connectafrik.com'
+    }).then(result => {
+      if (cancelled) return
+      if (result) {
+        setClientSecret(result.clientSecret)
+      } else {
+        toast.error('Failed to initialize payment')
+      }
+      setIsLoadingPayment(false)
+    })
+
+    return () => {
+      cancelled = true
     }
-  }, [isOpen, user, buyerPhone, totalAmount, product, quantity, clientSecret])
+  }, [user, buyerPhone, totalAmount, product, quantity])
 
-  if (!isOpen || !user) return null
-
-  const isFormValid = () => {
-    return (
-      quantity > 0 &&
-      quantity <= (product.stock_quantity || Infinity) &&
-      buyerPhone.trim() !== ''
-    )
-  }
+  if (!user) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2" onClick={onClose}>
-      <div className=" rounded-xl max-w-2xl w-full  overflow-hidden " onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="sticky top-0 bg-primary-600 px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <ShoppingCart className="w-5 h-5 text-white" />
-            <h2 className="text-xl font-semibold text-white">Checkout</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-white hover:text-gray-400 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <CheckoutPageShell
+      product={product}
+      quantity={quantity}
+      onQuantityChange={setQuantity}
+      onBack={onCancel}
+    >
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">Contact details</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            The seller will reach you on this number about your order.
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="sm:p-6 p-4 space-y-6 bg-white overflow-y-auto max-h-[70vh]">
-          {/* Product Summary */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-start space-x-4">
-              {product.images?.[0] && (
-                <img
-                  src={product.images[0]}
-                  alt={product.title}
-                  className="w-20 h-20 object-cover rounded-lg"
-                />
-              )}
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{product.title}</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Sold by: {product.seller?.full_name || product.seller?.username || 'Unknown Seller'}
-                </p>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-lg font-bold text-primary-600">
-                    {['USD'].includes(product.currency) && '$'}
-                    {['EUR'].includes(product.currency as any) && '€'}
-                    {['GBP'].includes(product.currency as any) && '£'}
-                    {product.price.toLocaleString()}
-                  </span>
-                  {product.stock_quantity !== null && product.stock_quantity !== undefined && (
-                    <span className="text-sm text-gray-500">
-                      {product.stock_quantity} in stock
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quantity */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quantity *
-            </label>
-            <input
-              type="number"
-              min="1"
-              max={product.stock_quantity || undefined}
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              className="input-field"
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Phone className="w-4 h-4 inline mr-1" />
+            Phone number
+          </label>
+          <div className={PHONE_INPUT_CLASS}>
+            <PhoneInput
+              international
+              defaultCountry="US"
+              value={buyerPhone}
+              onChange={(value) => setBuyerPhone(value || '')}
+              placeholder="Enter your phone number"
+              className="w-full"
             />
           </div>
-
-          {/* Contact Phone */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Phone className="w-4 h-4 inline mr-1" />
-              Phone Number *
-            </label>
-            <div onClick={(e) => e.stopPropagation()}
-              className="
-                        [&_.PhoneInput]:flex
-                        [&_.PhoneInput]:items-center
-                        [&_.PhoneInput]:border
-                        [&_.PhoneInput]:border-gray-300
-                        [&_.PhoneInput]:rounded-md
-                        [&_.PhoneInput]:bg-[#F9FAFB]
-                        [&_.PhoneInput]:px-2
-                        [&_.PhoneInput]:py-3
-
-                        [&_.PhoneInputInput]:w-full
-                        [&_.PhoneInputInput]:bg-transparent
-                        [&_.PhoneInputInput]:focus:outline-none
-                        [&_.PhoneInputInput]:focus:ring-0
-
-                        [&_.PhoneInputCountry]:mr-2
-
-                        [&_.PhoneInput]:focus-within:border-orange-500
-                        [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]
-                      ">
-              <PhoneInput
-                international
-                defaultCountry="US"
-                value={buyerPhone}
-                onChange={(value) => setBuyerPhone(value || '')}
-                placeholder="Enter your phone number"
-                className="w-full"
-                // numberInputProps={{
-                //   className: "input-field"
-                // }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Seller will contact you on this number
-            </p>
-          </div>
-
-          {/* Shipping Address (Optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <MapPin className="w-4 h-4 inline mr-1" />
-              Shipping Address (Optional)
-            </label>
-            <div className="space-y-3">
-              <input
-                type="text"
-                placeholder="Street Address"
-                value={shippingAddress.street}
-                onChange={(e) => setShippingAddress({ ...shippingAddress, street: e.target.value })}
-                className="input-field"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder="City"
-                  value={shippingAddress.city}
-                  onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                  className="input-field"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <input
-                  type="text"
-                  placeholder="State/Region"
-                  value={shippingAddress.state}
-                  onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                  className="input-field"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  placeholder="Country"
-                  value={shippingAddress.country}
-                  onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
-                  className="input-field"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <input
-                  type="text"
-                  placeholder="Postal Code"
-                  value={shippingAddress.postal_code}
-                  onChange={(e) => setShippingAddress({ ...shippingAddress, postal_code: e.target.value })}
-                  className="input-field"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Special Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Special Instructions (Optional)
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any special requests or delivery instructions..."
-              rows={3}
-              className="input-field resize-none"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
-          {/* Order Summary */}
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Order Summary</h3>
-
-            <div className="space-y-2">
-              {/* Subtotal */}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Subtotal ({quantity} item{quantity > 1 ? 's' : ''})</span>
-                <span className="font-medium">
-                  {product.currency === 'USD' && '$'}
-                  {(product.currency as any) === 'EUR' && '€'}
-                  {(product.currency as any) === 'GBP' && '£'}
-                  {totalAmount.toLocaleString()}
-                </span>
-              </div>
-
-              {/* Fee Breakdown */}
-              <div className="bg-white rounded-md p-3 border border-primary-200">
-                <div className="flex items-start gap-2 mb-3">
-                  <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-gray-600">
-                    Payment fees are split fairly: ConnectAfrik pays 5%, seller pays 95% of gateway charges.
-                  </p>
-                </div>
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between text-gray-500">
-                    <span>Payment Gateway Fee (Stripe)</span>
-                    <span className="font-medium">
-                      {product.currency === 'USD' && '$'}
-                      {(product.currency as any) === 'EUR' && '€'}
-                      {(product.currency as any) === 'GBP' && '£'}
-                      {commissionBreakdown.gateway_fee?.toLocaleString() || '0'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pl-4 text-gray-400 text-[11px]">
-                    <span>• Platform share (5%)</span>
-                    <span>
-                      {product.currency === 'USD' && '$'}
-                      {(product.currency as any) === 'EUR' && '€'}
-                      {(product.currency as any) === 'GBP' && '£'}
-                      {commissionBreakdown.platform_fee_share?.toLocaleString() || '0'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between pl-4 text-gray-400 text-[11px]">
-                    <span>• Seller share (95%)</span>
-                    <span>
-                      {product.currency === 'USD' && '$'}
-                      {(product.currency as any) === 'EUR' && '€'}
-                      {(product.currency as any) === 'GBP' && '£'}
-                      {commissionBreakdown.seller_fee_share?.toLocaleString() || '0'}
-                    </span>
-                  </div>
-                  <div className="border-t border-gray-200 my-2"></div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Platform Fee (5%)</span>
-                    <span className="text-gray-700 font-medium">
-                      {product.currency === 'USD' && '$'}
-                      {(product.currency as any) === 'EUR' && '€'}
-                      {(product.currency as any) === 'GBP' && '£'}
-                      {commissionBreakdown.commission_amount.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-500">Seller Receives</span>
-                    <span className="text-green-700 font-medium">
-                      {product.currency === 'USD' && '$'}
-                      {(product.currency as any) === 'EUR' && '€'}
-                      {(product.currency as any) === 'GBP' && '£'}
-                      {commissionBreakdown.seller_payout.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-primary-300 pt-3 mt-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-gray-900">You Pay</span>
-                <span className="text-2xl font-bold text-primary-600">
-                  {product.currency === 'USD' && '$'}
-                  {(product.currency as any) === 'EUR' && '€'}
-                  {(product.currency as any) === 'GBP' && '£'}
-                  {totalAmount.toLocaleString()}
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Payment released to seller upon delivery confirmation
-              </p>
-            </div>
-          </div>
-
-          {/* Stripe Payment Form */}
-          {isLoadingPayment && (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-              <p className="text-sm text-gray-500 mt-2">Initializing payment...</p>
-            </div>
-          )}
-
-          {clientSecret && !isLoadingPayment && stripePromise && (
-            <Elements stripe={stripePromise} options={{ clientSecret: clientSecret! }}>
-              <CheckoutForm
-                product={product}
-                quantity={quantity}
-                totalAmount={totalAmount}
-                shippingAddress={shippingAddress}
-                buyerPhone={buyerPhone}
-                notes={notes}
-                clientSecret={clientSecret!}
-                onSuccess={onSuccess}
-                onClose={onClose}
-              />
-            </Elements>
-          )}
-
-          {!isFormValid() && !isLoadingPayment && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800">
-                Please fill in your phone number to continue
-              </p>
-            </div>
-          )}
         </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Order notes (optional)
+          </label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Anything the seller should know before fulfilling your order..."
+            rows={3}
+            className="input-field resize-none rounded-xl"
+          />
+        </div>
+
+      
+
+        {isFormValid() && isLoadingPayment && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto" />
+            <p className="text-sm text-gray-500 mt-3">Preparing secure payment...</p>
+          </div>
+        )}
+
+        {isFormValid() && clientSecret && !isLoadingPayment && stripePromise && (
+          <Elements stripe={stripePromise} options={{ clientSecret }}>
+            <CheckoutForm
+              product={product}
+              quantity={quantity}
+              totalAmount={totalAmount}
+              buyerPhone={buyerPhone}
+              notes={notes}
+              onSuccess={onSuccess}
+              onCancel={onCancel}
+            />
+          </Elements>
+        )}
       </div>
-    </div>
+    </CheckoutPageShell>
   )
 }
 

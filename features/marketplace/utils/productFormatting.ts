@@ -3,6 +3,8 @@ import { MarketplaceSort } from "../constants/marketplaceConstants";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: "$",
+  EUR: "€",
+  GBP: "£",
   GHS: "₵",
   NGN: "₦",
   KES: "KSh",

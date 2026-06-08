@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { MapPin, Bookmark, Eye, Tag, Package, ShoppingCart, MessageCircle, Share2 } from 'lucide-react'
 import { Product } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
-import SmartCheckout from './SmartCheckout'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant } from '@/features/chat/services/supabaseMessagingService'
 import { toast } from 'react-hot-toast'
@@ -16,9 +16,9 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPurchaseSuccess }) => {
-  const [showCheckout, setShowCheckout] = useState(false)
   const [isContactingseller, setIsContactingeller] = useState(false)
   const { user } = useAuth()
+  const router = useRouter()
   const { startChatWithMembers } = useProductionChat()
 
   const getCurrencySymbol = (currency: string) => {
@@ -240,12 +240,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
           <button
             onClick={(e) => {
               e.stopPropagation()
+              if (!user) {
+                toast.error('Please sign in to purchase')
+                router.push(`/signin?redirect=/marketplace/${product.id}/checkout`)
+                return
+              }
               if (isOwnProduct) {
                 toast.error('This is your own product')
                 return
               }
               if (isOutOfStock || isUnavailable) return
-              setShowCheckout(true)
+              router.push(`/marketplace/${product.id}/checkout`)
             }}
             disabled={isOutOfStock || isUnavailable || isOwnProduct}
             className={`py-2 px-2 rounded-lg  flex items-center justify-center space-x-1 transition-colors text-sm  ${
@@ -270,17 +275,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
           </button>
         </div>
       </div>
-
-      {/* Checkout Modal - Auto-selects Paystack or Stripe based on currency */}
-      <SmartCheckout
-        product={product}
-        isOpen={showCheckout}
-        onClose={() => setShowCheckout(false)}
-        onSuccess={() => {
-          setShowCheckout(false)
-          onPurchaseSuccess?.()
-        }}
-      />
     </div>
   )
 }
