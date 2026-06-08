@@ -4,23 +4,27 @@ import React, { useEffect, useState } from "react";
 
 // ============== Hooks ==============
 
-/** Shimmer count by breakpoint: mobile 2, sm 4, lg 6. Use for grids (groups, marketplace). */
+/** Shimmer count by breakpoint: mobile 4, sm 6, lg 8, 2xl 12. Use for marketplace browse grids. */
 export function useShimmerCount() {
-  const [count, setCount] = useState(2);
+  const [count, setCount] = useState(4);
   useEffect(() => {
     const mqSm = window.matchMedia("(min-width: 640px)");
     const mqLg = window.matchMedia("(min-width: 1024px)");
+    const mq2xl = window.matchMedia("(min-width: 1536px)");
     const update = () => {
-      if (mqLg.matches) setCount(6);
-      else if (mqSm.matches) setCount(4);
-      else setCount(2);
+      if (mq2xl.matches) setCount(12);
+      else if (mqLg.matches) setCount(8);
+      else if (mqSm.matches) setCount(6);
+      else setCount(4);
     };
     update();
     mqSm.addEventListener("change", update);
     mqLg.addEventListener("change", update);
+    mq2xl.addEventListener("change", update);
     return () => {
       mqSm.removeEventListener("change", update);
       mqLg.removeEventListener("change", update);
+      mq2xl.removeEventListener("change", update);
     };
   }, []);
   return count;
@@ -271,24 +275,14 @@ export function GroupDetailPageShimmer() {
 /** Product card grid shimmer. Pass count from useShimmerCount(). */
 export function MarketplaceGridShimmer({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="bg-white rounded-lg shadow-md overflow-hidden w-full min-w-0 flex flex-col"
-        >
-          <div className="h-40 sm:h-48 w-full animate-shimmer flex-shrink-0" />
-          <div className="p-3 sm:p-4 space-y-2 min-w-0">
-            <div className="h-4 w-3/4 max-w-full animate-shimmer rounded" />
-            <div className="h-4 w-1/2 max-w-full animate-shimmer rounded" />
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <div className="h-6 w-20 sm:w-24 animate-shimmer rounded flex-shrink-0" />
-              <div className="h-3 w-14 animate-shimmer rounded shrink-0" />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <div className="h-3 w-16 max-w-full animate-shimmer rounded shrink-0" />
-              <div className="h-3 w-12 animate-shimmer rounded shrink-0" />
-            </div>
+        <div key={i} className="w-full min-w-0 flex flex-col">
+          <div className="aspect-square w-full animate-shimmer rounded-lg flex-shrink-0" />
+          <div className="pt-2 space-y-2 min-w-0">
+            <div className="h-4 w-16 animate-shimmer rounded" />
+            <div className="h-3 w-full max-w-full animate-shimmer rounded" />
+            <div className="h-3 w-2/3 max-w-full animate-shimmer rounded" />
           </div>
         </div>
       ))}

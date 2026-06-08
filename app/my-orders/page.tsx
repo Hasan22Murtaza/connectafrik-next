@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ShoppingBag,
   Package,
@@ -62,6 +62,7 @@ interface OrderStats {
 const MyOrders: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"purchases" | "sales">(
     "purchases"
   );
@@ -74,6 +75,12 @@ const MyOrders: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const shimmerCount = useShimmerCountMd();
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "sales") setActiveTab("sales");
+    else if (tab === "purchases") setActiveTab("purchases");
+  }, [searchParams]);
 
   useEffect(() => {
     if (user?.id) {

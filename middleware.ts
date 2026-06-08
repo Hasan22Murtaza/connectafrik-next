@@ -123,7 +123,6 @@ export async function middleware(request: NextRequest) {
     '/feed',
     '/friends',
     '/groups',
-    '/marketplace',
     '/profile',
     '/saved',
     '/memories',
@@ -139,18 +138,27 @@ export async function middleware(request: NextRequest) {
     '/privacy-policy',
     '/terms-of-service',
     '/support',
+    '/marketplace',
   ]
+
+  const isMarketplaceHubRoute =
+    pathname.startsWith('/marketplace/selling') ||
+    pathname.startsWith('/marketplace/buying')
+  const isMarketplaceProductDetail =
+    /^\/marketplace\/[^/]+$/.test(pathname) && !isMarketplaceHubRoute
 
   // Check if the current path is an auth route
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
   
   // Check if the current path is a protected route
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route)) ||
+  const isProtectedRoute =
+    protectedRoutes.some((route) => pathname.startsWith(route)) ||
     pathname.startsWith('/user/') ||
-    pathname.startsWith('/marketplace/')
+    isMarketplaceHubRoute
 
   // Check if the current path is a public route
-  const isPublicRoute = publicRoutes.some((route) => pathname === route)
+  const isPublicRoute =
+    publicRoutes.some((route) => pathname === route) || isMarketplaceProductDetail
 
   // If user is authenticated and tries to access auth routes, redirect to feed
   if (session && isAuthRoute) {

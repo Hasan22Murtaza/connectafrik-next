@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const category = searchParams.get('category')
     const currency = searchParams.get('currency')
+    const country = searchParams.get('country')
     const search = searchParams.get('search')
+    const sort = searchParams.get('sort') || 'newest'
     const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
     const limit = Number.isNaN(parsedLimit) ? 20 : Math.min(Math.max(parsedLimit, 1), 100)
@@ -19,6 +21,7 @@ export async function GET(request: NextRequest) {
     const from = page * limit
     const to = from + limit - 1
     const seller_id = searchParams.get('seller_id')
+    const includeUnavailable = searchParams.get('include_unavailable') === 'true'
 
     let userId: string | null = null
     let supabase
@@ -34,13 +37,32 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('products')
       .select('*')
-      .eq('is_available', true)
-      .order('created_at', { ascending: false })
+
+    if (!(seller_id && includeUnavailable && userId === seller_id)) {
+      query = query.eq('is_available', true)
+    }
 
     if (category) query = query.eq('category', category)
     if (currency) query = query.eq('currency', currency)
+    if (country) query = query.ilike('country', `%${country}%`)
     if (seller_id) query = query.eq('seller_id', seller_id)
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
+
+    switch (sort) {
+      case 'price_asc':
+        query = query.order('price', { ascending: true })
+        break
+      case 'price_desc':
+        query = query.order('price', { ascending: false })
+        break
+      case 'featured':
+        query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false })
+        break
+      case 'newest':
+      default:
+        query = query.order('created_at', { ascending: false })
+        break
+    }
     query = query.range(from, to)
 
     const { data: products, error } = await query

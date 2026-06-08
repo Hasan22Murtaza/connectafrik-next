@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import {
   ArrowLeft,
   ShoppingBag,
+  ShoppingCart,
   Heart,
   Share2,
   MapPin,
@@ -13,7 +14,6 @@ import {
   Truck,
   Shield,
   Eye,
-  CalendarHeart,
   Calendar,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +22,7 @@ import { apiClient } from "@/lib/api-client";
 import { Product } from "@/shared/types";
 import toast from "react-hot-toast";
 import ProductReviews from "@/features/marketplace/components/ProductReviews";
+import SmartCheckout from "@/features/marketplace/components/SmartCheckout";
 import { ProductDetailPageShimmer } from "@/shared/components/ui/ShimmerLoaders";
 
 const ProductDetailPage: React.FC = () => {
@@ -34,6 +35,7 @@ const ProductDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -166,6 +168,23 @@ const ProductDetailPage: React.FC = () => {
 
   const images = product.images || [];
   const hasMultipleImages = images.length > 1;
+  const isOutOfStock = product.stock_quantity === 0;
+  const isUnavailable = !product.is_available;
+  const isOwnProduct = user?.id === product.seller_id;
+
+  const handleBuyNow = () => {
+    if (!user) {
+      toast.error("Please sign in to purchase");
+      router.push(`/signin?redirect=/marketplace/${id}`);
+      return;
+    }
+    if (isOwnProduct) {
+      toast.error("This is your own product");
+      return;
+    }
+    if (isOutOfStock || isUnavailable) return;
+    setShowCheckout(true);
+  };
 
   return (
     <div className="min-h-screen max-w-full 2xl:max-w-screen-2xl mx-auto w-full  px-2 sm:px-4 min-w-0">
@@ -307,20 +326,39 @@ const ProductDetailPage: React.FC = () => {
               {product.currency} {product.price.toLocaleString()}
             </div>
 
-            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={handleBuyNow}
+                disabled={isOutOfStock || isUnavailable || isOwnProduct}
+                className={`flex-1 py-3 px-6 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm sm:text-base transition-colors ${
+                  isOutOfStock || isUnavailable || isOwnProduct
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-primary-600 text-white hover:bg-primary-700"
+                }`}
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {isOwnProduct
+                  ? "Your Product"
+                  : isOutOfStock
+                  ? "Out of Stock"
+                  : isUnavailable
+                  ? "Unavailable"
+                  : "Buy Now"}
+              </button>
+              <button
+                onClick={handleContactSeller}
+                className="flex-1 py-3 px-6 rounded-lg border-2 border-primary-600 text-primary-600 hover:bg-primary-50 font-semibold text-sm sm:text-base transition-colors"
+              >
+                Message Seller
+              </button>
+            </div>
 
             {/* Seller Info */}
             <div className="bg-white  rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-3 sm:p-4 min-w-0">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3 sm:mb-4">
+              <div className="mb-3 sm:mb-4">
                 <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                   Seller Information
                 </h3>
-                <button
-                  onClick={handleContactSeller}
-                  className="btn-primary text-xs sm:text-sm w-full sm:w-auto shrink-0"
-                >
-                  Contact Seller
-                </button>
               </div>
               <div className="flex items-start gap-3 min-w-0">
                 <img
@@ -397,6 +435,17 @@ const ProductDetailPage: React.FC = () => {
           />
         </div>
       </div>
+
+      <SmartCheckout
+        product={product}
+        isOpen={showCheckout}
+        onClose={() => setShowCheckout(false)}
+        onSuccess={() => {
+          setShowCheckout(false);
+          toast.success("Order placed successfully!");
+          router.push("/my-orders");
+        }}
+      />
     </div>
   );
 };
