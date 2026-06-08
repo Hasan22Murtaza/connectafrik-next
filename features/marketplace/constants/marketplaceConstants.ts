@@ -19,14 +19,41 @@ import {
   ChevronRight,
   ShoppingBag,
   Tag as TagIcon,
+  Inbox,
 } from "lucide-react";
 
 export type MarketplaceSort = "newest" | "price-asc" | "price-desc" | "featured";
-export type MarketplaceHub = "browse" | "buying" | "selling";
+export type MarketplaceHub = "browse" | "inbox" | "buying" | "selling";
 export type BuyingTab = "activity" | "saved" | "orders";
+export type MarketplaceInboxRole = "selling" | "buying";
+export type MarketplaceInboxLabel =
+  | "all"
+  | "pending_payment"
+  | "paid"
+  | "to_be_shipped"
+  | "shipped"
+  | "cash_on_delivery"
+  | "completed";
+
+export const MARKETPLACE_INBOX_LABELS: { value: MarketplaceInboxLabel; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "pending_payment", label: "Pending payment" },
+  { value: "paid", label: "Paid" },
+  { value: "to_be_shipped", label: "To be shipped" },
+  { value: "shipped", label: "Shipped" },
+  { value: "cash_on_delivery", label: "Cash on delivery" },
+  { value: "completed", label: "Completed" },
+];
 
 export const MARKETPLACE_HUB_LINKS = [
   { hub: "browse" as const, label: "Browse all", icon: Home, path: "/marketplace" },
+  {
+    hub: "inbox" as const,
+    label: "Inbox",
+    icon: Inbox,
+    path: "/marketplace/inbox",
+    requiresAuth: true,
+  },
   {
     hub: "buying" as const,
     label: "Buying",
@@ -103,5 +130,40 @@ export const MARKETPLACE_COUNTRIES = [
   { value: "France", label: "France" },
   { value: "Germany", label: "Germany" },
 ];
+
+export const CREATE_LISTING_PATH = "/marketplace/selling/create";
+
+export const PRODUCT_CATEGORIES = [
+  { value: "fashion", label: "Fashion" },
+  { value: "crafts", label: "Crafts" },
+  { value: "electronics", label: "Electronics" },
+  { value: "food", label: "Food & Beverages" },
+  { value: "beauty", label: "Beauty & Care" },
+  { value: "home", label: "Home & Living" },
+  { value: "books", label: "Books" },
+  { value: "art", label: "Art" },
+  { value: "jewelry", label: "Jewelry" },
+  { value: "services", label: "Services" },
+  { value: "other", label: "Other" },
+];
+
+export const PRODUCT_CURRENCIES = [
+  { value: "USD", label: "USD ($)" },
+  { value: "GHS", label: "GHS (₵)" },
+  { value: "NGN", label: "NGN (₦)" },
+  { value: "KES", label: "KES (KSh)" },
+  { value: "ZAR", label: "ZAR (R)" },
+  { value: "XOF", label: "XOF (CFA)" },
+  { value: "XAF", label: "XAF (FCFA)" },
+];
+
+export const PRODUCT_CONDITIONS = [
+  { value: "new", label: "New" },
+  { value: "like-new", label: "Like New" },
+  { value: "good", label: "Good" },
+  { value: "fair", label: "Fair" },
+];
+
+export const LISTING_COUNTRIES = MARKETPLACE_COUNTRIES.filter((c) => c.value !== "");
 
 export { ChevronRight };

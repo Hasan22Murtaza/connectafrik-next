@@ -7,6 +7,7 @@ import { User } from "@supabase/supabase-js";
 import {
   MARKETPLACE_HUB_LINKS,
   MarketplaceHub,
+  CREATE_LISTING_PATH,
   ChevronRight,
 } from "../constants/marketplaceConstants";
 import toast from "react-hot-toast";
@@ -110,7 +111,13 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
           {user ? (
             <button
               type="button"
-              onClick={onCreateListing}
+              onClick={() => {
+                if (onCreateListing) {
+                  onCreateListing();
+                } else {
+                  router.push(CREATE_LISTING_PATH);
+                }
+              }}
               className="w-full mt-5 mb-2 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-primary-50 text-primary-600 font-semibold text-sm hover:bg-primary-100 transition-colors"
             >
               <Plus className="w-4 h-4" />

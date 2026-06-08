@@ -1,17 +1,22 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import CreateProductModal from "@/features/marketplace/components/CreateProductModal-v2";
 import MarketplaceHubNav from "@/features/marketplace/components/MarketplaceHubNav";
 import ProductBrowseCard from "@/features/marketplace/components/ProductBrowseCard";
 import {
+  CREATE_LISTING_PATH,
   MARKETPLACE_CATEGORIES,
   MARKETPLACE_COUNTRIES,
   MARKETPLACE_CURRENCIES,
   MARKETPLACE_SORT_OPTIONS,
   MarketplaceSort,
 } from "@/features/marketplace/constants/marketplaceConstants";
+import {
+  formatCurrencyDisplay,
+  getCurrencyForCountry,
+} from "@/features/marketplace/utils/countryCurrency";
 import { apiClient } from "@/lib/api-client";
+import { useProfile } from "@/shared/hooks/useProfile";
 import { Product } from "@/shared/types";
 import {
   useShimmerCount,
@@ -27,7 +32,7 @@ import {
   Search,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useEffect, useRef, useState, Suspense } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import toast from "react-hot-toast";
 
 const PAGE_SIZE = 24;
@@ -44,6 +49,7 @@ const mapSortToApi = (sort: MarketplaceSort): string => {
 
 const MarketplacePage: React.FC = () => {
   const { user } = useAuth();
+  const { profile } = useProfile();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -58,13 +64,31 @@ const MarketplacePage: React.FC = () => {
   const [selectedCurrency, setSelectedCurrency] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("");
   const [sortBy, setSortBy] = useState<MarketplaceSort>("newest");
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const goToCreateListing = () => {
+    if (!user) {
+      router.push(`/signin?redirect=${CREATE_LISTING_PATH}`);
+      return;
+    }
+    router.push(CREATE_LISTING_PATH);
+  };
 
   const shimmerCount = useShimmerCount();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const paymentHandledRef = useRef(false);
   const pageRef = useRef(0);
+
+  const profileCurrency = useMemo(() => {
+    if (!profile?.country?.trim()) return "";
+    return getCurrencyForCountry(profile.country).code;
+  }, [profile?.country]);
+
+  useEffect(() => {
+    if (user && profileCurrency) {
+      setSelectedCurrency(profileCurrency);
+    }
+  }, [user, profileCurrency]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -169,7 +193,7 @@ const MarketplacePage: React.FC = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
-    setSelectedCurrency("");
+    setSelectedCurrency(user && profileCurrency ? profileCurrency : "");
     setSelectedCountry("");
     setSortBy("newest");
   };
@@ -177,7 +201,7 @@ const MarketplacePage: React.FC = () => {
   const hasActiveFilters =
     searchTerm ||
     selectedCategory ||
-    selectedCurrency ||
+    (!user && selectedCurrency) ||
     selectedCountry ||
     sortBy !== "newest";
 
@@ -249,14 +273,7 @@ const MarketplacePage: React.FC = () => {
           <MarketplaceHubNav
             activeHub="browse"
             user={user}
-            onCreateListing={() => {
-              if (!user) {
-                router.push("/signin?redirect=/marketplace");
-                return;
-              }
-              setShowCreateModal(true);
-              setIsSidebarOpen(false);
-            }}
+            onCreateListing={goToCreateListing}
           />
 
           <div className="mb-5">
@@ -313,17 +330,24 @@ const MarketplacePage: React.FC = () => {
             <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">
               Currency
             </h3>
-            <ul className="space-y-1">
-              {MARKETPLACE_CURRENCIES.map((currency) => (
-                <li key={currency.value || "all"}>
-                  {renderSidebarItem(
-                    selectedCurrency === currency.value,
-                    () => setSelectedCurrency(currency.value),
-                    currency.label
-                  )}
-                </li>
-              ))}
-            </ul>
+            {user && profileCurrency ? (
+              <div className="px-3 py-2.5 bg-[#EEF1F4] rounded-lg text-sm text-gray-700">
+                {formatCurrencyDisplay(profileCurrency)}
+                <p className="text-xs text-gray-500 mt-1">Based on your signup country</p>
+              </div>
+            ) : (
+              <ul className="space-y-1">
+                {MARKETPLACE_CURRENCIES.map((currency) => (
+                  <li key={currency.value || "all"}>
+                    {renderSidebarItem(
+                      selectedCurrency === currency.value,
+                      () => setSelectedCurrency(currency.value),
+                      currency.label
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {hasActiveFilters && (
@@ -384,7 +408,7 @@ const MarketplacePage: React.FC = () => {
 
               {user && (
                 <button
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={goToCreateListing}
                   className="btn-primary hidden sm:flex items-center gap-2 text-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -432,19 +456,13 @@ const MarketplacePage: React.FC = () => {
 
       {user && (
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={goToCreateListing}
           className="sm:hidden fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center hover:bg-primary-700 transition-colors"
           aria-label="Create new listing"
         >
           <Plus className="w-6 h-6" />
         </button>
       )}
-
-      <CreateProductModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={() => fetchProducts(true)}
-      />
     </div>
   );
 };

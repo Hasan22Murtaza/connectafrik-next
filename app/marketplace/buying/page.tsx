@@ -1,12 +1,8 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import CreateProductModal from "@/features/marketplace/components/CreateProductModal-v2";
 import ProductBrowseCard from "@/features/marketplace/components/ProductBrowseCard";
-import {
-  BUYING_TABS,
-  BuyingTab,
-} from "@/features/marketplace/constants/marketplaceConstants";
+import { BUYING_TABS, BuyingTab, CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplaceConstants";
 import { getCurrencySymbol } from "@/features/marketplace/utils/productFormatting";
 import { apiClient } from "@/lib/api-client";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
@@ -66,7 +62,6 @@ const BuyingPageContent: React.FC = () => {
   const [savedItems, setSavedItems] = useState<SavedProduct[]>([]);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const buyerName =
     (user?.user_metadata?.full_name as string | undefined) ||
@@ -345,7 +340,7 @@ const BuyingPageContent: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => router.push(CREATE_LISTING_PATH)}
             className="w-full mt-6 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-primary-50 text-primary-600 font-semibold text-sm hover:bg-primary-100 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -433,12 +428,6 @@ const BuyingPageContent: React.FC = () => {
           </div>
         </aside>
       </div>
-
-      <CreateProductModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={fetchBuyingData}
-      />
     </div>
   );
 };

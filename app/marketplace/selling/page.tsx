@@ -1,23 +1,28 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import CreateProductModal from "@/features/marketplace/components/CreateProductModal-v2";
+import SellerListingActions, {
+  getListingState,
+  getListingTip,
+  ListingActionMenuItem,
+} from "@/features/marketplace/components/SellerListingActions";
+import { CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplaceConstants";
 import { SellerEarnings } from "@/features/marketplace/services/commissionService";
 import { formatProductPrice } from "@/features/marketplace/utils/productFormatting";
 import { apiClient } from "@/lib/api-client";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import { Product } from "@/shared/types";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   BarChart3,
   Eye,
+  Info,
   LayoutGrid,
   List,
   Package,
   Plus,
   Search,
-  Share2,
   Tag,
   TrendingUp,
   Wallet,
@@ -54,7 +59,6 @@ const SellerDashboardPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<ListingStatus>("all");
   const [sortBy, setSortBy] = useState<ListingSort>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [markingSoldId, setMarkingSoldId] = useState<string | null>(null);
 
   const sellerName =
@@ -207,11 +211,103 @@ const SellerDashboardPage: React.FC = () => {
     }
   };
 
-  const getListingStatus = (product: Product) => {
-    if (!product.is_available || product.stock_quantity === 0) {
-      return { label: "Sold", className: "bg-gray-100 text-gray-700" };
+  const handleRenewListing = async (productId: string) => {
+    try {
+      await apiClient.patch(`/api/marketplace/${productId}`, {
+        is_available: true,
+        created_at: new Date().toISOString(),
+      });
+      toast.success("Listing renewed");
+      setListings((prev) =>
+        prev.map((p) =>
+          p.id === productId
+            ? { ...p, is_available: true, created_at: new Date().toISOString() }
+            : p
+        )
+      );
+    } catch {
+      toast.error("Failed to renew listing");
     }
-    return { label: "Active", className: "bg-green-100 text-green-700" };
+  };
+
+  const handleMarkAsPending = async (productId: string) => {
+    try {
+      await apiClient.patch(`/api/marketplace/${productId}`, {
+        is_available: false,
+      });
+      toast.success("Listing marked as pending");
+      setListings((prev) =>
+        prev.map((p) => (p.id === productId ? { ...p, is_available: false } : p))
+      );
+    } catch {
+      toast.error("Failed to update listing");
+    }
+  };
+
+  const handleDeleteListing = async (productId: string) => {
+    if (!window.confirm("Delete this listing? It will be removed from Marketplace.")) {
+      return;
+    }
+
+    try {
+      await apiClient.delete(`/api/marketplace/${productId}`);
+      toast.success("Listing deleted");
+      setListings((prev) => prev.filter((p) => p.id !== productId));
+    } catch {
+      toast.error("Failed to delete listing");
+    }
+  };
+
+  const handleListingMenuAction = (product: Product, action: ListingActionMenuItem) => {
+    switch (action) {
+      case "renew":
+        handleRenewListing(product.id);
+        break;
+      case "pending":
+        handleMarkAsPending(product.id);
+        break;
+      case "view":
+        router.push(`/marketplace/${product.id}`);
+        break;
+      case "list-elsewhere":
+        toast("Cross-listing to groups and feed is coming soon", { icon: "ℹ️" });
+        break;
+      case "edit":
+        router.push(CREATE_LISTING_PATH);
+        break;
+      case "delete":
+        handleDeleteListing(product.id);
+        break;
+      case "messages":
+        router.push("/chat");
+        break;
+    }
+  };
+
+  const renderListingMeta = (product: Product) => {
+    const { statusLabel, statusClassName } = getListingState(product);
+    const tip = getListingTip(product.title);
+
+    return (
+      <>
+        {tip && (
+          <p className="flex items-center gap-1.5 text-xs text-primary-600 mb-1">
+            <Info className="w-3.5 h-3.5 shrink-0" />
+            {tip}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+          <span className={`px-2 py-0.5 rounded-full font-medium ${statusClassName}`}>
+            {statusLabel}
+          </span>
+          <span>Listed {format(new Date(product.created_at), "M/d/yy")}</span>
+          <span className="flex items-center gap-1">
+            <Eye className="w-3 h-3" />
+            {product.views_count || 0} clicks on listing
+          </span>
+        </div>
+      </>
+    );
   };
 
   if (authLoading || (!user && loading)) {
@@ -265,12 +361,10 @@ const SellerDashboardPage: React.FC = () => {
                 Marketplace
               </button>
               <h1 className="text-2xl font-bold text-gray-900">Your listings</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Manage inventory, track views, and mark items as sold
-              </p>
+              
             </div>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => router.push(CREATE_LISTING_PATH)}
               className="btn-primary flex items-center gap-2 text-sm lg:hidden"
             >
               <Plus className="w-4 h-4" />
@@ -383,48 +477,52 @@ const SellerDashboardPage: React.FC = () => {
                   : "Try adjusting your search or filters"}
               </p>
               {listings.length === 0 && (
-                <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+                <button onClick={() => router.push(CREATE_LISTING_PATH)} className="btn-primary">
                   Create new listing
                 </button>
               )}
             </div>
           ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {filteredListings.map((product) => {
-                const status = getListingStatus(product);
+                const { isActive, isPending } = getListingState(product);
                 const image = product.images?.[0];
+
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm"
+                    className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm p-3 sm:p-4"
                   >
-                    <button
-                      onClick={() => router.push(`/marketplace/${product.id}`)}
-                      className="block w-full aspect-square bg-gray-100"
-                    >
-                      {image ? (
-                        <img src={image} alt={product.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                          <Package className="w-8 h-8" />
-                        </div>
-                      )}
-                    </button>
-                    <div className="p-3">
-                      <p className="font-bold text-gray-900 truncate">
-                        {formatProductPrice(product)}
-                      </p>
-                      <p className="text-sm text-gray-700 line-clamp-2 mt-0.5">{product.title}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status.className}`}>
-                          {status.label}
-                        </span>
-                        <span className="text-xs text-gray-400 flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {product.views_count || 0}
-                        </span>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/marketplace/${product.id}`)}
+                        className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0"
+                      >
+                        {image ? (
+                          <img src={image} alt={product.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <Package className="w-6 h-6" />
+                          </div>
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900">{formatProductPrice(product)}</p>
+                        <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mt-0.5">
+                          {product.title}
+                        </h3>
+                        {renderListingMeta(product)}
                       </div>
                     </div>
+                    <SellerListingActions
+                      isActive={isActive}
+                      isPending={isPending}
+                      markingSold={markingSoldId === product.id}
+                      onMarkAsSold={() => handleMarkAsSold(product.id)}
+                      onShare={() => handleShareListing(product)}
+                      onMenuAction={(action) => handleListingMenuAction(product, action)}
+                    />
                   </div>
                 );
               })}
@@ -432,81 +530,46 @@ const SellerDashboardPage: React.FC = () => {
           ) : (
             <div className="space-y-3">
               {filteredListings.map((product) => {
-                const status = getListingStatus(product);
+                const { isActive, isPending } = getListingState(product);
                 const image = product.images?.[0];
-                const isActive = product.is_available && product.stock_quantity > 0;
 
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4 shadow-sm flex gap-3 sm:gap-4"
+                    className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4 shadow-sm"
                   >
-                    <button
-                      onClick={() => router.push(`/marketplace/${product.id}`)}
-                      className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0"
-                    >
-                      {image ? (
-                        <img src={image} alt={product.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                          <Package className="w-6 h-6" />
-                        </div>
-                      )}
-                    </button>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-bold text-gray-900">
-                            {formatProductPrice(product)}
-                          </p>
-                          <h3 className="text-sm sm:text-base font-medium text-gray-800 truncate">
-                            {product.title}
-                          </h3>
-                        </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${status.className}`}>
-                          {status.label}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Eye className="w-3 h-3" />
-                          {product.views_count || 0} views
-                        </span>
-                        <span>
-                          Listed {format(new Date(product.created_at), "M/d/yy")}
-                        </span>
-                        <span>
-                          {formatDistanceToNow(new Date(product.created_at), { addSuffix: true })}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-3 flex-wrap">
-                        {isActive && (
-                          <button
-                            onClick={() => handleMarkAsSold(product.id)}
-                            disabled={markingSoldId === product.id}
-                            className="px-3 py-1.5 text-xs sm:text-sm font-medium bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            {markingSoldId === product.id ? "Updating..." : "Mark as sold"}
-                          </button>
+                    <div className="flex gap-3 sm:gap-4">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/marketplace/${product.id}`)}
+                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0"
+                      >
+                        {image ? (
+                          <img src={image} alt={product.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <Package className="w-6 h-6" />
+                          </div>
                         )}
-                        <button
-                          onClick={() => handleShareListing(product)}
-                          className="px-3 py-1.5 text-xs sm:text-sm font-medium border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors flex items-center gap-1"
-                        >
-                          <Share2 className="w-3.5 h-3.5" />
-                          Share
-                        </button>
-                        <button
-                          onClick={() => router.push(`/marketplace/${product.id}`)}
-                          className="px-3 py-1.5 text-xs sm:text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                        >
-                          View listing
-                        </button>
+                      </button>
+
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900">{formatProductPrice(product)}</p>
+                        <h3 className="text-sm sm:text-base font-medium text-gray-800 line-clamp-2">
+                          {product.title}
+                        </h3>
+                        {renderListingMeta(product)}
                       </div>
                     </div>
+
+                    <SellerListingActions
+                      isActive={isActive}
+                      isPending={isPending}
+                      markingSold={markingSoldId === product.id}
+                      onMarkAsSold={() => handleMarkAsSold(product.id)}
+                      onShare={() => handleShareListing(product)}
+                      onMenuAction={(action) => handleListingMenuAction(product, action)}
+                    />
                   </div>
                 );
               })}
@@ -549,7 +612,7 @@ const SellerDashboardPage: React.FC = () => {
             )}
 
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => router.push(CREATE_LISTING_PATH)}
               className="w-full btn-primary text-sm mb-2"
             >
               Create new listing
@@ -564,11 +627,6 @@ const SellerDashboardPage: React.FC = () => {
         </aside>
       </div>
 
-      <CreateProductModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSuccess={fetchDashboardData}
-      />
     </div>
   );
 };

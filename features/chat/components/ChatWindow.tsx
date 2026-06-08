@@ -310,15 +310,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     (thread?.participants?.length ?? 0) > 2 ||
     Boolean((thread as any)?.isGroup);
 
+  const isMarketplaceThread = thread?.type === "marketplace";
+
   const displayThreadName = useMemo(() => {
     if (isSelfChat) {
       return `${currentUser?.name || "You"} (Notes)`;
+    }
+    if (isMarketplaceThread) {
+      return primaryParticipant?.name || thread?.name || "Marketplace chat";
     }
     if (isGroupThread && thread?.name) {
       return thread.name;
     }
     return primaryParticipant?.name || thread?.name || "Chat";
-  }, [isSelfChat, isGroupThread, primaryParticipant?.name, thread?.name, currentUser?.name]);
+  }, [
+    isSelfChat,
+    isMarketplaceThread,
+    isGroupThread,
+    primaryParticipant?.name,
+    thread?.name,
+    currentUser?.name,
+  ]);
+
+  const marketplaceProductTitle = thread?.product_title || thread?.name || null;
 
   const [headerImageFailed, setHeaderImageFailed] = useState(false);
   const [enrichedBanner, setEnrichedBanner] = useState<{
@@ -365,6 +379,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     "";
 
   const headerAvatarUrl = useMemo(() => {
+    if (isMarketplaceThread && thread?.product_image) {
+      return thread.product_image;
+    }
     if (isGroupThread && groupBannerUrl) {
       return groupBannerUrl;
     }
@@ -375,6 +392,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const p = primaryParticipant;
     return (p?.avatarUrl ?? (p as any)?.avatar_url) || undefined;
   }, [
+    isMarketplaceThread,
+    thread?.product_image,
     isGroupThread,
     groupBannerUrl,
     isSelfChat,
@@ -1652,13 +1671,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
             <button
               type="button"
+              onClick={(e) => {
+                if (isMarketplaceThread && thread?.product_id) {
+                  e.stopPropagation();
+                  router.push(`/marketplace/${thread.product_id}`);
+                }
+              }}
               className="block w-full text-left text-xs text-gray-500 hover:text-gray-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
             >
               {isSelfChat
                 ? "Save messages to yourself"
-                : (thread?.participants?.length ?? 0) > 2
-                  ? `${thread?.participants?.length} participants`
-                  : (directSubtitle ?? "Offline")}
+                : isMarketplaceThread && marketplaceProductTitle
+                  ? `Marketplace · ${marketplaceProductTitle}`
+                  : (thread?.participants?.length ?? 0) > 2
+                    ? `${thread?.participants?.length} participants`
+                    : (directSubtitle ?? "Offline")}
             </button>
           </div>
         </div>

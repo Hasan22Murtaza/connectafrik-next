@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
+import { getCurrencyForCountry } from '@/features/marketplace/utils/countryCurrency'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -75,9 +76,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return errorResponse('Only the seller can update this product', 403)
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('country, city')
+      .eq('id', user.id)
+      .single()
+
+    const { currency, country, ...updates } = body
+    const patch: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() }
+
+    if (profile?.country?.trim()) {
+      patch.currency = getCurrencyForCountry(profile.country).code
+      patch.country = profile.country.trim()
+    }
+
+    if (typeof body.location === 'string' && body.location.trim()) {
+      patch.location = body.location.trim()
+    }
+
     const { data, error } = await supabase
       .from('products')
-      .update({ ...body, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq('id', id)
       .select()
       .single()

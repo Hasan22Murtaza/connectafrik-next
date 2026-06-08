@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
+import { getCurrencyForCountry } from '@/features/marketplace/utils/countryCurrency'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -113,6 +114,28 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('country, city')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError) throw profileError
+
+    if (!profile?.country?.trim()) {
+      return errorResponse(
+        'Add your country in profile settings before creating a listing',
+        400
+      )
+    }
+
+    const { code: currency } = getCurrencyForCountry(profile.country)
+    const listingCountry = profile.country.trim()
+    const listingLocation =
+      (typeof body.location === 'string' && body.location.trim()) ||
+      profile.city?.trim() ||
+      null
+
     const { data, error } = await supabase
       .from('products')
       .insert({
@@ -120,11 +143,11 @@ export async function POST(request: NextRequest) {
         title: body.title,
         description: body.description,
         price: body.price,
-        currency: body.currency,
+        currency,
         category: body.category,
         condition: body.condition,
-        location: body.location || null,
-        country: body.country || null,
+        location: listingLocation,
+        country: listingCountry,
         images: body.images || [],
         tags: body.tags || [],
         stock_quantity: body.stock_quantity ?? 1,
