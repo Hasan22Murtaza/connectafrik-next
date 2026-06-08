@@ -315,7 +315,6 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           </div>
           <div>
             <h2 className="text-base font-bold text-gray-900">Price & inventory</h2>
-            <p className="text-xs text-gray-500">Set your price and how many you have available.</p>
           </div>
         </div>
 
@@ -346,9 +345,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
                 disabled={!hasSignupCountry}
               />
             </div>
-            <p className="text-xs text-gray-500 mt-1.5">
-              Currency is set from your signup country ({profile?.country}).
-            </p>
+           
           </div>
           <div>
             <label className={labelClassName} htmlFor="stock">
@@ -425,7 +422,6 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           </div>
           <div>
             <h2 className="text-base font-bold text-gray-900">Location & tags</h2>
-            <p className="text-xs text-gray-500">Help local buyers find your listing.</p>
           </div>
         </div>
 

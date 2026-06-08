@@ -58,9 +58,7 @@ const CreateListingPage: React.FC = () => {
 
           <div className="hidden lg:block mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Create listing</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Add photos and details to publish your product on Marketplace.
-            </p>
+           
           </div>
 
           <CreateProductForm
