@@ -17,6 +17,8 @@ import { format } from "date-fns";
 import {
   ArrowLeft,
   BarChart3,
+  ChevronDown,
+  ChevronUp,
   Eye,
   Info,
   LayoutGrid,
@@ -34,21 +36,47 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
 type ListingStatus = "all" | "active" | "sold";
-type ListingSort = "newest" | "views" | "price-asc" | "price-desc";
+type ListingSort = "newest" | "oldest" | "title-asc" | "title-desc";
 type ViewMode = "list" | "grid";
 
 const STATUS_FILTERS: { value: ListingStatus; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "active", label: "Active" },
-  { value: "sold", label: "Sold / Unavailable" },
+  { value: "active", label: "Available & in stock" },
+  { value: "sold", label: "Sold & out of stock" },
 ];
 
 const SORT_OPTIONS: { value: ListingSort; label: string }[] = [
-  { value: "newest", label: "Newest first" },
-  { value: "views", label: "Most views" },
-  { value: "price-asc", label: "Price: low to high" },
-  { value: "price-desc", label: "Price: high to low" },
+  { value: "newest", label: "Date listed: newest first" },
+  { value: "oldest", label: "Date listed: oldest first" },
+  { value: "title-asc", label: "Title (A-Z)" },
+  { value: "title-desc", label: "Title (Z-A)" },
 ];
+
+interface FilterAccordionProps {
+  title: string;
+  expanded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}
+
+const FilterAccordion: React.FC<FilterAccordionProps> = ({
+  title,
+  expanded,
+  onToggle,
+  children,
+}) => (
+  <div>
+    <button type="button" onClick={onToggle} className={MP.filterSectionBtn}>
+      <span>{title}</span>
+      {expanded ? (
+        <ChevronUp className="w-4 h-4 text-gray-600" />
+      ) : (
+        <ChevronDown className="w-4 h-4 text-gray-600" />
+      )}
+    </button>
+    {expanded && <div className={MP.filterOptionsList}>{children}</div>}
+  </div>
+);
 
 const SellerDashboardPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -62,6 +90,8 @@ const SellerDashboardPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<ListingSort>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [markingSoldId, setMarkingSoldId] = useState<string | null>(null);
+  const [sortExpanded, setSortExpanded] = useState(true);
+  const [statusExpanded, setStatusExpanded] = useState(true);
 
   const sellerName =
     (user?.user_metadata?.full_name as string | undefined) ||
@@ -141,14 +171,17 @@ const SellerDashboardPage: React.FC = () => {
     }
 
     switch (sortBy) {
-      case "views":
-        result.sort((a, b) => (b.views_count || 0) - (a.views_count || 0));
+      case "oldest":
+        result.sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
         break;
-      case "price-asc":
-        result.sort((a, b) => a.price - b.price);
+      case "title-asc":
+        result.sort((a, b) => a.title.localeCompare(b.title));
         break;
-      case "price-desc":
-        result.sort((a, b) => b.price - a.price);
+      case "title-desc":
+        result.sort((a, b) => b.title.localeCompare(a.title));
         break;
       case "newest":
       default:
@@ -160,6 +193,15 @@ const SellerDashboardPage: React.FC = () => {
 
     return result;
   }, [listings, searchTerm, statusFilter, sortBy]);
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setSortBy("newest");
+  };
+
+  const hasActiveFilters =
+    Boolean(searchTerm) || statusFilter !== "all" || sortBy !== "newest";
 
   const stats = useMemo(() => {
     const active = listings.filter((p) => p.is_available && p.stock_quantity > 0);
@@ -332,11 +374,19 @@ const SellerDashboardPage: React.FC = () => {
             Marketplace
           </button>
 
-          <div className="px-2 mb-3">
-            <h2 className={MP.pageTitle}>Selling</h2>
+          <div className={MP.sidebarTitleBlock}>
+            <h2 className={MP.sidebarTitle}>Selling</h2>
           </div>
 
-          <nav className={`border-t border-gray-100 pt-3 ${MP.navList}`}>
+          <button
+            onClick={() => router.push(CREATE_LISTING_PATH)}
+            className={MP.createListingBtnTop}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Create new listing
+          </button>
+
+          <nav className={`${MP.sidebarNav} ${MP.navList}`}>
             <div className={`${MP.navItem} ${MP.navItemActive}`}>
               <BarChart3 className={`${MP.navIcon} ${MP.navIconActive}`} />
               <span>Your listings</span>
@@ -356,6 +406,65 @@ const SellerDashboardPage: React.FC = () => {
               <span>Payout settings</span>
             </button>
           </nav>
+
+          <div className={MP.sectionDivider} />
+
+          <div>
+            <div className={MP.filterHeader}>
+              <h3 className={MP.filterTitle}>Filters</h3>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className={MP.filterClear}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <FilterAccordion
+                title="Sort by"
+                expanded={sortExpanded}
+                onToggle={() => setSortExpanded((prev) => !prev)}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <label key={option.value} className={MP.filterOption}>
+                    <input
+                      type="radio"
+                      name="listing-sort"
+                      value={option.value}
+                      checked={sortBy === option.value}
+                      onChange={() => setSortBy(option.value)}
+                      className={MP.filterRadio}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </FilterAccordion>
+
+              <FilterAccordion
+                title="Status"
+                expanded={statusExpanded}
+                onToggle={() => setStatusExpanded((prev) => !prev)}
+              >
+                {STATUS_FILTERS.map((filter) => (
+                  <label key={filter.value} className={MP.filterOption}>
+                    <input
+                      type="radio"
+                      name="listing-status"
+                      value={filter.value}
+                      checked={statusFilter === filter.value}
+                      onChange={() => setStatusFilter(filter.value)}
+                      className={MP.filterRadio}
+                    />
+                    <span>{filter.label}</span>
+                  </label>
+                ))}
+              </FilterAccordion>
+            </div>
+          </div>
         </aside>
 
         <main className={MP.main}>
@@ -428,29 +537,31 @@ const SellerDashboardPage: React.FC = () => {
               </div>
 
               <div className={`${MP.headerActions} flex-wrap`}>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as ListingStatus)}
-                  className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                >
-                  {STATUS_FILTERS.map((f) => (
-                    <option key={f.value} value={f.value}>
-                      {f.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex lg:hidden gap-1.5 flex-wrap">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as ListingStatus)}
+                    className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  >
+                    {STATUS_FILTERS.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
 
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as ListingSort)}
-                  className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
-                >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as ListingSort)}
+                    className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  >
+                    {SORT_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 <div className="flex border border-gray-200 rounded-lg overflow-hidden">
                   <button
@@ -584,58 +695,65 @@ const SellerDashboardPage: React.FC = () => {
           )}
         </main>
 
-        <aside className={`hidden xl:block ${MP.sidebar}`}>
-          <div className={`${MP.card} ${MP.cardPadding} sticky top-4`}>
-            <div className="flex items-center gap-2 mb-3">
-              <img
-                src={
-                  sellerAvatar ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&background=random`
-                }
-                alt={sellerName}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900 truncate">{sellerName}</p>
-                <p className="text-xs text-gray-500">{stats.active} active listing{stats.active !== 1 ? "s" : ""}</p>
+        <aside className={`hidden xl:block ${MP.sidebarRight}`}>
+          <div className={MP.sidebarRightStack}>
+            <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
+              <div className="flex items-center gap-2 mb-3">
+                <img
+                  src={
+                    sellerAvatar ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&background=random`
+                  }
+                  alt={sellerName}
+                  className="w-9 h-9 rounded-full object-cover"
+                />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{sellerName}</p>
+                  <p className="text-xs text-gray-500">
+                    {stats.active} active listing{stats.active !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+
+              {earnings && (
+                <div className="space-y-1.5 text-xs border-t border-gray-100 pt-3 mb-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Total earnings</span>
+                    <span className="font-medium">${earnings.total_earnings.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Paid out</span>
+                    <span className="font-medium">${earnings.paid_out.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Awaiting delivery</span>
+                    <span className="font-medium">${earnings.awaiting_delivery.toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <button
+                  onClick={() => router.push(CREATE_LISTING_PATH)}
+                  className={MP.createListingBtnInline}
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Create new listing
+                </button>
+                <button
+                  onClick={() => router.push("/my-orders?tab=sales")}
+                  className="w-full py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                >
+                  View sales & orders
+                </button>
+                <button
+                  onClick={() => router.push("/marketplace/selling/payout-settings")}
+                  className="w-full py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                >
+                  Payout settings
+                </button>
               </div>
             </div>
-
-            {earnings && (
-              <div className="space-y-1.5 text-sm border-t border-gray-100 pt-3 mb-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Total earnings</span>
-                  <span className="font-medium">${earnings.total_earnings.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Paid out</span>
-                  <span className="font-medium">${earnings.paid_out.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Awaiting delivery</span>
-                  <span className="font-medium">${earnings.awaiting_delivery.toLocaleString()}</span>
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={() => router.push(CREATE_LISTING_PATH)}
-              className="w-full btn-primary text-sm mb-2"
-            >
-              Create new listing
-            </button>
-            <button
-              onClick={() => router.push("/my-orders?tab=sales")}
-              className="w-full py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-            >
-              View sales & orders
-            </button>
-            <button
-              onClick={() => router.push("/marketplace/selling/payout-settings")}
-              className="w-full py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-            >
-              Payout settings
-            </button>
           </div>
         </aside>
       </div>

@@ -299,8 +299,8 @@ const BuyingPageContent: React.FC = () => {
 
   return (
     <div className={MP.page}>
-      <div className={MP.shell}>
-        <aside className={`hidden lg:block ${MP.sidebar}`}>
+      <div className={MP.shellFull}>
+        <aside className={`hidden lg:block ${MP.sidebarFull}`}>
           <button
             type="button"
             onClick={() => router.push("/marketplace")}
@@ -310,11 +310,11 @@ const BuyingPageContent: React.FC = () => {
             Marketplace
           </button>
 
-          <div className="px-2 mb-3">
-            <h2 className={MP.pageTitle}>Buying</h2>
+          <div className={MP.sidebarTitleBlock}>
+            <h2 className={MP.sidebarTitle}>Buying</h2>
           </div>
 
-          <nav className="border-t border-gray-100 pt-3">
+          <nav className={MP.sidebarNav}>
             <ul className={MP.navList}>
               {BUYING_TABS.map((tab) => {
                 const Icon = tab.icon;
@@ -380,38 +380,40 @@ const BuyingPageContent: React.FC = () => {
           {renderTabContent()}
         </main>
 
-        <aside className={`hidden xl:block ${MP.sidebar}`}>
-          <div className={`${MP.card} ${MP.cardPadding} sticky top-4`}>
-            <div className="flex items-center gap-2 mb-3">
-              <img
-                src={
-                  buyerAvatar ||
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(buyerName)}&background=random`
-                }
-                alt={buyerName}
-                className="w-10 h-10 rounded-full object-cover"
-              />
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900 truncate">{buyerName}</p>
-                <p className="text-xs text-gray-500">
-                  {savedItems.length} saved · {orders.length} purchases
-                </p>
+        <aside className={`hidden xl:block ${MP.sidebarRight}`}>
+          <div className={MP.sidebarRightStack}>
+            <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <img
+                  src={
+                    buyerAvatar ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(buyerName)}&background=random`
+                  }
+                  alt={buyerName}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{buyerName}</p>
+                  <p className="text-sm text-gray-500">
+                    {savedItems.length} saved · {orders.length} purchases
+                  </p>
+                </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => router.push("/profile")}
+                className="w-full py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+              >
+                See Marketplace profile
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => router.push("/profile")}
-              className="w-full py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors mb-3"
-            >
-              See Marketplace profile
-            </button>
-
-            <div className="border-t border-gray-100 pt-3">
-              <div className="flex items-start gap-1.5 text-sm text-gray-600">
-                <HelpCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-gray-400" />
+            <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
+              <div className="flex items-start gap-3 text-sm text-gray-600">
+                <HelpCircle className="w-5 h-5 shrink-0 text-gray-400" />
                 <div>
-                  <p className="font-medium text-gray-900 mb-1">Need help?</p>
+                  <p className="font-semibold text-gray-900 mb-1">Need help?</p>
                   <button
                     type="button"
                     onClick={() => router.push("/support")}

@@ -221,16 +221,11 @@ const MarketplacePage: React.FC = () => {
         isActive ? MP.navItemActive : MP.navItemInactive
       }`}
     >
-      <span
-        className={`${MP.navIndicator} ${
-          isActive
-            ? "opacity-100 scale-y-100"
-            : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
-        }`}
-      />
       {Icon && (
         <Icon
-          className={`${MP.navIcon} ${isActive ? MP.navIconActive : ""}`}
+          className={`${MP.navIcon} ${
+            isActive ? MP.navIconActive : MP.navIconInactive
+          }`}
         />
       )}
       <span>{label}</span>
@@ -270,11 +265,23 @@ const MarketplacePage: React.FC = () => {
             activeHub="browse"
             user={user}
             onCreateListing={goToCreateListing}
-          />
+          >
+            <div className="hidden md:block mb-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input
+                  className={MP.searchInput}
+                  placeholder="Search Marketplace"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+          </MarketplaceHubNav>
 
-          <div className={MP.section}>
+          <div className="md:hidden mb-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
               <input
                 className={MP.searchInput}
                 placeholder="Search Marketplace"
@@ -283,6 +290,8 @@ const MarketplacePage: React.FC = () => {
               />
             </div>
           </div>
+
+          <div className={MP.sectionDivider} />
 
           <div className={MP.section}>
             <h3 className={MP.sectionTitle}>Location</h3>
@@ -298,6 +307,8 @@ const MarketplacePage: React.FC = () => {
               ))}
             </select>
           </div>
+
+          <div className={MP.sectionDivider} />
 
           <div className={MP.section}>
             <h3 className={MP.sectionTitle}>Categories</h3>
@@ -408,13 +419,7 @@ const MarketplacePage: React.FC = () => {
             </div>
           </div>
 
-          {!hasActiveFilters && (
-            <p className="text-sm text-gray-500 mb-3">
-              {user
-                ? "Discover authentic products from entrepreneurs and businesses worldwide"
-                : "Browse listings freely — sign in to save, message sellers, or buy"}
-            </p>
-          )}
+        
 
           {loading ? (
             <MarketplaceGridShimmer count={shimmerCount} />

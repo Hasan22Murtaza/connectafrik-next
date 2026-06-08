@@ -104,8 +104,8 @@ const InboxPageContent: React.FC = () => {
 
   return (
     <div className={MP.page}>
-      <div className={MP.shell}>
-        <aside className={`hidden lg:block ${MP.sidebar}`}>
+      <div className={MP.shellFull}>
+        <aside className={`hidden lg:block ${MP.sidebarFull}`}>
           <button
             type="button"
             onClick={() => router.push("/marketplace")}

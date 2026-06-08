@@ -1,7 +1,7 @@
 "use client";
 
 import { User } from "@supabase/supabase-js";
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 import toast from "react-hot-toast";
@@ -18,6 +18,7 @@ interface MarketplaceHubNavProps {
   user: User | null;
   onCreateListing?: () => void;
   compact?: boolean;
+  children?: React.ReactNode;
 }
 
 const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
@@ -25,6 +26,7 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
   user,
   onCreateListing,
   compact = false,
+  children,
 }) => {
   const router = useRouter();
 
@@ -47,21 +49,18 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
     <button
       type="button"
       onClick={onClick}
-      className={`${MP.navItem} ${isActive ? MP.navItemActive : MP.navItemInactive
-        }`}
+      className={`${MP.navItem} ${
+        isActive ? MP.navItemActive : MP.navItemInactive
+      }`}
     >
-      <span
-        className={`${MP.navIndicator} ${isActive
-            ? "opacity-100 scale-y-100"
-            : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
-          }`}
-      />
       <Icon
-        className={`${MP.navIcon} ${isActive ? MP.navIconActive : ""}`}
+        className={`${MP.navIcon} ${
+          isActive ? MP.navIconActive : MP.navIconInactive
+        }`}
       />
       <span className="flex-1 text-left">{label}</span>
       {showChevron && (
-        <ChevronRight className="w-3.5 h-3.5 shrink-0 text-gray-400 group-hover:text-primary-600" />
+        <ChevronRight className="w-4 h-4 shrink-0 text-gray-500" />
       )}
     </button>
   );
@@ -69,10 +68,19 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
   return (
     <div className={compact ? "mb-3" : MP.section}>
       {!compact && (
-        <h2 className={`hidden md:block ${MP.pageTitle} mb-3 px-2`}>
-          Marketplace
-        </h2>
+        <div className={`hidden md:flex ${MP.sidebarHeader}`}>
+          <h2 className={MP.pageTitleLg}>Marketplace</h2>
+          <button
+            type="button"
+            className={MP.settingsBtn}
+            aria-label="Marketplace settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
       )}
+
+      {children}
 
       <nav>
         <ul className={MP.navList}>
