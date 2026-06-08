@@ -8,6 +8,7 @@ import {
   MarketplaceInboxLabel,
   MarketplaceInboxRole,
 } from "@/features/marketplace/constants/marketplaceConstants";
+import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import {
   fetchMarketplaceInbox,
   MarketplaceInboxItem,
@@ -102,65 +103,63 @@ const InboxPageContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen px-4">
-      <div className="flex gap-4 min-w-0 w-full max-w-screen-2xl mx-auto">
-        <aside className="hidden lg:block w-[260px] shrink-0 py-6">
+    <div className={MP.page}>
+      <div className={MP.shell}>
+        <aside className={`hidden lg:block ${MP.sidebar}`}>
           <button
             type="button"
             onClick={() => router.push("/marketplace")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 text-sm px-2"
+            className={`${MP.backLink} mb-2`}
           >
             <ArrowLeft className="w-4 h-4" />
             Marketplace
           </button>
-          <MarketplaceHubNav activeHub="inbox" user={user} />
+          <MarketplaceHubNav activeHub="inbox" user={user} compact />
         </aside>
 
-        <main className="flex-1 py-6 min-w-0 max-w-3xl">
-          <div className="lg:hidden mb-4">
+        <main className={`${MP.main} max-w-3xl`}>
+          <div className="lg:hidden mb-3">
             <button
               type="button"
               onClick={() => router.push("/marketplace")}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 text-sm"
+              className={`${MP.backLink} mb-2`}
             >
               <ArrowLeft className="w-4 h-4" />
               Marketplace
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
+            <h1 className={MP.pageTitle}>Inbox</h1>
           </div>
 
-          <div className="hidden lg:block mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Inbox</h1>
+          <div className="hidden lg:block mb-4">
+            <h1 className={MP.pageTitle}>Inbox</h1>
           </div>
 
-          <div className="flex border-b border-gray-200 mb-4">
+          <div className="flex border-b border-gray-200 mb-3">
             {(["selling", "buying"] as MarketplaceInboxRole[]).map((role) => (
               <button
                 key={role}
                 type="button"
                 onClick={() => setRole(role)}
-                className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors capitalize ${
-                  activeRole === role
+                className={`px-3 py-2 text-sm font-semibold border-b-2 transition-colors capitalize ${activeRole === role
                     ? "border-primary-600 text-primary-600"
                     : "border-transparent text-gray-500 hover:text-gray-800"
-                }`}
+                  }`}
               >
                 {role}
               </button>
             ))}
           </div>
 
-          <div className="flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-hide">
+          <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-hide">
             {MARKETPLACE_INBOX_LABELS.map((filter) => (
               <button
                 key={filter.value}
                 type="button"
                 onClick={() => setLabel(filter.value)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  activeLabel === filter.value
+                className={`shrink-0 px-2.5 py-1 rounded-full text-sm font-medium transition-colors ${activeLabel === filter.value
                     ? "bg-gray-900 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                  }`}
               >
                 {filter.label}
               </button>
@@ -168,7 +167,7 @@ const InboxPageContent: React.FC = () => {
           </div>
 
           {loading ? (
-            <div className="animate-pulse space-y-3">
+            <div className="animate-pulse space-y-1.5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-20 bg-gray-100 rounded-xl" />
               ))}
@@ -191,19 +190,19 @@ const InboxPageContent: React.FC = () => {
               </button>
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <ul className={`divide-y divide-gray-100 ${MP.card} overflow-hidden`}>
               {items.map((item) => (
                 <li key={item.thread_id}>
                   <button
                     type="button"
                     onClick={() => handleOpenThread(item)}
-                    className="w-full flex items-start gap-3 p-4 hover:bg-gray-50 transition-colors text-left"
+                    className="w-full flex items-start gap-2 p-2.5 hover:bg-gray-50 transition-colors text-left"
                   >
-                    <div className="relative shrink-0 mt-1">
+                    <div className="relative shrink-0 mt-0.5">
                       {item.unread_count > 0 && (
                         <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500" />
                       )}
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100">
                         <img
                           src={item.product_image || FALLBACK_IMAGE}
                           alt={item.product_title}
@@ -215,9 +214,8 @@ const InboxPageContent: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <p
-                          className={`text-sm truncate ${
-                            item.unread_count > 0 ? "font-bold text-gray-900" : "font-semibold text-gray-900"
-                          }`}
+                          className={`text-sm truncate ${item.unread_count > 0 ? "font-bold text-gray-900" : "font-semibold text-gray-900"
+                            }`}
                         >
                           {item.display_title}
                         </p>
@@ -226,9 +224,8 @@ const InboxPageContent: React.FC = () => {
                         </span>
                       </div>
                       <p
-                        className={`text-sm truncate mt-0.5 ${
-                          item.unread_count > 0 ? "font-medium text-gray-800" : "text-gray-500"
-                        }`}
+                        className={`text-sm truncate mt-0.5 ${item.unread_count > 0 ? "font-medium text-gray-800" : "text-gray-500"
+                          }`}
                       >
                         {item.last_message_preview || "No messages yet"}
                       </p>

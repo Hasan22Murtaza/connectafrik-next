@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { Building2, Save, Check, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiClient } from '@/lib/api-client'
-import toast from 'react-hot-toast'
 import { getBanks, resolveBankAccount } from '@/features/marketplace/services/paystackService'
+import { apiClient } from '@/lib/api-client'
+import { AlertCircle, Building2, Check, Save } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 
 interface Bank {
   id: number
@@ -128,6 +128,7 @@ const BankAccountSettings: React.FC = () => {
     setIsSaving(true)
     try {
       await apiClient.patch('/api/users/me', {
+        payout_method: 'bank',
         bank_name: bankDetails.bank_name,
         bank_code: bankDetails.bank_code,
         account_number: bankDetails.account_number,

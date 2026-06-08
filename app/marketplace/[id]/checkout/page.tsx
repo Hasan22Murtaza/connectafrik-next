@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiClient } from "@/lib/api-client";
-import { Product } from "@/shared/types";
 import SmartCheckout from "@/features/marketplace/components/SmartCheckout";
+import { apiClient } from "@/lib/api-client";
 import { ProductDetailPageShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import { Product } from "@/shared/types";
+import { useParams, useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 const CheckoutPage: React.FC = () => {

@@ -1,27 +1,33 @@
 "use client";
 
-import React, { useState, useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext';
+import CancelOrderModal from '@/features/marketplace/components/CancelOrderModal';
+import ConfirmDeliveryModal from '@/features/marketplace/components/ConfirmDeliveryModal';
+import OpenDisputeModal from '@/features/marketplace/components/OpenDisputeModal';
+import { Dispute, getOrderDispute } from '@/features/marketplace/services/disputeService';
+import { getOrderRefunds, RefundTransaction } from '@/features/marketplace/services/refundService';
+import { apiClient } from '@/lib/api-client';
+import { OrderDetailPageShimmer } from '@/shared/components/ui/ShimmerLoaders';
 import {
-  Package,
-  Clock,
-  CheckCircle,
-  XCircle,
-  CreditCard,
-  User,
   Calendar,
-  FileText,
-  Truck,
-  ShoppingBag,
+  CheckCircle,
   ChevronDown,
+  Clock,
+  CreditCard,
+  FileText,
   Mail,
-  Phone
-} from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { apiClient } from '@/lib/api-client'
-import toast from 'react-hot-toast'
-import Link from 'next/link'
-import { OrderDetailPageShimmer } from '@/shared/components/ui/ShimmerLoaders'
+  Package,
+  Phone,
+  Shield,
+  ShoppingBag,
+  Truck,
+  User,
+  XCircle,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 
 interface OrderDetail {
   id: string
@@ -51,6 +57,16 @@ interface OrderDetail {
   created_at: string
   updated_at: string
   paid_at: string | null
+  payout_status: string | null
+  paid_to_seller_at: string | null
+  escrow_status: string | null
+  release_eligible_at: string | null
+  release_scheduled_at: string | null
+  delivery_confirmed_at: string | null
+  refunded_amount: number | null
+  refund_status: string | null
+  cancellation_reason: string | null
+  cancelled_at: string | null
   seller?: {
     id: string
     full_name: string
@@ -76,6 +92,11 @@ const OrderDetailPage: React.FC = () => {
   const [isBuyer, setIsBuyer] = useState(false)
   const [isSeller, setIsSeller] = useState(false)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [showConfirmDelivery, setShowConfirmDelivery] = useState(false)
+  const [showCancelOrder, setShowCancelOrder] = useState(false)
+  const [showOpenDispute, setShowOpenDispute] = useState(false)
+  const [refunds, setRefunds] = useState<RefundTransaction[]>([])
+  const [dispute, setDispute] = useState<Dispute | null>(null)
 
   useEffect(() => {
     if (user && orderId) {
@@ -101,6 +122,29 @@ const OrderDetailPage: React.FC = () => {
       setIsBuyer(orderData.isBuyer)
       setIsSeller(orderData.isSeller)
       setOrder(orderData)
+
+      try {
+        const disputeData = await getOrderDispute(orderId)
+        setDispute(disputeData)
+      } catch {
+        setDispute(null)
+      }
+
+      if (
+        orderData.refund_status === 'partial' ||
+        orderData.refund_status === 'full' ||
+        orderData.status === 'refunded' ||
+        orderData.status === 'cancelled'
+      ) {
+        try {
+          const refundList = await getOrderRefunds(orderId)
+          setRefunds(refundList)
+        } catch {
+          setRefunds([])
+        }
+      } else {
+        setRefunds([])
+      }
     } catch (error: any) {
       console.error('Error fetching order details:', error)
       if (error.status === 403) {
@@ -173,16 +217,31 @@ const OrderDetailPage: React.FC = () => {
   const updateOrderStatus = async (newStatus: string) => {
     if (!order || !user || !isSeller) return
 
+    if (newStatus === 'cancelled') {
+      const confirmed = window.confirm(
+        'Cancel this order? The buyer will receive a full refund if payment was completed.'
+      )
+      if (!confirmed) return
+    }
+
     try {
       setIsUpdatingStatus(true)
 
-      await apiClient.patch(`/api/orders/${order.id}/status`, { status: newStatus })
+      await apiClient.patch(`/api/orders/${order.id}/status`, {
+        status: newStatus,
+        cancellation_reason:
+          newStatus === 'cancelled' ? 'Cancelled by seller' : undefined,
+      })
 
       await fetchOrderDetails()
-      toast.success(`Order status updated to ${newStatus}`)
+      toast.success(
+        newStatus === 'cancelled'
+          ? 'Order cancelled and refund initiated'
+          : `Order status updated to ${newStatus}`
+      )
     } catch (error: any) {
       console.error('Error updating order status:', error)
-      toast.error('Failed to update order status')
+      toast.error(error?.message || 'Failed to update order status')
     } finally {
       setIsUpdatingStatus(false)
     }
@@ -241,14 +300,49 @@ const statusColor = deliveryStatus
 
   const otherParty = isBuyer ? order.seller : order.buyer
 
+  const canConfirmDelivery =
+    isBuyer &&
+    order.payment_status === 'completed' &&
+    order.payout_status !== 'completed' &&
+    !order.paid_to_seller_at &&
+    order.escrow_status !== 'scheduled' &&
+    order.escrow_status !== 'released' &&
+    order.escrow_status !== 'frozen' &&
+    order.status !== 'cancelled' &&
+    order.status !== 'refunded' &&
+    !dispute &&
+    (order.status === 'shipped' ||
+      order.delivery_status === 'shipped' ||
+      order.status === 'completed')
+
+  const canOpenDispute =
+    isBuyer &&
+    order.payment_status === 'completed' &&
+    order.payout_status !== 'completed' &&
+    !dispute &&
+    order.status !== 'cancelled' &&
+    order.status !== 'refunded' &&
+    ['confirmed', 'processing', 'shipped', 'completed'].includes(order.status)
+
+  const activeDisputeStatuses = ['open', 'awaiting_seller', 'under_review']
+  const hasActiveDispute = dispute && activeDisputeStatuses.includes(dispute.status)
+
+  const canCancelOrder =
+    (isBuyer || isSeller) &&
+    order.payment_status === 'completed' &&
+    order.status !== 'cancelled' &&
+    order.status !== 'refunded' &&
+    order.refund_status !== 'full' &&
+    ['pending', 'confirmed', 'processing'].includes(order.status)
+
   return (
     <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
+        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 w-full min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Details</h1>
+              <h1 className="text-xl font-bold text-gray-900 mb-1">Order Details</h1>
               <p className="text-gray-600">Order #{order.order_number}</p>
             </div>
             <div className={`px-4 py-2 rounded-full text-sm font-medium border flex items-center space-x-2 ${getStatusColor(order.status)}`}>
@@ -260,27 +354,27 @@ const statusColor = deliveryStatus
       </div>
 
       {/* Content */}
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 w-full min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
           {/* Main Content */}
-          <div className="md:col-span-2 space-y-6">
+          <div className="md:col-span-2 space-y-3">
             {/* Product Information */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+            <div className="bg-white rounded-lg border border-gray-100 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
                 <ShoppingBag className="w-5 h-5 text-primary-600" />
                 <span>Product Information</span>
               </h2>
               
-              <div className="flex space-x-4">
+              <div className="flex gap-3">
                 {order.product_image ? (
                   <img
                     src={order.product_image}
                     alt={order.product_title}
-                    className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                    className="w-20 h-20 object-cover rounded-lg border border-gray-200"
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                    <ShoppingBag className="w-8 h-8 text-gray-400" />
+                  <div className="w-20 h-20 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                    <ShoppingBag className="w-6 h-6 text-gray-400" />
                   </div>
                 )}
                 <div className="flex-1">
@@ -301,13 +395,13 @@ const statusColor = deliveryStatus
             </div>
 
             {/* Payment Information */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+            <div className="bg-white rounded-lg border border-gray-100 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
                 <CreditCard className="w-5 h-5 text-primary-600" />
                 <span>Payment Information</span>
               </h2>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-600">Payment Status</span>
                   <span className={`font-medium ${order.payment_status === 'completed' ? 'text-green-600' : 'text-yellow-600'}`}>
@@ -334,69 +428,234 @@ const statusColor = deliveryStatus
             </div>
 
             {/* Delivery Information */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                <Truck className="w-5 h-5 text-primary-600" />
+            <div className="bg-white rounded-lg border border-gray-100 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+                <Truck className="w-4 h-4 text-primary-600" />
                 <span>Delivery Information</span>
               </h2>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Delivery Status</span>
-                  <span className={`font-medium capitalize ${statusColor}`}>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                  <span className="text-sm text-gray-600">Delivery Status</span>
+                  <span className={`text-sm font-medium capitalize ${statusColor}`}>
                     {order.delivery_status || "Not specified"}
                   </span>
                 </div>
-                {isSeller && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Order Status</span>
-                    <div className="relative group">
-                      <select
-                        value={order.status}
-                        onChange={(e) => {
-                          if (e.target.value !== order.status) {
-                            updateOrderStatus(e.target.value);
-                          }
-                        }}
-                        disabled={isUpdatingStatus}
-                        className="text-sm px-3 py-1.5 rounded border border-gray-300 bg-white text-gray-700 hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-8 min-w-[140px]"
-                      >
-                        <option value={order.status}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</option>
-                        {getNextStatusOptions(order.status).map((status) => (
-                          <option key={status} value={status}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
+
+                {isSeller &&
+                  order.status !== "completed" &&
+                  order.status !== "cancelled" &&
+                  order.status !== "refunded" && (
+                    <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
+                      <span className="text-sm text-gray-600">Order Status</span>
+                      <div className="relative">
+                        <select
+                          value={order.status}
+                          onChange={(e) => {
+                            if (e.target.value !== order.status) {
+                              updateOrderStatus(e.target.value);
+                            }
+                          }}
+                          disabled={isUpdatingStatus}
+                          className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 min-w-[120px]"
+                        >
+                          <option value={order.status}>
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                           </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                          {getNextStatusOptions(order.status).map((status) => (
+                            <option key={status} value={status}>
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+                      </div>
                     </div>
+                  )}
+
+                {order.delivery_confirmed_at && (
+                  <div className="flex justify-between py-1.5 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Delivery Confirmed</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatDate(order.delivery_confirmed_at)}
+                    </span>
                   </div>
                 )}
+
                 {order.shipping_address ? (
-                  <div className="pt-2">
-                    <p className="text-gray-600 mb-2">Shipping Address</p>
-                    <div className="bg-gray-50 rounded-lg p-4 space-y-1">
-                      {order.shipping_address.street && <p className="text-gray-900">{order.shipping_address.street}</p>}
-                      <p className="text-gray-900">
+                  <div className="py-1.5 border-b border-gray-100">
+                    <span className="text-sm text-gray-600 block mb-1.5">Shipping Address</span>
+                    <div className="bg-gray-50 rounded-lg p-2.5 text-sm text-gray-900 space-y-0.5">
+                      {order.shipping_address.street && (
+                        <p>{order.shipping_address.street}</p>
+                      )}
+                      <p>
                         {[
                           order.shipping_address.city,
                           order.shipping_address.state,
-                          order.shipping_address.postal_code
-                        ].filter(Boolean).join(', ')}
+                          order.shipping_address.postal_code,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
                       </p>
-                      {order.shipping_address.country && <p className="text-gray-900">{order.shipping_address.country}</p>}
+                      {order.shipping_address.country && (
+                        <p>{order.shipping_address.country}</p>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm">No shipping address provided</p>
+                  <div className="flex justify-between py-1.5 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Shipping Address</span>
+                    <span className="text-sm text-gray-500">Not provided</span>
+                  </div>
                 )}
+
+                <div className="space-y-2 pt-1">
+                  {canConfirmDelivery && (
+                    <div className="rounded-lg bg-green-50 border border-green-100 p-2.5">
+                      <p className="text-xs text-gray-600 mb-2">
+                        Received your order? Confirm delivery to release payment to the seller.
+                      </p>
+                      <button
+                        onClick={() => setShowConfirmDelivery(true)}
+                        className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Confirm Delivery
+                      </button>
+                    </div>
+                  )}
+
+                  {isBuyer && order.payout_status === "completed" && (
+                    <div className="rounded-lg bg-green-50 border border-green-100 p-2.5">
+                      <p className="text-xs text-green-700 flex items-center gap-1.5">
+                        <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                        Delivery confirmed — seller payment has been released.
+                      </p>
+                    </div>
+                  )}
+
+                  {isBuyer &&
+                    order.escrow_status === "scheduled" &&
+                    order.release_eligible_at && (
+                      <div className="rounded-lg bg-blue-50 border border-blue-100 p-2.5">
+                        <p className="text-xs text-blue-700 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 shrink-0" />
+                          Payout scheduled for {formatDate(order.release_eligible_at)}
+                        </p>
+                      </div>
+                    )}
+
+                  {canCancelOrder && isBuyer && (
+                    <div className="rounded-lg bg-red-50 border border-red-100 p-2.5">
+                      <p className="text-xs text-gray-600 mb-2">
+                        Order not shipped yet? You can cancel for a full refund.
+                      </p>
+                      <button
+                        onClick={() => setShowCancelOrder(true)}
+                        className="w-full sm:w-auto px-4 py-2 bg-white text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Cancel Order
+                      </button>
+                    </div>
+                  )}
+
+                  {canOpenDispute && (
+                    <div className="rounded-lg bg-orange-50 border border-orange-100 p-2.5">
+                      <p className="text-xs text-gray-600 mb-2">
+                        Having an issue with this order? Open a dispute to freeze seller payout.
+                      </p>
+                      <button
+                        onClick={() => setShowOpenDispute(true)}
+                        className="w-full sm:w-auto px-4 py-2 bg-white text-orange-700 border border-orange-200 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Shield className="w-4 h-4" />
+                        Open Dispute
+                      </button>
+                    </div>
+                  )}
+
+                  {hasActiveDispute && dispute && (
+                    <div className="rounded-lg bg-orange-50 border border-orange-100 p-2.5">
+                      <p className="text-xs text-orange-700 flex items-center gap-1.5 mb-1.5">
+                        <Shield className="w-3.5 h-3.5 shrink-0" />
+                        {isSeller
+                          ? "A buyer opened a dispute on this order. Respond before the deadline."
+                          : "Dispute open — seller payout is frozen"}
+                      </p>
+                      <Link
+                        href={`/marketplace/disputes/${dispute.id}`}
+                        className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        {isSeller ? "Respond to dispute →" : "View dispute →"}
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
+            {/* Refund Information */}
+            {(order.refund_status === 'partial' ||
+              order.refund_status === 'full' ||
+              order.status === 'refunded' ||
+              order.status === 'cancelled') && (
+              <div className="bg-white rounded-lg border border-gray-100 p-4">
+                <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+                  <CreditCard className="w-5 h-5 text-primary-600" />
+                  <span>Refund Information</span>
+                </h2>
+                <div className="space-y-2">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Refund status</span>
+                    <span className="font-medium capitalize text-gray-900">
+                      {order.refund_status || order.status}
+                    </span>
+                  </div>
+                  {(order.refunded_amount ?? 0) > 0 && (
+                    <div className="flex justify-between py-2 border-b border-gray-100">
+                      <span className="text-gray-600">Refunded amount</span>
+                      <span className="font-medium text-gray-900">
+                        {getCurrencySymbol(order.currency)}
+                        {Number(order.refunded_amount).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {order.cancellation_reason && (
+                    <div className="py-2">
+                      <span className="text-gray-600 text-sm">Reason</span>
+                      <p className="text-sm text-gray-900 mt-1">{order.cancellation_reason}</p>
+                    </div>
+                  )}
+                  {refunds.length > 0 && (
+                    <div className="pt-2 space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Refund history</p>
+                      {refunds.map((refund) => (
+                        <div
+                          key={refund.id}
+                          className="text-sm bg-gray-50 rounded-lg p-3 flex justify-between gap-2"
+                        >
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {getCurrencySymbol(refund.currency)}
+                              {Number(refund.amount).toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500 capitalize">{refund.status}</p>
+                          </div>
+                          <p className="text-xs text-gray-500">{formatDate(refund.created_at)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Notes */}
             {order.notes && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+              <div className="bg-white rounded-lg border border-gray-100 p-4">
+                <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
                   <FileText className="w-5 h-5 text-primary-600" />
                   <span>Special Instructions</span>
                 </h2>
@@ -406,12 +665,12 @@ const statusColor = deliveryStatus
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Order Summary */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
+            <div className="bg-white rounded-lg border border-gray-100 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-3">Order Summary</h2>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between py-2 border-b border-gray-100">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium text-gray-900">
@@ -432,13 +691,13 @@ const statusColor = deliveryStatus
             </div>
 
             {/* Order Timeline */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+            <div className="bg-white rounded-lg border border-gray-100 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
                 <Calendar className="w-5 h-5 text-primary-600" />
                 <span>Timeline</span>
               </h2>
               
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div>
                   <p className="text-sm text-gray-600">Order Placed</p>
                   <p className="text-sm font-medium text-gray-900">{formatDate(order.created_at)}</p>
@@ -459,14 +718,14 @@ const statusColor = deliveryStatus
             </div>
 
             {/* Contact Information */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+            <div className="bg-white rounded-lg border border-gray-100 p-4">
+              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
                 <User className="w-5 h-5 text-primary-600" />
                 <span>{isBuyer ? 'Seller' : 'Buyer'} Information</span>
               </h2>
               
               {otherParty ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center space-x-3">
                     {otherParty.avatar_url ? (
                       <img
@@ -511,13 +770,13 @@ const statusColor = deliveryStatus
 
             {/* Seller Status Update Section */}
             {isSeller && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+              <div className="bg-white rounded-lg border border-gray-100 p-4">
+                <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
                   <Package className="w-5 h-5 text-primary-600" />
                   <span>Update Order Status</span>
                 </h2>
                 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <p className="text-sm text-gray-600 mb-4">
                     Current status: <span className="font-medium capitalize">{order.status}</span>
                   </p>
@@ -551,6 +810,45 @@ const statusColor = deliveryStatus
           </div>
         </div>
       </div>
+
+      {canConfirmDelivery && (
+        <ConfirmDeliveryModal
+          orderId={order.id}
+          orderNumber={order.order_number}
+          productTitle={order.product_title}
+          sellerName={order.seller?.full_name || order.seller?.username || 'Seller'}
+          isOpen={showConfirmDelivery}
+          onClose={() => setShowConfirmDelivery(false)}
+          onSuccess={fetchOrderDetails}
+        />
+      )}
+
+      {canCancelOrder && isBuyer && (
+        <CancelOrderModal
+          orderId={order.id}
+          orderNumber={order.order_number}
+          productTitle={order.product_title}
+          totalAmount={order.total_amount}
+          currency={order.currency}
+          isOpen={showCancelOrder}
+          onClose={() => setShowCancelOrder(false)}
+          onSuccess={fetchOrderDetails}
+        />
+      )}
+
+      {canOpenDispute && (
+        <OpenDisputeModal
+          orderId={order.id}
+          orderNumber={order.order_number}
+          productTitle={order.product_title}
+          isOpen={showOpenDispute}
+          onClose={() => setShowOpenDispute(false)}
+          onSuccess={(disputeId) => {
+            fetchOrderDetails()
+            router.push(`/marketplace/disputes/${disputeId}`)
+          }}
+        />
+      )}
     </div>
   )
 }

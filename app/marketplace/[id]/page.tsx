@@ -477,15 +477,13 @@ const ProductDetailPage: React.FC = () => {
 
                       onClick={() => setSelectedImage(index)}
 
-                      className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-
-                        selectedImage === index
+                      className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${selectedImage === index
 
                           ? "border-primary-600"
 
                           : "border-transparent hover:border-gray-300"
 
-                      }`}
+                        }`}
 
                     >
 
@@ -547,15 +545,13 @@ const ProductDetailPage: React.FC = () => {
 
                     onClick={handleSave}
 
-                    className={`p-2 rounded-full transition-colors ${
-
-                      isSaved
+                    className={`p-2 rounded-full transition-colors ${isSaved
 
                         ? "text-white bg-primary-600"
 
                         : "text-gray-500 hover:text-primary-600 hover:bg-gray-100"
 
-                    }`}
+                      }`}
 
                     aria-label={isSaved ? "Unsave" : "Save"}
 
@@ -651,15 +647,13 @@ const ProductDetailPage: React.FC = () => {
 
                   disabled={contactingSeller || isOwnProduct}
 
-                  className={`w-full py-2 px-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${
-
-                    contactingSeller || isOwnProduct
+                  className={`w-full py-2 px-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${contactingSeller || isOwnProduct
 
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
 
                       : "bg-primary-600 text-white hover:bg-primary-700"
 
-                  }`}
+                    }`}
 
                 >
 
@@ -671,9 +665,9 @@ const ProductDetailPage: React.FC = () => {
 
                     : isOwnProduct
 
-                    ? "Your listing"
+                      ? "Your listing"
 
-                    : "Message seller"}
+                      : "Message seller"}
 
                 </button>
 
@@ -687,15 +681,13 @@ const ProductDetailPage: React.FC = () => {
 
                   disabled={!canPurchase}
 
-                  className={`w-full py-2 px-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 border transition-colors ${
-
-                    canPurchase
+                  className={`w-full py-2 px-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 border transition-colors ${canPurchase
 
                       ? "border-primary-600 text-primary-600 hover:bg-primary-50"
 
                       : "border-gray-200 text-gray-400 cursor-not-allowed"
 
-                  }`}
+                    }`}
 
                 >
 
@@ -707,13 +699,13 @@ const ProductDetailPage: React.FC = () => {
 
                     : isOutOfStock
 
-                    ? "Out of stock"
+                      ? "Out of stock"
 
-                    : isUnavailable
+                      : isUnavailable
 
-                    ? "Unavailable"
+                        ? "Unavailable"
 
-                    : "Buy now"}
+                        : "Buy now"}
 
                 </button>
 
@@ -787,9 +779,7 @@ const ProductDetailPage: React.FC = () => {
 
                 product.seller?.avatar_url ||
 
-                `https://ui-avatars.com/api/?name=${
-
-                  product.seller?.full_name || "User"
+                `https://ui-avatars.com/api/?name=${product.seller?.full_name || "User"
 
                 }&background=random`
 

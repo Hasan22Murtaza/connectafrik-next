@@ -275,11 +275,11 @@ export function GroupDetailPageShimmer() {
 /** Product card grid shimmer. Pass count from useShimmerCount(). */
 export function MarketplaceGridShimmer({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-1 sm:gap-1.5">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="w-full min-w-0 flex flex-col">
-          <div className="aspect-square w-full animate-shimmer rounded-lg flex-shrink-0" />
-          <div className="pt-2 space-y-2 min-w-0">
+          <div className="aspect-square w-full animate-shimmer rounded-md flex-shrink-0" />
+          <div className="pt-1 space-y-1 min-w-0">
             <div className="h-4 w-16 animate-shimmer rounded" />
             <div className="h-3 w-full max-w-full animate-shimmer rounded" />
             <div className="h-3 w-2/3 max-w-full animate-shimmer rounded" />
@@ -294,20 +294,20 @@ export function MarketplaceGridShimmer({ count }: { count: number }) {
 export function MarketplacePageShimmer() {
   const count = useShimmerCount();
   return (
-    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
-      <div className="flex gap-4">
-        <aside className="hidden md:block w-[280px] shrink-0 bg-white px-4 py-6">
-          <div className="h-8 w-32 animate-shimmer rounded mb-6" />
-          <div className="h-10 w-full animate-shimmer rounded mb-6" />
-          <div className="h-5 w-24 animate-shimmer rounded mb-3" />
-          <div className="space-y-2">
+    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden px-3 sm:px-4">
+      <div className="flex gap-3">
+        <aside className="hidden md:block w-[260px] shrink-0 bg-white px-3 py-4">
+          <div className="h-7 w-28 animate-shimmer rounded mb-4" />
+          <div className="h-9 w-full animate-shimmer rounded mb-4" />
+          <div className="h-4 w-20 animate-shimmer rounded mb-2" />
+          <div className="space-y-1">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-9 w-full animate-shimmer rounded" />
+              <div key={i} className="h-8 w-full animate-shimmer rounded" />
             ))}
           </div>
         </aside>
-        <main className="flex-1 px-3 sm:px-4 py-6 min-w-0 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <main className="flex-1 py-4 min-w-0 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
             <div className="h-8 w-48 animate-shimmer rounded" />
             <div className="h-9 w-24 animate-shimmer rounded shrink-0" />
           </div>
@@ -392,24 +392,24 @@ export function ProductDetailPageShimmer() {
 /** Order card grid shimmer. Pass count from useShimmerCountMd(). */
 export function MyOrdersGridShimmer({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 w-full min-w-0">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 sm:gap-2 w-full min-w-0">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bg-white rounded-lg border border-gray-200 overflow-hidden w-full min-w-0 flex flex-col"
+          className="bg-white rounded-lg border border-gray-100 overflow-hidden w-full min-w-0 flex flex-col"
         >
           <div className="relative">
-            <div className="w-full h-40 sm:h-48 animate-shimmer rounded-t-lg flex-shrink-0" />
-            <div className="absolute top-2 right-2">
-              <div className="h-5 w-16 animate-shimmer rounded-full" />
+            <div className="w-full h-36 animate-shimmer rounded-t-lg flex-shrink-0" />
+            <div className="absolute top-1.5 right-1.5">
+              <div className="h-4 w-14 animate-shimmer rounded-full" />
             </div>
           </div>
-          <div className="px-3 sm:px-4 pt-2 min-w-0">
-            <div className="h-4 w-3/4 max-w-full animate-shimmer rounded mb-2" />
+          <div className="px-3 pt-1.5 min-w-0">
+            <div className="h-3.5 w-3/4 max-w-full animate-shimmer rounded mb-1.5" />
             <div className="h-3 w-1/2 max-w-full animate-shimmer rounded" />
           </div>
-          <div className="p-3 sm:p-4 min-w-0">
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3">
+          <div className="p-3 min-w-0">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-2">
               <div className="h-3 w-full animate-shimmer rounded" />
               <div className="h-3 w-full animate-shimmer rounded" />
               <div className="h-3 w-full animate-shimmer rounded" />

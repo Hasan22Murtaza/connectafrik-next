@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Lightbulb, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import CreateProductForm from "@/features/marketplace/components/CreateProductForm";
-import MarketplaceHubNav from "@/features/marketplace/components/MarketplaceHubNav";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import { ArrowLeft, Lightbulb, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React, { useEffect } from "react";
 
 const CreateListingPage: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
@@ -53,12 +52,12 @@ const CreateListingPage: React.FC = () => {
               Back to listings
             </button>
             <h1 className="text-2xl font-bold text-gray-900">Create listing</h1>
-           
+
           </div>
 
           <div className="hidden lg:block mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Create listing</h1>
-           
+
           </div>
 
           <CreateProductForm

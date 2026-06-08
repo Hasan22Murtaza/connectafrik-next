@@ -11,18 +11,19 @@ import {
   MARKETPLACE_SORT_OPTIONS,
   MarketplaceSort,
 } from "@/features/marketplace/constants/marketplaceConstants";
+import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import {
   formatCurrencyDisplay,
   getCurrencyForCountry,
 } from "@/features/marketplace/utils/countryCurrency";
 import { apiClient } from "@/lib/api-client";
-import { useProfile } from "@/shared/hooks/useProfile";
-import { Product } from "@/shared/types";
 import {
-  useShimmerCount,
   MarketplaceGridShimmer,
   MarketplacePageShimmer,
+  useShimmerCount,
 } from "@/shared/components/ui/ShimmerLoaders";
+import { useProfile } from "@/shared/hooks/useProfile";
+import { Product } from "@/shared/types";
 import {
   ArrowLeft,
   ChevronDown,
@@ -32,7 +33,7 @@ import {
   Search,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 const PAGE_SIZE = 24;
@@ -132,7 +133,6 @@ const MarketplacePage: React.FC = () => {
         };
 
         if (selectedCategory) params.category = selectedCategory;
-        if (selectedCurrency) params.currency = selectedCurrency;
         if (selectedCountry) params.country = selectedCountry;
         if (debouncedSearch) params.search = debouncedSearch;
 
@@ -217,27 +217,23 @@ const MarketplacePage: React.FC = () => {
   ) => (
     <div
       onClick={onClick}
-      className={`group relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-all duration-200 ${
-        isActive
-          ? "bg-orange-50 text-primary-600"
-          : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
+      className={`${MP.navItem} ${
+        isActive ? MP.navItemActive : MP.navItemInactive
       }`}
     >
       <span
-        className={`absolute left-0 top-0 h-full w-[3px] rounded-r transition-all duration-200 ${
+        className={`${MP.navIndicator} ${
           isActive
-            ? "bg-primary-600 opacity-100 scale-y-100"
-            : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
+            ? "opacity-100 scale-y-100"
+            : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
         }`}
       />
       {Icon && (
         <Icon
-          className={`w-[18px] h-[18px] transition-transform ${
-            isActive ? "scale-110" : "group-hover:scale-110"
-          }`}
+          className={`${MP.navIcon} ${isActive ? MP.navIconActive : ""}`}
         />
       )}
-      <span className="text-sm font-medium">{label}</span>
+      <span>{label}</span>
     </div>
   );
 
@@ -256,14 +252,14 @@ const MarketplacePage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen px-4">
-      <div className="flex gap-4 min-w-0 w-full">
+    <div className={MP.page}>
+      <div className={MP.shell}>
         <aside
-          className={`fixed md:relative inset-y-0 left-0 z-40 w-[280px] shrink-0 px-4 py-6 sm:top-0 top-12 md:h-screen h-[calc(100vh-6rem)] scrollbar-hover overflow-y-auto transform transition-transform duration-300 ${
+          className={`${MP.sidebarBrowse} ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0`}
+          }`}
         >
-          <div className="md:hidden flex items-center mb-4 gap-2">
+          <div className="md:hidden flex items-center mb-3 gap-1.5">
             <button onClick={() => setIsSidebarOpen(false)} aria-label="Close filters">
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -276,11 +272,11 @@ const MarketplacePage: React.FC = () => {
             onCreateListing={goToCreateListing}
           />
 
-          <div className="mb-5">
+          <div className={MP.section}>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
-                className="w-full px-4 py-2.5 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none transition-colors text-sm"
+                className={MP.searchInput}
                 placeholder="Search Marketplace"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -288,14 +284,12 @@ const MarketplacePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">
-              Location
-            </h3>
+          <div className={MP.section}>
+            <h3 className={MP.sectionTitle}>Location</h3>
             <select
               value={selectedCountry}
               onChange={(e) => setSelectedCountry(e.target.value)}
-              className="w-full px-3 py-2.5 bg-[#EEF1F4] hover:bg-[#DDE2E6] border-0 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+              className={MP.selectInput}
             >
               {MARKETPLACE_COUNTRIES.map((country) => (
                 <option key={country.value || "all"} value={country.value}>
@@ -305,11 +299,9 @@ const MarketplacePage: React.FC = () => {
             </select>
           </div>
 
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">
-              Categories
-            </h3>
-            <ul className="space-y-1">
+          <div className={MP.section}>
+            <h3 className={MP.sectionTitle}>Categories</h3>
+            <ul className={MP.navList}>
               {MARKETPLACE_CATEGORIES.map((category) => {
                 const Icon = category.icon;
                 return (
@@ -326,17 +318,15 @@ const MarketplacePage: React.FC = () => {
             </ul>
           </div>
 
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3 px-2">
-              Currency
-            </h3>
+          <div className={MP.section}>
+            <h3 className={MP.sectionTitle}>Currency</h3>
             {user && profileCurrency ? (
-              <div className="px-3 py-2.5 bg-[#EEF1F4] rounded-lg text-sm text-gray-700">
+              <div className="px-2.5 py-2 bg-[#EEF1F4] rounded-lg text-sm text-gray-700">
                 {formatCurrencyDisplay(profileCurrency)}
-                <p className="text-xs text-gray-500 mt-1">Based on your signup country</p>
+                <p className="text-xs text-gray-500 mt-0.5">Based on your signup country</p>
               </div>
             ) : (
-              <ul className="space-y-1">
+              <ul className={MP.navList}>
                 {MARKETPLACE_CURRENCIES.map((currency) => (
                   <li key={currency.value || "all"}>
                     {renderSidebarItem(
@@ -367,25 +357,25 @@ const MarketplacePage: React.FC = () => {
           />
         )}
 
-        <main className="flex-1 px-1 sm:px-4 py-6 min-w-0 w-full">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-2 min-w-0">
+        <main className={MP.mainBrowse}>
+          <div className={MP.headerRow}>
+            <div className="flex items-center gap-1.5 min-w-0">
               <button
                 onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden p-2 rounded-lg bg-gray-100 shrink-0"
+                className="md:hidden p-1.5 rounded-lg bg-gray-100 shrink-0"
                 aria-label="Open filters"
               >
-                <Filter className="w-5 h-5" />
+                <Filter className="w-4 h-4" />
               </button>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+              <h1 className={`${MP.pageTitleLg} truncate`}>
                 Today&apos;s picks
               </h1>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className={MP.headerActions}>
               {selectedCountry && (
-                <span className="inline-flex items-center gap-1 text-xs sm:text-sm text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full">
-                  <MapPin className="w-3.5 h-3.5 text-primary-600" />
+                <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                  <MapPin className="w-3 h-3 text-primary-600" />
                   {selectedCountryLabel}
                 </span>
               )}
@@ -394,7 +384,7 @@ const MarketplacePage: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as MarketplaceSort)}
-                  className="appearance-none pl-3 pr-8 py-1.5 sm:py-2 bg-white border border-gray-200 rounded-lg text-xs sm:text-sm text-gray-700 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                  className="appearance-none pl-2.5 pr-7 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
                   aria-label="Sort products"
                 >
                   {MARKETPLACE_SORT_OPTIONS.map((option) => (
@@ -403,15 +393,15 @@ const MarketplacePage: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
               </div>
 
               {user && (
                 <button
                   onClick={goToCreateListing}
-                  className="btn-primary hidden sm:flex items-center gap-2 text-sm"
+                  className="btn-primary hidden sm:flex items-center gap-1.5 text-sm"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
                   Sell
                 </button>
               )}
@@ -419,7 +409,7 @@ const MarketplacePage: React.FC = () => {
           </div>
 
           {!hasActiveFilters && (
-            <p className="text-sm text-gray-500 mb-5">
+            <p className="text-sm text-gray-500 mb-3">
               {user
                 ? "Discover authentic products from entrepreneurs and businesses worldwide"
                 : "Browse listings freely — sign in to save, message sellers, or buy"}
@@ -432,7 +422,7 @@ const MarketplacePage: React.FC = () => {
             renderEmptyState()
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4">
+              <div className={MP.productGrid}>
                 {products.map((product) => (
                   <ProductBrowseCard
                     key={product.id}
@@ -457,10 +447,10 @@ const MarketplacePage: React.FC = () => {
       {user && (
         <button
           onClick={goToCreateListing}
-          className="sm:hidden fixed bottom-6 right-6 z-20 w-14 h-14 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center hover:bg-primary-700 transition-colors"
+          className="sm:hidden fixed bottom-5 right-5 z-20 w-12 h-12 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center hover:bg-primary-700 transition-colors"
           aria-label="Create new listing"
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-5 h-5" />
         </button>
       )}
     </div>

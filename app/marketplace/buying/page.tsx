@@ -3,6 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import ProductBrowseCard from "@/features/marketplace/components/ProductBrowseCard";
 import { BUYING_TABS, BuyingTab, CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplaceConstants";
+import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import { getCurrencySymbol } from "@/features/marketplace/utils/productFormatting";
 import { apiClient } from "@/lib/api-client";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
@@ -151,9 +152,9 @@ const BuyingPageContent: React.FC = () => {
       key={item.id}
       type="button"
       onClick={() => router.push(`/marketplace/${item.productId}`)}
-      className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors text-left shadow-sm"
+      className={MP.listRow}
     >
-      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+      <div className={MP.listThumb}>
         <img
           src={item.image || FALLBACK_IMAGE}
           alt={item.title}
@@ -194,7 +195,7 @@ const BuyingPageContent: React.FC = () => {
           </div>
         );
       }
-      return <div className="space-y-3">{activityItems.map(renderActivityRow)}</div>;
+      return <div className={MP.listStack}>{activityItems.map(renderActivityRow)}</div>;
     }
 
     if (activeTab === "saved") {
@@ -210,7 +211,7 @@ const BuyingPageContent: React.FC = () => {
         );
       }
       return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className={MP.productGridCompact}>
           {savedItems.map((product) => (
             <div key={product.id} className="relative group">
               <ProductBrowseCard
@@ -247,15 +248,15 @@ const BuyingPageContent: React.FC = () => {
     }
 
     return (
-      <div className="space-y-3">
+      <div className={MP.listStack}>
         {orders.map((order) => (
           <button
             key={order.id}
             type="button"
             onClick={() => router.push(`/my-orders/${order.id}`)}
-            className="w-full flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors text-left shadow-sm"
+            className={MP.listRow}
           >
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+            <div className={MP.listThumb}>
               <img
                 src={order.product_image || FALLBACK_IMAGE}
                 alt={order.product_title}
@@ -297,24 +298,24 @@ const BuyingPageContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen px-4">
-      <div className="flex gap-4 min-w-0 w-full max-w-screen-2xl mx-auto">
-        <aside className="hidden lg:block w-[260px] shrink-0 py-6">
+    <div className={MP.page}>
+      <div className={MP.shell}>
+        <aside className={`hidden lg:block ${MP.sidebar}`}>
           <button
             type="button"
             onClick={() => router.push("/marketplace")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 text-sm px-2"
+            className={`${MP.backLink} mb-2`}
           >
             <ArrowLeft className="w-4 h-4" />
             Marketplace
           </button>
 
-          <div className="px-2 mb-5">
-            <h2 className="text-2xl font-bold text-gray-900">Buying</h2>
+          <div className="px-2 mb-3">
+            <h2 className={MP.pageTitle}>Buying</h2>
           </div>
 
-          <nav className="border-t border-gray-100 pt-4">
-            <ul className="space-y-1">
+          <nav className="border-t border-gray-100 pt-3">
+            <ul className={MP.navList}>
               {BUYING_TABS.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.value;
@@ -323,13 +324,10 @@ const BuyingPageContent: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setTab(tab.value)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        isActive
-                          ? "bg-orange-50 text-primary-600"
-                          : "text-gray-500 hover:bg-gray-100 hover:text-primary-600"
-                      }`}
+                      className={`${MP.navItem} ${isActive ? MP.navItemActive : MP.navItemInactive
+                        }`}
                     >
-                      <Icon className="w-[18px] h-[18px]" />
+                      <Icon className={`${MP.navIcon} ${isActive ? MP.navIconActive : ""}`} />
                       {tab.label}
                     </button>
                   </li>
@@ -341,58 +339,57 @@ const BuyingPageContent: React.FC = () => {
           <button
             type="button"
             onClick={() => router.push(CREATE_LISTING_PATH)}
-            className="w-full mt-6 flex items-center justify-center gap-2 py-2.5 px-4 rounded-full bg-primary-50 text-primary-600 font-semibold text-sm hover:bg-primary-100 transition-colors"
+            className={MP.createListingBtn}
           >
             <Plus className="w-4 h-4" />
             Create new listing
           </button>
         </aside>
 
-        <main className="flex-1 py-6 min-w-0">
-          <div className="lg:hidden mb-4">
+        <main className={MP.main}>
+          <div className="lg:hidden mb-3">
             <button
               type="button"
               onClick={() => router.push("/marketplace")}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 text-sm"
+              className={`${MP.backLink} mb-2`}
             >
               <ArrowLeft className="w-4 h-4" />
               Marketplace
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">Buying</h1>
+            <h1 className={MP.pageTitle}>Buying</h1>
           </div>
 
-          <div className="lg:hidden flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-hide">
+          <div className="lg:hidden flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-hide">
             {BUYING_TABS.map((tab) => (
               <button
                 key={tab.value}
                 type="button"
                 onClick={() => setTab(tab.value)}
-                className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  activeTab === tab.value
+                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === tab.value
                     ? "bg-primary-600 text-white"
                     : "bg-gray-100 text-gray-600"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
             ))}
           </div>
 
-          <h1 className="hidden lg:block text-2xl font-bold text-gray-900 mb-6">{tabTitle}</h1>
+          <h1 className={`hidden lg:block ${MP.pageTitle} mb-4`}>{tabTitle}</h1>
 
           {renderTabContent()}
         </main>
 
-        <aside className="hidden xl:block w-[260px] shrink-0 py-6">
-          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm sticky top-6">
-            <div className="flex items-center gap-3 mb-4">
+        <aside className={`hidden xl:block ${MP.sidebar}`}>
+          <div className={`${MP.card} ${MP.cardPadding} sticky top-4`}>
+            <div className="flex items-center gap-2 mb-3">
               <img
                 src={
                   buyerAvatar ||
                   `https://ui-avatars.com/api/?name=${encodeURIComponent(buyerName)}&background=random`
                 }
                 alt={buyerName}
-                className="w-12 h-12 rounded-full object-cover"
+                className="w-10 h-10 rounded-full object-cover"
               />
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 truncate">{buyerName}</p>
@@ -405,14 +402,14 @@ const BuyingPageContent: React.FC = () => {
             <button
               type="button"
               onClick={() => router.push("/profile")}
-              className="w-full py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors mb-4"
+              className="w-full py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors mb-3"
             >
               See Marketplace profile
             </button>
 
-            <div className="border-t border-gray-100 pt-4">
-              <div className="flex items-start gap-2 text-sm text-gray-600">
-                <HelpCircle className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
+            <div className="border-t border-gray-100 pt-3">
+              <div className="flex items-start gap-1.5 text-sm text-gray-600">
+                <HelpCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-gray-400" />
                 <div>
                   <p className="font-medium text-gray-900 mb-1">Need help?</p>
                   <button

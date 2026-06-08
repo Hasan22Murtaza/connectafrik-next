@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { Product } from "@/shared/types";
 import {
   Check,
   ExternalLink,
@@ -13,7 +13,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
-import { Product } from "@/shared/types";
+import React, { useEffect, useRef, useState } from "react";
 
 export type ListingActionMenuItem =
   | "renew"
@@ -63,23 +63,23 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
     destructive?: boolean;
     hidden?: boolean;
   }[] = [
-    { action: "renew", label: "Renew listing", icon: RefreshCw, hidden: isActive },
-    {
-      action: "pending",
-      label: "Mark as pending",
-      icon: Pause,
-      hidden: !isActive,
-    },
-    { action: "view", label: "View listing", icon: ExternalLink },
-    {
-      action: "list-elsewhere",
-      label: "List in more places",
-      icon: Users,
-    },
-    { action: "edit", label: "Edit listing", icon: Pencil },
-    { action: "delete", label: "Delete listing", icon: Trash2, destructive: true },
-    { action: "messages", label: "View messages", icon: MessageCircle },
-  ];
+      { action: "renew", label: "Renew listing", icon: RefreshCw, hidden: isActive },
+      {
+        action: "pending",
+        label: "Mark as pending",
+        icon: Pause,
+        hidden: !isActive,
+      },
+      { action: "view", label: "View listing", icon: ExternalLink },
+      {
+        action: "list-elsewhere",
+        label: "List in more places",
+        icon: Users,
+      },
+      { action: "edit", label: "Edit listing", icon: Pencil },
+      { action: "delete", label: "Delete listing", icon: Trash2, destructive: true },
+      { action: "messages", label: "View messages", icon: MessageCircle },
+    ];
 
   const handleMenuClick = (action: ListingActionMenuItem) => {
     setMenuOpen(false);
@@ -87,21 +87,21 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-2 pt-3 mt-3 border-t border-gray-100">
+    <div className="flex items-center gap-1.5 pt-2 mt-2 border-t border-gray-100">
       {isActive && (
         <button
           type="button"
           onClick={onMarkAsSold}
           disabled={markingSold}
-          className="flex-1 min-w-0 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors disabled:opacity-50"
+          className="flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-colors disabled:opacity-50"
         >
-          <Check className="w-4 h-4 shrink-0" />
+          <Check className="w-3.5 h-3.5 shrink-0" />
           {markingSold ? "Updating..." : "Mark as sold"}
         </button>
       )}
 
       {isPending && (
-        <span className="flex-1 py-2.5 px-3 rounded-lg bg-yellow-50 text-yellow-800 text-sm font-medium text-center">
+        <span className="flex-1 py-2 px-2.5 rounded-lg bg-yellow-50 text-yellow-800 text-sm font-medium text-center">
           Pending
         </span>
       )}
@@ -109,9 +109,9 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
       <button
         type="button"
         onClick={onShare}
-        className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-semibold transition-colors shrink-0"
+        className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-semibold transition-colors shrink-0"
       >
-        <Share2 className="w-4 h-4" />
+        <Share2 className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">Share</span>
       </button>
 
@@ -119,11 +119,11 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
         <button
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
-          className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 transition-colors"
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 transition-colors"
           aria-label="More listing options"
           aria-expanded={menuOpen}
         >
-          <MoreHorizontal className="w-5 h-5" />
+          <MoreHorizontal className="w-4 h-4" />
         </button>
 
         {menuOpen && (
@@ -137,11 +137,10 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
                     key={item.action}
                     type="button"
                     onClick={() => handleMenuClick(item.action)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${
-                      item.destructive
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${item.destructive
                         ? "text-red-600 hover:bg-red-50"
                         : "text-gray-800 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     <Icon className="w-4 h-4 shrink-0 text-gray-500" />
                     {item.label}

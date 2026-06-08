@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { sendNewOrderNotificationEmail } from '@/shared/services/emailService'
+import { buildOrderFinancialFields } from '@/lib/marketplace/orderFinancials'
+import { recordCheckoutLedger } from '@/lib/marketplace/orderLedger'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -62,6 +64,10 @@ export async function GET(request: NextRequest) {
                 return NextResponse.redirect(new URL('/marketplace?payment=success', request.url))
             }
 
+            const orderCurrency = meta.currency || verification.currency || 'USD'
+            const orderTotal = parseFloat(meta.total_amount) || (verification.amount || 0)
+            const financials = buildOrderFinancialFields(orderTotal, orderCurrency, 'paystack')
+
             // Build order payload from metadata
             const orderPayload: any = {
                 buyer_id: meta.buyer_id || null,
@@ -73,15 +79,17 @@ export async function GET(request: NextRequest) {
                 product_image: meta.product_image || null,
                 quantity: parseInt(meta.quantity) || 1,
                 unit_price: parseFloat(meta.unit_price) || null,
-                total_amount: parseFloat(meta.total_amount) || (verification.amount || 0),
-                currency: meta.currency || verification.currency || 'USD',
+                total_amount: orderTotal,
+                currency: orderCurrency,
                 payment_status: 'completed',
                 payment_method: 'paystack',
                 payment_reference: reference,
                 paid_at: new Date().toISOString(),
                 shipping_address: meta.shipping_address || null,
                 notes: meta.notes || null,
-                status: 'confirmed'
+                status: 'confirmed',
+                payout_status: 'pending',
+                ...financials,
             }
             console.log('Creating order with payload (GET):', JSON.stringify(orderPayload))
             const { data: order, error: orderError } = await supabase
@@ -94,6 +102,15 @@ export async function GET(request: NextRequest) {
                 console.error('Failed to create order after verification:', orderError)
                 return NextResponse.redirect(new URL('/marketplace?payment=error&message=Order+creation+failed', request.url))
             }
+
+            await recordCheckoutLedger(
+                supabase,
+                order.id,
+                orderCurrency,
+                orderTotal,
+                financials,
+                orderPayload.buyer_id
+            )
 
             // Create payment transaction
             const { error: transactionError } = await supabase.from('payment_transactions').insert({

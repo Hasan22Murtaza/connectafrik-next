@@ -1,24 +1,24 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ShoppingBag,
-  Package,
-  Clock,
-  CheckCircle,
-  XCircle,
-  TrendingUp,
-  ShoppingCart,
-  ChevronDown,
-} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/lib/api-client";
-import toast from "react-hot-toast";
 import {
-  useShimmerCountMd,
   MyOrdersGridShimmer,
+  useShimmerCountMd,
 } from "@/shared/components/ui/ShimmerLoaders";
+import {
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  Package,
+  ShoppingBag,
+  ShoppingCart,
+  TrendingUp,
+  XCircle,
+} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 interface Order {
   id: string;
@@ -198,11 +198,11 @@ const MyOrders: React.FC = () => {
     return (
       <div
         key={order.id}
-        className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)]   hover:shadow-md hover:border-primary-200 transition-all"
+        className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
       >
         <div className="relative">
           {/* Image + Status */}
-          <div className="relative w-full h-48 mb-3 overflow-hidden rounded-t-lg bg-gray-50 flex items-center justify-center">
+          <div className="relative w-full h-36 mb-2 overflow-hidden rounded-t-lg bg-gray-50 flex items-center justify-center">
             {order.product_image ? (
               <img
                 src={order.product_image}
@@ -227,14 +227,18 @@ const MyOrders: React.FC = () => {
           </div>
 
           {/* Title + Order Number */}
-          <div className="px-4">
-            <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-gray-900 mb-1 sm:text-lg text-sm truncate max-w-[300px] hover:text-orange-500 cursor-pointer" title={order.product_title}>
-              {order.product_title}
-            </h3>
-            <div>
-             
-            </div>
+          <div className="px-3">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <h3
+                className="font-semibold text-gray-900 sm:text-base text-sm truncate max-w-[300px] hover:text-orange-500 cursor-pointer"
+                title={order.product_title}
+                onClick={() => router.push(`/my-orders/${order.id}`)}
+              >
+                {order.product_title}
+              </h3>
+              <div>
+
+              </div>
             </div>
             <p className="text-sm text-gray-500">
               <span className="font-bold text-black">Order # : </span>
@@ -244,11 +248,11 @@ const MyOrders: React.FC = () => {
         </div>
 
 
-        <div className="flex p-4">
+        <div className="flex p-3">
           {/* Order Details */}
           <div className="flex-1 ">
             {/* Order Info */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-3">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-2">
               <div>
                 <p className="text-xs text-gray-500">Quantity</p>
                 <p className="text-sm font-medium text-gray-900">
@@ -267,13 +271,13 @@ const MyOrders: React.FC = () => {
                   <p className="text-xs text-gray-500">Payment Status</p>
                   <p
                     className={`text-sm font-medium ${order.payment_status === "completed"
-                        ? "text-green-600"
+                      ? "text-green-600"
                       : "text-yellow-600"
-                    }`}
-                >
-                  {order.payment_status === "completed" ? "✓ Paid" : "Pending"}
-                </p>
-              </div>
+                      }`}
+                  >
+                    {order.payment_status === "completed" ? "✓ Paid" : "Pending"}
+                  </p>
+                </div>
               )}
               <div>
                 <p className="text-xs text-gray-500">Order Date</p>
@@ -310,8 +314,8 @@ const MyOrders: React.FC = () => {
 
             {/* Other Party Info */}
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-              <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-1.5">
                 {otherParty?.avatar_url ? (
                   <img
                     src={otherParty?.avatar_url}
@@ -329,20 +333,22 @@ const MyOrders: React.FC = () => {
                   <span className="text-xs text-gray-800 font-medium">
                     {isSale ? "Buyer" : "Seller"}:
                   </span>
-                  <span className="text-xs text-gray-800 ">
+                  <span
+                    className={`text-xs text-gray-800 ${otherParty?.username
+                        ? "hover:text-primary-600 hover:underline cursor-pointer"
+                        : ""
+                      }`}
+                    onClick={(e) => {
+                      if (!otherParty?.username) return;
+                      e.stopPropagation();
+                      router.push(`/user/${otherParty.username}`);
+                    }}
+                  >
                     {otherParty?.full_name || otherParty?.username || "Unknown"}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
 
-                <button
-                  onClick={() => router.push(`/my-orders/${order.id}`)}
-                  className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                >
-                  View Details
-                </button>
-              </div>
             </div>
 
           </div>
@@ -359,91 +365,89 @@ const MyOrders: React.FC = () => {
     activeTab === "purchases" ? stats.purchases.totalSpent : stats.sales.totalEarned;
 
   return (
-    <div className="min-h-screen  max-w-full  px-3 sm:px-6 py-6">
+    <div className="min-h-screen max-w-full px-3 sm:px-4 py-4">
       {/* Header */}
       <div className="">
-        <div className="mb-6">
-        <div className="flex items-center space-x-2 ">
-          <ShoppingBag className="w-7 h-7 text-primary-600" />
-          <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-        </div>
-        <p className="text-gray-600">
-          Manage your orders and track their status.
-        </p>
+        <div className="mb-4">
+          <div className="flex items-center gap-1.5">
+            <ShoppingBag className="w-6 h-6 text-primary-600" />
+            <h1 className="text-xl font-bold text-gray-900">My Orders</h1>
+          </div>
+          <p className="text-gray-600">
+            Manage your orders and track their status.
+          </p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 sm:gap-2 mb-4">
           {/* Total (changes by active tab) */}
-          <div className="bg-primary-50 rounded-lg p-2 sm:p-4">
-            <div className="flex items-center space-x-1 mb-1">
+          <div className="bg-primary-50 rounded-lg p-2 sm:p-3">
+            <div className="flex items-center gap-1 mb-0.5">
               {activeTab === "purchases" ? (
-                <ShoppingCart className="w-6 h-6 text-primary-600" />
+                <ShoppingCart className="w-4 h-4 text-primary-600" />
               ) : (
-                <Package className="w-6 h-6 text-primary-600" />
+                <Package className="w-4 h-4 text-primary-600" />
               )}
               <p className="text-sm text-primary-600 font-medium">
                 {primaryLabel}
               </p>
             </div>
-            <p className="text-2xl font-bold text-primary-700">
+            <p className="text-xl font-bold text-primary-700">
               {activeStats.total}
             </p>
           </div>
 
           {/* Pending */}
-          <div className="bg-yellow-50 rounded-lg p-2 sm:p-4">
-            <div className="flex items-center space-x-1 mb-1">
-              <Clock className="w-6 h-6 text-yellow-600" />
+          <div className="bg-yellow-50 rounded-lg p-2 sm:p-3">
+            <div className="flex items-center gap-1 mb-0.5">
+              <Clock className="w-4 h-4 text-yellow-600" />
               <p className="text-sm text-yellow-600 font-medium">Pending</p>
             </div>
-            <p className="text-2xl font-bold text-yellow-700">
+            <p className="text-xl font-bold text-yellow-700">
               {activeStats.pending}
             </p>
           </div>
 
           {/* Completed */}
-          <div className="bg-green-50 rounded-lg p-2 sm:p-4">
-            <div className="flex items-center space-x-1 mb-1">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+          <div className="bg-green-50 rounded-lg p-2 sm:p-3">
+            <div className="flex items-center gap-1 mb-0.5">
+              <CheckCircle className="w-4 h-4 text-green-600" />
               <p className="text-sm text-green-600 font-medium">Completed</p>
             </div>
-            <p className="text-2xl font-bold text-green-700">
+            <p className="text-xl font-bold text-green-700">
               {activeStats.completed}
             </p>
           </div>
 
           {/* Amount */}
-          <div className="bg-primary-200 rounded-lg p-2 sm:p-4">
-            <div className="flex items-center space-x-1 mb-1">
-              <TrendingUp className="w-6 h-6 text-primary-700" />
+          <div className="bg-primary-200 rounded-lg p-2 sm:p-3">
+            <div className="flex items-center gap-1 mb-0.5">
+              <TrendingUp className="w-4 h-4 text-primary-700" />
               <p className="text-sm text-primary-700 font-medium">{amountLabel}</p>
             </div>
-            <p className="text-2xl font-bold text-primary-700">
+            <p className="text-xl font-bold text-primary-700">
               ${amountValue.toLocaleString()}
             </p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 p-1 rounded-lg">
+        <div className="flex gap-1 p-0.5 rounded-lg">
           <button
             onClick={() => setActiveTab("purchases")}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'purchases'
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
-                }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'purchases'
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+              }`}
           >
             My Purchases ({stats.purchases.total})
           </button>
           <button
             onClick={() => setActiveTab("sales")}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === 'sales'
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
-                }`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'sales'
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+              }`}
           >
             My Sales ({stats.sales.total})
           </button>
@@ -451,11 +455,11 @@ const MyOrders: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="pt-6">
+      <div className="pt-3">
         {loading ? (
           <MyOrdersGridShimmer count={shimmerCount} />
         ) : currentOrders.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 sm:gap-2">
             {currentOrders.map((order) =>
               renderOrderCard(order, activeTab === "sales")
             )}

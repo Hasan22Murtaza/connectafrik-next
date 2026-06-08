@@ -1,5 +1,8 @@
-import { supabase } from '@/lib/supabase'
-import { apiClient } from '@/lib/api-client'
+/**
+ * @deprecated Phase 2 replaced client-side Realtime auto-payout with server cron
+ * (`/api/internal/cron/release-escrow`) and Paystack transfer webhooks.
+ * Do not call startAutoPayoutListener() — it is a no-op.
+ */
 
 interface AutoPayoutData {
   payout_id: string
@@ -8,44 +11,18 @@ interface AutoPayoutData {
   order_id: string
 }
 
-export async function processAutoPayout(data: AutoPayoutData) {
-  const result = await apiClient.post<{
-    success: boolean
-    transfer_code: string
-    reference: string
-    status: string
-    method: string
-  }>('/api/marketplace/checkout/payout/process', data)
-
-  return result
+/** @deprecated Use lib/marketplace/payoutTransfer.executePaystackPayout on the server */
+export async function processAutoPayout(_data: AutoPayoutData) {
+  console.warn(
+    'processAutoPayout is deprecated. Payouts are handled by the escrow cron and webhooks.'
+  )
+  return { success: false, status: 'deprecated' }
 }
 
+/** @deprecated Realtime listener removed in Phase 2 */
 export function startAutoPayoutListener() {
-  const channel = supabase.channel('auto_payout_channel')
-
-  channel
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'seller_payouts',
-      filter: 'status=eq.processing'
-    }, async (payload) => {
-      console.log('New payout detected:', payload.new)
-
-      const payout = payload.new as any
-
-      try {
-        await processAutoPayout({
-          payout_id: payout.id,
-          seller_id: payout.seller_id,
-          amount: payout.amount,
-          order_id: payout.order_id
-        })
-      } catch (error: any) {
-        console.error(`Failed to process payout ${payout.id}:`, error)
-      }
-    })
-    .subscribe()
-
-  return channel
+  console.warn(
+    'startAutoPayoutListener is deprecated. Configure Vercel cron for /api/internal/cron/release-escrow.'
+  )
+  return null
 }

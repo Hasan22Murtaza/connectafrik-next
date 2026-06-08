@@ -7,6 +7,7 @@ import SellerListingActions, {
   ListingActionMenuItem,
 } from "@/features/marketplace/components/SellerListingActions";
 import { CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplaceConstants";
+import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import { SellerEarnings } from "@/features/marketplace/services/commissionService";
 import { formatProductPrice } from "@/features/marketplace/utils/productFormatting";
 import { apiClient } from "@/lib/api-client";
@@ -23,6 +24,7 @@ import {
   Package,
   Plus,
   Search,
+  Settings,
   Tag,
   TrendingUp,
   Wallet,
@@ -291,17 +293,17 @@ const SellerDashboardPage: React.FC = () => {
     return (
       <>
         {tip && (
-          <p className="flex items-center gap-1.5 text-xs text-primary-600 mb-1">
-            <Info className="w-3.5 h-3.5 shrink-0" />
+          <p className="flex items-center gap-1 text-xs text-primary-600 mb-0.5">
+            <Info className="w-3 h-3 shrink-0" />
             {tip}
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-xs text-gray-500">
           <span className={`px-2 py-0.5 rounded-full font-medium ${statusClassName}`}>
             {statusLabel}
           </span>
           <span>Listed {format(new Date(product.created_at), "M/d/yy")}</span>
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-0.5">
             <Eye className="w-3 h-3" />
             {product.views_count || 0} clicks on listing
           </span>
@@ -319,87 +321,92 @@ const SellerDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen px-4">
-      <div className="flex gap-4 min-w-0 w-full max-w-screen-2xl mx-auto">
-        <aside className="hidden lg:block w-[240px] shrink-0 py-6">
+    <div className={MP.page}>
+      <div className={MP.shell}>
+        <aside className={`hidden lg:block ${MP.sidebar}`}>
           <button
             onClick={() => router.push("/marketplace")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 text-sm px-2"
+            className={`${MP.backLink} mb-2`}
           >
             <ArrowLeft className="w-4 h-4" />
             Marketplace
           </button>
 
-          <div className="px-2 mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Selling</h2>
+          <div className="px-2 mb-3">
+            <h2 className={MP.pageTitle}>Selling</h2>
           </div>
 
-
-          <nav className="border-t border-gray-100 pt-4 space-y-1">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-md bg-orange-50 text-primary-600">
-              <BarChart3 className="w-[18px] h-[18px]" />
-              <span className="text-sm font-medium">Your listings</span>
+          <nav className={`border-t border-gray-100 pt-3 ${MP.navList}`}>
+            <div className={`${MP.navItem} ${MP.navItemActive}`}>
+              <BarChart3 className={`${MP.navIcon} ${MP.navIconActive}`} />
+              <span>Your listings</span>
             </div>
             <button
               onClick={() => router.push("/my-orders?tab=sales")}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-gray-500 hover:bg-gray-100 hover:text-primary-600 transition-colors"
+              className={`${MP.navItem} ${MP.navItemInactive}`}
             >
-              <Package className="w-[18px] h-[18px]" />
-              <span className="text-sm font-medium">Sales & orders</span>
+              <Package className={MP.navIcon} />
+              <span>Sales & orders</span>
+            </button>
+            <button
+              onClick={() => router.push("/marketplace/selling/payout-settings")}
+              className={`${MP.navItem} ${MP.navItemInactive}`}
+            >
+              <Settings className={MP.navIcon} />
+              <span>Payout settings</span>
             </button>
           </nav>
         </aside>
 
-        <main className="flex-1 py-6 min-w-0">
-          <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <main className={MP.main}>
+          <div className={`${MP.headerRow} mb-4`}>
             <div>
               <button
                 onClick={() => router.push("/marketplace")}
-                className="lg:hidden flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 text-sm"
+                className={`lg:hidden ${MP.backLink} mb-2`}
               >
                 <ArrowLeft className="w-4 h-4" />
                 Marketplace
               </button>
-              <h1 className="text-2xl font-bold text-gray-900">Your listings</h1>
-              
+              <h1 className={MP.pageTitle}>Your listings</h1>
             </div>
             <button
               onClick={() => router.push(CREATE_LISTING_PATH)}
-              className="btn-primary flex items-center gap-2 text-sm lg:hidden"
+              className="btn-primary flex items-center gap-1.5 text-sm lg:hidden"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               New listing
             </button>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wide mb-1">
-                <Tag className="w-3.5 h-3.5" />
+          <div className={`${MP.statsGrid} mb-4`}>
+            <div className={`${MP.card} ${MP.cardPadding}`}>
+              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+                <Tag className="w-3 h-3" />
                 Active listings
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+              <p className="text-xl font-bold text-gray-900">{stats.active}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wide mb-1">
-                <Eye className="w-3.5 h-3.5" />
+            <div className={`${MP.card} ${MP.cardPadding}`}>
+              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+                <Eye className="w-3 h-3" />
                 Total views
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalViews}</p>
+              <p className="text-xl font-bold text-gray-900">{stats.totalViews}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wide mb-1">
-                <TrendingUp className="w-3.5 h-3.5" />
+            <div className={`${MP.card} ${MP.cardPadding}`}>
+              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+                <TrendingUp className="w-3 h-3" />
                 Total listings
               </div>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-xl font-bold text-gray-900">{stats.total}</p>
             </div>
-            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wide mb-1">
-                <Wallet className="w-3.5 h-3.5" />
+            <div className={`${MP.card} ${MP.cardPadding}`}>
+              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+                <Wallet className="w-3 h-3" />
                 Pending payout
               </div>
-              <p className="text-2xl font-bold text-primary-600">
+              <p className="text-xl font-bold text-primary-600">
                 {earnings?.pending_payout != null
                   ? `$${earnings.pending_payout.toLocaleString()}`
                   : "—"}
@@ -407,24 +414,24 @@ const SellerDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6 shadow-sm">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+          <div className={`${MP.card} ${MP.cardPadding} mb-4`}>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search your listings"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className={`${MP.headerActions} flex-wrap`}>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as ListingStatus)}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 >
                   {STATUS_FILTERS.map((f) => (
                     <option key={f.value} value={f.value}>
@@ -436,7 +443,7 @@ const SellerDashboardPage: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as ListingSort)}
-                  className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 >
                   {SORT_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -448,14 +455,14 @@ const SellerDashboardPage: React.FC = () => {
                 <div className="flex border border-gray-200 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`p-2 ${viewMode === "list" ? "bg-primary-50 text-primary-600" : "text-gray-500"}`}
+                    className={`p-1.5 ${viewMode === "list" ? "bg-primary-50 text-primary-600" : "text-gray-500"}`}
                     aria-label="List view"
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={`p-2 ${viewMode === "grid" ? "bg-primary-50 text-primary-600" : "text-gray-500"}`}
+                    className={`p-1.5 ${viewMode === "grid" ? "bg-primary-50 text-primary-600" : "text-gray-500"}`}
                     aria-label="Grid view"
                   >
                     <LayoutGrid className="w-4 h-4" />
@@ -483,7 +490,7 @@ const SellerDashboardPage: React.FC = () => {
               )}
             </div>
           ) : viewMode === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className={MP.sellerGrid}>
               {filteredListings.map((product) => {
                 const { isActive, isPending } = getListingState(product);
                 const image = product.images?.[0];
@@ -491,13 +498,13 @@ const SellerDashboardPage: React.FC = () => {
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm p-3 sm:p-4"
+                    className={`${MP.card} overflow-hidden ${MP.cardPadding}`}
                   >
-                    <div className="flex gap-3">
+                    <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => router.push(`/marketplace/${product.id}`)}
-                        className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0"
+                        className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0"
                       >
                         {image ? (
                           <img src={image} alt={product.title} className="w-full h-full object-cover" />
@@ -528,7 +535,7 @@ const SellerDashboardPage: React.FC = () => {
               })}
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className={MP.listStack}>
               {filteredListings.map((product) => {
                 const { isActive, isPending } = getListingState(product);
                 const image = product.images?.[0];
@@ -536,13 +543,13 @@ const SellerDashboardPage: React.FC = () => {
                 return (
                   <div
                     key={product.id}
-                    className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4 shadow-sm"
+                    className={`${MP.card} ${MP.cardPadding}`}
                   >
-                    <div className="flex gap-3 sm:gap-4">
+                    <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => router.push(`/marketplace/${product.id}`)}
-                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-gray-100 shrink-0"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0"
                       >
                         {image ? (
                           <img src={image} alt={product.title} className="w-full h-full object-cover" />
@@ -577,16 +584,16 @@ const SellerDashboardPage: React.FC = () => {
           )}
         </main>
 
-        <aside className="hidden xl:block w-[260px] shrink-0 py-6">
-          <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm sticky top-6">
-            <div className="flex items-center gap-3 mb-4">
+        <aside className={`hidden xl:block ${MP.sidebar}`}>
+          <div className={`${MP.card} ${MP.cardPadding} sticky top-4`}>
+            <div className="flex items-center gap-2 mb-3">
               <img
                 src={
                   sellerAvatar ||
                   `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&background=random`
                 }
                 alt={sellerName}
-                className="w-12 h-12 rounded-full object-cover"
+                className="w-10 h-10 rounded-full object-cover"
               />
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 truncate">{sellerName}</p>
@@ -595,7 +602,7 @@ const SellerDashboardPage: React.FC = () => {
             </div>
 
             {earnings && (
-              <div className="space-y-2 text-sm border-t border-gray-100 pt-4 mb-4">
+              <div className="space-y-1.5 text-sm border-t border-gray-100 pt-3 mb-3">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Total earnings</span>
                   <span className="font-medium">${earnings.total_earnings.toLocaleString()}</span>
@@ -622,6 +629,12 @@ const SellerDashboardPage: React.FC = () => {
               className="w-full py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
             >
               View sales & orders
+            </button>
+            <button
+              onClick={() => router.push("/marketplace/selling/payout-settings")}
+              className="w-full py-2 text-sm text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+            >
+              Payout settings
             </button>
           </div>
         </aside>
