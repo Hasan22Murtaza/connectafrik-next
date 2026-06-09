@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function LegacyAdminMarketplacePage() {
+export default function AdminIndexPage() {
   redirect("/admin/dashboard");
 }

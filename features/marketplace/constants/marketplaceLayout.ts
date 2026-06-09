@@ -6,7 +6,7 @@ export const MP = {
   sidebar:
     "w-[245px] shrink-0 py-3 px-2 bg-white border-r border-gray-200 lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto",
   sidebarFull:
-    "w-[245px] shrink-0 py-3 px-2 bg-white border-r border-gray-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto scrollbar-hover",
+    "w-[245px] shrink-0 py-3 px-2 bg-white  lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto scrollbar-hover",
   shellFull: "flex gap-0 min-w-0 w-full max-w-screen-2xl mx-auto min-h-[calc(100vh-4rem)]",
   sidebarRight:
     "w-[260px] shrink-0 py-3 px-2  lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto",
