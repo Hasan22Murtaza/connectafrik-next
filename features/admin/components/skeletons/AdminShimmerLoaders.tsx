@@ -306,3 +306,56 @@ export function AdminDisputesPageSkeleton() {
     </div>
   );
 }
+
+export function AdminUsersPageSkeleton() {
+  return (
+    <div className="max-w-6xl mx-auto" aria-busy="true" aria-label="Loading users">
+      <AdminPageHeaderSkeleton />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <AdminStatCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className={`${AP.card} ${AP.cardPadding} mb-4 space-y-3`}>
+        <ShimmerBlock className="h-10 w-full max-w-md rounded-xl" />
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <ShimmerBlock key={i} className="h-8 w-24 rounded-full" />
+          ))}
+        </div>
+      </div>
+      <AdminTableSkeleton rows={10} cols={9} />
+    </div>
+  );
+}
+
+export function AdminUserDetailSkeleton() {
+  return (
+    <div className="max-w-6xl mx-auto" aria-busy="true" aria-label="Loading user profile">
+      <AdminPageHeaderSkeleton />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className={`${AP.card} ${AP.cardPadding} lg:col-span-1 space-y-4`}>
+          <div className="flex flex-col items-center text-center space-y-3">
+            <ShimmerBlock className="w-24 h-24 rounded-full" />
+            <ShimmerBlock className="h-6 w-40" />
+            <ShimmerBlock className="h-4 w-28" />
+            <div className="flex gap-2">
+              <ShimmerBlock className="h-6 w-16 rounded-full" />
+              <ShimmerBlock className="h-6 w-16 rounded-full" />
+            </div>
+          </div>
+        </div>
+        <div className="lg:col-span-2 space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className={`${AP.card} ${AP.cardPadding} space-y-2`}>
+              <ShimmerBlock className="h-5 w-36" />
+              <ShimmerBlock className="h-4 w-full" />
+              <ShimmerBlock className="h-4 w-5/6" />
+              <ShimmerBlock className="h-4 w-2/3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

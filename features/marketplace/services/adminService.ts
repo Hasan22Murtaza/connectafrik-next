@@ -187,3 +187,115 @@ export async function getStripeConnectStatus() {
   )
   return result.data
 }
+
+export type AdminUserAccountType = 'buyer' | 'seller' | 'both' | 'none'
+export type AdminUserAccountStatus = 'active' | 'suspended'
+export type AdminUserFilter =
+  | 'all'
+  | 'sellers'
+  | 'buyers'
+  | 'verified'
+  | 'unverified'
+  | 'active'
+  | 'suspended'
+  | 'new'
+
+export type AdminUserSortField = 'created_at' | 'full_name' | 'username' | 'last_login'
+
+export interface AdminUserStats {
+  total_users: number
+  total_buyers: number
+  total_sellers: number
+  new_users_today: number
+  new_users_this_week: number
+  active_users: number
+  verified_users: number
+}
+
+export interface AdminUserListItem {
+  id: string
+  username: string
+  full_name: string
+  avatar_url: string | null
+  email: string | null
+  account_type: AdminUserAccountType
+  is_verified: boolean
+  created_at: string
+  last_login: string | null
+  account_status: AdminUserAccountStatus
+  listings_count: number
+}
+
+export interface AdminUserSellerStats {
+  total_listings: number
+  active_listings: number
+  sold_items: number
+  average_rating: number | null
+  total_earnings: number | null
+}
+
+export interface AdminUserDetail extends AdminUserListItem {
+  phone_number: string | null
+  country: string | null
+  city: string | null
+  address: string | null
+  state: string | null
+  bio: string | null
+  platform_role: string
+  seller_tier: string | null
+  last_active_at: string | null
+  last_seen: string | null
+  total_orders: number
+  total_reviews: number
+  total_transactions: number
+  seller_stats: AdminUserSellerStats | null
+}
+
+export interface AdminUsersListResult extends PaginatedResult<AdminUserListItem> {
+  stats: AdminUserStats | null
+}
+
+export async function listAdminUsers(params?: {
+  filter?: AdminUserFilter
+  search?: string
+  sort_by?: AdminUserSortField
+  sort_dir?: 'asc' | 'desc'
+  page?: number
+  limit?: number
+  include_stats?: boolean
+}): Promise<AdminUsersListResult> {
+  const result = await apiClient.get<AdminUsersListResult>(
+    '/api/marketplace/admin/users',
+    params
+  )
+  return result
+}
+
+export async function getAdminUser(userId: string): Promise<AdminUserDetail> {
+  const result = await apiClient.get<{ data: AdminUserDetail }>(
+    `/api/marketplace/admin/users/${userId}`
+  )
+  return result.data
+}
+
+export async function suspendAdminUser(userId: string): Promise<AdminUserDetail> {
+  const result = await apiClient.patch<{ data: AdminUserDetail }>(
+    `/api/marketplace/admin/users/${userId}`,
+    { action: 'suspend' }
+  )
+  return result.data
+}
+
+export async function unsuspendAdminUser(userId: string): Promise<AdminUserDetail> {
+  const result = await apiClient.patch<{ data: AdminUserDetail }>(
+    `/api/marketplace/admin/users/${userId}`,
+    { action: 'unsuspend' }
+  )
+  return result.data
+}
+
+export async function deleteAdminUser(userId: string): Promise<{ deleted: boolean; id: string }> {
+  return apiClient.delete<{ deleted: boolean; id: string }>(
+    `/api/marketplace/admin/users/${userId}`
+  )
+}

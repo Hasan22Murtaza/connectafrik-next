@@ -15,9 +15,15 @@ export function AdminTable({ children, className = "" }: AdminTableProps) {
   );
 }
 
-export function AdminTableHead({ children }: { children: React.ReactNode }) {
+export function AdminTableHead({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <thead className={AP.tableHead}>
+    <thead className={`${AP.tableHead} ${className}`}>
       <tr>{children}</tr>
     </thead>
   );

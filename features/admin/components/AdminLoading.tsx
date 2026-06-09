@@ -6,6 +6,8 @@ import {
   AdminPayoutsPageSkeleton,
   AdminSidebarSkeleton,
   AdminTableSkeleton,
+  AdminUserDetailSkeleton,
+  AdminUsersPageSkeleton,
 } from "./skeletons/AdminShimmerLoaders";
 
 type AdminLoadingVariant =
@@ -14,6 +16,8 @@ type AdminLoadingVariant =
   | "order-detail"
   | "payouts"
   | "disputes"
+  | "users"
+  | "user-detail"
   | "table"
   | "sidebar";
 
@@ -23,6 +27,8 @@ const VARIANT_MAP: Record<AdminLoadingVariant, React.ReactNode> = {
   "order-detail": <AdminOrderDetailSkeleton />,
   payouts: <AdminPayoutsPageSkeleton />,
   disputes: <AdminDisputesPageSkeleton />,
+  users: <AdminUsersPageSkeleton />,
+  "user-detail": <AdminUserDetailSkeleton />,
   table: <AdminTableSkeleton />,
   sidebar: <AdminSidebarSkeleton />,
 };

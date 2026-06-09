@@ -11,6 +11,14 @@ const STATUS_STYLES: Record<string, string> = {
   frozen: "bg-red-50 text-red-700",
   released: "bg-green-50 text-green-700",
   refunded: "bg-gray-100 text-gray-600",
+  active: "bg-green-50 text-green-700",
+  suspended: "bg-red-50 text-red-700",
+  verified: "bg-blue-50 text-blue-700",
+  unverified: "bg-gray-100 text-gray-600",
+  buyer: "bg-sky-50 text-sky-700",
+  seller: "bg-violet-50 text-violet-700",
+  both: "bg-indigo-50 text-indigo-700",
+  none: "bg-gray-100 text-gray-600",
 };
 
 export function AdminStatusBadge({ status }: { status: string | null | undefined }) {
