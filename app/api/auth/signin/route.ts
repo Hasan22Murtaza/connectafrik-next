@@ -24,17 +24,20 @@ export async function POST(request: NextRequest) {
     }
 
     let profileAvatarUrl: string | null = null
+    let platformRole: string | null = null
     if (data.user?.id) {
       try {
         const serviceSupabase = createServiceClient()
         const { data: profile } = await serviceSupabase
           .from('profiles')
-          .select('avatar_url')
+          .select('avatar_url, platform_role')
           .eq('id', data.user.id)
           .maybeSingle()
         profileAvatarUrl = profile?.avatar_url || null
+        platformRole = profile?.platform_role || null
       } catch {
         profileAvatarUrl = null
+        platformRole = null
       }
     }
 
@@ -73,6 +76,7 @@ export async function POST(request: NextRequest) {
     return jsonResponse({
       user,
       session,
+      platform_role: platformRole,
     })
   } catch (error: any) {
     return errorResponse(error?.message || 'Failed to sign in', 500)

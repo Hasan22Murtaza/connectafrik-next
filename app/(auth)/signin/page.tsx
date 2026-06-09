@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Globe, Eye, EyeOff, Mail, Lock, Phone } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api-client";
+import { getPostAuthRedirect } from "@/lib/auth/postAuthRedirect";
 import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import PhoneInput from "react-phone-number-input";
@@ -68,11 +69,11 @@ const SigninForm: React.FC = () => {
         const data = await apiClient.post<{
           user: any;
           session: { access_token: string; refresh_token: string } | null;
+          platform_role?: string | null;
         }>("/api/auth/signin", {
           email: formData.email,
           password: formData.password,
         });
-
         if (!data?.session?.access_token || !data?.session?.refresh_token) {
           toast.error("Sign in succeeded, but no session was returned.");
           setIsLoading(false);
@@ -91,7 +92,10 @@ const SigninForm: React.FC = () => {
         }
 
         toast.success("Welcome back!");
-        const redirectTo = searchParams.get("redirect") || "/feed";
+        const redirectTo = getPostAuthRedirect(
+          data.platform_role,
+          searchParams.get("redirect")
+        );
         setTimeout(() => {
           window.location.href = redirectTo;
         }, 200);
