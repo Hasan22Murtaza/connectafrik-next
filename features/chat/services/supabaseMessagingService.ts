@@ -7,6 +7,7 @@ import {
   callSessionUpdateToChatMessage,
 } from '@/features/chat/services/callSessionRealtime'
 import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
+import { MARKETPLACE_SYSTEM, isMarketplaceMessageType } from '@/lib/marketplaceChat'
 
 /** call_sessions.status-aligned message_type values (signaling; excluded from generic chat push). */
 const ALL_CALL_SIGNAL_MESSAGE_TYPES: string[] = [
@@ -17,6 +18,7 @@ const SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES = new Set<string>([
   ...ALL_CALL_SIGNAL_MESSAGE_TYPES,
   GROUP_MEMBER_JOINED,
   GROUP_MEMBER_LEFT,
+  MARKETPLACE_SYSTEM,
 ])
 
 export interface ChatParticipant extends BaseParticipant {}
@@ -74,7 +76,7 @@ export function chatUserIdsEqual(a: string | undefined | null, b: string | undef
 export interface ChatThread {
   id: string
   name: string
-  type: 'direct' | 'group'
+  type: 'direct' | 'group' | 'marketplace' | 'marketplace'
   participants: ChatParticipant[]
   last_message_preview: string | null
   last_message_at: string
@@ -94,12 +96,17 @@ export interface ChatThread {
   group_id?: string | null
   /** Group thread: image URL from linked `groups.banner_url` when present */
   banner_url?: string | null
+  /** Marketplace thread: linked listing */
+  product_id?: string | null
+  product_title?: string | null
+  product_image?: string | null
+  seller_id?: string | null
 }
 
 export interface CreateThreadOptions {
   participant_ids: string[]
   participants?: ChatParticipant[]
-  type?: 'direct' | 'group'
+  type?: 'direct' | 'group' | 'marketplace'
   title?: string | null
   name?: string
   group_id?: string
@@ -123,6 +130,7 @@ export function shouldSkipOptimisticMessageSend(
   const mt = payload?.message_type || 'text'
   if (ALL_CALL_SIGNAL_MESSAGE_TYPES.includes(mt)) return true
   if (mt === GROUP_MEMBER_JOINED || mt === GROUP_MEMBER_LEFT) return true
+  if (isMarketplaceMessageType(mt)) return true
   return false
 }
 
@@ -551,10 +559,18 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     .map((participant: any) => participant.name)
     .filter((name: any): name is string => Boolean(name))
 
-  const resolvedType: 'direct' | 'group' =
-    thread.type === 'group' || Boolean(thread.group_id)
-      ? 'group'
-      : thread.type || (participants.length > 2 ? 'group' : 'direct')
+  const resolvedType: 'direct' | 'group' | 'marketplace' =
+    thread.type === 'marketplace'
+      ? 'marketplace'
+      : thread.type === 'group' || Boolean(thread.group_id)
+        ? 'group'
+        : thread.type || (participants.length > 2 ? 'group' : 'direct')
+
+  const productEmbed = thread.product as { id?: string; title?: string; images?: string[] } | null
+  const productId = thread.product_id ?? productEmbed?.id ?? null
+  const productTitle =
+    productEmbed?.title ?? (resolvedType === 'marketplace' ? thread.title : null) ?? thread.name ?? null
+  const productImage = productEmbed?.images?.[0] ?? null
 
   const directFallbackName =
     otherNames[0] ||
@@ -567,7 +583,12 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     thread.name ||
     (otherNames.length > 0 ? otherNames.join(', ') : 'Group Chat')
 
-  const displayName = resolvedType === 'direct' ? directFallbackName : groupFallbackName
+  const displayName =
+    resolvedType === 'marketplace'
+      ? otherNames[0] || 'Marketplace chat'
+      : resolvedType === 'direct'
+        ? directFallbackName
+        : groupFallbackName
 
   const lastMessageAt =
     thread.last_message_at ||
@@ -624,6 +645,10 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     updated_at: thread.updated_at || lastMessageAt,
     group_id: thread.group_id ?? null,
     banner_url: thread.banner_url ?? bannerFromEmbed ?? null,
+    product_id: productId,
+    product_title: productTitle,
+    product_image: productImage,
+    seller_id: thread.seller_id ?? null,
   }
 }
 

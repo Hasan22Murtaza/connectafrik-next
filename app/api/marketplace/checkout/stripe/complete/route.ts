@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { buildOrderFinancialFields } from '@/lib/marketplace/orderFinancials'
+import { recordCheckoutLedger } from '@/lib/marketplace/orderLedger'
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +39,10 @@ export async function POST(request: NextRequest) {
       return jsonResponse({ data: existingOrder, message: 'Order already exists' })
     }
 
+    const orderCurrency = currency || 'USD'
+    const orderTotal = total_amount || 0
+    const financials = buildOrderFinancialFields(orderTotal, orderCurrency, 'stripe')
+
     const orderData = {
       buyer_id: user.id,
       buyer_email: user.email || null,
@@ -47,8 +53,8 @@ export async function POST(request: NextRequest) {
       product_image: product_image || null,
       quantity: quantity || 1,
       unit_price: unit_price || null,
-      total_amount: total_amount || 0,
-      currency: currency || 'USD',
+      total_amount: orderTotal,
+      currency: orderCurrency,
       payment_status: 'completed',
       payment_method: 'stripe',
       payment_reference,
@@ -56,6 +62,8 @@ export async function POST(request: NextRequest) {
       shipping_address: shipping_address || null,
       notes: notes || null,
       status: 'confirmed',
+      payout_status: 'pending',
+      ...financials,
     }
 
     const { data: order, error: orderError } = await serviceClient
@@ -67,6 +75,15 @@ export async function POST(request: NextRequest) {
     if (orderError) {
       return errorResponse(orderError.message, 400)
     }
+
+    await recordCheckoutLedger(
+      serviceClient,
+      order.id,
+      orderCurrency,
+      orderTotal,
+      financials,
+      user.id
+    )
 
     await serviceClient.from('payment_transactions').insert({
       order_id: order.id,

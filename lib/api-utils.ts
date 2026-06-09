@@ -11,3 +11,7 @@ export function errorResponse(message: string, status = 500) {
 export function unauthorizedResponse() {
   return errorResponse('Unauthorized', 401)
 }
+
+export function forbiddenResponse(message = 'Forbidden') {
+  return errorResponse(message, 403)
+}

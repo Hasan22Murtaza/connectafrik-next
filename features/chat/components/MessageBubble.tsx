@@ -488,6 +488,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   }
 
+  if (message.message_type === "marketplace_system") {
+    return (
+      <div className="mb-3 flex justify-center">
+        <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+          <span>{message.content}</span>
+        </div>
+      </div>
+    );
+  }
+
   const systemMessageTypes = [
     "initiated",
     "ringing",

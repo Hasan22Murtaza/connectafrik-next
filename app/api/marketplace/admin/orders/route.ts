@@ -1,0 +1,27 @@
+import { NextRequest } from 'next/server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { requireMarketplaceAdmin } from '@/lib/marketplace/adminAuth'
+import { jsonResponse, errorResponse, unauthorizedResponse, forbiddenResponse } from '@/lib/api-utils'
+import { listAdminOrders } from '@/lib/marketplace/adminDashboardService'
+
+export async function GET(request: NextRequest) {
+  try {
+    await requireMarketplaceAdmin(request)
+    const serviceClient = createServiceClient()
+    const { searchParams } = new URL(request.url)
+
+    const result = await listAdminOrders(serviceClient, {
+      status: searchParams.get('status') || undefined,
+      escrow_status: searchParams.get('escrow_status') || undefined,
+      page: parseInt(searchParams.get('page') || '0', 10),
+      limit: parseInt(searchParams.get('limit') || '20', 10),
+    })
+
+    return jsonResponse(result)
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === 'Unauthorized') return unauthorizedResponse()
+    if (error instanceof Error && error.message === 'Forbidden') return forbiddenResponse()
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return errorResponse(message, 500)
+  }
+}

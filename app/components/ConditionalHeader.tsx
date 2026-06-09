@@ -19,6 +19,11 @@ export default function ConditionalHeader() {
   if (pathname?.startsWith('/call/')) {
     return null
   }
+
+  // Admin uses its own layout header
+  if (pathname?.startsWith('/admin')) {
+    return null
+  }
   
   if (hideHeaderPaths.includes(pathname)) {
     return null

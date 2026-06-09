@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
-import { X, Package, CheckCircle, AlertCircle } from 'lucide-react'
-import { confirmDelivery } from '@/features/marketplace/services/commissionService'
 import { useAuth } from '@/contexts/AuthContext'
+import { confirmDelivery } from '@/features/marketplace/services/commissionService'
+import { AlertCircle, CheckCircle, Package, X } from 'lucide-react'
+import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 
 interface ConfirmDeliveryModalProps {
@@ -41,7 +41,10 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
 
       if (result.success) {
         setConfirmed(true)
-        toast.success('Delivery confirmed! Seller will receive payment.')
+        const message =
+          (result as { message?: string }).message ||
+          'Delivery confirmed! Seller will receive payment after the hold period.'
+        toast.success(message)
         setTimeout(() => {
           onSuccess()
           onClose()

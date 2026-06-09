@@ -128,9 +128,17 @@ export function calculateCommission(
  */
 export async function confirmDelivery(
   orderId: string,
-  confirmedBy: string,
+  _confirmedBy: string,
   trackingNumber?: string
-): Promise<{ success: boolean; order_id: string; seller_payout: number; status: string }> {
+): Promise<{
+  success: boolean
+  order_id: string
+  seller_payout?: number
+  status?: string
+  message?: string
+  hold_days?: number
+  release_eligible_at?: string
+}> {
   try {
     const result = await apiClient.post<{ data: any }>(
       `/api/marketplace/orders/${orderId}/confirm-delivery`,

@@ -42,11 +42,18 @@ export async function GET(request: NextRequest) {
     const sellerMap = new Map((sellers || []).map(s => [s.id, s]))
 
     const productsById = new Map((products || []).map(product => [product.id, product]))
-    const productsWithSellers = savesData.map(save => productsById.get(save.product_id)).filter(Boolean).map(product => ({
-      ...product,
-      seller: sellerMap.get(product.seller_id) || null,
-      is_saved: true,
-    }))
+    const productsWithSellers = savesData
+      .map((save) => {
+        const product = productsById.get(save.product_id)
+        if (!product) return null
+        return {
+          ...product,
+          seller: sellerMap.get(product.seller_id) || null,
+          is_saved: true,
+          saved_at: save.created_at,
+        }
+      })
+      .filter(Boolean)
 
     return jsonResponse({
       data: productsWithSellers,

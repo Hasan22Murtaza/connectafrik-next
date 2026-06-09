@@ -1,8 +1,12 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { cancelOrderWithRefund } from '@/lib/marketplace/refundService'
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params
     const { user, supabase } = await getAuthenticatedUser(request)
@@ -15,7 +19,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { data: order } = await supabase
       .from('orders')
-      .select('seller_id, status')
+      .select('seller_id, buyer_id, status')
       .eq('id', id)
       .single()
 
@@ -42,6 +46,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return errorResponse(`Cannot transition from "${order.status}" to "${newStatus}"`, 400)
     }
 
+    if (newStatus === 'cancelled') {
+      const serviceClient = createServiceClient()
+      const reason =
+        (body.cancellation_reason as string)?.trim() || 'Cancelled by seller'
+
+      const result = await cancelOrderWithRefund(
+        serviceClient,
+        id,
+        user.id,
+        reason,
+        'seller'
+      )
+
+      return jsonResponse({
+        success: true,
+        status: 'cancelled',
+        delivery_status: 'cancelled',
+        refund: result,
+      })
+    }
+
     let deliveryStatus = 'pending'
     if (newStatus === 'processing') deliveryStatus = 'processing'
     else if (newStatus === 'shipped') deliveryStatus = 'shipped'
@@ -59,11 +84,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (error) throw error
 
     return jsonResponse({ success: true, status: newStatus, delivery_status: deliveryStatus })
-  } catch (err: any) {
-    if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
+  } catch (err: unknown) {
+    if (err instanceof Error && (err.message === 'Unauthorized' || err.message === 'Missing Authorization header')) {
       return unauthorizedResponse()
     }
+    const message = err instanceof Error ? err.message : 'Failed to update order status'
     console.error('PATCH /api/orders/[id]/status error:', err)
-    return errorResponse(err.message || 'Failed to update order status', 500)
+    return errorResponse(message, message === 'Failed to update order status' ? 500 : 400)
   }
 }
