@@ -125,14 +125,14 @@ export interface PaginatedResult<T> {
 
 export async function getAdminDashboard(): Promise<AdminDashboardSummary> {
   const result = await apiClient.get<{ data: AdminDashboardSummary }>(
-    '/api/marketplace/admin/dashboard'
+    '/api/admin/dashboard'
   )
   return result.data
 }
 
 export async function getAdminOrder(orderId: string): Promise<AdminOrderDetail> {
   const result = await apiClient.get<{ data: AdminOrderDetail }>(
-    `/api/marketplace/admin/orders/${orderId}`
+    `/api/admin/orders/${orderId}`
   )
   return result.data
 }
@@ -144,7 +144,7 @@ export async function listAdminOrders(params?: {
   limit?: number
 }): Promise<PaginatedResult<AdminOrder>> {
   const result = await apiClient.get<PaginatedResult<AdminOrder>>(
-    '/api/marketplace/admin/orders',
+    '/api/admin/orders',
     params
   )
   return result
@@ -156,7 +156,7 @@ export async function listAdminPayouts(params?: {
   limit?: number
 }): Promise<PaginatedResult<AdminPayout>> {
   const result = await apiClient.get<PaginatedResult<AdminPayout>>(
-    '/api/marketplace/admin/payouts',
+    '/api/admin/payouts',
     params
   )
   return result
@@ -265,7 +265,7 @@ export async function listAdminUsers(params?: {
   include_stats?: boolean
 }): Promise<AdminUsersListResult> {
   const result = await apiClient.get<AdminUsersListResult>(
-    '/api/marketplace/admin/users',
+    '/api/admin/users',
     params
   )
   return result
@@ -273,14 +273,14 @@ export async function listAdminUsers(params?: {
 
 export async function getAdminUser(userId: string): Promise<AdminUserDetail> {
   const result = await apiClient.get<{ data: AdminUserDetail }>(
-    `/api/marketplace/admin/users/${userId}`
+    `/api/admin/users/${userId}`
   )
   return result.data
 }
 
 export async function suspendAdminUser(userId: string): Promise<AdminUserDetail> {
   const result = await apiClient.patch<{ data: AdminUserDetail }>(
-    `/api/marketplace/admin/users/${userId}`,
+    `/api/admin/users/${userId}`,
     { action: 'suspend' }
   )
   return result.data
@@ -288,7 +288,7 @@ export async function suspendAdminUser(userId: string): Promise<AdminUserDetail>
 
 export async function unsuspendAdminUser(userId: string): Promise<AdminUserDetail> {
   const result = await apiClient.patch<{ data: AdminUserDetail }>(
-    `/api/marketplace/admin/users/${userId}`,
+    `/api/admin/users/${userId}`,
     { action: 'unsuspend' }
   )
   return result.data
@@ -296,6 +296,6 @@ export async function unsuspendAdminUser(userId: string): Promise<AdminUserDetai
 
 export async function deleteAdminUser(userId: string): Promise<{ deleted: boolean; id: string }> {
   return apiClient.delete<{ deleted: boolean; id: string }>(
-    `/api/marketplace/admin/users/${userId}`
+    `/api/admin/users/${userId}`
   )
 }

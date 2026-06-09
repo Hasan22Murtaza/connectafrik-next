@@ -116,7 +116,7 @@ export async function resolveDisputeAdmin(
 
 export async function listAdminDisputes(status?: string) {
   const result = await apiClient.get<{ data: Dispute[] }>(
-    '/api/marketplace/admin/disputes',
+    '/api/admin/disputes',
     status ? { status } : undefined
   )
   return result.data || []

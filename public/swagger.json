@@ -2087,7 +2087,7 @@
         }
       }
     },
-    "/marketplace/admin/revenue": {
+    "/admin/revenue": {
       "get": {
         "tags": ["Marketplace Admin"],
         "summary": "Get platform revenue summary (admin only)",
@@ -2098,7 +2098,7 @@
         }
       }
     },
-    "/marketplace/admin/pending-payouts": {
+    "/admin/pending-payouts": {
       "get": {
         "tags": ["Marketplace Admin"],
         "summary": "Get pending seller payouts (admin only)",

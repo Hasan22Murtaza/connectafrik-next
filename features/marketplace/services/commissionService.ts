@@ -232,7 +232,7 @@ export async function getPendingPayouts(): Promise<SellerPayout[]> {
 
     while (hasMore) {
       const result = await apiClient.get<{ data: SellerPayout[]; hasMore?: boolean }>(
-        '/api/marketplace/admin/pending-payouts',
+        '/api/admin/pending-payouts',
         { page, limit: 20 }
       )
       const pagePayouts = result.data || []
@@ -264,7 +264,7 @@ export async function getPlatformRevenue(): Promise<{
   active_buyers: number
 } | null> {
   try {
-    const result = await apiClient.get<{ data: any }>('/api/marketplace/admin/revenue')
+    const result = await apiClient.get<{ data: any }>('/api/admin/revenue')
     return result.data
   } catch (error) {
     console.error('Error fetching platform revenue:', error)
