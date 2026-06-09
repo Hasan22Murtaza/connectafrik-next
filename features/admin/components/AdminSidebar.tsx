@@ -2,21 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ADMIN_NAV_LINKS } from "../constants/adminNavigation";
-import { MP } from "@/features/marketplace/constants/marketplaceLayout";
+import { useAdminShell } from "../context/AdminShellContext";
+import { AP } from "../constants/adminLayout";
 
-function isLinkActive(
-  pathname: string,
-  href: string,
-  exact?: boolean
-): boolean {
-  if (exact) return pathname === href;
+function isLinkActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function useAdminNav() {
+function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { signOut } = useAuth();
 
@@ -29,18 +25,12 @@ function useAdminNav() {
     }
   };
 
-  return { pathname, handleSignOut };
-}
-
-export function AdminSidebar() {
-  const { pathname, handleSignOut } = useAdminNav();
-
   return (
-    <aside className={`hidden lg:block ${MP.sidebarFull}`}>
-    
+    <>
+     
 
-      <nav >
-        <ul className={MP.navList}>
+      <nav aria-label="Admin navigation">
+        <ul className={AP.navList}>
           {ADMIN_NAV_LINKS.map((link) => {
             const Icon = link.icon;
             const isActive = isLinkActive(pathname, link.href);
@@ -49,16 +39,22 @@ export function AdminSidebar() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className={`${MP.navItem} ${
-                    isActive ? MP.navItemActive : MP.navItemInactive
+                  onClick={onNavigate}
+                  className={`${AP.navItem} ${
+                    isActive ? AP.navItemActive : AP.navItemInactive
                   }`}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   <Icon
-                    className={`${MP.navIcon} ${
-                      isActive ? MP.navIconActive : MP.navIconInactive
+                    className={`${AP.navIcon} ${
+                      isActive ? AP.navIconActive : AP.navIconInactive
                     }`}
+                    aria-hidden="true"
                   />
                   <span className="flex-1 text-left">{link.label}</span>
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0" />
+                  )}
                 </Link>
               </li>
             );
@@ -66,51 +62,77 @@ export function AdminSidebar() {
         </ul>
       </nav>
 
-      <div className={MP.sectionDivider} />
+      <div className={AP.sectionDivider} />
 
       <button
         type="button"
         onClick={handleSignOut}
-        className={`${MP.navItem} ${MP.navItemInactive} w-full text-red-600 hover:bg-red-50`}
+        className={`${AP.navItem} ${AP.navItemInactive} w-full text-red-600 hover:bg-red-50 hover:text-red-700`}
       >
-        <LogOut className={`${MP.navIcon} text-red-600`} />
+        <LogOut className={`${AP.navIcon} text-red-500`} aria-hidden="true" />
         <span className="flex-1 text-left">Sign out</span>
       </button>
-    </aside>
+    </>
+  );
+}
+
+export function AdminSidebar() {
+  const { mobileNavOpen, closeMobileNav } = useAdminShell();
+
+  return (
+    <>
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className={AP.sidebarOverlay}
+          onClick={closeMobileNav}
+          aria-label="Close navigation overlay"
+        />
+      )}
+
+      <aside
+        className={`${AP.sidebarMobile} ${
+          mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-hidden={!mobileNavOpen}
+      >
+        <NavContent onNavigate={closeMobileNav} />
+      </aside>
+
+      <aside className={`hidden lg:block ${AP.sidebar}`}>
+        <NavContent />
+      </aside>
+    </>
   );
 }
 
 export function AdminMobileNav() {
-  const { pathname, handleSignOut } = useAdminNav();
+  const pathname = usePathname();
 
   return (
-    <div className="lg:hidden border-b border-gray-200 bg-white px-3 py-2">
-      <p className="text-sm font-semibold text-gray-900 mb-2">Admin</p>
-      <nav className="flex gap-2 overflow-x-auto pb-1">
+    <nav
+      className="lg:hidden border-b border-gray-100 bg-white/90 backdrop-blur-sm px-3 py-2 overflow-x-auto scrollbar-hide"
+      aria-label="Mobile admin navigation"
+    >
+      <div className="flex gap-2 min-w-max pb-0.5">
         {ADMIN_NAV_LINKS.map((link) => {
           const isActive = isLinkActive(pathname, link.href);
           return (
             <Link
               key={link.href}
               href={link.href}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200 ${
                 isActive
-                  ? "bg-primary-50 text-primary-600"
+                  ? "bg-primary-600 text-white shadow-sm shadow-primary-600/30"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
+              aria-current={isActive ? "page" : undefined}
             >
               {link.label}
             </Link>
           );
         })}
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-        >
-          Sign out
-        </button>
-      </nav>
-    </div>
+      </div>
+    </nav>
   );
 }

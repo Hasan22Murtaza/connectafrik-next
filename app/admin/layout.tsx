@@ -1,6 +1,7 @@
 import { AdminHeader } from "@/features/admin/components/AdminHeader";
 import { AdminMobileNav, AdminSidebar } from "@/features/admin/components/AdminSidebar";
-import { MP } from "@/features/marketplace/constants/marketplaceLayout";
+import { AdminShellProvider } from "@/features/admin/context/AdminShellContext";
+import { AP } from "@/features/admin/constants/adminLayout";
 
 export default function AdminLayout({
   children,
@@ -8,15 +9,15 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#F0F2F5]">
-      <AdminHeader />
-      <AdminMobileNav />
-      <div className={MP.shellFull}>
-        <AdminSidebar />
-        <main className={`${MP.main} w-full min-h-[calc(100vh-4rem)]`}>
-          {children}
-        </main>
+    <AdminShellProvider>
+      <div className={AP.page}>
+        <AdminHeader />
+        <AdminMobileNav />
+        <div className={AP.shell}>
+          <AdminSidebar />
+          <main className={`${AP.main} min-h-[calc(100vh-4rem)]`}>{children}</main>
+        </div>
       </div>
-    </div>
+    </AdminShellProvider>
   );
 }

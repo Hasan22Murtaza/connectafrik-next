@@ -2,12 +2,23 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, RefreshCw, Wallet } from "lucide-react";
+import { ExternalLink, Inbox, RefreshCw, Wallet } from "lucide-react";
 import toast from "react-hot-toast";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminStatusBadge } from "@/features/admin/components/AdminStatusBadge";
+import { AdminEmptyState } from "@/features/admin/components/AdminEmptyState";
+import {
+  AdminTableBody,
+  AdminTableCard,
+  AdminTableCell,
+  AdminTableHead,
+  AdminTableHeadCell,
+  AdminTableRow,
+} from "@/features/admin/components/AdminTable";
+import { AdminTableSkeleton } from "@/features/admin/components/skeletons/AdminShimmerLoaders";
 import { useAdminAuth } from "@/features/admin/hooks/useAdminAuth";
+import { AP } from "@/features/admin/constants/adminLayout";
 import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import {
   AdminPayout,
@@ -97,7 +108,7 @@ export default function AdminPayoutsPage() {
   };
 
   if (authLoading || !isReady) {
-    return <AdminLoading message="Loading payouts..." />;
+    return <AdminLoading variant="payouts" />;
   }
 
   const totalPages = Math.ceil(total / limit);
@@ -113,75 +124,76 @@ export default function AdminPayoutsPage() {
             type="button"
             onClick={loadPayouts}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            className={AP.btnSecondary}
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
             Refresh
           </button>
         }
       />
 
       {pendingQueue.length > 0 && (
-        <div className={`${MP.card} overflow-hidden mb-6`}>
-          <div className="px-4 py-3 border-b bg-amber-50 font-medium text-sm text-amber-800">
-            Pending queue ({pendingQueue.length})
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-500">
-                  <th className="px-4 py-2">Seller</th>
-                  <th className="px-4 py-2">Order</th>
-                  <th className="px-4 py-2">Amount</th>
-                  <th className="px-4 py-2">Method</th>
-                  <th className="px-4 py-2">Requested</th>
-                  <th className="px-4 py-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
+        <AdminTableCard
+          title={`Pending queue (${pendingQueue.length})`}
+          highlight
+        >
+          <div className={AP.tableWrap}>
+            <table className={AP.table}>
+              <AdminTableHead>
+                <AdminTableHeadCell>Seller</AdminTableHeadCell>
+                <AdminTableHeadCell>Order</AdminTableHeadCell>
+                <AdminTableHeadCell>Amount</AdminTableHeadCell>
+                <AdminTableHeadCell>Method</AdminTableHeadCell>
+                <AdminTableHeadCell>Requested</AdminTableHeadCell>
+                <AdminTableHeadCell>Action</AdminTableHeadCell>
+              </AdminTableHead>
+              <AdminTableBody>
                 {pendingQueue.map((payout) => (
-                  <tr key={payout.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2 font-mono text-xs">
+                  <AdminTableRow key={payout.id}>
+                    <AdminTableCell className="font-mono text-xs">
                       {payout.seller_id.slice(0, 8)}…
-                    </td>
-                    <td className="px-4 py-2">
+                    </AdminTableCell>
+                    <AdminTableCell>
                       <Link
                         href={`/my-orders/${payout.order_id}`}
                         target="_blank"
-                        className="text-primary-600 hover:underline font-mono text-xs flex items-center gap-0.5"
+                        className="text-primary-600 hover:text-primary-700 font-mono text-xs flex items-center gap-0.5 font-medium transition-colors"
                       >
                         {payout.order_id.slice(0, 8)}…
-                        <ExternalLink className="w-3 h-3" />
+                        <ExternalLink className="w-3 h-3" aria-hidden="true" />
                       </Link>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
+                    </AdminTableCell>
+                    <AdminTableCell className="whitespace-nowrap tabular-nums">
                       {payout.currency || "—"}{" "}
                       {Number(payout.amount).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2 capitalize">
+                    </AdminTableCell>
+                    <AdminTableCell className="capitalize">
                       {payout.payout_method?.replace(/_/g, " ") || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-gray-500">
+                    </AdminTableCell>
+                    <AdminTableCell className="text-gray-500">
                       {new Date(payout.requested_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
+                    </AdminTableCell>
+                    <AdminTableCell>
                       <button
                         type="button"
                         onClick={() => setProcessId(payout.id)}
-                        className="text-xs font-medium text-green-700 hover:underline"
+                        className="text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
                       >
                         Process
                       </button>
-                    </td>
-                  </tr>
+                    </AdminTableCell>
+                  </AdminTableRow>
                 ))}
-              </tbody>
+              </AdminTableBody>
             </table>
           </div>
-        </div>
+        </AdminTableCard>
       )}
 
-      <div className={`${MP.card} ${MP.cardPadding} mb-4 flex flex-wrap gap-3 items-end`}>
+      <div className={`${AP.card} ${AP.cardPadding} mb-4 flex flex-wrap gap-3 items-end ${pendingQueue.length > 0 ? "mt-6" : ""}`}>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">
             Payout status
@@ -207,81 +219,85 @@ export default function AdminPayoutsPage() {
         </p>
       </div>
 
-      <div className={`${MP.card} overflow-hidden`}>
-        {loading ? (
-          <AdminLoading message="Loading payouts..." />
-        ) : payouts.length === 0 ? (
-          <p className="p-8 text-center text-sm text-gray-500">No payouts found</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-gray-50 text-left text-gray-500">
-                  <th className="px-4 py-2.5">ID</th>
-                  <th className="px-4 py-2.5">Seller</th>
-                  <th className="px-4 py-2.5">Order</th>
-                  <th className="px-4 py-2.5">Amount</th>
-                  <th className="px-4 py-2.5">Commission</th>
-                  <th className="px-4 py-2.5">Gateway</th>
-                  <th className="px-4 py-2.5">Status</th>
-                  <th className="px-4 py-2.5">Date</th>
-                  <th className="px-4 py-2.5">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payouts.map((payout) => (
-                  <tr key={payout.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2.5 font-mono text-xs">
-                      {payout.id.slice(0, 8)}…
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs">
-                      {payout.seller_id.slice(0, 8)}…
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Link
-                        href={`/my-orders/${payout.order_id}`}
-                        target="_blank"
-                        className="text-primary-600 hover:underline font-mono text-xs"
-                      >
-                        {payout.order_id.slice(0, 8)}…
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      {payout.currency || "—"}{" "}
-                      {Number(payout.amount).toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {payout.commission_amount != null
-                        ? Number(payout.commission_amount).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 capitalize">
-                      {payout.gateway || "—"}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <AdminStatusBadge status={payout.status} />
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-500">
-                      {new Date(payout.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {payout.status === "pending" && (
-                        <button
-                          type="button"
-                          onClick={() => setProcessId(payout.id)}
-                          className="text-xs font-medium text-green-700 hover:underline"
+      {loading ? (
+        <AdminTableSkeleton rows={8} cols={9} />
+      ) : (
+        <div className={`${AP.card} overflow-hidden`}>
+          {payouts.length === 0 ? (
+            <AdminEmptyState
+              icon={Inbox}
+              title="No payouts found"
+              description="Payout records will appear here once sellers request transfers."
+            />
+          ) : (
+            <div className={AP.tableWrap}>
+              <table className={AP.table}>
+                <AdminTableHead>
+                  <AdminTableHeadCell>ID</AdminTableHeadCell>
+                  <AdminTableHeadCell>Seller</AdminTableHeadCell>
+                  <AdminTableHeadCell>Order</AdminTableHeadCell>
+                  <AdminTableHeadCell>Amount</AdminTableHeadCell>
+                  <AdminTableHeadCell>Commission</AdminTableHeadCell>
+                  <AdminTableHeadCell>Gateway</AdminTableHeadCell>
+                  <AdminTableHeadCell>Status</AdminTableHeadCell>
+                  <AdminTableHeadCell>Date</AdminTableHeadCell>
+                  <AdminTableHeadCell>Actions</AdminTableHeadCell>
+                </AdminTableHead>
+                <AdminTableBody>
+                  {payouts.map((payout) => (
+                    <AdminTableRow key={payout.id}>
+                      <AdminTableCell className="font-mono text-xs">
+                        {payout.id.slice(0, 8)}…
+                      </AdminTableCell>
+                      <AdminTableCell className="font-mono text-xs">
+                        {payout.seller_id.slice(0, 8)}…
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        <Link
+                          href={`/my-orders/${payout.order_id}`}
+                          target="_blank"
+                          className="text-primary-600 hover:text-primary-700 font-mono text-xs font-medium transition-colors"
                         >
-                          Process
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                          {payout.order_id.slice(0, 8)}…
+                        </Link>
+                      </AdminTableCell>
+                      <AdminTableCell className="whitespace-nowrap tabular-nums">
+                        {payout.currency || "—"}{" "}
+                        {Number(payout.amount).toLocaleString()}
+                      </AdminTableCell>
+                      <AdminTableCell className="tabular-nums">
+                        {payout.commission_amount != null
+                          ? Number(payout.commission_amount).toLocaleString()
+                          : "—"}
+                      </AdminTableCell>
+                      <AdminTableCell className="capitalize">
+                        {payout.gateway || "—"}
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        <AdminStatusBadge status={payout.status} />
+                      </AdminTableCell>
+                      <AdminTableCell className="text-gray-500">
+                        {new Date(payout.created_at).toLocaleDateString()}
+                      </AdminTableCell>
+                      <AdminTableCell>
+                        {payout.status === "pending" && (
+                          <button
+                            type="button"
+                            onClick={() => setProcessId(payout.id)}
+                            className="text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                          >
+                            Process
+                          </button>
+                        )}
+                      </AdminTableCell>
+                    </AdminTableRow>
+                  ))}
+                </AdminTableBody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4">
@@ -289,7 +305,7 @@ export default function AdminPayoutsPage() {
             type="button"
             disabled={page === 0}
             onClick={() => setPage((p) => p - 1)}
-            className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-40"
+            className={AP.btnSecondary}
           >
             Previous
           </button>
@@ -300,7 +316,7 @@ export default function AdminPayoutsPage() {
             type="button"
             disabled={page >= totalPages - 1}
             onClick={() => setPage((p) => p + 1)}
-            className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-40"
+            className={AP.btnSecondary}
           >
             Next
           </button>
@@ -308,8 +324,8 @@ export default function AdminPayoutsPage() {
       )}
 
       {processId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl border shadow-lg w-full max-w-md p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className={`${AP.card} shadow-2xl w-full max-w-md p-6`}>
             <h2 className="font-semibold text-lg mb-4">Process payout</h2>
 
             <div className="space-y-3">
@@ -343,14 +359,14 @@ export default function AdminPayoutsPage() {
                 type="button"
                 onClick={handleProcess}
                 disabled={processing}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-medium hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 {processing ? "Processing..." : "Mark as completed"}
               </button>
               <button
                 type="button"
                 onClick={() => setProcessId(null)}
-                className="px-4 py-2 border rounded-lg text-sm"
+                className={AP.btnSecondary}
               >
                 Cancel
               </button>

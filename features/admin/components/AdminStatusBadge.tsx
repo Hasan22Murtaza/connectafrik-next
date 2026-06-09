@@ -10,6 +10,7 @@ const STATUS_STYLES: Record<string, string> = {
   scheduled: "bg-indigo-50 text-indigo-700",
   frozen: "bg-red-50 text-red-700",
   released: "bg-green-50 text-green-700",
+  refunded: "bg-gray-100 text-gray-600",
 };
 
 export function AdminStatusBadge({ status }: { status: string | null | undefined }) {
@@ -20,7 +21,7 @@ export function AdminStatusBadge({ status }: { status: string | null | undefined
 
   return (
     <span
-      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium capitalize ${style}`}
+      className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ring-1 ring-inset ring-black/5 ${style}`}
     >
       {status.replace(/_/g, " ")}
     </span>

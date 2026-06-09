@@ -40,6 +40,65 @@ export interface AdminOrder {
   created_at: string
 }
 
+export interface AdminOrderParty {
+  id: string
+  username: string
+  full_name: string
+  avatar_url: string | null
+}
+
+export interface AdminOrderDetail {
+  id: string
+  order_number: string
+  product_id: string
+  product_title: string
+  product_image: string | null
+  quantity: number
+  unit_price: number
+  total_amount: number
+  currency: string
+  payment_status: string
+  payment_method: string | null
+  payment_gateway: string | null
+  payment_reference: string | null
+  delivery_status: string
+  status: string
+  buyer_email: string | null
+  buyer_phone: string | null
+  shipping_address: {
+    street?: string
+    city?: string
+    state?: string
+    country?: string
+    postal_code?: string
+  } | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  paid_at: string | null
+  payout_status: string | null
+  paid_to_seller_at: string | null
+  escrow_status: string | null
+  release_eligible_at: string | null
+  release_scheduled_at: string | null
+  delivery_confirmed_at: string | null
+  refunded_amount: number | null
+  refund_status: string | null
+  cancellation_reason: string | null
+  cancelled_at: string | null
+  platform_commission_rate: number | null
+  platform_commission_amount: number | null
+  gateway_fee_total: number | null
+  seller_net_amount: number | null
+  buyer_id: string
+  seller_id: string
+  seller?: AdminOrderParty
+  buyer?: AdminOrderParty
+  dispute: Record<string, unknown> | null
+  refunds: Array<Record<string, unknown>>
+  payouts: AdminPayout[]
+}
+
 export interface AdminPayout {
   id: string
   seller_id: string
@@ -67,6 +126,13 @@ export interface PaginatedResult<T> {
 export async function getAdminDashboard(): Promise<AdminDashboardSummary> {
   const result = await apiClient.get<{ data: AdminDashboardSummary }>(
     '/api/marketplace/admin/dashboard'
+  )
+  return result.data
+}
+
+export async function getAdminOrder(orderId: string): Promise<AdminOrderDetail> {
+  const result = await apiClient.get<{ data: AdminOrderDetail }>(
+    `/api/marketplace/admin/orders/${orderId}`
   )
   return result.data
 }

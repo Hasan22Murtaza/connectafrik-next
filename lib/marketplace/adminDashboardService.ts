@@ -1,4 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js'
+import { getOrderDispute } from './disputeService'
+import { listOrderRefunds } from './refundService'
 
 export async function getAdminDashboardSummary(serviceClient: SupabaseClient) {
   const [
@@ -138,6 +140,68 @@ export async function listAdminOrders(
   if (error) throw new Error(error.message)
 
   return { data: data ?? [], count: count ?? 0, page, limit }
+}
+
+export async function getAdminOrderDetail(serviceClient: SupabaseClient, orderId: string) {
+  const { data: order, error } = await serviceClient
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single()
+
+  if (error) {
+    if (error.code === 'PGRST116') throw new Error('Order not found')
+    throw new Error(error.message)
+  }
+
+  const [
+    { data: sellerProfile },
+    { data: buyerProfile },
+    dispute,
+    refunds,
+    { data: payouts },
+  ] = await Promise.all([
+    serviceClient
+      .from('profiles')
+      .select('id, username, full_name, avatar_url')
+      .eq('id', order.seller_id)
+      .single(),
+    serviceClient
+      .from('profiles')
+      .select('id, username, full_name, avatar_url')
+      .eq('id', order.buyer_id)
+      .single(),
+    getOrderDispute(serviceClient, orderId),
+    listOrderRefunds(serviceClient, orderId),
+    serviceClient
+      .from('seller_payouts')
+      .select('*')
+      .eq('order_id', orderId)
+      .order('created_at', { ascending: false }),
+  ])
+
+  return {
+    ...order,
+    seller: sellerProfile
+      ? {
+          id: sellerProfile.id,
+          username: sellerProfile.username,
+          full_name: sellerProfile.full_name,
+          avatar_url: sellerProfile.avatar_url,
+        }
+      : undefined,
+    buyer: buyerProfile
+      ? {
+          id: buyerProfile.id,
+          username: buyerProfile.username,
+          full_name: buyerProfile.full_name,
+          avatar_url: buyerProfile.avatar_url,
+        }
+      : undefined,
+    dispute,
+    refunds,
+    payouts: payouts ?? [],
+  }
 }
 
 export async function listAdminPayouts(
