@@ -101,6 +101,21 @@ async function fetchActiveVoipTokensForUser(userId: string): Promise<string[]> {
   return tokens
 }
 
+/** Call session sub-statuses that should wake iOS via PushKit VoIP. */
+const IOS_VOIP_CALL_STATUSES = new Set(['ringing', 'active', 'declined', 'ended', 'missed'])
+
+/** Prefer `data.type`, fall back to legacy `notification_type` sub-status (e.g. `ringing`, `active`). */
+function resolveCallEventStatus(dataType: string, rawNotificationType: string): string {
+  const fromData = dataType.trim().toLowerCase()
+  if (IOS_VOIP_CALL_STATUSES.has(fromData)) return fromData
+  const fromNotification = rawNotificationType.trim().toLowerCase()
+  if (IOS_VOIP_CALL_STATUSES.has(fromNotification)) return fromNotification
+  return ''
+}
+
+/** iOS call pushes that should skip FCM to avoid duplicate CallKit / banner UI. */
+const IOS_SKIP_FCM_CALL_STATUSES = new Set(['ringing', 'active', 'declined'])
+
 export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders })
 }
@@ -239,19 +254,15 @@ export async function POST(request: NextRequest) {
 
     const fcmStringData = stringifyFcmDataValues(rawPushData)
 
-    // Call events on iOS: PushKit VoIP (ringing from call-sessions; accept/decline here). Skip FCM on iOS to avoid duplicate UI.
+    // Call events on iOS: PushKit VoIP for lifecycle updates; skip FCM on iOS for ring/accept/decline to avoid duplicate UI.
     const callRingDataType =
       rawPushData.type != null ? String(rawPushData.type).trim().toLowerCase() : ''
     const callRingNotificationType =
       typeof notification_type === 'string' ? notification_type.trim().toLowerCase() : ''
-    const skipIosFcmForIncomingCallRing =
-      canonicalType === 'call' &&
-      (callRingDataType === 'ringing' || callRingNotificationType === 'ringing')
-    const sendIosVoipForCallAcceptOrDecline =
-      canonicalType === 'call' &&
-      (callRingDataType === 'active' || callRingDataType === 'declined')
+    const callEventStatus = resolveCallEventStatus(callRingDataType, callRingNotificationType)
+    const sendIosVoipForCall = canonicalType === 'call' && IOS_VOIP_CALL_STATUSES.has(callEventStatus)
     const skipIosFcmForVoipCall =
-      skipIosFcmForIncomingCallRing || sendIosVoipForCallAcceptOrDecline
+      canonicalType === 'call' && IOS_SKIP_FCM_CALL_STATUSES.has(callEventStatus)
 
     // Birthday reminders: at most one per friend per day per "when" (today vs tomorrow) for this user.
     if (canonicalType === 'birthday' && !skip_db) {
@@ -314,25 +325,6 @@ export async function POST(request: NextRequest) {
         console.log('✅ Notification created in database:', notificationId)
       }
     }
-    // Step 2: Send FCM push notification
-    const firebaseAdmin = getFirebaseAdmin()
-    if (!firebaseAdmin) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Firebase Admin SDK not initialized',
-          sent: 0,
-          failed: 0,
-          total: 0,
-          results: []
-        },
-        {
-          status: 500,
-          headers: corsHeaders,
-        }
-      )
-    }
-
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
@@ -364,7 +356,7 @@ export async function POST(request: NextRequest) {
       return isActive && !!sub.fcm_token
     })
 
-    if (activeSubscriptions.length === 0 && !sendIosVoipForCallAcceptOrDecline) {
+    if (activeSubscriptions.length === 0 && !sendIosVoipForCall) {
       return NextResponse.json(
         {
           success: notificationId !== null, // Success if notification was stored in DB
@@ -380,6 +372,11 @@ export async function POST(request: NextRequest) {
           headers: corsHeaders,
         }
       )
+    }
+
+    const firebaseAdmin = getFirebaseAdmin()
+    if (!firebaseAdmin && activeSubscriptions.length > 0) {
+      console.warn('⚠️ Firebase Admin SDK not initialized; FCM delivery skipped')
     }
 
     // Deduplicate by device_id so we send at most one notification per device (avoids duplicate toasts)
@@ -424,14 +421,14 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    const sendPromises = subscriptionsToSend.map(async (subscription) => {
+    const sendPromises =
+      firebaseAdmin && subscriptionsToSend.length > 0
+        ? subscriptionsToSend.map(async (subscription) => {
       try {
         const fcmToken = subscription.fcm_token
 
         if (subscription.device_type === 'ios' && skipIosFcmForVoipCall) {
-          const skipReason = sendIosVoipForCallAcceptOrDecline
-            ? 'skipped-ios-call-accept-decline-voip'
-            : 'skipped-ios-incoming-call-ring'
+          const skipReason = `skipped-ios-call-${callEventStatus || 'event'}-voip`
           console.log(`Skipping FCM for iOS call push (${skipReason})`)
           return {
             success: true,
@@ -515,8 +512,9 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+        : []
 
-    const fcmResults = activeSubscriptions.length > 0 ? await Promise.all(sendPromises) : []
+    const fcmResults = sendPromises.length > 0 ? await Promise.all(sendPromises) : []
 
     let voipResults: Array<{
       success: boolean
@@ -526,13 +524,20 @@ export async function POST(request: NextRequest) {
       error?: string
     }> = []
 
-    if (sendIosVoipForCallAcceptOrDecline) {
+    if (sendIosVoipForCall) {
       const voipTokens = await fetchActiveVoipTokensForUser(user_id)
       const voipData: Record<string, string> = {
         ...fcmStringData,
         title: body.title,
         body: notificationBody,
-        type: callRingDataType,
+        type: callEventStatus,
+      }
+
+      if (voipTokens.length === 0) {
+        console.warn('No active iOS VoIP tokens for call push', {
+          user_id,
+          call_status: callEventStatus,
+        })
       }
 
       voipResults = await Promise.all(
@@ -545,18 +550,18 @@ export async function POST(request: NextRequest) {
               body: notificationBody,
               data: voipData,
             })
-            console.log(`✅ APNs VoIP call-status push sent (${callRingDataType})`)
+            console.log(`✅ APNs VoIP call push sent (${callEventStatus})`)
             return {
               success: true,
               endpoint,
               device_type: 'ios-voip',
-              messageId: `voip-${callRingDataType}`,
+              messageId: `voip-${callEventStatus}`,
             }
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error)
-            console.error('APNs VoIP call-status push failed', {
+            console.error('APNs VoIP call push failed', {
               user_id,
-              call_status: callRingDataType,
+              call_status: callEventStatus,
               error: message,
             })
             return {
