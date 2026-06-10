@@ -297,20 +297,20 @@ export default function ChatSidebar({
 
   return (
     <aside
-      className={`w-full max-w-sm shrink-0 border-r border-gray-200 bg-[#f7f8fa]  ${
+      className={`w-full max-w-sm shrink-0 border-r border-border bg-surface-canvas ${
         selectedThreadId ? "hidden sm:block" : "block"
       }`}
     >
-      <div className="border-b border-gray-200 bg-white px-4 py-4">
-        <h1 className="text-xl font-semibold text-gray-900">Chats</h1>
+      <div className="border-b border-border bg-surface px-4 py-4">
+        <h1 className="text-xl font-semibold text-content">Chats</h1>
         <div className="relative mt-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
           <input
             ref={searchInputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search or start a new chat"
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
+            className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
           />
         </div>
       </div>
@@ -320,14 +320,14 @@ export default function ChatSidebar({
         onScroll={handleThreadsScroll}
       >
         {isLoading ? (
-          <div className="p-4 text-sm text-gray-500">Loading chats...</div>
+          <div className="p-4 text-sm text-content-secondary">Loading chats...</div>
         ) : filteredActive.length === 0 && filteredBlocked.length === 0 ? (
-          <div className="p-4 text-sm text-gray-500">No conversations found.</div>
+          <div className="p-4 text-sm text-content-secondary">No conversations found.</div>
         ) : (
           <>
           {filteredActive.length === 0 && filteredBlocked.length > 0 && !query ? (
-            <p className="px-4 pb-2 text-xs text-gray-500">
-              No active chats — open <span className="font-medium text-gray-700">Blocked</span> below.
+            <p className="px-4 pb-2 text-xs text-content-secondary">
+              No active chats — open <span className="font-medium text-content">Blocked</span> below.
             </p>
           ) : null}
           {filteredActive.map((thread) => {
@@ -357,8 +357,8 @@ export default function ChatSidebar({
                 }}
                 role="button"
                 tabIndex={0}
-                className={`group cursor-pointer relative flex w-full items-start gap-3 border-b border-gray-100 px-4 py-3 text-left transition hover:bg-white ${
-                  selected ? "bg-white" : "bg-transparent"
+                className={`group cursor-pointer relative flex w-full items-start gap-3 border-b border-border-subtle px-4 py-3 text-left transition hover:bg-surface-hover ${
+                  selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : "bg-transparent"
                 }`}
               >
                 <div className="h-11 w-11 shrink-0">
@@ -372,14 +372,14 @@ export default function ChatSidebar({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-gray-900">
+                    <p className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-content">
                       {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" /> : null}
                       <span className="truncate">{displayName}</span>
                     </p>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <span
                         className={`text-xs tabular-nums ${
-                          thread.unread_count > 0 ? "text-primary-600" : "text-gray-400"
+                          thread.unread_count > 0 ? "text-primary-600" : "text-content-tertiary"
                         }`}
                       >
                         {formatThreadListTime(thread.last_message_at)}
@@ -392,7 +392,7 @@ export default function ChatSidebar({
                     </div>
                   </div>
                   <div className="mt-0.5">
-                    <p className="truncate text-sm text-gray-500">
+                    <p className="truncate text-sm text-content-secondary">
                       {thread.last_message_preview || "Tap to open chat"}
                     </p>
                   </div>
@@ -406,7 +406,7 @@ export default function ChatSidebar({
                       e.stopPropagation();
                       setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                     }}
-                    className="rounded-full p-1.5 text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100"
+                    className="rounded-full p-1.5 text-content-tertiary opacity-0 transition hover:bg-surface-hover hover:text-content group-hover:opacity-100"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </button>
@@ -414,12 +414,12 @@ export default function ChatSidebar({
                     <div
                       data-chat-menu
                       onClick={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
+                      className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
                     >
                         <button
                         type="button"
                         onClick={(e) => onMenuAction(e, thread, "toggle-archive")}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                       >
                         <Archive className="h-4 w-4" />
                         <span>{thread.archived ? "Unarchive chat" : "Archive chat"}</span>
@@ -427,7 +427,7 @@ export default function ChatSidebar({
                       <button
                         type="button"
                         onClick={(e) => onMenuAction(e, thread, "toggle-pin")}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                       >
                         {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
                         <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
@@ -436,7 +436,7 @@ export default function ChatSidebar({
                         <button
                           type="button"
                           onClick={(e) => onMenuAction(e, thread, "toggle-block")}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                         >
                           <Ban className="h-4 w-4" />
                           <span>{thread.is_block ? "Unblock contact" : "Block contact"}</span>
@@ -457,11 +457,11 @@ export default function ChatSidebar({
             );
           })}
           {blockedThreads.length > 0 ? (
-            <div className="border-t border-gray-200 px-4 pt-2">
+            <div className="border-t border-border px-4 pt-2">
               <button
                 type="button"
                 onClick={() => setBlockedExpanded((e) => !e)}
-                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-700"
+                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
               >
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? "" : "-rotate-90"}`}
@@ -484,22 +484,22 @@ export default function ChatSidebar({
                         onClick={() => onOpenThread(thread.id, thread)}
                         role="button"
                         tabIndex={0}
-                        className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-gray-100 py-3 text-left opacity-80 transition hover:bg-white ${
-                          selected ? "bg-white" : ""
+                        className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-surface-hover ${
+                          selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : ""
                         }`}
                       >
                         <div className="h-11 w-11 shrink-0">
                           {avatarUrl ? (
                             <img src={avatarUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
                           ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-200 font-semibold text-gray-600">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
                               {displayName.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-gray-700">{displayName}</p>
-                          <p className="truncate text-xs text-gray-500">Blocked · tap to manage</p>
+                          <p className="truncate text-sm font-semibold text-content">{displayName}</p>
+                          <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
                         </div>
                         <button
                           type="button"
@@ -508,7 +508,7 @@ export default function ChatSidebar({
                             e.stopPropagation();
                             setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                           }}
-                          className="rounded-full p-1.5 text-gray-400 hover:bg-gray-100"
+                          className="rounded-full p-1.5 text-content-tertiary hover:bg-surface-hover"
                         >
                           <MoreVertical className="h-4 w-4" />
                         </button>
@@ -516,12 +516,12 @@ export default function ChatSidebar({
                           <div
                             data-chat-menu
                             onClick={(e) => e.stopPropagation()}
-                            className="absolute right-4 top-10 z-20 w-52 rounded-xl border border-gray-200 bg-white p-1 shadow-xl"
+                            className="absolute right-4 top-10 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
                           >
                             <button
                               type="button"
                               onClick={(e) => onMenuAction(e, thread, "toggle-block")}
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                             >
                               <Ban className="h-4 w-4" />
                               <span>Unblock contact</span>
@@ -537,14 +537,14 @@ export default function ChatSidebar({
           </>
         )}
         {!isLoading && hasMore ? (
-          <div className="flex justify-center py-3 text-sm text-gray-500">
+          <div className="flex justify-center py-3 text-sm text-content-secondary">
             {isLoadingMore ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                 Loading more…
               </span>
             ) : (
-              <span className="text-gray-400">Scroll for more</span>
+              <span className="text-content-tertiary">Scroll for more</span>
             )}
           </div>
         ) : null}

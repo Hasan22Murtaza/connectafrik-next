@@ -67,35 +67,35 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
       onClick={handleClose}
     >
       <div
-        className="bg-white rounded-xl max-w-md w-full mx-auto"
+        className="bg-surface rounded-xl max-w-md w-full mx-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <XCircle className="w-5 h-5 text-red-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Cancel Order</h2>
+            <h2 className="text-xl font-semibold text-content">Cancel Order</h2>
           </div>
           <button
             onClick={handleClose}
             disabled={isCancelling}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-content-tertiary hover:text-content-secondary transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6">
-          <div className="bg-gray-50 rounded-lg p-4 mb-4 text-sm space-y-1">
+          <div className="bg-surface-canvas rounded-lg p-4 mb-4 text-sm space-y-1">
             <p>
-              <span className="text-gray-500">Order #</span>{' '}
+              <span className="text-content-secondary">Order #</span>{' '}
               <span className="font-medium">{orderNumber}</span>
             </p>
             <p>
-              <span className="text-gray-500">Product:</span>{' '}
+              <span className="text-content-secondary">Product:</span>{' '}
               <span className="font-medium">{productTitle}</span>
             </p>
             <p>
-              <span className="text-gray-500">Amount:</span>{' '}
+              <span className="text-content-secondary">Amount:</span>{' '}
               <span className="font-medium">
                 {currencySymbol}
                 {totalAmount.toLocaleString()}
@@ -114,7 +114,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-content mb-2">
               Reason for cancellation (optional)
             </label>
             <textarea
@@ -123,7 +123,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
               placeholder="Tell us why you're cancelling..."
               disabled={isCancelling}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
             />
           </div>
 
@@ -131,7 +131,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
             <button
               onClick={handleClose}
               disabled={isCancelling}
-              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="flex-1 px-6 py-3 border border-border rounded-lg text-content font-medium hover:bg-surface-hover transition-colors disabled:opacity-50"
             >
               Keep Order
             </button>

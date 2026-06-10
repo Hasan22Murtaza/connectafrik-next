@@ -15,6 +15,7 @@ import { FiVideo } from "react-icons/fi";
 import { IoBookmarkOutline } from "react-icons/io5";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { RiHandbagLine } from "react-icons/ri";
+import DisplayModeMenu from '@/shared/components/theme/DisplayModeMenu'
 
 type MobileSideDrawerProps = {
   isOpen: boolean
@@ -64,7 +65,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
 
       {/* Side Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-2/3 bg-white z-50 transform transition-transform duration-300 lg:hidden
+        className={`fixed top-0 right-0 h-full w-2/3 bg-surface z-50 transform transition-transform duration-300 lg:hidden
         ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         <div className=" h-full overflow-y-auto">
@@ -72,7 +73,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
           <div className="flex items-center justify-between mb-6 bg-primary-600 px-4 py-3">
             <h3 className="text-lg font-semibold text-white">Menu</h3>
             <button onClick={onClose}>
-              <X className="w-6 h-6 text-white hover:text-gray-600" />
+              <X className="w-6 h-6 text-white hover:text-content-inverse/80" />
             </button>
           </div>
 
@@ -88,13 +89,13 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
                     className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors
                       ${
                         isActive
-                          ? 'bg-orange-50 text-primary-600'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-primary-100 text-primary-600'
+                          : 'text-content hover:bg-surface-hover'
                       }`}
                   >
                     <item.icon
                       className={`w-5 h-5 ${
-                        isActive ? 'text-primary-600' : 'text-gray-500'
+                        isActive ? 'text-primary-600' : 'text-content-secondary'
                       }`}
                     />
                     {item.label}
@@ -103,6 +104,9 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
               )
             })}
           </ul>
+
+          <hr className="my-3 border-border-subtle" />
+          <DisplayModeMenu variant="inline" onClose={onClose} />
         </div>
       </div>
 

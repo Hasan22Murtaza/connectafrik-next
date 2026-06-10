@@ -26,11 +26,11 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
 
   return (
     <article
-      className="group cursor-pointer rounded-md overflow-hidden bg-white hover:bg-gray-50 transition-colors"
+      className="group cursor-pointer rounded-md overflow-hidden bg-surface hover:bg-surface-hover transition-colors"
       onClick={() => onView(product.id)}
       aria-label={`${product.title} - ${formatProductPrice(product)}`}
     >
-      <div className="relative aspect-square overflow-hidden bg-gray-100 rounded-md">
+      <div className="relative aspect-square overflow-hidden bg-surface-secondary rounded-md">
         <img
           src={mainImage}
           alt={product.title}
@@ -42,7 +42,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         />
 
         {justListed && !isOutOfStock && !isUnavailable && (
-          <span className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-gray-800 text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
+          <span className="absolute top-1.5 left-1.5 bg-surface/90 backdrop-blur-sm text-content text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
             Just listed
           </span>
         )}
@@ -55,7 +55,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
 
         {(isOutOfStock || isUnavailable) && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
+            <span className="bg-surface text-content text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
               {isOutOfStock ? "Sold out" : "Unavailable"}
             </span>
           </div>
@@ -63,14 +63,14 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
       </div>
 
       <div className="pt-1 px-0 pb-0 min-w-0">
-        <p className="text-sm font-bold text-gray-900 truncate leading-tight">
+        <p className="text-sm font-bold text-content truncate leading-tight">
           {formatProductPrice(product)}
         </p>
-        <h3 className="text-xs text-gray-800 line-clamp-2 leading-snug mt-0.5">
+        <h3 className="text-xs text-content line-clamp-2 leading-snug mt-0.5">
           {product.title}
         </h3>
         {location && (
-          <p className="text-[11px] text-gray-500 truncate mt-0.5">{location}</p>
+          <p className="text-[11px] text-content-secondary truncate mt-0.5">{location}</p>
         )}
       </div>
     </article>

@@ -129,7 +129,7 @@ const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUns
 
         <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10">
           <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full p-[2px] sm:p-[2.5px] ${hasUnseenStory ? 'bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600' : 'bg-gray-400'}`}>
-            <div className="w-full h-full rounded-full bg-white p-[1.5px] sm:p-[2px]">
+            <div className="w-full h-full rounded-full bg-surface p-[1.5px] sm:p-[2px]">
               {displayAvatar ? (
                 <img src={displayAvatar} alt={displayName} className="w-full h-full rounded-full object-cover" loading="lazy" />
               ) : (
@@ -233,7 +233,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
 
           <div className="absolute top-2 sm:top-3 left-2 sm:left-3 z-10 pointer-events-none">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full p-[2px] sm:p-[2.5px] bg-primary-500">
-              <div className="w-full h-full rounded-full bg-white p-[1.5px] sm:p-[2px]">
+              <div className="w-full h-full rounded-full bg-surface p-[1.5px] sm:p-[2px]">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Your profile" className="w-full h-full rounded-full object-cover" loading="lazy" />
                 ) : (
@@ -262,25 +262,25 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
 
   return (
     <button onClick={onCreate} className="flex-shrink-0 w-[90px] sm:w-[112px]">
-      <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden  cursor-pointer bg-white border border-gray-200">
+      <div className="relative w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] rounded-xl overflow-hidden  cursor-pointer bg-surface border border-border">
         <div className="absolute top-0 left-0 right-0 h-[110px] sm:h-[140px]">
           {avatarUrl ? (
             <img src={avatarUrl} alt="Your profile" className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-              <span className="text-gray-400 text-3xl sm:text-4xl font-bold">{userName.charAt(0).toUpperCase()}</span>
+              <span className="text-content-tertiary text-3xl sm:text-4xl font-bold">{userName.charAt(0).toUpperCase()}</span>
             </div>
           )}
         </div>
 
         <div className="absolute top-[92px] sm:top-[120px] left-1/2 -translate-x-1/2 z-10">
-          <div className=" group  hover:bg-[#FF6900] w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-white  shadow-md duration-300 transition-colors">
+          <div className=" group  hover:bg-[#FF6900] w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-surface  shadow-md duration-300 transition-colors">
             <Plus className=" group-hover:text-white w-5 h-5 sm:w-6 sm:h-6 text-[#FF6900]" />
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-[50px] sm:h-[60px] bg-white flex items-end justify-center pb-2 sm:pb-3">
-          <p className="text-gray-900 text-[10px] sm:text-xs font-semibold text-center">Create story</p>
+        <div className="absolute bottom-0 left-0 right-0 h-[50px] sm:h-[60px] bg-surface flex items-end justify-center pb-2 sm:pb-3">
+          <p className="text-content text-[10px] sm:text-xs font-semibold text-center">Create story</p>
         </div>
       </div>
     </button>
@@ -288,10 +288,10 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
 })
 CreateStoryCard.displayName = 'CreateStoryCard'
 const LoadingSkeleton: React.FC = React.memo(() => (
-  <div className="bg-white rounded-xl p-3 sm:p-4">
+  <div className="bg-surface rounded-xl p-3 sm:p-4">
     <div className="flex gap-1.5 sm:gap-2 overflow-hidden">
       {Array.from({ length: 5 }).map((_, index) => (
-        <div key={index} className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] bg-gray-200 rounded-xl animate-shimmer" />
+        <div key={index} className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] bg-surface-tertiary rounded-xl animate-shimmer" />
       ))}
     </div>
   </div>
@@ -513,22 +513,22 @@ const StoriesBar: React.FC = () => {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-3 sm:p-4 relative">
+      <div className="bg-surface rounded-xl shadow-header p-3 sm:p-4 relative">
         {showLeftArrow && (
           <button
             onClick={() => scroll('left')}
-            className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-white rounded-full shadow-lg items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
+            className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-surface rounded-full shadow-lg items-center justify-center hover:bg-surface-secondary transition-colors border border-border"
           >
-            <ChevronLeft className="w-6 h-6 text-gray-600" />
+            <ChevronLeft className="w-6 h-6 text-content-secondary" />
           </button>
         )}
 
         {showRightArrow && (
           <button
             onClick={() => scroll('right')}
-            className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-white rounded-full shadow-lg items-center justify-center hover:bg-gray-50 transition-colors border border-gray-200"
+            className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-surface rounded-full shadow-lg items-center justify-center hover:bg-surface-secondary transition-colors border border-border"
           >
-            <ChevronRight className="w-6 h-6 text-gray-600" />
+            <ChevronRight className="w-6 h-6 text-content-secondary" />
           </button>
         )}
 
@@ -542,8 +542,8 @@ const StoriesBar: React.FC = () => {
           />
           {storyCards}
           {stories.length === 0 && (
-            <div className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] bg-gray-50 rounded-xl flex items-center justify-center border border-dashed border-gray-300">
-              <p className="text-gray-400 text-[10px] sm:text-xs text-center px-2">No stories<br />to show</p>
+            <div className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] bg-surface-secondary rounded-xl flex items-center justify-center border border-dashed border-border">
+              <p className="text-content-tertiary text-[10px] sm:text-xs text-center px-2">No stories<br />to show</p>
             </div>
           )}
         </div>

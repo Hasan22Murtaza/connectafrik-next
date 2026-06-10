@@ -32,7 +32,7 @@ interface GradientPickerProps {
 const GradientPicker: React.FC<GradientPickerProps> = ({ selectedGradientId, onSelect }) => {
   return (
     <div className="space-y-2 sm:space-y-3">
-      <h4 className="text-xs sm:text-sm font-semibold text-gray-900">Background</h4>
+      <h4 className="text-xs sm:text-sm font-semibold text-content">Background</h4>
       <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {STORY_GRADIENTS.map((option) => {
           const [a, b] = option.colors

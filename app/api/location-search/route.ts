@@ -26,7 +26,18 @@ type DetailsResponse = {
   result?: {
     formatted_address?: string
     address_components?: { long_name: string; short_name: string; types: string[] }[]
+    geometry?: { location?: { lat?: number; lng?: number } }
   }
+  status: string
+  error_message?: string
+}
+
+type GeocodeResponse = {
+  results?: {
+    formatted_address?: string
+    address_components?: { long_name: string; short_name: string; types: string[] }[]
+    geometry?: { location?: { lat?: number; lng?: number } }
+  }[]
   status: string
   error_message?: string
 }
@@ -47,11 +58,50 @@ export async function GET(request: NextRequest) {
 
     const placeId = request.nextUrl.searchParams.get('placeId')?.trim() ?? ''
     const sessionToken = request.nextUrl.searchParams.get('sessionToken')?.trim() ?? ''
+    const latParam = request.nextUrl.searchParams.get('lat')
+    const lngParam = request.nextUrl.searchParams.get('lng')
+
+    if (latParam != null && lngParam != null) {
+      const lat = Number(latParam)
+      const lng = Number(lngParam)
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return errorResponse('Invalid lat/lng', 400)
+      }
+
+      const url = new URL('https://maps.googleapis.com/maps/api/geocode/json')
+      url.searchParams.set('latlng', `${lat},${lng}`)
+      url.searchParams.set('key', key)
+
+      const res = await fetch(url.toString(), { cache: 'no-store' })
+      const data = (await res.json()) as GeocodeResponse
+
+      if (data.status !== 'OK' || !data.results?.[0]) {
+        return errorResponse(data.error_message || `Reverse geocode failed: ${data.status}`, 400)
+      }
+
+      const result = data.results[0]
+      const formatted = (result.formatted_address || '').trim()
+      const parsed = parseGoogleAddressComponents(result.address_components)
+      const geo = result.geometry?.location
+
+      const details: ProfileLocationValue = {
+        formattedAddress: formatted,
+        address: formatted,
+        city: parsed.city,
+        state: parsed.state,
+        zipcode: parsed.zipcode,
+        country: parsed.country,
+        latitude: geo?.lat ?? lat,
+        longitude: geo?.lng ?? lng,
+      }
+
+      return jsonResponse({ details })
+    }
 
     if (placeId) {
       const url = new URL('https://maps.googleapis.com/maps/api/place/details/json')
       url.searchParams.set('place_id', placeId)
-      url.searchParams.set('fields', 'formatted_address,address_component')
+      url.searchParams.set('fields', 'formatted_address,address_component,geometry')
       url.searchParams.set('key', key)
       if (sessionToken) url.searchParams.set('sessiontoken', sessionToken)
 
@@ -65,6 +115,8 @@ export async function GET(request: NextRequest) {
       const formatted = (data.result.formatted_address || '').trim()
       const parsed = parseGoogleAddressComponents(data.result.address_components)
 
+      const geo = data.result.geometry?.location
+
       const details: ProfileLocationValue = {
         formattedAddress: formatted,
         // Persist full Places line in `address` so reload matches the picker (establishment + route + area).
@@ -73,6 +125,8 @@ export async function GET(request: NextRequest) {
         state: parsed.state,
         zipcode: parsed.zipcode,
         country: parsed.country,
+        latitude: geo?.lat ?? null,
+        longitude: geo?.lng ?? null,
       }
 
       return jsonResponse({ details })

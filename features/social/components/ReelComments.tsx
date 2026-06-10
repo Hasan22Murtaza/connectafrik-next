@@ -135,13 +135,13 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center bg-primary-600 justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center bg-primary-600 justify-between p-6 border-b border-border">
           <h2 className="text-xl font-semibold text-white">Comments</h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-300"
+            className="text-white hover:text-content-tertiary"
           >
             <X className="w-6 h-6" />
           </button>
@@ -152,11 +152,11 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
           {loading ? (
             <div className="text-center py-8">
               <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading comments...</p>
+              <p className="text-content-secondary">Loading comments...</p>
             </div>
           ) : comments.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-600">No comments yet. Be the first to comment!</p>
+              <p className="text-content-secondary">No comments yet. Be the first to comment!</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -165,21 +165,21 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                   {/* Main Comment */}
                   <div className="flex space-x-3">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span className="text-gray-600 font-medium text-sm">
+                      <div className="w-8 h-8 bg-surface-tertiary rounded-full flex items-center justify-center">
+                        <span className="text-content-secondary font-medium text-sm">
                           {getCommentAuthor(comment)?.username?.charAt(0).toUpperCase()}
                         </span>
                       </div>
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="bg-surface-canvas rounded-lg p-3">
                         <div className="flex items-center justify-between mb-1">
                           <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-content">
                               {getCommentAuthor(comment)?.username}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-content-secondary">
                               {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                             </span>
                           </div>
@@ -188,13 +188,13 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                             <div className="flex items-center space-x-1">
                               <button
                                 onClick={() => startEdit(comment)}
-                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                className="text-content-tertiary hover:text-content-secondary transition-colors"
                               >
                                 <Edit2 className="w-3 h-3" />
                               </button>
                               <button
                                 onClick={() => handleDeleteComment(comment.id)}
-                                className="text-gray-400 hover:text-red-600 transition-colors"
+                                className="text-content-tertiary hover:text-red-600 transition-colors"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -220,28 +220,28 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                               </button>
                               <button
                                 onClick={cancelEdit}
-                                className="px-3 py-1 bg-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-400"
+                                className="px-3 py-1 bg-surface-tertiary text-content text-sm rounded-lg hover:bg-surface-hover"
                               >
                                 <X className="w-3 h-3" />
                               </button>
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-700">{comment.content}</p>
+                          <p className="text-sm text-content">{comment.content}</p>
                         )}
                       </div>
                       
                       <div className="flex items-center space-x-4 mt-2">
                         <button
                           onClick={() => handleLikeComment(comment.id)}
-                          className="text-xs text-gray-500 hover:text-[#f97316] transition-colors flex items-center space-x-1"
+                          className="text-xs text-content-secondary hover:text-primary-600 transition-colors flex items-center space-x-1"
                         >
                           <Heart className="w-3 h-3" />
                           <span>{comment.likes_count || 0}</span>
                         </button>
                         <button
                           onClick={() => startReply(comment.id)}
-                          className="text-xs text-gray-500 hover:text-[#f97316] transition-colors flex items-center space-x-1"
+                          className="text-xs text-content-secondary hover:text-primary-600 transition-colors flex items-center space-x-1"
                         >
                           <Reply className="w-3 h-3" />
                           <span>Reply</span>
@@ -271,7 +271,7 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                         </button>
                         <button
                           onClick={cancelReply}
-                          className="px-4 py-2 bg-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-400"
+                          className="px-4 py-2 bg-surface-tertiary text-content text-sm rounded-lg hover:bg-surface-hover"
                         >
                           Cancel
                         </button>
@@ -285,21 +285,21 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                       {comment.replies.map((reply) => (
                         <div key={reply.id} className="flex space-x-3">
                           <div className="flex-shrink-0">
-                            <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
-                              <span className="text-gray-600 font-medium text-xs">
+                            <div className="w-6 h-6 bg-surface-tertiary rounded-full flex items-center justify-center">
+                              <span className="text-content-secondary font-medium text-xs">
                                 {getCommentAuthor(reply)?.username?.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           </div>
                           
                           <div className="flex-1 min-w-0">
-                            <div className="bg-gray-50 rounded-lg p-2">
+                            <div className="bg-surface-canvas rounded-lg p-2">
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center space-x-2">
-                                  <span className="text-xs font-medium text-gray-900">
+                                  <span className="text-xs font-medium text-content">
                                     {getCommentAuthor(reply)?.username}
                                   </span>
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-content-secondary">
                                     {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
                                   </span>
                                 </div>
@@ -307,16 +307,16 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                                 {isOwnComment(reply) && (
                                   <button
                                     onClick={() => handleDeleteComment(reply.id)}
-                                    className="text-gray-400 hover:text-red-600 transition-colors"
+                                    className="text-content-tertiary hover:text-red-600 transition-colors"
                                   >
                                     <Trash2 className="w-3 h-3" />
                                   </button>
                                 )}
                               </div>
-                              <p className="text-xs text-gray-700">{reply.content}</p>
+                              <p className="text-xs text-content">{reply.content}</p>
                               <button
                                 onClick={() => handleLikeComment(reply.id)}
-                                className="mt-1 text-[11px] text-gray-500 hover:text-[#f97316] transition-colors inline-flex items-center gap-1"
+                                className="mt-1 text-[11px] text-content-secondary hover:text-primary-600 transition-colors inline-flex items-center gap-1"
                               >
                                 <Heart className="w-3 h-3" />
                                 <span>{reply.likes_count || 0}</span>
@@ -335,11 +335,11 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
 
         {/* Add Comment Form */}
         {user && (
-          <div className="p-6 border-t border-gray-200">
+          <div className="p-6 border-t border-border">
             <form onSubmit={handleSubmitComment} className="flex space-x-3">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-gray-600 font-medium text-sm">
+                <div className="w-8 h-8 bg-surface-tertiary rounded-full flex items-center justify-center">
+                  <span className="text-content-secondary font-medium text-sm">
                     {user.email?.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -355,7 +355,7 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
                   maxLength={500}
                 />
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-gray-500">{newComment.length}/500</span>
+                  <span className="text-xs text-content-secondary">{newComment.length}/500</span>
                   <button
                     type="submit"
                     disabled={!newComment.trim() || isSubmitting}

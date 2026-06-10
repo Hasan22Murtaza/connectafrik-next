@@ -25,7 +25,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           }
         }}
         placeholder="Type a message..."
-        className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg border border-gray-300 outline-1 border-gray-300 transition-all duration-200 text-xs sm:text-sm text-white bg-gray-800/50 backdrop-blur-sm"
+        className="flex-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg border border-border outline-1 border-border transition-all duration-200 text-xs sm:text-sm text-white bg-gray-800/50 backdrop-blur-sm"
         autoFocus
       />
       <button
@@ -36,7 +36,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       </button>
       <button
         onClick={onClose}
-        className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-700 px-3 py-2 sm:px-4 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 text-xs sm:text-sm font-medium focus:outline-none"
+        className="bg-surface-tertiary hover:bg-surface-tertiary active:bg-gray-400 text-content px-3 py-2 sm:px-4 sm:px-5 sm:py-2.5 rounded-lg transition-all duration-200 text-xs sm:text-sm font-medium focus:outline-none"
       >
         Cancel
       </button>

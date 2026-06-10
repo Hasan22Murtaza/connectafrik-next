@@ -995,7 +995,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 <button
                   onClick={() => setGroupPage((p) => Math.max(0, p - 1))}
                   disabled={gridLayout.pageIndex === 0}
-                  className="text-xs px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="text-xs px-2 py-0.5 rounded bg-surface/10 hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Previous page"
                 >
                   Prev
@@ -1008,7 +1008,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                     setGroupPage((p) => Math.min(gridLayout.pageCount - 1, p + 1))
                   }
                   disabled={gridLayout.pageIndex >= gridLayout.pageCount - 1}
-                  className="text-xs px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="text-xs px-2 py-0.5 rounded bg-surface/10 hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
                   aria-label="Next page"
                 >
                   Next
@@ -1071,7 +1071,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           (callType === 'video' || isGroupCall) &&
           !remotePresenter &&
           !isLocalPresenting && (
-            <div className="absolute bottom-16 sm:bottom-20 left-3 sm:left-4 text-xs sm:text-sm font-bold tracking-wider text-slate-800 font-mono tabular-nums z-30">
+            <div className="absolute bottom-16 sm:bottom-20 left-3 sm:left-4 text-xs sm:text-sm font-bold tracking-wider text-content font-mono tabular-nums z-30">
               {formatDuration(callDuration)}
             </div>
           )}

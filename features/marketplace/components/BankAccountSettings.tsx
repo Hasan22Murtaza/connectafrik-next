@@ -147,12 +147,12 @@ const BankAccountSettings: React.FC = () => {
 
   return (
     <div className="card">
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
           <Building2 className="w-6 h-6 text-primary-600" />
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Bank Account Details</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-xl font-semibold text-content">Bank Account Details</h2>
+            <p className="text-sm text-content-secondary mt-1">
               Required to receive automated payouts from marketplace sales
             </p>
           </div>
@@ -173,7 +173,7 @@ const BankAccountSettings: React.FC = () => {
 
         {/* Bank Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-content mb-2">
             Bank Name *
           </label>
           <select
@@ -195,7 +195,7 @@ const BankAccountSettings: React.FC = () => {
 
         {/* Account Number */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-content mb-2">
             Account Number *
           </label>
           <div className="flex gap-3">
@@ -249,7 +249,7 @@ const BankAccountSettings: React.FC = () => {
         )}
 
         {/* Save Button */}
-        <div className="flex justify-end pt-4 border-t border-gray-200">
+        <div className="flex justify-end pt-4 border-t border-border">
           <button
             onClick={handleSave}
             disabled={!isVerified || isSaving}
@@ -270,8 +270,8 @@ const BankAccountSettings: React.FC = () => {
         </div>
 
         {/* Security Note */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
-          <p className="font-medium text-gray-900 mb-2">🔒 Security Notice</p>
+        <div className="bg-surface-canvas border border-border rounded-lg p-4 text-sm text-content-secondary">
+          <p className="font-medium text-content mb-2">🔒 Security Notice</p>
           <ul className="space-y-1 text-xs">
             <li>• Your bank details are encrypted and stored securely</li>
             <li>• Only you and authorized admins can view this information</li>

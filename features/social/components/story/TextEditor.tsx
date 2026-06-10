@@ -25,25 +25,25 @@ interface TextEditorProps {
 const TextEditor: React.FC<TextEditorProps> = ({ style, onChange }) => {
   const getColorButtonClass = (isActive: boolean) =>
     `w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 transition-all active:scale-95 sm:hover:scale-110 shadow-sm ${
-      isActive ? 'border-primary-500 ring-2 ring-primary-200 scale-110' : 'border-gray-200'
+      isActive ? 'border-primary-500 ring-2 ring-primary-200 scale-110' : 'border-border'
     }`
 
   return (
     <div className="space-y-3 sm:space-y-5">
       <div>
-        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Your Text</label>
+        <label className="block text-xs sm:text-sm font-semibold text-content mb-1.5 sm:mb-2">Your Text</label>
         <textarea
           value={style.text}
           onChange={(e) => onChange({ text: e.target.value })}
           placeholder="Start typing..."
           maxLength={MAX_TEXT_LENGTH}
-          className="w-full h-20 sm:h-24 bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+          className="w-full h-20 sm:h-24 bg-surface-input border border-border rounded-lg sm:rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
         />
-        <p className="text-[10px] sm:text-xs text-gray-400 mt-1 text-right">{style.text.length}/{MAX_TEXT_LENGTH}</p>
+        <p className="text-[10px] sm:text-xs text-content-tertiary mt-1 text-right">{style.text.length}/{MAX_TEXT_LENGTH}</p>
       </div>
 
       <div>
-        <label className="block text-xs sm:text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Text Color</label>
+        <label className="block text-xs sm:text-sm font-semibold text-content mb-1.5 sm:mb-2">Text Color</label>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
           {TEXT_COLORS.map((color) => (
             <button

@@ -528,8 +528,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   if (!user) {
     return (
-      <div className="rounded-xl bg-gray-50 border border-gray-200 px-6 py-8 text-center">
-        <p className="text-gray-500 text-sm">Please sign in to create a post.</p>
+      <div className="rounded-xl bg-surface-canvas border border-border px-6 py-8 text-center">
+        <p className="text-content-secondary text-sm">Please sign in to create a post.</p>
       </div>
     )
   }
@@ -550,8 +550,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
       <div
         className={
           useModalShell
-            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-visible rounded-t-[20px] border border-gray-200 bg-white shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
-            : 'relative overflow-visible rounded-xl border border-gray-100 bg-white shadow-sm'
+            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-visible rounded-t-[20px] border border-border bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
+            : 'relative overflow-visible rounded-xl border border-border-subtle bg-surface shadow-sm'
         }
         {...(useModalShell ? { 'data-edit-modal': '' } : {})}
         role={useModalShell ? 'dialog' : undefined}
@@ -561,8 +561,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
       >
         {useModalShell ? (
           <>
-            <div className="relative flex shrink-0 items-center justify-center border-b border-gray-200 px-12 py-3">
-              <h2 id="create-post-dialog-title" className="text-center text-lg font-bold text-gray-900">
+            <div className="relative flex shrink-0 items-center justify-center border-b border-border px-12 py-3">
+              <h2 id="create-post-dialog-title" className="text-center text-lg font-bold text-content">
                 {isEditMode ? 'Edit post' : 'Create post'}
               </h2>
               <button
@@ -571,13 +571,13 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   if (!isSubmitting && !uploading) onCancel?.()
                 }}
                 disabled={isSubmitting || uploading}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:opacity-50"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:opacity-50"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex shrink-0 items-start gap-3 border-b border-gray-100 px-4 py-3">
+            <div className="flex shrink-0 items-start gap-3 border-b border-border-subtle px-4 py-3">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-gray-100" />
               ) : (
@@ -586,11 +586,11 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-semibold leading-tight text-gray-900">
+                <p className="text-[15px] font-semibold leading-tight text-content">
                   {profile?.full_name || 'User'}
                   {selectedLocation && (
                     <>
-                      <span className="font-normal text-gray-500"> · </span>
+                      <span className="font-normal text-content-secondary"> · </span>
                       <span className="font-medium text-[var(--african-orange)]">{selectedLocation.name}</span>
                     </>
                   )}
@@ -608,16 +608,16 @@ const CreatePost: React.FC<CreatePostProps> = ({
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-gray-900 text-sm sm:text-base leading-tight">
+              <p className="font-semibold text-content text-sm sm:text-base leading-tight">
                 {profile?.full_name || 'User'}
                 {selectedLocation && (
                   <>
-                    <span className="font-normal text-gray-500"> is at </span>
-                    <span className="font-semibold text-gray-900">{selectedLocation.name}</span>
+                    <span className="font-normal text-content-secondary"> is at </span>
+                    <span className="font-semibold text-content">{selectedLocation.name}</span>
                   </>
                 )}
               </p>
-              <p className="text-xs text-gray-400 leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
+              <p className="text-xs text-content-tertiary leading-tight mt-0.5">{isEditMode ? 'Editing post' : 'Share with the community'}</p>
             </div>
           </div>
         )}
@@ -638,7 +638,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                     setShowSubcategories(value === 'culture' || value === 'politics')
                   }}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium border transition-all duration-200 ${
-                    category === value ? active : 'border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-300'
+                    category === value ? active : 'border-border text-content-secondary hover:bg-surface-hover hover:border-gray-300'
                   }`}
                 >
                   <span className="text-sm">{icon}</span>
@@ -688,7 +688,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               className={`w-full text-sm sm:text-base border-0 focus:outline-none focus:ring-0 resize-none bg-transparent p-0 leading-relaxed ${
                 selectedBgPreset
                   ? `${selectedBgPreset.textClass} ${selectedBgPreset.placeholderClass}`
-                  : 'text-gray-900 placeholder-gray-400'
+                  : 'text-content placeholder-gray-400'
               }`}
               maxLength={2000}
               style={{ minHeight: hasMedia ? '36px' : '80px' }}
@@ -714,9 +714,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 content.length > 1900
                   ? 'text-red-400'
                   : !selectedBgPreset
-                    ? 'text-gray-300'
-                    : selectedBgPreset.textClass.includes('text-gray-900')
-                      ? 'text-gray-500'
+                    ? 'text-content-tertiary'
+                    : selectedBgPreset.textClass.includes('text-content')
+                      ? 'text-content-secondary'
                       : 'text-white/70'
               }`}
             >
@@ -726,37 +726,37 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
           {showBackgroundModal && (
                 <div
-                  className="fixed inset-0 z-[10200] flex flex-col bg-white"
+                  className="fixed inset-0 z-[10200] flex flex-col bg-surface"
                   role="dialog"
                   aria-modal="true"
                   aria-labelledby="choose-bg-title"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 shrink-0">
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
                     <button
                       type="button"
                       onClick={() => setShowBackgroundModal(false)}
-                      className="p-1 -ml-1 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+                      className="p-1 -ml-1 rounded-full text-content-secondary hover:bg-surface-hover transition-colors"
                       aria-label="Back"
                     >
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h2 id="choose-bg-title" className="font-bold text-base sm:text-lg text-gray-900 flex-1 text-center pr-8">
+                    <h2 id="choose-bg-title" className="font-bold text-base sm:text-lg text-content flex-1 text-center pr-8">
                       Choose background
                     </h2>
                   </div>
                   <div className="flex-1 overflow-y-auto px-4 py-4">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Decorative</p>
+                    <p className="text-xs font-semibold text-content-secondary uppercase tracking-wide mb-3">Decorative</p>
                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
                       <button
                         type="button"
                         title="No background"
                         onClick={() => { setSelectedBackgroundId(null); setShowBackgroundModal(false) }}
-                        className={`flex aspect-square items-center justify-center rounded-xl border-2 bg-white transition-transform active:scale-95 ${
-                          selectedBackgroundId === null ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-gray-200'
+                        className={`flex aspect-square items-center justify-center rounded-xl border-2 bg-surface transition-transform active:scale-95 ${
+                          selectedBackgroundId === null ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-border'
                         }`}
                       >
-                        <Ban className="h-6 w-6 text-gray-400" />
+                        <Ban className="h-6 w-6 text-content-tertiary" />
                       </button>
                       {POST_BACKGROUND_PRESETS.map((p) => (
                         <button
@@ -765,7 +765,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                           title={p.label}
                           onClick={() => { setSelectedBackgroundId(p.id); setShowBackgroundModal(false) }}
                           className={`aspect-square rounded-xl border-2 transition-transform active:scale-95 ${
-                            selectedBackgroundId === p.id ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-gray-100'
+                            selectedBackgroundId === p.id ? 'border-[var(--african-orange)] ring-2 ring-orange-200' : 'border-border-subtle'
                           }`}
                           style={{ background: p.css }}
                         />
@@ -821,15 +821,15 @@ const CreatePost: React.FC<CreatePostProps> = ({
         )}
 
         {totalMediaCount >= MAX_FILES && (
-          <p className="text-[10px] text-gray-400 text-center mt-1">Maximum {MAX_FILES} files</p>
+          <p className="text-[10px] text-content-tertiary text-center mt-1">Maximum {MAX_FILES} files</p>
         )}
 
         {showVideoUploader && (
           <div className="px-3 sm:px-4 mt-2">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+            <div className="rounded-lg border border-border bg-surface-canvas p-2.5">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Upload Video</h4>
-                <button type="button" onClick={() => setShowVideoUploader(false)} className="p-1 rounded-full hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors">
+                <h4 className="text-xs font-semibold text-content uppercase tracking-wide">Upload Video</h4>
+                <button type="button" onClick={() => setShowVideoUploader(false)} className="p-1 rounded-full hover:bg-surface-hover text-content-tertiary hover:text-content-secondary transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -856,7 +856,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
           <div className="px-3 sm:px-4 mt-2">
             {/* Map Image */}
             {selectedLocation.lat !== 0 && selectedLocation.lng !== 0 && GOOGLE_MAPS_API_KEY && (
-              <div className="relative rounded-lg overflow-hidden border border-gray-200">
+              <div className="relative rounded-lg overflow-hidden border border-border">
                 <img
                   src={`https://maps.googleapis.com/maps/api/staticmap?center=${selectedLocation.lat},${selectedLocation.lng}&zoom=15&size=600x200&scale=2&markers=color:red%7C${selectedLocation.lat},${selectedLocation.lng}&key=${GOOGLE_MAPS_API_KEY}`}
                   alt="Location map"
@@ -865,7 +865,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 <button
                   type="button"
                   onClick={clearLocation}
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 shadow-sm flex items-center justify-center text-gray-600 hover:bg-white hover:text-red-500 transition-colors"
+                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-surface/90 shadow-sm flex items-center justify-center text-content-secondary hover:bg-surface hover:text-red-500 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -873,20 +873,20 @@ const CreatePost: React.FC<CreatePostProps> = ({
             )}
             {/* Place Info Card */}
             <div className="flex items-center gap-3 mt-2 mb-1">
-              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 text-lg">
+              <div className="w-10 h-10 rounded-lg bg-surface-secondary flex items-center justify-center shrink-0 text-lg">
                 {getPlaceTypeIcon(selectedLocation.types)}
               </div>
               <div className="min-w-0 flex-1">
                 {selectedLocation.address && (
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider leading-tight truncate">
+                  <p className="text-[10px] text-content-tertiary uppercase font-semibold tracking-wider leading-tight truncate">
                     {selectedLocation.types.find(t => ['restaurant', 'cafe', 'store', 'shopping_mall', 'lodging', 'hospital', 'school', 'park', 'gym'].includes(t))?.replace(/_/g, ' ') || 'Location'}
                   </p>
                 )}
-                <p className="text-sm font-semibold text-gray-800 truncate">{selectedLocation.name}</p>
+                <p className="text-sm font-semibold text-content truncate">{selectedLocation.name}</p>
               </div>
               {/* Remove if no map shown */}
               {(selectedLocation.lat === 0 || !GOOGLE_MAPS_API_KEY) && (
-                <button type="button" onClick={clearLocation} className="p-1.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-gray-100 transition-colors shrink-0">
+                <button type="button" onClick={clearLocation} className="p-1.5 rounded-full text-content-tertiary hover:text-red-500 hover:bg-surface-hover transition-colors shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -897,11 +897,11 @@ const CreatePost: React.FC<CreatePostProps> = ({
         </div>
 
         <div className="mx-3 mt-3 shrink-0 sm:mx-4">
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm sm:px-3.5">
-            <span className="text-[15px] font-semibold text-gray-900">Add to your post</span>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 shadow-sm sm:px-3.5">
+            <span className="text-[15px] font-semibold text-content">Add to your post</span>
             <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
               <label
-                className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-gray-100 ${
+                className={`flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface-hover ${
                   totalMediaCount >= MAX_FILES ? 'cursor-not-allowed opacity-40' : ''
                 }`}
                 title="Photo"
@@ -916,7 +916,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 title="Video"
                 disabled={hasActiveVideo || uploading || isSubmitting}
                 onClick={() => setShowVideoUploader((v) => !v)}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 disabled:opacity-40 ${
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-hover disabled:opacity-40 ${
                   hasActiveVideo ? 'ring-2 ring-red-200' : ''
                 }`}
               >
@@ -929,7 +929,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 title="Check in"
                 disabled={uploading || isSubmitting}
                 onClick={() => setShowLocationModal(true)}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 disabled:opacity-40 ${
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-surface-hover disabled:opacity-40 ${
                   selectedLocation ? 'ring-2 ring-orange-200' : ''
                 }`}
               >
@@ -942,14 +942,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
         </div>
 
         {useModalShell ? (
-          <div className="shrink-0 border-t border-gray-100 bg-white px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
+          <div className="shrink-0 border-t border-border-subtle bg-surface px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
             <button
               type="submit"
               disabled={!isFormValid}
               className={`w-full rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 ${
                 isFormValid
                   ? 'bg-[var(--african-orange)] text-white hover:bg-[var(--african-orange-dark)] shadow-sm'
-                  : 'cursor-not-allowed bg-gray-100 text-gray-400'
+                  : 'cursor-not-allowed bg-surface-secondary text-content-tertiary'
               }`}
             >
               {uploading || isSubmitting ? (
@@ -970,7 +970,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               className={`inline-flex items-center gap-1.5 rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-200 ${
                 isFormValid
                   ? 'bg-[var(--african-orange)] text-white hover:bg-[var(--african-orange-dark)] shadow-sm hover:shadow'
-                  : 'cursor-not-allowed bg-gray-100 text-gray-400'
+                  : 'cursor-not-allowed bg-surface-secondary text-content-tertiary'
               }`}
             >
               {uploading || isSubmitting ? (
@@ -990,9 +990,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
       </form>
 
       {(uploadProgress || isSubmitting) && (
-        <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/75 backdrop-blur-sm ${useModalShell ? 'rounded-t-[20px] sm:rounded-xl' : 'rounded-xl'}`}>
-          <div className="h-10 w-10 rounded-full border-[3px] border-gray-200 border-t-[var(--african-orange)] animate-spin" />
-          <span className="text-sm font-medium text-gray-700 mt-3">{uploadProgress || (isEditMode ? 'Saving...' : 'Creating post...')}</span>
+        <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface/75 backdrop-blur-sm ${useModalShell ? 'rounded-t-[20px] sm:rounded-xl' : 'rounded-xl'}`}>
+          <div className="h-10 w-10 rounded-full border-[3px] border-border border-t-[var(--african-orange)] animate-spin" />
+          <span className="text-sm font-medium text-content mt-3">{uploadProgress || (isEditMode ? 'Saving...' : 'Creating post...')}</span>
         </div>
       )}
 
@@ -1001,37 +1001,37 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
       {/* Full-Screen Location Search Modal (Facebook-style) */}
       {showLocationModal && (
-        <div className="fixed inset-0 z-[10200] flex flex-col bg-white" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[10200] flex flex-col bg-surface" onClick={(e) => e.stopPropagation()}>
           {/* Modal Header */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 shrink-0">
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
             <button
               type="button"
               onClick={() => { setShowLocationModal(false); setLocationQuery(''); setSearchResults([]) }}
-              className="p-1 -ml-1 rounded-full text-gray-600 hover:bg-gray-100 transition-colors"
+              className="p-1 -ml-1 rounded-full text-content-secondary hover:bg-surface-hover transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h2 className="font-bold text-base sm:text-lg text-gray-900">Search for location</h2>
+            <h2 className="font-bold text-base sm:text-lg text-content">Search for location</h2>
           </div>
 
           {/* Search Bar */}
-          <div className="px-4 py-3 border-b border-gray-100 shrink-0">
+          <div className="px-4 py-3 border-b border-border-subtle shrink-0">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
               <input
                 ref={locationInputRef}
                 type="text"
                 placeholder="Where are you?"
                 value={locationQuery}
                 onChange={(e) => setLocationQuery(e.target.value)}
-                className="w-full pl-9 pr-10 py-2.5 text-sm rounded-full border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 focus:bg-white placeholder-gray-400 transition-all"
+                className="w-full pl-9 pr-10 py-2.5 text-sm rounded-full border border-border bg-surface-canvas focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 focus:bg-surface placeholder-gray-400 transition-all"
               />
-              {loadingPlaces && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />}
+              {loadingPlaces && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary animate-spin" />}
               {locationQuery && !loadingPlaces && (
                 <button
                   type="button"
                   onClick={() => { setLocationQuery(''); setSearchResults([]) }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-content-tertiary hover:text-content-secondary"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1047,14 +1047,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 type="button"
                 onClick={useCurrentLocation}
                 disabled={loadingPlaces}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors border-b border-border-subtle"
               >
                 <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
                   <Navigation className="w-5 h-5 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">Use current location</p>
-                  <p className="text-xs text-gray-400">Detect your location automatically</p>
+                  <p className="text-sm font-semibold text-content">Use current location</p>
+                  <p className="text-xs text-content-tertiary">Detect your location automatically</p>
                 </div>
               </button>
             )}
@@ -1063,21 +1063,21 @@ const CreatePost: React.FC<CreatePostProps> = ({
             {locationQuery.trim() && searchResults.length > 0 && (
               <div>
                 <div className="px-4 pt-3 pb-1">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Results</h3>
+                  <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Results</h3>
                 </div>
                 {searchResults.map((place) => (
                   <button
                     key={place.placeId}
                     type="button"
                     onClick={() => handleSelectPlace(place)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 text-lg">
+                    <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center shrink-0 text-lg">
                       {getPlaceTypeIcon(place.types)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{place.name}</p>
-                      {place.address && <p className="text-xs text-gray-400 truncate">{place.address}</p>}
+                      <p className="text-sm font-semibold text-content truncate">{place.name}</p>
+                      {place.address && <p className="text-xs text-content-tertiary truncate">{place.address}</p>}
                     </div>
                   </button>
                 ))}
@@ -1086,7 +1086,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
             {/* No results */}
             {locationQuery.trim() && !loadingPlaces && searchResults.length === 0 && mapsLoaded && (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <div className="flex flex-col items-center justify-center py-12 text-content-tertiary">
                 <MapPin className="w-8 h-8 mb-2 opacity-40" />
                 <p className="text-sm">No places found</p>
               </div>
@@ -1096,24 +1096,24 @@ const CreatePost: React.FC<CreatePostProps> = ({
             {!locationQuery.trim() && (
               <div>
                 <div className="px-4 pt-3 pb-1">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Suggested</h3>
+                  <h3 className="text-xs font-semibold text-content-secondary uppercase tracking-wider">Suggested</h3>
                 </div>
                 {loadingNearby && (
                   <div className="flex items-center gap-3 px-4 py-6">
-                    <Loader2 className="w-5 h-5 text-gray-300 animate-spin" />
-                    <p className="text-sm text-gray-400">Finding nearby places...</p>
+                    <Loader2 className="w-5 h-5 text-content-tertiary animate-spin" />
+                    <p className="text-sm text-content-tertiary">Finding nearby places...</p>
                   </div>
                 )}
                 {!loadingNearby && suggestedPlaces.length === 0 && !mapsLoaded && (
                   <div className="flex items-center gap-3 px-4 py-6">
-                    <Loader2 className="w-5 h-5 text-gray-300 animate-spin" />
-                    <p className="text-sm text-gray-400">Loading maps...</p>
+                    <Loader2 className="w-5 h-5 text-content-tertiary animate-spin" />
+                    <p className="text-sm text-content-tertiary">Loading maps...</p>
                   </div>
                 )}
                 {!loadingNearby && suggestedPlaces.length === 0 && mapsLoaded && (
                   <div className="px-4 py-6 text-center">
-                    <p className="text-sm text-gray-400">Search for a location above</p>
-                    <p className="text-xs text-gray-300 mt-1">Allow location access for nearby suggestions</p>
+                    <p className="text-sm text-content-tertiary">Search for a location above</p>
+                    <p className="text-xs text-content-tertiary mt-1">Allow location access for nearby suggestions</p>
                   </div>
                 )}
                 {suggestedPlaces.map((place) => (
@@ -1121,14 +1121,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
                     key={place.placeId}
                     type="button"
                     onClick={() => handleSelectPlace(place)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-hover transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 text-lg">
+                    <div className="w-10 h-10 rounded-full bg-surface-secondary flex items-center justify-center shrink-0 text-lg">
                       {getPlaceTypeIcon(place.types)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{place.name}</p>
-                      {place.address && <p className="text-xs text-gray-400 truncate">{place.address}</p>}
+                      <p className="text-sm font-semibold text-content truncate">{place.name}</p>
+                      {place.address && <p className="text-xs text-content-tertiary truncate">{place.address}</p>}
                     </div>
                   </button>
                 ))}
@@ -1138,8 +1138,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
             {/* Loading Maps */}
             {!mapsLoaded && locationQuery.trim() && (
               <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 className="w-5 h-5 text-gray-300 animate-spin" />
-                <span className="text-sm text-gray-400">Loading maps...</span>
+                <Loader2 className="w-5 h-5 text-content-tertiary animate-spin" />
+                <span className="text-sm text-content-tertiary">Loading maps...</span>
               </div>
             )}
           </div>
@@ -1168,7 +1168,7 @@ function SubcategoryPicker({
 
   return (
     <div className="px-3 sm:px-4 pb-2">
-      <button type="button" onClick={onToggle} className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 mb-2 transition-colors">
+      <button type="button" onClick={onToggle} className="inline-flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-content mb-2 transition-colors">
         <span>{label}</span>
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${show ? 'rotate-180' : ''}`} />
         {selectedItem && <span className={`ml-1 px-1.5 py-0.5 rounded text-xs ${badgeStyle}`}>{selectedItem.name}</span>}
@@ -1181,7 +1181,7 @@ function SubcategoryPicker({
               type="button"
               onClick={() => onSelect(cat.slug)}
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all duration-150 ${
-                selected === cat.slug ? activeStyle : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                selected === cat.slug ? activeStyle : 'border-border text-content-secondary hover:bg-surface-hover'
               }`}
             >
               <span>{cat.icon}</span>
@@ -1210,7 +1210,7 @@ function MediaTile({ children, aspect }: { children: React.ReactNode; aspect: 'v
     aspect === 'video' ? 'aspect-video'
       : aspect === 'row-span' ? 'row-span-2 aspect-square'
         : 'aspect-square'
-  return <div className={`relative group bg-gray-100 ${cls}`}>{children}</div>
+  return <div className={`relative group bg-surface-secondary ${cls}`}>{children}</div>
 }
 
 function RemoveButton({ onClick }: { onClick: () => void }) {

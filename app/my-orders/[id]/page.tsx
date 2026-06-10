@@ -166,9 +166,9 @@ const OrderDetailPage: React.FC = () => {
       shipped: 'bg-indigo-100 text-indigo-700 border-indigo-300',
       completed: 'bg-green-100 text-green-700 border-green-300',
       cancelled: 'bg-red-100 text-red-700 border-red-300',
-      refunded: 'bg-gray-100 text-gray-700 border-gray-300'
+      refunded: 'bg-surface-secondary text-content border-border'
     }
-    return colors[status] || 'bg-gray-100 text-gray-700 border-gray-300'
+    return colors[status] || 'bg-surface-secondary text-content border-border'
   }
 
   const getStatusIcon = (status: string) => {
@@ -274,8 +274,8 @@ const deliveryStatus = order?.delivery_status
   : null;
 
 const statusColor = deliveryStatus
-  ? statusColorMap[deliveryStatus] ?? "text-gray-500"
-  : "text-gray-400";
+  ? statusColorMap[deliveryStatus] ?? "text-content-secondary"
+  : "text-content-tertiary";
 
 
   if (loading) {
@@ -284,9 +284,9 @@ const statusColor = deliveryStatus
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-canvas flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Order not found</p>
+          <p className="text-content-secondary mb-4">Order not found</p>
           <button
             onClick={() => router.push('/my-orders')}
             className="btn-primary"
@@ -336,14 +336,14 @@ const statusColor = deliveryStatus
     ['pending', 'confirmed', 'processing'].includes(order.status)
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen bg-surface-canvas w-full min-w-0 overflow-x-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-surface border-b border-border">
         <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-4 w-full min-w-0">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Order Details</h1>
-              <p className="text-gray-600">Order #{order.order_number}</p>
+              <h1 className="text-xl font-bold text-content mb-1">Order Details</h1>
+              <p className="text-content-secondary">Order #{order.order_number}</p>
             </div>
             <div className={`px-4 py-2 rounded-full text-sm font-medium border flex items-center space-x-2 ${getStatusColor(order.status)}`}>
               {getStatusIcon(order.status)}
@@ -359,8 +359,8 @@ const statusColor = deliveryStatus
           {/* Main Content */}
           <div className="md:col-span-2 space-y-3">
             {/* Product Information */}
-            <div className="bg-white rounded-lg border border-gray-100 p-4">
-              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+            <div className="bg-surface rounded-lg border border-border-subtle p-4">
+              <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                 <ShoppingBag className="w-5 h-5 text-primary-600" />
                 <span>Product Information</span>
               </h2>
@@ -370,19 +370,19 @@ const statusColor = deliveryStatus
                   <img
                     src={order.product_image}
                     alt={order.product_title}
-                    className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                    className="w-20 h-20 object-cover rounded-lg border border-border"
                   />
                 ) : (
-                  <div className="w-20 h-20 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                    <ShoppingBag className="w-6 h-6 text-gray-400" />
+                  <div className="w-20 h-20 bg-surface-secondary rounded-lg border border-border flex items-center justify-center">
+                    <ShoppingBag className="w-6 h-6 text-content-tertiary" />
                   </div>
                 )}
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-2">{order.product_title}</h3>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p>Quantity: <span className="font-medium text-gray-900">{order.quantity}</span></p>
-                    <p>Unit Price: <span className="font-medium text-gray-900">{getCurrencySymbol(order.currency)}{order.unit_price.toLocaleString()}</span></p>
-                    <p>Total: <span className="font-medium text-gray-900 text-lg">{getCurrencySymbol(order.currency)}{order.total_amount.toLocaleString()}</span></p>
+                  <h3 className="font-semibold text-content mb-2">{order.product_title}</h3>
+                  <div className="space-y-1 text-sm text-content-secondary">
+                    <p>Quantity: <span className="font-medium text-content">{order.quantity}</span></p>
+                    <p>Unit Price: <span className="font-medium text-content">{getCurrencySymbol(order.currency)}{order.unit_price.toLocaleString()}</span></p>
+                    <p>Total: <span className="font-medium text-content text-lg">{getCurrencySymbol(order.currency)}{order.total_amount.toLocaleString()}</span></p>
                   </div>
                   <Link
                     href={`/marketplace/${order.product_id}`}
@@ -395,48 +395,48 @@ const statusColor = deliveryStatus
             </div>
 
             {/* Payment Information */}
-            <div className="bg-white rounded-lg border border-gray-100 p-4">
-              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+            <div className="bg-surface rounded-lg border border-border-subtle p-4">
+              <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                 <CreditCard className="w-5 h-5 text-primary-600" />
                 <span>Payment Information</span>
               </h2>
               
               <div className="space-y-2">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Payment Status</span>
+                <div className="flex justify-between py-2 border-b border-border-subtle">
+                  <span className="text-content-secondary">Payment Status</span>
                   <span className={`font-medium ${order.payment_status === 'completed' ? 'text-green-600' : 'text-yellow-600'}`}>
                     {order.payment_status === 'completed' ? '✓ Paid' : 'Pending'}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Payment Method</span>
-                  <span className="font-medium text-gray-900">{formatPaymentMethod(order.payment_method)}</span>
+                <div className="flex justify-between py-2 border-b border-border-subtle">
+                  <span className="text-content-secondary">Payment Method</span>
+                  <span className="font-medium text-content">{formatPaymentMethod(order.payment_method)}</span>
                 </div>
                 {order.payment_reference && (
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Transaction Reference</span>
-                    <span className="font-medium text-gray-900 font-mono text-sm">{order.payment_reference}</span>
+                  <div className="flex justify-between py-2 border-b border-border-subtle">
+                    <span className="text-content-secondary">Transaction Reference</span>
+                    <span className="font-medium text-content font-mono text-sm">{order.payment_reference}</span>
                   </div>
                 )}
                 {order.paid_at && (
                   <div className="flex justify-between py-2">
-                    <span className="text-gray-600">Paid At</span>
-                    <span className="font-medium text-gray-900">{formatDate(order.paid_at)}</span>
+                    <span className="text-content-secondary">Paid At</span>
+                    <span className="font-medium text-content">{formatDate(order.paid_at)}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Delivery Information */}
-            <div className="bg-white rounded-lg border border-gray-100 p-4">
-              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+            <div className="bg-surface rounded-lg border border-border-subtle p-4">
+              <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                 <Truck className="w-4 h-4 text-primary-600" />
                 <span>Delivery Information</span>
               </h2>
 
               <div className="space-y-2">
-                <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                  <span className="text-sm text-gray-600">Delivery Status</span>
+                <div className="flex justify-between items-center py-1.5 border-b border-border-subtle">
+                  <span className="text-sm text-content-secondary">Delivery Status</span>
                   <span className={`text-sm font-medium capitalize ${statusColor}`}>
                     {order.delivery_status || "Not specified"}
                   </span>
@@ -446,8 +446,8 @@ const statusColor = deliveryStatus
                   order.status !== "completed" &&
                   order.status !== "cancelled" &&
                   order.status !== "refunded" && (
-                    <div className="flex justify-between items-center py-1.5 border-b border-gray-100">
-                      <span className="text-sm text-gray-600">Order Status</span>
+                    <div className="flex justify-between items-center py-1.5 border-b border-border-subtle">
+                      <span className="text-sm text-content-secondary">Order Status</span>
                       <div className="relative">
                         <select
                           value={order.status}
@@ -457,7 +457,7 @@ const statusColor = deliveryStatus
                             }
                           }}
                           disabled={isUpdatingStatus}
-                          className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 min-w-[120px]"
+                          className="text-xs px-2 py-1 rounded border border-border bg-surface text-content hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 min-w-[120px]"
                         >
                           <option value={order.status}>
                             {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
@@ -468,24 +468,24 @@ const statusColor = deliveryStatus
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+                        <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-content-secondary pointer-events-none" />
                       </div>
                     </div>
                   )}
 
                 {order.delivery_confirmed_at && (
-                  <div className="flex justify-between py-1.5 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Delivery Confirmed</span>
-                    <span className="text-sm font-medium text-gray-900">
+                  <div className="flex justify-between py-1.5 border-b border-border-subtle">
+                    <span className="text-sm text-content-secondary">Delivery Confirmed</span>
+                    <span className="text-sm font-medium text-content">
                       {formatDate(order.delivery_confirmed_at)}
                     </span>
                   </div>
                 )}
 
                 {order.shipping_address ? (
-                  <div className="py-1.5 border-b border-gray-100">
-                    <span className="text-sm text-gray-600 block mb-1.5">Shipping Address</span>
-                    <div className="bg-gray-50 rounded-lg p-2.5 text-sm text-gray-900 space-y-0.5">
+                  <div className="py-1.5 border-b border-border-subtle">
+                    <span className="text-sm text-content-secondary block mb-1.5">Shipping Address</span>
+                    <div className="bg-surface-canvas rounded-lg p-2.5 text-sm text-content space-y-0.5">
                       {order.shipping_address.street && (
                         <p>{order.shipping_address.street}</p>
                       )}
@@ -504,16 +504,16 @@ const statusColor = deliveryStatus
                     </div>
                   </div>
                 ) : (
-                  <div className="flex justify-between py-1.5 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Shipping Address</span>
-                    <span className="text-sm text-gray-500">Not provided</span>
+                  <div className="flex justify-between py-1.5 border-b border-border-subtle">
+                    <span className="text-sm text-content-secondary">Shipping Address</span>
+                    <span className="text-sm text-content-secondary">Not provided</span>
                   </div>
                 )}
 
                 <div className="space-y-2 pt-1">
                   {canConfirmDelivery && (
                     <div className="rounded-lg bg-green-50 border border-green-100 p-2.5">
-                      <p className="text-xs text-gray-600 mb-2">
+                      <p className="text-xs text-content-secondary mb-2">
                         Received your order? Confirm delivery to release payment to the seller.
                       </p>
                       <button
@@ -548,12 +548,12 @@ const statusColor = deliveryStatus
 
                   {canCancelOrder && isBuyer && (
                     <div className="rounded-lg bg-red-50 border border-red-100 p-2.5">
-                      <p className="text-xs text-gray-600 mb-2">
+                      <p className="text-xs text-content-secondary mb-2">
                         Order not shipped yet? You can cancel for a full refund.
                       </p>
                       <button
                         onClick={() => setShowCancelOrder(true)}
-                        className="w-full sm:w-auto px-4 py-2 bg-white text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5"
+                        className="w-full sm:w-auto px-4 py-2 bg-surface text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-1.5"
                       >
                         <XCircle className="w-4 h-4" />
                         Cancel Order
@@ -563,12 +563,12 @@ const statusColor = deliveryStatus
 
                   {canOpenDispute && (
                     <div className="rounded-lg bg-orange-50 border border-orange-100 p-2.5">
-                      <p className="text-xs text-gray-600 mb-2">
+                      <p className="text-xs text-content-secondary mb-2">
                         Having an issue with this order? Open a dispute to freeze seller payout.
                       </p>
                       <button
                         onClick={() => setShowOpenDispute(true)}
-                        className="w-full sm:w-auto px-4 py-2 bg-white text-orange-700 border border-orange-200 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5"
+                        className="w-full sm:w-auto px-4 py-2 bg-surface text-orange-700 border border-orange-200 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors flex items-center justify-center gap-1.5"
                       >
                         <Shield className="w-4 h-4" />
                         Open Dispute
@@ -601,22 +601,22 @@ const statusColor = deliveryStatus
               order.refund_status === 'full' ||
               order.status === 'refunded' ||
               order.status === 'cancelled') && (
-              <div className="bg-white rounded-lg border border-gray-100 p-4">
-                <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+              <div className="bg-surface rounded-lg border border-border-subtle p-4">
+                <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                   <CreditCard className="w-5 h-5 text-primary-600" />
                   <span>Refund Information</span>
                 </h2>
                 <div className="space-y-2">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-600">Refund status</span>
-                    <span className="font-medium capitalize text-gray-900">
+                  <div className="flex justify-between py-2 border-b border-border-subtle">
+                    <span className="text-content-secondary">Refund status</span>
+                    <span className="font-medium capitalize text-content">
                       {order.refund_status || order.status}
                     </span>
                   </div>
                   {(order.refunded_amount ?? 0) > 0 && (
-                    <div className="flex justify-between py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Refunded amount</span>
-                      <span className="font-medium text-gray-900">
+                    <div className="flex justify-between py-2 border-b border-border-subtle">
+                      <span className="text-content-secondary">Refunded amount</span>
+                      <span className="font-medium text-content">
                         {getCurrencySymbol(order.currency)}
                         {Number(order.refunded_amount).toLocaleString()}
                       </span>
@@ -624,26 +624,26 @@ const statusColor = deliveryStatus
                   )}
                   {order.cancellation_reason && (
                     <div className="py-2">
-                      <span className="text-gray-600 text-sm">Reason</span>
-                      <p className="text-sm text-gray-900 mt-1">{order.cancellation_reason}</p>
+                      <span className="text-content-secondary text-sm">Reason</span>
+                      <p className="text-sm text-content mt-1">{order.cancellation_reason}</p>
                     </div>
                   )}
                   {refunds.length > 0 && (
                     <div className="pt-2 space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Refund history</p>
+                      <p className="text-sm font-medium text-content">Refund history</p>
                       {refunds.map((refund) => (
                         <div
                           key={refund.id}
-                          className="text-sm bg-gray-50 rounded-lg p-3 flex justify-between gap-2"
+                          className="text-sm bg-surface-canvas rounded-lg p-3 flex justify-between gap-2"
                         >
                           <div>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-content">
                               {getCurrencySymbol(refund.currency)}
                               {Number(refund.amount).toLocaleString()}
                             </p>
-                            <p className="text-xs text-gray-500 capitalize">{refund.status}</p>
+                            <p className="text-xs text-content-secondary capitalize">{refund.status}</p>
                           </div>
-                          <p className="text-xs text-gray-500">{formatDate(refund.created_at)}</p>
+                          <p className="text-xs text-content-secondary">{formatDate(refund.created_at)}</p>
                         </div>
                       ))}
                     </div>
@@ -654,12 +654,12 @@ const statusColor = deliveryStatus
 
             {/* Notes */}
             {order.notes && (
-              <div className="bg-white rounded-lg border border-gray-100 p-4">
-                <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+              <div className="bg-surface rounded-lg border border-border-subtle p-4">
+                <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                   <FileText className="w-5 h-5 text-primary-600" />
                   <span>Special Instructions</span>
                 </h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{order.notes}</p>
+                <p className="text-content whitespace-pre-wrap">{order.notes}</p>
               </div>
             )}
           </div>
@@ -667,22 +667,22 @@ const statusColor = deliveryStatus
           {/* Sidebar */}
           <div className="space-y-3">
             {/* Order Summary */}
-            <div className="bg-white rounded-lg border border-gray-100 p-4">
-              <h2 className="text-base font-semibold text-gray-900 mb-3">Order Summary</h2>
+            <div className="bg-surface rounded-lg border border-border-subtle p-4">
+              <h2 className="text-base font-semibold text-content mb-3">Order Summary</h2>
               
               <div className="space-y-2">
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium text-gray-900">
+                <div className="flex justify-between py-2 border-b border-border-subtle">
+                  <span className="text-content-secondary">Subtotal</span>
+                  <span className="font-medium text-content">
                     {getCurrencySymbol(order.currency)}{(order.unit_price * order.quantity).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-100">
-                  <span className="text-gray-600">Quantity</span>
-                  <span className="font-medium text-gray-900">{order.quantity}</span>
+                <div className="flex justify-between py-2 border-b border-border-subtle">
+                  <span className="text-content-secondary">Quantity</span>
+                  <span className="font-medium text-content">{order.quantity}</span>
                 </div>
                 <div className="flex justify-between pt-2">
-                  <span className="text-lg font-semibold text-gray-900">Total</span>
+                  <span className="text-lg font-semibold text-content">Total</span>
                   <span className="text-lg font-bold text-primary-600">
                     {getCurrencySymbol(order.currency)}{order.total_amount.toLocaleString()}
                   </span>
@@ -691,35 +691,35 @@ const statusColor = deliveryStatus
             </div>
 
             {/* Order Timeline */}
-            <div className="bg-white rounded-lg border border-gray-100 p-4">
-              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+            <div className="bg-surface rounded-lg border border-border-subtle p-4">
+              <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                 <Calendar className="w-5 h-5 text-primary-600" />
                 <span>Timeline</span>
               </h2>
               
               <div className="space-y-2">
                 <div>
-                  <p className="text-sm text-gray-600">Order Placed</p>
-                  <p className="text-sm font-medium text-gray-900">{formatDate(order.created_at)}</p>
+                  <p className="text-sm text-content-secondary">Order Placed</p>
+                  <p className="text-sm font-medium text-content">{formatDate(order.created_at)}</p>
                 </div>
                 {order.paid_at && (
                   <div>
-                    <p className="text-sm text-gray-600">Payment Received</p>
-                    <p className="text-sm font-medium text-gray-900">{formatDate(order.paid_at)}</p>
+                    <p className="text-sm text-content-secondary">Payment Received</p>
+                    <p className="text-sm font-medium text-content">{formatDate(order.paid_at)}</p>
                   </div>
                 )}
                 {order.updated_at !== order.created_at && (
                   <div>
-                    <p className="text-sm text-gray-600">Last Updated</p>
-                    <p className="text-sm font-medium text-gray-900">{formatDate(order.updated_at)}</p>
+                    <p className="text-sm text-content-secondary">Last Updated</p>
+                    <p className="text-sm font-medium text-content">{formatDate(order.updated_at)}</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Contact Information */}
-            <div className="bg-white rounded-lg border border-gray-100 p-4">
-              <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+            <div className="bg-surface rounded-lg border border-border-subtle p-4">
+              <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                 <User className="w-5 h-5 text-primary-600" />
                 <span>{isBuyer ? 'Seller' : 'Buyer'} Information</span>
               </h2>
@@ -741,7 +741,7 @@ const statusColor = deliveryStatus
                       </div>
                     )}
                     <div>
-                      <p className="font-medium text-gray-900">{otherParty.full_name || otherParty.username}</p>
+                      <p className="font-medium text-content">{otherParty.full_name || otherParty.username}</p>
                       <Link
                         href={`/user/${otherParty.username}`}
                         className="text-sm text-primary-600 hover:text-primary-700"
@@ -751,33 +751,33 @@ const statusColor = deliveryStatus
                     </div>
                   </div>
                   {isBuyer && order.buyer_email && (
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <div className="flex items-center space-x-2 text-sm text-content-secondary">
                       <Mail className="w-4 h-4" />
                       <span>{order.buyer_email}</span>
                     </div>
                   )}
                   {order.buyer_phone && (
-                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <div className="flex items-center space-x-2 text-sm text-content-secondary">
                       <Phone className="w-4 h-4" />
                       <span>{order.buyer_phone}</span>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm">Information not available</p>
+                <p className="text-content-secondary text-sm">Information not available</p>
               )}
             </div>
 
             {/* Seller Status Update Section */}
             {isSeller && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
-              <div className="bg-white rounded-lg border border-gray-100 p-4">
-                <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+              <div className="bg-surface rounded-lg border border-border-subtle p-4">
+                <h2 className="text-base font-semibold text-content mb-3 flex items-center gap-1.5">
                   <Package className="w-5 h-5 text-primary-600" />
                   <span>Update Order Status</span>
                 </h2>
                 
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-content-secondary mb-4">
                     Current status: <span className="font-medium capitalize">{order.status}</span>
                   </p>
                   
@@ -798,7 +798,7 @@ const statusColor = deliveryStatus
                     ))}
                   </div>
                   
-                  <p className="text-xs text-gray-500 mt-3">
+                  <p className="text-xs text-content-secondary mt-3">
                     {order.status === 'pending' && 'Confirm the order to proceed with processing.'}
                     {order.status === 'confirmed' && 'Start processing the order or cancel if needed.'}
                     {order.status === 'processing' && 'Mark as shipped when the item is dispatched.'}

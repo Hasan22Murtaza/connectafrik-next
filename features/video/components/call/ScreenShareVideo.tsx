@@ -27,7 +27,7 @@ const ScreenShareVideo = React.memo(function ScreenShareVideo({ stream }: { stre
         <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
           <div className="flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-400 animate-pulse">Loading screen share...</span>
+            <span className="text-sm text-content-tertiary animate-pulse">Loading screen share...</span>
           </div>
         </div>
       )}

@@ -214,14 +214,14 @@ export default function CreateStoryPage() {
 
   if (!storyType) {
     return (
-      <div className="min-h-screen bg-white sm:bg-gradient-to-br sm:from-gray-50 sm:to-gray-100">
-        <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+      <div className="min-h-screen bg-surface sm:bg-gradient-to-br sm:from-surface-canvas sm:to-surface-secondary">
+        <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-border">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center h-14 sm:h-16 gap-3 sm:gap-4">
-              <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+              <button onClick={handleBack} className="p-2 hover:bg-surface-hover rounded-full transition-colors text-content-secondary">
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-base sm:text-lg font-semibold text-gray-900">Create Story</h1>
+              <h1 className="text-base sm:text-lg font-semibold text-content">Create Story</h1>
             </div>
           </div>
         </div>
@@ -233,26 +233,26 @@ export default function CreateStoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-surface-canvas">
+      <div className="sticky top-0 z-50 bg-surface border-b border-border">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center gap-2 sm:gap-4">
-              <button onClick={handleBack} className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+              <button onClick={handleBack} className="p-1.5 sm:p-2 hover:bg-surface-hover rounded-full transition-colors text-content-secondary">
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-base sm:text-lg font-semibold text-gray-900">
+              <h1 className="text-base sm:text-lg font-semibold text-content">
                 {storyType === 'photo' ? 'Photo Story' : 'Text Story'}
               </h1>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <button onClick={handleDiscard} className="px-3 sm:px-4 py-1.5 sm:py-2 text-gray-500 hover:text-gray-700 font-medium text-xs sm:text-sm">
+              <button onClick={handleDiscard} className="px-3 sm:px-4 py-1.5 sm:py-2 text-content-secondary hover:text-content font-medium text-xs sm:text-sm">
                 Discard
               </button>
               <button
                 onClick={uploadStory}
                 disabled={isUploading || !canSubmit}
-                className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-primary-600 hover:bg-[#ea580c] active:bg-[#c2410c] disabled:bg-gray-200 disabled:text-gray-400 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md disabled:shadow-none transition-all flex items-center gap-1.5 sm:gap-2"
+                className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-primary-600 hover:bg-[#ea580c] active:bg-[#c2410c] disabled:bg-surface-tertiary disabled:text-content-tertiary text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm hover:shadow-md disabled:shadow-none transition-all flex items-center gap-1.5 sm:gap-2"
               >
                 {isUploading ? (
                   <>
@@ -272,12 +272,12 @@ export default function CreateStoryPage() {
       </div>
 
       <div className="flex flex-col lg:flex-row h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)]">
-        <div className="order-2 lg:order-1 flex-1 lg:flex-none lg:w-[340px] bg-white lg:border-r border-t lg:border-t-0 border-gray-200 flex flex-col max-h-[40vh] lg:max-h-none">
+        <div className="order-2 lg:order-1 flex-1 lg:flex-none lg:w-[340px] bg-surface lg:border-r border-t lg:border-t-0 border-border flex flex-col max-h-[40vh] lg:max-h-none">
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 sm:space-y-6">
             {storyType === 'photo' ? (
               <>
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2 sm:mb-3">Media</h3>
+                  <h3 className="text-sm font-semibold text-content mb-2 sm:mb-3">Media</h3>
                   {!mediaFile ? (
                     <div
                       onDragOver={handleDragOver}
@@ -285,17 +285,17 @@ export default function CreateStoryPage() {
                       onDrop={handleDrop}
                       onClick={() => fileInputRef.current?.click()}
                       className={`relative rounded-xl sm:rounded-2xl border-2 border-dashed p-4 sm:p-6 text-center cursor-pointer transition-all ${
-                        isDragging ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                        isDragging ? 'border-primary-500 bg-primary-50' : 'border-border hover:border-primary-300 hover:bg-surface-hover'
                       }`}
                     >
                       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary-100 flex items-center justify-center mx-auto mb-2 sm:mb-3">
                         <ImagePlus className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
                       </div>
-                      <p className="text-xs sm:text-sm font-medium text-gray-900 mb-0.5 sm:mb-1">Add photo or video</p>
-                      <p className="text-[10px] sm:text-xs text-gray-500">Tap to browse</p>
+                      <p className="text-xs sm:text-sm font-medium text-content mb-0.5 sm:mb-1">Add photo or video</p>
+                      <p className="text-[10px] sm:text-xs text-content-secondary">Tap to browse</p>
                     </div>
                   ) : (
-                    <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-gray-100 aspect-video lg:aspect-[9/16]">
+                    <div className="relative rounded-xl sm:rounded-2xl overflow-hidden bg-surface-secondary aspect-video lg:aspect-[9/16]">
                       {mediaFile.type === 'image' ? (
                         <img src={mediaFile.preview} alt="Preview" className="w-full h-full object-cover" />
                       ) : (
@@ -319,15 +319,15 @@ export default function CreateStoryPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1.5 sm:mb-2">Caption</label>
+                  <label className="block text-sm font-semibold text-content mb-1.5 sm:mb-2">Caption</label>
                   <textarea
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
                     placeholder="Write something..."
                     maxLength={MAX_CAPTION_LENGTH}
-                    className="w-full h-16 sm:h-20 bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl px-3 py-2 sm:py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                    className="w-full h-16 sm:h-20 bg-surface-canvas border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:py-2.5 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                   />
-                  <p className="text-[10px] sm:text-xs text-gray-400 mt-1 text-right">{caption.length}/{MAX_CAPTION_LENGTH}</p>
+                  <p className="text-[10px] sm:text-xs text-content-tertiary mt-1 text-right">{caption.length}/{MAX_CAPTION_LENGTH}</p>
                 </div>
               </>
             ) : (
@@ -346,15 +346,15 @@ export default function CreateStoryPage() {
           </div>
         </div>
 
-        <div className="order-1 lg:order-2 flex-1 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center p-4 sm:p-8 min-h-[60vh] lg:min-h-0">
+        <div className="order-1 lg:order-2 flex-1 bg-gradient-to-br from-surface-secondary to-surface-tertiary flex items-center justify-center p-4 sm:p-8 min-h-[60vh] lg:min-h-0">
           <div className="relative">
             <div className="w-[200px] h-[356px] sm:w-[280px] sm:h-[498px] lg:w-[300px] lg:h-[534px] bg-gray-900 rounded-[2rem] sm:rounded-[2.5rem] lg:rounded-[3rem] p-[4px] sm:p-[5px] lg:p-[6px] shadow-2xl">
               <div className="relative w-full h-full bg-black rounded-[1.75rem] sm:rounded-[2.25rem] lg:rounded-[2.5rem] overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-5 sm:w-24 sm:h-6 lg:w-28 lg:h-7 bg-black rounded-b-2xl sm:rounded-b-3xl z-30" />
 
                 <div className="absolute top-2 sm:top-3 left-3 sm:left-4 right-3 sm:right-4 z-20 flex gap-1">
-                  <div className="flex-1 h-[2px] sm:h-[3px] bg-white/40 rounded-full overflow-hidden">
-                    <div className="h-full w-1/2 bg-white rounded-full" />
+                  <div className="flex-1 h-[2px] sm:h-[3px] bg-surface/40 rounded-full overflow-hidden">
+                    <div className="h-full w-1/2 bg-surface rounded-full" />
                   </div>
                 </div>
 
@@ -385,8 +385,8 @@ export default function CreateStoryPage() {
                   ) : (
                     <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
                       <div className="text-center">
-                        <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-gray-600 mx-auto mb-1.5 sm:mb-2" />
-                        <p className="text-gray-500 text-xs sm:text-sm">Add media</p>
+                        <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-content-secondary mx-auto mb-1.5 sm:mb-2" />
+                        <p className="text-content-secondary text-xs sm:text-sm">Add media</p>
                       </div>
                     </div>
                   )

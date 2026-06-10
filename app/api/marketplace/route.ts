@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
 import { getCurrencyForCountry } from '@/features/marketplace/utils/countryCurrency'
+import { haversineDistanceKm } from '@/features/marketplace/utils/marketplaceLocation'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -13,6 +14,9 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category')
     const currency = searchParams.get('currency')
     const country = searchParams.get('country')
+    const latParam = searchParams.get('lat')
+    const lngParam = searchParams.get('lng')
+    const radiusParam = searchParams.get('radius_km')
     const search = searchParams.get('search')
     const sort = searchParams.get('sort') || 'newest'
     const parsedLimit = parseInt(searchParams.get('limit') || '20', 10)
@@ -43,9 +47,18 @@ export async function GET(request: NextRequest) {
       query = query.eq('is_available', true)
     }
 
+    const filterLat = latParam != null ? Number(latParam) : NaN
+    const filterLng = lngParam != null ? Number(lngParam) : NaN
+    const filterRadiusKm = radiusParam != null ? Number(radiusParam) : NaN
+    const hasGeoFilter =
+      Number.isFinite(filterLat) &&
+      Number.isFinite(filterLng) &&
+      Number.isFinite(filterRadiusKm) &&
+      filterRadiusKm > 0
+
     if (category) query = query.eq('category', category)
     if (currency) query = query.eq('currency', currency)
-    if (country) query = query.ilike('country', `%${country}%`)
+    if (country && !hasGeoFilter) query = query.ilike('country', `%${country}%`)
     if (seller_id) query = query.eq('seller_id', seller_id)
     if (search) query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
 
@@ -70,7 +83,21 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    const productList = products || []
+    let productList = products || []
+
+    if (hasGeoFilter) {
+      productList = productList.filter((product) => {
+        const plat = product.latitude
+        const plng = product.longitude
+        if (plat != null && plng != null && Number.isFinite(plat) && Number.isFinite(plng)) {
+          return haversineDistanceKm(filterLat, filterLng, plat, plng) <= filterRadiusKm
+        }
+        if (country && product.country) {
+          return product.country.toLowerCase().includes(country.toLowerCase())
+        }
+        return false
+      })
+    }
 
     const sellerIds = [...new Set(productList.map(p => p.seller_id))]
     const { data: sellers } = sellerIds.length > 0
@@ -136,6 +163,15 @@ export async function POST(request: NextRequest) {
       profile.city?.trim() ||
       null
 
+    const latitude =
+      typeof body.latitude === 'number' && Number.isFinite(body.latitude)
+        ? body.latitude
+        : null
+    const longitude =
+      typeof body.longitude === 'number' && Number.isFinite(body.longitude)
+        ? body.longitude
+        : null
+
     const { data, error } = await supabase
       .from('products')
       .insert({
@@ -148,6 +184,8 @@ export async function POST(request: NextRequest) {
         condition: body.condition,
         location: listingLocation,
         country: listingCountry,
+        latitude,
+        longitude,
         images: body.images || [],
         tags: body.tags || [],
         stock_quantity: body.stock_quantity ?? 1,

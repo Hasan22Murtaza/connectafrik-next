@@ -339,7 +339,7 @@ const FeedPage: React.FC = () => {
 
           <section>
             {!user ? (
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+              <div className="rounded-xl border border-dashed border-border bg-surface-secondary px-4 py-6 text-center text-sm text-content-secondary">
                 Sign in to share your thoughts with the community.
               </div>
             ) : isComposerOpen ? (
@@ -351,7 +351,7 @@ const FeedPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsComposerOpen(true)}
-                className="flex w-full items-center gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 text-left shadow-[0_8px_32px_rgba(255,88,20,0.04)]  transition-all hover:shadow hover:border-gray-200"
+                className="flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface px-4 py-3 text-left shadow-header transition-all hover:shadow hover:border-border"
               >
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.full_name} className="h-10 w-10 rounded-full object-cover shrink-0" />
@@ -360,16 +360,16 @@ const FeedPage: React.FC = () => {
                     {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
                   </span>
                 )}
-                <div className="flex-1 min-w-0 rounded-full bg-gray-100 px-4 py-2.5">
-                  <p className="text-sm sm:text-base text-gray-500">What&apos;s on your mind, {profile?.full_name?.split(' ')[0] || 'there'}?</p>
+                <div className="flex-1 min-w-0 rounded-full bg-surface-input px-4 py-2.5">
+                  <p className="text-sm sm:text-base text-content-secondary">What&apos;s on your mind, {profile?.full_name?.split(' ')[0] || 'there'}?</p>
                 </div>
               </button>
             )}
           </section>
 
-          <section className="rounded-2xl  shadow-[0_8px_32px_rgba(255,88,20,0.04)] bg-white p-4">
+          <section className="rounded-2xl shadow-header bg-surface p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700">Browse by category</h2>
+              <h2 className="text-sm font-semibold text-content">Browse by category</h2>
               <button
                 type="button"
                 onClick={() => {
@@ -379,7 +379,7 @@ const FeedPage: React.FC = () => {
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                   explorationBoost
                     ? 'border-primary-500 bg-primary-50 text-primary-700'
-                    : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-[#f97316]'
+                    : 'border-border bg-surface text-content-secondary hover:border-primary-200 hover:text-primary-600'
                 }`}
               >
                 <Sparkles className="h-3.5 w-3.5" />
@@ -397,7 +397,7 @@ const FeedPage: React.FC = () => {
                     className={`flex items-center gap-1 rounded-full border sm:px-4 px-3 sm:py-1 py-2 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-orange-400 cursor-pointer ${
                       isActive
                         ? 'border-orange-400 bg-primary-200 text-orange-900'
-                        : 'border-gray-200 bg-[#F3F4F6] text-gray-600 hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
+                        : 'border-border bg-surface-secondary text-content-secondary hover:border-orange-400 hover:text-orange-900 hover:bg-primary-200'
                     }`}
                   >
                     <Icon className="h-3 w-3" />

@@ -8,6 +8,8 @@ export type ProfileLocationValue = {
   state: string
   zipcode: string
   country: string
+  latitude?: number | null
+  longitude?: number | null
 }
 
 export const emptyProfileLocation = (): ProfileLocationValue => ({
@@ -17,6 +19,8 @@ export const emptyProfileLocation = (): ProfileLocationValue => ({
   state: '',
   zipcode: '',
   country: '',
+  latitude: null,
+  longitude: null,
 })
 
 /** Secondary line: city + state. */

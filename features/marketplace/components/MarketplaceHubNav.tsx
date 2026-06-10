@@ -60,7 +60,7 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
       />
       <span className="flex-1 text-left">{label}</span>
       {showChevron && (
-        <ChevronRight className="w-4 h-4 shrink-0 text-gray-500" />
+        <ChevronRight className="w-4 h-4 shrink-0 text-content-secondary" />
       )}
     </button>
   );

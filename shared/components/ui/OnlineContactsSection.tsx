@@ -18,8 +18,8 @@ interface OnlineContactsSectionProps {
   contacts: OnlineContact[]
   onStartChat?: (contact: OnlineContact) => void
   onStartCall?: (contact: OnlineContact, type: 'audio' | 'video') => void
-  showAddFriendButton?: boolean // For suggested users vs. friends
-  title?: string // Custom title
+  showAddFriendButton?: boolean
+  title?: string
 }
 
 const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
@@ -88,23 +88,10 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
     }
   }
 
-  // const getStatusText = (status: string) => {
-  //   switch (status) {
-  //     case 'online':
-  //       return 'Active now'
-  //     case 'away':
-  //       return 'Away'
-  //     case 'busy':
-  //       return 'Do not disturb'
-  //     default:
-  //       return 'Offline'
-  //   }
-  // }
-
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-lg font-semibold text-gray-600">
+        <h2 className="text-lg font-semibold text-content-secondary">
           {title || (showAddFriendButton ? 'People You May Know' : 'Online Contacts')}
         </h2>
       </div>
@@ -113,10 +100,10 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
         {contacts.map((contact) => (
           <div
             key={contact.id}
-            className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-200 cursor-pointer"
+            className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-surface-hover cursor-pointer"
           >
-            <div className="flex flex-1 items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gray-200">
+            <div className="flex flex-1 items-center space-x-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-tertiary">
                 {contact.avatarUrl ? (
                   <img
                     src={contact.avatarUrl}
@@ -124,24 +111,23 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="text-sm font-semibold text-gray-600">
+                  <span className="text-sm font-semibold text-content-secondary">
                     {contact.name.charAt(0).toUpperCase()}
                   </span>
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-gray-900">{contact.name}</p>
-                {/* <p className="text-xs text-gray-500">{getStatusText(contact.status)}</p> */}
+                <p className="truncate text-sm font-semibold text-content">{contact.name}</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+            <div className="flex shrink-0 items-center space-x-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
               {showAddFriendButton ? (
                 <button
                   onClick={() => handleAddFriend(contact)}
                   disabled={sendingRequest[contact.id]}
-                  className="rounded-full px-3 py-1.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="rounded-full px-3 py-1.5 text-sm font-medium text-content-inverse bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   title="Add Friend"
                 >
                   {sendingRequest[contact.id] ? (
@@ -157,21 +143,21 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
                 <>
                   <button
                     onClick={() => handleStartChat(contact)}
-                    className="rounded-full p-1.5 text-blue-600 transition-colors hover:bg-blue-100"
+                    className="rounded-full p-1.5 text-blue-500 transition-colors hover:bg-surface-secondary dark:hover:bg-surface-tertiary"
                     title="Start chat"
                   >
                     <MessageCircle className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleStartCall(contact, 'audio')}
-                    className="rounded-full p-1.5 text-green-600 transition-colors hover:bg-green-100"
+                    className="rounded-full p-1.5 text-green-500 transition-colors hover:bg-surface-secondary dark:hover:bg-surface-tertiary"
                     title="Voice call"
                   >
                     <Phone className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleStartCall(contact, 'video')}
-                    className="rounded-full p-1.5 text-purple-600 transition-colors hover:bg-purple-100"
+                    className="rounded-full p-1.5 text-purple-500 transition-colors hover:bg-surface-secondary dark:hover:bg-surface-tertiary"
                     title="Video call"
                   >
                     <Video className="h-4 w-4" />
@@ -185,10 +171,10 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
 
       {contacts.length === 0 && (
         <div className="py-8 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 text-2xl">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-secondary text-2xl">
             👥
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-content-secondary">
             {showAddFriendButton ? 'No suggestions available' : 'No friends online'}
           </p>
         </div>

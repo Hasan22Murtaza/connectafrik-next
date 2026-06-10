@@ -87,7 +87,7 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
   };
 
   return (
-    <div className="flex items-center gap-1.5 pt-2 mt-2 border-t border-gray-100">
+    <div className="flex items-center gap-1.5 pt-2 mt-2 border-t border-border-subtle">
       {isActive && (
         <button
           type="button"
@@ -109,7 +109,7 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
       <button
         type="button"
         onClick={onShare}
-        className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-semibold transition-colors shrink-0"
+        className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-surface-secondary hover:bg-surface-hover text-content text-sm font-semibold transition-colors shrink-0"
       >
         <Share2 className="w-3.5 h-3.5" />
         <span className="hidden sm:inline">Share</span>
@@ -119,7 +119,7 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
         <button
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
-          className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-900 transition-colors"
+          className="flex items-center justify-center w-9 h-9 rounded-lg bg-surface-secondary hover:bg-surface-hover text-content transition-colors"
           aria-label="More listing options"
           aria-expanded={menuOpen}
         >
@@ -127,7 +127,7 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
         </button>
 
         {menuOpen && (
-          <div className="absolute right-0 bottom-full mb-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-30">
+          <div className="absolute right-0 bottom-full mb-2 w-52 bg-surface rounded-lg shadow-lg border border-border py-1 z-30">
             {menuItems
               .filter((item) => !item.hidden)
               .map((item) => {
@@ -139,10 +139,10 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
                     onClick={() => handleMenuClick(item.action)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm text-left transition-colors ${item.destructive
                         ? "text-red-600 hover:bg-red-50"
-                        : "text-gray-800 hover:bg-gray-50"
+                        : "text-content hover:bg-surface-hover"
                       }`}
                   >
-                    <Icon className="w-4 h-4 shrink-0 text-gray-500" />
+                    <Icon className="w-4 h-4 shrink-0 text-content-secondary" />
                     {item.label}
                   </button>
                 );
@@ -167,7 +167,7 @@ export function getListingState(product: Product) {
     statusClassName = "bg-yellow-100 text-yellow-800";
   } else if (isSold) {
     statusLabel = "Sold";
-    statusClassName = "bg-gray-100 text-gray-700";
+    statusClassName = "bg-surface-secondary text-content";
   }
 
   return { isActive, isPending, isSold, statusLabel, statusClassName };

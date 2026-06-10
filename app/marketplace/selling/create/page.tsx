@@ -33,7 +33,7 @@ const CreateListingPage: React.FC = () => {
           <button
             type="button"
             onClick={() => router.push("/marketplace/selling")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 text-sm px-2"
+            className="flex items-center gap-2 text-content-secondary hover:text-content mb-2 text-sm px-2"
           >
             <ArrowLeft className="w-4 h-4" />
             Your listings
@@ -46,17 +46,17 @@ const CreateListingPage: React.FC = () => {
             <button
               type="button"
               onClick={() => router.push("/marketplace/selling")}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 text-sm"
+              className="flex items-center gap-2 text-content-secondary hover:text-content mb-3 text-sm"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to listings
             </button>
-            <h1 className="text-2xl font-bold text-gray-900">Create listing</h1>
+            <h1 className="text-2xl font-bold text-content">Create listing</h1>
 
           </div>
 
           <div className="hidden lg:block mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Create listing</h1>
+            <h1 className="text-2xl font-bold text-content">Create listing</h1>
 
           </div>
 
@@ -68,12 +68,12 @@ const CreateListingPage: React.FC = () => {
 
         <aside className="hidden xl:block w-[280px] shrink-0 py-6">
           <div className="sticky top-6 space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+            <div className="bg-surface rounded-2xl border border-border-subtle p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <Lightbulb className="w-5 h-5 text-primary-600 shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-sm mb-2">Listing tips</h3>
-                  <ul className="text-xs text-gray-600 space-y-2">
+                  <h3 className="font-semibold text-content text-sm mb-2">Listing tips</h3>
+                  <ul className="text-xs text-content-secondary space-y-2">
                     <li>Use clear, well-lit photos from multiple angles.</li>
                     <li>Write a descriptive title with key details.</li>
                     <li>Set a fair price in your local currency.</li>

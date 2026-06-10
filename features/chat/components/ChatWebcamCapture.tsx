@@ -149,13 +149,13 @@ const ChatWebcamCapture: React.FC<ChatWebcamCaptureProps> = ({
       aria-modal="true"
       aria-label="Take a photo"
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <span className="text-sm font-semibold text-gray-900">Camera</span>
+      <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+          <span className="text-sm font-semibold text-content">Camera</span>
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-full p-1.5 text-gray-500 hover:bg-gray-100"
+            className="rounded-full p-1.5 text-content-secondary hover:bg-surface-hover"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -181,11 +181,11 @@ const ChatWebcamCapture: React.FC<ChatWebcamCaptureProps> = ({
           <p className="px-4 py-2 text-center text-sm text-red-600">{error}</p>
         )}
 
-        <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-4 py-3">
+        <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-4 py-3">
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-content-secondary hover:bg-surface-hover"
           >
             Cancel
           </button>

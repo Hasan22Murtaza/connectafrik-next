@@ -242,10 +242,10 @@ const Signup: React.FC = () => {
             <img src="/assets/images/logo_2.png" alt="" className="w-30" />
             </Link>
           </div>
-            <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
+            <h1 className="sm:text-3xl text-2xl font-bold text-content mb-2">
               Create a new account
             </h1>
-            <p className="text-gray-600 sm:text-base text-sm">
+            <p className="text-content-secondary sm:text-base text-sm">
               Connect with the African community worldwide
             </p>
           </div>
@@ -262,7 +262,7 @@ const Signup: React.FC = () => {
                     value={formData.firstName}
                     onChange={handleInputChange}
                     placeholder="First name"
-                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   />
                 </div>
@@ -273,7 +273,7 @@ const Signup: React.FC = () => {
                     value={formData.lastName}
                     onChange={handleInputChange}
                     placeholder="Last name"
-                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   />
                 </div>
@@ -287,7 +287,7 @@ const Signup: React.FC = () => {
                   value={formData.username}
                   onChange={handleInputChange}
                   placeholder="Username"
-                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   required
                 />
               </div>
@@ -300,7 +300,7 @@ const Signup: React.FC = () => {
                   value={formData.emailOrPhone}
                   onChange={handleInputChange}
                   placeholder="Mobile number or email"
-                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   required
                 />
               
@@ -314,13 +314,13 @@ const Signup: React.FC = () => {
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="New password"
-                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)] pr-10"
+                  className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)] pr-10"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-content-secondary hover:text-content"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -332,7 +332,7 @@ const Signup: React.FC = () => {
 
               {/* Birthday */}
               <div>
-                <label className="flex items-center text-xs text-gray-600 mb-1">
+                <label className="flex items-center text-xs text-content-secondary mb-1">
                   Birthday
                  
                 </label>
@@ -341,7 +341,7 @@ const Signup: React.FC = () => {
                     name="birthMonth"
                     value={formData.birthMonth}
                     onChange={handleInputChange}
-                    className=" w-full p-2  border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                    className=" w-full p-2  border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   >
                     <option value="">Month</option>
@@ -355,7 +355,7 @@ const Signup: React.FC = () => {
                     name="birthDay"
                     value={formData.birthDay}
                     onChange={handleInputChange}
-                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   >
                     <option value="">Day</option>
@@ -369,7 +369,7 @@ const Signup: React.FC = () => {
                     name="birthYear"
                     value={formData.birthYear}
                     onChange={handleInputChange}
-                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                     required
                   >
                     <option value="">Year</option>
@@ -384,12 +384,12 @@ const Signup: React.FC = () => {
 
               {/* Gender */}
               <div>
-                <label className="flex items-center text-xs text-gray-600 mb-1">
+                <label className="flex items-center text-xs text-content-secondary mb-1">
                   Gender
                  
                 </label>
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
+                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-surface-hover">
                     <input
                       type="radio"
                       name="gender"
@@ -401,7 +401,7 @@ const Signup: React.FC = () => {
                     />
                     Female
                   </label>
-                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
+                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-surface-hover">
                     <input
                       type="radio"
                       name="gender"
@@ -413,7 +413,7 @@ const Signup: React.FC = () => {
                     />
                     Male
                   </label>
-                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-gray-50">
+                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-surface-hover">
                     <input
                       type="radio"
                       name="gender"
@@ -433,7 +433,7 @@ const Signup: React.FC = () => {
                     value={formData.customGender}
                     onChange={handleInputChange}
                     placeholder="Enter your gender (optional)"
-                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   />
                 )}
               </div>
@@ -460,12 +460,12 @@ const Signup: React.FC = () => {
                     country: loc.country,
                   }))
                 }
-                fieldClassName="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                fieldClassName="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
               />
 
               {/* Policy Text */}
               <div className="space-y-2 pt-2">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-content-secondary">
                   People who use our service may have uploaded your contact
                   information to ConnectAfrik.{" "}
                   <Link
@@ -475,7 +475,7 @@ const Signup: React.FC = () => {
                     Learn more.
                   </Link>
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-content-secondary">
                   By clicking Sign Up, you agree to our{" "}
                   <Link
                     href="/terms-of-service"

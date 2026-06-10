@@ -6,6 +6,7 @@ import { useProductionChat } from "@/contexts/ProductionChatContext";
 import ChatCloseView from "@/features/chat/components/ChatCloseView";
 import ChatWindow from "@/features/chat/components/ChatWindow";
 import ChatSidebar from "@/features/chat/components/ChatSidebar";
+import { CH } from "@/features/chat/constants/chatLayout";
 import type { ChatThread } from "@/features/chat/services/supabaseMessagingService";
 
 interface ChatPageViewProps {
@@ -36,7 +37,7 @@ export default function ChatPageView({ selectedThreadId }: ChatPageViewProps) {
   );
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-6rem)] w-full overflow-hidden rounded-none sm:rounded-2xl border border-1 border-gray-200 ">
+    <div className={CH.pageShell}>
       <ChatSidebar
         selectedThreadId={selectedThreadId}
         onOpenThread={openOnPage}

@@ -193,7 +193,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               className={`${size} ${
                 star <= (interactive ? (hoverRating || rating) : count)
                   ? 'fill-yellow-400 text-yellow-400'
-                  : 'text-gray-300'
+                  : 'text-content-tertiary'
               }`}
             />
           </button>
@@ -220,14 +220,14 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
           const percentage = total > 0 ? (count / total) * 100 : 0
           return (
             <div key={stars} className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 w-8">{stars} ★</span>
-              <div className="flex-1 bg-gray-200 rounded-full h-2">
+              <span className="text-sm text-content-secondary w-8">{stars} ★</span>
+              <div className="flex-1 bg-surface-tertiary rounded-full h-2">
                 <div
                   className="bg-yellow-400 h-2 rounded-full transition-all"
                   style={{ width: `${percentage}%` }}
                 />
               </div>
-              <span className="text-sm text-gray-600 w-8 text-right">{count}</span>
+              <span className="text-sm text-content-secondary w-8 text-right">{count}</span>
             </div>
           )
         })}
@@ -248,14 +248,14 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Summary & Write Button */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6 lg:sticky lg:top-28">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Customer Reviews</h2>
+          <div className="bg-surface rounded-2xl shadow-header p-6 lg:sticky lg:top-28">
+            <h2 className="text-2xl font-bold text-content mb-4">Customer Reviews</h2>
             <div className="flex flex-col items-start">
-              <div className="text-4xl font-bold text-gray-900 mb-2">
+              <div className="text-4xl font-bold text-content mb-2">
                 {averageRating.toFixed(1)}
               </div>
               {renderStars(Math.round(averageRating), false, 'w-6 h-6')}
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-content-secondary mt-2">
                 Based on {reviewsCount} {reviewsCount === 1 ? 'review' : 'reviews'}
               </p>
               <div className="mt-4 w-full">
@@ -275,7 +275,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
               {userReview && (
                 <button
                   onClick={handleEditReview}
-                  className="mt-3 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
+                  className="mt-3 w-full bg-surface-secondary hover:bg-surface-hover text-content font-semibold py-3 rounded-lg flex items-center justify-center gap-2"
                 >
                   Edit Your Review
                 </button>
@@ -288,14 +288,14 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
         <div className="lg:col-span-2 space-y-6">
           {/* Write Review Form */}
           {showWriteReview && (
-            <div className="bg-white rounded-2xl  shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">
+            <div className="bg-surface rounded-2xl  shadow-header p-6">
+              <h3 className="text-xl font-bold text-content mb-4">
                 {userReview ? 'Edit Your Review' : 'Write a Review'}
               </h3>
 
               {/* Rating Selection */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content mb-2">
                   Your Rating
                 </label>
                 {renderStars(rating, true, 'w-8 h-8')}
@@ -303,7 +303,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
 
               {/* Review Text */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content mb-2">
                   Your Review (minimum {MIN_REVIEW_LENGTH} characters)
                 </label>
                 <textarea
@@ -313,13 +313,13 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                   className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                     reviewText.length > 0 && !isValid
                       ? 'border-red-500'
-                      : 'border-gray-300'
+                      : 'border-border'
                   }`}
                   placeholder="Share your experience with this product. What did you like? What could be improved? (At least 150 characters)"
                 />
                 <div className="flex justify-between items-center mt-2">
                   <div className={`text-sm ${
-                    !isValid && characterCount > 0 ? 'text-red-600' : 'text-gray-600'
+                    !isValid && characterCount > 0 ? 'text-red-600' : 'text-content-secondary'
                   }`}>
                     {characterCount} / {MIN_REVIEW_LENGTH} characters
                     {!isValid && characterCount > 0 && (
@@ -361,7 +361,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                       setRating(5)
                     }
                   }}
-                  className="px-6 py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg hover:bg-gray-300"
+                  className="px-6 py-3 bg-surface-tertiary text-content font-semibold rounded-lg hover:bg-surface-tertiary"
                 >
                   Cancel
                 </button>
@@ -372,16 +372,16 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
           {/* Reviews List */}
           <div className="space-y-4">
             {reviews.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-8 text-center">
-                <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No reviews yet</h3>
-                <p className="text-gray-600">
+              <div className="bg-surface rounded-2xl shadow-header p-8 text-center">
+                <MessageSquare className="w-12 h-12 text-content-tertiary mx-auto mb-3" />
+                <h3 className="text-lg font-semibold text-content mb-2">No reviews yet</h3>
+                <p className="text-content-secondary">
                   Be the first to share your experience with this product!
                 </p>
               </div>
             ) : (
               reviews.map(review => (
-                <div key={review.id} className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6">
+                <div key={review.id} className="bg-surface rounded-2xl shadow-header p-6">
                   {/* Reviewer Info */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -397,10 +397,10 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                         </div>
                       )}
                       <div>
-                        <h4 className="font-semibold text-gray-900">{review.user?.full_name}</h4>
+                        <h4 className="font-semibold text-content">{review.user?.full_name}</h4>
                         <div className="flex items-center gap-2">
                           {renderStars(review.rating, false, 'w-4 h-4')}
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-content-secondary">
                             {new Date(review.created_at).toLocaleDateString()}
                           </span>
                         </div>
@@ -409,7 +409,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                   </div>
 
                   {/* Review Text */}
-                  <p className="text-gray-700 whitespace-pre-wrap wrap-break-word">{review.review_text}</p>
+                  <p className="text-content whitespace-pre-wrap wrap-break-word">{review.review_text}</p>
 
                   {/* Helpful Button */}
                   <div className="mt-4 flex items-center gap-4">
@@ -419,7 +419,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         review.is_helpful
                           ? 'bg-primary-100 text-primary-700'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-surface-secondary text-content hover:bg-surface-hover'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <ThumbsUp className={`w-4 h-4 ${review.is_helpful ? 'fill-current' : ''}`} />

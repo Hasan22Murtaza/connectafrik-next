@@ -37,18 +37,18 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur">
+    <div className="min-h-screen bg-surface-canvas">
+      <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to item
           </button>
-          <div className="inline-flex items-center gap-2 text-sm text-gray-500">
+          <div className="inline-flex items-center gap-2 text-sm text-content-secondary">
             <Lock className="w-4 h-4" />
             Secure checkout
           </div>
@@ -57,20 +57,20 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Checkout</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-content">Checkout</h1>
+          <p className="text-sm text-content-secondary mt-1">
             Review your order and complete payment in a few steps.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-[minmax(0,1fr)_360px] gap-6 lg:gap-8 items-start">
-          <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
+          <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-5 sm:p-6">
             {children}
           </section>
 
           <aside className="lg:sticky lg:top-24 space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
-              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+            <div className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-5 sm:p-6">
+              <h2 className="text-sm font-semibold text-content uppercase tracking-wide">
                 Order summary
               </h2>
 
@@ -79,14 +79,14 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
                   <img
                     src={product.images[0]}
                     alt={product.title}
-                    className="w-20 h-20 rounded-xl object-cover bg-gray-100 shrink-0"
+                    className="w-20 h-20 rounded-xl object-cover bg-surface-secondary shrink-0"
                   />
                 ) : (
-                  <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
+                  <div className="w-20 h-20 rounded-xl bg-surface-secondary shrink-0" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900 line-clamp-2">{product.title}</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="font-medium text-content line-clamp-2">{product.title}</p>
+                  <p className="text-sm text-content-secondary mt-1">
                     Sold by {product.seller?.full_name || product.seller?.username || 'Seller'}
                   </p>
                   <p className="text-sm font-semibold text-primary-600 mt-2">
@@ -96,23 +96,23 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
               </div>
 
               <div className="mt-5 flex items-center justify-between">
-                <span className="text-sm text-gray-600">Quantity</span>
-                <div className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50">
+                <span className="text-sm text-content-secondary">Quantity</span>
+                <div className="inline-flex items-center rounded-xl border border-border bg-surface-canvas">
                   <button
                     type="button"
                     onClick={decreaseQuantity}
                     disabled={quantity <= 1}
-                    className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-40"
+                    className="p-2 text-content-secondary hover:text-content disabled:opacity-40"
                     aria-label="Decrease quantity"
                   >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="w-10 text-center text-sm font-medium text-gray-900">{quantity}</span>
+                  <span className="w-10 text-center text-sm font-medium text-content">{quantity}</span>
                   <button
                     type="button"
                     onClick={increaseQuantity}
                     disabled={maxQuantity !== undefined && quantity >= maxQuantity}
-                    className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-40"
+                    className="p-2 text-content-secondary hover:text-content disabled:opacity-40"
                     aria-label="Increase quantity"
                   >
                     <Plus className="w-4 h-4" />
@@ -121,21 +121,21 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
               </div>
 
               {maxQuantity !== undefined && (
-                <p className="text-xs text-gray-500 mt-2 text-right">{maxQuantity} available</p>
+                <p className="text-xs text-content-secondary mt-2 text-right">{maxQuantity} available</p>
               )}
 
-              <div className="mt-5 pt-5 border-t border-gray-100 space-y-2">
+              <div className="mt-5 pt-5 border-t border-border-subtle space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">
+                  <span className="text-content-secondary">
                     Subtotal ({quantity} item{quantity > 1 ? 's' : ''})
                   </span>
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-content">
                     {currencySymbol}
                     {totalAmount.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">Total</span>
+                  <span className="font-semibold text-content">Total</span>
                   <span className="text-2xl font-bold text-primary-600">
                     {currencySymbol}
                     {totalAmount.toLocaleString()}

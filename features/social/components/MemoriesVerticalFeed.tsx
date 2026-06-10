@@ -349,9 +349,9 @@ export function MemoriesVerticalFeed({
         ? 'Sign in to see memories from creators you follow.'
         : 'Sign in to manage and watch your own memories.'
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-4 bg-neutral-50 px-6 text-center lg:min-h-[calc(100dvh-4.5rem)]">
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-        <p className="max-w-sm text-sm text-gray-600">{subtitle}</p>
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-4 bg-surface-canvas px-6 text-center lg:min-h-[calc(100dvh-4.5rem)]">
+        <h2 className="text-lg font-semibold text-content">{title}</h2>
+        <p className="max-w-sm text-sm text-content-secondary">{subtitle}</p>
         <Link href="/signin" className="btn-primary inline-flex rounded-full px-8 py-2.5 text-sm font-semibold">
           Log in
         </Link>
@@ -361,22 +361,22 @@ export function MemoriesVerticalFeed({
 
   if (loading && reels.length === 0) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black text-white lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100 lg:text-gray-900">
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black text-white lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas lg:text-content">
         <div
-          className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white lg:border-gray-300 lg:border-t-primary-600"
+          className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white lg:border-border lg:border-t-primary-600"
           aria-hidden
         />
-        <p className="mt-4 text-sm text-white/70 lg:text-gray-600">Loading memories…</p>
+        <p className="mt-4 text-sm text-white/70 lg:text-content-secondary">Loading memories…</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black px-6 text-center text-white lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100 lg:text-gray-900">
-        <Clock className="mb-4 h-14 w-14 text-white/40 lg:text-gray-400" />
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black px-6 text-center text-white lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas lg:text-content">
+        <Clock className="mb-4 h-14 w-14 text-white/40 lg:text-content-tertiary" />
         <h2 className="text-lg font-semibold">Couldn’t load memories</h2>
-        <p className="mt-2 text-sm text-white/65 lg:text-gray-600">{error}</p>
+        <p className="mt-2 text-sm text-white/65 lg:text-content-secondary">{error}</p>
         <button type="button" onClick={refresh} className="btn-primary mt-6">
           Try again
         </button>
@@ -386,15 +386,15 @@ export function MemoriesVerticalFeed({
 
   if (reels.length === 0) {
     return (
-      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black px-6 pb-10 pt-16 text-center text-white lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100 lg:pb-6 lg:pt-0 lg:text-gray-900">
+      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black px-6 pb-10 pt-16 text-center text-white lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas lg:pb-6 lg:pt-0 lg:text-content">
         <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-white/10 bg-black/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 text-white lg:hidden">
           <div className="mx-auto max-w-lg">
             <MemoriesNav variant="video-bottom" />
           </div>
         </div>
-        <Clock className="mb-4 h-14 w-14 text-white/40 lg:text-gray-400" />
+        <Clock className="mb-4 h-14 w-14 text-white/40 lg:text-content-tertiary" />
         <h2 className="text-lg font-semibold">{emptyCopy.title}</h2>
-        <p className="mt-2 text-sm text-white/65 lg:text-gray-600">{emptyCopy.subtitle}</p>
+        <p className="mt-2 text-sm text-white/65 lg:text-content-secondary">{emptyCopy.subtitle}</p>
         <Link href="/memories/create" className="btn-primary mt-6 inline-flex items-center gap-2 rounded-full">
           <Plus className="h-5 w-5" />
           Create memory
@@ -405,7 +405,7 @@ export function MemoriesVerticalFeed({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:bg-neutral-100">
+      <div className="fixed inset-0 z-40 bg-black lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas">
         <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-white/10 bg-black/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 text-white lg:hidden">
           <div className="mx-auto max-w-lg">
             <MemoriesNav variant="video-bottom" />
@@ -416,7 +416,7 @@ export function MemoriesVerticalFeed({
           <button
             type="button"
             onClick={() => router.push(exploreBackHref)}
-            className="absolute left-3 top-14 z-30 inline-flex items-center gap-1 rounded-full bg-white/95 px-3 py-2 text-sm font-medium text-gray-800 shadow-sm ring-1 ring-black/10 backdrop-blur-md transition hover:bg-white sm:top-16 lg:left-6 lg:top-[5.25rem]"
+            className="absolute left-3 top-14 z-30 inline-flex items-center gap-1 rounded-full bg-surface/95 px-3 py-2 text-sm font-medium text-content shadow-sm ring-1 ring-black/10 backdrop-blur-md transition hover:bg-surface sm:top-16 lg:left-6 lg:top-[5.25rem]"
           >
             <ChevronLeft className="h-4 w-4" />
             Explore
@@ -426,7 +426,7 @@ export function MemoriesVerticalFeed({
         <button
           type="button"
           aria-label="Next memory"
-          className="absolute right-3 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/90 text-gray-600 shadow-sm backdrop-blur-sm transition hover:bg-white lg:flex"
+          className="absolute right-3 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/90 text-content-secondary shadow-sm backdrop-blur-sm transition hover:bg-surface lg:flex"
           onClick={() => {
             const el = scrollRef.current
             if (!el) return
@@ -459,11 +459,11 @@ export function MemoriesVerticalFeed({
           {hasMore && (
             <div
               ref={sentinelRef}
-              className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-black lg:bg-neutral-100"
+              className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-black lg:bg-surface-canvas"
               aria-hidden
             >
               {loading && (
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80 lg:border-gray-200 lg:border-t-primary-600" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80 lg:border-border lg:border-t-primary-600" />
               )}
             </div>
           )}
@@ -487,7 +487,7 @@ export function MemoriesVerticalFeed({
 
       {editingReel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-hidden rounded-xl bg-surface shadow-2xl">
             <div className="flex items-center justify-between bg-primary-600 px-5 py-4">
               <div className="flex items-center gap-2">
                 <Pencil className="h-5 w-5 text-white" />
@@ -504,13 +504,13 @@ export function MemoriesVerticalFeed({
                   <img
                     src={editingReel.thumbnail_url}
                     alt={editingReel.title}
-                    className="h-44 w-32 rounded-lg border border-gray-200 object-cover"
+                    className="h-44 w-32 rounded-lg border border-border object-cover"
                   />
                 </div>
               )}
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Title *</label>
+                <label className="mb-1.5 block text-sm font-medium text-content">Title *</label>
                 <input
                   type="text"
                   value={editTitle}
@@ -520,28 +520,28 @@ export function MemoriesVerticalFeed({
                   maxLength={MAX_REEL_TITLE_LENGTH}
                   required
                 />
-                <div className="mt-1 text-right text-xs text-gray-400">
+                <div className="mt-1 text-right text-xs text-content-tertiary">
                   {editTitle.length}/{MAX_REEL_TITLE_LENGTH}
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Description</label>
+                <label className="mb-1.5 block text-sm font-medium text-content">Description</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Tell people what this memory is about..."
                   rows={3}
-                  className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm text-content placeholder-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-primary-500"
                   maxLength={MAX_REEL_DESCRIPTION_LENGTH}
                 ></textarea>
-                <div className="mt-1 text-right text-xs text-gray-400">
+                <div className="mt-1 text-right text-xs text-content-tertiary">
                   {editDescription.length}/{MAX_REEL_DESCRIPTION_LENGTH}
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Category</label>
+                <label className="mb-1.5 block text-sm font-medium text-content">Category</label>
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value as ReelCategory)}
@@ -556,7 +556,7 @@ export function MemoriesVerticalFeed({
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Tags</label>
+                <label className="mb-1.5 block text-sm font-medium text-content">Tags</label>
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <input
@@ -587,25 +587,25 @@ export function MemoriesVerticalFeed({
                       {editTags.map((tag) => (
                         <span
                           key={tag}
-                          className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700"
+                          className="inline-flex items-center gap-1 rounded-full bg-surface-secondary px-2.5 py-1 text-xs text-content"
                         >
                           <Tag className="h-3 w-3" />
                           <span>{tag}</span>
-                          <button type="button" onClick={() => removeEditTag(tag)} className="text-gray-400 hover:text-gray-600">
+                          <button type="button" onClick={() => removeEditTag(tag)} className="text-content-tertiary hover:text-gray-600">
                             <X className="h-3 w-3" />
                           </button>
                         </span>
                       ))}
                     </div>
                   )}
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-content-tertiary">
                     {editTags.length}/{MAX_REEL_TAGS} tags
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700">Privacy</label>
+                <label className="mb-1.5 block text-sm font-medium text-content">Privacy</label>
                 <div className="flex gap-4">
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
@@ -615,7 +615,7 @@ export function MemoriesVerticalFeed({
                       className="text-primary-600 focus:ring-primary-500"
                     />
                     <Globe className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">Public</span>
+                    <span className="text-sm text-content">Public</span>
                   </label>
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
@@ -625,12 +625,12 @@ export function MemoriesVerticalFeed({
                       className="text-primary-600 focus:ring-primary-500"
                     />
                     <Lock className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-700">Private</span>
+                    <span className="text-sm text-content">Private</span>
                   </label>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+              <div className="flex items-center justify-between border-t border-border pt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -656,7 +656,7 @@ export function MemoriesVerticalFeed({
                   <button
                     type="button"
                     onClick={closeEditModal}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                    className="rounded-lg px-4 py-2 text-sm font-medium text-content transition-colors hover:bg-surface-secondary"
                   >
                     Cancel
                   </button>

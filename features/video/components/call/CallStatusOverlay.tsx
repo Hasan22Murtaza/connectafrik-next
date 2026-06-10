@@ -47,17 +47,17 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
         isAudioConnectedTopLayout ? 'items-start pt-24 sm:pt-28 md:pt-32' : 'items-center'
       }`}
     >
-      <div className="text-center text-slate-800">
+      <div className="text-center text-content">
         <div className="mb-4">
           {callStatus === 'connecting' && (
             <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 border-3 sm:border-4 border-slate-700 border-t-transparent mb-2 sm:mb-3"></div>
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 border-3 sm:border-4 border-border border-t-transparent mb-2 sm:mb-3"></div>
               <div className="text-sm sm:text-base font-medium">Connecting...</div>
             </div>
           )}
           {callStatus === 'connecting_media' && (
             <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 border-3 sm:border-4 border-slate-700 border-t-transparent mb-2 sm:mb-3"></div>
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 border-3 sm:border-4 border-border border-t-transparent mb-2 sm:mb-3"></div>
               <div className="text-sm sm:text-base font-medium">Connecting media...</div>
             </div>
           )}
@@ -73,16 +73,16 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
                   <img
                     src={activeAvatarUrl}
                     alt={activeName}
-                    className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-4 border-slate-700/20 shadow-xl"
+                    className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-4 border-border-subtle shadow-xl"
                   />
                 ) : (
-                  <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-slate-200 text-slate-800 border-4 border-slate-700/20 shadow-xl flex items-center justify-center text-2xl sm:text-3xl font-bold">
+                  <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-surface-secondary text-content border-4 border-border-subtle shadow-xl flex items-center justify-center text-2xl sm:text-3xl font-bold">
                     {activeInitial}
                   </div>
                 )}
               </div>
               <div className="text-base sm:text-lg md:text-xl font-semibold">Ringing...</div>
-              <div className="text-xs sm:text-sm text-slate-700 mt-1">Waiting for answer</div>
+              <div className="text-xs sm:text-sm text-content-secondary mt-1">Waiting for answer</div>
             </div>
           )}
           {callStatus === 'connected' && !remoteScreenShareStream && !isScreenSharing && (
@@ -93,15 +93,15 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
                     <img
                       src={activeAvatarUrl}
                       alt={activeName}
-                      className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-4 border-slate-700/20 shadow-xl"
+                      className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-4 border-border-subtle shadow-xl"
                     />
                   ) : (
-                    <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-slate-200 text-slate-800 border-4 border-slate-700/20 shadow-xl flex items-center justify-center text-2xl sm:text-3xl font-bold">
+                    <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-surface-secondary text-content border-4 border-border-subtle shadow-xl flex items-center justify-center text-2xl sm:text-3xl font-bold">
                       {activeInitial}
                     </div>
                   )}
                 </div>
-                <div className="text-xs sm:text-sm md:text-base font-bold tracking-wider text-slate-800 font-mono tabular-nums">
+                <div className="text-xs sm:text-sm md:text-base font-bold tracking-wider text-content font-mono tabular-nums">
                   {formatDuration(callDuration)}
                 </div>
               </div>
@@ -110,7 +110,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
           {callStatus === 'ended' && (
             <div>
               <div className="text-lg sm:text-xl font-semibold mb-1">Call Ended</div>
-              <div className="text-xs sm:text-sm text-slate-700">Duration: {formatDuration(callDuration)}</div>
+              <div className="text-xs sm:text-sm text-content-secondary">Duration: {formatDuration(callDuration)}</div>
             </div>
           )}
         </div>

@@ -56,13 +56,13 @@ const ContactsRail: React.FC = () => {
   const renderContacts = () => {
     if (loading) {
       return (
-        <div className="text-xs text-gray-400">Loading contacts…</div>
+        <div className="text-xs text-content-tertiary">Loading contacts…</div>
       )
     }
 
     if (!contacts.length) {
       return (
-        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-6 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-dashed border-border bg-surface-secondary px-3 py-6 text-center text-sm text-content-secondary">
           No contacts available. Invite a teammate to get started.
         </div>
       )
@@ -78,7 +78,7 @@ const ContactsRail: React.FC = () => {
       return (
         <div
           key={contact.id}
-          className="flex items-center justify-between rounded-xl border border-gray-100 bg-white px-3 py-2 shadow-sm"
+          className="flex items-center justify-between rounded-xl border border-border-subtle bg-surface px-3 py-2 shadow-sm"
         >
           <div className="flex items-center space-x-3">
             {contact.avatarUrl ? (
@@ -93,28 +93,28 @@ const ContactsRail: React.FC = () => {
               </div>
             )}
             <div>
-              <p className="text-sm font-medium text-gray-900">{contact.name}</p>
-              <p className="text-xs text-gray-500">{line}</p>
+              <p className="text-sm font-medium text-content">{contact.name}</p>
+              <p className="text-xs text-content-secondary">{line}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleStartChat(contact)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-primary-100 hover:text-primary-700"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-primary-700"
               title="Open chat"
             >
               <MessageCircle className="h-4 w-4" />
             </button>
             <button
               onClick={() => handleStartCall(contact, 'audio')}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-primary-100 hover:text-primary-700"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-primary-700"
               title="Start voice call"
             >
               <Phone className="h-4 w-4" />
             </button>
             <button
               onClick={() => handleStartCall(contact, 'video')}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-600 transition-colors hover:bg-primary-100 hover:text-primary-700"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-primary-700"
               title="Start video call"
             >
               <Video className="h-4 w-4" />
@@ -129,15 +129,15 @@ const ContactsRail: React.FC = () => {
     <div className="card sticky top-24 flex min-h-[320px] flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">Contacts</h3>
-          <p className="text-xs text-gray-500">Reach out instantly</p>
+          <h3 className="text-sm font-semibold text-content">Contacts</h3>
+          <p className="text-xs text-content-secondary">Reach out instantly</p>
         </div>
-        <span className="text-sm font-semibold text-gray-500">{contacts.length}</span>
+        <span className="text-sm font-semibold text-content-secondary">{contacts.length}</span>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">{renderContacts()}</div>
 
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-content-tertiary">
         Tip: Invite friends to ConnectAfrik to grow this list of quick contacts.
       </p>
     </div>

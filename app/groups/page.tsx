@@ -260,7 +260,7 @@ const GroupsPage: React.FC = () => {
     <div className="space-y-4 ">
       {/* Groups Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold text-gray-600">Groups</h2>
+        <h2 className="text-2xl font-semibold text-content-secondary">Groups</h2>
 
       </div>
 
@@ -274,7 +274,7 @@ const GroupsPage: React.FC = () => {
     transition-all duration-300 ease-in-out
     ${view === "feed"
               ? "bg-orange-50 text-primary-600"
-              : "text-gray-600 hover:bg-orange-50 hover:text-primary-600"
+              : "text-content-secondary hover:bg-orange-50 hover:text-primary-600"
             }
     `}
         >
@@ -304,7 +304,7 @@ const GroupsPage: React.FC = () => {
     transition-all duration-300 ease-in-out
     ${view === "discover"
               ? "bg-orange-50 text-primary-600"
-              : "text-gray-600 hover:bg-orange-50 hover:text-primary-600"
+              : "text-content-secondary hover:bg-orange-50 hover:text-primary-600"
             }
     `}
         >
@@ -334,7 +334,7 @@ const GroupsPage: React.FC = () => {
       transition-all duration-300 ease-in-out
       ${view === "my-groups"
                 ? "bg-orange-50 text-primary-600"
-                : "text-gray-600 hover:bg-orange-50 hover:text-primary-600"
+                : "text-content-secondary hover:bg-orange-50 hover:text-primary-600"
               }
       `}
           >
@@ -374,7 +374,7 @@ const GroupsPage: React.FC = () => {
       {/* Groups You Manage */}
       {user && managedGroups.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2 px-2">
+          <h3 className="text-sm font-semibold text-content mb-2 px-2">
             Groups you manage
           </h3>
           <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -385,7 +385,7 @@ const GroupsPage: React.FC = () => {
                   handleViewGroup(group.id);
 
                 }}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-secondary transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
                   {group.banner_url ? (
@@ -395,16 +395,16 @@ const GroupsPage: React.FC = () => {
                       className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
-                    <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
+                    <span className="text-content font-bold text-sm bg-surface-tertiary w-10 h-10 rounded-lg flex items-center justify-center">
                       {group.name.charAt(0).toUpperCase()}
                     </span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate text-sm">
+                  <p className="font-medium text-content truncate text-sm">
                     {group.name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-content-secondary">
                     Last active{" "}
                     {formatDistanceToNow(
                       new Date(group.updated_at || group.created_at),
@@ -422,7 +422,7 @@ const GroupsPage: React.FC = () => {
       {user && joinedGroups.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-2 px-2">
-            <h3 className="text-sm font-semibold text-gray-700">
+            <h3 className="text-sm font-semibold text-content">
               Groups you've joined
             </h3>
             {joinedGroups.length > 5 && (
@@ -442,7 +442,7 @@ const GroupsPage: React.FC = () => {
                   handleViewGroup(group.id);
 
                 }}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-secondary transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
                   {group.banner_url ? (
@@ -452,17 +452,17 @@ const GroupsPage: React.FC = () => {
                       className="w-full h-full rounded-lg object-cover"
                     />
                   ) : (
-                    <span className="text-gray-700 font-bold text-sm bg-gray-300 w-10 h-10 rounded-lg flex items-center justify-center">
+                    <span className="text-content font-bold text-sm bg-surface-tertiary w-10 h-10 rounded-lg flex items-center justify-center">
                       {group.name.charAt(0).toUpperCase()}
                     </span>
 
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 truncate text-sm">
+                  <p className="font-medium text-content truncate text-sm">
                     {group.name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-content-secondary">
                     Last active{" "}
                     {formatDistanceToNow(
                       new Date(group.updated_at || group.created_at),
@@ -485,7 +485,7 @@ const GroupsPage: React.FC = () => {
         <div className="lg:hidden mb-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold text-gray-600">Groups</h1>
+              <h1 className="text-xl font-semibold text-content-secondary">Groups</h1>
             </div>
             {user && (
               <button
@@ -499,7 +499,7 @@ const GroupsPage: React.FC = () => {
 
           {/* Mobile Search Bar */}
           <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4" />
             <input
               type="text"
               placeholder="Search groups..."
@@ -512,8 +512,8 @@ const GroupsPage: React.FC = () => {
     border border-gray-300
     rounded-full
     text-base
-    bg-gray-50
-    text-gray-900
+    bg-surface-canvas
+    text-content
     transition-all duration-200
     focus:outline-none
     focus:border-orange-500
@@ -525,18 +525,18 @@ const GroupsPage: React.FC = () => {
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => handleViewChange("feed")}
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300  ${view === "feed"
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary  ${view === "feed"
                   ? "text-orange-600 bg-orange-100"
-                  : "text-gray-700 hover:bg-gray-100 "
+                  : "text-content hover:bg-surface-secondary "
                 }`}
             >
               Your feed
             </button>
             <button
               onClick={() => handleViewChange("discover")}
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300 ${view === "discover"
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary ${view === "discover"
                   ? "text-orange-600 bg-orange-100"
-                  : "text-gray-700 hover:bg-gray-100"
+                  : "text-content hover:bg-surface-secondary"
                 }`}
             >
               Discover
@@ -544,9 +544,9 @@ const GroupsPage: React.FC = () => {
             {user && (
               <button
                 onClick={() => handleViewChange("my-groups")}
-                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-gray-300 ${view === "my-groups"
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary ${view === "my-groups"
                     ? "text-orange-600 bg-orange-100"
-                    : "text-gray-700 hover:bg-gray-100"
+                    : "text-content hover:bg-surface-secondary"
                   }`}
               >
                 Your groups
@@ -566,7 +566,7 @@ const GroupsPage: React.FC = () => {
           <div className="flex-1 ">
             {view === "feed" && (
               <div className="">
-                <h2 className="text-xl sm:text-2xl font-semibold text-gray-600 mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-content-secondary mb-4 sm:mb-6">
                   Recent activity
                 </h2>
                 {activityLoading ? (
@@ -574,10 +574,10 @@ const GroupsPage: React.FC = () => {
                 ) : recentActivity.length === 0 ? (
                   <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6 sm:p-12 text-center">
                     <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                    <h3 className="text-base sm:text-lg font-medium text-content mb-2">
                       No recent activity
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-500 mb-4">
+                    <p className="text-sm sm:text-base text-content-secondary mb-4">
                       Join groups to see posts and updates from your
                       communities.
                     </p>
@@ -598,7 +598,7 @@ const GroupsPage: React.FC = () => {
                         <div className="p-2 sm:p-3 border-b border-gray-200">
                           <button
                             onClick={() => handleViewGroup(post.group_id)}
-                            className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 hover:text-primary-600"
+                            className="flex items-center gap-2 text-xs sm:text-sm text-content-secondary hover:text-primary-600"
                           >
                             {post.group?.avatar_url ? (
                               <img
@@ -642,12 +642,12 @@ const GroupsPage: React.FC = () => {
             {view === "discover" && (
               <div className="">
                 <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-600">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-content-secondary">
                     Discover Groups
                   </h2>
                   {/* Search Bar */}
                   <div className="relative max-w-full w-md ">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4" />
                     <input
                       type="text"
                       placeholder="Search groups..."
@@ -674,13 +674,13 @@ const GroupsPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8 sm:py-12">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="w-6 h-6 sm:w-8 sm:h-8 text-content-tertiary" />
                     </div>
-                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                    <h3 className="text-base sm:text-lg font-medium text-content mb-2">
                       No groups found
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-500 mb-4 px-4">
+                    <p className="text-sm sm:text-base text-content-secondary mb-4 px-4">
                       {searchTerm
                         ? "Try adjusting your search filters or browse all groups."
                         : "Be the first to create a group in this community!"}
@@ -701,12 +701,12 @@ const GroupsPage: React.FC = () => {
             {view === "my-groups" && (
               <div className="">
                 <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-600 ">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-content-secondary ">
                     Your Groups
                   </h2>
                   {/* Search Bar */}
                   <div className="relative max-w-full ">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4" />
                     <input
                       type="text"
                       placeholder="Search groups..."
@@ -734,13 +734,13 @@ const GroupsPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8 sm:py-12">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Users className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Users className="w-6 h-6 sm:w-8 sm:h-8 text-content-tertiary" />
                     </div>
-                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
+                    <h3 className="text-base sm:text-lg font-medium text-content mb-2">
                       No groups joined yet
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-500 mb-4 px-4">
+                    <p className="text-sm sm:text-base text-content-secondary mb-4 px-4">
                       Join or create groups to connect with people who share
                       your interests and goals.
                     </p>

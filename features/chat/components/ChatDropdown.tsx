@@ -60,7 +60,7 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
     <button
       type="button"
       onClick={() => onOpen(thread.id)}
-      className={`flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-50 ${
+      className={`flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-surface-hover ${
         subdued ? 'opacity-70' : ''
       }`}
     >
@@ -80,14 +80,14 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
 
       <div className="min-w-0 flex-1 py-0.5">
         <div className="flex items-start justify-between gap-2">
-          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-gray-900">
+          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-content">
             {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden /> : null}
             <span className="truncate">{threadDisplayName}</span>
           </p>
           {timeLabel ? (
             <span
               className={`shrink-0 text-xs tabular-nums ${
-                unread > 0 ? 'text-primary-600' : 'text-gray-400'
+                unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
               }`}
             >
               {timeLabel}
@@ -95,11 +95,11 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
           ) : null}
         </div>
         <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="min-w-0 flex-1 truncate text-sm text-gray-500">
+          <p className="min-w-0 flex-1 truncate text-sm text-content-secondary">
             {subdued && thread.is_block ? (
-              <span className="text-gray-400">Blocked · </span>
+              <span className="text-content-tertiary">Blocked · </span>
             ) : subdued ? (
-              <span className="text-gray-400">Archived · </span>
+              <span className="text-content-tertiary">Archived · </span>
             ) : null}
             {preview}
           </p>
@@ -285,11 +285,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   return (
     <div
       ref={dropdownRef}
-      className="absolute sm:right-0 -right-6 z-[120] mt-3 w-65 max-w-[90vw] translate-x-0 transform rounded-xl border border-gray-200 bg-white p-3 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-4"
+      className="absolute sm:right-0 -right-6 z-[120] mt-3 w-65 max-w-[90vw] translate-x-0 transform rounded-xl border border-border bg-surface p-3 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-4"
     >
-      <div className="border-b border-gray-100 pb-3">
+      <div className="border-b border-border-subtle pb-3">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h4 className="text-lg font-semibold text-gray-900">Chats</h4>
+          <h4 className="text-lg font-semibold text-content">Chats</h4>
           <button
             type="button"
             onClick={onClose}
@@ -299,13 +299,13 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           </button>
         </div>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search chats"
-            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-500 outline-none ring-0 focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
+            className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
             aria-label="Search chats"
           />
         </div>
@@ -314,7 +314,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
       {threadsLoading ? (
         <ChatDropdownShimmer mode="chat" count={5} />
       ) : mergedThreads.length === 0 ? (
-        <div className="py-6 text-center text-sm text-gray-500">
+        <div className="py-6 text-center text-sm text-content-secondary">
           No conversations yet. Start a chat from the feed or contacts.
         </div>
       ) : (
@@ -327,14 +327,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           filteredArchived.length === 0 &&
           filteredBlocked.length === 0 &&
           query ? (
-            <p className="py-6 text-center text-sm text-gray-500">No chats match your search.</p>
+            <p className="py-6 text-center text-sm text-content-secondary">No chats match your search.</p>
           ) : null}
           {activeThreads.length === 0 && archivedThreads.length > 0 && !query && (
-            <p className="pb-2 text-xs text-gray-500">
-              No active chats — open <span className="font-medium text-gray-700">Archived</span> below.
+            <p className="pb-2 text-xs text-content-secondary">
+              No active chats — open <span className="font-medium text-content">Archived</span> below.
             </p>
           )}
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border-subtle">
             {filteredActive.map((thread) => (
               <ChatDropdownThreadRow
                 key={thread.id}
@@ -345,11 +345,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             ))}
           </div>
           {blockedThreads.length > 0 && (
-            <div className="mt-1 border-t border-gray-100 pt-2">
+            <div className="mt-1 border-t border-border-subtle pt-2">
               <button
                 type="button"
                 onClick={() => setBlockedExpanded((e) => !e)}
-                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-700"
+                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
               >
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? '' : '-rotate-90'}`}
@@ -369,11 +369,11 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             </div>
           )}
           {archivedThreads.length > 0 && (
-            <div className="mt-1 border-t border-gray-100 pt-2">
+            <div className="mt-1 border-t border-border-subtle pt-2">
               <button
                 type="button"
                 onClick={() => setArchivedExpanded((e) => !e)}
-                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-gray-500 hover:text-gray-700"
+                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
               >
                 <ChevronDown
                   className={`h-4 w-4 shrink-0 transition-transform ${archivedExpanded ? '' : '-rotate-90'}`}
@@ -394,7 +394,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           )}
           {threadsLoadingMore && (
             <div className="flex justify-center py-3">
-              <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              <Loader2 className="h-5 w-5 animate-spin text-content-tertiary" />
             </div>
           )}
         </div>

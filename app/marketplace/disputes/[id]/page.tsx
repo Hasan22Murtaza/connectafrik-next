@@ -57,8 +57,8 @@ const DisputeDetailPage: React.FC = () => {
 
   if (loading || !detail) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-pulse text-gray-500">Loading dispute...</div>
+      <div className="min-h-screen bg-surface-canvas flex items-center justify-center">
+        <div className="animate-pulse text-content-secondary">Loading dispute...</div>
       </div>
     );
   }
@@ -138,25 +138,25 @@ const DisputeDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-canvas">
       <div className="max-w-3xl mx-auto px-4 py-6">
         <button
           onClick={() => router.push(`/my-orders/${dispute.order_id}`)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 text-sm"
+          className="flex items-center gap-2 text-content-secondary hover:text-content mb-4 text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to order
         </button>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="bg-surface rounded-xl border border-border p-6 mb-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="w-5 h-5 text-orange-600" />
-                <h1 className="text-xl font-bold text-gray-900">Dispute</h1>
+                <h1 className="text-xl font-bold text-content">Dispute</h1>
               </div>
               {order && (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-content-secondary">
                   Order #{order.order_number} · {order.product_title}
                 </p>
               )}
@@ -168,11 +168,11 @@ const DisputeDetailPage: React.FC = () => {
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <span className="text-gray-500">Reason</span>
+              <span className="text-content-secondary">Reason</span>
               <p className="font-medium">{reasonLabel}</p>
             </div>
             <div>
-              <span className="text-gray-500">Opened</span>
+              <span className="text-content-secondary">Opened</span>
               <p className="font-medium">{new Date(dispute.created_at).toLocaleString()}</p>
             </div>
             {dispute.sla_seller_deadline && isActive && (
@@ -183,19 +183,19 @@ const DisputeDetailPage: React.FC = () => {
             )}
           </div>
 
-          <p className="mt-4 text-gray-700 bg-gray-50 rounded-lg p-4 text-sm">{dispute.description}</p>
+          <p className="mt-4 text-content bg-surface-canvas rounded-lg p-4 text-sm">{dispute.description}</p>
 
           {dispute.seller_response && (
             <div className="mt-4 border-t pt-4">
-              <p className="text-sm font-medium text-gray-700 mb-1">Seller response</p>
-              <p className="text-sm text-gray-600">{dispute.seller_response}</p>
+              <p className="text-sm font-medium text-content mb-1">Seller response</p>
+              <p className="text-sm text-content-secondary">{dispute.seller_response}</p>
             </div>
           )}
 
           {dispute.resolution_notes && (
             <div className="mt-4 border-t pt-4">
-              <p className="text-sm font-medium text-gray-700 mb-1">Resolution</p>
-              <p className="text-sm text-gray-600">{dispute.resolution_notes}</p>
+              <p className="text-sm font-medium text-content mb-1">Resolution</p>
+              <p className="text-sm text-content-secondary">{dispute.resolution_notes}</p>
               {dispute.resolved_amount != null && (
                 <p className="text-sm text-green-600 mt-1">
                   Refunded: {order?.currency} {Number(dispute.resolved_amount).toLocaleString()}
@@ -206,14 +206,14 @@ const DisputeDetailPage: React.FC = () => {
         </div>
 
         {evidence?.length > 0 && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <div className="bg-surface rounded-xl border border-border p-6 mb-6">
             <h2 className="font-semibold flex items-center gap-2 mb-3">
               <Paperclip className="w-4 h-4" /> Evidence
             </h2>
             <ul className="space-y-2">
               {evidence.map((e: any) => (
-                <li key={e.id} className="text-sm bg-gray-50 rounded-lg p-3">
-                  <span className="capitalize text-gray-500">{e.submitter_role}</span>
+                <li key={e.id} className="text-sm bg-surface-canvas rounded-lg p-3">
+                  <span className="capitalize text-content-secondary">{e.submitter_role}</span>
                   {e.file_url && (
                     <a
                       href={e.file_url}
@@ -224,7 +224,7 @@ const DisputeDetailPage: React.FC = () => {
                       {e.file_url}
                     </a>
                   )}
-                  {e.description && <p className="text-gray-600">{e.description}</p>}
+                  {e.description && <p className="text-content-secondary">{e.description}</p>}
                 </li>
               ))}
             </ul>
@@ -232,7 +232,7 @@ const DisputeDetailPage: React.FC = () => {
         )}
 
         {isActive && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <div className="bg-surface rounded-xl border border-border p-6 mb-6">
             <h2 className="font-semibold flex items-center gap-2 mb-3">
               <Paperclip className="w-4 h-4" /> Add evidence
             </h2>
@@ -247,7 +247,7 @@ const DisputeDetailPage: React.FC = () => {
               <button
                 onClick={handleAddEvidence}
                 disabled={submitting}
-                className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50"
+                className="px-4 py-2 bg-surface-secondary rounded-lg text-sm font-medium hover:bg-surface-hover disabled:opacity-50"
               >
                 Add
               </button>
@@ -255,21 +255,21 @@ const DisputeDetailPage: React.FC = () => {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+        <div className="bg-surface rounded-xl border border-border p-6 mb-6">
           <h2 className="font-semibold flex items-center gap-2 mb-4">
             <MessageSquare className="w-4 h-4" /> Messages
           </h2>
           <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
             {messages?.length === 0 && (
-              <p className="text-sm text-gray-500">No messages yet</p>
+              <p className="text-sm text-content-secondary">No messages yet</p>
             )}
             {messages?.map((m: any) => (
               <div
                 key={m.id}
-                className={`text-sm rounded-lg p-3 ${m.sender_role === "buyer" ? "bg-blue-50 ml-0 mr-8" : "bg-gray-50 ml-8 mr-0"
+                className={`text-sm rounded-lg p-3 ${m.sender_role === "buyer" ? "bg-blue-50 ml-0 mr-8" : "bg-surface-canvas ml-8 mr-0"
                   }`}
               >
-                <p className="text-xs text-gray-500 capitalize mb-1">{m.sender_role}</p>
+                <p className="text-xs text-content-secondary capitalize mb-1">{m.sender_role}</p>
                 <p>{m.message}</p>
               </div>
             ))}
@@ -295,7 +295,7 @@ const DisputeDetailPage: React.FC = () => {
         </div>
 
         {isActive && isSeller && dispute.status === "awaiting_seller" && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <div className="bg-surface rounded-xl border border-border p-6 mb-6">
             <h2 className="font-semibold mb-3">Your response</h2>
             <textarea
               value={sellerResponse}
@@ -328,7 +328,7 @@ const DisputeDetailPage: React.FC = () => {
           <button
             onClick={handleWithdraw}
             disabled={submitting}
-            className="w-full py-3 border border-gray-300 rounded-lg text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3 border border-border rounded-lg text-content-secondary text-sm hover:bg-surface-hover disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <XCircle className="w-4 h-4" />
             Withdraw dispute

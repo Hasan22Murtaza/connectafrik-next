@@ -355,8 +355,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   if (isIncoming && !token) {
     return (
       <div
-        className="fixed inset-0 z-[9999] animate-fadeIn"
-        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+        className="fixed inset-0 z-[9999] animate-fadeIn bg-surface-canvas"
       >
         <CallStatusOverlay
           callStatus="ringing"
@@ -384,13 +383,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   if (!token || !meetingId) {
     return (
       <div
-        className="fixed inset-0 z-[9999]"
-        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+        className="fixed inset-0 z-[9999] bg-surface-canvas"
       >
         {prePhase === 'error' ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-slate-800 p-8 text-center">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-content p-8 text-center">
             <div className="text-lg font-semibold">Connection Failed</div>
-            <div className="text-sm text-slate-600">{errorMsg}</div>
+            <div className="text-sm text-content-secondary">{errorMsg}</div>
             <button
               onClick={onClose}
               className="px-6 py-2 bg-red-500 text-white rounded-full text-sm font-medium hover:bg-red-600 transition-colors"

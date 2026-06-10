@@ -60,7 +60,7 @@ function ReelThumb({ reel, isFirst }: { reel: Reel; isFirst: boolean }) {
 
   return (
     <div
-      className={`relative shrink-0 ${THUMB_WIDTH} aspect-[9/16] rounded-xl overflow-hidden bg-gray-200 shadow-sm ring-1 ring-black/5 group/thumb`}
+      className={`relative shrink-0 ${THUMB_WIDTH} aspect-[9/16] rounded-xl overflow-hidden bg-surface-tertiary shadow-sm ring-1 ring-black/5 group/thumb`}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
     >
@@ -139,19 +139,19 @@ export const FeedReelsStrip: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-md shadow-gray-200/60">
+      <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-md shadow-gray-200/60">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
             <div className="h-5 w-5 rounded bg-primary-100 animate-pulse" />
-            <div className="h-4 w-24 rounded bg-gray-200 animate-pulse" />
+            <div className="h-4 w-24 rounded bg-surface-tertiary animate-pulse" />
           </div>
-          <div className="h-8 w-8 rounded-full bg-gray-100 animate-pulse" />
+          <div className="h-8 w-8 rounded-full bg-surface-secondary animate-pulse" />
         </div>
         <div className="flex gap-3 overflow-hidden px-4 pb-4">
           {[1, 2, 3, 4, 5].map((i) => (
             <div
               key={i}
-              className={`shrink-0 ${THUMB_WIDTH} aspect-[9/16] rounded-xl bg-gray-200 animate-pulse`}
+              className={`shrink-0 ${THUMB_WIDTH} aspect-[9/16] rounded-xl bg-surface-tertiary animate-pulse`}
             />
           ))}
         </div>
@@ -164,7 +164,7 @@ export const FeedReelsStrip: React.FC = () => {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-md shadow-gray-200/60">
+    <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-md shadow-gray-200/60">
       <div className="flex items-center justify-between px-4 pt-4 pb-1">
         <h3 className="text-[15px] font-bold text-[#1c1e21] flex items-center gap-2">
           <Clapperboard className="w-5 h-5 text-primary-600 shrink-0" />
@@ -172,7 +172,7 @@ export const FeedReelsStrip: React.FC = () => {
         </h3>
         <Link
           href="/memories/explore"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-700"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-primary-700"
           aria-label="More reels"
         >
           <MoreHorizontal className="w-5 h-5" />
@@ -184,7 +184,7 @@ export const FeedReelsStrip: React.FC = () => {
           <button
             type="button"
             onClick={() => scrollStrip('left')}
-            className="flex absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-gray-200"
+            className="flex absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-border"
             aria-label="Scroll left"
           >
             <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
@@ -194,7 +194,7 @@ export const FeedReelsStrip: React.FC = () => {
           <button
             type="button"
             onClick={() => scrollStrip('right')}
-            className="flex absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-gray-200"
+            className="flex absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-border"
             aria-label="Scroll right"
           >
             <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
@@ -211,7 +211,7 @@ export const FeedReelsStrip: React.FC = () => {
         </div>
       </div>
 
-      <div className="border-t border-gray-100 py-3">
+      <div className="border-t border-border-subtle py-3">
         <Link
           href="/memories/explore"
           className="block text-center text-sm font-semibold text-primary-600 hover:text-primary-700 hover:underline"

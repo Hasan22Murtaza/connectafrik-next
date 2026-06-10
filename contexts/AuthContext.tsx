@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { checkAndSetupFCMTokenOnLogin, deactivateTokenOnLogout } from '@/shared/utils/fcmClient'
 import { flushUserPresenceOnLeave } from '@/lib/flushUserPresenceOnLeave'
+import { useTheme } from '@/shared/theme/useTheme'
 
 interface AuthContextType {
   user: User | null
@@ -36,6 +37,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const { setTheme } = useTheme()
+
+  const resetThemeToLight = () => {
+    setTheme('light')
+  }
 
   useEffect(() => {
     // Get initial session (guard against refresh_token_not_found / invalid session)
@@ -66,6 +72,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (event === 'SIGNED_IN' && session?.user && typeof window !== 'undefined') {
           checkAndSetupFCMTokenOnLogin()
         }
+        if (event === 'SIGNED_OUT') {
+          resetThemeToLight()
+        }
       } catch {
         setSession(null)
         setUser(null)
@@ -74,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [setTheme])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -111,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
+    resetThemeToLight()
     await deactivateTokenOnLogout().catch(() => {})
     await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'local' })
@@ -118,6 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOutAllDevices = async () => {
+    resetThemeToLight()
     await deactivateTokenOnLogout().catch(() => {})
     await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'global' })

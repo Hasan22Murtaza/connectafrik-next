@@ -91,14 +91,14 @@ const Avatar = ({ src, name, size = 'md' }: { src?: string | null; name: string;
     <img src={src} alt={name} className={`${cls} rounded-full object-cover`} />
   ) : (
     <div className={`${cls} rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center`}>
-      <span className="font-bold text-gray-500">{name.charAt(0).toUpperCase()}</span>
+      <span className="font-bold text-content-secondary">{name.charAt(0).toUpperCase()}</span>
     </div>
   )
 }
 
 const DetailRow = ({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) => (
-  <div className="flex items-center gap-3 text-[15px] text-gray-700">
-    <Icon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+  <div className="flex items-center gap-3 text-[15px] text-content">
+    <Icon className="w-5 h-5 text-content-tertiary flex-shrink-0" />
     <span>{children}</span>
   </div>
 )
@@ -106,37 +106,37 @@ const DetailRow = ({ icon: Icon, children }: { icon: React.ElementType; children
 const ProfileSkeleton = () => (
   <div className="min-h-screen px-4 mt-4">
     <div className=" w-full mx-auto">
-      <div className="bg-white shadow-sm border-b border-gray-200 rounded-2xl">
+      <div className="bg-surface shadow-sm border-b border-border rounded-2xl">
         <div className="px-4 sm:px-6 py-5">
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 items-center sm:items-start">
-            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gray-300 animate-pulse" />
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-surface-tertiary animate-pulse" />
             <div className="flex-1 space-y-3 text-center sm:text-left w-full">
-              <div className="h-8 w-56 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
-              <div className="h-4 w-44 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
-              <div className="h-4 w-72 bg-gray-200 rounded animate-pulse mx-auto sm:mx-0" />
+              <div className="h-8 w-56 bg-surface-tertiary rounded animate-pulse mx-auto sm:mx-0" />
+              <div className="h-4 w-44 bg-surface-tertiary rounded animate-pulse mx-auto sm:mx-0" />
+              <div className="h-4 w-72 bg-surface-tertiary rounded animate-pulse mx-auto sm:mx-0" />
             </div>
           </div>
         </div>
-        <div className="flex gap-2 px-4 sm:px-6 py-3 border-t border-gray-200">
-          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-8 w-16 bg-gray-200 rounded animate-pulse" />)}
+        <div className="flex gap-2 px-4 sm:px-6 py-3 border-t border-border">
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-8 w-16 bg-surface-tertiary rounded animate-pulse" />)}
         </div>
       </div>
       <div className="mt-4 w-full flex flex-col lg:flex-row gap-4">
         <div className="w-full lg:w-[300px] ">
-          <div className="bg-white shadow-sm p-4 space-y-3 rounded-2xl">
-            {[1, 2, 3, 4].map((i) => <div key={i} className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${90 - i * 15}%` }} />)}
+          <div className="bg-surface shadow-sm p-4 space-y-3 rounded-2xl">
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-4 bg-surface-tertiary rounded animate-pulse" style={{ width: `${90 - i * 15}%` }} />)}
           </div>
         </div>
         <div className="flex-1 space-y-4 ">
-          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+          <div className="bg-surface rounded-2xl shadow-sm p-4 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse" />
+              <div className="w-10 h-10 rounded-full bg-surface-tertiary animate-pulse" />
               <div className="space-y-2 flex-1">
-                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
-                <div className="h-3 w-20 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-32 bg-surface-tertiary rounded animate-pulse" />
+                <div className="h-3 w-20 bg-surface-tertiary rounded animate-pulse" />
               </div>
             </div>
-            <div className="h-20 w-full bg-gray-200 rounded animate-pulse" />
+            <div className="h-20 w-full bg-surface-tertiary rounded animate-pulse" />
           </div>
         </div>
       </div>
@@ -582,13 +582,13 @@ const UserProfilePage: React.FC = () => {
   if (loading) return <ProfileSkeleton />
 
   if (!profile) return (
-    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-8 max-w-md text-center">
-        <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-5">
-          <Users className="w-10 h-10 text-gray-300" />
+    <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
+      <div className="bg-surface rounded-2xl shadow-header p-8 max-w-md text-center">
+        <div className="w-20 h-20 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-5">
+          <Users className="w-10 h-10 text-content-tertiary" />
         </div>
-        <h1 className="text-2xl font-semibold text-gray-600 mb-2">User not found</h1>
-        <p className="text-gray-500 mb-6">The user you&apos;re looking for doesn&apos;t exist or may have been removed.</p>
+        <h1 className="text-2xl font-semibold text-content-secondary mb-2">User not found</h1>
+        <p className="text-content-secondary mb-6">The user you&apos;re looking for doesn&apos;t exist or may have been removed.</p>
         <button onClick={() => router.push('/feed')} className="h-10 px-6 bg-[#F97316] text-white text-sm font-semibold rounded-lg hover:bg-[#ea580c] transition">Back to Feed</button>
       </div>
     </div>
@@ -603,13 +603,13 @@ const UserProfilePage: React.FC = () => {
   const canCommentOnPost = (authorId: string) => isOwnProfile || canComment(viewerId, authorId, profile.allow_comments ?? 'everyone', isMutual)
 
   if (!canView) return (
-    <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)]  p-8 max-w-md text-center">
-        <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center mx-auto mb-6">
-          <span className="text-4xl font-bold text-gray-400">{profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}</span>
+    <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
+      <div className="bg-surface rounded-2xl shadow-header  p-8 max-w-md text-center">
+        <div className="w-20 h-20 rounded-full bg-surface-tertiary flex items-center justify-center mx-auto mb-6">
+          <span className="text-4xl font-bold text-content-tertiary">{profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}</span>
         </div>
-        <h1 className="text-xl font-semibold text-gray-600 mb-2">This content isn&apos;t available</h1>
-        <p className="text-gray-600 mb-6">This person only shares content with a small group of people, or the link may be broken.</p>
+        <h1 className="text-xl font-semibold text-content-secondary mb-2">This content isn&apos;t available</h1>
+        <p className="text-content-secondary mb-6">This person only shares content with a small group of people, or the link may be broken.</p>
         <button onClick={() => router.push('/feed')} className="px-5 py-2.5 bg-[#F97316] text-white rounded-full font-semibold hover:bg-[#ea580c] transition">Go to Feed</button>
       </div>
     </div>
@@ -617,20 +617,20 @@ const UserProfilePage: React.FC = () => {
 
   const friendBtnConfig: Record<FriendStatus, { label: string; icon: React.ElementType; cls: string }> = {
     friends: { label: 'Friends', icon: UserCheck, cls: 'bg-green-100 text-green-800 hover:bg-green-200' },
-    pending_sent: { label: 'Request Sent', icon: UserCheck, cls: 'bg-gray-100 text-gray-600 hover:bg-gray-200' },
+    pending_sent: { label: 'Request Sent', icon: UserCheck, cls: 'bg-surface-secondary text-content-secondary hover:bg-surface-hover' },
     pending_received: { label: 'Accept Request', icon: UserPlus, cls: 'bg-[#1b74e4] text-white hover:bg-[#1a6ed8]' },
-    none: { label: 'Add Friend', icon: UserPlus, cls: 'bg-[#e4e6eb] text-gray-900 hover:bg-[#d8dadf]' },
+    none: { label: 'Add Friend', icon: UserPlus, cls: 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' },
   }
   const fb = friendBtnConfig[friendshipStatus]
 
   const btnBase = 'inline-flex items-center justify-center gap-2 h-9 px-4 rounded-md text-sm font-semibold transition-colors'
-  const btnGray = `${btnBase} bg-[#e4e6eb] text-gray-900 hover:bg-[#d8dadf]`
+  const btnGray = `${btnBase} bg-[#e4e6eb] text-content hover:bg-[#d8dadf]`
 
   return (
     <div className="min-h-screen  pb-20 sm:pb-8 px-4">
       
       <div className=" mt-4">
-        <div className="bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)] rounded-2xl">
+        <div className="bg-surface shadow-header rounded-2xl">
         <div className="px-4 sm:px-6 pt-4 pb-3 sm:py-5">
           <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
             <div className="flex-shrink-0">
@@ -643,22 +643,22 @@ const UserProfilePage: React.FC = () => {
 
             <div className="flex-1 min-w-0 text-center sm:text-left">
               <div className="flex flex-wrap items-baseline gap-x-2 justify-center sm:justify-start">
-                <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-semibold text-gray-600 leading-tight">{profile.full_name}</h1>
+                <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-semibold text-content-secondary leading-tight">{profile.full_name}</h1>
                 <div className="flex items-center gap-1">
                   {profile.is_verified && (
                     <div className="w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center">
                       <span className="text-white text-[9px] font-bold">{'\u2713'}</span>
                     </div>
                   )}
-                  <span className="text-gray-500 text-sm sm:text-base">@{profile.username}</span>
+                  <span className="text-content-secondary text-sm sm:text-base">@{profile.username}</span>
                 </div>
               </div>
 
-              <p className="mt-0.5 text-[14px] sm:text-[15px] text-gray-600">
-                <span className="font-semibold text-gray-900">{fmt(profile.following_count)}</span> tapping in
+              <p className="mt-0.5 text-[14px] sm:text-[15px] text-content-secondary">
+                <span className="font-semibold text-content">{fmt(profile.following_count)}</span> tapping in
               </p>
 
-              {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-gray-700 leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
+              {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
 
               {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
                 <div className="flex items-center justify-center sm:justify-start mt-1.5 gap-2">
@@ -667,12 +667,12 @@ const UserProfilePage: React.FC = () => {
                       <div key={f.user_id} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-white overflow-hidden">
                         {f.avatar_url
                           ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full bg-gray-300 flex items-center justify-center"><span className="text-[9px] font-semibold text-gray-600">{f.full_name.charAt(0).toUpperCase()}</span></div>
+                          : <div className="w-full h-full bg-surface-tertiary flex items-center justify-center"><span className="text-[9px] font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
                         }
                       </div>
                     ))}
                   </div>
-                  <span className="text-[12px] sm:text-[13px] text-gray-500">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                  <span className="text-[12px] sm:text-[13px] text-content-secondary">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                 </div>
               )}
             </div>
@@ -680,16 +680,16 @@ const UserProfilePage: React.FC = () => {
 
           <div className="flex items-center gap-1.5 mt-3 sm:hidden">
             {isOwnProfile ? (
-              <button onClick={() => router.push('/profile')} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-gray-900 active:bg-[#d8dadf] transition">Edit Profile</button>
+              <button onClick={() => router.push('/profile')} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">Edit Profile</button>
             ) : (
               <>
                 {showMessageBtn && (
-                  <button onClick={handleStartChat} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-gray-900 active:bg-[#d8dadf] transition">
+                  <button onClick={handleStartChat} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">
                     <MessageCircle className="w-3.5 h-3.5" />Message
                   </button>
                 )}
                 {showFollowBtn && (
-                  <button onClick={handleFollow} disabled={followLoading} className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap disabled:opacity-50 transition ${isFollowing ? 'bg-[#e4e6eb] text-gray-900 active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
+                  <button onClick={handleFollow} disabled={followLoading} className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap disabled:opacity-50 transition ${isFollowing ? 'bg-[#e4e6eb] text-content active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
                     {followLoading ? <Spinner className="w-3.5 h-3.5" /> : isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
                     {isFollowing ? 'Tapped In' : 'Tap In'}
                   </button>
@@ -699,13 +699,13 @@ const UserProfilePage: React.FC = () => {
                 </button>
                 {showMessageBtn && (
                   <div className="relative flex-shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-gray-600 active:bg-[#d8dadf] transition" aria-label="More">
+                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-content-secondary active:bg-[#d8dadf] transition" aria-label="More">
                       <MoreHorizontal className="w-5 h-5" />
                     </button>
                     {showMenu && (
-                      <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
-                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-gray-500" />Call</button>
-                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-gray-500" />Video Call</button>
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-surface rounded-lg shadow-xl border border-border py-1 z-50">
+                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
+                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
                       </div>
                     )}
                   </div>
@@ -715,7 +715,7 @@ const UserProfilePage: React.FC = () => {
           </div>
         </div>
 
-        <hr className="border-gray-200" />
+        <hr className="border-border" />
 
         <div className="flex items-center justify-between px-2 sm:px-4">
           <div className="flex items-center overflow-x-auto scrollbar-hide flex-1">
@@ -724,7 +724,7 @@ const UserProfilePage: React.FC = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 sm:px-4 py-3 text-[13px] sm:text-[15px] font-semibold border-b-[3px] transition-colors whitespace-nowrap ${
-                  activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-gray-500 border-transparent hover:bg-gray-50 rounded-t-md'
+                  activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-content-secondary border-transparent hover:bg-surface-hover rounded-t-md'
                 }`}
               >
                 {tab.label}
@@ -739,7 +739,7 @@ const UserProfilePage: React.FC = () => {
               <>
                 {showMessageBtn && <button onClick={handleStartChat} className={btnGray}><MessageCircle className="w-4 h-4" />Message</button>}
                 {showFollowBtn && (
-                  <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-gray-900 hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
+                  <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
                     {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
                     {isFollowing ? 'Tapped In' : 'Tap In'}
                   </button>
@@ -749,13 +749,13 @@ const UserProfilePage: React.FC = () => {
                 </button>
                 {showMessageBtn && (
                   <div className="relative flex-shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-gray-600 hover:bg-[#d8dadf] transition" aria-label="More">
+                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-content-secondary hover:bg-[#d8dadf] transition" aria-label="More">
                       <MoreHorizontal className="w-5 h-5" />
                     </button>
                     {showMenu && (
-                      <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50">
-                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-gray-500" />Call</button>
-                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-gray-800 hover:bg-gray-100 flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-gray-500" />Video Call</button>
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-surface rounded-lg shadow-xl border border-border py-1 z-50">
+                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
+                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
                       </div>
                     )}
                   </div>
@@ -769,9 +769,9 @@ const UserProfilePage: React.FC = () => {
         <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
 
           <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
-            <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-4">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-600 mb-3">Personal details</h2>
-              {profile.bio && <p className="text-sm text-gray-700 text-center leading-relaxed mb-3 pb-3 border-b border-gray-200">{profile.bio}</p>}
+            <div className="bg-surface sm:rounded-2xl shadow-header p-4">
+              <h2 className="text-base sm:text-lg font-semibold text-content-secondary mb-3">Personal details</h2>
+              {profile.bio && <p className="text-sm text-content text-center leading-relaxed mb-3 pb-3 border-b border-border">{profile.bio}</p>}
               <div className="space-y-2.5">
                 {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
                 {visibleFields.location && profileLivesInLine ? (
@@ -782,23 +782,23 @@ const UserProfilePage: React.FC = () => {
                 <DetailRow icon={Calendar}><span suppressHydrationWarning>Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}</span></DetailRow>
                 <DetailRow icon={Users}><span className="font-semibold">{profile.posts_count}</span> posts</DetailRow>
               </div>
-              <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-gray-600 bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
+              <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-content-secondary bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
             </div>
 
             {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-              <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-4">
-                <h2 className="text-base sm:text-lg font-semibold text-gray-600">Friends</h2>
-                <p className="text-[13px] text-gray-500 mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
+              <div className="bg-surface sm:rounded-2xl shadow-header p-4">
+                <h2 className="text-base sm:text-lg font-semibold text-content-secondary">Friends</h2>
+                <p className="text-[13px] text-content-secondary mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {mutualFriends.slice(0, 6).map((f) => (
                     <button key={f.user_id} onClick={() => router.push(`/user/${f.username || f.user_id}`)} className="text-left group focus:outline-none">
-                      <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                      <div className="aspect-square rounded-lg overflow-hidden bg-surface-secondary">
                         {f.avatar_url
                           ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover group-hover:brightness-95 transition" />
-                          : <div className="w-full h-full flex items-center justify-center bg-gray-200 group-hover:bg-gray-300 transition"><span className="text-lg font-semibold text-gray-500">{f.full_name.charAt(0).toUpperCase()}</span></div>
+                          : <div className="w-full h-full flex items-center justify-center bg-surface-tertiary group-hover:bg-surface-tertiary transition"><span className="text-lg font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
                         }
                       </div>
-                      <p className="text-[12px] sm:text-[13px] font-medium text-gray-900 truncate mt-1 group-hover:underline">{f.full_name}</p>
+                      <p className="text-[12px] sm:text-[13px] font-medium text-content truncate mt-1 group-hover:underline">{f.full_name}</p>
                     </button>
                   ))}
                 </div>
@@ -807,14 +807,14 @@ const UserProfilePage: React.FC = () => {
             )}
 
             {sidebarPhotos.length > 0 && (
-              <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-4">
+              <div className="bg-surface sm:rounded-2xl shadow-header p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-600">Photos</h2>
+                  <h2 className="text-base sm:text-lg font-semibold text-content-secondary">Photos</h2>
                   <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
                 </div>
                 <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">
                   {sidebarPhotos.slice(0, 9).map((p, i) => (
-                    <div key={`sp-${p.postId}-${i}`} className="aspect-square bg-gray-100 cursor-pointer hover:brightness-90 transition overflow-hidden" onClick={() => setActiveTab('photos')}>
+                    <div key={`sp-${p.postId}-${i}`} className="aspect-square bg-surface-secondary cursor-pointer hover:brightness-90 transition overflow-hidden" onClick={() => setActiveTab('photos')}>
                       <img src={p.url} alt="" className="w-full h-full object-cover" loading="lazy" />
                     </div>
                   ))}
@@ -826,7 +826,7 @@ const UserProfilePage: React.FC = () => {
           <div className="flex-1 min-w-0">
             {activeTab === 'posts' && (
               postsTabLoading && !postsTabFetched ? (
-                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (
@@ -855,7 +855,7 @@ const UserProfilePage: React.FC = () => {
 
             {activeTab === 'photos' && (
               photosTabLoading && !photosTabFetched ? (
-                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (
@@ -865,7 +865,7 @@ const UserProfilePage: React.FC = () => {
 
             {activeTab === 'friends' && (
               friendsTabLoading && !friendsTabFetched ? (
-                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (
@@ -875,7 +875,7 @@ const UserProfilePage: React.FC = () => {
 
             {activeTab === 'reels' && (
               reelsTabLoading && !reelsTabFetched ? (
-                <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (

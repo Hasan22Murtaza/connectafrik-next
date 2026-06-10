@@ -173,10 +173,10 @@ const SigninForm: React.FC = () => {
               <img src="/assets/images/logo_2.png" alt="" className="w-30" />
             </Link>
           </div>
-          <h1 className="sm:text-3xl text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="sm:text-3xl text-2xl font-bold text-content mb-2">
             Welcome Back
           </h1>
-          <p className="text-gray-600 sm:text-base text-sm">
+          <p className="text-content-secondary sm:text-base text-sm">
             Sign in to continue your journey with ConnectAfrik
           </p>
         </div>
@@ -187,7 +187,7 @@ const SigninForm: React.FC = () => {
             type="button"
             onClick={handleGoogleSignIn}
             disabled={isGoogleLoading || isLoading}
-            className="w-full border border-gray-300 rounded-lg py-3 flex items-center justify-center gap-2 bg-white text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full border border-gray-300 rounded-lg py-3 flex items-center justify-center gap-2 bg-surface text-content font-medium hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FcGoogle className="w-5 h-5" />
             {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
@@ -198,19 +198,19 @@ const SigninForm: React.FC = () => {
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">or</span>
+              <span className="px-2 bg-surface text-content-secondary">or</span>
             </div>
           </div>
 
           {/* Login Method Toggle */}
-          <div className="flex gap-2 mb-2 p-1 bg-gray-100 rounded-lg">
+          <div className="flex gap-2 mb-2 p-1 bg-surface-secondary rounded-lg">
             <button
               type="button"
               onClick={() => setLoginMethod("email")}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 loginMethod === "email"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-surface text-primary-600 shadow-sm"
+                  : "text-content-secondary hover:text-content"
               }`}
             >
               Email
@@ -220,8 +220,8 @@ const SigninForm: React.FC = () => {
               onClick={() => setLoginMethod("phone")}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 loginMethod === "phone"
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-surface text-primary-600 shadow-sm"
+                  : "text-content-secondary hover:text-content"
               }`}
             >
               Phone
@@ -235,12 +235,12 @@ const SigninForm: React.FC = () => {
                 <div>
                   <label
                     htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 mb-2"
+                    className="block text-sm font-medium text-content mb-2"
                   >
                     Email Address
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-5 h-5" />
                     <input
                       id="email"
                       name="email"
@@ -258,12 +258,12 @@ const SigninForm: React.FC = () => {
                 <div>
                   <label
                     htmlFor="password"
-                    className="block text-sm font-medium text-gray-700 mb-2"
+                    className="block text-sm font-medium text-content mb-2"
                   >
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-5 h-5" />
                     <input
                       id="password"
                       name="password"
@@ -277,7 +277,7 @@ const SigninForm: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600  cursor-pointer"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-content-tertiary hover:text-content-secondary  cursor-pointer"
                     >
                       {showPassword ? (
                         <EyeOff className="w-5 h-5" />
@@ -299,7 +299,7 @@ const SigninForm: React.FC = () => {
                     />
                     <label
                       htmlFor="remember-me"
-                      className="ml-2 block text-sm text-gray-700"
+                      className="ml-2 block text-sm text-content"
                     >
                       Remember me
                     </label>
@@ -320,7 +320,7 @@ const SigninForm: React.FC = () => {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="block text-sm font-medium text-gray-700 mb-2"
+                    className="block text-sm font-medium text-content mb-2"
                   >
                     Phone Number
                   </label>
@@ -358,7 +358,7 @@ const SigninForm: React.FC = () => {
                     />
                   </div>
 
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-content-secondary mt-1">
                     We'll send you a verification code via SMS
                   </p>
                 </div>
@@ -382,7 +382,7 @@ const SigninForm: React.FC = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+                <span className="px-2 bg-surface text-content-secondary">
                   New to ConnectAfrik?
                 </span>
               </div>
@@ -408,7 +408,7 @@ const Signin: React.FC = () => {
       fallback={
         <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-gray-600">Loading...</p>
+            <p className="text-content-secondary">Loading...</p>
           </div>
         </div>
       }

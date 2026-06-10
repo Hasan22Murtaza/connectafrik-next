@@ -325,9 +325,9 @@ const ProductDetailPage: React.FC = () => {
 
         <div className="max-w-5xl mx-auto text-center">
 
-          <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <ShoppingBag className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
 
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Product not found</h2>
+          <h2 className="text-xl font-bold text-content mb-2">Product not found</h2>
 
           <button
 
@@ -407,7 +407,7 @@ const ProductDetailPage: React.FC = () => {
 
           onClick={() => router.push("/marketplace")}
 
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-1 text-sm"
+          className="flex items-center gap-2 text-content-secondary hover:text-content mb-1 text-sm"
 
         >
 
@@ -419,7 +419,7 @@ const ProductDetailPage: React.FC = () => {
 
 
 
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
+        <div className="bg-surface rounded-xl border border-border-subtle overflow-hidden shadow-sm">
 
           <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-gray-100">
 
@@ -427,7 +427,7 @@ const ProductDetailPage: React.FC = () => {
 
             <div className="min-w-0">
 
-              <div className="relative aspect-square bg-gray-100">
+              <div className="relative aspect-square bg-surface-secondary">
 
                 <img
 
@@ -449,7 +449,7 @@ const ProductDetailPage: React.FC = () => {
 
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
 
-                    <span className="bg-white text-gray-900 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
+                    <span className="bg-surface text-content text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
 
                       {isOutOfStock ? "Sold out" : "Unavailable"}
 
@@ -481,7 +481,7 @@ const ProductDetailPage: React.FC = () => {
 
                           ? "border-primary-600"
 
-                          : "border-transparent hover:border-gray-300"
+                          : "border-transparent hover:border-border"
 
                         }`}
 
@@ -515,7 +515,7 @@ const ProductDetailPage: React.FC = () => {
 
               <div className="flex items-start justify-between gap-3 mb-1">
 
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-2xl font-bold text-content">
 
                   {formatProductPrice(product)}
 
@@ -529,7 +529,7 @@ const ProductDetailPage: React.FC = () => {
 
                     onClick={handleShare}
 
-                    className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+                    className="p-2 text-content-secondary hover:text-content hover:bg-surface-hover rounded-full transition-colors"
 
                     aria-label="Share"
 
@@ -549,7 +549,7 @@ const ProductDetailPage: React.FC = () => {
 
                         ? "text-white bg-primary-600"
 
-                        : "text-gray-500 hover:text-primary-600 hover:bg-gray-100"
+                        : "text-content-secondary hover:text-primary-600 hover:bg-surface-hover"
 
                       }`}
 
@@ -567,7 +567,7 @@ const ProductDetailPage: React.FC = () => {
 
 
 
-              <h1 className="text-base sm:text-lg font-semibold text-gray-900 leading-snug mb-1.5">
+              <h1 className="text-base sm:text-lg font-semibold text-content leading-snug mb-1.5">
 
                 {product.title}
 
@@ -575,7 +575,7 @@ const ProductDetailPage: React.FC = () => {
 
 
 
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-content-secondary mb-2">
 
                 <span>
 
@@ -609,13 +609,13 @@ const ProductDetailPage: React.FC = () => {
 
               <div className="flex flex-wrap gap-1.5 text-xs mb-2.5">
 
-                <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full capitalize">
+                <span className="px-2.5 py-1 bg-surface-secondary text-content rounded-full capitalize">
 
                   {product.category}
 
                 </span>
 
-                <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full capitalize">
+                <span className="px-2.5 py-1 bg-surface-secondary text-content rounded-full capitalize">
 
                   {product.condition}
 
@@ -649,7 +649,7 @@ const ProductDetailPage: React.FC = () => {
 
                   className={`w-full py-2 px-3 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${contactingSeller || isOwnProduct
 
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      ? "bg-surface-secondary text-content-tertiary cursor-not-allowed"
 
                       : "bg-primary-600 text-white hover:bg-primary-700"
 
@@ -685,7 +685,7 @@ const ProductDetailPage: React.FC = () => {
 
                       ? "border-primary-600 text-primary-600 hover:bg-primary-50"
 
-                      : "border-gray-200 text-gray-400 cursor-not-allowed"
+                      : "border-border text-content-tertiary cursor-not-allowed"
 
                     }`}
 
@@ -717,7 +717,7 @@ const ProductDetailPage: React.FC = () => {
 
                     href={`tel:${product.contact_phone}`}
 
-                    className="w-full py-2 px-3 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 font-medium text-sm"
+                    className="w-full py-2 px-3 rounded-lg border border-border text-content hover:bg-surface-hover transition-colors flex items-center justify-center gap-2 font-medium text-sm"
 
                   >
 
@@ -741,11 +741,11 @@ const ProductDetailPage: React.FC = () => {
 
         {/* Description */}
 
-        <section className="mt-1.5 bg-white rounded-xl border border-gray-100 p-2.5 sm:p-3 shadow-sm">
+        <section className="mt-1.5 bg-surface rounded-xl border border-border-subtle p-2.5 sm:p-3 shadow-sm">
 
-          <h2 className="text-sm font-semibold text-gray-900 mb-2">Description</h2>
+          <h2 className="text-sm font-semibold text-content mb-2">Description</h2>
 
-          <p className="text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed">
+          <p className="text-sm text-content-secondary whitespace-pre-wrap break-words leading-relaxed">
 
             {product.description}
 
@@ -753,7 +753,7 @@ const ProductDetailPage: React.FC = () => {
 
           {product.stock_quantity > 0 && (
 
-            <p className="text-xs text-gray-500 mt-1.5">
+            <p className="text-xs text-content-secondary mt-1.5">
 
               {product.stock_quantity} available
 
@@ -767,9 +767,9 @@ const ProductDetailPage: React.FC = () => {
 
         {/* Seller */}
 
-        <section className="mt-1.5 bg-white rounded-xl border border-gray-100 p-2.5 sm:p-3 shadow-sm">
+        <section className="mt-1.5 bg-surface rounded-xl border border-border-subtle p-2.5 sm:p-3 shadow-sm">
 
-          <h2 className="text-sm font-semibold text-gray-900 mb-2">Seller information</h2>
+          <h2 className="text-sm font-semibold text-content mb-2">Seller information</h2>
 
           <div className="flex items-center gap-3 min-w-0">
 
@@ -793,13 +793,13 @@ const ProductDetailPage: React.FC = () => {
 
             <div className="flex-1 min-w-0">
 
-              <p className="font-medium text-gray-900 text-sm truncate">
+              <p className="font-medium text-content text-sm truncate">
 
                 {product.seller?.full_name || "Unknown"}
 
               </p>
 
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-content-secondary truncate">
 
                 @{product.seller?.username || "unknown"}
 
@@ -811,7 +811,7 @@ const ProductDetailPage: React.FC = () => {
 
           {product.seller?.bio && (
 
-            <p className="text-sm text-gray-600 mt-2 line-clamp-3">{product.seller.bio}</p>
+            <p className="text-sm text-content-secondary mt-2 line-clamp-3">{product.seller.bio}</p>
 
           )}
 

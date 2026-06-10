@@ -499,28 +499,28 @@ const CreateMemoryPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-canvas">
       {/* Page Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <div className="bg-surface border-b border-border sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-3 sm:px-6 py-3 flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-surface-hover rounded-full transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
+            <ArrowLeft className="w-5 h-5 text-content" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900">Create Memory</h1>
+          <h1 className="text-lg font-semibold text-content">Create Memory</h1>
         </div>
       </div>
 
       {/* Page Content */}
       <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
         <form onSubmit={handleSubmit}>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="bg-surface rounded-xl shadow-sm border border-border">
 
             {/* Video Upload/Recording Section */}
             <div className="p-3 sm:p-6">
-              <h2 className="text-sm sm:text-base font-semibold text-gray-900 mb-3 sm:mb-4">Video</h2>
+              <h2 className="text-sm sm:text-base font-semibold text-content mb-3 sm:mb-4">Video</h2>
 
               {!videoFile && recordingMode === 'upload' ? (
                 <div className="space-y-4">
@@ -532,7 +532,7 @@ const CreateMemoryPage: React.FC = () => {
                       className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg border-2 transition-colors ${
                         recordingMode === 'upload'
                           ? 'border-orange-400 bg-primary-50 text-primary-700'
-                          : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                          : 'border-border text-content-secondary hover:border-gray-400'
                       }`}
                     >
                       <Upload className="w-5 h-5 mx-auto mb-1 sm:mb-2" />
@@ -547,7 +547,7 @@ const CreateMemoryPage: React.FC = () => {
                       className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg border-2 transition-colors ${
                         (recordingMode as string) === 'record'
                           ? 'border-primary-500 bg-primary-50 text-primary-700'
-                          : 'border-gray-300 text-gray-600 hover:border-gray-400'
+                          : 'border-border text-content-secondary hover:border-gray-400'
                       }`}
                     >
                       <Camera className="w-5 h-5 mx-auto mb-1 sm:mb-2" />
@@ -556,10 +556,10 @@ const CreateMemoryPage: React.FC = () => {
                   </div>
 
                   {/* Upload Interface */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-8 text-center">
-                    <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3 sm:mb-4" />
-                    <p className="text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Click to upload or drag and drop</p>
-                    <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
+                  <div className="border-2 border-dashed border-border rounded-lg p-4 sm:p-8 text-center">
+                    <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-content-tertiary mx-auto mb-3 sm:mb-4" />
+                    <p className="text-sm sm:text-base text-content-secondary mb-1.5 sm:mb-2">Click to upload or drag and drop</p>
+                    <p className="text-xs sm:text-sm text-content-secondary mb-3 sm:mb-4">
                       MP4, MOV, AVI up to 100MB &bull; Max {MAX_REEL_DURATION / 60} minutes
                     </p>
                     <button
@@ -619,7 +619,7 @@ const CreateMemoryPage: React.FC = () => {
                       {isRecording && !isPaused && (
                         <div className="absolute top-3 left-1/2 -translate-x-1/2">
                           <div className="flex items-center gap-1.5 bg-red-600/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                            <div className="w-2 h-2 bg-surface rounded-full animate-pulse" />
                             <span className="text-white text-xs font-medium">REC</span>
                           </div>
                         </div>
@@ -662,7 +662,7 @@ const CreateMemoryPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={stopRecording}
-                                className="bg-white hover:bg-gray-100 text-red-600 rounded-full p-2.5 sm:p-3 transition-all hover:scale-105 active:scale-95 ring-2 ring-red-400"
+                                className="bg-surface hover:bg-surface-hover text-red-600 rounded-full p-2.5 sm:p-3 transition-all hover:scale-105 active:scale-95 ring-2 ring-red-400"
                               >
                                 <Square className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
                               </button>
@@ -773,7 +773,7 @@ const CreateMemoryPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600 px-1">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-content-secondary px-1">
                     <span>Duration: {formatTime(videoDuration)}</span>
                     <button
                       type="button"
@@ -788,15 +788,15 @@ const CreateMemoryPage: React.FC = () => {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-gray-200" />
+            <div className="border-t border-border" />
 
             {/* Details Section */}
             <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
-              <h2 className="text-sm sm:text-base font-semibold text-gray-900">Details</h2>
+              <h2 className="text-sm sm:text-base font-semibold text-content">Details</h2>
 
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content mb-2">
                   Title *
                 </label>
                 <input
@@ -808,14 +808,14 @@ const CreateMemoryPage: React.FC = () => {
                   maxLength={MAX_REEL_TITLE_LENGTH}
                   required
                 />
-                <div className="text-right text-xs text-gray-500 mt-1">
+                <div className="text-right text-xs text-content-secondary mt-1">
                   {title.length}/{MAX_REEL_TITLE_LENGTH}
                 </div>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content mb-2">
                   Description
                 </label>
                 <textarea
@@ -823,10 +823,10 @@ const CreateMemoryPage: React.FC = () => {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Tell people what your memory is about..."
                   rows={3}
-                  className="w-full px-3 py-2 text-sm sm:text-base text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  className="w-full px-3 py-2 text-sm sm:text-base text-content placeholder-gray-400 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                   maxLength={MAX_REEL_DESCRIPTION_LENGTH}
                 />
-                <div className="text-right text-xs text-gray-500 mt-1">
+                <div className="text-right text-xs text-content-secondary mt-1">
                   {description.length}/{MAX_REEL_DESCRIPTION_LENGTH}
                 </div>
               </div>
@@ -835,7 +835,7 @@ const CreateMemoryPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Category */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content mb-2">
                     Category
                   </label>
                   <select
@@ -853,7 +853,7 @@ const CreateMemoryPage: React.FC = () => {
 
                 {/* Aspect Ratio */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content mb-2">
                     Aspect Ratio
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -865,7 +865,7 @@ const CreateMemoryPage: React.FC = () => {
                         className={`sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-all duration-200 ${
                           aspectRatio === ratio.value
                             ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-300 shadow-sm'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                            : 'border-border text-content-secondary hover:border-border hover:bg-surface-canvas'
                         }`}
                       >
                         <div className="flex items-center space-x-1">
@@ -880,17 +880,17 @@ const CreateMemoryPage: React.FC = () => {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-gray-200" />
+            <div className="border-t border-border" />
 
             {/* Settings Section */}
             <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
-              <h2 className="text-sm sm:text-base font-semibold text-gray-900">Settings</h2>
+              <h2 className="text-sm sm:text-base font-semibold text-content">Settings</h2>
 
               {/* Tags & Privacy - side by side on md+ */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {/* Tags */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content mb-2">
                     Tags
                   </label>
                   <div className="space-y-2">
@@ -924,14 +924,14 @@ const CreateMemoryPage: React.FC = () => {
                         {tags.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                            className="inline-flex items-center space-x-1 px-3 py-1 bg-surface-secondary text-content rounded-full text-sm"
                           >
                             <Tag className="w-3 h-3" />
                             <span>{tag}</span>
                             <button
                               type="button"
                               onClick={() => removeTag(tag)}
-                              className="text-gray-500 hover:text-gray-700"
+                              className="text-content-secondary hover:text-content"
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -940,7 +940,7 @@ const CreateMemoryPage: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-content-secondary">
                       {tags.length}/{MAX_REEL_TAGS} tags
                     </div>
                   </div>
@@ -948,7 +948,7 @@ const CreateMemoryPage: React.FC = () => {
 
                 {/* Privacy Settings */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content mb-2">
                     Privacy
                   </label>
                   <div className="space-y-2">
@@ -960,8 +960,8 @@ const CreateMemoryPage: React.FC = () => {
                         className="text-primary-600 focus:ring-primary-500"
                       />
                       <div className="flex items-center space-x-2">
-                        <Globe className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700">Public</span>
+                        <Globe className="w-4 h-4 text-content-secondary" />
+                        <span className="text-sm text-content">Public</span>
                       </div>
                     </label>
 
@@ -973,8 +973,8 @@ const CreateMemoryPage: React.FC = () => {
                         className="text-primary-600 focus:ring-primary-500"
                       />
                       <div className="flex items-center space-x-2">
-                        <Lock className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700">Private</span>
+                        <Lock className="w-4 h-4 text-content-secondary" />
+                        <span className="text-sm text-content">Private</span>
                       </div>
                     </label>
                   </div>
@@ -983,28 +983,28 @@ const CreateMemoryPage: React.FC = () => {
 
               {/* Video Info */}
               {videoFile && (
-                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                  <h4 className="text-sm font-medium text-gray-900 mb-2">Video Information</h4>
-                  <div className="space-y-1.5 text-xs sm:text-sm text-gray-600">
+                <div className="bg-surface-canvas rounded-lg p-3 sm:p-4">
+                  <h4 className="text-sm font-medium text-content mb-2">Video Information</h4>
+                  <div className="space-y-1.5 text-xs sm:text-sm text-content-secondary">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500 flex-shrink-0">File:</span>
-                      <span className="font-medium text-gray-700 truncate ml-2 max-w-[50%] sm:max-w-[180px]">{videoFile.name}</span>
+                      <span className="text-content-secondary flex-shrink-0">File:</span>
+                      <span className="font-medium text-content truncate ml-2 max-w-[50%] sm:max-w-[180px]">{videoFile.name}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Size:</span>
-                      <span className="font-medium text-gray-700">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</span>
+                      <span className="text-content-secondary">Size:</span>
+                      <span className="font-medium text-content">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Duration:</span>
-                      <span className="font-medium text-gray-700">{formatTime(videoDuration)}</span>
+                      <span className="text-content-secondary">Duration:</span>
+                      <span className="font-medium text-content">{formatTime(videoDuration)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Type:</span>
-                      <span className="font-medium text-gray-700">{videoFile.type}</span>
+                      <span className="text-content-secondary">Type:</span>
+                      <span className="font-medium text-content">{videoFile.type}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-500">Ratio:</span>
-                      <span className="font-medium text-gray-700">{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.label || aspectRatio}</span>
+                      <span className="text-content-secondary">Ratio:</span>
+                      <span className="font-medium text-content">{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.label || aspectRatio}</span>
                     </div>
                   </div>
                 </div>
@@ -1012,7 +1012,7 @@ const CreateMemoryPage: React.FC = () => {
             </div>
 
             {/* Divider */}
-            <div className="border-t border-gray-200" />
+            <div className="border-t border-border" />
 
             {/* Action Buttons */}
             <div className="p-3 sm:p-6">

@@ -270,6 +270,8 @@ export interface Product {
   condition: 'new' | 'like-new' | 'good' | 'fair'
   location?: string
   country?: string
+  latitude?: number | null
+  longitude?: number | null
   images: string[]
   tags: string[]
   stock_quantity: number

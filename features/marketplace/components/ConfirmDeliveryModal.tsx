@@ -68,17 +68,17 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={handleClose}>
-      <div className="bg-white rounded-xl max-w-full mx-auto px-4 w-full" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface rounded-xl max-w-full mx-auto px-4 w-full" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Package className="w-5 h-5 text-primary-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Confirm Delivery</h2>
+            <h2 className="text-xl font-semibold text-content">Confirm Delivery</h2>
           </div>
           <button
             onClick={handleClose}
             disabled={isConfirming}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-content-tertiary hover:text-content-secondary transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -89,19 +89,19 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
           {!confirmed ? (
             <>
               {/* Order Info */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+              <div className="bg-surface-canvas rounded-lg p-4 mb-6">
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-gray-500">Order #</span>
-                    <span className="ml-2 font-medium text-gray-900">{orderNumber}</span>
+                    <span className="text-content-secondary">Order #</span>
+                    <span className="ml-2 font-medium text-content">{orderNumber}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Product:</span>
-                    <span className="ml-2 font-medium text-gray-900">{productTitle}</span>
+                    <span className="text-content-secondary">Product:</span>
+                    <span className="ml-2 font-medium text-content">{productTitle}</span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Seller:</span>
-                    <span className="ml-2 font-medium text-gray-900">{sellerName}</span>
+                    <span className="text-content-secondary">Seller:</span>
+                    <span className="ml-2 font-medium text-content">{sellerName}</span>
                   </div>
                 </div>
               </div>
@@ -123,7 +123,7 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
 
               {/* Tracking Number (Optional) */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content mb-2">
                   Tracking Number (Optional)
                 </label>
                 <input
@@ -132,7 +132,7 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   placeholder="Enter tracking number if available"
                   disabled={isConfirming}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
 
@@ -160,7 +160,7 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
                 <button
                   onClick={handleClose}
                   disabled={isConfirming}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  className="flex-1 px-6 py-3 border border-border rounded-lg text-content font-medium hover:bg-surface-hover transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -189,13 +189,13 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
               <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <h3 className="text-xl font-semibold text-content mb-2">
                 Delivery Confirmed!
               </h3>
-              <p className="text-gray-600 mb-1">
+              <p className="text-content-secondary mb-1">
                 Payment is being processed and will be released to the seller.
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-content-secondary">
                 Thank you for shopping on ConnectAfrik!
               </p>
             </div>

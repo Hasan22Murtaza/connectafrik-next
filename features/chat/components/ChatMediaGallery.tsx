@@ -187,14 +187,14 @@ function MediaTile({
       <button
         type="button"
         onClick={openItem}
-        className="flex aspect-square flex-col items-center justify-center rounded-lg bg-gray-100 p-2 text-left hover:bg-gray-200"
+        className="flex aspect-square flex-col items-center justify-center rounded-lg bg-surface-secondary p-2 text-left hover:bg-surface-hover"
       >
         <Link2 className="mb-1 h-8 w-8 shrink-0 text-primary-600" />
-        <span className="w-full break-all line-clamp-3 text-[10px] text-gray-600">
+        <span className="w-full break-all line-clamp-3 text-[10px] text-content-secondary">
           {item.url}
         </span>
         <span
-          className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[9px] font-medium text-gray-600"
+          className="mt-1 inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-0.5 text-[9px] font-medium text-content-secondary"
           onClick={(e) => {
             e.stopPropagation();
             onInfo(item);
@@ -224,7 +224,7 @@ function MediaTile({
       <button
         type="button"
         onClick={openItem}
-        className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100 hover:opacity-95"
+        className="group relative aspect-square overflow-hidden rounded-lg bg-surface-secondary hover:opacity-95"
         aria-label="Open image"
       >
           <img
@@ -276,18 +276,18 @@ function MediaTile({
     <button
       type="button"
       onClick={openItem}
-      className="group relative flex aspect-square flex-col items-center justify-center rounded-lg bg-gray-100 p-2 hover:bg-gray-200"
+      className="group relative flex aspect-square flex-col items-center justify-center rounded-lg bg-surface-secondary p-2 hover:bg-surface-hover"
       aria-label={item.file_name || "Document"}
     >
-      <FileText className="mb-1 h-8 w-8 shrink-0 text-gray-600" />
-      <span className="line-clamp-2 text-center text-[10px] text-gray-700">
+      <FileText className="mb-1 h-8 w-8 shrink-0 text-content-secondary" />
+      <span className="line-clamp-2 text-center text-[10px] text-content">
         {item.file_name || "Document"}
       </span>
       {sizeHint ? (
-        <span className="mt-0.5 text-[9px] text-gray-500">{sizeHint}</span>
+        <span className="mt-0.5 text-[9px] text-content-secondary">{sizeHint}</span>
       ) : null}
       <span
-        className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-full bg-white/95 px-1.5 py-0.5 text-[9px] font-medium text-gray-600 opacity-0 transition-opacity group-hover:opacity-100"
+        className="absolute right-1 top-1 inline-flex items-center gap-1 rounded-full bg-surface/95 px-1.5 py-0.5 text-[9px] font-medium text-content-secondary opacity-0 transition-opacity group-hover:opacity-100"
         onClick={(e) => {
           e.stopPropagation();
           onInfo(item);
@@ -438,7 +438,7 @@ export default function ChatMediaGallery({
       className={`relative flex-1 pb-2 text-center text-xs font-semibold transition ${
         tab === key
           ? "text-primary-600"
-          : "text-gray-500 hover:text-gray-700"
+          : "text-content-secondary hover:text-content"
       }`}
     >
       {label}
@@ -450,16 +450,16 @@ export default function ChatMediaGallery({
 
   return (
     <div
-      className="absolute inset-0 z-[70] flex flex-col overflow-hidden rounded-2xl bg-white"
+      className="absolute inset-0 z-[70] flex flex-col overflow-hidden rounded-2xl bg-surface"
       role="dialog"
       aria-modal="true"
       aria-label={galleryTitle}
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-gray-800 px-2 py-2 text-white">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-secondary px-2 py-2 text-content">
         <button
           type="button"
           onClick={onClose}
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10"
+          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-hover"
           aria-label="Back"
         >
           <ChevronLeft className="h-6 w-6" />
@@ -470,7 +470,7 @@ export default function ChatMediaGallery({
         </div>
       </div>
 
-      <div className="flex shrink-0 border-b border-gray-200 bg-white px-2 pt-2">
+      <div className="flex shrink-0 border-b border-border bg-surface px-2 pt-2">
         <div className="flex w-full gap-1">
           {tabBtn("media", "Media")}
           {tabBtn("docs", "Docs")}
@@ -484,16 +484,16 @@ export default function ChatMediaGallery({
         ) : null}
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-gray-500">
+          <div className="flex flex-col items-center justify-center gap-2 py-16 text-content-secondary">
             <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
             <span className="text-xs">Loading…</span>
           </div>
         ) : sections.length === 0 && !error ? (
-          <div className="py-16 text-center text-xs text-gray-500">{emptyCopy}</div>
+          <div className="py-16 text-center text-xs text-content-secondary">{emptyCopy}</div>
         ) : (
           sections.map((section) => (
             <div key={section.label} className="mb-4">
-              <h3 className="mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wide text-gray-500">
+              <h3 className="mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wide text-content-secondary">
                 {section.label}
               </h3>
               <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
@@ -516,7 +516,7 @@ export default function ChatMediaGallery({
               type="button"
               onClick={() => void loadMore()}
               disabled={loadingMore}
-              className="rounded-full border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="rounded-full border border-border px-4 py-2 text-xs font-medium text-content hover:bg-surface-hover disabled:opacity-50"
             >
               {loadingMore ? (
                 <span className="flex items-center gap-2">
@@ -532,12 +532,12 @@ export default function ChatMediaGallery({
 
       {selectedItem ? (
         <div
-          className="absolute inset-0 z-[80] flex flex-col bg-white"
+          className="absolute inset-0 z-[80] flex flex-col bg-surface"
           role="dialog"
           aria-modal="true"
           aria-label="Message info"
         >
-          <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-gray-800 px-2 py-2 text-white">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-secondary px-2 py-2 text-content">
             <button
               type="button"
               onClick={() => {
@@ -546,7 +546,7 @@ export default function ChatMediaGallery({
                 setInfoError(null);
                 setInfoLoading(false);
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10"
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-hover"
               aria-label="Back"
             >
               <ChevronLeft className="h-6 w-6" />
@@ -557,9 +557,9 @@ export default function ChatMediaGallery({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-3 py-3">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas px-3 py-3">
             {infoLoading ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-14 text-gray-500">
+              <div className="flex flex-col items-center justify-center gap-2 py-14 text-content-secondary">
                 <Loader2 className="h-7 w-7 animate-spin text-primary-600" />
                 <span className="text-xs">Loading message info…</span>
               </div>
@@ -567,8 +567,8 @@ export default function ChatMediaGallery({
               <div className="py-4 text-center text-xs text-red-600">{infoError}</div>
             ) : (
               <>
-                <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                  <div className="mb-1 text-[11px] font-semibold text-gray-500">
+                <div className="mb-4 rounded-xl border border-border bg-surface p-3 shadow-sm">
+                  <div className="mb-1 text-[11px] font-semibold text-content-secondary">
                     Message
                   </div>
                   <div className="mb-2 flex justify-end">
@@ -579,7 +579,7 @@ export default function ChatMediaGallery({
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-0.5 text-xs text-gray-600">
+                  <div className="space-y-0.5 text-xs text-content-secondary">
                     <div>Sent: {formatDateTime(messageInfo?.sent_at || messageInfo?.created_at) || "-"}</div>
                     <div>Read by: {messageInfo?.read_count ?? 0}</div>
                     <div>Delivered to: {messageInfo?.delivered_count ?? 0}</div>
@@ -592,22 +592,22 @@ export default function ChatMediaGallery({
                     <CheckCheck className="h-4 w-4 text-emerald-700" />
                   </div>
                   {(messageInfo?.read_receipts ?? []).length === 0 ? (
-                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
+                    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-content-secondary">
                       No reads yet
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                    <div className="overflow-hidden rounded-lg border border-border bg-surface">
                       {(messageInfo?.read_receipts ?? []).map((r) => (
                         <div
                           key={`read-${r.user_id}`}
-                          className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                          className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fuchsia-100 text-xs font-semibold text-fuchsia-700">
                             {receiptInitial(receiptName(r))}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium text-gray-900">{receiptName(r)}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="truncate text-sm font-medium text-content">{receiptName(r)}</div>
+                            <div className="text-xs text-content-secondary">
                               {formatDateLabel(r.read_at)} {formatTimeLabel(r.read_at)}
                             </div>
                           </div>
@@ -623,22 +623,22 @@ export default function ChatMediaGallery({
                     <CheckCheck className="h-4 w-4 text-emerald-700" />
                   </div>
                   {(messageInfo?.delivered_receipts ?? []).length === 0 ? (
-                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
+                    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-content-secondary">
                       Everyone has read this message
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                    <div className="overflow-hidden rounded-lg border border-border bg-surface">
                       {(messageInfo?.delivered_receipts ?? []).map((r) => (
                         <div
                           key={`delivered-${r.user_id}`}
-                          className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                          className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">
                             {receiptInitial(receiptName(r))}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium text-gray-900">{receiptName(r)}</div>
-                            <div className="text-xs text-gray-500">
+                            <div className="truncate text-sm font-medium text-content">{receiptName(r)}</div>
+                            <div className="text-xs text-content-secondary">
                               {formatDateLabel(r.delivered_at)} {formatTimeLabel(r.delivered_at)}
                             </div>
                           </div>

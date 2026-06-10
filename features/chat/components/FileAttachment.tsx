@@ -28,11 +28,11 @@ const FileAttachment: React.FC<FileAttachmentProps> = ({ isOpen, onClose, onFile
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-gray-900">Attach files</h3>
-        <p className="mt-2 text-sm text-gray-500">Images and videos upload best under 10 MB.</p>
+      <div className="w-full max-w-sm rounded-2xl bg-surface p-6 shadow-xl">
+        <h3 className="text-lg font-semibold text-content">Attach files</h3>
+        <p className="mt-2 text-sm text-content-secondary">Images and videos upload best under 10 MB.</p>
 
-        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-canvas p-6 text-center">
           <svg
             aria-hidden
             className="h-10 w-10 text-primary-500"
@@ -48,20 +48,20 @@ const FileAttachment: React.FC<FileAttachmentProps> = ({ isOpen, onClose, onFile
             />
             <path d="m8 17 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <p className="mt-3 text-sm text-gray-600">
+          <p className="mt-3 text-sm text-content-secondary">
             Drag and drop files here or
             <button onClick={handleClick} className="ml-1 font-medium text-primary-600 hover:text-primary-700">
               browse
             </button>
           </p>
-          <p className="text-xs text-gray-400">Supported types: images, videos, documents</p>
+          <p className="text-xs text-content-tertiary">Supported types: images, videos, documents</p>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-content-secondary hover:bg-surface-hover"
           >
             Cancel
           </button>

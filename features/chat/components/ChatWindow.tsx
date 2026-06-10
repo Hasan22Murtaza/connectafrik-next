@@ -1646,7 +1646,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }`}
     >
       <div
-        className={`flex items-center justify-between border-b border-gray-200 bg-[#f7f8fa] p-2 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+        className={`flex items-center justify-between border-b border-border bg-surface-canvas p-2 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
       >
         <div className="flex items-center space-x-3">
@@ -1666,7 +1666,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
           <div className="cursor-pointer" onClick={handleOpenThreadDetailPage}
           >
-            <div className="text-sm font-semibold text-gray-900 line-clamp-1" >
+            <div className="text-sm font-semibold text-content line-clamp-1" >
               {displayThreadName}
             </div>
             <button
@@ -1677,7 +1677,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   router.push(`/marketplace/${thread.product_id}`);
                 }
               }}
-              className="block w-full text-left text-xs text-gray-500 hover:text-gray-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
+              className="block w-full text-left text-xs text-content-secondary hover:text-content hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
             >
               {isSelfChat
                 ? "Save messages to yourself"
@@ -1694,7 +1694,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             type="button"
             onClick={() => handleStartCall("audio")}
             disabled={messagingBlocked}
-            className="text-gray-500 transition hover:text-[#f97316] disabled:cursor-not-allowed disabled:opacity-40"
+            className="text-content-secondary transition hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Phone className="h-5 w-5" />
           </button>
@@ -1702,7 +1702,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             type="button"
             onClick={() => handleStartCall("video")}
             disabled={messagingBlocked}
-            className="text-gray-500 hover:text-[#f97316] disabled:cursor-not-allowed disabled:opacity-40"
+            className="text-content-secondary hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Video className="h-5 w-5" />
           </button>
@@ -1715,7 +1715,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 event.stopPropagation();
                 setShowOptionsMenu((open) => !open);
               }}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-content-tertiary hover:text-content-secondary"
               aria-expanded={showOptionsMenu}
               aria-haspopup="menu"
             >
@@ -1725,14 +1725,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div
                 ref={menuRef}
                 role="menu"
-                className="absolute right-0 top-full mt-1 z-50 min-w-[240px] rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+                className="absolute right-0 top-full mt-1 z-50 min-w-[240px] rounded-lg border border-border bg-surface py-1 shadow-xl"
               >
                 {chatHeaderOptionsMenuSections.map((section, sectionIdx) => (
                   <React.Fragment key={section.id}>
                     {sectionIdx > 0 ? (
                       <div
                         role="separator"
-                        className="my-1 border-t border-gray-200 dark:border-gray-600"
+                        className="my-1 border-t border-border"
                       />
                     ) : null}
                     {section.items.map((item) => {
@@ -1749,10 +1749,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug";
                       const rowClass =
                         disabled
-                          ? `${baseRow} cursor-not-allowed text-gray-400 opacity-60`
+                          ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
                           : tone === "danger"
-                            ? `${baseRow} text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700/80`
-                            : `${baseRow} text-gray-900 hover:bg-gray-100 dark:text-gray-100 dark:hover:bg-gray-700/80`;
+                            ? `${baseRow} text-red-600 hover:bg-surface-hover`
+                            : `${baseRow} text-content hover:bg-surface-hover`;
                       return (
                         <button
                           key={id}
@@ -1781,11 +1781,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
 
       {showMessageSearch && (
-        <div className="flex items-center gap-1 border-b border-gray-100 bg-gray-50 px-1.5 py-1.5">
+        <div className="flex items-center gap-1 border-b border-border-subtle bg-surface-secondary px-1.5 py-1.5">
           <button
             type="button"
             onClick={closeMessageSearch}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-700 hover:bg-gray-200/80"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content hover:bg-surface-hover"
             aria-label="Close search"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -1802,7 +1802,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             }}
             placeholder="Search…"
             autoFocus
-            className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs text-gray-900 placeholder:text-gray-400 focus:border-[#f97316] focus:outline-none focus:ring-1 focus:ring-orange-200"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-content placeholder:text-content-tertiary focus:border-[#f97316] focus:outline-none focus:ring-1 focus:ring-orange-200"
             aria-label="Search messages in this chat"
           />
           <button
@@ -1816,7 +1816,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <button
               type="button"
               onClick={clearMessageSearch}
-              className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100"
+              className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-medium text-content-secondary hover:bg-surface-secondary"
               aria-label="Clear search"
             >
               Clear
@@ -1827,18 +1827,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <div
         ref={messagesScrollRef}
-        className={`flex flex-col space-y-3 overflow-y-auto bg-[#f7f8fa] px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${isPageVariant ? "h-[calc(100vh-16rem)] sm:h-[calc(100vh-14rem)]" : "h-[250px] sm:h-[290px]"
+        className={`flex flex-col space-y-3 overflow-y-auto bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${isPageVariant ? "h-[calc(100vh-16rem)] sm:h-[calc(100vh-14rem)]" : "h-[250px] sm:h-[290px]"
           }`}
       >
         {isLoadingOlderMessages && (
-          <div className="py-1 text-center text-xs text-gray-500">
+          <div className="py-1 text-center text-xs text-content-secondary">
             {messageSearchKeyword.trim() ? "Loading older matches..." : "Loading older messages..."}
           </div>
         )}
         {searchLoading && messageSearchKeyword.trim() ? (
-          <div className="py-12 text-center text-sm text-gray-500">Searching messages...</div>
+          <div className="py-12 text-center text-sm text-content-secondary">Searching messages...</div>
         ) : displayMessages.length === 0 ? (
-          <div className="py-12 text-center text-sm text-gray-500">
+          <div className="py-12 text-center text-sm text-content-secondary">
             {messageSearchKeyword.trim()
               ? `No messages match "${messageSearchKeyword.trim()}".`
               : "Send a message to kick off the conversation."}
@@ -1910,14 +1910,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       ) : null}
 
       {pendingFiles.length > 0 && !editingMessage && (
-        <div className="border-t border-gray-100 px-4 pb-3">
+        <div className="border-t border-border-subtle px-4 pb-3">
           <FilePreview files={pendingFiles} onRemove={removePendingFile} />
         </div>
       )}
 
       <form
         onSubmit={handleSend}
-        className={`border-t border-gray-200 bg-[#f7f8fa] px-2 py-2 sm:px-3 sm:py-3 ${isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
+        className={`border-t border-border bg-surface-canvas px-2 py-2 sm:px-3 sm:py-3 ${isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
           } ${messagingBlocked ? "pointer-events-none opacity-60" : ""}`}
       >
         {editingMessage ? (
@@ -1945,12 +1945,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
           </div>
         ) : replyingTo ? (
-          <div className="mb-2 flex items-start gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 p-2 border-l-4 border-orange-500">
+          <div className="mb-2 flex items-start gap-2 rounded-lg bg-surface-secondary p-2 border-l-4 border-orange-500">
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <div className="text-xs font-medium text-content-secondary mb-1">
                 Replying to {replyingTo.sender?.name || "Unknown"}
               </div>
-              <div className="text-sm text-gray-700 dark:text-gray-300 truncate">
+              <div className="text-sm text-content truncate">
                 {replyingTo.is_deleted
                   ? "🚫 This message was deleted"
                   : replyingTo.content}
@@ -1959,7 +1959,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <button
               type="button"
               onClick={() => setReplyingTo(null)}
-              className="flex-shrink-0 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              className="flex-shrink-0 text-content-secondary hover:text-content"
               aria-label="Cancel reply"
             >
               <X className="h-4 w-4" />
@@ -1980,7 +1980,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               type="button"
               onClick={() => !editingMessage && setAttachmentMenuOpen((o) => !o)}
               disabled={!!editingMessage}
-              className={`flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-[#54656f] hover:bg-black/5 disabled:pointer-events-none disabled:opacity-40 ${attachmentMenuOpen ? "ring-1 ring-[#25d366] text-[#128c7e]" : ""
+              className={`flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-content-secondary hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40 ${attachmentMenuOpen ? "ring-1 ring-[#25d366] text-[#128c7e]" : ""
                 }`}
               aria-label="Attach"
               aria-expanded={attachmentMenuOpen}
@@ -2019,7 +2019,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             aria-label={
               editingMessage ? "Editing message — press Escape to discard" : "Message input"
             }
-            className="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#d1d7db] focus:outline-none "
+            className="min-w-0 flex-1 rounded-full border border-border bg-surface px-3 py-2 text-sm text-content focus:border-[#d1d7db] focus:outline-none "
           />
           {showSendButton ? (
             <button
@@ -2082,12 +2082,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {infoMessage ? (
         <div
-          className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-white"
+          className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-surface"
           role="dialog"
           aria-modal="true"
           aria-label="Message info"
         >
-          <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 bg-gray-800 px-2 py-2 text-white">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-secondary px-2 py-2 text-content">
             <button
               type="button"
               onClick={() => {
@@ -2096,7 +2096,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 setMessageInfoError(null);
                 setMessageInfoLoading(false);
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-white/10"
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-hover"
               aria-label="Back"
             >
               <ChevronLeft className="h-6 w-6" />
@@ -2107,9 +2107,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-3 py-3">
+          <div className="min-h-0 flex-1 overflow-y-auto bg-surface-secondary px-3 py-3">
             {messageInfoLoading ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-14 text-gray-500">
+              <div className="flex flex-col items-center justify-center gap-2 py-14 text-content-secondary">
                 <Loader2 className="h-7 w-7 animate-spin text-primary-600" />
                 <span className="text-xs">Loading message info…</span>
               </div>
@@ -2117,8 +2117,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div className="py-4 text-center text-xs text-red-600">{messageInfoError}</div>
             ) : (
               <>
-                <div className="mb-4 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                  <div className="mb-1 text-[11px] font-semibold text-gray-500">
+                <div className="mb-4 rounded-xl border border-border bg-surface p-3 shadow-sm">
+                  <div className="mb-1 text-[11px] font-semibold text-content-secondary">
                     Message
                   </div>
                   <div className="mb-2 flex justify-end">
@@ -2130,7 +2130,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-0.5 text-xs text-gray-600">
+                  <div className="space-y-0.5 text-xs text-content-secondary">
                     <div>
                       Sent:{" "}
                       {formatMessageInfoDate(messageInfo?.sent_at || messageInfo?.created_at) || "-"}
@@ -2146,24 +2146,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     <CheckCheck className="h-4 w-4 text-emerald-700" />
                   </div>
                   {(messageInfo?.read_receipts ?? []).length === 0 ? (
-                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
+                    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-content-secondary">
                       No reads yet
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                    <div className="overflow-hidden rounded-lg border border-border bg-surface">
                       {(messageInfo?.read_receipts ?? []).map((r) => (
                         <div
                           key={`read-${r.user_id}`}
-                          className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                          className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fuchsia-100 text-xs font-semibold text-fuchsia-700">
                             {receiptInitial(receiptDisplayName(r))}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium text-gray-900">
+                            <div className="truncate text-sm font-medium text-content">
                               {receiptDisplayName(r)}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-content-secondary">
                               {formatMessageInfoDateLabel(r.read_at)}{" "}
                               {formatMessageInfoTimeLabel(r.read_at)}
                             </div>
@@ -2180,24 +2180,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     <CheckCheck className="h-4 w-4 text-emerald-700" />
                   </div>
                   {(messageInfo?.delivered_receipts ?? []).length === 0 ? (
-                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-500">
+                    <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-content-secondary">
                       Everyone has read this message
                     </div>
                   ) : (
-                    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                    <div className="overflow-hidden rounded-lg border border-border bg-surface">
                       {(messageInfo?.delivered_receipts ?? []).map((r) => (
                         <div
                           key={`delivered-${r.user_id}`}
-                          className="flex items-center gap-2 border-b border-gray-100 px-3 py-2 last:border-b-0"
+                          className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
                           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">
                             {receiptInitial(receiptDisplayName(r))}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium text-gray-900">
+                            <div className="truncate text-sm font-medium text-content">
                               {receiptDisplayName(r)}
                             </div>
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-content-secondary">
                               {formatMessageInfoDateLabel(r.delivered_at)}{" "}
                               {formatMessageInfoTimeLabel(r.delivered_at)}
                             </div>
@@ -2222,27 +2222,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           onClick={cancelForwardPicker}
         >
           <div
-            className="flex h-[min(88vh,640px)] w-full max-w-md flex-col rounded-t-2xl border border-gray-200 bg-[#f0f2f5] shadow-2xl dark:border-gray-700 dark:bg-[#0b141a] sm:h-[min(560px,85vh)] sm:rounded-2xl"
+            className="flex h-[min(88vh,640px)] w-full max-w-md flex-col rounded-t-2xl border border-border bg-surface-canvas shadow-2xl sm:h-[min(560px,85vh)] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center gap-1 border-b border-gray-200/80 bg-[#f0f2f5] px-1 py-2 dark:border-gray-800 dark:bg-[#202c33]">
+            <div className="flex shrink-0 items-center gap-1 border-b border-border/80 bg-surface-canvas px-1 py-2">
               <button
                 type="button"
                 onClick={cancelForwardPicker}
-                className="rounded-full p-2 text-[#111b21] hover:bg-black/5 dark:text-[#e9edef] dark:hover:bg-white/10"
+                className="rounded-full p-2 text-content hover:bg-surface-hover"
                 aria-label="Back"
               >
                 <ChevronLeft className="h-7 w-7" strokeWidth={2} />
               </button>
-              <h2 className="text-lg font-medium text-[#111b21] dark:text-[#e9edef]">
+              <h2 className="text-lg font-medium text-content">
                 Forward message to
               </h2>
             </div>
 
-            <div className="shrink-0 border-b border-gray-200/80 bg-[#f0f2f5] px-3 pb-3 pt-1 dark:border-gray-800 dark:bg-[#202c33]">
+            <div className="shrink-0 border-b border-border/80 bg-surface-canvas px-3 pb-3 pt-1">
               <div className="relative">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary"
                   aria-hidden
                 />
                 <input
@@ -2250,16 +2250,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   value={forwardSearch}
                   onChange={(e) => setForwardSearch(e.target.value)}
                   placeholder="Search contacts…"
-                  className="w-full rounded-lg border-0 bg-white py-2.5 pl-10 pr-3 text-sm text-[#111b21] shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/40 dark:bg-[#2a3942] dark:text-[#e9edef] dark:placeholder:text-gray-500"
+                  className="w-full rounded-lg border-0 bg-surface-input py-2.5 pl-10 pr-3 text-sm text-content shadow-sm placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500/40"
                   autoComplete="off"
                 />
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto bg-white dark:bg-[#0b141a]">
+            <div className="min-h-0 flex-1 overflow-y-auto bg-surface">
               {filteredForwardThreads.length === 0 &&
                 filteredForwardContacts.length === 0 ? (
-                <div className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                <div className="px-6 py-12 text-center text-sm text-content-secondary">
                   {forwardSearchLower
                     ? "No contacts or chats match your search."
                     : "No other chats yet. Add contacts below will start a new chat when you forward."}
@@ -2271,7 +2271,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   <p className="sticky top-0 z-[1] bg-emerald-700/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white dark:bg-emerald-800/95">
                     Recent chats
                   </p>
-                  <ul className="divide-y divide-gray-100 dark:divide-gray-800/80">
+                  <ul className="divide-y divide-border-subtle">
                     {filteredForwardThreads.map((t) => {
                       const otherParticipants = t.participants.filter(
                         (p: ChatParticipant) => p.id !== currentUser?.id
@@ -2302,7 +2302,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                             type="button"
                             onClick={() => void sendForwardedToThread(t.id)}
                             disabled={isSending}
-                            className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-[#202c33]"
+                            className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <div className="relative h-12 w-12 shrink-0">
                               {avatarUrl ? (
@@ -2312,16 +2312,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                                   className="h-12 w-12 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-300 text-lg font-semibold text-gray-600 dark:bg-gray-600 dark:text-gray-200">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary text-lg font-semibold text-content-secondary">
                                   {label.charAt(0).toUpperCase()}
                                 </div>
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium text-[#111b21] dark:text-[#e9edef]">
+                              <p className="truncate font-medium text-content">
                                 {label}
                               </p>
-                              <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                              <p className="truncate text-sm text-content-secondary">
                                 {subtitle}
                               </p>
                             </div>
@@ -2338,7 +2338,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   <p className="sticky top-0 z-[1] bg-emerald-700/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white dark:bg-emerald-800/95">
                     Contacts
                   </p>
-                  <ul className="divide-y divide-gray-100 dark:divide-gray-800/80">
+                  <ul className="divide-y divide-border-subtle">
                     {filteredForwardContacts.map((m) => {
                       const presence = formatContactPresenceLine(
                         m.status ?? null,
@@ -2350,7 +2350,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                             type="button"
                             onClick={() => void forwardToMember(m)}
                             disabled={isSending}
-                            className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-[#202c33]"
+                            className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             <div className="relative h-12 w-12 shrink-0">
                               {m.avatar_url ? (
@@ -2360,16 +2360,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                                   className="h-12 w-12 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-300 text-lg font-semibold text-gray-600 dark:bg-gray-600 dark:text-gray-200">
+                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary text-lg font-semibold text-content-secondary">
                                   {m.name.charAt(0).toUpperCase()}
                                 </div>
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium text-[#111b21] dark:text-[#e9edef]">
+                              <p className="truncate font-medium text-content">
                                 {m.name}
                               </p>
-                              <p className="truncate text-sm text-gray-500 dark:text-gray-400">
+                              <p className="truncate text-sm text-content-secondary">
                                 {m.username
                                   ? `@${m.username}`
                                   : presence || "New chat"}

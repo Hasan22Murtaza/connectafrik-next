@@ -41,7 +41,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
       'good': 'bg-yellow-100 text-yellow-700',
       'fair': 'bg-orange-100 text-orange-700'
     }
-    return colors[condition] || 'bg-gray-100 text-gray-700'
+    return colors[condition] || 'bg-surface-secondary text-content'
   }
 
   const handleShareProduct = async (e: React.MouseEvent) => {
@@ -84,13 +84,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
 
   return (
     <div
-      className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer group focus-within:ring-2 focus-within:ring-primary-500"
+      className="bg-surface rounded-2xl shadow-header overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer group focus-within:ring-2 focus-within:ring-primary-500"
       onClick={() => onView(product.id)}
       role="article"
       aria-label={`${product.title} - ${getCurrencySymbol(product.currency)}${product.price.toLocaleString()}`}
     >
       {/* Product Image */}
-      <div className="relative h-48 overflow-hidden bg-gray-100">
+      <div className="relative h-48 overflow-hidden bg-surface-secondary">
         <img
           src={mainImage}
           alt={product.title}
@@ -120,7 +120,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
             className={`absolute top-2 right-2 p-2 rounded-full transition-colors ${
               product.is_saved
                 ? 'bg-primary-600 text-white'
-                : 'bg-white text-gray-600 hover:bg-primary-600 hover:text-white duration-300'
+                : 'bg-surface text-content-secondary hover:bg-primary-600 hover:text-white duration-300'
             }`}
           >
             <Bookmark className={`w-4 h-4 ${product.is_saved ? 'fill-current' : ''}`} />
@@ -149,7 +149,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
         {/* Share Button */}
         <button
           onClick={handleShareProduct}
-          className="absolute top-12 right-2 p-2 rounded-full bg-white text-gray-600 hover:bg-primary-600 hover:text-white duration-300 transition-colors shadow-md"
+          className="absolute top-12 right-2 p-2 rounded-full bg-surface text-content-secondary hover:bg-primary-600 hover:text-white duration-300 transition-colors shadow-md"
           aria-label="Share product"
         >
           <Share2 className="w-4 h-4" />
@@ -160,10 +160,10 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
       <div className="p-4">
         {/* Title */}
         <div className='pb-1'>
-        <h3 className="text-lg font-semibold text-gray-900 line-clamp-1 hover:underline transition-colors">
+        <h3 className="text-lg font-semibold text-content line-clamp-1 hover:underline transition-colors">
           {product.title}
         </h3>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-content-tertiary">
               {formatDistanceToNow(new Date(product.created_at), { addSuffix: true })}
           </span>
           </div>
@@ -174,7 +174,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
             <span className="text-2xl font-bold text-primary-600">
               {getCurrencySymbol(product.currency)}{product.price.toLocaleString()}
             </span>
-            <span className="text-sm text-gray-500 ml-1">{product.currency}</span>
+            <span className="text-sm text-content-secondary ml-1">{product.currency}</span>
           </div>
           {product.stock_quantity > 0 && product.stock_quantity <= 5 && (
             <div className="flex items-center space-x-1 text-xs text-orange-600">
@@ -185,7 +185,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
         </div>
 
         {/* Location & Stats */}
-        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-3">
+        <div className="flex items-center space-x-2 text-xs text-content-secondary mb-3">
           {product.location && (
             <div className="flex items-center space-x-1">
               <MapPin className="w-3 h-3" />
@@ -211,17 +211,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
        
 
         {/* Action Buttons */}
-        <div className="flex gap-4  justify-between items-center border-t border-gray-100 pt-2">
+        <div className="flex gap-4  justify-between items-center border-t border-border-subtle pt-2">
            {/* Seller Info */}
         {product.seller && (
           <div className="flex items-center justify-between ">
             <div className="flex items-center space-x-2">
               {product.seller.avatar_url ? (
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-surface-tertiary flex items-center justify-center overflow-hidden">
                 <img
                   src={product.seller.avatar_url}
                   alt={product.seller.full_name}
-                  className="w-full h-full rounded-full object-cover bg-gray-200"
+                  className="w-full h-full rounded-full object-cover bg-surface-tertiary"
                 />
               </div>
               ) : (
@@ -231,7 +231,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
                   </span>
                 </div>
               )}
-              <span className="text-xs text-gray-700 font-semibold truncate w-20">{product.seller.full_name}</span>
+              <span className="text-xs text-content font-semibold truncate w-20">{product.seller.full_name}</span>
             </div>
           
           </div>
@@ -257,7 +257,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
               isOwnProduct ? 'flex-1' : 'w-fit'
             } ${
               isOutOfStock || isUnavailable || isOwnProduct
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                ? 'bg-surface-tertiary text-content-secondary cursor-not-allowed'
                 : 'bg-primary-600 text-white hover:bg-primary-700'
             }`}
             aria-label={isOutOfStock ? 'Out of stock' : isUnavailable ? 'Unavailable' : isOwnProduct ? 'Your product' : 'Buy now'}

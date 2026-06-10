@@ -3,14 +3,20 @@
 import { useAuth } from "@/contexts/AuthContext";
 import MarketplaceHubNav from "@/features/marketplace/components/MarketplaceHubNav";
 import ProductBrowseCard from "@/features/marketplace/components/ProductBrowseCard";
+import MarketplaceLocationPicker from "@/features/marketplace/components/MarketplaceLocationPicker";
 import {
   CREATE_LISTING_PATH,
   MARKETPLACE_CATEGORIES,
-  MARKETPLACE_COUNTRIES,
   MARKETPLACE_CURRENCIES,
   MARKETPLACE_SORT_OPTIONS,
   MarketplaceSort,
 } from "@/features/marketplace/constants/marketplaceConstants";
+import {
+  marketplaceFilterFromProfile,
+  readStoredMarketplaceFilter,
+  writeStoredMarketplaceFilter,
+  type MarketplaceLocationFilter,
+} from "@/features/marketplace/utils/marketplaceLocation";
 import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import {
   formatCurrencyDisplay,
@@ -28,7 +34,6 @@ import {
   ArrowLeft,
   ChevronDown,
   Filter,
-  MapPin,
   Plus,
   Search,
 } from "lucide-react";
@@ -63,7 +68,9 @@ const MarketplacePage: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedCurrency, setSelectedCurrency] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("");
+  const [locationFilter, setLocationFilter] = useState<MarketplaceLocationFilter>(() =>
+    marketplaceFilterFromProfile(null)
+  );
   const [sortBy, setSortBy] = useState<MarketplaceSort>("newest");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -79,6 +86,7 @@ const MarketplacePage: React.FC = () => {
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const paymentHandledRef = useRef(false);
   const pageRef = useRef(0);
+  const locationHydratedRef = useRef(false);
 
   const profileCurrency = useMemo(() => {
     if (!profile?.country?.trim()) return "";
@@ -90,6 +98,33 @@ const MarketplacePage: React.FC = () => {
       setSelectedCurrency(profileCurrency);
     }
   }, [user, profileCurrency]);
+
+  useEffect(() => {
+    if (locationHydratedRef.current) return;
+
+    const stored = readStoredMarketplaceFilter();
+    if (stored) {
+      setLocationFilter(stored);
+      locationHydratedRef.current = true;
+      return;
+    }
+
+    if (profile) {
+      setLocationFilter(marketplaceFilterFromProfile(profile));
+      locationHydratedRef.current = true;
+    }
+  }, [profile]);
+
+  const handleLocationFilterChange = useCallback(
+    (patch: Partial<MarketplaceLocationFilter>) => {
+      setLocationFilter((prev) => {
+        const next = { ...prev, ...patch };
+        writeStoredMarketplaceFilter(next);
+        return next;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -133,7 +168,17 @@ const MarketplacePage: React.FC = () => {
         };
 
         if (selectedCategory) params.category = selectedCategory;
-        if (selectedCountry) params.country = selectedCountry;
+        if (locationFilter.location.country) {
+          params.country = locationFilter.location.country;
+        }
+        if (
+          locationFilter.location.latitude != null &&
+          locationFilter.location.longitude != null
+        ) {
+          params.lat = locationFilter.location.latitude;
+          params.lng = locationFilter.location.longitude;
+          params.radius_km = locationFilter.radiusKm;
+        }
         if (debouncedSearch) params.search = debouncedSearch;
 
         const res = await apiClient.get<{ data: Product[]; hasMore?: boolean }>(
@@ -156,7 +201,7 @@ const MarketplacePage: React.FC = () => {
     [
       selectedCategory,
       selectedCurrency,
-      selectedCountry,
+      locationFilter,
       debouncedSearch,
       sortBy,
     ]
@@ -164,7 +209,7 @@ const MarketplacePage: React.FC = () => {
 
   useEffect(() => {
     fetchProducts(true);
-  }, [selectedCategory, selectedCurrency, selectedCountry, debouncedSearch, sortBy]);
+  }, [selectedCategory, selectedCurrency, locationFilter, debouncedSearch, sortBy]);
 
   useEffect(() => {
     if (!hasMore || loading || loadingMore) return;
@@ -194,7 +239,9 @@ const MarketplacePage: React.FC = () => {
     setSearchTerm("");
     setSelectedCategory("");
     setSelectedCurrency(user && profileCurrency ? profileCurrency : "");
-    setSelectedCountry("");
+    const resetLocation = marketplaceFilterFromProfile(profile);
+    setLocationFilter(resetLocation);
+    writeStoredMarketplaceFilter(resetLocation);
     setSortBy("newest");
   };
 
@@ -202,12 +249,8 @@ const MarketplacePage: React.FC = () => {
     searchTerm ||
     selectedCategory ||
     (!user && selectedCurrency) ||
-    selectedCountry ||
+    Boolean(locationFilter.location.country || locationFilter.location.city) ||
     sortBy !== "newest";
-
-  const selectedCountryLabel =
-    MARKETPLACE_COUNTRIES.find((c) => c.value === selectedCountry)?.label ||
-    "All locations";
 
   const renderSidebarItem = (
     isActive: boolean,
@@ -234,8 +277,8 @@ const MarketplacePage: React.FC = () => {
 
   const renderEmptyState = () => (
     <div className="text-center py-16 px-4">
-      <p className="text-gray-600 mb-2">No products found</p>
-      <p className="text-sm text-gray-400 mb-4">
+      <p className="text-content-secondary mb-2">No products found</p>
+      <p className="text-sm text-content-tertiary mb-4">
         Try adjusting your filters or create a new listing
       </p>
       {hasActiveFilters && (
@@ -268,7 +311,7 @@ const MarketplacePage: React.FC = () => {
           >
             <div className="hidden md:block mb-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary" />
                 <input
                   className={MP.searchInput}
                   placeholder="Search Marketplace"
@@ -281,7 +324,7 @@ const MarketplacePage: React.FC = () => {
 
           <div className="md:hidden mb-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary" />
               <input
                 className={MP.searchInput}
                 placeholder="Search Marketplace"
@@ -293,22 +336,7 @@ const MarketplacePage: React.FC = () => {
 
           <div className={MP.sectionDivider} />
 
-          <div className={MP.section}>
-            <h3 className={MP.sectionTitle}>Location</h3>
-            <select
-              value={selectedCountry}
-              onChange={(e) => setSelectedCountry(e.target.value)}
-              className={MP.selectInput}
-            >
-              {MARKETPLACE_COUNTRIES.map((country) => (
-                <option key={country.value || "all"} value={country.value}>
-                  {country.label}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          <div className={MP.sectionDivider} />
 
           <div className={MP.section}>
             <h3 className={MP.sectionTitle}>Categories</h3>
@@ -332,9 +360,9 @@ const MarketplacePage: React.FC = () => {
           <div className={MP.section}>
             <h3 className={MP.sectionTitle}>Currency</h3>
             {user && profileCurrency ? (
-              <div className="px-2.5 py-2 bg-[#EEF1F4] rounded-lg text-sm text-gray-700">
+              <div className="px-2.5 py-2 bg-surface-input rounded-lg text-sm text-content">
                 {formatCurrencyDisplay(profileCurrency)}
-                <p className="text-xs text-gray-500 mt-0.5">Based on your signup country</p>
+                <p className="text-xs text-content-secondary mt-0.5">Based on your signup country</p>
               </div>
             ) : (
               <ul className={MP.navList}>
@@ -354,7 +382,7 @@ const MarketplacePage: React.FC = () => {
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
-              className="w-full text-sm text-gray-600 hover:text-primary-600 transition py-2"
+              className="w-full text-sm text-content-secondary hover:text-primary-600 transition py-2"
             >
               Clear all filters
             </button>
@@ -373,7 +401,7 @@ const MarketplacePage: React.FC = () => {
             <div className="flex items-center gap-1.5 min-w-0">
               <button
                 onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden p-1.5 rounded-lg bg-gray-100 shrink-0"
+                className="md:hidden p-1.5 rounded-lg bg-surface-secondary shrink-0"
                 aria-label="Open filters"
               >
                 <Filter className="w-4 h-4" />
@@ -384,18 +412,22 @@ const MarketplacePage: React.FC = () => {
             </div>
 
             <div className={MP.headerActions}>
-              {selectedCountry && (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                  <MapPin className="w-3 h-3 text-primary-600" />
-                  {selectedCountryLabel}
-                </span>
-              )}
+              <MarketplaceLocationPicker
+                location={locationFilter.location}
+                radiusKm={locationFilter.radiusKm}
+                onLocationChange={(location) =>
+                  handleLocationFilterChange({ location })
+                }
+                onFilterApply={(location, radiusKm) =>
+                  handleLocationFilterChange({ location, radiusKm })
+                }
+              />
 
               <div className="relative">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as MarketplaceSort)}
-                  className="appearance-none pl-2.5 pr-7 py-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                  className="appearance-none pl-2.5 pr-7 py-1.5 bg-surface border border-border rounded-lg text-xs text-content focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
                   aria-label="Sort products"
                 >
                   {MARKETPLACE_SORT_OPTIONS.map((option) => (
@@ -404,7 +436,7 @@ const MarketplacePage: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-tertiary pointer-events-none" />
               </div>
 
               {user && (
@@ -439,7 +471,7 @@ const MarketplacePage: React.FC = () => {
 
               <div ref={loadMoreRef} className="h-8 mt-4">
                 {loadingMore && (
-                  <p className="text-center text-sm text-gray-400 py-4">
+                  <p className="text-center text-sm text-content-tertiary py-4">
                     Loading more...
                   </p>
                 )}

@@ -20,10 +20,16 @@ import {
 import {
   getCurrencyForCountry,
 } from "@/features/marketplace/utils/countryCurrency";
+import MarketplaceLocationPicker from "@/features/marketplace/components/MarketplaceLocationPicker";
 import { apiClient } from "@/lib/api-client";
 import { useImageUpload } from "@/shared/hooks/useImageUpload";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { Product } from "@/shared/types";
+import {
+  emptyProfileLocation,
+  profileLocationFromDb,
+  type ProfileLocationValue,
+} from "@/shared/types/location";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -34,7 +40,6 @@ const initialFormData = {
   currency: "USD" as Product["currency"],
   category: "other",
   condition: "new",
-  location: "",
   country: "",
   tags: "",
   stock_quantity: "1",
@@ -46,9 +51,9 @@ interface CreateProductFormProps {
 }
 
 const fieldClassName =
-  "w-full px-4 py-3 bg-[#F8F9FA] border border-transparent rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all";
+  "w-full px-4 py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all";
 
-const labelClassName = "block text-sm font-semibold text-gray-800 mb-2";
+const labelClassName = "block text-sm font-semibold text-content mb-2";
 
 const CreateProductForm: React.FC<CreateProductFormProps> = ({
   onSuccess,
@@ -60,6 +65,9 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [previewImages, setPreviewImages] = useState<string[]>([]);
   const [formData, setFormData] = useState(initialFormData);
+  const [listingLocation, setListingLocation] = useState<ProfileLocationValue>(
+    emptyProfileLocation()
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadMultipleImages, uploadProgress } = useImageUpload();
 
@@ -74,8 +82,13 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
       ...prev,
       currency: listingCurrency.code,
       country: profile.country || "",
-      location: prev.location || profile.city || "",
     }));
+    setListingLocation((prev) => {
+      const hasSelection =
+        prev.city?.trim() || prev.formattedAddress?.trim() || prev.country?.trim();
+      if (hasSelection) return prev;
+      return profileLocationFromDb(profile);
+    });
   }, [profile, listingCurrency.code]);
 
   const isUploading = uploadProgress.status === "uploading";
@@ -140,13 +153,20 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
         .map((tag) => tag.trim())
         .filter(Boolean);
 
+      const locationLabel =
+        listingLocation.city?.trim() ||
+        listingLocation.formattedAddress?.trim() ||
+        null;
+
       const res = await apiClient.post<{ data: { id: string } }>("/api/marketplace", {
         title: formData.title.trim(),
         description: formData.description.trim(),
         price: parseFloat(formData.price),
         category: formData.category,
         condition: formData.condition,
-        location: formData.location.trim() || null,
+        location: locationLabel,
+        latitude: listingLocation.latitude ?? undefined,
+        longitude: listingLocation.longitude ?? undefined,
         images: uploadedImages,
         tags,
         stock_quantity: parseInt(formData.stock_quantity, 10) || 1,
@@ -165,7 +185,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {profileLoading ? (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
+        <div className="bg-surface rounded-2xl border border-border-subtle p-6 text-sm text-content-secondary">
           Loading your profile…
         </div>
       ) : !hasSignupCountry ? (
@@ -178,14 +198,14 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
         </div>
       ) : null}
 
-      <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
             <Camera className="w-4 h-4 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Photos</h2>
-            <p className="text-xs text-gray-500">Add up to 5 photos. The first photo is your cover.</p>
+            <h2 className="text-base font-bold text-content">Photos</h2>
+            <p className="text-xs text-content-secondary">Add up to 5 photos. The first photo is your cover.</p>
           </div>
         </div>
 
@@ -205,7 +225,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
                 <img
                   src={preview}
                   alt={`Preview ${index + 1}`}
-                  className="w-full h-full object-cover rounded-xl border border-gray-200"
+                  className="w-full h-full object-cover rounded-xl border border-border"
                 />
                 <button
                   type="button"
@@ -227,10 +247,10 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-primary-400 hover:bg-primary-50/50 flex flex-col items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary-400 hover:bg-primary-50/50 flex flex-col items-center justify-center gap-1 transition-colors disabled:opacity-50"
               >
-                <ImagePlus className="w-6 h-6 text-gray-400" />
-                <span className="text-xs text-gray-500">Add more</span>
+                <ImagePlus className="w-6 h-6 text-content-tertiary" />
+                <span className="text-xs text-content-secondary">Add more</span>
               </button>
             )}
           </div>
@@ -239,39 +259,39 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="w-full py-10 sm:py-12 rounded-2xl border-2 border-dashed border-gray-200 bg-[#F8F9FA] hover:border-primary-400 hover:bg-primary-50/40 transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-10 sm:py-12 rounded-2xl border-2 border-dashed border-border bg-surface-input hover:border-primary-400 hover:bg-primary-50/40 transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50"
           >
             {isUploading ? (
               <>
                 <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-content">
                   Uploading… {Math.round(uploadProgress.progress)}%
                 </span>
               </>
             ) : (
               <>
-                <Upload className="w-8 h-8 text-gray-400" />
-                <span className="text-sm font-semibold text-gray-700">
+                <Upload className="w-8 h-8 text-content-tertiary" />
+                <span className="text-sm font-semibold text-content">
                   Click to upload product images
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-content-secondary">
                   Maximum 5 images · Up to 10MB each
                 </span>
-                <span className="text-xs text-gray-400">JPG, PNG, GIF, WebP</span>
+                <span className="text-xs text-content-tertiary">JPG, PNG, GIF, WebP</span>
               </>
             )}
           </button>
         )}
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-5">
+      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Listing details</h2>
-            <p className="text-xs text-gray-500">Help buyers understand what you&apos;re selling.</p>
+            <h2 className="text-base font-bold text-content">Listing details</h2>
+            <p className="text-xs text-content-secondary">Help buyers understand what you&apos;re selling.</p>
           </div>
         </div>
 
@@ -289,7 +309,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
             className={fieldClassName}
             maxLength={120}
           />
-          <p className="text-xs text-gray-400 mt-1.5">{formData.title.length}/120 characters</p>
+          <p className="text-xs text-content-tertiary mt-1.5">{formData.title.length}/120 characters</p>
         </div>
 
         <div>
@@ -308,13 +328,13 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-5">
+      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
             <DollarSign className="w-4 h-4 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Price & inventory</h2>
+            <h2 className="text-base font-bold text-content">Price & inventory</h2>
           </div>
         </div>
 
@@ -329,7 +349,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
               </span>
             </div>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-content-secondary">
                 {listingCurrency.symbol}
               </span>
               <input
@@ -365,13 +385,13 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-5">
+      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
             <Tag className="w-4 h-4 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Category & condition</h2>
+            <h2 className="text-base font-bold text-content">Category & condition</h2>
           </div>
         </div>
 
@@ -415,37 +435,33 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 space-y-5">
+      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
             <MapPin className="w-4 h-4 text-primary-600" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Location & tags</h2>
+            <h2 className="text-base font-bold text-content">Location & tags</h2>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelClassName} htmlFor="location">
-              City / area
-            </label>
-            <input
-              id="location"
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="e.g., Accra"
-              className={fieldClassName}
+            <label className={labelClassName}>City / area</label>
+            <MarketplaceLocationPicker
+              location={listingLocation}
+              onLocationChange={setListingLocation}
+              showRadius={false}
+              triggerVariant="field"
               disabled={!hasSignupCountry}
             />
           </div>
           <div>
             <label className={labelClassName}>Country</label>
-            <div className="px-4 py-3 bg-[#F8F9FA] border border-transparent rounded-xl text-sm text-gray-700">
+            <div className="px-4 py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content">
               {profile?.country || "—"}
             </div>
-            <p className="text-xs text-gray-500 mt-1.5">From your signup profile</p>
+            <p className="text-xs text-content-secondary mt-1.5">From your signup profile</p>
           </div>
         </div>
 
@@ -464,13 +480,13 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
         </div>
       </section>
 
-      <div className="sticky bottom-0 z-10 -mx-4 px-4 py-4 bg-white/95 backdrop-blur border-t border-gray-100 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0 sm:backdrop-blur-none">
+      <div className="sticky bottom-0 z-10 -mx-4 px-4 py-4 bg-surface/95 backdrop-blur border-t border-border-subtle sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0 sm:backdrop-blur-none">
         <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 rounded-xl border border-border text-content font-semibold text-sm hover:bg-surface-hover transition-colors"
             >
               Cancel
             </button>

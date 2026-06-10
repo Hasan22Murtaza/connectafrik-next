@@ -78,23 +78,23 @@ const OpenDisputeModal: React.FC<OpenDisputeModalProps> = ({
       onClick={() => !isSubmitting && onClose()}
     >
       <div
-        className="bg-white rounded-xl max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto"
+        className="bg-surface rounded-xl max-w-lg w-full mx-auto max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 bg-white">
+        <div className="border-b border-border px-6 py-4 flex items-center justify-between sticky top-0 bg-surface">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-orange-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Open Dispute</h2>
+            <h2 className="text-xl font-semibold text-content">Open Dispute</h2>
           </div>
-          <button onClick={onClose} disabled={isSubmitting} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} disabled={isSubmitting} className="text-content-tertiary hover:text-content-secondary">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="bg-gray-50 rounded-lg p-4 text-sm">
-            <p><span className="text-gray-500">Order #</span> <span className="font-medium">{orderNumber}</span></p>
-            <p className="mt-1"><span className="text-gray-500">Product:</span> <span className="font-medium">{productTitle}</span></p>
+          <div className="bg-surface-canvas rounded-lg p-4 text-sm">
+            <p><span className="text-content-secondary">Order #</span> <span className="font-medium">{orderNumber}</span></p>
+            <p className="mt-1"><span className="text-content-secondary">Product:</span> <span className="font-medium">{productTitle}</span></p>
           </div>
 
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex gap-2">
@@ -106,12 +106,12 @@ const OpenDisputeModal: React.FC<OpenDisputeModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Issue type</label>
+            <label className="block text-sm font-medium text-content mb-2">Issue type</label>
             <select
               value={reason}
               onChange={(e) => setReason(e.target.value as DisputeReason)}
               disabled={isSubmitting}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
               {DISPUTE_REASONS.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -120,19 +120,19 @@ const OpenDisputeModal: React.FC<OpenDisputeModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Describe the problem *</label>
+            <label className="block text-sm font-medium text-content mb-2">Describe the problem *</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               disabled={isSubmitting}
               placeholder="Explain what went wrong and what resolution you expect..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none resize-none"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-content mb-2">
               Evidence URL (optional)
             </label>
             <input
@@ -141,7 +141,7 @@ const OpenDisputeModal: React.FC<OpenDisputeModalProps> = ({
               onChange={(e) => setEvidenceUrl(e.target.value)}
               disabled={isSubmitting}
               placeholder="Link to photo or document"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
+              className="w-full px-4 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary-500 focus:outline-none"
             />
           </div>
 
@@ -149,7 +149,7 @@ const OpenDisputeModal: React.FC<OpenDisputeModalProps> = ({
             <button
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50"
+              className="flex-1 px-6 py-3 border border-border rounded-lg text-content font-medium hover:bg-surface-hover disabled:opacity-50"
             >
               Cancel
             </button>

@@ -55,7 +55,7 @@ const StoryPreview: React.FC<StoryPreviewProps> = ({
 
   return (
     <div className="flex flex-col items-center">
-      <p className="text-gray-400 text-xs sm:text-sm mb-2 sm:mb-4">Preview</p>
+      <p className="text-content-tertiary text-xs sm:text-sm mb-2 sm:mb-4">Preview</p>
 
       <div className="relative">
         <div className="w-[180px] h-[320px] sm:w-[240px] sm:h-[428px] lg:w-[280px] lg:h-[500px] bg-gray-800 rounded-[24px] sm:rounded-[32px] lg:rounded-[40px] p-1.5 sm:p-2 shadow-2xl">

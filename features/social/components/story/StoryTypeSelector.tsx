@@ -27,8 +27,8 @@ const StoryTypeSelector: React.FC<StoryTypeSelectorProps> = ({
   return (
     <div className="flex flex-col items-center justify-center w-full h-full px-4 sm:px-6 py-6 sm:py-12">
       <div className="text-center mb-5 sm:mb-10">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 sm:mb-2">Create Your Story</h2>
-        <p className="text-gray-500 text-xs sm:text-sm">Choose how you want to share your moment</p>
+        <h2 className="text-xl sm:text-2xl font-bold text-content mb-1 sm:mb-2">Create Your Story</h2>
+        <p className="text-content-secondary text-xs sm:text-sm">Choose how you want to share your moment</p>
       </div>
 
       <div className="flex flex-row gap-3 sm:gap-6 w-full max-w-sm sm:max-w-none justify-center">
@@ -67,7 +67,7 @@ const StoryTypeSelector: React.FC<StoryTypeSelectorProps> = ({
         </button>
       </div>
 
-      <div className="mt-6 sm:mt-10 flex items-center gap-2.5 bg-gray-100 rounded-full px-3.5 py-2">
+      <div className="mt-6 sm:mt-10 flex items-center gap-2.5 bg-surface-secondary rounded-full px-3.5 py-2">
         <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs sm:text-sm font-semibold overflow-hidden">
           {userAvatar ? (
             <img src={userAvatar} alt={safeUserName} className="w-full h-full object-cover" />
@@ -75,8 +75,8 @@ const StoryTypeSelector: React.FC<StoryTypeSelectorProps> = ({
             safeUserName.charAt(0).toUpperCase()
           )}
         </div>
-        <span className="text-xs sm:text-sm text-gray-600">
-          Posting as <span className="text-gray-900 font-medium">{safeUserName}</span>
+        <span className="text-xs sm:text-sm text-content-secondary">
+          Posting as <span className="text-content font-medium">{safeUserName}</span>
         </span>
       </div>
     </div>

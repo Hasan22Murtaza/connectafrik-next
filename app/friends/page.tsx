@@ -387,7 +387,7 @@ const FriendsPage: React.FC = () => {
         {/* Left Sidebar */}
         <div className="hidden md:block w-64 shrink-0">
           <div className="sticky top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
-            <h2 className="text-xl font-semibold text-gray-600 mb-6">Friends</h2>
+            <h2 className="text-xl font-semibold text-content-secondary mb-6">Friends</h2>
 
 
             <nav className="space-y-4">
@@ -403,7 +403,7 @@ const FriendsPage: React.FC = () => {
                     transition-all duration-300 ease-in-out
                     ${isActive
                         ? "bg-orange-50 text-primary-600"
-                        : "text-gray-700 hover:bg-orange-50 hover:text-primary-600"
+                        : "text-content hover:bg-orange-50 hover:text-primary-600"
                       }`}
                   >
                     <span
@@ -420,7 +420,7 @@ const FriendsPage: React.FC = () => {
                         className={`text-md transition-all duration-300 ease-in-out
             ${isActive
                             ? "text-primary-600 scale-110"
-                            : "text-gray-500 group-hover:text-primary-600 group-hover:scale-110"
+                            : "text-content-secondary group-hover:text-primary-600 group-hover:scale-110"
                           }`}
                       />
                       <span className="font-medium transition-all duration-300 ease-in-out group-hover:translate-x-1">
@@ -446,7 +446,7 @@ const FriendsPage: React.FC = () => {
             {/* We use inline-flex + min-w-fit to prevent shrinking */}
             <button
               onClick={() => setActiveSection("all")}
-              className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "home" || activeSection === "all" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "home" || activeSection === "all" ? "bg-orange-100 text-orange-700" : "text-content"
                 }`}
             >
               All friends
@@ -454,7 +454,7 @@ const FriendsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection("suggestions")}
-              className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "suggestions" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "suggestions" ? "bg-orange-100 text-orange-700" : "text-content"
                 }`}
             >
               Friend suggestions
@@ -462,7 +462,7 @@ const FriendsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection("requests")}
-              className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-content"
                 }`}
             >
               Friend requests
@@ -475,7 +475,7 @@ const FriendsPage: React.FC = () => {
 
             <button
               onClick={() => setActiveSection("birthdays")}
-              className={`min-w-fit flex-shrink-0 bg-gray-200 text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "bg-orange-100 text-orange-700" : "text-gray-700"
+              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "bg-orange-100 text-orange-700" : "text-content"
                 }`}
             >
               Birthdays
@@ -486,7 +486,7 @@ const FriendsPage: React.FC = () => {
               {/* Friend Requests Section */}
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-gray-600">Friend Requests</h2>
+                  <h2 className="text-2xl font-semibold text-content-secondary">Friend Requests</h2>
                   <button
                     onClick={() => setActiveSection("requests")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
@@ -504,11 +504,11 @@ const FriendsPage: React.FC = () => {
                       {requests.slice(0, requestsDisplayLimit).map((request) => (
                         <div
                           key={request.id}
-                          className="bg-white rounded-lg shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden hover:shadow-md transition-shadow"
+                          className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
                           <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-gray-100 relative">
+                            <div className="w-full aspect-square bg-surface-secondary relative">
                               {request.requester?.avatar_url ? (
                                 <img
                                   src={request.requester.avatar_url}
@@ -526,19 +526,19 @@ const FriendsPage: React.FC = () => {
                           {/* Content */}
                           <div className="p-4">
                             <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                              <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {request.requester?.full_name || "Unknown User"}
                               </h3>
                             </Link>
 
                             {/* Mutual Friends */}
                             {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                              <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
                                 <div className="flex -space-x-1">
                                   {Array.from({ length: Math.min(request.mutualFriendsCount, 2) }).map((_, i) => (
                                     <div
                                       key={i}
-                                      className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                      className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
                                     />
                                   ))}
                                 </div>
@@ -578,12 +578,12 @@ const FriendsPage: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  <div className="text-center py-12 bg-white rounded-lg">
-                    <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  <div className="text-center py-12 bg-surface rounded-lg">
+                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-content mb-2">
                       No pending requests
                     </h3>
-                    <p className="text-gray-500">You're all caught up!</p>
+                    <p className="text-content-secondary">You're all caught up!</p>
                   </div>
                 )}
               </div>
@@ -591,7 +591,7 @@ const FriendsPage: React.FC = () => {
               {/* People You May Know Section */}
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-gray-600">People You May Know</h2>
+                  <h2 className="text-2xl font-semibold text-content-secondary">People You May Know</h2>
                   <button
                     onClick={() => setActiveSection("suggestions")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
@@ -609,11 +609,11 @@ const FriendsPage: React.FC = () => {
                       {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
                         <div
                           key={suggestion.user_id}
-                          className="bg-white rounded-lg shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden hover:shadow-md transition-shadow"
+                          className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
                           <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                            <div className="w-full aspect-square bg-gray-100 relative">
+                            <div className="w-full aspect-square bg-surface-secondary relative">
                               {suggestion.avatar_url ? (
                                 <img
                                   src={suggestion.avatar_url}
@@ -631,19 +631,19 @@ const FriendsPage: React.FC = () => {
                           {/* Content */}
                           <div className="p-4">
                             <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                              <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {suggestion.full_name || "Unknown User"}
                               </h3>
                             </Link>
 
                             {/* Mutual Friends */}
                             {suggestion.mutual_friends_count > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                              <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
                                 <div className="flex -space-x-1">
                                   {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
                                     <div
                                       key={i}
-                                      className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                      className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
                                     />
                                   ))}
                                 </div>
@@ -676,12 +676,12 @@ const FriendsPage: React.FC = () => {
                     )}
                   </>
                 ) : (
-                  <div className="text-center py-12 bg-white rounded-lg">
-                    <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  <div className="text-center py-12 bg-surface rounded-lg">
+                    <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-content mb-2">
                       No suggestions available
                     </h3>
-                    <p className="text-gray-500">
+                    <p className="text-content-secondary">
                       We couldn't find any friend suggestions at the moment.
                     </p>
                   </div>
@@ -692,7 +692,7 @@ const FriendsPage: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold text-gray-600">Friend Requests</h2>
+                <h2 className="text-2xl font-semibold text-content-secondary">Friend Requests</h2>
                 <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => setActiveSection("home")}>
                   See all
                 </button>
@@ -706,11 +706,11 @@ const FriendsPage: React.FC = () => {
                   {requests.map((request) => (
                     <div
                       key={request.id}
-                      className="bg-white rounded-lg shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden hover:shadow-md transition-shadow"
+                      className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-gray-100 relative">
+                        <div className="w-full aspect-square bg-surface-secondary relative">
                           {request.requester?.avatar_url ? (
                             <img
                               src={request.requester.avatar_url}
@@ -728,19 +728,19 @@ const FriendsPage: React.FC = () => {
                       {/* Content */}
                       <div className="p-4">
                         <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                          <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                             {request.requester?.full_name || "Unknown User"}
                           </h3>
                         </Link>
 
                         {/* Mutual Friends */}
                         {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                          <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                          <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
                             <div className="flex -space-x-1">
                               {Array.from({ length: Math.min(request.mutualFriendsCount, 2) }).map((_, i) => (
                                 <div
                                   key={i}
-                                  className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                  className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
                                 />
                               ))}
                             </div>
@@ -768,12 +768,12 @@ const FriendsPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-white rounded-lg">
-                  <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <div className="text-center py-12 bg-surface rounded-lg">
+                  <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-content mb-2">
                     No pending requests
                   </h3>
-                  <p className="text-gray-500">You're all caught up!</p>
+                  <p className="text-content-secondary">You're all caught up!</p>
                 </div>
               )}
             </div>
@@ -781,15 +781,15 @@ const FriendsPage: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-                <h2 className="text-2xl font-semibold text-gray-600">All Friends</h2>
+                <h2 className="text-2xl font-semibold text-content-secondary">All Friends</h2>
                 <div className="relative max-w-full w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Search friends..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-3 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                    className="w-full px-4 py-3 pl-10 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-surface-input text-content transition-colors"
                   />
                 </div>
               </div>
@@ -802,11 +802,11 @@ const FriendsPage: React.FC = () => {
                   {filteredFriends.map((friend) => (
                     <div
                       key={friend.id}
-                      className="bg-white rounded-lg shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden hover:shadow-md transition-shadow"
+                      className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${friend.username || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-gray-100 relative">
+                        <div className="w-full aspect-square bg-surface-secondary relative">
                           {friend.avatar_url ? (
                             <img
                               src={friend.avatar_url}
@@ -824,15 +824,15 @@ const FriendsPage: React.FC = () => {
                       {/* Content */}
                       <div className="p-4">
                         <Link href={`/user/${friend.username || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
+                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
                             {friend.full_name || "Unknown User"}
                           </h3>
                         </Link>
-                        <p className="text-xs text-gray-500 mb-1 line-clamp-1">
+                        <p className="text-xs text-content-secondary mb-1 line-clamp-1">
                           @{friend.username}
                         </p>
                         {friend.country && (
-                          <p className="text-xs text-gray-400 mb-4 line-clamp-1">
+                          <p className="text-xs text-content-tertiary mb-4 line-clamp-1">
                             {friend.country}
                           </p>
                         )}
@@ -849,12 +849,12 @@ const FriendsPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-white rounded-lg">
-                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <div className="text-center py-12 bg-surface rounded-lg">
+                  <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-content mb-2">
                     {searchTerm ? "No friends found" : "No friends yet"}
                   </h3>
-                  <p className="text-gray-500">
+                  <p className="text-content-secondary">
                     {searchTerm
                       ? "Try a different search term"
                       : "Start connecting with people in the community!"}
@@ -866,15 +866,15 @@ const FriendsPage: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2 ">
-                <h2 className="text-2xl font-semibold text-gray-600">Suggestions</h2>
+                <h2 className="text-2xl font-semibold text-content-secondary">Suggestions</h2>
                 <div className="relative max-w-full w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-5 h-5" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search suggestions..."
                     value={suggestionsSearchTerm}
                     onChange={(e) => setSuggestionsSearchTerm(e.target.value)}
-                    className="w-full px-4 py-3 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                    className="w-full px-4 py-3 pl-10 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-surface-input text-content transition-colors"
                   />
                 </div>
               </div>
@@ -887,11 +887,11 @@ const FriendsPage: React.FC = () => {
                   {filteredSuggestions.map((suggestion) => (
                     <div
                       key={suggestion.user_id}
-                      className="bg-white rounded-lg shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden hover:shadow-md transition-shadow"
+                      className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                        <div className="w-full aspect-square bg-gray-100 relative">
+                        <div className="w-full aspect-square bg-surface-secondary relative">
                           {suggestion.avatar_url ? (
                             <img
                               src={suggestion.avatar_url}
@@ -909,19 +909,19 @@ const FriendsPage: React.FC = () => {
                       {/* Content */}
                       <div className="p-4">
                         <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-gray-900 text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                          <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                             {suggestion.full_name || "Unknown User"}
                           </h3>
                         </Link>
 
                         {/* Mutual Friends */}
                         {suggestion.mutual_friends_count > 0 && (
-                          <div className="flex items-center space-x-1.5 text-xs text-gray-600 mb-4">
+                          <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
                             <div className="flex -space-x-1">
                               {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
                                 <div
                                   key={i}
-                                  className="w-4 h-4 rounded-full bg-gray-300 border-2 border-white"
+                                  className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
                                 />
                               ))}
                             </div>
@@ -942,12 +942,12 @@ const FriendsPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-white rounded-lg">
-                  <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <div className="text-center py-12 bg-surface rounded-lg">
+                  <Users className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-content mb-2">
                     {suggestionsSearchTerm ? "No suggestions found" : "No suggestions available"}
                   </h3>
-                  <p className="text-gray-500">
+                  <p className="text-content-secondary">
                     {suggestionsSearchTerm
                       ? "Try a different search term"
                       : "We couldn't find any friend suggestions at the moment."}
@@ -957,7 +957,7 @@ const FriendsPage: React.FC = () => {
             </div>
           ) : activeSection === "birthdays" ? (
             <div>
-              <h2 className="text-2xl font-semibold text-gray-600 mb-6">Birthdays</h2>
+              <h2 className="text-2xl font-semibold text-content-secondary mb-6">Birthdays</h2>
 
               {birthdaysLoading ? (
                 <FriendsGridShimmer count={shimmerCount} />
@@ -968,7 +968,7 @@ const FriendsPage: React.FC = () => {
                     <div>
                       <div className="flex items-center space-x-2 mb-4">
                         <PartyPopper className="w-5 h-5 text-orange-500" />
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-content">
                           Today's Birthdays
                         </h3>
                       </div>
@@ -995,7 +995,7 @@ const FriendsPage: React.FC = () => {
                               </Link>
                               <div className="flex-1 min-w-0">
                                 <Link href={`/user/${friend.username || ""}`}>
-                                  <h4 className="font-semibold text-gray-900 truncate hover:text-primary-600 transition-colors">
+                                  <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
                                     {friend.full_name}
                                   </h4>
                                 </Link>
@@ -1026,7 +1026,7 @@ const FriendsPage: React.FC = () => {
                       <div>
                         <div className="flex items-center space-x-2 mb-4">
                           <Gift className="w-5 h-5 text-orange-500" />
-                          <h3 className="text-lg font-semibold text-gray-900">Later This Month</h3>
+                          <h3 className="text-lg font-semibold text-content">Later This Month</h3>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {visibleThisMonth.map((friend) => {
@@ -1040,7 +1040,7 @@ const FriendsPage: React.FC = () => {
                             return (
                               <div
                                 key={friend.id}
-                                className="bg-white border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                                className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
                               >
                                 <Link href={`/user/${friend.username || ""}`} className="shrink-0">
                                   {friend.avatar_url ? (
@@ -1057,16 +1057,16 @@ const FriendsPage: React.FC = () => {
                                 </Link>
                                 <div className="flex-1 min-w-0">
                                   <Link href={`/user/${friend.username || ""}`}>
-                                    <h4 className="font-semibold text-gray-900 truncate hover:text-primary-600 transition-colors">
+                                    <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
                                       {friend.full_name}
                                     </h4>
                                   </Link>
-                                  <p className="text-sm text-gray-500">
+                                  <p className="text-sm text-content-secondary">
                                     {monthName} {bDay}
                                   </p>
                                 </div>
                                 <div className="shrink-0 text-right">
-                                  <span className="text-xs font-medium text-gray-400">
+                                  <span className="text-xs font-medium text-content-tertiary">
                                     {diff} day{diff === 1 ? "" : "s"}
                                   </span>
                                 </div>
@@ -1087,8 +1087,8 @@ const FriendsPage: React.FC = () => {
                     return (
                       <div>
                         <div className="flex items-center space-x-2 mb-4">
-                          <Cake className="w-5 h-5 text-gray-500" />
-                          <h3 className="text-lg font-semibold text-gray-900">Upcoming Birthdays</h3>
+                          <Cake className="w-5 h-5 text-content-secondary" />
+                          <h3 className="text-lg font-semibold text-content">Upcoming Birthdays</h3>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {visibleUpcoming.map((friend) => {
@@ -1104,7 +1104,7 @@ const FriendsPage: React.FC = () => {
                             return (
                               <div
                                 key={friend.id}
-                                className="bg-white border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
+                                className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
                               >
                                 <Link href={`/user/${friend.username || ""}`} className="shrink-0">
                                   {friend.avatar_url ? (
@@ -1121,16 +1121,16 @@ const FriendsPage: React.FC = () => {
                                 </Link>
                                 <div className="flex-1 min-w-0">
                                   <Link href={`/user/${friend.username || ""}`}>
-                                    <h4 className="font-semibold text-gray-900 truncate hover:text-primary-600 transition-colors">
+                                    <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
                                       {friend.full_name}
                                     </h4>
                                   </Link>
-                                  <p className="text-sm text-gray-500">
+                                  <p className="text-sm text-content-secondary">
                                     {monthName} {bDay}
                                   </p>
                                 </div>
                                 <div className="shrink-0 text-right">
-                                  <span className="text-xs font-medium text-gray-400">
+                                  <span className="text-xs font-medium text-content-tertiary">
                                     {diff} day{diff === 1 ? "" : "s"}
                                   </span>
                                 </div>
@@ -1150,12 +1150,12 @@ const FriendsPage: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-12 bg-white rounded-lg">
-                  <Gift className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <div className="text-center py-12 bg-surface rounded-lg">
+                  <Gift className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-content mb-2">
                     No upcoming birthdays
                   </h3>
-                  <p className="text-gray-500">
+                  <p className="text-content-secondary">
                     None of your friends have birthdays coming up in the next 30 days.
                   </p>
                 </div>
@@ -1163,9 +1163,9 @@ const FriendsPage: React.FC = () => {
             </div>
           ) : (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Custom Lists</h2>
-              <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-                <p className="text-gray-500">Coming soon...</p>
+              <h2 className="text-2xl font-bold text-content mb-6">Custom Lists</h2>
+              <div className="bg-surface rounded-lg shadow-sm p-8 text-center">
+                <p className="text-content-secondary">Coming soon...</p>
               </div>
             </div>
           )}

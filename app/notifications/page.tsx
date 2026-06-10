@@ -436,25 +436,25 @@ const NotificationsPage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-canvas flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Please sign in to view your notifications</p>
+          <p className="text-content-secondary">Please sign in to view your notifications</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface-canvas">
       <div className="max-w-4xl mx-auto px-2 sm:px-4 py-3 sm:py-8">
         {/* Header card */}
-        <div className="bg-white rounded-xl sm:rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 mb-3 sm:mb-6">
+        <div className="bg-surface rounded-xl sm:rounded-lg shadow-sm border border-border p-3 sm:p-6 mb-3 sm:mb-6">
           <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4">
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
               <Bell className="w-5 h-5 sm:w-8 sm:h-8 text-primary-600 flex-shrink-0" />
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Notifications</h1>
-                <p className="text-xs sm:text-sm text-gray-500">
+                <h1 className="text-lg sm:text-2xl font-bold text-content">Notifications</h1>
+                <p className="text-xs sm:text-sm text-content-secondary">
                   {stats.total} total &bull; {stats.unread} unread
                 </p>
               </div>
@@ -486,7 +486,7 @@ const NotificationsPage: React.FC = () => {
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full sm:rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap transition-colors active:scale-95 ${
                   filter === item.key
                     ? 'bg-orange-100 text-orange-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+                    : 'bg-surface-secondary text-content hover:bg-surface-hover active:bg-surface-tertiary'
                 }`}
               >
                 {item.label}
@@ -498,15 +498,15 @@ const NotificationsPage: React.FC = () => {
         {/* Notification list */}
         <div className="space-y-2 sm:space-y-4">
           {loading ? (
-            <div className="bg-white rounded-xl sm:rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+            <div className="bg-surface rounded-xl sm:rounded-lg shadow-sm border border-border p-8 sm:p-12 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6900] mx-auto mb-4"></div>
-              <p className="text-sm sm:text-base text-gray-500">Loading notifications...</p>
+              <p className="text-sm sm:text-base text-content-secondary">Loading notifications...</p>
             </div>
           ) : filteredNotifications.length === 0 ? (
-            <div className="bg-white rounded-xl sm:rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
-              <Bell className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 font-medium text-base sm:text-lg mb-1 sm:mb-2">No notifications</p>
-              <p className="text-xs sm:text-sm text-gray-400">
+            <div className="bg-surface rounded-xl sm:rounded-lg shadow-sm border border-border p-8 sm:p-12 text-center">
+              <Bell className="w-10 h-10 sm:w-12 sm:h-12 text-content-tertiary mx-auto mb-3" />
+              <p className="text-content-secondary font-medium text-base sm:text-lg mb-1 sm:mb-2">No notifications</p>
+              <p className="text-xs sm:text-sm text-content-tertiary">
                 {filter === 'unread'
                   ? "You\u2019re all caught up! No unread notifications."
                   : filter !== 'all'
@@ -519,14 +519,14 @@ const NotificationsPage: React.FC = () => {
               {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`bg-white rounded-xl sm:rounded-lg shadow-sm border ${
-                    !notification.is_read ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
-                  } p-3 sm:p-4 hover:shadow-md active:bg-gray-50 transition-all cursor-pointer`}
+                  className={`bg-surface rounded-xl sm:rounded-lg shadow-sm border ${
+                    !notification.is_read ? 'border-orange-200 bg-orange-50' : 'border-border'
+                  } p-3 sm:p-4 hover:shadow-md active:bg-surface-canvas transition-all cursor-pointer`}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start space-x-3 sm:space-x-4">
                     <div className="flex-shrink-0 mt-0.5">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-50 flex items-center justify-center">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface-canvas flex items-center justify-center">
                         <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" aria-hidden />
                       </div>
                     </div>
@@ -534,17 +534,17 @@ const NotificationsPage: React.FC = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-0.5">
-                            <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">
+                            <h3 className="text-sm sm:text-base font-semibold text-content truncate">
                               {stripLeadingEmoji(notification.title)}
                             </h3>
                             {!notification.is_read && (
                               <span className="w-2 h-2 bg-primary-600 rounded-full flex-shrink-0"></span>
                             )}
                           </div>
-                          <p className="text-xs sm:text-sm text-gray-600 mb-1 line-clamp-2 leading-relaxed">
+                          <p className="text-xs sm:text-sm text-content-secondary mb-1 line-clamp-2 leading-relaxed">
                             {notification.message}
                           </p>
-                          <p className="text-[11px] sm:text-xs text-gray-400">
+                          <p className="text-[11px] sm:text-xs text-content-tertiary">
                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                           </p>
                         </div>
@@ -555,7 +555,7 @@ const NotificationsPage: React.FC = () => {
                                 e.stopPropagation()
                                 markAsRead(notification.id)
                               }}
-                              className="p-2 text-gray-400 hover:text-primary-600 hover:bg-orange-50 active:bg-orange-100 rounded-full transition-colors"
+                              className="p-2 text-content-tertiary hover:text-primary-600 hover:bg-orange-50 active:bg-orange-100 rounded-full transition-colors"
                               title="Mark as read"
                             >
                               <Check className="w-4 h-4" />
@@ -571,11 +571,11 @@ const NotificationsPage: React.FC = () => {
               {filter === 'all' && <div ref={loadMoreRef} className="h-1" />}
 
               {filter === 'all' && loadingMore && (
-                <div className="py-4 text-center text-sm text-gray-500">Loading more notifications...</div>
+                <div className="py-4 text-center text-sm text-content-secondary">Loading more notifications...</div>
               )}
 
               {filter === 'all' && !hasMore && notifications.length >= PAGE_SIZE && (
-                <div className="py-4 text-center text-sm text-gray-400">You&apos;ve reached the end of notifications</div>
+                <div className="py-4 text-center text-sm text-content-tertiary">You&apos;ve reached the end of notifications</div>
               )}
             </>
           )}

@@ -119,9 +119,9 @@ export function MyOrdersContent() {
       shipped: "bg-indigo-100 text-indigo-700 border-indigo-300",
       completed: "bg-green-100 text-green-700 border-green-300",
       cancelled: "bg-red-100 text-red-700 border-red-300",
-      refunded: "bg-gray-100 text-gray-700 border-gray-300",
+      refunded: "bg-surface-secondary text-content border-border",
     };
-    return colors[status] || "bg-gray-100 text-gray-700 border-gray-300";
+    return colors[status] || "bg-surface-secondary text-content border-border";
   };
 
   const getStatusIcon = (status: string) => {
@@ -198,10 +198,10 @@ export function MyOrdersContent() {
     return (
       <div
         key={order.id}
-        className="bg-white rounded-lg border border-gray-100 shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
+        className="bg-surface rounded-lg border border-border-subtle shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
       >
         <div className="relative">
-          <div className="relative w-full h-36 mb-2 overflow-hidden rounded-t-lg bg-gray-50 flex items-center justify-center">
+          <div className="relative w-full h-36 mb-2 overflow-hidden rounded-t-lg bg-surface-canvas flex items-center justify-center">
             {order.product_image ? (
               <img
                 src={order.product_image}
@@ -209,8 +209,8 @@ export function MyOrdersContent() {
                 className="w-full h-full object-cover rounded-t-lg transition-transform duration-300 hover:scale-105"
               />
             ) : (
-              <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center border border-gray-200">
-                <ShoppingBag className="w-8 h-8 text-gray-400" />
+              <div className="w-full h-full bg-surface-secondary rounded-lg flex items-center justify-center border border-border">
+                <ShoppingBag className="w-8 h-8 text-content-tertiary" />
               </div>
             )}
 
@@ -227,14 +227,14 @@ export function MyOrdersContent() {
           <div className="px-3">
             <div className="flex items-center gap-1.5 mb-0.5">
               <h3
-                className="font-semibold text-gray-900 sm:text-base text-sm truncate max-w-[300px] hover:text-orange-500 cursor-pointer"
+                className="font-semibold text-content sm:text-base text-sm truncate max-w-[300px] hover:text-orange-500 cursor-pointer"
                 title={order.product_title}
                 onClick={() => router.push(`/my-orders/${order.id}`)}
               >
                 {order.product_title}
               </h3>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-content-secondary">
               <span className="font-bold text-black">Order # : </span>
               {order.order_number}
             </p>
@@ -245,21 +245,21 @@ export function MyOrdersContent() {
           <div className="flex-1 ">
             <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mb-2">
               <div>
-                <p className="text-xs text-gray-500">Quantity</p>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-xs text-content-secondary">Quantity</p>
+                <p className="text-sm font-medium text-content">
                   {order.quantity} item{order.quantity > 1 ? "s" : ""}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Total Amount</p>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-xs text-content-secondary">Total Amount</p>
+                <p className="text-sm font-medium text-content">
                   {getCurrencySymbol(order.currency)}
                   {order.total_amount.toLocaleString()}
                 </p>
               </div>
               {!isSale && (
                 <div>
-                  <p className="text-xs text-gray-500">Payment Status</p>
+                  <p className="text-xs text-content-secondary">Payment Status</p>
                   <p
                     className={`text-sm font-medium ${order.payment_status === "completed"
                       ? "text-green-600"
@@ -271,14 +271,14 @@ export function MyOrdersContent() {
                 </div>
               )}
               <div>
-                <p className="text-xs text-gray-500">Order Date</p>
-                <p className=" text-[12px] font-medium text-gray-900">
+                <p className="text-xs text-content-secondary">Order Date</p>
+                <p className=" text-[12px] font-medium text-content">
                   {formatDate(order.created_at)}
                 </p>
               </div>
               {isSale && order.status !== 'completed' && order.status !== 'cancelled' && order.status !== 'refunded' && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Order Status</p>
+                  <p className="text-xs text-content-secondary mb-1">Order Status</p>
                   <div className="relative group">
                     <select
                       value={order.status}
@@ -288,7 +288,7 @@ export function MyOrdersContent() {
                         }
                       }}
                       disabled={updatingOrderId === order.id}
-                      className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 w-full"
+                      className="text-xs px-2 py-1 rounded border border-border bg-surface text-content hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 w-full"
                     >
                       <option value={order.status}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</option>
                       {getNextStatusOptions(order.status).map((status) => (
@@ -297,13 +297,13 @@ export function MyOrdersContent() {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+                    <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-content-secondary pointer-events-none" />
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
               <div className="flex items-center gap-1.5">
                 {otherParty?.avatar_url ? (
                   <img
@@ -319,11 +319,11 @@ export function MyOrdersContent() {
                   </div>
                 )}
                 <div>
-                  <span className="text-xs text-gray-800 font-medium">
+                  <span className="text-xs text-content font-medium">
                     {isSale ? "Buyer" : "Seller"}:
                   </span>
                   <span
-                    className={`text-xs text-gray-800 ${otherParty?.username
+                    className={`text-xs text-content ${otherParty?.username
                         ? "hover:text-primary-600 hover:underline cursor-pointer"
                         : ""
                       }`}
@@ -352,14 +352,14 @@ export function MyOrdersContent() {
     activeTab === "purchases" ? stats.purchases.totalSpent : stats.sales.totalEarned;
 
   return (
-    <div className="min-h-screen max-w-full px-3 sm:px-4 py-4">
+    <div className="min-h-screen max-w-full bg-surface-canvas px-3 sm:px-4 py-4">
       <div className="">
         <div className="mb-4">
           <div className="flex items-center gap-1.5">
             <ShoppingBag className="w-6 h-6 text-primary-600" />
-            <h1 className="text-xl font-bold text-gray-900">My Orders</h1>
+            <h1 className="text-xl font-bold text-content">My Orders</h1>
           </div>
-          <p className="text-gray-600">
+          <p className="text-content-secondary">
             Manage your orders and track their status.
           </p>
         </div>
@@ -417,7 +417,7 @@ export function MyOrdersContent() {
             onClick={() => setActiveTab("purchases")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'purchases'
                 ? 'bg-primary-600 text-white'
-                : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+                : 'text-content-secondary hover:bg-primary-600 hover:text-white bg-surface-tertiary'
               }`}
           >
             My Purchases ({stats.purchases.total})
@@ -426,7 +426,7 @@ export function MyOrdersContent() {
             onClick={() => setActiveTab("sales")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'sales'
                 ? 'bg-primary-600 text-white'
-                : 'text-gray-600 hover:bg-primary-600 hover:text-white bg-gray-200'
+                : 'text-content-secondary hover:bg-primary-600 hover:text-white bg-surface-tertiary'
               }`}
           >
             My Sales ({stats.sales.total})
@@ -445,13 +445,13 @@ export function MyOrdersContent() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <ShoppingBag className="w-8 h-8 text-gray-400" />
+            <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag className="w-8 h-8 text-content-tertiary" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-content mb-2">
               No orders yet
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-content-secondary mb-4">
               {activeTab === "purchases"
                 ? "Start shopping in the marketplace to see your orders here."
                 : "Your sales will appear here once customers purchase your products."}

@@ -107,21 +107,21 @@ export const PeopleYouMayKnow: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-md shadow-gray-200/60">
+      <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-md shadow-gray-200/60">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
             <div className="h-5 w-5 rounded bg-primary-100 animate-pulse" />
-            <div className="h-4 w-40 rounded bg-gray-200 animate-pulse" />
+            <div className="h-4 w-40 rounded bg-surface-tertiary animate-pulse" />
           </div>
           <div className="h-8 w-8 rounded-full bg-primary-50 animate-pulse" />
         </div>
         <div className="flex gap-3 overflow-hidden px-4 pb-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="w-[168px] shrink-0 animate-pulse rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-              <div className="aspect-square bg-gray-200" />
+            <div key={i} className="w-[168px] shrink-0 animate-pulse rounded-xl border border-border overflow-hidden shadow-sm">
+              <div className="aspect-square bg-surface-tertiary" />
               <div className="space-y-2 p-3">
-                <div className="h-3.5 w-3/4 rounded bg-gray-200" />
-                <div className="h-3 w-1/2 rounded bg-gray-200" />
+                <div className="h-3.5 w-3/4 rounded bg-surface-tertiary" />
+                <div className="h-3 w-1/2 rounded bg-surface-tertiary" />
                 <div className="h-9 w-full rounded-lg bg-primary-50" />
               </div>
             </div>
@@ -137,7 +137,7 @@ export const PeopleYouMayKnow: React.FC = () => {
 
   return (
     <>
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-md shadow-gray-200/60">
+      <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-md shadow-gray-200/60">
         <div className="flex items-center justify-between px-4 pt-4 pb-1">
           <h3 className="text-[15px] font-bold text-[#1c1e21] flex items-center gap-2">
             <Users className="w-5 h-5 text-primary-600 shrink-0" />
@@ -146,7 +146,7 @@ export const PeopleYouMayKnow: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowUserSearch(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-primary-50 hover:text-primary-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-primary-700"
             aria-label="More options"
           >
             <MoreHorizontal className="w-5 h-5" />
@@ -158,7 +158,7 @@ export const PeopleYouMayKnow: React.FC = () => {
             <button
               type="button"
               onClick={() => scrollStrip('left')}
-              className="flex absolute left-1 sm:left-2 top-[calc(50%-12px)] -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-gray-200"
+              className="flex absolute left-1 sm:left-2 top-[calc(50%-12px)] -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-border"
               aria-label="Scroll left"
             >
               <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
@@ -168,7 +168,7 @@ export const PeopleYouMayKnow: React.FC = () => {
             <button
               type="button"
               onClick={() => scrollStrip('right')}
-              className="flex absolute right-1 sm:right-2 top-[calc(50%-12px)] -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-gray-200"
+              className="flex absolute right-1 sm:right-2 top-[calc(50%-12px)] -translate-y-1/2 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-surface rounded-full shadow-md items-center justify-center hover:bg-primary-50 transition-colors border border-border"
               aria-label="Scroll right"
             >
               <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" />
@@ -182,9 +182,9 @@ export const PeopleYouMayKnow: React.FC = () => {
             {visibleRecommendations.map((rec) => (
               <div
                 key={rec.user_id}
-                className="w-[168px] shrink-0 rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm"
+                className="w-[168px] shrink-0 rounded-xl border border-border bg-surface overflow-hidden shadow-sm"
               >
-                <div className="relative aspect-square bg-gray-100">
+                <div className="relative aspect-square bg-surface-secondary">
                   {rec.avatar_url ? (
                     <img
                       src={rec.avatar_url}
@@ -212,11 +212,11 @@ export const PeopleYouMayKnow: React.FC = () => {
                     {rec.full_name}
                   </p>
                   {rec.mutual_friends_count > 0 ? (
-                    <p className="mt-1.5 text-xs text-gray-500 text-center truncate px-0.5">
+                    <p className="mt-1.5 text-xs text-content-secondary text-center truncate px-0.5">
                       {rec.mutual_friends_count} mutual {rec.mutual_friends_count === 1 ? 'friend' : 'friends'}
                     </p>
                   ) : (
-                    <p className="mt-1.5 text-xs text-gray-400 text-center">Suggested for you</p>
+                    <p className="mt-1.5 text-xs text-content-tertiary text-center">Suggested for you</p>
                   )}
                   <button
                     type="button"
@@ -239,7 +239,7 @@ export const PeopleYouMayKnow: React.FC = () => {
           </div>
         </div>
 
-        <div className="border-t border-gray-100 py-3">
+        <div className="border-t border-border-subtle py-3">
           <Link
             href="/friends"
             className="block text-center text-sm font-semibold text-primary-600 hover:text-primary-700 hover:underline"

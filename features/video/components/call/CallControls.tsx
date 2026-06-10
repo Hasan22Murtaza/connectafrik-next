@@ -63,7 +63,7 @@ const CallControls: React.FC<CallControlsProps> = ({
             className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
               isMuted
                 ? 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
-                : 'bg-white/90 hover:bg-white text-gray-700 focus:ring-gray-400 backdrop-blur-sm'
+                : 'bg-surface/90 hover:bg-surface text-content focus:ring-gray-400 backdrop-blur-sm'
             }`}
             title={isMuted ? 'Unmute' : 'Mute'}
             aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
@@ -77,7 +77,7 @@ const CallControls: React.FC<CallControlsProps> = ({
               onClick={onToggleVideo}
               className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
                 isVideoEnabled
-                  ? 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                  ? 'bg-surface/90 hover:bg-surface text-content backdrop-blur-sm'
                   : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
               }`}
               title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
@@ -90,7 +90,7 @@ const CallControls: React.FC<CallControlsProps> = ({
           {/* Speaker */}
           <button
             onClick={onToggleSpeaker}
-            className="rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm"
+            className="rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-surface/90 hover:bg-surface text-content backdrop-blur-sm"
             title={speakerLevel === 'normal' ? 'Speaker: normal' : speakerLevel === 'loud' ? 'Speaker: loud' : 'Speaker: low'}
             aria-label={`Speaker ${speakerLevel}`}
           >
@@ -107,10 +107,10 @@ const CallControls: React.FC<CallControlsProps> = ({
             disabled={screenShareDisabled}
             className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md focus:outline-none ${
               screenShareDisabled
-                ? 'bg-gray-400/60 text-gray-500 cursor-not-allowed opacity-50'
+                ? 'bg-gray-400/60 text-content-secondary cursor-not-allowed opacity-50'
                 : isScreenSharing
                   ? 'bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white hover:shadow-lg hover:scale-110 active:scale-95'
-                  : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm hover:shadow-lg hover:scale-110 active:scale-95'
+                  : 'bg-surface/90 hover:bg-surface text-content backdrop-blur-sm hover:shadow-lg hover:scale-110 active:scale-95'
             }`}
             title={screenShareDisabled ? `${screenShareParticipantName} is already presenting` : isScreenSharing ? 'Stop sharing' : 'Share screen'}
             aria-label={screenShareDisabled ? 'Screen share unavailable - someone is presenting' : isScreenSharing ? 'Stop sharing screen' : 'Share screen'}
@@ -124,7 +124,7 @@ const CallControls: React.FC<CallControlsProps> = ({
             className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
               showMessageInput
                 ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white'
-                : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                : 'bg-surface/90 hover:bg-surface text-content backdrop-blur-sm'
             }`}
             title="Send message"
             aria-label="Send message"
@@ -138,7 +138,7 @@ const CallControls: React.FC<CallControlsProps> = ({
             className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
               showAddPeople
                 ? 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white'
-                : 'bg-white/90 hover:bg-white text-gray-700 backdrop-blur-sm'
+                : 'bg-surface/90 hover:bg-surface text-content backdrop-blur-sm'
             }`}
             title="Add people to call"
             aria-label="Add people to call"

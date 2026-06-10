@@ -81,7 +81,7 @@ const CulturePage: React.FC = () => {
   const commentSheetPost = showCommentsFor != null ? posts.find((p) => p.id === showCommentsFor) : undefined
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-surface-canvas">
       
       <div className="max-w-full  px-4 sm:px-6 py-8">
         {/* Header Section */}
@@ -92,8 +92,8 @@ const CulturePage: React.FC = () => {
                 <Users className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <h1 className="sm:text-3xl text-2xl font-bold text-gray-900">African Culture</h1>
-                <p className="text-gray-600 hidden sm:block">
+                <h1 className="sm:text-3xl text-2xl font-bold text-content">African Culture</h1>
+                <p className="text-content-secondary hidden sm:block">
                   Celebrating the rich cultural heritage and diversity of the African continent
                 </p>
                 {statsError && (
@@ -115,26 +115,26 @@ const CulturePage: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-3 md:grid-cols-3 sm:gap-4 gap-2">
-            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
               <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
-              <div className="sm:text-2xl text-lg font-bold text-gray-900">
+              <div className="sm:text-2xl text-lg font-bold text-content">
                 {statsLoading ? '—' : formatStat(totalPosts)}
               </div>
-              <div className="text-sm text-gray-600">Cultural Shares</div>
+              <div className="text-sm text-content-secondary">Cultural Shares</div>
             </div>
-            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
               <Users className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
-              <div className="sm:text-2xl text-lg font-bold text-gray-900">
+              <div className="sm:text-2xl text-lg font-bold text-content">
                 {statsLoading ? '—' : formatStat(enthusiastsCount)}
               </div>
-              <div className="text-sm text-gray-600">Culture Enthusiasts</div>
+              <div className="text-sm text-content-secondary">Culture Enthusiasts</div>
             </div>
-            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
               <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
-              <div className="sm:text-2xl text-lg font-bold text-gray-900">
+              <div className="sm:text-2xl text-lg font-bold text-content">
                 {statsLoading ? '—' : (totalPosts >= 1000 ? '1000+' : formatStat(totalPosts))}
               </div>
-              <div className="text-sm text-gray-600">Traditions Shared</div>
+              <div className="text-sm text-content-secondary">Traditions Shared</div>
             </div>
           </div>
         </div>
@@ -144,19 +144,21 @@ const CulturePage: React.FC = () => {
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 space-y-6">
               {/* Cultural Categories */}
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Cultural Categories</h3>
+              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <h3 className="font-semibold text-content mb-4">Cultural Categories</h3>
                 <div className="space-y-1 mb-2">
                   <button
                     type="button"
                     onClick={() => setSelectedSubcategory(null)}
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
-                      selectedSubcategory === null ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
+                      selectedSubcategory === null
+                        ? 'bg-green-50 border border-green-200 text-green-900 dark:text-green-200'
+                        : 'hover:bg-surface-hover text-content'
                     }`}
                   >
-                    <span className="font-medium text-gray-900 text-sm">All categories</span>
+                    <span className="font-medium text-sm">All categories</span>
                     {totalPosts > 0 && (
-                      <span className="text-xs text-gray-500 ml-2">({totalPosts} posts)</span>
+                      <span className="text-xs opacity-75 ml-2">({totalPosts} posts)</span>
                     )}
                   </button>
                 </div>
@@ -167,16 +169,18 @@ const CulturePage: React.FC = () => {
                       type="button"
                       onClick={() => setSelectedSubcategory(cat.slug)}
                       className={`w-full text-left p-3 rounded-lg transition-colors ${
-                        selectedSubcategory === cat.slug ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
+                        selectedSubcategory === cat.slug
+                          ? 'bg-green-50 border border-green-200 text-green-900 dark:text-green-200'
+                          : 'hover:bg-surface-hover text-content'
                       }`}
                     >
                       <div className="flex gap-3">
                         <span className="text-lg shrink-0">{cat.icon}</span>
                         <div className="min-w-0 flex-1 space-y-0.5">
-                          <div className="font-medium text-gray-900 text-sm">{cat.name}</div>
-                          <div className="text-xs text-gray-500">{cat.description}</div>
+                          <div className="font-medium text-sm">{cat.name}</div>
+                          <div className={`text-xs ${selectedSubcategory === cat.slug ? 'opacity-80' : 'text-content-secondary'}`}>{cat.description}</div>
                           {cat.count > 0 && (
-                            <div className="text-xs text-green-600 font-medium">{cat.count} posts</div>
+                            <div className={`text-xs font-medium ${selectedSubcategory === cat.slug ? 'text-green-700 dark:text-green-300' : 'text-green-600'}`}>{cat.count} posts</div>
                           )}
                         </div>
                       </div>
@@ -186,21 +190,21 @@ const CulturePage: React.FC = () => {
               </div>
 
               {/* Featured This Week */}
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Featured This Week</h3>
+              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <h3 className="font-semibold text-content mb-4">Featured This Week</h3>
                 <div className="space-y-3">
                   {statsLoading ? (
-                    <div className="text-sm text-gray-500">Loading…</div>
+                    <div className="text-sm text-content-secondary">Loading…</div>
                   ) : featuredThisWeek.length === 0 ? (
-                    <div className="text-sm text-gray-500">No activity this week yet. Be the first!</div>
+                    <div className="text-sm text-content-secondary">No activity this week yet. Be the first!</div>
                   ) : (
                     featuredThisWeek.map((culture, index) => (
-                      <div key={`${culture.country}-${index}`} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg">
+                      <div key={`${culture.country}-${index}`} className="flex items-center justify-between p-2 hover:bg-surface-hover rounded-lg">
                         <div>
-                          <div className="font-medium text-gray-900 text-sm">{culture.country}</div>
-                          <div className="text-xs text-gray-500">{culture.feature}</div>
+                          <div className="font-medium text-content text-sm">{culture.country}</div>
+                          <div className="text-xs text-content-secondary">{culture.feature}</div>
                         </div>
-                        <div className="text-xs text-gray-400">{culture.participants}</div>
+                        <div className="text-xs text-content-tertiary">{culture.participants}</div>
                       </div>
                     ))
                   )}
@@ -208,9 +212,9 @@ const CulturePage: React.FC = () => {
               </div>
 
               {/* Cultural Tips */}
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                <h3 className="font-semibold text-gray-900 mb-4">Sharing Tips</h3>
-                <div className="space-y-2 text-sm text-gray-600">
+              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <h3 className="font-semibold text-content mb-4">Sharing Tips</h3>
+                <div className="space-y-2 text-sm text-content-secondary">
                   <div className="flex items-start space-x-2">
                     <Camera className="w-4 h-4 text-green-500 mt-1" />
                     <span>Add photos to showcase traditions</span>
@@ -236,17 +240,17 @@ const CulturePage: React.FC = () => {
           <div className="lg:col-span-3">
             {/* Create Post Button */}
             {!showCreatePost && (
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] sm:p-4 p-2  mb-6">
+              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] sm:p-4 p-2  mb-6">
                 <button
                   onClick={() => setShowCreatePost(true)}
-                  className="w-full flex items-center space-x-3  text-left hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                  className="w-full flex items-center space-x-3  text-left hover:bg-surface-hover rounded-lg transition-colors duration-200"
                 >
                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
                     <Plus className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900">Share your cultural heritage</div>
-                    <span className="text-gray-500 text-sm">What cultural tradition would you like to share today?</span>
+                    <div className="font-medium text-content">Share your cultural heritage</div>
+                    <span className="text-content-secondary text-sm">What cultural tradition would you like to share today?</span>
                   </div>
                 </button>
               </div>
@@ -270,32 +274,32 @@ const CulturePage: React.FC = () => {
               {postsLoading ? (
                 <div className="space-y-6">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
+                    <div key={i} className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
                       <div className="flex space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+                        <div className="w-10 h-10 bg-surface-tertiary rounded-full"></div>
                         <div className="flex-1">
-                          <div className="h-4 bg-gray-300 rounded w-1/4 mb-2"></div>
-                          <div className="h-3 bg-gray-300 rounded w-1/3"></div>
+                          <div className="h-4 bg-surface-tertiary rounded w-1/4 mb-2"></div>
+                          <div className="h-3 bg-surface-tertiary rounded w-1/3"></div>
                         </div>
                       </div>
                       <div className="space-y-2 mb-4">
-                        <div className="h-4 bg-gray-300 rounded"></div>
-                        <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                        <div className="h-4 bg-surface-tertiary rounded"></div>
+                        <div className="h-4 bg-surface-tertiary rounded w-3/4"></div>
                       </div>
-                      <div className="h-32 bg-gray-300 rounded mb-4"></div>
+                      <div className="h-32 bg-surface-tertiary rounded mb-4"></div>
                       <div className="flex space-x-4">
-                        <div className="h-8 bg-gray-300 rounded w-16"></div>
-                        <div className="h-8 bg-gray-300 rounded w-16"></div>
-                        <div className="h-8 bg-gray-300 rounded w-16"></div>
+                        <div className="h-8 bg-surface-tertiary rounded w-16"></div>
+                        <div className="h-8 bg-surface-tertiary rounded w-16"></div>
+                        <div className="h-8 bg-surface-tertiary rounded w-16"></div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : posts.length === 0 && !postsLoading ? (
-                <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center py-12">
+                <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center py-12">
                   <Users className="w-16 h-16 text-green-200 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No cultural shares yet</h3>
-                  <p className="text-gray-600 mb-6">Be the first to share a piece of African culture!</p>
+                  <h3 className="text-lg font-semibold text-content mb-2">No cultural shares yet</h3>
+                  <p className="text-content-secondary mb-6">Be the first to share a piece of African culture!</p>
                   <button
                     onClick={() => setShowCreatePost(true)}
                     className="btn-primary bg-green-600 hover:bg-green-700"
@@ -337,23 +341,23 @@ const CulturePage: React.FC = () => {
                   {loadingMore && (
                     <div className="space-y-6">
                       {Array.from({ length: 2 }).map((_, idx) => (
-                        <div key={idx} className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
+                        <div key={idx} className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
                           <div className="flex space-x-3 mb-4">
-                            <div className="w-10 h-10 bg-gray-300 rounded-full" />
+                            <div className="w-10 h-10 bg-surface-tertiary rounded-full" />
                             <div className="flex-1">
-                              <div className="h-4 bg-gray-300 rounded w-1/4 mb-2" />
-                              <div className="h-3 bg-gray-300 rounded w-1/3" />
+                              <div className="h-4 bg-surface-tertiary rounded w-1/4 mb-2" />
+                              <div className="h-3 bg-surface-tertiary rounded w-1/3" />
                             </div>
                           </div>
                           <div className="space-y-2 mb-4">
-                            <div className="h-4 bg-gray-300 rounded" />
-                            <div className="h-4 bg-gray-300 rounded w-3/4" />
+                            <div className="h-4 bg-surface-tertiary rounded" />
+                            <div className="h-4 bg-surface-tertiary rounded w-3/4" />
                           </div>
-                          <div className="h-32 bg-gray-300 rounded mb-4" />
+                          <div className="h-32 bg-surface-tertiary rounded mb-4" />
                           <div className="flex space-x-4">
-                            <div className="h-8 bg-gray-300 rounded w-16" />
-                            <div className="h-8 bg-gray-300 rounded w-16" />
-                            <div className="h-8 bg-gray-300 rounded w-16" />
+                            <div className="h-8 bg-surface-tertiary rounded w-16" />
+                            <div className="h-8 bg-surface-tertiary rounded w-16" />
+                            <div className="h-8 bg-surface-tertiary rounded w-16" />
                           </div>
                         </div>
                       ))}
@@ -362,7 +366,7 @@ const CulturePage: React.FC = () => {
 
                   {/* End of feed message — only show if more than one page was loaded */}
                   {!hasMore && posts.length >= 10 && (
-                    <div className="py-6 text-center text-sm text-gray-400">
+                    <div className="py-6 text-center text-sm text-content-tertiary">
                       You&apos;ve reached the end of cultural posts
                     </div>
                   )}
@@ -377,8 +381,8 @@ const CulturePage: React.FC = () => {
       {showCategoryModal && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowCategoryModal(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl max-h-[80vh] w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 bg-green-100">
+          <div className="relative bg-surface rounded-2xl shadow-2xl max-h-[80vh] w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between border-b border-border px-4 py-4 bg-green-100">
               <div>
                 <h2 className="text-lg font-semibold text-green-600">Cultural Categories</h2>
               </div>
@@ -399,12 +403,14 @@ const CulturePage: React.FC = () => {
                   setShowCategoryModal(false)
                 }}
                 className={`w-full text-left p-3 rounded-lg transition-colors ${
-                  selectedSubcategory === null ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
+                  selectedSubcategory === null
+                    ? 'bg-green-50 border border-green-200 text-green-900 dark:text-green-200'
+                    : 'hover:bg-surface-hover text-content'
                 }`}
               >
-                <span className="font-medium text-gray-900 text-sm">All categories</span>
+                <span className="font-medium text-sm">All categories</span>
                 {totalPosts > 0 && (
-                  <span className="text-xs text-gray-500 ml-2">({totalPosts} posts)</span>
+                  <span className="text-xs opacity-75 ml-2">({totalPosts} posts)</span>
                 )}
               </button>
 
@@ -417,30 +423,32 @@ const CulturePage: React.FC = () => {
                     setShowCategoryModal(false)
                   }}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    selectedSubcategory === cat.slug ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
+                    selectedSubcategory === cat.slug
+                      ? 'bg-green-50 border border-green-200 text-green-900 dark:text-green-200'
+                      : 'hover:bg-surface-hover text-content'
                   }`}
                 >
                   <div className="flex gap-3">
                     <span className="text-lg shrink-0">{cat.icon}</span>
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <div className="font-medium text-gray-900 text-sm">{cat.name}</div>
-                      <div className="text-xs text-gray-500">{cat.description}</div>
+                      <div className="font-medium text-sm">{cat.name}</div>
+                      <div className={`text-xs ${selectedSubcategory === cat.slug ? 'opacity-80' : 'text-content-secondary'}`}>{cat.description}</div>
                       {cat.count > 0 && (
-                        <div className="text-xs text-green-600 font-medium">{cat.count} posts</div>
+                        <div className={`text-xs font-medium ${selectedSubcategory === cat.slug ? 'text-green-700 dark:text-green-300' : 'text-green-600'}`}>{cat.count} posts</div>
                       )}
                     </div>
                   </div>
                 </button>
               ))}
             </div>
-            <div className="border-t border-gray-200 p-4">
+            <div className="border-t border-border p-4">
               <button
                 type="button"
                 onClick={() => {
                   setSelectedSubcategory(null)
                   setShowCategoryModal(false)
                 }}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors"
+                className="w-full bg-surface-secondary hover:bg-surface-hover text-content font-medium py-3 px-4 rounded-lg transition-colors"
               >
                 Clear Filter
               </button>

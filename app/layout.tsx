@@ -58,12 +58,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased `}
+        className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased`}
       >
         <Providers>
-          <div className="min-h-screen bg-[#F2F4F7] 4xl:max-w-screen-2xl mx-auto ">
+          <div className="min-h-screen bg-surface-canvas 4xl:max-w-screen-2xl mx-auto">
             <ConditionalHeader />
             
             {children}

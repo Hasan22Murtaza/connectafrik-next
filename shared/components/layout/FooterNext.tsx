@@ -17,7 +17,7 @@ const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-gray-100 text-black ">
+    <footer className="bg-surface-secondary text-content">
       <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4">
         {/* Main Footer Content */}
         <div className=" px-4 py-12">
@@ -25,7 +25,7 @@ const Footer: React.FC = () => {
             {/* Company Info */}
             <div className="space-y-4">
               <img src="/assets/images/logo_2.png" alt="" className="w-30" />
-              <p className="text-gray-800 text-sm leading-relaxed">
+              <p className="text-content-secondary text-sm leading-relaxed">
                 Connecting the African continent and diaspora through meaningful
                 conversations about politics, culture, and community building.
               </p>
@@ -34,7 +34,7 @@ const Footer: React.FC = () => {
                   href="https://facebook.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-orange-500 transition-colors duration-300"
+                  className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                 >
                   <Facebook className="w-5 h-5" />
                 </a>
@@ -42,7 +42,7 @@ const Footer: React.FC = () => {
                   href="https://twitter.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-orange-500 transition-colors duration-300"
+                  className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                 >
                   <Twitter className="w-5 h-5" />
                 </a>
@@ -50,7 +50,7 @@ const Footer: React.FC = () => {
                   href="https://instagram.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-orange-500 transition-colors duration-300"
+                  className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                 >
                   <Instagram className="w-5 h-5" />
                 </a>
@@ -58,7 +58,7 @@ const Footer: React.FC = () => {
                   href="https://youtube.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-600 hover:text-orange-500 transition-colors duration-300"
+                  className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                 >
                   <Youtube className="w-5 h-5" />
                 </a>
@@ -72,7 +72,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/feed"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Community Feed
                   </Link>
@@ -80,7 +80,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/politics"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Political Discussions
                   </Link>
@@ -88,7 +88,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/culture"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Cultural Heritage
                   </Link>
@@ -96,7 +96,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/groups"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Community Groups
                   </Link>
@@ -104,7 +104,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/our-story"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Our Story
                   </Link>
@@ -121,7 +121,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/support"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Support Center
                   </Link>
@@ -130,7 +130,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/guidelines"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Community Guidelines
                   </Link>
@@ -138,7 +138,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/privacy-policy"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Privacy Policy
                   </Link>
@@ -146,7 +146,7 @@ const Footer: React.FC = () => {
                 <li>
                   <Link
                     href="/terms-of-service"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     Terms of Service
                   </Link>
@@ -159,35 +159,35 @@ const Footer: React.FC = () => {
               <h3 className="text-lg font-semibold text-black">Contact Us</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center space-x-2">
-                  <Mail className="w-4 h-4 text-gray-600" />
+                  <Mail className="w-4 h-4 text-content-secondary" />
                   <a
                     href="mailto:info@connectafrik.com "
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     info@connectafrik.com 
                   </a>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Phone className="w-4 h-4 text-gray-600" />
+                  <Phone className="w-4 h-4 text-content-secondary" />
                   <a
                     href="tel:+233534787731"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     +233 534 787 731
                   </a>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Phone className="w-4 h-4 text-gray-600" />
+                  <Phone className="w-4 h-4 text-content-secondary" />
                   <a
                     href="tel:+19144337155"
-                    className="text-gray-800 hover:text-orange-500 transition-colors duration-300"
+                    className="text-content-secondary hover:text-orange-500 transition-colors duration-300"
                   >
                     +1 914 433 7155
                   </a>
                 </div>
                 <div className="flex items-start space-x-2">
-                  <Globe className="w-4 h-4 text-gray-600 mt-0.5" />
-                  <span className="text-gray-800">
+                  <Globe className="w-4 h-4 text-content-secondary mt-0.5" />
+                  <span className="text-content-secondary">
                     Serving Africa & Global Diaspora
                   </span>
                 </div>
@@ -199,14 +199,14 @@ const Footer: React.FC = () => {
         {/* Bottom Bar */}
         {/* <div className="border-t border-gray-300 pb-14 pt-2 sm:py-2">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-            <div className="flex items-center space-x-2 text-sm text-gray-800 flex-wrap ">
+            <div className="flex items-center space-x-2 text-sm text-content-secondary flex-wrap ">
               <span>© {currentYear} ConnectAfrik. Made with</span>
               <div className="flex items-center gap-1">
                 <Heart className="w-4 h-4 text-red-500" />
                 <span>for the African community worldwide.</span>
               </div>
             </div>
-            <div className="flex items-center space-x-6 text-sm text-gray-800">
+            <div className="flex items-center space-x-6 text-sm text-content-secondary">
               <Link
                 href="/privacy-policy"
                 className="hover:text-orange-500 transition-colors duration-300"

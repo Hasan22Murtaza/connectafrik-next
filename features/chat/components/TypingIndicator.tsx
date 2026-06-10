@@ -16,7 +16,7 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({ isTyping }) => {
   return (
     <div className="flex items-center gap-1.5 px-3 pb-1 pt-0.5 animate-fadeIn">
       {/* Animated dots bubble */}
-      <div className="flex items-center gap-[3px] rounded-2xl bg-gray-100 px-3 py-1.5">
+      <div className="flex items-center gap-[3px] rounded-2xl bg-surface-secondary px-3 py-1.5">
         <span className="typing-dot typing-dot-1" />
         <span className="typing-dot typing-dot-2" />
         <span className="typing-dot typing-dot-3" />

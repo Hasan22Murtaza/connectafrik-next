@@ -18,7 +18,7 @@ export type LocationSearchProps = {
 }
 
 const defaultFieldClass =
-  'w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]'
+  'w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]'
 
 /**
  * Single visible search field. Choosing a suggestion loads Place Details and calls `onChange`
@@ -127,7 +127,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
   return (
     <div ref={wrapRef} className={`space-y-1 ${className}`}>
       {label ? (
-        <label className="flex items-center text-xs text-gray-600 mb-0.5" htmlFor={`${idBase}-search`}>
+        <label className="flex items-center text-xs text-content-secondary mb-0.5" htmlFor={`${idBase}-search`}>
           {label}
           {required ? <span className="text-red-500 ml-0.5">*</span> : null}
         </label>
@@ -147,12 +147,12 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
           required={required}
         />
         {loading ? (
-          <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+          <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary animate-spin" />
         ) : null}
 
         {open && suggestions.length > 0 ? (
           <ul
-            className="absolute z-50 mt-1 w-full max-h-52 overflow-auto rounded-md border border-gray-200 bg-white shadow-lg text-sm"
+            className="absolute z-50 mt-1 w-full max-h-52 overflow-auto rounded-md border border-border bg-surface shadow-lg text-sm"
             role="listbox"
           >
             {suggestions.map((s, i) => (
@@ -163,7 +163,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => void pick(s)}
                 >
-                  <span className="text-gray-900 line-clamp-2">{s.label}</span>
+                  <span className="text-content line-clamp-2">{s.label}</span>
                 </button>
               </li>
             ))}

@@ -48,7 +48,7 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
         <h3 className="text-sm font-semibold text-white">Add People</h3>
         <button
           onClick={onClose}
-          className="text-gray-400 hover:text-white p-1 rounded transition-colors"
+          className="text-content-tertiary hover:text-white p-1 rounded transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -57,7 +57,7 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
       {/* Search Input */}
       <div className="p-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
           <input
             type="text"
             placeholder="Search by name..."
@@ -72,9 +72,9 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
       {/* Results */}
       <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
         {addPeopleSearch.length < 2 ? (
-          <p className="text-xs text-gray-500 text-center mt-4">Type at least 2 characters to search</p>
+          <p className="text-xs text-content-secondary text-center mt-4">Type at least 2 characters to search</p>
         ) : addPeopleResults.length === 0 ? (
-          <p className="text-xs text-gray-500 text-center mt-4">No users found</p>
+          <p className="text-xs text-content-secondary text-center mt-4">No users found</p>
         ) : (
           addPeopleResults.map((person: any) => {
             const inThisMeeting = isUserInThisMeetingById(person.id, participants, inCallUserIds);
@@ -91,7 +91,7 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
                     ? 'opacity-50 cursor-not-allowed'
                     : invitingUserId === person.id
                     ? 'bg-primary-500/20'
-                    : 'hover:bg-white/10'
+                    : 'hover:bg-surface/10'
                 }`}
               >
                 {person.avatar_url ? (
@@ -105,7 +105,7 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-white truncate">{person.full_name || person.username}</p>
-                  {person.username && <p className="text-xs text-gray-400 truncate">@{person.username}</p>}
+                  {person.username && <p className="text-xs text-content-tertiary truncate">@{person.username}</p>}
                 </div>
                 {inThisMeeting ? (
                   <span className="text-[10px] text-green-400 font-medium shrink-0">In this call</span>

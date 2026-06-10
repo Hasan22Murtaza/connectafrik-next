@@ -16,14 +16,14 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
       case 'sending':
         return (
           <div className="flex items-center">
-            <div className="w-3 h-3 border border-gray-400 rounded-full animate-pulse"></div>
+            <div className="w-3 h-3 border border-content-tertiary rounded-full animate-pulse"></div>
           </div>
         )
       case 'sent':
         return (
           <div className="flex items-center">
             <svg 
-              className="w-3 h-3 text-[#8696a0]" 
+              className="w-3 h-3 text-content-tertiary" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
@@ -39,7 +39,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
         return (
           <div className="flex items-center">
             <svg 
-              className="w-3 h-3 text-[#8696a0]" 
+              className="w-3 h-3 text-content-tertiary" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >
@@ -50,7 +50,7 @@ const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
               />
             </svg>
             <svg 
-              className="w-3 h-3 text-[#8696a0] -ml-1" 
+              className="w-3 h-3 text-content-tertiary -ml-1" 
               fill="currentColor" 
               viewBox="0 0 20 20"
             >

@@ -17,7 +17,7 @@ interface PaystackCheckoutProps {
 }
 
 const PHONE_INPUT_CLASS =
-  '[&_.PhoneInput]:flex [&_.PhoneInput]:items-center [&_.PhoneInput]:border [&_.PhoneInput]:border-gray-300 [&_.PhoneInput]:rounded-xl [&_.PhoneInput]:bg-gray-50 [&_.PhoneInput]:px-3 [&_.PhoneInput]:py-3 [&_.PhoneInputInput]:w-full [&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:focus:outline-none [&_.PhoneInputInput]:focus:ring-0 [&_.PhoneInputCountry]:mr-2 [&_.PhoneInput]:focus-within:border-primary-500 [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.12)]'
+  '[&_.PhoneInput]:flex [&_.PhoneInput]:items-center [&_.PhoneInput]:border [&_.PhoneInput]:border-border [&_.PhoneInput]:rounded-xl [&_.PhoneInput]:bg-surface-canvas [&_.PhoneInput]:px-3 [&_.PhoneInput]:py-3 [&_.PhoneInputInput]:w-full [&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:focus:outline-none [&_.PhoneInputInput]:focus:ring-0 [&_.PhoneInputCountry]:mr-2 [&_.PhoneInput]:focus-within:border-primary-500 [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.12)]'
 
 const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
   product,
@@ -88,14 +88,14 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
     >
       <div className="space-y-6">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Contact details</h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="text-base font-semibold text-content">Contact details</h3>
+          <p className="text-sm text-content-secondary mt-1">
             The seller will reach you on this number about your order.
           </p>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-content mb-2">
             <Phone className="w-4 h-4 inline mr-1" />
             Phone number
           </label>
@@ -113,7 +113,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-content mb-2">
             Order notes (optional)
           </label>
           <textarea
@@ -127,8 +127,8 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
         </div>
 
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Payment</h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <h3 className="text-base font-semibold text-content">Payment</h3>
+          <p className="text-sm text-content-secondary mt-1">
             You&apos;ll be redirected to Paystack to complete payment securely.
           </p>
         </div>
@@ -144,7 +144,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
             type="button"
             onClick={onCancel}
             disabled={isProcessing}
-            className="flex-1 px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex-1 px-6 py-3 border border-border rounded-xl text-content font-medium hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -158,7 +158,7 @@ const PaystackCheckout: React.FC<PaystackCheckoutProps> = ({
           </button>
         </div>
 
-        <p className="text-xs text-center text-gray-500">
+        <p className="text-xs text-center text-content-secondary">
           Secure payment powered by Paystack.
         </p>
       </div>

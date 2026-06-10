@@ -23,7 +23,7 @@ const UserResultItem: React.FC<{
   <Link
     href={`/user/${user.username}`}
     onClick={onClose}
-    className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+    className="flex items-center px-4 py-3 hover:bg-surface-hover transition-colors"
   >
     <div className="flex-shrink-0 mr-3">
       {user.avatar_url ? (
@@ -33,14 +33,14 @@ const UserResultItem: React.FC<{
           className="w-10 h-10 rounded-full object-cover"
         />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-          <User className="w-5 h-5 text-gray-400" />
+        <div className="w-10 h-10 rounded-full bg-surface-tertiary flex items-center justify-center">
+          <User className="w-5 h-5 text-content-tertiary" />
         </div>
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <div className="font-semibold text-gray-900 truncate">{user.full_name}</div>
-      <div className="text-sm text-gray-500 truncate">
+      <div className="font-semibold text-content truncate">{user.full_name}</div>
+      <div className="text-sm text-content-secondary truncate">
         People
         {user.follower_count !== null && user.follower_count > 0 && (
           <> · {formatCount(user.follower_count)} followers</>
@@ -60,7 +60,7 @@ const PostResultItem: React.FC<{
   <Link
     href={`/post/${post.id}`}
     onClick={onClose}
-    className="flex items-start px-4 py-3 hover:bg-gray-50 transition-colors"
+    className="flex items-start px-4 py-3 hover:bg-surface-hover transition-colors"
   >
     <div className="flex-shrink-0 mr-3">
       {post.author.avatar_url ? (
@@ -70,16 +70,16 @@ const PostResultItem: React.FC<{
           className="w-10 h-10 rounded-full object-cover"
         />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-          <User className="w-5 h-5 text-gray-400" />
+        <div className="w-10 h-10 rounded-full bg-surface-tertiary flex items-center justify-center">
+          <User className="w-5 h-5 text-content-tertiary" />
         </div>
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <div className="font-semibold text-gray-900 truncate">
+      <div className="font-semibold text-content truncate">
         {post.content.substring(0, 50)}
       </div>
-      <div className="text-sm text-gray-500 truncate">
+      <div className="text-sm text-content-secondary truncate">
         {post.author.full_name} · {post.category}
       </div>
     </div>
@@ -96,7 +96,7 @@ const GroupResultItem: React.FC<{
   <Link
     href={`/groups/${group.id}`}
     onClick={onClose}
-    className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+    className="flex items-center px-4 py-3 hover:bg-surface-hover transition-colors"
   >
     <div className="flex-shrink-0 mr-3">
       {group.avatar_url ? (
@@ -106,14 +106,14 @@ const GroupResultItem: React.FC<{
           className="w-10 h-10 rounded-full object-cover"
         />
       ) : (
-        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-          <Users className="w-5 h-5 text-gray-400" />
+        <div className="w-10 h-10 rounded-full bg-surface-tertiary flex items-center justify-center">
+          <Users className="w-5 h-5 text-content-tertiary" />
         </div>
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <div className="font-semibold text-gray-900 truncate">{group.name}</div>
-      <div className="text-sm text-gray-500 truncate">
+      <div className="font-semibold text-content truncate">{group.name}</div>
+      <div className="text-sm text-content-secondary truncate">
         Group · {formatCount(group.member_count)} members
       </div>
     </div>
@@ -139,7 +139,7 @@ const ProductResultItem: React.FC<{
     <Link
       href={`/marketplace/${product.id}`}
       onClick={onClose}
-      className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors"
+      className="flex items-center px-4 py-3 hover:bg-surface-hover transition-colors"
     >
       <div className="flex-shrink-0 mr-3">
         {product.images && product.images.length > 0 ? (
@@ -149,14 +149,14 @@ const ProductResultItem: React.FC<{
             className="w-10 h-10 rounded-lg object-cover"
           />
         ) : (
-          <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
-            <ShoppingBag className="w-5 h-5 text-gray-400" />
+          <div className="w-10 h-10 rounded-lg bg-surface-tertiary flex items-center justify-center">
+            <ShoppingBag className="w-5 h-5 text-content-tertiary" />
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-gray-900 truncate">{product.title}</div>
-        <div className="text-sm text-gray-500 truncate">
+        <div className="font-semibold text-content truncate">{product.title}</div>
+        <div className="text-sm text-content-secondary truncate">
           {formatPrice(product.price, product.currency)} · {product.category}
         </div>
       </div>
@@ -168,14 +168,14 @@ const ProductResultItem: React.FC<{
  * Section header component
  */
 const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
-  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">{title}</div>
+  <div className="px-4 py-2 text-xs font-semibold text-content-secondary uppercase">{title}</div>
 )
 
 /**
  * Empty state component
  */
 const EmptyState: React.FC = () => (
-  <div className="px-4 py-8 text-center text-gray-500">No results found</div>
+  <div className="px-4 py-8 text-center text-content-secondary">No results found</div>
 )
 
 /**
@@ -205,7 +205,7 @@ const SearchResultsDropdown: React.FC<SearchResultsDropdownProps> = ({
   }
 
   return (
-    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[600px] overflow-y-auto z-50 md:block">
+    <div className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated rounded-lg shadow-dropdown border border-border max-h-[600px] overflow-y-auto z-50 md:block">
       {isSearching ? (
         <LoadingState />
       ) : results ? (

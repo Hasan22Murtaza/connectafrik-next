@@ -192,12 +192,12 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
   return (
     <div
       ref={dropdownRef}
-      className="absolute sm:right-0 -right-6 mt-3 w-65 sm:w-80 max-w-[90vw] sm:max-w-[90vw] bg-white border border-gray-200 rounded-xl shadow-2xl p-3 sm:p-4 z-[120] transform -translate-x-0 sm:translate-x-0"
+      className="absolute sm:right-0 -right-6 mt-3 w-65 sm:w-80 max-w-[90vw] sm:max-w-[90vw] bg-surface border border-border rounded-xl shadow-2xl p-3 sm:p-4 z-[120] transform -translate-x-0 sm:translate-x-0"
     >
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h4 className="font-semibold text-gray-900">Calls</h4>
-          <p className="text-xs text-gray-500">Call history</p>
+          <h4 className="font-semibold text-content">Calls</h4>
+          <p className="text-xs text-content-secondary">Call history</p>
         </div>
         <button
           type="button"
@@ -215,7 +215,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
         {listLoading ? (
           <ChatDropdownShimmer mode="call" count={5} />
         ) : sortedRecentCalls.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-500">No calls yet.</div>
+          <div className="py-8 text-center text-sm text-content-secondary">No calls yet.</div>
         ) : (
           <>
             <div className="space-y-1 sm:space-y-2">
@@ -228,7 +228,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                 return (
                   <div
                     key={call.session_id}
-                    className="flex items-center justify-between rounded-lg border border-transparent hover:border-gray-200 py-2 transition-colors"
+                    className="flex items-center justify-between rounded-lg border border-transparent hover:border-border py-2 transition-colors"
                   >
                     <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
                       <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
@@ -245,10 +245,10 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm font-semibold truncate ${missed ? 'text-red-600' : 'text-gray-900'}`}>
+                        <p className={`text-sm font-semibold truncate ${missed ? 'text-red-600' : 'text-content'}`}>
                           {call.name}
                         </p>
-                        <p className="text-xs text-gray-500 flex items-center gap-1.5 min-w-0">
+                        <p className="text-xs text-content-secondary flex items-center gap-1.5 min-w-0">
                           <ArrowIcon className={`w-3.5 h-3.5 shrink-0 ${arrowClass}`} aria-hidden />
                           <span className="truncate">{formatCallHistoryTime(call.created_at)}</span>
                         </p>
@@ -258,7 +258,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                       <button
                         type="button"
                         onClick={() => handleStartCall(call.thread_id, call.call_type, call.id, call.name, call.avatarUrl)}
-                        className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
+                        className="w-8 h-8 flex items-center justify-center bg-surface-secondary text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
                         title="Start voice call"
                       >
                      {call.call_type === 'video' ? (
@@ -275,7 +275,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
             </div>
             {callsLoadingMore && (
               <div className="flex justify-center py-2">
-                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                <Loader2 className="w-5 h-5 animate-spin text-content-tertiary" />
               </div>
             )}
           </>

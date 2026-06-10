@@ -194,12 +194,12 @@ const MobileMoneySettings: React.FC = () => {
 
   return (
     <div className="card">
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
           <Smartphone className="w-6 h-6 text-primary-600" />
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Mobile Money Account</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-xl font-semibold text-content">Mobile Money Account</h2>
+            <p className="text-sm text-content-secondary mt-1">
               Receive instant automated payouts to your mobile money wallet
             </p>
           </div>
@@ -221,7 +221,7 @@ const MobileMoneySettings: React.FC = () => {
 
         {/* Country Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-content mb-2">
             Country *
           </label>
           <select
@@ -240,7 +240,7 @@ const MobileMoneySettings: React.FC = () => {
 
         {/* Provider Selection */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-content mb-2">
             Mobile Money Provider *
           </label>
           <select
@@ -259,7 +259,7 @@ const MobileMoneySettings: React.FC = () => {
 
         {/* Phone Number */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-content mb-2">
             Mobile Money Phone Number *
           </label>
           <div className="flex gap-3">
@@ -295,7 +295,7 @@ const MobileMoneySettings: React.FC = () => {
               )}
             </button>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-content-secondary mt-1">
             Enter your {mobileMoneyDetails.provider || 'mobile money'} registered phone number
           </p>
         </div>
@@ -334,7 +334,7 @@ const MobileMoneySettings: React.FC = () => {
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end pt-4 border-t border-gray-200">
+        <div className="flex justify-end pt-4 border-t border-border">
           <button
             onClick={handleSave}
             disabled={!isVerified || isSaving}
@@ -355,8 +355,8 @@ const MobileMoneySettings: React.FC = () => {
         </div>
 
         {/* Security Note */}
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
-          <p className="font-medium text-gray-900 mb-2">🔒 Security Notice</p>
+        <div className="bg-surface-canvas border border-border rounded-lg p-4 text-sm text-content-secondary">
+          <p className="font-medium text-content mb-2">🔒 Security Notice</p>
           <ul className="space-y-1 text-xs">
             <li>• Your mobile money details are encrypted and stored securely</li>
             <li>• Payouts are processed through Paystack's secure infrastructure</li>

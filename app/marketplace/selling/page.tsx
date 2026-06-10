@@ -69,9 +69,9 @@ const FilterAccordion: React.FC<FilterAccordionProps> = ({
     <button type="button" onClick={onToggle} className={MP.filterSectionBtn}>
       <span>{title}</span>
       {expanded ? (
-        <ChevronUp className="w-4 h-4 text-gray-600" />
+        <ChevronUp className="w-4 h-4 text-content-secondary" />
       ) : (
-        <ChevronDown className="w-4 h-4 text-gray-600" />
+        <ChevronDown className="w-4 h-4 text-content-secondary" />
       )}
     </button>
     {expanded && <div className={MP.filterOptionsList}>{children}</div>}
@@ -340,7 +340,7 @@ const SellerDashboardPage: React.FC = () => {
             {tip}
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-xs text-content-secondary">
           <span className={`px-2 py-0.5 rounded-full font-medium ${statusClassName}`}>
             {statusLabel}
           </span>
@@ -490,28 +490,28 @@ const SellerDashboardPage: React.FC = () => {
 
           <div className={`${MP.statsGrid} mb-4`}>
             <div className={`${MP.card} ${MP.cardPadding}`}>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+              <div className="flex items-center gap-1.5 text-content-secondary text-xs uppercase tracking-wide mb-0.5">
                 <Tag className="w-3 h-3" />
                 Active listings
               </div>
-              <p className="text-xl font-bold text-gray-900">{stats.active}</p>
+              <p className="text-xl font-bold text-content">{stats.active}</p>
             </div>
             <div className={`${MP.card} ${MP.cardPadding}`}>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+              <div className="flex items-center gap-1.5 text-content-secondary text-xs uppercase tracking-wide mb-0.5">
                 <Eye className="w-3 h-3" />
                 Total views
               </div>
-              <p className="text-xl font-bold text-gray-900">{stats.totalViews}</p>
+              <p className="text-xl font-bold text-content">{stats.totalViews}</p>
             </div>
             <div className={`${MP.card} ${MP.cardPadding}`}>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+              <div className="flex items-center gap-1.5 text-content-secondary text-xs uppercase tracking-wide mb-0.5">
                 <TrendingUp className="w-3 h-3" />
                 Total listings
               </div>
-              <p className="text-xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-xl font-bold text-content">{stats.total}</p>
             </div>
             <div className={`${MP.card} ${MP.cardPadding}`}>
-              <div className="flex items-center gap-1.5 text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+              <div className="flex items-center gap-1.5 text-content-secondary text-xs uppercase tracking-wide mb-0.5">
                 <Wallet className="w-3 h-3" />
                 Pending payout
               </div>
@@ -526,13 +526,13 @@ const SellerDashboardPage: React.FC = () => {
           <div className={`${MP.card} ${MP.cardPadding} mb-4`}>
             <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-tertiary" />
                 <input
                   type="text"
                   placeholder="Search your listings"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2 bg-surface-canvas border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                 />
               </div>
 
@@ -541,7 +541,7 @@ const SellerDashboardPage: React.FC = () => {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as ListingStatus)}
-                    className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                   >
                     {STATUS_FILTERS.map((f) => (
                       <option key={f.value} value={f.value}>
@@ -553,7 +553,7 @@ const SellerDashboardPage: React.FC = () => {
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as ListingSort)}
-                    className="px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                    className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
                   >
                     {SORT_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -563,17 +563,17 @@ const SellerDashboardPage: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+                <div className="flex border border-border rounded-lg overflow-hidden">
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`p-1.5 ${viewMode === "list" ? "bg-primary-50 text-primary-600" : "text-gray-500"}`}
+                    className={`p-1.5 ${viewMode === "list" ? "bg-primary-50 text-primary-600" : "text-content-secondary"}`}
                     aria-label="List view"
                   >
                     <List className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setViewMode("grid")}
-                    className={`p-1.5 ${viewMode === "grid" ? "bg-primary-50 text-primary-600" : "text-gray-500"}`}
+                    className={`p-1.5 ${viewMode === "grid" ? "bg-primary-50 text-primary-600" : "text-content-secondary"}`}
                     aria-label="Grid view"
                   >
                     <LayoutGrid className="w-4 h-4" />
@@ -586,10 +586,10 @@ const SellerDashboardPage: React.FC = () => {
           {loading ? (
             <MarketplaceGridShimmer count={6} />
           ) : filteredListings.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-              <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 mb-2">No listings found</p>
-              <p className="text-sm text-gray-400 mb-4">
+            <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
+              <Package className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+              <p className="text-content-secondary mb-2">No listings found</p>
+              <p className="text-sm text-content-tertiary mb-4">
                 {listings.length === 0
                   ? "Create your first listing to start selling"
                   : "Try adjusting your search or filters"}
@@ -615,19 +615,19 @@ const SellerDashboardPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => router.push(`/marketplace/${product.id}`)}
-                        className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 shrink-0"
+                        className="w-16 h-16 rounded-lg overflow-hidden bg-surface-secondary shrink-0"
                       >
                         {image ? (
                           <img src={image} alt={product.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <div className="w-full h-full flex items-center justify-center text-content-tertiary">
                             <Package className="w-6 h-6" />
                           </div>
                         )}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900">{formatProductPrice(product)}</p>
-                        <h3 className="text-sm font-medium text-gray-800 line-clamp-2 mt-0.5">
+                        <p className="font-bold text-content">{formatProductPrice(product)}</p>
+                        <h3 className="text-sm font-medium text-content line-clamp-2 mt-0.5">
                           {product.title}
                         </h3>
                         {renderListingMeta(product)}
@@ -660,20 +660,20 @@ const SellerDashboardPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => router.push(`/marketplace/${product.id}`)}
-                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-gray-100 shrink-0"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-surface-secondary shrink-0"
                       >
                         {image ? (
                           <img src={image} alt={product.title} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <div className="w-full h-full flex items-center justify-center text-content-tertiary">
                             <Package className="w-6 h-6" />
                           </div>
                         )}
                       </button>
 
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-900">{formatProductPrice(product)}</p>
-                        <h3 className="text-sm sm:text-base font-medium text-gray-800 line-clamp-2">
+                        <p className="font-bold text-content">{formatProductPrice(product)}</p>
+                        <h3 className="text-sm sm:text-base font-medium text-content line-clamp-2">
                           {product.title}
                         </h3>
                         {renderListingMeta(product)}
@@ -708,25 +708,25 @@ const SellerDashboardPage: React.FC = () => {
                   className="w-9 h-9 rounded-full object-cover"
                 />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{sellerName}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm font-semibold text-content truncate">{sellerName}</p>
+                  <p className="text-xs text-content-secondary">
                     {stats.active} active listing{stats.active !== 1 ? "s" : ""}
                   </p>
                 </div>
               </div>
 
               {earnings && (
-                <div className="space-y-1.5 text-xs border-t border-gray-100 pt-3 mb-3">
+                <div className="space-y-1.5 text-xs border-t border-border-subtle pt-3 mb-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Total earnings</span>
+                    <span className="text-content-secondary">Total earnings</span>
                     <span className="font-medium">${earnings.total_earnings.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Paid out</span>
+                    <span className="text-content-secondary">Paid out</span>
                     <span className="font-medium">${earnings.paid_out.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Awaiting delivery</span>
+                    <span className="text-content-secondary">Awaiting delivery</span>
                     <span className="font-medium">${earnings.awaiting_delivery.toLocaleString()}</span>
                   </div>
                 </div>

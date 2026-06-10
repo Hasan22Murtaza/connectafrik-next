@@ -162,13 +162,13 @@ const BuyingPageContent: React.FC = () => {
         />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-bold text-gray-900">
+        <p className="font-bold text-content">
           {item.price === 0
             ? "FREE"
             : `${getCurrencySymbol(item.currency)}${item.price.toLocaleString()}`}
         </p>
-        <p className="text-sm text-gray-800 line-clamp-2 mt-0.5">{item.title}</p>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-sm text-content line-clamp-2 mt-0.5">{item.title}</p>
+        <p className="text-xs text-content-secondary mt-1">
           {item.subtitle} · {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
         </p>
       </div>
@@ -183,10 +183,10 @@ const BuyingPageContent: React.FC = () => {
     if (activeTab === "activity") {
       if (activityItems.length === 0) {
         return (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-            <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">No recent activity yet</p>
-            <p className="text-sm text-gray-400 mb-4">
+          <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
+            <Clock className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+            <p className="text-content-secondary mb-2">No recent activity yet</p>
+            <p className="text-sm text-content-tertiary mb-4">
               Items you save or purchase will appear here
             </p>
             <button onClick={() => router.push("/marketplace")} className="btn-primary">
@@ -201,9 +201,9 @@ const BuyingPageContent: React.FC = () => {
     if (activeTab === "saved") {
       if (savedItems.length === 0) {
         return (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-            <Bookmark className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600 mb-2">No saved items</p>
+          <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
+            <Bookmark className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+            <p className="text-content-secondary mb-2">No saved items</p>
             <button onClick={() => router.push("/marketplace")} className="btn-primary">
               Browse Marketplace
             </button>
@@ -224,7 +224,7 @@ const BuyingPageContent: React.FC = () => {
                   e.stopPropagation();
                   handleUnsave(product.id);
                 }}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-surface/90 text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                 aria-label="Remove from saved"
               >
                 <Bookmark className="w-4 h-4 fill-current" />
@@ -237,9 +237,9 @@ const BuyingPageContent: React.FC = () => {
 
     if (orders.length === 0) {
       return (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-          <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600 mb-2">No purchases yet</p>
+        <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
+          <ShoppingBag className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+          <p className="text-content-secondary mb-2">No purchases yet</p>
           <button onClick={() => router.push("/marketplace")} className="btn-primary">
             Start shopping
           </button>
@@ -264,11 +264,11 @@ const BuyingPageContent: React.FC = () => {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-gray-900">
+              <p className="font-bold text-content">
                 {order.currency} {order.total_amount.toLocaleString()}
               </p>
-              <p className="text-sm text-gray-800 line-clamp-2 mt-0.5">{order.product_title}</p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-sm text-content line-clamp-2 mt-0.5">{order.product_title}</p>
+              <p className="text-xs text-content-secondary mt-1">
                 Order #{order.order_number} · {order.status} ·{" "}
                 {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
               </p>
@@ -367,7 +367,7 @@ const BuyingPageContent: React.FC = () => {
                 onClick={() => setTab(tab.value)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === tab.value
                     ? "bg-primary-600 text-white"
-                    : "bg-gray-100 text-gray-600"
+                    : "bg-surface-secondary text-content-secondary"
                   }`}
               >
                 {tab.label}
@@ -393,8 +393,8 @@ const BuyingPageContent: React.FC = () => {
                   className="w-10 h-10 rounded-full object-cover"
                 />
                 <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{buyerName}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-semibold text-content truncate">{buyerName}</p>
+                  <p className="text-sm text-content-secondary">
                     {savedItems.length} saved · {orders.length} purchases
                   </p>
                 </div>
@@ -410,10 +410,10 @@ const BuyingPageContent: React.FC = () => {
             </div>
 
             <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
-              <div className="flex items-start gap-3 text-sm text-gray-600">
-                <HelpCircle className="w-5 h-5 shrink-0 text-gray-400" />
+              <div className="flex items-start gap-3 text-sm text-content-secondary">
+                <HelpCircle className="w-5 h-5 shrink-0 text-content-tertiary" />
                 <div>
-                  <p className="font-semibold text-gray-900 mb-1">Need help?</p>
+                  <p className="font-semibold text-content mb-1">Need help?</p>
                   <button
                     type="button"
                     onClick={() => router.push("/support")}

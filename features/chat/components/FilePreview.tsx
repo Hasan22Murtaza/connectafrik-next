@@ -21,7 +21,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ files, onRemove }) => {
               <img
                 src={previewSrc}
                 alt={file.name}
-                className="h-16 w-16 rounded-lg object-cover border border-gray-200"
+                className="h-16 w-16 rounded-lg object-cover border border-border"
               />
               <button
                 type="button"
@@ -40,7 +40,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ files, onRemove }) => {
             <div key={file.id} className="relative group">
               <video
                 src={previewSrc}
-                className="h-16 w-16 rounded-lg object-cover border border-gray-200"
+                className="h-16 w-16 rounded-lg object-cover border border-border"
                 muted
               />
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -66,20 +66,20 @@ const FilePreview: React.FC<FilePreviewProps> = ({ files, onRemove }) => {
         return (
           <div
             key={file.id}
-            className="relative flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+            className="relative flex items-center gap-2 rounded-lg border border-border bg-surface-canvas px-3 py-2"
           >
             <svg className="h-5 w-5 text-primary-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M13 2v5h5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <div className="min-w-0">
-              <p className="text-xs font-medium text-gray-900 truncate max-w-[100px]">{file.name}</p>
-              <p className="text-[10px] text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
+              <p className="text-xs font-medium text-content truncate max-w-[100px]">{file.name}</p>
+              <p className="text-[10px] text-content-secondary">{(file.size / 1024).toFixed(1)} KB</p>
             </div>
             <button
               type="button"
               onClick={() => onRemove(index)}
-              className="ml-1 flex h-5 w-5 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+              className="ml-1 flex h-5 w-5 items-center justify-center rounded-full text-content-tertiary hover:bg-surface-hover hover:text-content-secondary"
               aria-label={`Remove ${file.name}`}
             >
               <X className="h-3 w-3" />

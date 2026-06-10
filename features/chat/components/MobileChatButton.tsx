@@ -41,18 +41,18 @@ const MobileChatButton: React.FC = () => {
       {showContacts && (
         <div className="fixed inset-0 z-[140] bg-black/50 md:hidden" onClick={() => setShowContacts(false)}>
           <div 
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[70vh] overflow-hidden"
+            className="absolute bottom-0 left-0 right-0 bg-surface rounded-t-3xl shadow-2xl max-h-[70vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-4">
+            <div className="sticky top-0 bg-surface border-b border-border px-4 py-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Start a Chat</h3>
+                <h3 className="text-lg font-semibold text-content">Start a Chat</h3>
                 <button
                   onClick={() => setShowContacts(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-surface-hover rounded-full transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-content-secondary" />
                 </button>
               </div>
             </div>
@@ -61,17 +61,17 @@ const MobileChatButton: React.FC = () => {
             <div className="overflow-y-auto max-h-[calc(70vh-80px)]">
               {availableMembers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-                  <MessageCircle className="w-12 h-12 text-gray-300 mb-3" />
-                  <p className="text-gray-500 text-sm">No members available</p>
-                  <p className="text-gray-400 text-xs mt-1">Check back later</p>
+                  <MessageCircle className="w-12 h-12 text-content-tertiary mb-3" />
+                  <p className="text-content-secondary text-sm">No members available</p>
+                  <p className="text-content-tertiary text-xs mt-1">Check back later</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-border-subtle">
                   {availableMembers.map((member) => (
                     <button
                       key={member.id}
                       onClick={() => handleStartChat(member.id)}
-                      className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors"
+                      className="w-full flex items-center gap-3 p-4 hover:bg-surface-hover transition-colors"
                     >
                       {member.avatar_url ? (
                         <img
@@ -87,10 +87,10 @@ const MobileChatButton: React.FC = () => {
                         </div>
                       )}
                       <div className="flex-1 text-left">
-                        <p className="font-medium text-gray-900">{member.name || 'User'}</p>
-                        <p className="text-sm text-gray-500">ConnectAfrik User</p>
+                        <p className="font-medium text-content">{member.name || 'User'}</p>
+                        <p className="text-sm text-content-secondary">ConnectAfrik User</p>
                       </div>
-                      <MessageCircle className="w-5 h-5 text-gray-400" />
+                      <MessageCircle className="w-5 h-5 text-content-tertiary" />
                     </button>
                   ))}
                 </div>

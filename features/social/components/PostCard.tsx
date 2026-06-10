@@ -650,11 +650,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
     return (
       <div
-        className={`w-full bg-gray-100 flex items-center justify-center rounded-lg ${
+        className={`w-full bg-surface-secondary flex items-center justify-center rounded-lg ${
           layout === "grid" ? "h-full min-h-[4rem]" : "h-32"
         }`}
       >
-        <span className="text-gray-500">Unsupported media file</span>
+        <span className="text-content-secondary">Unsupported media file</span>
       </div>
     );
   };
@@ -684,13 +684,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
     return (
       <div className="mb-2">
-        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
+        <p className="text-content leading-relaxed whitespace-pre-wrap break-words text-sm sm:text-base">
           {plainVisibleContent}
         </p>
         {showPlainReadToggle && (
           <button
             type="button"
-            className="mt-1 text-sm font-semibold text-gray-500 hover:text-gray-700"
+            className="mt-1 text-sm font-semibold text-content-secondary hover:text-content"
             onClick={(e) => {
               e.stopPropagation();
               setIsContentExpanded((v) => !v);
@@ -707,7 +707,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     <article
       ref={postRef}
       onClick={handlePostClick}
-      className="bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)] mb-3 duration-200 rounded-2xl  p-3 sm:p-4 cursor-pointer"
+      className="bg-surface shadow-header mb-3 duration-200 rounded-2xl  p-3 sm:p-4 cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
@@ -731,22 +731,22 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               />
             ) : null}
             <div
-              className={`w-8 h-8 sm:w-10 sm:h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 ${
+              className={`w-8 h-8 sm:w-10 sm:h-10 bg-surface-tertiary rounded-full flex items-center justify-center flex-shrink-0 ${
                 post.author.avatar_url ? "hidden" : ""
               }`}
             >
-              <span className="text-gray-600 font-medium text-xs sm:text-sm">
+              <span className="text-content-secondary font-medium text-xs sm:text-sm">
                 {post.author.full_name.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="min-w-0 flex-1">
               {showLocationCheckIn && parsedLocation ? (
                 <>
-                  <div className="flex min-w-0 items-baseline text-sm sm:text-[15px] text-gray-900 leading-snug !no-underline">
+                  <div className="flex min-w-0 items-baseline text-sm sm:text-[15px] text-content leading-snug !no-underline">
                     <span className="font-semibold shrink-0 whitespace-nowrap">
                       {post.author.full_name}
                     </span>
-                    <span className="text-gray-600 shrink-0 whitespace-nowrap mx-1">
+                    <span className="text-content-secondary shrink-0 whitespace-nowrap mx-1">
                       is at
                     </span>
                     <span
@@ -756,7 +756,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       {parsedLocation.display_name}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-gray-500 text-xs sm:text-sm">
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap text-content-secondary text-xs sm:text-sm">
                     <time dateTime={post.created_at}>
                       {formatDistanceToNow(new Date(post.created_at), {
                         addSuffix: true,
@@ -775,24 +775,24 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               ) : (
                 <>
                   <div className="flex items-center space-x-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900 truncate text-sm sm:text-base !no-underline">
+                    <h3 className="font-semibold text-content truncate text-sm sm:text-base !no-underline">
                       {post.author.full_name}
                     </h3>
                     {post.reposted_post && (
-                      <span className="text-gray-500 text-xs sm:text-sm">reposted</span>
+                      <span className="text-content-secondary text-xs sm:text-sm">reposted</span>
                     )}
-                    <span className="text-gray-500 truncate text-xs sm:text-sm">
+                    <span className="text-content-secondary truncate text-xs sm:text-sm">
                       @{post.author.username}
                     </span>
                     {post.author.country && (
-                      <span className="text-gray-400 truncate text-xs sm:text-sm">
+                      <span className="text-content-tertiary truncate text-xs sm:text-sm">
                         • {post.author.country}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center space-x-2 mt-1 flex-wrap">
                     <time
-                      className="text-gray-500 text-xs sm:text-sm"
+                      className="text-content-secondary text-xs sm:text-sm"
                       dateTime={post.created_at}
                     >
                       {formatDistanceToNow(new Date(post.created_at), {
@@ -828,13 +828,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               e.stopPropagation();
               setShowMenu(!showMenu);
             }}
-            className="rounded-full p-2 transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
+            className="rounded-full p-2 transition-colors duration-200 hover:bg-surface-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-1"
             aria-label="Post options"
             aria-expanded={showMenu}
             aria-haspopup="menu"
             aria-controls={postOptionsMenuId}
           >
-            <MoreHorizontal className="h-5 w-5 text-gray-600" aria-hidden />
+            <MoreHorizontal className="h-5 w-5 text-content-secondary" aria-hidden />
           </button>
 
           {showMenu && (
@@ -842,7 +842,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               id={postOptionsMenuId}
               role="menu"
               aria-label={isOwnPost ? "Your post actions" : "Post actions"}
-              className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,20rem)] list-none rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+              className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,20rem)] list-none rounded-xl border border-border bg-surface py-1 shadow-lg"
             >
               {isOwnPost ? (
                 <>
@@ -851,21 +851,21 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       type="button"
                       role="menuitem"
                       onClick={handleEditClick}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                     >
                       <Edit
-                        className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                        className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-gray-900">
+                        <span className="block text-sm font-semibold text-content">
                           Edit post
                         </span>
                      
                       </span>
                     </button>
                   </li>
-                  <li role="none" className="list-none border-t border-gray-100">
+                  <li role="none" className="list-none border-t border-border-subtle">
                     <button
                       type="button"
                       role="menuitem"
@@ -898,16 +898,16 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                           await handleFollow(e);
                           setShowMenu(false);
                         }}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {followCheckLoading ? (
                           <>
                             <div
-                              className="mt-0.5 h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-gray-200 border-t-gray-600"
+                              className="mt-0.5 h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-border border-t-gray-600"
                               aria-hidden
                             />
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-gray-900">
+                              <span className="block text-sm font-semibold text-content">
                                 Working…
                               </span>
                              
@@ -916,11 +916,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         ) : isFollowing ? (
                           <>
                             <UserCheck
-                              className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                              className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                               aria-hidden
                             />
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-gray-900">
+                              <span className="block text-sm font-semibold text-content">
                                 UnTap In
                               </span>
                             
@@ -929,11 +929,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         ) : (
                           <>
                             <UserPlus
-                              className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                              className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                               aria-hidden
                             />
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-gray-900">
+                              <span className="block text-sm font-semibold text-content">
                                 Tap In
                               </span>
                               
@@ -945,7 +945,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                   )}
                   <li
                     role="none"
-                    className={`list-none ${canFollow ? "border-t border-gray-100" : ""}`}
+                    className={`list-none ${canFollow ? "border-t border-border-subtle" : ""}`}
                   >
                     {postSaved ? (
                       <button
@@ -958,14 +958,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                             setShowMenu(false);
                           })();
                         }}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                       >
                         <BookmarkX
-                          className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                          className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                           aria-hidden
                         />
                         <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-gray-900">
+                          <span className="block text-sm font-semibold text-content">
                             Unsave post
                           </span>
                           
@@ -982,14 +982,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                             setShowMenu(false);
                           })();
                         }}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                       >
                         <Bookmark
-                          className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                          className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                           aria-hidden
                         />
                         <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-gray-900">
+                          <span className="block text-sm font-semibold text-content">
                             Save post
                           </span>
                           
@@ -997,7 +997,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       </button>
                     )}
                   </li>
-                  <li role="none" className="list-none border-t border-gray-100">
+                  <li role="none" className="list-none border-t border-border-subtle">
                     <button
                       type="button"
                       role="menuitem"
@@ -1008,14 +1008,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                           setShowMenu(false);
                         })();
                       }}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                     >
                       <Repeat2
-                        className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
+                        className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-gray-900">
+                        <span className="block text-sm font-semibold text-content">
                           {post.is_reposted ? "Reposted" : "Repost"}
                         </span>
                       </span>
@@ -1114,7 +1114,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                   router.push(`/post/${post.reposted_post!.id}`);
                 }
               }}
-              className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3 cursor-pointer hover:bg-gray-100/80 transition-colors"
+              className="mb-3 rounded-xl border border-border bg-gray-50 p-3 cursor-pointer hover:bg-surface-secondary/80 transition-colors"
             >
               {post.reposted_post.author ? (
                 <div className="flex items-center gap-2 mb-2 min-w-0">
@@ -1125,22 +1125,22 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       className="h-8 w-8 rounded-full object-cover shrink-0"
                     />
                   ) : (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-300 text-xs font-medium text-gray-600">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-tertiary text-xs font-medium text-content-secondary">
                       {post.reposted_post.author.full_name.charAt(0).toUpperCase()}
                     </div>
                   )}
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-gray-900">
+                    <p className="truncate text-sm font-semibold text-content">
                       {post.reposted_post.author.full_name}
                     </p>
-                    <p className="truncate text-xs text-gray-500">
+                    <p className="truncate text-xs text-content-secondary">
                       @{post.reposted_post.author.username}
                     </p>
                   </div>
                 </div>
               ) : null}
               {(post.reposted_post.content || "").trim() ? (
-                <p className="text-sm text-gray-700 line-clamp-4 whitespace-pre-wrap break-words">
+                <p className="text-sm text-content line-clamp-4 whitespace-pre-wrap break-words">
                   {post.reposted_post.content}
                 </p>
               ) : null}
@@ -1156,7 +1156,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                 )}
             </div>
           ) : post.repost_of_id ? (
-            <p className="mb-3 text-sm text-gray-500 italic">
+            <p className="mb-3 text-sm text-content-secondary italic">
               This post is no longer available
             </p>
           ) : null}
@@ -1261,18 +1261,18 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       {/* Delete Confirmation Dialog */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <div className="bg-surface rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-content mb-2">
               Delete Post
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-content-secondary mb-6">
               Are you sure you want to delete this post? This action cannot be
               undone.
             </p>
             <div className="flex space-x-3 justify-end">
               <button
                 onClick={handleDeleteCancel}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors duration-200"
+                className="px-4 py-2 text-content-secondary hover:text-gray-800 transition-colors duration-200"
               >
                 Cancel
               </button>
@@ -1299,7 +1299,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
       {/* Inline Comments Section - Facebook style */}
       {showInlineComments && (
-        <div className="border-t border-gray-100 mt-1" onClick={(e) => e.stopPropagation()}>
+        <div className="border-t border-border-subtle mt-1" onClick={(e) => e.stopPropagation()}>
           <CommentsSection
             postId={post.id}
             isOpen={true}

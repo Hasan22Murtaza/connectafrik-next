@@ -59,27 +59,27 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
   };
 
   const menuRowClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-2xl px-2 py-1 text-left text-sm text-gray-800 transition-colors hover:bg-gray-100";
+    "flex w-full cursor-pointer items-center gap-2 rounded-2xl px-2 py-1 text-left text-sm text-content transition-colors hover:bg-surface-hover";
 
   return (
     <>
       {open ? (
         <div
-          className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-2xl border border-gray-200 bg-white p-1 py-1.5 shadow-xl"
+          className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-2xl border border-border bg-surface p-1 py-1.5 shadow-xl"
           role="menu"
           aria-label="Attach"
           onMouseDown={stopMenuPointerBubble}
           onPointerDown={stopMenuPointerBubble}
         >
           <label htmlFor={docInputId} role="menuitem" className={menuRowClass}>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-violet-600">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-violet-600">
               <FileText className="h-5 w-5" />
             </span>
             <span className="font-medium">Document</span>
           </label>
 
           <label htmlFor={galleryInputId} role="menuitem" className={menuRowClass}>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-sky-600">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-sky-600">
               <ImageIcon className="h-5 w-5" />
             </span>
             <span className="font-medium">Photos &amp; videos</span>
@@ -91,14 +91,14 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
             className={menuRowClass}
             onClick={handleCameraClick}
           >
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-pink-600">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-pink-600">
               <Camera className="h-5 w-5" />
             </span>
             <span className="font-medium">Camera</span>
           </button>
 
           <label htmlFor={audioInputId} role="menuitem" className={menuRowClass}>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-orange-600">
+            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-orange-600">
               <Headphones className="h-5 w-5" />
             </span>
             <span className="font-medium">Audio</span>

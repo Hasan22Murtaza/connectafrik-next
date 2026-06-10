@@ -2,18 +2,21 @@
 
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ProductionChatProvider } from '@/contexts/ProductionChatContext'
-import { Toaster } from 'react-hot-toast'
+import { ThemeProvider } from '@/shared/theme/ThemeProvider'
+import { ThemedToaster } from '@/shared/components/theme/ThemedToaster'
 import SignupEmailConfirmHandler from './components/SignupEmailConfirmHandler'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <ProductionChatProvider>
-        <SignupEmailConfirmHandler />
-        {children}
-        <Toaster position="top-right" />
-      </ProductionChatProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ProductionChatProvider>
+          <SignupEmailConfirmHandler />
+          {children}
+          <ThemedToaster />
+        </ProductionChatProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

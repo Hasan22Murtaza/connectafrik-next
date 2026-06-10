@@ -24,10 +24,10 @@ function ActionTile({
       onClick={onClick}
       className="group flex flex-col items-center gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50"
     >
-      <span className="flex h-[104px] w-[104px] items-center justify-center rounded-2xl bg-white shadow-[0_1px_3px_rgba(11,20,26,0.08)] ring-1 ring-black/[0.04] transition group-hover:bg-[#f5f6f6] group-active:scale-[0.98]">
+      <span className="flex h-[104px] w-[104px] items-center justify-center rounded-2xl bg-surface shadow-card ring-1 ring-border-subtle transition group-hover:bg-surface-hover group-active:scale-[0.98]">
         {icon}
       </span>
-      <span className="max-w-[7.5rem] text-center text-[13px] leading-snug text-[#3b4a54]">
+      <span className="max-w-[7.5rem] text-center text-[13px] leading-snug text-content-secondary">
         {label}
       </span>
     </button>
@@ -51,20 +51,20 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-[#f0f2f5] px-6">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-surface-canvas px-6">
       <div className="flex flex-wrap items-start justify-center gap-10 sm:gap-14">
         <ActionTile
-          icon={<FileText className="h-9 w-9 text-[#54656f]" strokeWidth={1.5} />}
+          icon={<FileText className="h-9 w-9 text-content-secondary" strokeWidth={1.5} />}
           label="Send document"
           onClick={handleSendDocument}
         />
         <ActionTile
-          icon={<UserPlus className="h-9 w-9 text-[#54656f]" strokeWidth={1.5} />}
+          icon={<UserPlus className="h-9 w-9 text-content-secondary" strokeWidth={1.5} />}
           label="Add contact"
           onClick={() => router.push("/friends")}
         />
         <ActionTile
-          icon={<Users className="h-9 w-9 text-[#54656f]" strokeWidth={1.5} />}
+          icon={<Users className="h-9 w-9 text-content-secondary" strokeWidth={1.5} />}
           label="Find people"
           onClick={() => {
             onFocusSearch?.();

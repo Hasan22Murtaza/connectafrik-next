@@ -95,7 +95,7 @@ const InboxPageContent: React.FC = () => {
       <div className="min-h-screen px-4 py-6">
         <div className="animate-pulse space-y-3 max-w-3xl mx-auto">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+            <div key={i} className="h-20 bg-surface-secondary rounded-xl" />
           ))}
         </div>
       </div>
@@ -134,7 +134,7 @@ const InboxPageContent: React.FC = () => {
             <h1 className={MP.pageTitle}>Inbox</h1>
           </div>
 
-          <div className="flex border-b border-gray-200 mb-3">
+          <div className="flex border-b border-border mb-3">
             {(["selling", "buying"] as MarketplaceInboxRole[]).map((role) => (
               <button
                 key={role}
@@ -142,7 +142,7 @@ const InboxPageContent: React.FC = () => {
                 onClick={() => setRole(role)}
                 className={`px-3 py-2 text-sm font-semibold border-b-2 transition-colors capitalize ${activeRole === role
                     ? "border-primary-600 text-primary-600"
-                    : "border-transparent text-gray-500 hover:text-gray-800"
+                    : "border-transparent text-content-secondary hover:text-content"
                   }`}
               >
                 {role}
@@ -157,8 +157,8 @@ const InboxPageContent: React.FC = () => {
                 type="button"
                 onClick={() => setLabel(filter.value)}
                 className={`shrink-0 px-2.5 py-1 rounded-full text-sm font-medium transition-colors ${activeLabel === filter.value
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-content text-content-inverse"
+                    : "bg-surface-secondary text-content hover:bg-surface-hover"
                   }`}
               >
                 {filter.label}
@@ -169,14 +169,14 @@ const InboxPageContent: React.FC = () => {
           {loading ? (
             <div className="animate-pulse space-y-1.5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+                <div key={i} className="h-20 bg-surface-secondary rounded-xl" />
               ))}
             </div>
           ) : items.length === 0 ? (
             <div className="text-center py-16 px-4">
-              <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">No messages yet</h2>
-              <p className="text-sm text-gray-500 max-w-sm mx-auto">
+              <MessageSquare className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+              <h2 className="text-lg font-semibold text-content mb-2">No messages yet</h2>
+              <p className="text-sm text-content-secondary max-w-sm mx-auto">
                 {activeRole === "selling"
                   ? "When buyers contact you about a listing, conversations will appear here."
                   : "Message a seller from a product page to start a conversation."}
@@ -196,13 +196,13 @@ const InboxPageContent: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleOpenThread(item)}
-                    className="w-full flex items-start gap-2 p-2.5 hover:bg-gray-50 transition-colors text-left"
+                    className="w-full flex items-start gap-2 p-2.5 hover:bg-surface-hover transition-colors text-left"
                   >
                     <div className="relative shrink-0 mt-0.5">
                       {item.unread_count > 0 && (
                         <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500" />
                       )}
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-surface-secondary">
                         <img
                           src={item.product_image || FALLBACK_IMAGE}
                           alt={item.product_title}
@@ -214,17 +214,17 @@ const InboxPageContent: React.FC = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <p
-                          className={`text-sm truncate ${item.unread_count > 0 ? "font-bold text-gray-900" : "font-semibold text-gray-900"
+                          className={`text-sm truncate ${item.unread_count > 0 ? "font-bold text-content" : "font-semibold text-content"
                             }`}
                         >
                           {item.display_title}
                         </p>
-                        <span className="text-xs text-gray-500 shrink-0">
+                        <span className="text-xs text-content-secondary shrink-0">
                           {formatInboxTimestamp(item.last_message_at)}
                         </span>
                       </div>
                       <p
-                        className={`text-sm truncate mt-0.5 ${item.unread_count > 0 ? "font-medium text-gray-800" : "text-gray-500"
+                        className={`text-sm truncate mt-0.5 ${item.unread_count > 0 ? "font-medium text-content" : "text-content-secondary"
                           }`}
                       >
                         {item.last_message_preview || "No messages yet"}
@@ -247,7 +247,7 @@ const MarketplaceInboxPage: React.FC = () => (
       <div className="min-h-screen px-4 py-6">
         <div className="animate-pulse space-y-3 max-w-3xl mx-auto">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-20 bg-gray-100 rounded-xl" />
+            <div key={i} className="h-20 bg-surface-secondary rounded-xl" />
           ))}
         </div>
       </div>

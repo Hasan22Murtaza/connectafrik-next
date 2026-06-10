@@ -28,8 +28,8 @@ export function PayoutSettingsContent() {
     return (
       <div className="min-h-screen px-4 py-6">
         <div className="max-w-2xl mx-auto animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-1/3" />
-          <div className="h-64 bg-gray-200 rounded-xl" />
+          <div className="h-8 bg-surface-tertiary rounded w-1/3" />
+          <div className="h-64 bg-surface-tertiary rounded-xl" />
         </div>
       </div>
     );
@@ -51,28 +51,28 @@ export function PayoutSettingsContent() {
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => router.push("/marketplace/selling")}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 text-sm"
+          className="flex items-center gap-2 text-content-secondary hover:text-content mb-4 text-sm"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Selling
         </button>
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Payout Settings</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-content">Payout Settings</h1>
+          <p className="text-sm text-content-secondary mt-1">
             Paystack for African currencies · Stripe Connect for USD, EUR, GBP.
           </p>
         </div>
 
-        <div className="flex gap-1 mb-6 p-1 bg-gray-100 rounded-lg overflow-x-auto">
+        <div className="flex gap-1 mb-6 p-1 bg-surface-secondary rounded-lg overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? "bg-white text-primary-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-surface text-primary-600 shadow-sm"
+                  : "text-content-secondary hover:text-content"
               }`}
             >
               {tab.icon}

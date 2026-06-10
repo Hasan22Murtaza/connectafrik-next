@@ -125,13 +125,13 @@ const ChatDock: React.FC = () => {
           ))}
 
         {minimizedThreads.length > 0 && (
-          <div className="pointer-events-auto w-64 rounded-2xl border border-gray-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div className="pointer-events-auto w-64 rounded-2xl border border-border bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div>
-                <p className="text-sm font-semibold text-gray-900">Chats</p>
-                <p className="text-xs text-gray-500">Double-click to reopen</p>
+                <p className="text-sm font-semibold text-content">Chats</p>
+                <p className="text-xs text-content-secondary">Double-click to reopen</p>
               </div>
-              <span className="text-xs text-gray-400">{minimizedThreads.length}</span>
+              <span className="text-xs text-content-tertiary">{minimizedThreads.length}</span>
             </div>
             <div className="py-2">
               {minimizedThreads.map((thread: ChatThread) => {
@@ -143,7 +143,7 @@ const ChatDock: React.FC = () => {
                   <div
                     key={thread.id}
                     onDoubleClick={handleOpen}
-                    className="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    className="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-sm font-medium text-content transition-colors hover:bg-surface-hover"
                   >
                     <span className="truncate">{thread.name || 'Unnamed Chat'}</span>
                     <div className="flex items-center gap-2">
@@ -157,7 +157,7 @@ const ChatDock: React.FC = () => {
                           event.stopPropagation()
                           handleOpen()
                         }}
-                        className="text-xs text-gray-400 hover:text-[#f97316]"
+                        className="text-xs text-content-tertiary hover:text-primary-600"
                       >
                         Open
                       </button>

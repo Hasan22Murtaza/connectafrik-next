@@ -115,7 +115,7 @@ const ScreenShareView: React.FC<ScreenShareViewProps> = ({
 
         {/* Participant sidebar — Teams-style right strip */}
         <div className="w-36 sm:w-44 md:w-52 bg-gray-900/95 backdrop-blur-sm flex flex-col gap-1.5 p-1.5 overflow-y-auto shrink-0 border-l border-gray-800 animate-[slideLeft_400ms_ease-out]">
-          <div className="text-[10px] text-gray-400 font-medium uppercase tracking-wider px-1 py-0.5">
+          <div className="text-[10px] text-content-tertiary font-medium uppercase tracking-wider px-1 py-0.5">
             Participants
           </div>
 
@@ -139,18 +139,18 @@ const ScreenShareView: React.FC<ScreenShareViewProps> = ({
               <button
                 onClick={() => setSidebarPage((p) => Math.max(0, p - 1))}
                 disabled={pageIndex === 0}
-                className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-[10px] px-2 py-0.5 rounded bg-surface/10 text-white hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Previous participants"
               >
                 Prev
               </button>
-              <span className="text-[10px] text-gray-300 tabular-nums">
+              <span className="text-[10px] text-content-tertiary tabular-nums">
                 {pageIndex + 1}/{pageCount}
               </span>
               <button
                 onClick={() => setSidebarPage((p) => Math.min(pageCount - 1, p + 1))}
                 disabled={pageIndex >= pageCount - 1}
-                className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-white hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="text-[10px] px-2 py-0.5 rounded bg-surface/10 text-white hover:bg-surface/20 disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Next participants"
               >
                 Next

@@ -4,8 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  User,
-  LogOut,
   Search,
   Bell,
   MessageCircle,
@@ -27,6 +25,7 @@ import MobileSideDrawer from "../ui/MobileSideDrawer";
 import { useSearch } from "@/shared/hooks/useSearch";
 import SearchResultsDropdown from "@/shared/components/search/SearchResultsDropdown";
 import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
+import UserMenu from "@/shared/components/theme/UserMenu";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -118,7 +117,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-50  bg-white shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
+      <header className="sticky top-0 z-50 bg-surface shadow-header">
         <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 overflow-visible">
           <div className="flex items-center h-14 sm:h-16 justify-between gap-2 w-full">
             <div className="flex items-center w-65 xl:w-80 2xl:w-[24rem]">
@@ -131,11 +130,11 @@ const Header: React.FC<HeaderProps> = ({
             {user && (
               <div className="hidden md:flex  max-w-70  w-full">
                 <div className="relative w-full" ref={searchContainerRef}>
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4 z-10" />
                   <input
                     type="text"
                     placeholder="Search connectAfrik..."
-                    className="w-full px-4 py-2.5 pl-10 bg-[#EEF1F4] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                    className="w-full px-4 py-2.5 pl-10 bg-surface-input border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-surface-input text-content placeholder:text-content-tertiary transition-colors"
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     onFocus={() => {
@@ -162,7 +161,7 @@ const Header: React.FC<HeaderProps> = ({
             {user && (
               <button
                 onClick={() => setShowMobileSearch(true)}
-                className="md:hidden p-2 text-gray-600 hover:text-primary-600 transition-colors"
+                className="md:hidden p-2 text-content-secondary hover:text-primary-600 transition-colors"
                 aria-label="Open search"
               >
                 <Search className="w-5 h-5" />
@@ -183,7 +182,7 @@ const Header: React.FC<HeaderProps> = ({
                           href="/feed"
                           className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/feed"
                             ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
+                            : "text-content-secondary hover:text-primary-600"
                             }`}
                         >
                           <Home className="w-12" />
@@ -204,7 +203,7 @@ const Header: React.FC<HeaderProps> = ({
                           href="/memories/foryou"
                           className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname.startsWith("/memories")
                             ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
+                            : "text-content-secondary hover:text-primary-600"
                             }`}
                         >
                           <Video className="w-12" />
@@ -225,7 +224,7 @@ const Header: React.FC<HeaderProps> = ({
                           href="/politics"
                           className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/politics"
                             ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
+                            : "text-content-secondary hover:text-primary-600"
                             }`}
                         >
                           <Landmark className="w-12" />
@@ -246,7 +245,7 @@ const Header: React.FC<HeaderProps> = ({
                           href="/culture"
                           className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/culture"
                             ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
+                            : "text-content-secondary hover:text-primary-600"
                             }`}
                         >
                           <Palette className="w-12" />
@@ -267,7 +266,7 @@ const Header: React.FC<HeaderProps> = ({
                           href="/groups"
                           className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/groups"
                             ? "text-primary-600"
-                            : "text-gray-600 hover:text-primary-600"
+                            : "text-content-secondary hover:text-primary-600"
                             }`}
                         >
                           <Users className="w-12" />
@@ -286,7 +285,7 @@ const Header: React.FC<HeaderProps> = ({
                   </nav>
 
                   {/* Notifications & Messaging */}
-                  <div className="flex items-center space-x-2 sm:space-x-2  border-gray-200 w-65 xl:w-80  2xl:w-[24rem] justify-end">
+                  <div className="flex items-center space-x-2 sm:space-x-2 border-border-subtle w-65 xl:w-80 2xl:w-[24rem] justify-end">
 
                     <div className="relative">
                       <button
@@ -295,7 +294,7 @@ const Header: React.FC<HeaderProps> = ({
                           setShowNotifications(false);
                           setShowCalls(false);
                         }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
                       >
                         <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         {unreadMessages > 0 && (
@@ -316,7 +315,7 @@ const Header: React.FC<HeaderProps> = ({
                           setShowNotifications(false);
                           setShowInbox(false);
                         }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
                       >
                         <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
@@ -332,7 +331,7 @@ const Header: React.FC<HeaderProps> = ({
                           setShowInbox(false);
                           setShowCalls(false);
                         }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-gray-400 hover:text-primary-600 transition-colors"
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
                       >
                         <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                         {unreadNotificationCount > 0 && (
@@ -358,7 +357,7 @@ const Header: React.FC<HeaderProps> = ({
                             setIsUserMenuOpen(false);
                           }
                         }}
-                        className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-gray-50 shrink-0"
+                        className="flex items-center space-x-1 sm:space-x-2 p-1 sm:p-1.5 lg:p-2 rounded-lg hover:bg-surface-hover shrink-0"
                       >
                         {profile?.avatar_url ? (
                           <img
@@ -367,58 +366,29 @@ const Header: React.FC<HeaderProps> = ({
                             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="w-8 h-8 sm:w-10 sm:h-10  bg-gray-300 rounded-full flex items-center justify-center  uppercase">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-surface-tertiary text-content-secondary rounded-full flex items-center justify-center uppercase">
                             {profile?.username.slice(0, 1) || "User"}
                           </div>
                         )}
-                        {/* <span className="hidden md:block text-sm font-medium text-gray-700">
-                      {profile?.username || "User"}
-                    </span> */}
                       </button>
 
-                      <div
-                        className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 transition-all duration-200
-                          ${isUserMenuOpen
-                            ? "opacity-100 visible"
-                            : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
-                          }
-                        `}
-                      >
-                        <div className="py-2">
-                          <Link
-                            href="/profile"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            My Profile
-                          </Link>
-                          <Link
-                            href="/profile"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                          >
-                            Settings
-                          </Link>
-                          <hr className="my-1 border-gray-300" />
-                          <button
-                            onClick={handleSignOut}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center space-x-2"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            <span>Sign Out</span>
-                          </button>
-                        </div>
-                      </div>
+                      <UserMenu
+                        isOpen={isUserMenuOpen}
+                        onSignOut={handleSignOut}
+                        onClose={() => setIsUserMenuOpen(false)}
+                      />
                     </div>
 
                     <button
                       onClick={() => setMobileMenuOpen(true)}
-                      className="sm:hidden text-gray-700 text-xl"
+                      className="sm:hidden text-content text-xl"
                     >
                       <FaBars />
                     </button>
                   </div>
                 </>
               ) : (
-                <div className="flex items-center space-x-2 sm:space-x-4 pr-1  sm:pr-4 sm:border-r border-0 border-gray-200 ">
+                <div className="flex items-center space-x-2 sm:space-x-4 pr-1 sm:pr-4 sm:border-r border-0 border-border-subtle">
                   <Link
                     href="/signin"
                     className="btn-secondary !px-3 sm:px-5 sm:text-base text-sm"

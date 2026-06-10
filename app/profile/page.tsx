@@ -414,8 +414,8 @@ const ProfileSettings: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Please Sign In</h1>
-          <p className="text-gray-600">You need to be signed in to view your profile settings.</p>
+          <h1 className="text-2xl font-bold text-content mb-4">Please Sign In</h1>
+          <p className="text-content-secondary">You need to be signed in to view your profile settings.</p>
         </div>
       </div>
     )
@@ -425,13 +425,13 @@ const ProfileSettings: React.FC = () => {
     <div className="min-h-screen ">
       <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-4 py-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600">Manage your account settings and preferences</p>
+          <h1 className="text-3xl font-bold text-content">Settings</h1>
+          <p className="text-content-secondary">Manage your account settings and preferences</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 sm:gap-6 gap-4">
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
               <nav className=" md:flex-col flex gap-2 sm:gap-3  items-center overflow-x-auto  scrollbar-hide ">
                 {tabs.map(tab => {
                   const IconComponent = tab.icon
@@ -442,7 +442,7 @@ const ProfileSettings: React.FC = () => {
                       className={`w-full rounded-full border flex items-center sm:space-x-3 space-x-1 px-3 py-2 rounded-lg text-left transition-colors duration-200 ${
                         activeTab === tab.id
                           ? ' bg-primary-600 text-white'
-                          : ' hover:bg-gray-50 border-gray-200 bg-[#F3F4F6] text-gray-600  hover:text-white hover:bg-primary-600'
+                          : ' hover:bg-surface-hover border-border bg-surface-secondary text-content-secondary  hover:text-white hover:bg-primary-600'
                       }`}
                     >
                       <IconComponent className="w-5 h-5" />
@@ -456,10 +456,10 @@ const ProfileSettings: React.FC = () => {
 
           <div className="lg:col-span-3">
             {activeTab === 'profile' && (
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                <div className="sm:p-6 p-4  border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Profile Information</h2>
-                  <p className="text-gray-600">Update your profile details and avatar</p>
+              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <div className="sm:p-6 p-4  border-b border-border">
+                  <h2 className="text-xl font-semibold text-content">Profile Information</h2>
+                  <p className="text-content-secondary">Update your profile details and avatar</p>
                 </div>
 
                 <div className="sm:p-6 py-6 space-y-6">
@@ -472,8 +472,8 @@ const ProfileSettings: React.FC = () => {
                           className="w-20 h-20 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-20 h-20 bg-gray-300 rounded-full flex items-center justify-center">
-                          <User className="w-8 h-8 text-gray-600" />
+                        <div className="w-20 h-20 bg-surface-tertiary rounded-full flex items-center justify-center">
+                          <User className="w-8 h-8 text-content-secondary" />
                         </div>
                       )}
                       {isUploading && (
@@ -494,13 +494,13 @@ const ProfileSettings: React.FC = () => {
                           disabled={isUploading}
                         />
                       </label>
-                      <p className="text-xs text-gray-500 mt-1">JPG, PNG or WebP. Max 5MB.</p>
+                      <p className="text-xs text-content-secondary mt-1">JPG, PNG or WebP. Max 5MB.</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-content mb-2">
                         Username
                       </label>
                       <input
@@ -513,7 +513,7 @@ const ProfileSettings: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-content mb-2">
                         Full Name
                       </label>
                       <input
@@ -547,13 +547,13 @@ const ProfileSettings: React.FC = () => {
                             country: loc.country,
                           }))
                         }
-                        className="[&_p]:text-gray-500"
+                        className="[&_p]:text-content-secondary"
                         fieldClassName="input-field"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-content mb-2">
                         Date of Birth
                       </label>
                       <input
@@ -566,18 +566,18 @@ const ProfileSettings: React.FC = () => {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-content mb-2">
                         Bio
                       </label>
                       <textarea
                         value={profileForm.bio}
                         onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-0 resize-none bg-transparent"
+                        className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-0 resize-none bg-transparent"
                         rows={4}
                         placeholder="Tell us about yourself..."
                         maxLength={500}
                       />
-                      <div className="text-right text-sm text-gray-500 mt-1">
+                      <div className="text-right text-sm text-content-secondary mt-1">
                         {profileForm.bio.length}/500
                       </div>
                     </div>
@@ -598,15 +598,15 @@ const ProfileSettings: React.FC = () => {
             )}
 
             {activeTab === 'privacy' && (
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                <div className="sm:p-6 p-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Privacy Settings</h2>
-                  <p className="text-gray-600">Control who can see your content and interact with you</p>
+              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <div className="sm:p-6 p-4 border-b border-border">
+                  <h2 className="text-xl font-semibold text-content">Privacy Settings</h2>
+                  <p className="text-content-secondary">Control who can see your content and interact with you</p>
                 </div>
 
                 <div className="sm:p-6 py-6 space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Profile Visibility</h3>
+                    <h3 className="text-lg font-medium text-content mb-4">Profile Visibility</h3>
                     <div className="space-y-4">
                       {[
                         { value: 'public', label: 'Public', desc: 'Anyone can see your profile', icon: Globe },
@@ -615,7 +615,7 @@ const ProfileSettings: React.FC = () => {
                       ].map(option => {
                         const IconComponent = option.icon
                         return (
-                          <label key={option.value} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                          <label key={option.value} className="flex items-center space-x-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-surface-hover">
                             <input
                               type="radio"
                               name="profile_visibility"
@@ -624,10 +624,10 @@ const ProfileSettings: React.FC = () => {
                               onChange={(e) => setPrivacySettings({ ...privacySettings, profile_visibility: e.target.value as ProfileVisibilityLevel })}
                               className="text-primary-600"
                             />
-                            <IconComponent className="w-5 h-5 text-gray-600" />
+                            <IconComponent className="w-5 h-5 text-content-secondary" />
                             <div>
-                              <div className="font-medium text-gray-900">{option.label}</div>
-                              <div className="text-sm text-gray-500">{option.desc}</div>
+                              <div className="font-medium text-content">{option.label}</div>
+                              <div className="text-sm text-content-secondary">{option.desc}</div>
                             </div>
                           </label>
                         )
@@ -636,10 +636,10 @@ const ProfileSettings: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Post Settings</h3>
+                    <h3 className="text-lg font-medium text-content mb-4">Post Settings</h3>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-content mb-2">
                           Who can see your posts?
                         </label>
                         <select
@@ -654,7 +654,7 @@ const ProfileSettings: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-content mb-2">
                           Who can comment on your posts?
                         </label>
                         <select
@@ -669,7 +669,7 @@ const ProfileSettings: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-content mb-2">
                           Who can follow you?
                         </label>
                         <select
@@ -684,7 +684,7 @@ const ProfileSettings: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-content mb-2">
                           Who can send you direct messages?
                         </label>
                         <select
@@ -701,7 +701,7 @@ const ProfileSettings: React.FC = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">What others can see on your profile</h3>
+                    <h3 className="text-lg font-medium text-content mb-4">What others can see on your profile</h3>
                     <div className="space-y-4">
                       {[
                         { key: 'show_online_status', label: 'Show when you\'re online' },
@@ -714,8 +714,8 @@ const ProfileSettings: React.FC = () => {
                         { key: 'show_following', label: 'Show following list' },
                         { key: 'show_followers_count', label: 'Show followers count' }
                       ].map(option => (
-                        <label key={option.key} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                          <span className="text-gray-900">{option.label}</span>
+                        <label key={option.key} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                          <span className="text-content">{option.label}</span>
                           <input
                             type="checkbox"
                             checked={privacySettings[option.key as keyof typeof privacySettings] as boolean}
@@ -745,10 +745,10 @@ const ProfileSettings: React.FC = () => {
             )}
 
             {activeTab === 'notifications' && (
-              <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                <div className="sm:p-6 p-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
-                  <p className="text-gray-600">Choose what notifications you want to receive</p>
+              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <div className="sm:p-6 p-4 border-b border-border">
+                  <h2 className="text-xl font-semibold text-content">Notification Preferences</h2>
+                  <p className="text-content-secondary">Choose what notifications you want to receive</p>
                 </div>
 
                 <div className="sm:p-6 py-6 space-y-6">
@@ -780,10 +780,10 @@ const ProfileSettings: React.FC = () => {
                       { key: 'post_updates', label: 'Post Updates', desc: 'Updates from people you follow' },
                       { key: 'weekly_digest', label: 'Weekly Digest', desc: 'Weekly summary of activity' }
                     ].map(option => (
-                      <label key={option.key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <label key={option.key} className="flex items-center justify-between p-4 border border-border rounded-lg">
                         <div>
-                          <div className="font-medium text-gray-900">{option.label}</div>
-                          <div className="text-sm text-gray-500">{option.desc}</div>
+                          <div className="font-medium text-content">{option.label}</div>
+                          <div className="text-sm text-content-secondary">{option.desc}</div>
                         </div>
                         <input
                           type="checkbox"
@@ -814,18 +814,18 @@ const ProfileSettings: React.FC = () => {
 
             {activeTab === 'security' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                  <div className="sm:p-6 p-4 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-900">Account Security</h2>
-                    <p className="text-gray-600">Manage your account security settings</p>
+                <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                  <div className="sm:p-6 p-4 border-b border-border">
+                    <h2 className="text-xl font-semibold text-content">Account Security</h2>
+                    <p className="text-content-secondary">Manage your account security settings</p>
                   </div>
 
                   <div className="sm:p-6 py-6 space-y-6">
                     <div className="space-y-4">
-                      <label className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <label className="flex items-center justify-between p-4 border border-border rounded-lg">
                         <div className='max-w-[320px]'>
-                          <div className="font-medium text-gray-900">Two-Factor Authentication</div>
-                          <div className="text-sm text-gray-500">Add an extra layer of security to your account</div>
+                          <div className="font-medium text-content">Two-Factor Authentication</div>
+                          <div className="text-sm text-content-secondary">Add an extra layer of security to your account</div>
                         </div>
                         <input
                           type="checkbox"
@@ -838,10 +838,10 @@ const ProfileSettings: React.FC = () => {
                         />
                       </label>
 
-                      <label className=" flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                      <label className=" flex items-center justify-between p-4 border border-border rounded-lg">
                         <div className='sm:max-w-full max-w-[240px]'>
-                          <div className="font-medium text-gray-900">Login Alerts</div>
-                          <div className="text-sm text-gray-500">Get notified when someone logs into your account</div>
+                          <div className="font-medium text-content">Login Alerts</div>
+                          <div className="text-sm text-content-secondary">Get notified when someone logs into your account</div>
                         </div>
                         <input
                           type="checkbox"
@@ -855,12 +855,12 @@ const ProfileSettings: React.FC = () => {
                       </label>
                     </div>
 
-                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-start gap-3">
-                        <Monitor className="w-5 h-5 text-gray-600 shrink-0 mt-0.5" aria-hidden />
+                    <div className="border border-border rounded-lg overflow-hidden">
+                      <div className="p-4 bg-gray-50 border-b border-border flex items-start gap-3">
+                        <Monitor className="w-5 h-5 text-content-secondary shrink-0 mt-0.5" aria-hidden />
                         <div>
-                          <h3 className="font-medium text-gray-900">Where you&apos;re logged in</h3>
-                          <p className="text-sm text-gray-500">
+                          <h3 className="font-medium text-content">Where you&apos;re logged in</h3>
+                          <p className="text-sm text-content-secondary">
                             {sessionsLoading
                               ? 'Loading sessions…'
                               : `${authSessions.length} active ${authSessions.length === 1 ? 'session' : 'sessions'}`}
@@ -869,9 +869,9 @@ const ProfileSettings: React.FC = () => {
                       </div>
                       <ul className="divide-y divide-gray-100">
                         {sessionsLoading && authSessions.length === 0 ? (
-                          <li className="p-4 text-sm text-gray-500">Loading sessions…</li>
+                          <li className="p-4 text-sm text-content-secondary">Loading sessions…</li>
                         ) : authSessions.length === 0 ? (
-                          <li className="p-4 text-sm text-gray-500">No active sessions found.</li>
+                          <li className="p-4 text-sm text-content-secondary">No active sessions found.</li>
                         ) : (
                           authSessions.map((s) => {
                             const isCurrent = currentAuthSessionId === s.id
@@ -889,8 +889,8 @@ const ProfileSettings: React.FC = () => {
                                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4"
                               >
                                 <div className="min-w-0">
-                                  <div className="font-medium text-gray-900 truncate">{s.device_label}</div>
-                                  <div className="text-sm text-gray-500 mt-0.5">
+                                  <div className="font-medium text-content truncate">{s.device_label}</div>
+                                  <div className="text-sm text-content-secondary mt-0.5">
                                     {s.ip ? `IP ${s.ip} · ` : ''}
                                     {lastActiveLabel ? `Active ${lastActiveLabel}` : null}
                                   </div>
@@ -968,17 +968,17 @@ const ProfileSettings: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
-                  <div className="sm:p-6 p-4 border-b border-gray-200">
-                    <h2 className="text-xl font-semibold text-gray-900">Data & Privacy</h2>
-                    <p className="text-gray-600">Download your data or delete your account</p>
+                <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                  <div className="sm:p-6 p-4 border-b border-border">
+                    <h2 className="text-xl font-semibold text-content">Data & Privacy</h2>
+                    <p className="text-content-secondary">Download your data or delete your account</p>
                   </div>
 
                   <div className="sm:p-6 pt-6 space-y-4">
                     <div className="sm:flex-row flex gap-4  flex-col">
                     <button
                       onClick={handleDataDownload}
-                      className="w-full flex items-center justify-center space-x-2 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+                      className="w-full flex items-center justify-center space-x-2 p-4 border border-gray-300 rounded-lg hover:bg-surface-hover transition-colors duration-200"
                     >
                       <Download className="w-5 h-5" />
                       <span>Download My Data</span>
@@ -993,7 +993,7 @@ const ProfileSettings: React.FC = () => {
                     </button>
                     </div>
 
-                    <div className="text-sm text-gray-500 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="text-sm text-content-secondary p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <div className="flex items-start space-x-2">
                         <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5" />
                         <div>
@@ -1027,13 +1027,13 @@ const ProfileSettings: React.FC = () => {
           }}
         >
           <div
-            className="bg-white rounded-xl shadow-xl max-w-md w-full border border-gray-200"
+            className="bg-surface rounded-xl shadow-xl max-w-md w-full border border-border"
             role="dialog"
             aria-labelledby="change-password-title"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h2 id="change-password-title" className="text-lg font-semibold text-gray-900">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h2 id="change-password-title" className="text-lg font-semibold text-content">
                 Change password
               </h2>
               <button
@@ -1044,18 +1044,18 @@ const ProfileSettings: React.FC = () => {
                   setShowPwConfirm(false)
                   setShowChangePasswordModal(false)
                 }}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                className="p-2 rounded-lg hover:bg-gray-100 text-content-secondary"
                 aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleChangePasswordSubmit} className="p-4 space-y-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-content-secondary">
                 Enter your current password, then choose a new one (at least 8 characters).
               </p>
               <div>
-                <label htmlFor="cp-current" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cp-current" className="block text-sm font-medium text-content mb-1">
                   Current password
                 </label>
                 <div className="relative">
@@ -1071,7 +1071,7 @@ const ProfileSettings: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPwCurrent((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-content-secondary hover:text-gray-800 hover:bg-gray-100"
                     aria-label={showPwCurrent ? 'Hide password' : 'Show password'}
                   >
                     {showPwCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -1079,7 +1079,7 @@ const ProfileSettings: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label htmlFor="cp-new" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cp-new" className="block text-sm font-medium text-content mb-1">
                   New password
                 </label>
                 <div className="relative">
@@ -1096,7 +1096,7 @@ const ProfileSettings: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPwNew((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-content-secondary hover:text-gray-800 hover:bg-gray-100"
                     aria-label={showPwNew ? 'Hide new password' : 'Show new password'}
                   >
                     {showPwNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -1104,7 +1104,7 @@ const ProfileSettings: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label htmlFor="cp-confirm" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="cp-confirm" className="block text-sm font-medium text-content mb-1">
                   Confirm new password
                 </label>
                 <div className="relative">
@@ -1121,7 +1121,7 @@ const ProfileSettings: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPwConfirm((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-content-secondary hover:text-gray-800 hover:bg-gray-100"
                     aria-label={showPwConfirm ? 'Hide confirm password' : 'Show confirm password'}
                   >
                     {showPwConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

@@ -43,8 +43,8 @@ const StripeConnectSettings: React.FC = () => {
   if (loading) {
     return (
       <div className="card p-6 animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-1/2 mb-4" />
-        <div className="h-20 bg-gray-200 rounded" />
+        <div className="h-6 bg-surface-tertiary rounded w-1/2 mb-4" />
+        <div className="h-20 bg-surface-tertiary rounded" />
       </div>
     );
   }
@@ -56,12 +56,12 @@ const StripeConnectSettings: React.FC = () => {
 
   return (
     <div className="card">
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-border">
         <div className="flex items-center gap-3">
           <CreditCard className="w-6 h-6 text-indigo-600" />
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Stripe Connect</h2>
-            <p className="text-sm text-gray-600 mt-1">
+            <h2 className="text-xl font-semibold text-content">Stripe Connect</h2>
+            <p className="text-sm text-content-secondary mt-1">
               Receive USD, EUR, and GBP payouts directly to your Stripe account.
             </p>
           </div>
@@ -100,10 +100,10 @@ const StripeConnectSettings: React.FC = () => {
         )}
 
         {reserveBalance !== 0 && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-content-secondary">
             Seller reserve balance:{" "}
             <span className="font-medium">${reserveBalance.toLocaleString()}</span>
-            <span className="text-gray-400 ml-1">(chargeback protection)</span>
+            <span className="text-content-tertiary ml-1">(chargeback protection)</span>
           </div>
         )}
 
@@ -121,7 +121,7 @@ const StripeConnectSettings: React.FC = () => {
           <button
             onClick={loadStatus}
             disabled={loading}
-            className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50"
+            className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-surface-hover"
           >
             Refresh status
           </button>

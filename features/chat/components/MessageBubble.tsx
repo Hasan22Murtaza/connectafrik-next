@@ -68,7 +68,7 @@ export function ChatDateDivider({ dateIso }: { dateIso: string }) {
   const label = formatChatDateDividerLabel(new Date(dateIso));
   return (
     <div className="flex justify-center py-2">
-      <span className="rounded-[7.5px] bg-white px-3 py-1 text-[12.5px] font-medium text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+      <span className="rounded-[7.5px] bg-surface px-3 py-1 text-[12.5px] font-medium text-content-secondary shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
         {label}
       </span>
     </div>
@@ -471,7 +471,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   if (toCallSessionStatusMessageType(message.message_type || "") === "ended") {
     return (
       <div className="mb-3 flex justify-center">
-        <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+        <div className="flex items-center gap-2 rounded-full bg-surface/90 px-3 py-1.5 text-xs text-content-secondary shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
           <span>{message.content || "Call ended"}</span>
         </div>
       </div>
@@ -481,7 +481,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   if (message.message_type === "group_member_joined" || message.message_type === "group_member_left") {
     return (
       <div className="mb-3 flex justify-center">
-        <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+        <div className="flex items-center gap-2 rounded-full bg-surface/90 px-3 py-1.5 text-xs text-content-secondary shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
           <span>{message.content}</span>
         </div>
       </div>
@@ -491,7 +491,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   if (message.message_type === "marketplace_system") {
     return (
       <div className="mb-3 flex justify-center">
-        <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+        <div className="flex items-center gap-2 rounded-full bg-surface/90 px-3 py-1.5 text-xs text-content-secondary shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
           <span>{message.content}</span>
         </div>
       </div>
@@ -540,7 +540,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       : null;
 
   /** WhatsApp outgoing / incoming bubble fill */
-  const bubbleBg = isOwnMessage ? "bg-[#dcf8c6]" : "bg-white";
+  const bubbleBg = isOwnMessage ? "chat-bubble-own" : "bg-surface";
   const forwardAccent =
     showForwardBadge && isOwnMessage ? "border-l-[3px] border-[#25d366] pl-[9px]" : "";
   const toggleExpanded = (messageId: string) => {
@@ -626,19 +626,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {message.sender.avatarUrl ? (
               <img src={message.sender.avatarUrl} alt={message.sender.name} className="h-5 w-5 rounded-full" />
             ) : (
-              <UserCircle className="h-5 w-5 text-[#8696a0]" />
+              <UserCircle className="h-5 w-5 text-content-tertiary" />
             )}
-            <span className="truncate text-xs font-medium text-[#54656f] cursor-pointer hover:underline" onClick={() => router.push(`/user/${message?.sender?.id}`)}>{message.sender?.name}</span>
+            <span className="truncate text-xs font-medium text-content-secondary cursor-pointer hover:underline" onClick={() => router.push(`/user/${message?.sender?.id}`)}>{message.sender?.name}</span>
           </div>
         ) : null}
 
         {message.reply_to_id ? (
           <div
             className={`mb-1 max-w-full rounded-md border-l-[3px] p-2 ${
-              isOwnMessage ? "border-[#25d366] bg-[#b8e995]/50" : "border-[#25d366] bg-white/90"
+              isOwnMessage ? "border-[#25d366] bg-[#b8e995]/50" : "border-[#25d366] bg-surface/90"
             }`}
           >
-            <div className="text-[11px] italic text-[#667781]">Replying to a message</div>
+            <div className="text-[11px] italic text-content-tertiary">Replying to a message</div>
           </div>
         ) : null}
 
@@ -650,7 +650,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 e.stopPropagation();
                 toggleMessageMenu();
               }}
-              className={`absolute top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f5f6f6] ${
+              className={`absolute top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-content-secondary shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-surface-hover ${
                 isOwnMessage ? "-left-9" : "-right-9"
               }`}
               aria-label="Add reaction"
@@ -670,7 +670,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               onMouseLeave={handleReactionPickerLeave}
             >
               {onReact ? (
-                <div className="flex items-center gap-0.5 rounded-full bg-white px-1.5 py-1 shadow-[0_2px_5px_rgba(11,20,26,0.16)] ring-1 ring-black/[0.06]">
+                <div className="flex items-center gap-0.5 rounded-full bg-surface px-1.5 py-1 shadow-[0_2px_5px_rgba(11,20,26,0.16)] ring-1 ring-black/[0.06]">
                   {WA_QUICK_REACTION_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
@@ -680,7 +680,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         onReact(message.id, emoji);
                         setShowMenu(false);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-[22px] transition hover:bg-[#f5f6f6]"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-[22px] transition hover:bg-surface-hover"
                       aria-label={`React ${emoji}`}
                     >
                       {emoji}
@@ -692,7 +692,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       e.stopPropagation();
                       setShowReactionPicker((prev) => !prev);
                     }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[#54656f] hover:bg-[#f5f6f6]"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
                     aria-label="More reactions"
                   >
                     <TbMoodPlus className="h-5 w-5" />
@@ -700,7 +700,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </div>
               ) : null}
               {showReactionPicker && onReact ? (
-                <div className="flex flex-wrap gap-1 rounded-2xl bg-white p-1.5 shadow-[0_2px_5px_rgba(11,20,26,0.16)] ring-1 ring-black/[0.06]">
+                <div className="flex flex-wrap gap-1 rounded-2xl bg-surface p-1.5 shadow-[0_2px_5px_rgba(11,20,26,0.16)] ring-1 ring-black/[0.06]">
                   {PICKER_REACTIONS.map((kind: ReactionKind) => (
                     <button
                       key={`extra-${kind}`}
@@ -722,20 +722,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
                 <div
                   role="menu"
-                  className="min-w-[200px] max-w-[280px] overflow-hidden rounded-lg bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08]"
+                  className="min-w-[200px] max-w-[280px] overflow-hidden rounded-lg bg-surface py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08]"
                 >
                   {messageOverflowMenuSections.map((section, sectionIdx) => (
                     <Fragment key={section.id}>
-                      {sectionIdx > 0 ? <div role="separator" className="my-1 h-px bg-[#e9edef]" /> : null}
+                      {sectionIdx > 0 ? <div role="separator" className="my-1 h-px bg-border-subtle" /> : null}
                       {section.items.map((item) => {
                         const { id, label, Icon, tone = "default", trailing, disabled, onClick } = item;
                         const baseRow =
                           "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug transition-colors";
                         const rowClass = disabled
-                          ? `${baseRow} cursor-not-allowed text-[#8696a0] opacity-60`
+                          ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
                           : tone === "danger"
                             ? `${baseRow} text-red-600 hover:bg-red-50`
-                            : `${baseRow} text-[#111b21] hover:bg-[#f5f6f6]`;
+                            : `${baseRow} text-content hover:bg-surface-hover`;
                         return (
                           <button
                             key={id}
@@ -750,7 +750,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                           >
                             <Icon
                               className={`h-[18px] w-[18px] shrink-0 ${
-                                disabled ? "text-[#8696a0]" : tone === "danger" ? "text-red-600" : "text-[#54656f]"
+                                disabled ? "text-content-tertiary" : tone === "danger" ? "text-red-600" : "text-content-secondary"
                               }`}
                               aria-hidden
                             />
@@ -771,7 +771,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               className={`relative z-[1] inline-block max-w-full overflow-visible rounded-[7.5px] px-2.5 pb-1.5 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${forwardAccent} ${
                 isOwnMessage
                   ? "after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[#dcf8c6]"
-                  : "before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-white"
+                  : "before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-surface"
               } ${
                 isComposerEditingThis
                   ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-[#e5ddd5]"
@@ -786,7 +786,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       e.stopPropagation();
                       toggleMessageMenu();
                     }}
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f5f6f6]"
+                    className="flex h-5 w-5 items-center justify-center rounded-full bg-surface/90 text-content-secondary shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-surface-hover"
                     aria-label="Open message actions"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
@@ -797,37 +797,37 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               {showForwardBadge && !isDeleted ? (
                 <div className="mb-1 flex items-center gap-1 pr-1">
                   <ChevronsRight
-                    className="h-3.5 w-3.5 shrink-0 text-[#5b6c66]"
+                    className="h-3.5 w-3.5 shrink-0 text-content-tertiary"
                     strokeWidth={2}
                     aria-hidden
                   />
-                  <span className="text-[12px] italic leading-snug text-[#5b6c66]">Forwarded</span>
+                  <span className="text-[12px] italic leading-snug text-content-tertiary">Forwarded</span>
                 </div>
               ) : null}
 
               {isDeleted ? (
-                <p className="pr-1 text-sm italic text-[#667781]">This message was deleted</p>
+                <p className="pr-1 text-sm italic text-content-tertiary">This message was deleted</p>
               ) : callPresentation ? (
                 <div className="flex min-w-0 items-start gap-2.5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
                     {callPresentation.variant === "missed" ? (
                       <PhoneMissed className="h-[22px] w-[22px] text-[#ea0038]" strokeWidth={2} aria-hidden />
                     ) : isOwnMessage ? (
-                      <PhoneOutgoing className="h-[21px] w-[21px] text-[#111b21]" strokeWidth={2} aria-hidden />
+                      <PhoneOutgoing className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
                     ) : (
-                      <PhoneIncoming className="h-[21px] w-[21px] text-[#111b21]" strokeWidth={2} aria-hidden />
+                      <PhoneIncoming className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
                     )}
                   </div>
                   <div className="min-w-0 flex-1 pt-0.5">
-                    <p className="text-[15px] font-medium leading-snug text-[#111b21]">{callPresentation.title}</p>
-                    <p className="mt-0.5 text-[13px] leading-snug text-[#667781]">{callPresentation.subtitle}</p>
+                    <p className="text-[15px] font-medium leading-snug text-content">{callPresentation.title}</p>
+                    <p className="mt-0.5 text-[13px] leading-snug text-content-tertiary">{callPresentation.subtitle}</p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
                     <div className="flex items-end justify-end gap-1">
                       {showEditedBadge ? (
-                        <span className="text-[11px] lowercase leading-none text-[#667781]">edited</span>
+                        <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
                       ) : null}
-                      <span className="shrink-0 text-[11px] tabular-nums text-[#667781]">
+                      <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
                         {format(new Date(message.created_at), "HH:mm")}
                       </span>
                       <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
@@ -883,13 +883,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                             target="_blank"
                             rel="noopener noreferrer"
                             className={`flex items-center gap-2 rounded-md p-2 transition-colors ${
-                              isOwnMessage ? "bg-[#c5e8bc] hover:bg-[#b8e0ad]" : "bg-[#f0f2f5] hover:bg-[#e5e8eb]"
+                              isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas hover:bg-surface-hover"
                             }`}
                           >
-                            <FileText className="h-5 w-5 shrink-0 text-[#54656f]" />
+                            <FileText className="h-5 w-5 shrink-0 text-content-secondary" />
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-medium text-[#111b21]">{att.name}</p>
-                              <p className="text-[10px] text-[#667781]">
+                              <p className="truncate text-xs font-medium text-content">{att.name}</p>
+                              <p className="text-[10px] text-content-tertiary">
                                 {att.size < 1024
                                   ? `${att.size} B`
                                   : att.size < 1048576
@@ -897,7 +897,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                     : `${(att.size / 1048576).toFixed(1)} MB`}
                               </p>
                             </div>
-                            <Download className="h-4 w-4 shrink-0 text-[#54656f]" />
+                            <Download className="h-4 w-4 shrink-0 text-content-secondary" />
                           </a>
                         );
                       })}
@@ -906,7 +906,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
                   {message.content ? (
                     <div className="pr-1">
-                      <p className="break-words text-[14.2px] leading-[1.45] text-[#111b21] whitespace-pre-wrap">
+                      <p className="break-words text-[14.2px] leading-[1.45] text-content whitespace-pre-wrap">
                         {linkifyContent(displayText || "", isOwnMessage)}
                       </p>
 
@@ -930,9 +930,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="mt-0.5 flex items-end justify-end gap-1 pl-6">
                   <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
                     {showEditedBadge ? (
-                      <span className="text-[11px] lowercase leading-none text-[#667781]">edited</span>
+                      <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
                     ) : null}
-                    <span className="shrink-0 text-[11px] tabular-nums text-[#667781]">
+                    <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
                       {format(new Date(message.created_at), "HH:mm")}
                     </span>
                   </div>
@@ -949,7 +949,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     e.stopPropagation();
                     void openReactionsModal();
                   }}
-                  className={`absolute z-10 flex max-w-[min(100%,200px)] cursor-pointer items-center rounded-full bg-white py-0.5 pl-1 pr-1.5 shadow-[0_1px_2px_rgba(11,20,26,0.14)] ring-1 ring-[#e9edef] transition hover:bg-[#f7f8fa] ${
+                  className={`absolute z-10 flex max-w-[min(100%,200px)] cursor-pointer items-center rounded-full bg-surface py-0.5 pl-1 pr-1.5 shadow-[0_1px_2px_rgba(11,20,26,0.14)] ring-1 ring-border-subtle transition hover:bg-surface-hover ${
                     isOwnMessage
                       ? "bottom-0 left-2 translate-y-1/2"
                       : "bottom-0 right-2 translate-y-1/2"
@@ -967,7 +967,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     </span>
                   ))}
                   {reactionTotal > 1 ? (
-                    <span className="min-w-[10px] shrink-0 pl-0.5 text-[11px] font-normal tabular-nums leading-none text-[#667781]">
+                    <span className="min-w-[10px] shrink-0 pl-0.5 text-[11px] font-normal tabular-nums leading-none text-content-tertiary">
                       {reactionTotal}
                     </span>
                   ) : null}

@@ -49,13 +49,13 @@ async function playVideoPreferUnmuted(v: HTMLVideoElement): Promise<boolean> {
 }
 
 const actionCircleClass =
-  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-200/95 text-zinc-900 shadow-[0_1px_3px_rgba(0,0,0,0.25)] backdrop-blur-sm transition active:scale-[0.96] active:bg-zinc-300 sm:h-11 sm:w-11 lg:h-12 lg:w-12 lg:hover:bg-zinc-300'
+  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content shadow-[0_1px_3px_rgba(0,0,0,0.25)] backdrop-blur-sm transition active:scale-[0.96] active:bg-surface-hover sm:h-11 sm:w-11 lg:h-12 lg:w-12 lg:hover:bg-surface-hover dark:bg-surface-tertiary dark:text-content'
 /** Labels overlaid on video — high contrast on any footage */
 const actionLabelOverlayClass =
   'max-w-[3.25rem] text-center text-[10px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] sm:text-[11px]'
-/** Labels beside video on desktop (gray rail) */
+/** Labels beside video on desktop (theme-aware rail) */
 const actionLabelOutsideClass =
-  'max-w-[3.5rem] text-center text-[11px] font-semibold leading-tight text-zinc-800 lg:text-xs'
+  'max-w-[3.5rem] text-center text-[11px] font-semibold leading-tight text-content-secondary lg:text-xs'
 
 export interface MemoryShortsSlideProps {
   reel: Reel
@@ -335,7 +335,7 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
 
   return (
     <section
-      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-black lg:h-[calc(100dvh-4.5rem)] lg:bg-neutral-100"
+      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-black lg:h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas"
       data-memory-slide
       data-reel-id={reel.id}
       aria-label={`Memory: ${reel.title}`}
@@ -513,7 +513,7 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
             >
               <span className={actionCircleClass}>
                 <Bookmark
-                  className={`h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 ${isSaved ? 'fill-zinc-900 text-zinc-900' : ''}`}
+                  className={`h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 ${isSaved ? 'fill-content text-content' : ''}`}
                   strokeWidth={isSaved ? 0 : 2}
                 />
               </span>
@@ -587,7 +587,7 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
             aria-label={isSaved ? 'Unsave' : 'Save'}
           >
             <span className={actionCircleClass}>
-              <Bookmark className={`h-6 w-6 ${isSaved ? 'fill-zinc-900 text-zinc-900' : ''}`} strokeWidth={isSaved ? 0 : 2} />
+              <Bookmark className={`h-6 w-6 ${isSaved ? 'fill-content text-content' : ''}`} strokeWidth={isSaved ? 0 : 2} />
             </span>
             <span className={`${actionLabelOutsideClass} tabular-nums`}>{formatShortCount(savesCount)}</span>
           </button>
