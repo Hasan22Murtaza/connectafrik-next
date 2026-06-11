@@ -14,6 +14,8 @@ export default function ConditionalFooter() {
     "/signup",
     "/forgot-password",
     "/reset-password",
+    "/account-activated",
+    "/confirm-signup",
   ];
   
   // Hide footer on call pages

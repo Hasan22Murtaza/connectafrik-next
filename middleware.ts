@@ -1,17 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-
-/** Supabase auth cookie key derived from project URL (matches default in supabase-js). */
-function getSupabaseAuthCookieKey(): string {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!url) return 'sb-auth-token'
-    const hostname = new URL(url).hostname.split('.')[0]
-    return `sb-${hostname}-auth-token`
-  } catch {
-    return 'sb-auth-token'
-  }
-}
+import {
+  getSupabaseAuthCookieKey,
+  getSupabaseAuthCookieNames,
+} from '@/lib/auth/supabaseAuthCookies'
 
 /** Clear Supabase auth cookies (base key + chunked keys) so user is treated as signed out. */
 function clearSupabaseAuthCookies(
@@ -20,7 +12,7 @@ function clearSupabaseAuthCookies(
   baseKey: string
 ): NextResponse {
   const options = { path: '/' }
-  for (const name of [baseKey, ...Array.from({ length: 12 }, (_, i) => `${baseKey}.${i}`)]) {
+  for (const name of getSupabaseAuthCookieNames(baseKey)) {
     request.cookies.set({ name, value: '', ...options })
     response.cookies.set(name, '', options)
   }
@@ -118,7 +110,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Define route categories
-  const authRoutes = ['/signin', '/signup', '/forgot-password', '/reset-password']
+  const authRoutesThatRedirectWhenLoggedIn = [
+    '/signin',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+  ]
   const protectedRoutes = [
     '/feed',
     '/friends',
@@ -147,8 +144,9 @@ export async function middleware(request: NextRequest) {
   const isMarketplaceProductDetail =
     /^\/marketplace\/[^/]+$/.test(pathname) && !isMarketplaceHubRoute
 
-  // Check if the current path is an auth route
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
+  const isAuthRouteThatRedirectsWhenLoggedIn = authRoutesThatRedirectWhenLoggedIn.some((route) =>
+    pathname.startsWith(route)
+  )
   
   // Check if the current path is a protected route
   const isProtectedRoute =
@@ -160,8 +158,8 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute =
     publicRoutes.some((route) => pathname === route) || isMarketplaceProductDetail
 
-  // If user is authenticated and tries to access auth routes, redirect to feed
-  if (session && isAuthRoute) {
+  // If user is authenticated and tries to access sign-in/sign-up routes, redirect to feed
+  if (session && isAuthRouteThatRedirectsWhenLoggedIn) {
     const url = request.nextUrl.clone()
     url.pathname = '/feed'
     return applyClearedAuthCookiesIfNeeded(NextResponse.redirect(url))

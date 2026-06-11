@@ -26,8 +26,13 @@ const SigninForm: React.FC = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get("error") === "auth") {
-      toast.error("Google sign-in failed. Please try again.");
+    const error = searchParams.get("error");
+    if (error === "link_expired") {
+      toast.error("This confirmation link is invalid or has expired. Sign up again or request a new link.");
+      return;
+    }
+    if (error === "auth") {
+      toast.error("Sign-in link failed. Please try again.");
     }
   }, [searchParams]);
 

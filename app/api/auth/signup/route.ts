@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
-import { createAuthClient, isRecord } from '../_shared'
+import { createServiceClient } from '@/lib/supabase-server'
+import { sendSignupConfirmationEmail } from '@/shared/services/emailService'
+import { isRecord } from '../_shared'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,25 +15,41 @@ export async function POST(request: NextRequest) {
       return errorResponse('Email and password are required', 400)
     }
 
-    const supabase = createAuthClient()
-    const { data, error } = await supabase.auth.signUp({
+    const redirectTo = `${request.nextUrl.origin}/confirm-signup`
+    const serviceClient = createServiceClient()
+
+    const { data, error } = await serviceClient.auth.admin.generateLink({
+      type: 'signup',
       email,
       password,
-      options: metadata
-        ? {
-            data: metadata,
-          }
-        : undefined,
+      options: {
+        redirectTo,
+        ...(metadata ? { data: metadata } : {}),
+      },
     })
 
     if (error) {
       return errorResponse(error.message, 400)
     }
 
+    const confirmationUrl = data?.properties?.action_link
+    if (!confirmationUrl) {
+      return errorResponse('Failed to generate confirmation link', 500)
+    }
+
+    const emailSent = await sendSignupConfirmationEmail(email, confirmationUrl)
+    if (!emailSent) {
+      return errorResponse(
+        'Account created but failed to send confirmation email. Please contact support.',
+        500
+      )
+    }
+
     return jsonResponse(
       {
         user: data.user,
-        session: data.session,
+        session: null,
+        emailSent: true,
       },
       201
     )

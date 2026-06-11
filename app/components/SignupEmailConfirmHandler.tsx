@@ -1,42 +1,39 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import toast from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
+import { usePathname, useRouter } from 'next/navigation'
+import { authLinkErrorQuery, parseAuthHash } from '@/lib/auth/parseAuthHash'
 
 /**
- * Supabase email confirmation redirects to the site URL with tokens in the hash
- * (#access_token=...&type=signup&...). Show a confirmation toast and send the user
- * to sign-in. Other hash types (e.g. recovery) are left for their own flows.
+ * Legacy fallback: Supabase may still land auth hash fragments on pages other than
+ * /confirm-signup (old email links). Strip errors and route to sign-in; never send
+ * users to account-activated from here.
  */
 export default function SignupEmailConfirmHandler() {
   const router = useRouter()
+  const pathname = usePathname()
   const handled = useRef(false)
 
   useEffect(() => {
     if (typeof window === 'undefined' || handled.current) return
+    if (pathname === '/confirm-signup' || pathname === '/account-activated') return
 
-    const raw = window.location.hash.replace(/^#/, '')
-    if (!raw || !raw.includes('access_token=')) return
-
-    const params = new URLSearchParams(raw)
-    const accessToken = params.get('access_token')
-    const type = params.get('type')
-
-    if (!accessToken || type !== 'signup') return
+    const hashResult = parseAuthHash(window.location.hash)
+    if (hashResult.kind === 'none') return
 
     handled.current = true
 
-    const cleanPath = window.location.pathname + window.location.search
-    window.history.replaceState(null, '', cleanPath)
+    if (hashResult.kind === 'error') {
+      const errorQuery = authLinkErrorQuery(hashResult.errorCode)
+      router.replace(`/signin?error=${errorQuery}`)
+      return
+    }
 
-    void (async () => {
-      await supabase.auth.signOut()
-      toast.success('Your account is activated.')
-      router.replace('/signin')
-    })()
-  }, [router])
+    if (hashResult.kind === 'signup') {
+      const query = window.location.search
+      router.replace(`/confirm-signup${query}${window.location.hash}`)
+    }
+  }, [pathname, router])
 
   return null
 }

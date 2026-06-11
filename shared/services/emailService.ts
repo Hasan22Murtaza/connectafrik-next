@@ -13,6 +13,10 @@ import {
   type PostCreatedEmailVariant,
 } from '@/lib/emails/postCreatedEmail'
 import { getWelcomeEmailHtml, getWelcomeEmailText } from '@/lib/emails/welcomeEmail'
+import {
+  getSignupConfirmationEmailHtml,
+  getSignupConfirmationEmailText,
+} from '@/lib/emails/signupConfirmationEmail'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 
 // Initialize AWS SES Client
@@ -179,6 +183,26 @@ export const sendNewOrderNotificationEmail = async (
 
   const r = await sendEmail({
     to: sellerEmail,
+    subject,
+    htmlBody,
+    textBody,
+  })
+  return r.ok
+}
+
+/**
+ * Send signup confirmation email (custom template via SES, not Supabase).
+ */
+export const sendSignupConfirmationEmail = async (
+  userEmail: string,
+  confirmationUrl: string
+): Promise<boolean> => {
+  const subject = 'Confirm your ConnectAfrik account'
+  const htmlBody = getSignupConfirmationEmailHtml(confirmationUrl)
+  const textBody = getSignupConfirmationEmailText(confirmationUrl)
+
+  const r = await sendEmail({
+    to: userEmail,
     subject,
     htmlBody,
     textBody,
