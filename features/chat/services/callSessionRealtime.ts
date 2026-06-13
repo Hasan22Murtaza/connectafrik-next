@@ -27,13 +27,24 @@ export const CALL_SESSION_STATUSES = [
 
 export type CallSessionStatus = (typeof CALL_SESSION_STATUSES)[number]
 
-/** Status values that produce a subscriber UPDATE callback (terminal + active). */
+/** Status values that produce a subscriber UPDATE callback (terminal + active + mid-call signals). */
 const SESSION_UPDATE_MESSAGE_STATUSES = new Set<string>([
   'active',
   'declined',
   'ended',
   'missed',
   'failed',
+])
+
+/** Mid-call metadata signals propagated via last_signal (status may stay active). */
+export const CALL_METADATA_SIGNALS = new Set<string>([
+  'participant_joined',
+  'participant_left',
+  'switched_to_video',
+  'switched_to_audio',
+  'video_requested',
+  'video_accepted',
+  'video_declined',
 ])
 
 function parseMeta(raw: unknown): Record<string, unknown> {
@@ -114,6 +125,20 @@ function contentForSessionStatus(sessionStatus: string): string {
       return 'Missed call'
     case 'failed':
       return 'Call failed'
+    case 'participant_joined':
+      return 'Participant joined'
+    case 'participant_left':
+      return 'Participant left'
+    case 'switched_to_video':
+      return 'Switched to video'
+    case 'switched_to_audio':
+      return 'Switched to audio'
+    case 'video_requested':
+      return 'Video request'
+    case 'video_accepted':
+      return 'Video accepted'
+    case 'video_declined':
+      return 'Video declined'
     default:
       return 'Call update'
   }
@@ -168,7 +193,48 @@ export function callSessionUpdateToChatMessage(
   const oldStatus = oldRow ? String(oldRow.status || '').trim() : ''
 
   const meta = callSessionRowToCallMetadata(row)
+  const lastSignal = typeof meta.last_signal === 'string' ? meta.last_signal.trim() : ''
   const sessionStatus = resolveSessionStatusFromRow(row)
+
+  // Mid-call metadata signals (participant join/leave, A/V switch)
+  if (lastSignal && CALL_METADATA_SIGNALS.has(lastSignal)) {
+    const oldMeta = oldRow ? parseMeta(oldRow.metadata) : {}
+    const oldSignal = typeof oldMeta.last_signal === 'string' ? oldMeta.last_signal.trim() : ''
+    if (oldRow && lastSignal === oldSignal) return null
+
+    const threadId = String(row.thread_id || '')
+    const id = typeof row.id === 'string' ? row.id : String(row.id || '')
+    const updatedAt = typeof row.updated_at === 'string' ? row.updated_at : new Date().toISOString()
+    const createdAt = typeof row.created_at === 'string' ? row.created_at : updatedAt
+    const createdBy = String(row.created_by || '')
+    const actorKey =
+      lastSignal === 'participant_joined'
+        ? 'joinedBy'
+        : lastSignal === 'participant_left'
+          ? 'leftBy'
+          : lastSignal === 'video_requested'
+            ? 'videoRequestedBy'
+            : lastSignal === 'video_accepted'
+              ? 'videoAcceptedBy'
+              : lastSignal === 'video_declined'
+                ? 'videoDeclinedBy'
+                : 'switchedBy'
+    const senderId = meta[actorKey] ? String(meta[actorKey]) : createdBy
+
+    return {
+      id: `cs:${id}:${lastSignal}:${updatedAt}`,
+      thread_id: threadId,
+      sender_id: senderId,
+      content: contentForSessionStatus(lastSignal),
+      created_at: createdAt,
+      updated_at: updatedAt,
+      message_type: lastSignal,
+      metadata: { ...meta, sessionStatus: newStatus || 'active' },
+      read_by: [],
+      is_deleted: false,
+    }
+  }
+
   if (!sessionStatus || !SESSION_UPDATE_MESSAGE_STATUSES.has(sessionStatus)) {
     return null
   }
@@ -210,9 +276,20 @@ export async function patchCallSessionWithRetry(
   threadId: string,
   payload: {
     call_id: string
-    event: 'accept' | 'declined' | 'end' | 'missed'
+    event:
+      | 'accept'
+      | 'declined'
+      | 'end'
+      | 'missed'
+      | 'join'
+      | 'leave'
+      | 'switch_to_video'
+      | 'switch_to_audio'
+      | 'request_video'
+      | 'accept_video'
+      | 'decline_video'
     duration_seconds?: number
-    /** Auth session row id (JWT `session_id`); included in accept/decline push payloads. */
+    force_end?: boolean
     device_session_id?: string
   },
   options?: { maxAttempts?: number },

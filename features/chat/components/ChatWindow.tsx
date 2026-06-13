@@ -72,6 +72,7 @@ import {
   isDirectBlockableThread,
   isThreadMessagingBlocked,
 } from "@/features/chat/utils/threadHelpers";
+import { useActiveCallSession } from "@/features/chat/hooks/useActiveCallSession";
 
 interface ChatWindowProps {
   threadId: string;
@@ -197,6 +198,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     minimizedThreadIds,
     openThread,
     startCall,
+    joinCall,
+    activeCallsByThread,
     markThreadRead,
     clearMessagesForUser,
     markMessageDeletedForUser,
@@ -289,6 +292,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const pendingRoomId = pendingCall?.roomId;
   const pendingCallerId = pendingCall?.callerId;
   const currentUserId = currentUser?.id || null;
+  const { activeSession, canJoin, isInCall } = useActiveCallSession(threadId, currentUserId ?? undefined);
+  const threadActiveCall = activeCallsByThread[threadId];
 
   const otherParticipants = useMemo(
     () =>
@@ -1309,6 +1314,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const handleJoinCall = async () => {
+    try {
+      userInitiatedCall.current = true;
+      await joinCall(threadId);
+    } catch {
+      userInitiatedCall.current = false;
+    }
+  };
+
 
   const handleFilesSelected = (files: FileUploadResult[]) => {
     setPendingFiles((prev) => [...prev, ...files]);
@@ -1669,6 +1683,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <div className="text-sm font-semibold text-content line-clamp-1" >
               {displayThreadName}
             </div>
+            {(canJoin || isInCall || threadActiveCall) && (
+              <div className="flex items-center gap-2 mt-0.5">
+                {canJoin && activeSession?.participantProfiles?.length ? (
+                  <div className="flex -space-x-1.5">
+                    {activeSession.participantProfiles.slice(0, 4).map((p) => (
+                      <div key={p.id} className="h-5 w-5 rounded-full border border-white overflow-hidden bg-primary-100">
+                        {p.avatar_url ? (
+                          <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-primary-700">
+                            {(p.full_name || p.username || '?').charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" />
+                <span className="text-xs text-green-600 font-medium">
+                  {canJoin
+                    ? `Group call · ${activeSession?.participants.length ?? threadActiveCall?.participantCount ?? 0} in call`
+                    : `In call · ${activeSession?.participants.length ?? threadActiveCall?.participantCount ?? 0} participants`}
+                </span>
+              </div>
+            )}
             <button
               type="button"
               onClick={(e) => {
@@ -1690,6 +1729,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {canJoin && (
+            <button
+              type="button"
+              onClick={() => void handleJoinCall()}
+              disabled={messagingBlocked}
+              className="flex items-center gap-1.5 rounded-full bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              Join Call
+            </button>
+          )}
+          {!canJoin && !isInCall && (
+            <>
           <button
             type="button"
             onClick={() => handleStartCall("audio")}
@@ -1706,6 +1758,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <Video className="h-5 w-5" />
           </button>
+            </>
+          )}
 
 
           <div className="relative">

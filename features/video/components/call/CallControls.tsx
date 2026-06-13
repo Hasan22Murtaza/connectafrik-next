@@ -5,6 +5,7 @@ import {
   MonitorOff,
   MonitorUp,
   PhoneOff,
+  SwitchCamera,
   UserPlus,
   Video,
   VideoOff,
@@ -24,6 +25,7 @@ interface CallControlsProps {
   callType: 'audio' | 'video';
   showMessageInput: boolean;
   showAddPeople: boolean;
+  isGroupCall?: boolean;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onToggleScreenShare: () => void;
@@ -31,6 +33,8 @@ interface CallControlsProps {
   onToggleMessageInput: () => void;
   onToggleAddPeople: () => void;
   onEndCall: () => void;
+  onEndCallForAll?: () => void;
+  onSwitchCamera?: () => void;
 }
 
 const CallControls: React.FC<CallControlsProps> = ({
@@ -50,8 +54,19 @@ const CallControls: React.FC<CallControlsProps> = ({
   onToggleMessageInput,
   onToggleAddPeople,
   onEndCall,
+  onEndCallForAll,
+  onSwitchCamera,
+  isGroupCall = false,
 }) => {
   const screenShareDisabled = !!remoteScreenShareStream && !isScreenSharing;
+  const showVideoButton = true;
+  const videoButtonTitle =
+    callType === 'audio'
+      ? 'Switch to video'
+      : isVideoEnabled
+        ? 'Turn off camera'
+        : 'Turn on camera';
+  const endCallLabel = isGroupCall ? 'Leave call' : 'End call';
 
   return (
     <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center justify-center pb-2 sm:pb-3 md:pb-6 mb-20 sm:mb-0 px-2 sm:px-3 md:px-4 z-30">
@@ -71,19 +86,37 @@ const CallControls: React.FC<CallControlsProps> = ({
             {isMuted ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
           </button>
 
-          {/* Video toggle */}
-          {callType === 'video' && (
+          {/* Video toggle / upgrade to video */}
+          {showVideoButton && (
             <button
               onClick={onToggleVideo}
               className={`rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none ${
-                isVideoEnabled
+                callType === 'video' && isVideoEnabled
                   ? 'bg-surface/90 hover:bg-surface text-content backdrop-blur-sm'
-                  : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
+                  : callType === 'audio'
+                    ? 'bg-primary-500/90 hover:bg-primary-600 text-white backdrop-blur-sm'
+                    : 'bg-red-500 hover:bg-red-600 active:bg-red-700 text-white'
               }`}
-              title={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
-              aria-label={isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}
+              title={videoButtonTitle}
+              aria-label={videoButtonTitle}
             >
-              {isVideoEnabled ? <Video className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" /> : <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />}
+              {callType === 'video' && isVideoEnabled ? (
+                <Video className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+              ) : (
+                <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+              )}
+            </button>
+          )}
+
+          {/* Switch camera (video calls only) */}
+          {callType === 'video' && isVideoEnabled && onSwitchCamera && (
+            <button
+              onClick={onSwitchCamera}
+              className="rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-surface/90 hover:bg-surface text-content backdrop-blur-sm"
+              title="Switch camera"
+              aria-label="Switch camera"
+            >
+              <SwitchCamera className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </button>
           )}
 
@@ -146,16 +179,26 @@ const CallControls: React.FC<CallControlsProps> = ({
             <UserPlus className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </button>
 
-          {/* End call */}
+          {/* End / leave call */}
           <button
             onClick={onEndCall}
             className="bg-red-500 hover:bg-red-600 active:bg-red-700 text-white rounded-full p-2.5 sm:p-3 md:p-4 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-110 active:scale-95 focus:outline-none"
-            title="End call"
-            aria-label="End call"
+            title={endCallLabel}
+            aria-label={endCallLabel}
           >
             <PhoneOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </button>
         </div>
+
+        {onEndCallForAll && (
+          <button
+            type="button"
+            onClick={onEndCallForAll}
+            className="text-xs font-medium text-white/90 hover:text-white underline underline-offset-2 transition"
+          >
+            End call for everyone
+          </button>
+        )}
       </div>
     </div>
   );

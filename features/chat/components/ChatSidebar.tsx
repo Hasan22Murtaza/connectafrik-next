@@ -35,7 +35,7 @@ export default function ChatSidebar({
   onOpenThread,
   searchInputRef,
 }: ChatSidebarProps) {
-  const { currentUser, threads: contextThreads } = useProductionChat();
+  const { currentUser, threads: contextThreads, activeCallsByThread } = useProductionChat();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -344,6 +344,7 @@ export default function ChatSidebar({
             const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
             const selected = selectedThreadId === thread.id;
             const canBlock = isDirectBlockableThread(thread, currentUser?.id);
+            const activeCall = activeCallsByThread[thread.id];
 
             return (
               <div
@@ -392,8 +393,10 @@ export default function ChatSidebar({
                     </div>
                   </div>
                   <div className="mt-0.5">
-                    <p className="truncate text-sm text-content-secondary">
-                      {thread.last_message_preview || "Tap to open chat"}
+                    <p className={`truncate text-sm ${activeCall ? 'text-green-600 font-medium' : 'text-content-secondary'}`}>
+                      {activeCall
+                        ? `● ${activeCall.callType === 'video' ? 'Video' : 'Audio'} call · ${activeCall.participantCount} in call`
+                        : (thread.last_message_preview || "Tap to open chat")}
                     </p>
                   </div>
                 </div>

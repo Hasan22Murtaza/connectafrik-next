@@ -79,6 +79,16 @@ export interface CallRequest {
   targetUserId?: string
   callId?: string
   isGroupCall?: boolean
+  isRejoin?: boolean
+}
+
+export interface ActiveCallInfo {
+  threadId: string
+  callId: string
+  roomId: string
+  callType: 'audio' | 'video'
+  participantCount: number
+  isGroupCall: boolean
 }
 
 interface ProductionChatContextType {
@@ -91,7 +101,9 @@ interface ProductionChatContextType {
     targetUserName?: string,
     targetUserAvatarUrl?: string
   ) => Promise<void>
+  joinCall: (threadId: string) => Promise<void>
   callRequests: Record<string, CallRequest>
+  activeCallsByThread: Record<string, ActiveCallInfo>
   currentUser: { id: string; name?: string; avatarUrl?: string } | null
   clearCallRequest: (threadId: string) => void
   openThreads: string[]
@@ -137,6 +149,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const { user } = useAuth()
   usePresence()
   const [callRequests, setCallRequests] = useState<Record<string, CallRequest>>({})
+  const [activeCallsByThread, setActiveCallsByThread] = useState<Record<string, ActiveCallInfo>>({})
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
@@ -616,6 +629,100 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [currentUser, openThread])
 
+  const joinCall = useCallback(async (threadId: string) => {
+    if (!currentUser?.id) return
+    const lockKey = `join:${threadId}`
+    if (callStartInFlightRef.current.has(lockKey)) {
+      throw new Error('Join is already in progress.')
+    }
+    if (callRequestsRef.current[threadId]) {
+      throw new Error('You are already in this call.')
+    }
+
+    callStartInFlightRef.current.add(lockKey)
+    try {
+      const res = await apiClient.get<{ session: Record<string, unknown> | null }>(
+        `/api/chat/threads/${threadId}/call-sessions`,
+        { active: '1' },
+      )
+      const session = res?.session
+      if (!session || session.status !== 'active') {
+        throw new Error('No active call to join.')
+      }
+
+      const callId = String(session.call_id || '')
+      const roomId = String(session.room_id || '')
+      const callType = session.call_type === 'video' ? 'video' : 'audio'
+      const meta = parseCallSessionMetadata(session.metadata)
+      const isGroupCall = meta.isGroupCall === true
+
+      if (!callId || !roomId) {
+        throw new Error('Active call session is invalid.')
+      }
+
+      const { data: { session: authSession } } = await supabase.auth.getSession()
+      const tokenRes = await fetch('/api/videosdk/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authSession?.access_token ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
+        },
+        body: JSON.stringify({ roomId, userId: currentUser.id }),
+      })
+      if (!tokenRes.ok) {
+        throw new Error('Failed to get call token.')
+      }
+      const tokenData = await tokenRes.json()
+      const token = typeof tokenData.token === 'string' ? tokenData.token : undefined
+
+      await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
+        call_id: callId,
+        event: 'join',
+      })
+
+      const callRequest: CallRequest = {
+        threadId,
+        type: callType,
+        callerId: currentUser.id,
+        callerName: currentUser.name,
+        roomId,
+        token,
+        callId,
+        isGroupCall,
+        isRejoin: true,
+      }
+
+      setCallRequests((prev) => ({ ...prev, [threadId]: callRequest }))
+
+      if (typeof window !== 'undefined') {
+        if (token && callId) {
+          try {
+            sessionStorage.setItem(
+              `videosdk_call_bootstrap:${callId}`,
+              JSON.stringify({ token }),
+            )
+          } catch { /* ignore */ }
+        }
+        openCallWindow({
+          roomId,
+          callType,
+          threadId,
+          isGroupCall,
+          isIncoming: false,
+          callerId: currentUser.id,
+          callId,
+        })
+      }
+    } catch (error) {
+      console.error('Failed to join call:', error)
+      const msg = error instanceof Error ? error.message : 'Could not join the call.'
+      toast.error(msg)
+      throw error
+    } finally {
+      callStartInFlightRef.current.delete(lockKey)
+    }
+  }, [currentUser])
+
   const startCall = useCallback(async (
     threadId: string,
     type: 'audio' | 'video',
@@ -648,6 +755,29 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     const activeCallForThread = callRequestsRef.current[threadId]
     if (activeCallForThread) {
       throw new Error('A call is already active for this chat.')
+    }
+
+    // If a group call is already in progress, rejoin instead of starting a new one
+    try {
+      const activeRes = await apiClient.get<{ session: Record<string, unknown> | null }>(
+        `/api/chat/threads/${threadId}/call-sessions`,
+        { active: '1' },
+      )
+      if (activeRes?.session?.status === 'active') {
+        const meta = parseCallSessionMetadata(activeRes.session.metadata)
+        const participants = Array.isArray(activeRes.session.participants)
+          ? (activeRes.session.participants as string[])
+          : []
+        const isActiveGroup =
+          meta.isGroupCall === true || participants.length > 2
+        if (isActiveGroup) {
+          callStartInFlightRef.current.delete(lockKey)
+          await joinCall(threadId)
+          return
+        }
+      }
+    } catch {
+      /* proceed with new call */
     }
 
     callStartInFlightRef.current.add(lockKey)
@@ -801,7 +931,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     } finally {
       callStartInFlightRef.current.delete(lockKey)
     }
-  }, [currentUser, threads])
+  }, [currentUser, threads, joinCall])
 
   const clearCallRequest = useCallback((threadId: string) => {
     setCallRequests(prev => {
@@ -810,6 +940,63 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       return updated
     })
   }, [])
+
+  // Track active calls across threads for chat list indicators
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setActiveCallsByThread({})
+      return
+    }
+
+    const threadIds = threads.map((t) => t.id).filter(Boolean)
+    if (threadIds.length === 0) return
+
+    let cancelled = false
+    const refresh = async () => {
+      const next: Record<string, ActiveCallInfo> = {}
+      await Promise.allSettled(
+        threadIds.slice(0, 30).map(async (tid) => {
+          try {
+            const res = await apiClient.get<{ session: Record<string, unknown> | null }>(
+              `/api/chat/threads/${tid}/call-sessions`,
+              { active: '1' },
+            )
+            const row = res?.session
+            if (!row || row.status !== 'active') return
+            const participants = Array.isArray(row.participants) ? row.participants as string[] : []
+            const meta = parseCallSessionMetadata(row.metadata)
+            next[tid] = {
+              threadId: tid,
+              callId: String(row.call_id || ''),
+              roomId: String(row.room_id || ''),
+              callType: row.call_type === 'video' ? 'video' : 'audio',
+              participantCount: participants.length,
+              isGroupCall: meta.isGroupCall === true || participants.length > 2,
+            }
+          } catch { /* ignore */ }
+        }),
+      )
+      if (!cancelled) setActiveCallsByThread(next)
+    }
+
+    void refresh()
+    const interval = setInterval(() => void refresh(), 20_000)
+
+    const channel = supabase
+      .channel(`active_calls:${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'call_sessions' },
+        () => { void refresh() },
+      )
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      try { supabase.removeChannel(channel) } catch { /* ignore */ }
+    }
+  }, [currentUser?.id, threads])
 
   const setThreadArchived = useCallback(async (threadId: string, archived: boolean) => {
     if (!currentUser) return
@@ -1149,11 +1336,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
       if (event.data?.type === 'CALL_STATUS' && event.data?.status === 'ended') {
         pauseIncomingCallsPollRef.current = false
+        const tid = typeof event.data?.threadId === 'string' ? event.data.threadId : ''
+        if (tid) clearCallRequest(tid)
       }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [])
+  }, [clearCallRequest])
 
   // Event-driven fallback for incoming calls (Realtime is primary).
   // Avoid continuous polling; only perform one initial check and on visibility/focus wake-ups.
@@ -1204,7 +1393,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     startChatWithMembers,
     openThread,
     startCall,
+    joinCall,
     callRequests,
+    activeCallsByThread,
     currentUser,
     clearCallRequest,
     openThreads,

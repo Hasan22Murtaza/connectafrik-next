@@ -45,6 +45,8 @@ import CallControls from './CallControls';
 import CallStatusOverlay from './CallStatusOverlay';
 import AddPeoplePanel from './AddPeoplePanel';
 import MessageInput from './MessageInput';
+import GroupCallParticipantsStrip from './GroupCallParticipantsStrip';
+import type { CallParticipantProfile } from './GroupCallParticipantsStrip';
 import { LocalAdaptiveSendQuality } from './LocalAdaptiveSendQuality';
 
 const LAST_PARTICIPANT_AUTO_END_MS = 5000;
@@ -133,11 +135,22 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(0);
   const [presenterName, setPresenterName] = useState('');
+  /** Runtime call type — can switch audio ↔ video mid-call. */
+  const [effectiveCallType, setEffectiveCallType] = useState<'audio' | 'video'>(callType);
+  /** Incoming video upgrade request from remote participant (1:1). */
+  const [pendingVideoRequest, setPendingVideoRequest] = useState<{ fromUserId: string } | null>(null);
+  const [isGroupCallSession, setIsGroupCallSession] = useState(false);
+  const [sessionHostId, setSessionHostId] = useState<string | null>(null);
+  const [participantProfiles, setParticipantProfiles] = useState<CallParticipantProfile[]>([]);
   /** Local video PiP: drag offset from default top-right anchor (px). */
   const [pipTranslate, setPipTranslate] = useState({ tx: 0, ty: 0 });
   const [pipDragging, setPipDragging] = useState(false);
   const pipTranslateRef = useRef(pipTranslate);
   pipTranslateRef.current = pipTranslate;
+
+  useEffect(() => {
+    setEffectiveCallType(callType);
+  }, [callType]);
 
   // --------------------------------------------------------------------------
   // Refs — give async callbacks access to the latest values without stale closures
@@ -155,6 +168,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const localParticipantRef = useRef<any>(null);
   // Stable MediaStream marker so CallControls can detect "someone else is sharing"
   const remoteScreenShareMarkerRef = useRef<MediaStream | null>(null);
+  const isGroupCallSessionRef = useRef(false);
+  const sessionHostIdRef = useRef<string | null>(null);
+  const localWebcamOnRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -224,6 +240,38 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     [threadId, currentUserId, callIdHint, roomIdHint, meetingId, normalizeSignalMeta],
   );
 
+  // Load session metadata to detect group call + sync call type from server
+  useEffect(() => {
+    if (!isOpen || !threadId) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const cid = callIdRef.current || callIdHint || '';
+        const params = cid ? { call_id: cid } : { active: '1' };
+        const res = await apiClient.get<{ session: Record<string, unknown> | null }>(
+          `/api/chat/threads/${threadId}/call-sessions`,
+          params,
+        );
+        if (cancelled || !res?.session) return;
+        const row = res.session;
+        const meta = normalizeSignalMeta(row.metadata);
+        const group = meta.isGroupCall === true ||
+          (Array.isArray(row.participants) && (row.participants as string[]).length > 2);
+        isGroupCallSessionRef.current = group;
+        sessionHostIdRef.current = String(row.created_by || '') || null;
+        if (isMountedRef.current) {
+          setIsGroupCallSession(group);
+          setSessionHostId(sessionHostIdRef.current);
+        }
+        if (row.call_type === 'video' && isMountedRef.current) {
+          setEffectiveCallType('video');
+        }
+      } catch { /* ignore */ }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [isOpen, threadId, callIdHint, normalizeSignalMeta]);
+
   const closeCall = useCallback(
     (delayMs = 1000) => {
       remoteTerminalRef.current = true;
@@ -256,9 +304,10 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
       if (remoteCount !== 0) return;
       const activeCallId = callIdRef.current || callIdHint || '';
       if (threadId && currentUserId && activeCallId) {
+        const endEvent = isGroupCallSessionRef.current ? 'leave' : 'end';
         await patchCallSessionWithRetry(threadId, {
           call_id: activeCallId,
-          event: 'end',
+          event: endEvent,
           duration_seconds: callDurationRef.current,
         });
       }
@@ -276,6 +325,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     leave,
     toggleMic,
     toggleWebcam,
+    changeWebcam,
     enableScreenShare,
     disableScreenShare,
     participants,         // remote participants only
@@ -322,16 +372,17 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           try {
             if (activeCallId) {
               if (isConnected) {
+                const groupLeave = isGroupCallSessionRef.current;
                 const ok = await patchCallSessionWithRetry(threadId, {
                   call_id: activeCallId,
-                  event: 'end',
+                  event: groupLeave ? 'leave' : 'end',
                   duration_seconds: callDurationRef.current,
                 });
-                if (ok) {
+                if (ok && !groupLeave) {
                   await supabaseMessagingService.sendMessage(
                     threadId,
                     { content: 'Call ended', message_type: 'ended',
-                      metadata: { callType, roomId: activeRoomId, callId: activeCallId,
+                      metadata: { callType: effectiveCallType, roomId: activeRoomId, callId: activeCallId,
                         endedBy: currentUserId, endedAt: new Date().toISOString() } },
                     { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
                   );
@@ -424,6 +475,43 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   // Keep refs in sync with latest SDK state
   useEffect(() => { participantsRef.current = participants; }, [participants]);
   useEffect(() => { localParticipantRef.current = localParticipant; }, [localParticipant]);
+  useEffect(() => { localWebcamOnRef.current = localWebcamOn; }, [localWebcamOn]);
+
+  // Re-sync session after network restore / tab foreground (reconnection support)
+  useEffect(() => {
+    if (!isOpen || !threadId) return;
+    const resync = async () => {
+      if (callStatusRef.current !== 'connected' && callStatusRef.current !== 'connecting_media') return;
+      try {
+        const cid = callIdRef.current || callIdHint || '';
+        const params = cid ? { call_id: cid, include_participants: '1' } : { active: '1', include_participants: '1' };
+        const res = await apiClient.get<{
+          session: Record<string, unknown> | null;
+          participant_profiles?: CallParticipantProfile[];
+        }>(`/api/chat/threads/${threadId}/call-sessions`, params);
+        const row = res?.session;
+        if (!row) return;
+        if (row.status === 'ended' || row.status === 'declined' || row.status === 'missed') {
+          closeCall(800);
+          return;
+        }
+        if (row.call_type === 'video') setEffectiveCallType('video');
+        if (Array.isArray(res.participant_profiles)) {
+          setParticipantProfiles(res.participant_profiles);
+        }
+      } catch { /* ignore */ }
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void resync();
+    };
+    const onOnline = () => void resync();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onOnline);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [isOpen, threadId, callIdHint, closeCall]);
 
   // Fallback for SDK timing/order edge-cases:
   // if callbacks are missed but participant map reaches 0 remotes while connected,
@@ -549,6 +637,47 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
       const mt = msg?.message_type;
       if (!mt || !shouldHandleSignal(msg)) return;
       const statusType = toCallSessionStatusMessageType(mt as string);
+      const meta = normalizeSignalMeta(msg.metadata);
+
+      // Mid-call A/V switch signals
+      if (statusType === 'switched_to_video' || statusType === 'video_accepted') {
+        setEffectiveCallType('video');
+        if (!localWebcamOnRef.current) toggleWebcam();
+        return;
+      }
+      if (statusType === 'switched_to_audio') {
+        setEffectiveCallType('audio');
+        if (localWebcamOnRef.current) toggleWebcam();
+        return;
+      }
+      if (statusType === 'video_requested' && meta.videoRequestedBy !== currentUserId) {
+        setPendingVideoRequest({ fromUserId: String(meta.videoRequestedBy || msg.sender_id) });
+        return;
+      }
+      if (statusType === 'video_declined') {
+        setPendingVideoRequest(null);
+        toast.error('Video request declined');
+        return;
+      }
+      // Participant joined/left — refresh participant profiles
+      if (statusType === 'participant_joined' || statusType === 'participant_left') {
+        void (async () => {
+          try {
+            const cid = callIdRef.current || callIdHint || '';
+            if (!cid) return;
+            const res = await apiClient.get<{
+              session: Record<string, unknown> | null;
+              participant_profiles?: CallParticipantProfile[];
+            }>(`/api/chat/threads/${threadId}/call-sessions`, {
+              call_id: cid,
+              include_participants: '1',
+            });
+            if (res?.participant_profiles) setParticipantProfiles(res.participant_profiles);
+          } catch { /* ignore */ }
+        })();
+        return;
+      }
+
       // Callee accepted on another device → stop ringback, wait for media
       if (statusType === 'active' && !isIncomingRef.current) {
         if (ringbackRef.current) { ringbackRef.current.stop(); ringbackRef.current = null; }
@@ -656,20 +785,21 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     const activeRoomId = roomIdHint || meetingId;
     const isConnected =
       callStatusRef.current === 'connected' || callStatusRef.current === 'connecting_media';
+    const groupLeave = isGroupCallSessionRef.current && isConnected;
 
     if (threadId && currentUserId) {
       try {
         if (isConnected && activeCallId) {
           const ok = await patchCallSessionWithRetry(threadId, {
             call_id: activeCallId,
-            event: 'end',
+            event: groupLeave ? 'leave' : 'end',
             duration_seconds: callDurationRef.current,
           });
-          if (ok) {
+          if (ok && !groupLeave) {
             await supabaseMessagingService.sendMessage(
               threadId,
               { content: 'Call ended', message_type: 'ended',
-                metadata: { callType, roomId: activeRoomId, callId: activeCallId,
+                metadata: { callType: effectiveCallType, roomId: activeRoomId, callId: activeCallId,
                   endedBy: currentUserId, endedAt: new Date().toISOString() } },
               { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
             );
@@ -699,19 +829,114 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     }
 
     suppressSignalRef.current = true;
+    if (threadId) broadcastCallUiStatus('ended', threadId);
     try { leave(); } catch { /* ignore */ }
     setCallStatusSafe('ended');
     onCallEnd?.();
     setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
-  }, [callIdHint, roomIdHint, meetingId, threadId, currentUserId, callType, isIncoming,
+  }, [callIdHint, roomIdHint, meetingId, threadId, currentUserId, effectiveCallType, isIncoming,
     leave, setCallStatusSafe, onCallEnd, onClose, user, callSessionDeviceFields]);
+
+  /** Host-only: end the group call for all participants. */
+  const handleEndCallForAll = useCallback(async () => {
+    const activeCallId = callIdRef.current || callIdHint || '';
+    const activeRoomId = roomIdHint || meetingId;
+    if (threadId && currentUserId && activeCallId) {
+      try {
+        const ok = await patchCallSessionWithRetry(threadId, {
+          call_id: activeCallId,
+          event: 'end',
+          force_end: true,
+          duration_seconds: callDurationRef.current,
+        });
+        if (ok) {
+          await supabaseMessagingService.sendMessage(
+            threadId,
+            { content: 'Call ended', message_type: 'ended',
+              metadata: { callType: effectiveCallType, roomId: activeRoomId, callId: activeCallId,
+                endedBy: currentUserId, endedAt: new Date().toISOString() } },
+            { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
+          );
+        }
+      } catch { /* ignore */ }
+    }
+    suppressSignalRef.current = true;
+    if (threadId) broadcastCallUiStatus('ended', threadId);
+    try { leave(); } catch { /* ignore */ }
+    setCallStatusSafe('ended');
+    onCallEnd?.();
+    setTimeout(() => { if (isMountedRef.current) onClose(); }, 1000);
+  }, [callIdHint, roomIdHint, meetingId, threadId, currentUserId, effectiveCallType,
+    leave, setCallStatusSafe, onCallEnd, onClose, user]);
 
   const handleToggleMic = useCallback(() => toggleMic(), [toggleMic]);
 
-  const handleToggleVideo = useCallback(() => {
-    if (callType !== 'video') return;
-    toggleWebcam();
-  }, [callType, toggleWebcam]);
+  const signalCallTypeSwitch = useCallback(
+    async (event: 'switch_to_video' | 'switch_to_audio' | 'request_video' | 'accept_video' | 'decline_video') => {
+      const activeCallId = callIdRef.current || callIdHint || '';
+      if (!threadId || !activeCallId) return false;
+      return patchCallSessionWithRetry(threadId, { call_id: activeCallId, event });
+    },
+    [threadId, callIdHint],
+  );
+
+  const handleToggleVideo = useCallback(async () => {
+    const lid = localParticipantRef.current?.id;
+    const remoteCount = lid
+      ? [...participantsRef.current.keys()].filter((id) => id !== lid).length
+      : participantsRef.current.size;
+
+    if (effectiveCallType === 'audio') {
+      if (!isGroupCallSessionRef.current && remoteCount === 1) {
+        const ok = await signalCallTypeSwitch('request_video');
+        if (ok) {
+          toast('Waiting for the other person to accept video…');
+        }
+        return;
+      }
+      const ok = await signalCallTypeSwitch('switch_to_video');
+      if (ok) {
+        setEffectiveCallType('video');
+        toggleWebcam();
+      }
+      return;
+    }
+    if (localWebcamOn) {
+      toggleWebcam();
+      const ok = await signalCallTypeSwitch('switch_to_audio');
+      if (ok) setEffectiveCallType('audio');
+    } else {
+      toggleWebcam();
+      const ok = await signalCallTypeSwitch('switch_to_video');
+      if (ok) setEffectiveCallType('video');
+    }
+  }, [effectiveCallType, signalCallTypeSwitch, toggleWebcam, localWebcamOn]);
+
+  const handleAcceptVideoRequest = useCallback(async () => {
+    const ok = await signalCallTypeSwitch('accept_video');
+    if (ok) {
+      setEffectiveCallType('video');
+      setPendingVideoRequest(null);
+      if (!localWebcamOn) toggleWebcam();
+    }
+  }, [signalCallTypeSwitch, toggleWebcam, localWebcamOn]);
+
+  const handleDeclineVideoRequest = useCallback(async () => {
+    await signalCallTypeSwitch('decline_video');
+    setPendingVideoRequest(null);
+  }, [signalCallTypeSwitch]);
+
+  const handleSwitchCamera = useCallback(async () => {
+    if (typeof changeWebcam !== 'function') return;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cameras = devices.filter((d) => d.kind === 'videoinput');
+      if (cameras.length < 2) return;
+      const currentIndex = cameras.findIndex((c) => c.label);
+      const next = cameras[(currentIndex + 1) % cameras.length];
+      if (next?.deviceId) changeWebcam(next.deviceId);
+    } catch { /* ignore */ }
+  }, [changeWebcam]);
 
   const handleToggleSpeaker = useCallback(() => {
     setSpeakerLevel((prev) =>
@@ -767,7 +992,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         if (!directThreadId) throw new Error('Thread not found');
         await apiClient.post(`/api/chat/threads/${directThreadId}/call-sessions`, {
           call_id: callIdRef.current || callIdHint || '',
-          call_type: callType,
+          call_type: effectiveCallType,
           room_id: roomIdHint || meetingId,
           target_user_id: targetUser.id,
           is_group_call: true,
@@ -783,7 +1008,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         setInvitingUserId(null);
       }
     },
-    [currentUserId, invitingUserId, callIdHint, callType, roomIdHint, meetingId, resolvedCallerName],
+    [currentUserId, invitingUserId, callIdHint, effectiveCallType, roomIdHint, meetingId, resolvedCallerName],
   );
 
   // --------------------------------------------------------------------------
@@ -812,6 +1037,32 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
 
   const participantCount = remoteParticipantIds.length + 1; // +1 for local
   const isGroupCall = remoteParticipantIds.length > 1;
+  const isCallHost = Boolean(sessionHostId && currentUserId && sessionHostId === currentUserId);
+
+  // Load participant profile avatars for group call strip
+  useEffect(() => {
+    if (!threadId || !isOpen || inCallUserIds.length === 0) {
+      setParticipantProfiles([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const cid = callIdRef.current || callIdHint || '';
+        const params = cid
+          ? { call_id: cid, include_participants: '1' }
+          : { active: '1', include_participants: '1' };
+        const res = await apiClient.get<{
+          participant_profiles?: CallParticipantProfile[];
+        }>(`/api/chat/threads/${threadId}/call-sessions`, params);
+        if (!cancelled && res?.participant_profiles) {
+          setParticipantProfiles(res.participant_profiles);
+        }
+      } catch { /* ignore */ }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [threadId, isOpen, callIdHint, inCallUserIds.join(',')]);
 
   // VideoSDK state → UI flags
   const isMuted = !localMicOn;
@@ -944,7 +1195,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           !remotePresenter &&
           remoteParticipantIds.length === 1 &&
           (callStatus === 'connected' || callStatus === 'connecting_media') &&
-          (callType === 'video' ? (
+          (effectiveCallType === 'video' ? (
             <div className="absolute inset-0">
               <ParticipantTile
                 participantId={remoteParticipantIds[0]}
@@ -1020,7 +1271,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
 
         {/* ── Local video PiP (1-on-1 video, no screen share) — draggable ─ */}
         {localId &&
-          callType === 'video' &&
+          effectiveCallType === 'video' &&
           !gridLayout &&
           !remotePresenter &&
           isVideoEnabled &&
@@ -1053,6 +1304,13 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             </div>
           )}
 
+        {(isGroupCall || isGroupCallSession) && callStatus === 'connected' && !remotePresenter && !isLocalPresenting && (
+          <GroupCallParticipantsStrip
+            profiles={participantProfiles}
+            totalCount={participantCount}
+          />
+        )}
+
         {/* ── Participant count badge ───────────────────────────────────── */}
         {callStatus === 'connected' &&
           !remotePresenter &&
@@ -1068,7 +1326,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
 
         {/* ── Duration timer (bottom-left, video / group) ───────────────── */}
         {callStatus === 'connected' &&
-          (callType === 'video' || isGroupCall) &&
+          (effectiveCallType === 'video' || isGroupCall) &&
           !remotePresenter &&
           !isLocalPresenting && (
             <div className="absolute bottom-16 sm:bottom-20 left-3 sm:left-4 text-xs sm:text-sm font-bold tracking-wider text-content font-mono tabular-nums z-30">
@@ -1079,7 +1337,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         {/* ── Call status overlay (connecting / ringing / connecting_media / ended) */}
         <CallStatusOverlay
           callStatus={callStatus}
-          callType={callType}
+          callType={effectiveCallType}
           callDuration={callDuration}
           formatDuration={formatDuration}
           isIncoming={isIncoming}
@@ -1107,11 +1365,34 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
 
         {/* ── Connected controls bar ───────────────────────────────────── */}
         {localId &&
-          callType === 'video' &&
+          effectiveCallType === 'video' &&
           callStatus === 'connected' &&
           localWebcamOn && (
             <LocalAdaptiveSendQuality participantId={localId} active />
           )}
+
+        {/* Video upgrade confirmation prompt (1:1) */}
+        {pendingVideoRequest && callStatus === 'connected' && (
+          <div className="absolute inset-x-0 top-16 z-40 flex justify-center px-4">
+            <div className="bg-black/80 backdrop-blur-md text-white rounded-2xl px-5 py-4 shadow-2xl border border-white/20 max-w-sm w-full text-center">
+              <p className="text-sm font-medium mb-3">Switch to video call?</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => void handleDeclineVideoRequest()}
+                  className="px-4 py-2 rounded-full bg-surface/20 hover:bg-surface/30 text-sm font-medium transition"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => void handleAcceptVideoRequest()}
+                  className="px-4 py-2 rounded-full bg-primary-500 hover:bg-primary-600 text-sm font-medium transition"
+                >
+                  Accept
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {callStatus === 'connected' && (
           <CallControls
@@ -1121,7 +1402,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             remoteScreenShareStream={remoteScreenShareMarkerRef.current}
             screenShareParticipantName={presenterName}
             speakerLevel={speakerLevel}
-            callType={callType}
+            callType={effectiveCallType}
             showMessageInput={showMessageInput}
             showAddPeople={showAddPeople}
             onToggleMute={handleToggleMic}
@@ -1131,6 +1412,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             onToggleMessageInput={() => setShowMessageInput((p) => !p)}
             onToggleAddPeople={() => setShowAddPeople((p) => !p)}
             onEndCall={handleEndCall}
+            onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
+            onSwitchCamera={handleSwitchCamera}
+            isGroupCall={isGroupCall || isGroupCallSession}
           />
         )}
       </div>

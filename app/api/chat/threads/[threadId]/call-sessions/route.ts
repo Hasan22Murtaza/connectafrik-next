@@ -6,8 +6,29 @@ import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
 type RouteContext = { params: Promise<{ threadId: string }> }
 
 const ACTIVE_STATUSES = ['initiated', 'ringing', 'active']
+const PATCH_EVENTS = [
+  'accept',
+  'declined',
+  'end',
+  'missed',
+  'join',
+  'leave',
+  'switch_to_video',
+  'switch_to_audio',
+  'request_video',
+  'accept_video',
+  'decline_video',
+] as const
+type PatchEvent = (typeof PATCH_EVENTS)[number]
 type ServiceClient = ReturnType<typeof createServiceClient>
 type CallSessionMeta = Record<string, unknown>
+
+function isGroupSession(row: { metadata: unknown; participants: unknown }): boolean {
+  const meta = mergeSessionMetadata(row.metadata, {})
+  if (meta.isGroupCall === true) return true
+  const parts = row.participants
+  return Array.isArray(parts) && parts.length > 2
+}
 
 const toPushDataRecord = (data: Record<string, unknown>): Record<string, string> => {
   const entries = Object.entries(data).flatMap(([key, value]) => {
@@ -83,6 +104,19 @@ async function resolveActorName(serviceClient: ReturnType<typeof createServiceCl
   return (data?.full_name || data?.username || 'Someone') as string
 }
 
+async function resolveParticipantProfiles(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  participantIds: string[],
+) {
+  const ids = Array.from(new Set(participantIds.filter(Boolean)))
+  if (ids.length === 0) return []
+  const { data } = await serviceClient
+    .from('profiles')
+    .select('id, full_name, username, avatar_url')
+    .in('id', ids)
+  return data || []
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { threadId } = await context.params
@@ -95,8 +129,37 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { searchParams } = new URL(request.url)
     const callId = (searchParams.get('call_id') || '').trim()
+    const activeOnly = searchParams.get('active') === '1' || searchParams.get('active') === 'true'
+    const includeParticipants =
+      searchParams.get('include_participants') === '1' ||
+      searchParams.get('include_participants') === 'true'
+
+    if (activeOnly) {
+      const joinableOnly =
+        searchParams.get('joinable') === '1' || searchParams.get('joinable') === 'true'
+      let query = serviceClient
+        .from('call_sessions')
+        .select('*')
+        .eq('thread_id', threadId)
+        .in('status', joinableOnly ? ['active'] : ACTIVE_STATUSES)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+
+      const { data: row, error } = await query.maybeSingle()
+
+      if (error) return errorResponse(error.message, 400)
+
+      if (includeParticipants && row) {
+        const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
+        const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds)
+        return jsonResponse({ session: row, participant_profiles })
+      }
+
+      return jsonResponse({ session: row || null })
+    }
+
     if (!callId) {
-      return errorResponse('call_id is required', 400)
+      return errorResponse('call_id or active=1 is required', 400)
     }
 
     const { data: row, error } = await serviceClient
@@ -109,6 +172,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .maybeSingle()
 
     if (error) return errorResponse(error.message, 400)
+
+    if (includeParticipants && row) {
+      const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
+      const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds)
+      return jsonResponse({ session: row, participant_profiles })
+    }
+
     return jsonResponse({ session: row || null })
   } catch (e: any) {
     if (e.message === 'Unauthorized' || e.message === 'Missing Authorization header') {
@@ -304,8 +374,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         : undefined
 
     if (!call_id) return errorResponse('call_id is required', 400)
-    if (!['accept', 'declined', 'end', 'missed'].includes(event || '')) {
-      return errorResponse('event must be accept | declined | end | missed', 400)
+    if (!PATCH_EVENTS.includes(event as PatchEvent)) {
+      return errorResponse(
+        'event must be accept | declined | end | missed | join | leave | switch_to_video | switch_to_audio | request_video | accept_video | decline_video',
+        400,
+      )
     }
 
     if (!(await assertThreadMember(serviceClient, threadId, user.id))) {
@@ -328,10 +401,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     let nextStatus = row.status as string
     let nextParticipants: string[] = Array.isArray(row.participants) ? [...row.participants] : []
+    let nextCallType: string = row.call_type === 'video' ? 'video' : 'audio'
     let nextEndedAt: string | null = row.ended_at
     let nextDuration: number | null = row.duration_seconds
     const now = new Date().toISOString()
     let metaPatch: Record<string, unknown> = {}
+    const groupCall = isGroupSession(row)
 
     if (event === 'accept') {
       nextStatus = 'active'
@@ -340,6 +415,35 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         acceptedBy: user.id,
         acceptedAt: now,
         last_signal: 'active',
+      }
+    } else if (event === 'join') {
+      if (!['active', 'ringing', 'initiated'].includes(String(row.status))) {
+        return errorResponse('Call session is not active', 409)
+      }
+      nextStatus = 'active'
+      if (!nextParticipants.includes(user.id)) nextParticipants.push(user.id)
+      metaPatch = {
+        joinedBy: user.id,
+        joinedAt: now,
+        last_signal: 'participant_joined',
+        activeParticipantCount: nextParticipants.length,
+      }
+    } else if (event === 'leave') {
+      nextParticipants = nextParticipants.filter((id) => id !== user.id)
+      metaPatch = {
+        leftBy: user.id,
+        leftAt: now,
+        last_signal: 'participant_left',
+        activeParticipantCount: nextParticipants.length,
+      }
+      if (nextParticipants.length === 0 || !groupCall) {
+        nextStatus = 'ended'
+        nextEndedAt = now
+        if (duration_seconds !== undefined) nextDuration = duration_seconds
+        metaPatch.endedBy = user.id
+        metaPatch.endedAt = now
+      } else {
+        nextStatus = 'active'
       }
     } else if (event === 'declined') {
       nextStatus = 'declined'
@@ -350,13 +454,86 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         last_signal: 'declined',
       }
     } else if (event === 'end') {
-      nextStatus = 'ended'
-      nextEndedAt = now
-      if (duration_seconds !== undefined) nextDuration = duration_seconds
+      const forceEnd = body.force_end === true
+      const isHost = row.created_by === user.id
+      if (groupCall && !forceEnd && !isHost && nextParticipants.length > 1) {
+        // Non-host ending in a group call → treat as leave
+        nextParticipants = nextParticipants.filter((id) => id !== user.id)
+        metaPatch = {
+          leftBy: user.id,
+          leftAt: now,
+          last_signal: 'participant_left',
+          activeParticipantCount: nextParticipants.length,
+        }
+        if (nextParticipants.length === 0) {
+          nextStatus = 'ended'
+          nextEndedAt = now
+          if (duration_seconds !== undefined) nextDuration = duration_seconds
+          metaPatch.endedBy = user.id
+          metaPatch.endedAt = now
+        } else {
+          nextStatus = 'active'
+        }
+      } else {
+        nextStatus = 'ended'
+        nextEndedAt = now
+        if (duration_seconds !== undefined) nextDuration = duration_seconds
+        metaPatch = {
+          endedBy: user.id,
+          endedAt: now,
+          last_signal: 'ended',
+        }
+      }
+    } else if (event === 'switch_to_video') {
+      if (String(row.status) !== 'active') {
+        return errorResponse('Call must be active to switch to video', 409)
+      }
+      nextCallType = 'video'
       metaPatch = {
-        endedBy: user.id,
-        endedAt: now,
-        last_signal: 'ended',
+        switchedBy: user.id,
+        switchedAt: now,
+        last_signal: 'switched_to_video',
+        callType: 'video',
+      }
+    } else if (event === 'switch_to_audio') {
+      if (String(row.status) !== 'active') {
+        return errorResponse('Call must be active to switch to audio', 409)
+      }
+      nextCallType = 'audio'
+      metaPatch = {
+        switchedBy: user.id,
+        switchedAt: now,
+        last_signal: 'switched_to_audio',
+        callType: 'audio',
+      }
+    } else if (event === 'request_video') {
+      if (String(row.status) !== 'active') {
+        return errorResponse('Call must be active to request video', 409)
+      }
+      metaPatch = {
+        videoRequestedBy: user.id,
+        videoRequestedAt: now,
+        last_signal: 'video_requested',
+      }
+    } else if (event === 'accept_video') {
+      if (String(row.status) !== 'active') {
+        return errorResponse('Call must be active to accept video', 409)
+      }
+      nextCallType = 'video'
+      metaPatch = {
+        videoAcceptedBy: user.id,
+        videoAcceptedAt: now,
+        last_signal: 'video_accepted',
+        callType: 'video',
+      }
+    } else if (event === 'decline_video') {
+      if (String(row.status) !== 'active') {
+        return errorResponse('Call must be active to decline video', 409)
+      }
+      metaPatch = {
+        videoDeclinedBy: user.id,
+        videoDeclinedAt: now,
+        last_signal: 'video_declined',
       }
     } else if (event === 'missed') {
       const extra = body.extra_metadata && typeof body.extra_metadata === 'object' ? body.extra_metadata : {}
@@ -389,6 +566,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .from('call_sessions')
       .update({
         status: nextStatus,
+        call_type: nextCallType,
         participants: nextParticipants,
         ended_at: nextEndedAt,
         duration_seconds: nextDuration,
