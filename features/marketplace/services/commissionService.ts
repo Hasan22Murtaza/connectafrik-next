@@ -9,7 +9,7 @@ export interface CommissionCalculation {
   gateway_fee?: number
   platform_fee_share?: number
   seller_fee_share?: number
-  payment_gateway?: 'paystack' | 'stripe'
+  payment_gateway?: 'stripe'
 }
 
 export interface SellerPayout {
@@ -42,71 +42,19 @@ export interface SellerEarnings {
 }
 
 /**
- * Calculate commission breakdown for an order
- * Supports both Paystack (NGN, GHS, ZAR, KES) and Stripe (USD, EUR, GBP)
+ * Calculate commission breakdown for an order (Stripe gateway).
  */
 export function calculateCommission(
   totalAmount: number,
   currency: string = 'USD',
   commissionRate: number = 0.05
 ): CommissionCalculation {
-  const PAYSTACK_CURRENCIES = ['NGN', 'GHS', 'ZAR', 'KES']
-  const STRIPE_CURRENCIES = ['USD', 'EUR', 'GBP']
+  const stripeFees = calculateStripeFees(totalAmount, currency)
+  const gateway_fee = stripeFees.gateway_fee
+  const platform_fee_share = stripeFees.platform_fee_share
+  const seller_fee_share = stripeFees.seller_fee_share
 
-  let gateway_fee = 0
-  let platform_fee_share = 0
-  let seller_fee_share = 0
-  let payment_gateway: 'paystack' | 'stripe' = 'stripe'
-
-  // Determine gateway and calculate fees
-  if (PAYSTACK_CURRENCIES.includes(currency)) {
-    payment_gateway = 'paystack'
-    // Paystack fee calculation
-    let percentageFee = 0
-    let flatFee = 0
-
-    switch (currency) {
-      case 'NGN':
-        percentageFee = 0.015
-        flatFee = 100
-        break
-      case 'GHS':
-        percentageFee = 0.0195
-        flatFee = 0.50
-        break
-      case 'ZAR':
-        percentageFee = 0.029
-        flatFee = 0
-        break
-      case 'KES':
-        percentageFee = 0.035
-        flatFee = 0
-        break
-    }
-
-    gateway_fee = Math.round((totalAmount * percentageFee + flatFee) * 100) / 100
-    platform_fee_share = Math.round(gateway_fee * 0.05 * 100) / 100
-    seller_fee_share = Math.round(gateway_fee * 0.95 * 100) / 100
-  } else if (STRIPE_CURRENCIES.includes(currency)) {
-    payment_gateway = 'stripe'
-    // Stripe fee calculation
-    const stripeFees = calculateStripeFees(totalAmount, currency)
-    gateway_fee = stripeFees.gateway_fee
-    platform_fee_share = stripeFees.platform_fee_share
-    seller_fee_share = stripeFees.seller_fee_share
-  } else {
-    // Default to Stripe for unknown currencies
-    payment_gateway = 'stripe'
-    const stripeFees = calculateStripeFees(totalAmount, currency)
-    gateway_fee = stripeFees.gateway_fee
-    platform_fee_share = stripeFees.platform_fee_share
-    seller_fee_share = stripeFees.seller_fee_share
-  }
-
-  // Commission after platform's fee share
   const commission_amount = Math.round((totalAmount * commissionRate - platform_fee_share) * 100) / 100
-
-  // Seller payout after their fee share
   const seller_payout = Math.round((totalAmount * (1 - commissionRate) - seller_fee_share) * 100) / 100
 
   return {
@@ -117,7 +65,7 @@ export function calculateCommission(
     gateway_fee,
     platform_fee_share,
     seller_fee_share,
-    payment_gateway
+    payment_gateway: 'stripe',
   }
 }
 
@@ -275,8 +223,8 @@ export async function getPlatformRevenue(): Promise<{
 /**
  * Format currency for display
  */
-export function formatCurrency(amount: number, currency: string = 'NGN'): string {
-  return new Intl.NumberFormat('en-NG', {
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
     minimumFractionDigits: 2,

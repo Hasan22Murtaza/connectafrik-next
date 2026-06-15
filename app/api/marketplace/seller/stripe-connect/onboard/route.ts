@@ -32,10 +32,22 @@ export async function POST(request: NextRequest) {
       user.email
     )
 
+    const { data: profile } = await serviceClient
+      .from('profiles')
+      .select('stripe_connect_onboarded, stripe_connect_payouts_enabled')
+      .eq('id', user.id)
+      .single()
+
+    const linkType =
+      profile?.stripe_connect_onboarded && profile?.stripe_connect_payouts_enabled
+        ? 'account_update'
+        : 'account_onboarding'
+
     const onboardingUrl = await createConnectOnboardingLink(
       accountId,
       returnUrl,
-      refreshUrl
+      refreshUrl,
+      linkType
     )
 
     return jsonResponse({ data: { url: onboardingUrl, account_id: accountId } })

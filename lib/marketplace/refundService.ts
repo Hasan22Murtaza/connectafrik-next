@@ -35,11 +35,7 @@ export function getRefundableAmount(order: RefundableOrder): number {
   return Math.max(0, Math.round((total - alreadyRefunded) * 100) / 100)
 }
 
-function resolveGateway(order: RefundableOrder): RefundGateway {
-  if (order.payment_gateway === 'paystack' || order.payment_gateway === 'stripe') {
-    return order.payment_gateway
-  }
-  if (order.payment_method === 'paystack') return 'paystack'
+function resolveGateway(_order: RefundableOrder): RefundGateway {
   return 'stripe'
 }
 

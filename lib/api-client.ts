@@ -84,11 +84,22 @@ export const apiClient = {
     return handleResponse<T>(response)
   },
 
-  async delete<T>(endpoint: string): Promise<T> {
+  async put<T>(endpoint: string, body: unknown): Promise<T> {
+    const headers = await getAuthHeaders()
+    const response = await fetch(endpoint, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body),
+    })
+    return handleResponse<T>(response)
+  },
+
+  async delete<T>(endpoint: string, body?: unknown): Promise<T> {
     const headers = await getAuthHeaders()
     const response = await fetch(endpoint, {
       method: 'DELETE',
       headers,
+      body: body ? JSON.stringify(body) : undefined,
     })
     return handleResponse<T>(response)
   },

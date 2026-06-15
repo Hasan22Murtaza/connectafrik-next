@@ -3,7 +3,7 @@ import { appendOrderLedgerEntry } from './orderLedger'
 import { getPlatformSetting } from './platformSettings'
 
 interface ChargebackPayload {
-  gateway: 'stripe' | 'paystack'
+  gateway: 'stripe'
   gateway_dispute_id: string
   payment_reference?: string
   amount: number

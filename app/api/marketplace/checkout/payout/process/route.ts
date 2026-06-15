@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { executePaystackPayout } from '@/lib/marketplace/payoutTransfer'
+import { executeStripeConnectPayout } from '@/lib/marketplace/payoutTransfer'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,12 +14,12 @@ export async function POST(request: NextRequest) {
       return errorResponse('payout_id, seller_id, amount, and order_id are required', 400)
     }
 
-    const result = await executePaystackPayout(serviceClient, {
+    const result = await executeStripeConnectPayout(serviceClient, {
       payout_id,
       seller_id,
       amount,
       order_id,
-      currency: currency || 'NGN',
+      currency: currency || 'USD',
     })
 
     if (!result.success) {

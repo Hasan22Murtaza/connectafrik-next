@@ -27,11 +27,9 @@
     { "name": "Marketplace", "description": "Product listings and saved items" },
     { "name": "Marketplace Admin", "description": "Admin revenue and payout management" },
     { "name": "Checkout - Stripe", "description": "Stripe payment processing" },
-    { "name": "Checkout - Paystack", "description": "Paystack payment processing" },
     { "name": "Memories", "description": "Short video reels/memories" },
     { "name": "Notifications", "description": "User notifications" },
     { "name": "Orders", "description": "Marketplace order management" },
-    { "name": "Paystack", "description": "Paystack verification callbacks" },
     { "name": "Posts", "description": "Social feed posts" },
     { "name": "Push Notifications", "description": "Push notification delivery" },
     { "name": "Stories", "description": "Ephemeral stories" },
@@ -2115,8 +2113,8 @@
     },
     "/marketplace/checkout/payout/process": {
       "post": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Process payout via Paystack transfer",
+        "tags": ["Checkout - Stripe"],
+        "summary": "Process payout via Stripe Connect transfer",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -2189,116 +2187,6 @@
         },
         "responses": {
           "200": { "description": "Payout initiated", "content": { "application/json": { "schema": { "type": "object", "properties": { "payoutId": { "type": "string" } } } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/marketplace/checkout/paystack/initialize": {
-      "post": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Initialize a Paystack payment",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["amount", "currency"], "properties": { "amount": { "type": "number" }, "currency": { "type": "string" }, "email": { "type": "string", "format": "email" }, "metadata": { "type": "object" }, "callback_url": { "type": "string" } } } } }
-        },
-        "responses": {
-          "200": { "description": "Payment initialized", "content": { "application/json": { "schema": { "type": "object", "properties": { "authorization_url": { "type": "string" }, "reference": { "type": "string" } } } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/marketplace/checkout/paystack/banks": {
-      "get": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Get bank list from Paystack",
-        "security": [{ "BearerAuth": [] }],
-        "parameters": [{ "name": "country", "in": "query", "schema": { "type": "string", "default": "nigeria" } }],
-        "responses": {
-          "200": { "description": "Bank list", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "type": "object" } } } } } } },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/marketplace/checkout/paystack/resolve-account": {
-      "post": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Resolve bank account details",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["account_number", "bank_code"], "properties": { "account_number": { "type": "string" }, "bank_code": { "type": "string" } } } } }
-        },
-        "responses": {
-          "200": { "description": "Account resolved", "content": { "application/json": { "schema": { "type": "object", "properties": { "account_name": { "type": "string" }, "account_number": { "type": "string" } } } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/marketplace/checkout/paystack/verify": {
-      "post": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Verify a Paystack payment",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["reference"], "properties": { "reference": { "type": "string" } } } } }
-        },
-        "responses": {
-          "200": { "description": "Verification result", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "status": { "type": "string" }, "amount": { "type": "number" }, "currency": { "type": "string" }, "data": { "type": "object" } } } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/marketplace/checkout/paystack/verify-momo": {
-      "post": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Verify a mobile money number",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["phone", "provider"], "properties": { "phone": { "type": "string" }, "provider": { "type": "string" } } } } }
-        },
-        "responses": {
-          "200": { "description": "MoMo verified", "content": { "application/json": { "schema": { "type": "object", "properties": { "account_name": { "type": "string" }, "phone": { "type": "string" }, "provider": { "type": "string" }, "is_registered": { "type": "boolean" } } } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/marketplace/checkout/paystack/create-recipient": {
-      "post": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Create a Paystack transfer recipient",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["type", "name"], "properties": { "type": { "type": "string" }, "name": { "type": "string" }, "account_number": { "type": "string" }, "bank_code": { "type": "string" }, "currency": { "type": "string" }, "email": { "type": "string" }, "phone": { "type": "string" }, "provider": { "type": "string" } } } } }
-        },
-        "responses": {
-          "200": { "description": "Recipient created", "content": { "application/json": { "schema": { "type": "object", "properties": { "recipient_code": { "type": "string" }, "details": { "type": "object" } } } } } },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/marketplace/checkout/paystack/transfer": {
-      "post": {
-        "tags": ["Checkout - Paystack"],
-        "summary": "Initiate a Paystack transfer",
-        "security": [{ "BearerAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": { "application/json": { "schema": { "type": "object", "required": ["amount", "recipient"], "properties": { "amount": { "type": "number" }, "recipient": { "type": "string" }, "source": { "type": "string", "default": "balance" }, "reason": { "type": "string" }, "reference": { "type": "string" }, "currency": { "type": "string" } } } } }
-        },
-        "responses": {
-          "200": { "description": "Transfer initiated", "content": { "application/json": { "schema": { "type": "object", "properties": { "transfer_code": { "type": "string" }, "reference": { "type": "string" }, "status": { "type": "string" }, "details": { "type": "object" } } } } } },
           "400": { "$ref": "#/components/responses/BadRequest" },
           "401": { "$ref": "#/components/responses/Unauthorized" }
         }
@@ -2689,17 +2577,6 @@
           "200": { "description": "Status updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Success" } } } },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "403": { "description": "Only seller can update", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
-        }
-      }
-    },
-    "/paystack/verify": {
-      "get": {
-        "tags": ["Paystack"],
-        "summary": "Verify Paystack payment (callback redirect)",
-        "parameters": [{ "name": "reference", "in": "query", "required": true, "schema": { "type": "string" } }],
-        "responses": {
-          "302": { "description": "Redirects to marketplace with payment result" },
-          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },

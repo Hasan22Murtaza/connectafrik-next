@@ -62,7 +62,7 @@ const StripeConnectSettings: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold text-content">Stripe Connect</h2>
             <p className="text-sm text-content-secondary mt-1">
-              Receive USD, EUR, and GBP payouts directly to your Stripe account.
+              Receive payouts directly to your Stripe account.
             </p>
           </div>
         </div>
@@ -94,8 +94,7 @@ const StripeConnectSettings: React.FC = () => {
           </div>
         ) : (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-            Connect your Stripe account to receive payouts for orders paid in USD, EUR, or GBP.
-            African currency orders continue to use Paystack (bank / mobile money).
+            Connect your Stripe account to receive payouts after delivery confirmation.
           </div>
         )}
 

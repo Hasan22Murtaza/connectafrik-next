@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getSellerHoldDays } from './sellerTier'
 import { appendOrderLedgerEntry } from './orderLedger'
-import { executePaystackPayout, finalizeSuccessfulPayout, isAutoPayoutEnabled, executeStripeConnectPayout } from './payoutTransfer'
+import { isAutoPayoutEnabled, executeStripeConnectPayout } from './payoutTransfer'
 
 interface MarketplaceOrder {
   id: string
@@ -122,7 +122,6 @@ export async function confirmDeliveryWithHold(
     created_by: confirmedBy,
   })
 
-  // Zero hold: release immediately in-process
   if (holdDays === 0) {
     const releaseResult = await releaseOrderEscrow(serviceClient, orderId)
     return {
@@ -192,7 +191,7 @@ export async function releaseOrderEscrow(
         amount: sellerNet,
         commission_amount: commission,
         status: 'pending',
-        gateway: typedOrder.payment_gateway ?? 'paystack',
+        gateway: 'stripe',
         hold_reason: 'delivery_confirmed',
         scheduled_release_at: typedOrder.release_eligible_at,
         idempotency_key: idempotencyKey,
@@ -222,7 +221,6 @@ export async function releaseOrderEscrow(
   }
 
   const autoPayout = isAutoPayoutEnabled()
-  const gateway = typedOrder.payment_gateway ?? 'paystack'
 
   const { data: sellerProfile } = await serviceClient
     .from('profiles')
@@ -230,16 +228,15 @@ export async function releaseOrderEscrow(
     .eq('id', typedOrder.seller_id)
     .maybeSingle()
 
-  const canStripeConnect =
-    gateway === 'stripe' &&
-    Boolean(sellerProfile?.stripe_connect_account_id && sellerProfile?.stripe_connect_payouts_enabled)
+  const canStripeConnect = Boolean(
+    sellerProfile?.stripe_connect_account_id && sellerProfile?.stripe_connect_payouts_enabled
+  )
 
   await serviceClient
     .from('orders')
     .update({
       escrow_status: 'released',
-      payout_status:
-        autoPayout && (gateway === 'paystack' || canStripeConnect) ? 'processing' : 'pending',
+      payout_status: autoPayout && canStripeConnect ? 'processing' : 'pending',
       updated_at: new Date().toISOString(),
     })
     .eq('id', orderId)
@@ -252,18 +249,6 @@ export async function releaseOrderEscrow(
     reference_type: 'seller_payouts',
     reference_id: payoutId,
   })
-
-  if (autoPayout && gateway === 'paystack') {
-    const transfer = await executePaystackPayout(serviceClient, {
-      payout_id: payoutId,
-      seller_id: typedOrder.seller_id,
-      amount: sellerNet,
-      order_id: orderId,
-      currency: typedOrder.currency,
-    })
-
-    return { payout_id: payoutId, transfer, auto_payout: true }
-  }
 
   if (autoPayout && canStripeConnect) {
     const transfer = await executeStripeConnectPayout(serviceClient, {
@@ -285,9 +270,7 @@ export async function releaseOrderEscrow(
   return {
     payout_id: payoutId,
     auto_payout: false,
-    message: gateway === 'stripe'
-      ? 'Payout queued — complete Stripe Connect onboarding to receive USD/EUR/GBP payouts'
-      : 'Payout queued for admin processing',
+    message: 'Payout queued — complete Stripe Connect onboarding to receive payouts',
   }
 }
 
@@ -322,70 +305,4 @@ export async function processEscrowReleases(serviceClient: SupabaseClient) {
     processed: results.length,
     results,
   }
-}
-
-export async function handlePaystackTransferWebhook(
-  serviceClient: SupabaseClient,
-  event: string,
-  data: Record<string, unknown>
-) {
-  const reference = data.reference as string | undefined
-  if (!reference) return { handled: false, reason: 'no_reference' }
-
-  const { data: payout } = await serviceClient
-    .from('seller_payouts')
-    .select('id, order_id, seller_id, amount, status')
-    .eq('payout_reference', reference)
-    .maybeSingle()
-
-  if (!payout) {
-    return { handled: false, reason: 'payout_not_found' }
-  }
-
-  const { data: order } = await serviceClient
-    .from('orders')
-    .select('currency')
-    .eq('id', payout.order_id)
-    .single()
-
-  if (event === 'transfer.success') {
-    if (payout.status === 'completed') {
-      return { handled: true, reason: 'already_completed' }
-    }
-
-    await finalizeSuccessfulPayout(serviceClient, {
-      payout_id: payout.id,
-      order_id: payout.order_id,
-      seller_id: payout.seller_id,
-      amount: Number(payout.amount),
-      currency: order?.currency ?? 'NGN',
-      reference,
-    })
-
-    return { handled: true, status: 'completed' }
-  }
-
-  if (event === 'transfer.failed' || event === 'transfer.reversed') {
-    await serviceClient
-      .from('seller_payouts')
-      .update({
-        status: 'failed',
-        failure_reason: event,
-        notes: `Paystack webhook: ${event}`,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', payout.id)
-
-    await serviceClient
-      .from('orders')
-      .update({
-        payout_status: 'pending',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', payout.order_id)
-
-    return { handled: true, status: 'failed' }
-  }
-
-  return { handled: false, reason: 'unhandled_event' }
 }

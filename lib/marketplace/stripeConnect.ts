@@ -76,13 +76,14 @@ export async function createConnectExpressAccount(
 export async function createConnectOnboardingLink(
   accountId: string,
   returnUrl: string,
-  refreshUrl: string
+  refreshUrl: string,
+  linkType: 'account_onboarding' | 'account_update' = 'account_onboarding'
 ): Promise<string> {
   const link = await stripeRequest('/account_links', 'POST', {
     account: accountId,
     refresh_url: refreshUrl,
     return_url: returnUrl,
-    type: 'account_onboarding',
+    type: linkType,
   })
 
   return link.url as string
