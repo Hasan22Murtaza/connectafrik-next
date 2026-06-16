@@ -40,6 +40,8 @@ const SESSION_UPDATE_MESSAGE_STATUSES = new Set<string>([
 export const CALL_METADATA_SIGNALS = new Set<string>([
   'participant_joined',
   'participant_left',
+  'participant_declined',
+  'participant_missed',
   'switched_to_video',
   'switched_to_audio',
   'video_requested',
@@ -129,6 +131,10 @@ function contentForSessionStatus(sessionStatus: string): string {
       return 'Participant joined'
     case 'participant_left':
       return 'Participant left'
+    case 'participant_declined':
+      return 'Participant declined'
+    case 'participant_missed':
+      return 'Participant missed call'
     case 'switched_to_video':
       return 'Switched to video'
     case 'switched_to_audio':
@@ -212,6 +218,10 @@ export function callSessionUpdateToChatMessage(
         ? 'joinedBy'
         : lastSignal === 'participant_left'
           ? 'leftBy'
+          : lastSignal === 'participant_declined'
+            ? 'rejectedBy'
+            : lastSignal === 'participant_missed'
+              ? 'missedBy'
           : lastSignal === 'video_requested'
             ? 'videoRequestedBy'
             : lastSignal === 'video_accepted'

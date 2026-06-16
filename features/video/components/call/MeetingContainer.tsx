@@ -659,8 +659,13 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         toast.error('Video request declined');
         return;
       }
-      // Participant joined/left — refresh participant profiles
-      if (statusType === 'participant_joined' || statusType === 'participant_left') {
+      // Participant joined/left/declined/missed — refresh profiles; never end group call
+      if (
+        statusType === 'participant_joined' ||
+        statusType === 'participant_left' ||
+        statusType === 'participant_declined' ||
+        statusType === 'participant_missed'
+      ) {
         void (async () => {
           try {
             const cid = callIdRef.current || callIdHint || '';
@@ -673,6 +678,10 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               include_participants: '1',
             });
             if (res?.participant_profiles) setParticipantProfiles(res.participant_profiles);
+            const sessionStatus = String(res?.session?.status || '');
+            if (sessionStatus === 'ended' || sessionStatus === 'declined' || sessionStatus === 'missed') {
+              if (!isGroupCallSessionRef.current) closeCall(1000);
+            }
           } catch { /* ignore */ }
         })();
         return;
@@ -685,12 +694,18 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         setCallStatusSafe('connecting_media');
         return;
       }
-      // Remote terminal signal → close UI
+      // Remote terminal signal → close UI (1:1 only, or group when session truly ended)
       if (
         (statusType === 'declined' || statusType === 'missed' ||
           statusType === 'ended' || statusType === 'failed') &&
         !remoteTerminalRef.current
       ) {
+        if (
+          (statusType === 'declined' || statusType === 'missed') &&
+          isGroupCallSessionRef.current
+        ) {
+          return;
+        }
         closeCall(1000);
       }
     });
@@ -712,9 +727,19 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           `/api/chat/threads/${threadId}/call-sessions`, { call_id: cid },
         );
         if (cancelled) return;
-        const latest = res?.session ? callSessionRowToPollTerminalMessage(res.session) : null;
+        const session = res?.session;
+        if (!session) return;
+        const sessionStatus = String(session.status || '');
+        const latest =
+          sessionStatus === 'ended' ||
+          sessionStatus === 'declined' ||
+          sessionStatus === 'missed' ||
+          sessionStatus === 'failed'
+            ? callSessionRowToPollTerminalMessage(session)
+            : null;
         if (
           latest && shouldHandleSignal(latest) &&
+          !(isGroupCallSessionRef.current && (sessionStatus === 'declined' || sessionStatus === 'missed')) &&
           Date.now() - new Date(
             (latest as any).updated_at || (latest as any).created_at,
           ).getTime() < 120_000

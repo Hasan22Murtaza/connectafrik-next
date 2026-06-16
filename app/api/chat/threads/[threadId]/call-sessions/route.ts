@@ -117,6 +117,130 @@ async function resolveParticipantProfiles(
   return data || []
 }
 
+/** In-call participants first; otherwise thread targets (group) or 1:1 callee. */
+async function resolveCallNotificationRecipients(
+  serviceClient: ServiceClient,
+  threadId: string,
+  actorId: string,
+  participants: string[],
+  options: { isGroup: boolean; targetUserId?: string | null },
+): Promise<string[]> {
+  const inCall = participants.filter((id) => id && id !== actorId)
+  if (inCall.length > 0) return Array.from(new Set(inCall))
+  if (!options.isGroup && options.targetUserId && options.targetUserId !== actorId) {
+    return [options.targetUserId]
+  }
+  return resolveTargetUserIds(serviceClient, threadId, actorId, options.isGroup ? undefined : options.targetUserId)
+}
+
+const MID_CALL_PUSH_EVENTS = new Set<string>([
+  'join',
+  'leave',
+  'switch_to_video',
+  'switch_to_audio',
+  'request_video',
+  'accept_video',
+  'decline_video',
+])
+
+function midCallPushCopy(
+  signal: string,
+  actorName: string,
+  callType: 'audio' | 'video',
+): { title: string; body: string } {
+  switch (signal) {
+    case 'participant_joined':
+      return { title: 'Call update', body: `${actorName} joined the call` }
+    case 'participant_left':
+      return { title: 'Call update', body: `${actorName} left the call` }
+    case 'participant_declined':
+      return { title: 'Call update', body: `${actorName} declined the call` }
+    case 'participant_missed':
+      return { title: 'Call update', body: `${actorName} missed the call` }
+    case 'switched_to_video':
+      return { title: 'Video call', body: `${actorName} switched to video` }
+    case 'switched_to_audio':
+      return { title: 'Audio call', body: `${actorName} switched to audio` }
+    case 'video_requested':
+      return { title: 'Video request', body: `${actorName} wants to switch to video` }
+    case 'video_accepted':
+      return { title: 'Video call', body: `${actorName} accepted video` }
+    case 'video_declined':
+      return { title: 'Call update', body: `${actorName} declined video` }
+    default:
+      return { title: 'Call update', body: `${actorName} updated the call` }
+  }
+}
+
+async function sendMidCallPushNotifications(
+  apiBaseUrl: string,
+  recipients: string[],
+  payload: {
+    signal: string
+    actorName: string
+    actorId: string
+    callType: 'audio' | 'video'
+    threadId: string
+    callId: string
+    roomId: string
+  },
+) {
+  if (recipients.length === 0) return
+  const { title, body } = midCallPushCopy(payload.signal, payload.actorName, payload.callType)
+  const pushData = toPushDataRecord({
+    type: payload.signal,
+    call_type: payload.callType,
+    room_id: payload.roomId,
+    thread_id: payload.threadId,
+    actor_name: payload.actorName,
+    call_id: payload.callId,
+    callId: payload.callId,
+    caller_id: payload.actorId,
+    caller_name: payload.actorName,
+    sent_at: new Date().toISOString(),
+    url: `/chat?thread=${payload.threadId}`,
+  })
+
+  await Promise.allSettled(
+    recipients.map(async (user_id) => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id,
+            title,
+            body,
+            notification_type: 'call',
+            skip_db: true,
+            tag: `call-signal-${payload.signal}-${payload.threadId}`,
+            requireInteraction: false,
+            silent: payload.signal !== 'video_requested' && payload.signal !== 'switched_to_video',
+            vibrate: [200, 100, 200],
+            data: pushData,
+          }),
+          cache: 'no-store',
+        })
+        if (!response.ok) {
+          const responseBody = await response.text().catch(() => '')
+          console.error('Failed to send mid-call push', {
+            status: response.status,
+            body: responseBody,
+            user_id,
+            signal: payload.signal,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to call /api/push-notifications for mid-call signal', {
+          error: error instanceof Error ? error.message : String(error),
+          user_id,
+          signal: payload.signal,
+        })
+      }
+    }),
+  )
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { threadId } = await context.params
@@ -446,12 +570,45 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         nextStatus = 'active'
       }
     } else if (event === 'declined') {
-      nextStatus = 'declined'
-      nextEndedAt = now
-      metaPatch = {
-        rejectedBy: user.id,
-        rejectedAt: now,
-        last_signal: 'declined',
+      if (groupCall) {
+        nextParticipants = nextParticipants.filter((id) => id !== user.id)
+        const declinedList = Array.isArray(baseMeta.declinedUserIds)
+          ? [...(baseMeta.declinedUserIds as string[])]
+          : []
+        if (!declinedList.includes(user.id)) declinedList.push(user.id)
+        const callWasActive = String(row.status) === 'active'
+        const callerStillPresent = nextParticipants.includes(String(row.created_by))
+        if (callWasActive && nextParticipants.length >= 1) {
+          nextStatus = 'active'
+        } else if (callerStillPresent) {
+          nextStatus = 'ringing'
+          nextEndedAt = null
+        } else if (nextParticipants.length === 0) {
+          nextStatus = 'ended'
+          nextEndedAt = now
+        } else {
+          nextStatus = callWasActive ? 'active' : 'ringing'
+          nextEndedAt = null
+        }
+        metaPatch = {
+          rejectedBy: user.id,
+          rejectedAt: now,
+          last_signal: 'participant_declined',
+          declinedUserIds: declinedList,
+          activeParticipantCount: nextParticipants.length,
+        }
+        if (nextStatus === 'ended') {
+          metaPatch.endedBy = user.id
+          metaPatch.endedAt = now
+        }
+      } else {
+        nextStatus = 'declined'
+        nextEndedAt = now
+        metaPatch = {
+          rejectedBy: user.id,
+          rejectedAt: now,
+          last_signal: 'declined',
+        }
       }
     } else if (event === 'end') {
       const forceEnd = body.force_end === true
@@ -537,16 +694,48 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     } else if (event === 'missed') {
       const extra = body.extra_metadata && typeof body.extra_metadata === 'object' ? body.extra_metadata : {}
-      // Client may send "missed" while ref/UI lags after callee accept; DB truth is already active.
       if (row.status === 'active') {
-        nextStatus = 'ended'
-        nextEndedAt = now
-        if (duration_seconds !== undefined) nextDuration = duration_seconds
-        metaPatch = {
-          endedBy: user.id,
-          endedAt: now,
-          last_signal: 'ended',
-          ...extra,
+        if (groupCall) {
+          nextStatus = 'active'
+          metaPatch = {
+            missedBy: user.id,
+            missedAt: now,
+            last_signal: 'participant_missed',
+            ...extra,
+          }
+        } else {
+          nextStatus = 'ended'
+          nextEndedAt = now
+          if (duration_seconds !== undefined) nextDuration = duration_seconds
+          metaPatch = {
+            endedBy: user.id,
+            endedAt: now,
+            last_signal: 'ended',
+            ...extra,
+          }
+        }
+      } else if (groupCall) {
+        nextParticipants = nextParticipants.filter((id) => id !== user.id)
+        const callerStillPresent = nextParticipants.includes(String(row.created_by))
+        if (callerStillPresent || nextParticipants.length > 0) {
+          nextStatus = 'ringing'
+          nextEndedAt = null
+          metaPatch = {
+            missedBy: user.id,
+            missedAt: now,
+            last_signal: 'participant_missed',
+            activeParticipantCount: nextParticipants.length,
+            ...extra,
+          }
+        } else {
+          nextStatus = 'missed'
+          nextEndedAt = now
+          metaPatch = {
+            endedBy: user.id,
+            endedAt: now,
+            last_signal: 'missed',
+            ...extra,
+          }
         }
       } else {
         nextStatus = 'missed'
@@ -593,7 +782,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               : 'Call update'
     await touchThreadPreview(serviceClient, threadId, preview)
 
-    if (nextStatus === 'missed' || nextStatus === 'declined' || nextStatus === 'active' || nextStatus === 'ended') {
+    const shouldSendTerminalStatusPush =
+      event === 'accept' ||
+      event === 'end' ||
+      (event === 'declined' && !groupCall) ||
+      (event === 'missed' && !groupCall)
+
+    if (
+      shouldSendTerminalStatusPush &&
+      (nextStatus === 'missed' || nextStatus === 'declined' || nextStatus === 'active' || nextStatus === 'ended')
+    ) {
       const actorName = await resolveActorName(serviceClient, user.id)
       const callType = (updated.call_type === 'video' ? 'video' : 'audio') as 'video' | 'audio'
       const metaObj =
@@ -605,7 +803,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         (typeof metaObj.target_user_id === 'string' && metaObj.target_user_id) ||
         null
 
-      const recipients = await resolveTargetUserIds(serviceClient, threadId, user.id, targetUserId || undefined)
+      const recipients = await resolveCallNotificationRecipients(
+        serviceClient,
+        threadId,
+        user.id,
+        nextParticipants,
+        { isGroup: groupCall, targetUserId },
+      )
       const notificationRecipients =
         nextStatus === 'active'
           ? Array.from(new Set([...recipients, user.id]))
@@ -690,6 +894,43 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           })
         )
       }
+    }
+
+    const lastSignal =
+      typeof metaPatch.last_signal === 'string'
+        ? metaPatch.last_signal
+        : typeof nextMetadata.last_signal === 'string'
+          ? String(nextMetadata.last_signal)
+          : ''
+
+    if (MID_CALL_PUSH_EVENTS.has(event || '') || lastSignal === 'participant_declined' || lastSignal === 'participant_missed') {
+      const actorName = await resolveActorName(serviceClient, user.id)
+      const callType = (updated.call_type === 'video' ? 'video' : 'audio') as 'video' | 'audio'
+      const metaObj =
+        updated.metadata && typeof updated.metadata === 'object' && !Array.isArray(updated.metadata)
+          ? (updated.metadata as Record<string, unknown>)
+          : {}
+      const targetUserId =
+        (typeof metaObj.targetUserId === 'string' && metaObj.targetUserId) ||
+        (typeof metaObj.target_user_id === 'string' && metaObj.target_user_id) ||
+        null
+      const signal = lastSignal || event || 'call_update'
+      const recipients = await resolveCallNotificationRecipients(
+        serviceClient,
+        threadId,
+        user.id,
+        Array.isArray(updated.participants) ? (updated.participants as string[]) : [],
+        { isGroup: groupCall, targetUserId },
+      )
+      await sendMidCallPushNotifications(apiBaseUrl, recipients, {
+        signal,
+        actorName,
+        actorId: user.id,
+        callType,
+        threadId,
+        callId: String(updated.call_id || ''),
+        roomId: String(updated.room_id || ''),
+      })
     }
 
     return jsonResponse({ session: updated })

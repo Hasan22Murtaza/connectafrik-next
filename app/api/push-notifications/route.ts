@@ -165,6 +165,15 @@ export async function POST(request: NextRequest) {
         case 'declined':
         case 'missed':
         case 'failed':
+        case 'switched_to_video':
+        case 'switched_to_audio':
+        case 'video_requested':
+        case 'video_accepted':
+        case 'video_declined':
+        case 'participant_joined':
+        case 'participant_left':
+        case 'participant_declined':
+        case 'participant_missed':
           return 'call'
         default:
           return null
