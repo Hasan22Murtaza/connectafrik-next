@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
-import EmojiPicker from "@/shared/components/ui/EmojiPicker";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   followUser,

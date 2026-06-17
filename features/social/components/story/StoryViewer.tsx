@@ -514,6 +514,16 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                     </button>
                   )}
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => { stopPropagation(e); handleLike() }}
+                      className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-all ${
+                        isLiked
+                          ? 'text-red-500 scale-110'
+                          : 'text-white/70 hover:text-white'
+                      }`}
+                    >
+                      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                    </button>
                     <div className="flex-1 relative">
                       <input
                         type="text"
@@ -528,23 +538,16 @@ const StoryViewer: React.FC<StoryViewerProps> = ({
                       />
                     </div>
                     <button
-                      onClick={(e) => { stopPropagation(e); handleLike() }}
-                      className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                        isLiked
-                          ? 'text-red-500 scale-110'
-                          : 'text-white/70 hover:text-white'
+                      onClick={(e) => { stopPropagation(e); handleSendReply() }}
+                      disabled={!replyText.trim()}
+                      className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-all ${
+                        replyText.trim()
+                          ? 'bg-primary-500 text-white hover:bg-primary-600 shadow-lg shadow-primary-500/30'
+                          : 'text-white/40'
                       }`}
                     >
-                      <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                      <Send className="w-4 h-4" />
                     </button>
-                    {replyText.trim() && (
-                      <button
-                        onClick={(e) => { stopPropagation(e); handleSendReply() }}
-                        className="w-9 h-9 rounded-full bg-primary-500 text-white flex items-center justify-center hover:bg-primary-600 transition-colors shadow-lg shadow-primary-500/30"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </div>
               ) : (

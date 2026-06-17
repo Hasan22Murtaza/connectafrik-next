@@ -84,6 +84,23 @@ export async function GET(request: NextRequest) {
     const to = from + limit
 
     if (targetUserId) {
+      if (targetUserId !== user.id) {
+        const { data: friendship, error: friendshipErr } = await supabase
+          .from('friend_requests')
+          .select('id')
+          .eq('status', 'accepted')
+          .or(
+            `and(sender_id.eq.${user.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${user.id})`
+          )
+          .limit(1)
+          .maybeSingle()
+
+        if (friendshipErr) return errorResponse(friendshipErr.message, 400)
+        if (!friendship) {
+          return errorResponse('You can only view stories from friends', 403)
+        }
+      }
+
       const { data, error } = await supabase
         .from('stories')
         .select(STORY_SELECT)
@@ -103,8 +120,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Stories from people you follow (not yourself — /api/stories/mine covers yours).
-    // Uses service role so RLS cannot block reads; scoped to following_ids only.
+    // Stories from friends (not yourself — /api/stories/mine covers yours).
+    // Uses service role so RLS cannot block reads; scoped to accepted friend_requests only.
     let service
     try {
       service = createServiceClient()
@@ -112,18 +129,25 @@ export async function GET(request: NextRequest) {
       return errorResponse('Server misconfigured: SUPABASE_SERVICE_ROLE_KEY required for story feed', 500)
     }
 
-    const { data: followsRows, error: followsErr } = await service
-      .from('follows')
-      .select('following_id')
-      .eq('follower_id', user.id)
+    const { data: friendRows, error: friendsErr } = await service
+      .from('friend_requests')
+      .select('sender_id, receiver_id')
+      .eq('status', 'accepted')
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
 
-    if (followsErr) return errorResponse(followsErr.message, 400)
+    if (friendsErr) return errorResponse(friendsErr.message, 400)
 
-    const followingIds = [
-      ...new Set((followsRows ?? []).map((r: { following_id: string }) => r.following_id).filter(Boolean)),
+    const friendIds = [
+      ...new Set(
+        (friendRows ?? [])
+          .map((r: { sender_id: string; receiver_id: string }) =>
+            r.sender_id === user.id ? r.receiver_id : r.sender_id
+          )
+          .filter(Boolean)
+      ),
     ]
 
-    if (followingIds.length === 0) {
+    if (friendIds.length === 0) {
       return jsonResponse({
         data: [],
         page,
@@ -134,8 +158,8 @@ export async function GET(request: NextRequest) {
 
     const STORY_IN_CHUNK = 100
     const allRows: Record<string, unknown>[] = []
-    for (let i = 0; i < followingIds.length; i += STORY_IN_CHUNK) {
-      const chunk = followingIds.slice(i, i + STORY_IN_CHUNK)
+    for (let i = 0; i < friendIds.length; i += STORY_IN_CHUNK) {
+      const chunk = friendIds.slice(i, i + STORY_IN_CHUNK)
       const { data: chunkData, error: chunkErr } = await service
         .from('stories')
         .select(STORY_SELECT)
