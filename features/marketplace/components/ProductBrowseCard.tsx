@@ -62,15 +62,15 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         )}
       </div>
 
-      <div className="pt-1 px-0 pb-0 min-w-0">
-        <p className="text-sm font-bold text-content truncate leading-tight">
+      <div className="flex flex-col gap-1 px-2 pt-2.5 pb-3 min-w-0">
+        <p className="text-base font-bold text-content truncate leading-none">
           {formatProductPrice(product)}
         </p>
-        <h3 className="text-xs text-content line-clamp-2 leading-snug mt-0.5">
+        <h3 className="text-sm text-content line-clamp-2 leading-snug">
           {product.title}
         </h3>
         {location && (
-          <p className="text-[11px] text-content-secondary truncate mt-0.5">{location}</p>
+          <p className="text-xs text-content-secondary truncate">{location}</p>
         )}
       </div>
     </article>

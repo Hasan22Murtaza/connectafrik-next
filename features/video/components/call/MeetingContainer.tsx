@@ -1329,15 +1329,15 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             </div>
           )}
 
-        {(isGroupCall || isGroupCallSession) && callStatus === 'connected' && !remotePresenter && !isLocalPresenting && (
+        {/* {(isGroupCall || isGroupCallSession) && callStatus === 'connected' && !remotePresenter && !isLocalPresenting && (
           <GroupCallParticipantsStrip
             profiles={participantProfiles}
             totalCount={participantCount}
           />
-        )}
+        )} */}
 
         {/* ── Participant count badge ───────────────────────────────────── */}
-        {callStatus === 'connected' &&
+        {/* {callStatus === 'connected' &&
           !remotePresenter &&
           !isLocalPresenting &&
           participantCount > 2 && (
@@ -1347,7 +1347,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 {participantCount} participants
               </span>
             </div>
-          )}
+          )} */}
 
         {/* ── Duration timer (bottom-left, video / group) ───────────────── */}
         {callStatus === 'connected' &&
