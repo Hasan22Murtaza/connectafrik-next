@@ -10,6 +10,8 @@ import {
   CheckCircle,
   ChevronDown,
   Clock,
+  LayoutGrid,
+  List,
   Package,
   ShoppingBag,
   ShoppingCart,
@@ -44,6 +46,8 @@ interface Order {
   };
 }
 
+type ViewMode = "grid" | "list";
+
 interface OrderStats {
   purchases: {
     total: number;
@@ -74,6 +78,7 @@ export function MyOrdersContent() {
   });
   const [loading, setLoading] = useState(true);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const shimmerCount = useShimmerCountMd();
 
   useEffect(() => {
@@ -344,6 +349,177 @@ export function MyOrdersContent() {
     );
   };
 
+  const renderOrderRow = (order: Order, isSale: boolean = false) => {
+    const otherParty = isSale ? order.buyer : order.seller;
+    return (
+      <div
+        key={order.id}
+        className="flex items-stretch gap-3 bg-surface rounded-lg border border-border-subtle shadow-sm hover:shadow-md hover:border-primary-200 transition-all p-2.5"
+      >
+        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden bg-surface-canvas shrink-0 flex items-center justify-center">
+          {order.product_image ? (
+            <img
+              src={order.product_image}
+              alt={order.product_title}
+              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+            />
+          ) : (
+            <div className="w-full h-full bg-surface-secondary flex items-center justify-center border border-border">
+              <ShoppingBag className="w-7 h-7 text-content-tertiary" />
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3
+                className="font-semibold text-content sm:text-base text-sm truncate hover:text-orange-500 cursor-pointer"
+                title={order.product_title}
+                onClick={() => router.push(`/my-orders/${order.id}`)}
+              >
+                {order.product_title}
+              </h3>
+              <p className="text-xs text-content-secondary truncate">
+                <span className="font-bold text-black">Order # : </span>
+                {order.order_number}
+              </p>
+            </div>
+            <div
+              className={`px-2 py-0.5 rounded-full text-[10px] font-medium border flex items-center gap-1 shrink-0 ${getStatusColor(
+                order.status
+              )}`}
+            >
+              {getStatusIcon(order.status)}
+              <span className="capitalize">{order.status}</span>
+            </div>
+          </div>
+
+          <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-2">
+            <div>
+              <span className="text-xs text-content-secondary">Qty: </span>
+              <span className="text-sm font-medium text-content">
+                {order.quantity}
+              </span>
+            </div>
+            <div>
+              <span className="text-xs text-content-secondary">Total: </span>
+              <span className="text-sm font-medium text-content">
+                {getCurrencySymbol(order.currency)}
+                {order.total_amount.toLocaleString()}
+              </span>
+            </div>
+            {!isSale && (
+              <div>
+                <span className="text-xs text-content-secondary">Payment: </span>
+                <span
+                  className={`text-sm font-medium ${order.payment_status === "completed"
+                    ? "text-green-600"
+                    : "text-yellow-600"
+                    }`}
+                >
+                  {order.payment_status === "completed" ? "✓ Paid" : "Pending"}
+                </span>
+              </div>
+            )}
+            <div className="hidden sm:block">
+              <span className="text-xs text-content-secondary">Date: </span>
+              <span className="text-[12px] font-medium text-content">
+                {formatDate(order.created_at)}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto">
+              {otherParty?.avatar_url ? (
+                <img
+                  src={otherParty?.avatar_url}
+                  alt={otherParty?.full_name}
+                  className="w-6 h-6 rounded-full"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-primary-100 flex items-center justify-center">
+                  <span className="text-xs font-medium text-primary-600">
+                    {otherParty?.full_name?.charAt(0) || "U"}
+                  </span>
+                </div>
+              )}
+              <span
+                className={`text-xs text-content ${otherParty?.username
+                    ? "hover:text-primary-600 hover:underline cursor-pointer"
+                    : ""
+                  }`}
+                onClick={(e) => {
+                  if (!otherParty?.username) return;
+                  e.stopPropagation();
+                  router.push(`/user/${otherParty.username}`);
+                }}
+              >
+                {otherParty?.full_name || otherParty?.username || "Unknown"}
+              </span>
+            </div>
+
+            {isSale &&
+              order.status !== "completed" &&
+              order.status !== "cancelled" &&
+              order.status !== "refunded" && (
+                <div className="relative group w-full sm:w-auto">
+                  <select
+                    value={order.status}
+                    onChange={(e) => {
+                      if (e.target.value !== order.status) {
+                        updateOrderStatus(order.id, e.target.value);
+                      }
+                    }}
+                    disabled={updatingOrderId === order.id}
+                    className="text-xs px-2 py-1 rounded border border-border bg-surface text-content hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 w-full"
+                  >
+                    <option value={order.status}>
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </option>
+                    {getNextStatusOptions(order.status).map((status) => (
+                      <option key={status} value={status}>
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-content-secondary pointer-events-none" />
+                </div>
+              )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const viewToggle = (
+    <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-secondary shrink-0">
+      <button
+        type="button"
+        onClick={() => setViewMode("grid")}
+        className={`p-1.5 rounded-md transition-colors ${viewMode === "grid"
+          ? "bg-surface text-primary-600 shadow-sm"
+          : "text-content-secondary hover:text-content"
+          }`}
+        aria-label="Grid view"
+        aria-pressed={viewMode === "grid"}
+      >
+        <LayoutGrid className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode("list")}
+        className={`p-1.5 rounded-md transition-colors ${viewMode === "list"
+          ? "bg-surface text-primary-600 shadow-sm"
+          : "text-content-secondary hover:text-content"
+          }`}
+        aria-label="List view"
+        aria-pressed={viewMode === "list"}
+      >
+        <List className="w-4 h-4" />
+      </button>
+    </div>
+  );
+
   const currentOrders = activeTab === "purchases" ? purchases : sales;
   const activeStats = activeTab === "purchases" ? stats.purchases : stats.sales;
   const primaryLabel = activeTab === "purchases" ? "Total Purchases" : "Total Sales";
@@ -412,25 +588,29 @@ export function MyOrdersContent() {
           </div>
         </div>
 
-        <div className="flex gap-1 p-0.5 rounded-lg">
-          <button
-            onClick={() => setActiveTab("purchases")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'purchases'
-                ? 'bg-primary-600 text-white'
-                : 'text-content-secondary hover:bg-primary-600 hover:text-white bg-surface-tertiary'
-              }`}
-          >
-            My Purchases ({stats.purchases.total})
-          </button>
-          <button
-            onClick={() => setActiveTab("sales")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'sales'
-                ? 'bg-primary-600 text-white'
-                : 'text-content-secondary hover:bg-primary-600 hover:text-white bg-surface-tertiary'
-              }`}
-          >
-            My Sales ({stats.sales.total})
-          </button>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-1 p-0.5 rounded-lg">
+            <button
+              onClick={() => setActiveTab("purchases")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'purchases'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-content-secondary hover:bg-primary-600 hover:text-white bg-surface-tertiary'
+                }`}
+            >
+              My Purchases ({stats.purchases.total})
+            </button>
+            <button
+              onClick={() => setActiveTab("sales")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors ${activeTab === 'sales'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-content-secondary hover:bg-primary-600 hover:text-white bg-surface-tertiary'
+                }`}
+            >
+              My Sales ({stats.sales.total})
+            </button>
+          </div>
+
+          {viewToggle}
         </div>
       </div>
 
@@ -438,11 +618,19 @@ export function MyOrdersContent() {
         {loading ? (
           <MyOrdersGridShimmer count={shimmerCount} />
         ) : currentOrders.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 sm:gap-2">
-            {currentOrders.map((order) =>
-              renderOrderCard(order, activeTab === "sales")
-            )}
-          </div>
+          viewMode === "grid" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-1.5 sm:gap-2">
+              {currentOrders.map((order) =>
+                renderOrderCard(order, activeTab === "sales")
+              )}
+            </div>
+          ) : (
+            <div className="space-y-1.5 sm:space-y-2">
+              {currentOrders.map((order) =>
+                renderOrderRow(order, activeTab === "sales")
+              )}
+            </div>
+          )
         ) : (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
