@@ -657,7 +657,7 @@ const FriendsPage: React.FC = () => {
                               disabled={sendingRequests.has(suggestion.user_id)}
                               className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
+                              {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
                             </button>
                           </div>
                         </div>
@@ -935,7 +935,7 @@ const FriendsPage: React.FC = () => {
                           disabled={sendingRequests.has(suggestion.user_id)}
                           className="w-full btn-sm-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Add Friend"}
+                          {sendingRequests.has(suggestion.user_id) ? "Sending..." : "Link up"}
                         </button>
                       </div>
                     </div>

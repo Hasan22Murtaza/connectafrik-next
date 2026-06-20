@@ -14,6 +14,8 @@ import {
   Bookmark,
   Clock,
   HelpCircle,
+  LayoutGrid,
+  List,
   Plus,
   ShoppingBag,
 } from "lucide-react";
@@ -53,6 +55,8 @@ interface ActivityItem {
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400";
 
+type ViewMode = "grid" | "list";
+
 const BuyingPageContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -63,6 +67,7 @@ const BuyingPageContent: React.FC = () => {
   const [savedItems, setSavedItems] = useState<SavedProduct[]>([]);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const buyerName =
     (user?.user_metadata?.full_name as string | undefined) ||
@@ -175,6 +180,125 @@ const BuyingPageContent: React.FC = () => {
     </button>
   );
 
+  const renderActivityCard = (item: ActivityItem) => (
+    <button
+      key={item.id}
+      type="button"
+      onClick={() => router.push(`/marketplace/${item.productId}`)}
+      className="group flex flex-col text-left bg-surface rounded-lg border border-border-subtle shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+    >
+      <div className="aspect-square bg-surface-secondary overflow-hidden">
+        <img
+          src={item.image || FALLBACK_IMAGE}
+          alt={item.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+        />
+      </div>
+      <div className="p-2 min-w-0">
+        <p className="font-bold text-content text-sm">
+          {item.price === 0
+            ? "FREE"
+            : `${getCurrencySymbol(item.currency)}${item.price.toLocaleString()}`}
+        </p>
+        <p className="text-sm text-content line-clamp-1 mt-0.5">{item.title}</p>
+        <p className="text-xs text-content-secondary mt-1 line-clamp-1">
+          {item.subtitle} · {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
+        </p>
+      </div>
+    </button>
+  );
+
+  const renderSavedRow = (product: SavedProduct) => (
+    <div key={product.id} className="relative group">
+      <button
+        type="button"
+        onClick={() => router.push(`/marketplace/${product.id}`)}
+        className={MP.listRow}
+      >
+        <div className={MP.listThumb}>
+          <img
+            src={product.images?.[0] || FALLBACK_IMAGE}
+            alt={product.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="flex-1 min-w-0 pr-8">
+          <p className="font-bold text-content">
+            {product.price === 0
+              ? "FREE"
+              : `${getCurrencySymbol(product.currency)}${product.price.toLocaleString()}`}
+          </p>
+          <p className="text-sm text-content line-clamp-2 mt-0.5">{product.title}</p>
+          <p className="text-xs text-content-secondary mt-1">Saved</p>
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleUnsave(product.id);
+        }}
+        className="absolute top-1/2 -translate-y-1/2 right-2 p-1.5 rounded-full bg-surface/90 text-primary-600 shadow-sm hover:bg-surface"
+        aria-label="Remove from saved"
+      >
+        <Bookmark className="w-4 h-4 fill-current" />
+      </button>
+    </div>
+  );
+
+  const renderOrderRow = (order: PurchaseOrder) => (
+    <button
+      key={order.id}
+      type="button"
+      onClick={() => router.push(`/my-orders/${order.id}`)}
+      className={MP.listRow}
+    >
+      <div className={MP.listThumb}>
+        <img
+          src={order.product_image || FALLBACK_IMAGE}
+          alt={order.product_title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-content">
+          {order.currency} {order.total_amount.toLocaleString()}
+        </p>
+        <p className="text-sm text-content line-clamp-2 mt-0.5">{order.product_title}</p>
+        <p className="text-xs text-content-secondary mt-1">
+          Order #{order.order_number} · {order.status} ·{" "}
+          {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
+        </p>
+      </div>
+    </button>
+  );
+
+  const renderOrderCard = (order: PurchaseOrder) => (
+    <button
+      key={order.id}
+      type="button"
+      onClick={() => router.push(`/my-orders/${order.id}`)}
+      className="group flex flex-col text-left bg-surface rounded-lg border border-border-subtle shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+    >
+      <div className="aspect-square bg-surface-secondary overflow-hidden">
+        <img
+          src={order.product_image || FALLBACK_IMAGE}
+          alt={order.product_title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+        />
+      </div>
+      <div className="p-2 min-w-0">
+        <p className="font-bold text-content text-sm">
+          {order.currency} {order.total_amount.toLocaleString()}
+        </p>
+        <p className="text-sm text-content line-clamp-1 mt-0.5">{order.product_title}</p>
+        <p className="text-xs text-content-secondary mt-1 line-clamp-1">
+          #{order.order_number} · {order.status}
+        </p>
+      </div>
+    </button>
+  );
+
   const renderTabContent = () => {
     if (loading) {
       return <MarketplaceGridShimmer count={6} />;
@@ -195,7 +319,11 @@ const BuyingPageContent: React.FC = () => {
           </div>
         );
       }
-      return <div className={MP.listStack}>{activityItems.map(renderActivityRow)}</div>;
+      return viewMode === "grid" ? (
+        <div className={MP.productGridCompact}>{activityItems.map(renderActivityCard)}</div>
+      ) : (
+        <div className={MP.listStack}>{activityItems.map(renderActivityRow)}</div>
+      );
     }
 
     if (activeTab === "saved") {
@@ -210,7 +338,7 @@ const BuyingPageContent: React.FC = () => {
           </div>
         );
       }
-      return (
+      return viewMode === "grid" ? (
         <div className={MP.productGridCompact}>
           {savedItems.map((product) => (
             <div key={product.id} className="relative group">
@@ -232,6 +360,8 @@ const BuyingPageContent: React.FC = () => {
             </div>
           ))}
         </div>
+      ) : (
+        <div className={MP.listStack}>{savedItems.map(renderSavedRow)}</div>
       );
     }
 
@@ -248,46 +378,56 @@ const BuyingPageContent: React.FC = () => {
     }
 
     return (
-      <div className={MP.listStack}>
-        {orders.map((order) => (
-          <button
-            key={order.id}
-            type="button"
-            onClick={() => router.push(`/my-orders/${order.id}`)}
-            className={MP.listRow}
-          >
-            <div className={MP.listThumb}>
-              <img
-                src={order.product_image || FALLBACK_IMAGE}
-                alt={order.product_title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-content">
-                {order.currency} {order.total_amount.toLocaleString()}
-              </p>
-              <p className="text-sm text-content line-clamp-2 mt-0.5">{order.product_title}</p>
-              <p className="text-xs text-content-secondary mt-1">
-                Order #{order.order_number} · {order.status} ·{" "}
-                {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
-              </p>
-            </div>
-          </button>
-        ))}
+      <>
+        {viewMode === "grid" ? (
+          <div className={MP.productGridCompact}>{orders.map(renderOrderCard)}</div>
+        ) : (
+          <div className={MP.listStack}>{orders.map(renderOrderRow)}</div>
+        )}
         <button
           type="button"
           onClick={() => router.push("/my-orders")}
-          className="w-full py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+          className="w-full mt-3 py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
         >
           View all orders
         </button>
-      </div>
+      </>
     );
   };
 
   const tabTitle =
     BUYING_TABS.find((t) => t.value === activeTab)?.label || "Recent activity";
+
+  const viewToggle = (
+    <div className="inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-secondary shrink-0">
+      <button
+        type="button"
+        onClick={() => setViewMode("grid")}
+        className={`p-1.5 rounded-md transition-colors ${
+          viewMode === "grid"
+            ? "bg-surface text-primary-600 shadow-sm"
+            : "text-content-secondary hover:text-content"
+        }`}
+        aria-label="Grid view"
+        aria-pressed={viewMode === "grid"}
+      >
+        <LayoutGrid className="w-4 h-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode("list")}
+        className={`p-1.5 rounded-md transition-colors ${
+          viewMode === "list"
+            ? "bg-surface text-primary-600 shadow-sm"
+            : "text-content-secondary hover:text-content"
+        }`}
+        aria-label="List view"
+        aria-pressed={viewMode === "list"}
+      >
+        <List className="w-4 h-4" />
+      </button>
+    </div>
+  );
 
   if (authLoading) {
     return (
@@ -359,23 +499,29 @@ const BuyingPageContent: React.FC = () => {
             <h1 className={MP.pageTitle}>Buying</h1>
           </div>
 
-          <div className="lg:hidden flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-hide">
-            {BUYING_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setTab(tab.value)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === tab.value
-                    ? "bg-primary-600 text-white"
-                    : "bg-surface-secondary text-content-secondary"
-                  }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <div className="lg:hidden flex items-center gap-2 mb-3">
+            <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide flex-1">
+              {BUYING_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => setTab(tab.value)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${activeTab === tab.value
+                      ? "bg-primary-600 text-white"
+                      : "bg-surface-secondary text-content-secondary"
+                    }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {viewToggle}
           </div>
 
-          <h1 className={`hidden lg:block ${MP.pageTitle} mb-4`}>{tabTitle}</h1>
+          <div className="hidden lg:flex items-center justify-between mb-4">
+            <h1 className={MP.pageTitle}>{tabTitle}</h1>
+            {viewToggle}
+          </div>
 
           {renderTabContent()}
         </main>

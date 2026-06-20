@@ -7,7 +7,6 @@ import MarketplaceLocationPicker from "@/features/marketplace/components/Marketp
 import {
   CREATE_LISTING_PATH,
   MARKETPLACE_CATEGORIES,
-  MARKETPLACE_CURRENCIES,
   MARKETPLACE_SORT_OPTIONS,
   MarketplaceSort,
 } from "@/features/marketplace/constants/marketplaceConstants";
@@ -18,10 +17,6 @@ import {
   type MarketplaceLocationFilter,
 } from "@/features/marketplace/utils/marketplaceLocation";
 import { MP } from "@/features/marketplace/constants/marketplaceLayout";
-import {
-  formatCurrencyDisplay,
-  getCurrencyForCountry,
-} from "@/features/marketplace/utils/countryCurrency";
 import { apiClient } from "@/lib/api-client";
 import {
   MarketplaceGridShimmer,
@@ -38,7 +33,7 @@ import {
   Search,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 
 const PAGE_SIZE = 24;
@@ -67,7 +62,6 @@ const MarketplacePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedCurrency, setSelectedCurrency] = useState("");
   const [locationFilter, setLocationFilter] = useState<MarketplaceLocationFilter>(() =>
     marketplaceFilterFromProfile(null)
   );
@@ -87,17 +81,6 @@ const MarketplacePage: React.FC = () => {
   const paymentHandledRef = useRef(false);
   const pageRef = useRef(0);
   const locationHydratedRef = useRef(false);
-
-  const profileCurrency = useMemo(() => {
-    if (!profile?.country?.trim()) return "";
-    return getCurrencyForCountry(profile.country).code;
-  }, [profile?.country]);
-
-  useEffect(() => {
-    if (user && profileCurrency) {
-      setSelectedCurrency(profileCurrency);
-    }
-  }, [user, profileCurrency]);
 
   useEffect(() => {
     if (locationHydratedRef.current) return;
@@ -200,7 +183,6 @@ const MarketplacePage: React.FC = () => {
     },
     [
       selectedCategory,
-      selectedCurrency,
       locationFilter,
       debouncedSearch,
       sortBy,
@@ -209,7 +191,7 @@ const MarketplacePage: React.FC = () => {
 
   useEffect(() => {
     fetchProducts(true);
-  }, [selectedCategory, selectedCurrency, locationFilter, debouncedSearch, sortBy]);
+  }, [selectedCategory, locationFilter, debouncedSearch, sortBy]);
 
   useEffect(() => {
     if (!hasMore || loading || loadingMore) return;
@@ -238,7 +220,6 @@ const MarketplacePage: React.FC = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
-    setSelectedCurrency(user && profileCurrency ? profileCurrency : "");
     const resetLocation = marketplaceFilterFromProfile(profile);
     setLocationFilter(resetLocation);
     writeStoredMarketplaceFilter(resetLocation);
@@ -248,7 +229,6 @@ const MarketplacePage: React.FC = () => {
   const hasActiveFilters =
     searchTerm ||
     selectedCategory ||
-    (!user && selectedCurrency) ||
     Boolean(locationFilter.location.country || locationFilter.location.city) ||
     sortBy !== "newest";
 
@@ -355,28 +335,6 @@ const MarketplacePage: React.FC = () => {
                 );
               })}
             </ul>
-          </div>
-
-          <div className={MP.section}>
-            <h3 className={MP.sectionTitle}>Currency</h3>
-            {user && profileCurrency ? (
-              <div className="px-2.5 py-2 bg-surface-input rounded-lg text-sm text-content">
-                {formatCurrencyDisplay(profileCurrency)}
-                <p className="text-xs text-content-secondary mt-0.5">Based on your signup country</p>
-              </div>
-            ) : (
-              <ul className={MP.navList}>
-                {MARKETPLACE_CURRENCIES.map((currency) => (
-                  <li key={currency.value || "all"}>
-                    {renderSidebarItem(
-                      selectedCurrency === currency.value,
-                      () => setSelectedCurrency(currency.value),
-                      currency.label
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           {hasActiveFilters && (
