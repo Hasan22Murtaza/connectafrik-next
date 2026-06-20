@@ -229,7 +229,7 @@ export const PeopleYouMayKnow: React.FC = () => {
                     ) : (
                       <>
                         <UserPlus className="h-4 w-4 shrink-0" />
-                        Add friend
+                        Link Up
                       </>
                     )}
                   </button>

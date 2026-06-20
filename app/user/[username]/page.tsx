@@ -619,7 +619,7 @@ const UserProfilePage: React.FC = () => {
     friends: { label: 'Friends', icon: UserCheck, cls: 'bg-green-100 text-green-800 hover:bg-green-200' },
     pending_sent: { label: 'Request Sent', icon: UserCheck, cls: 'bg-surface-secondary text-content-secondary hover:bg-surface-hover' },
     pending_received: { label: 'Accept Request', icon: UserPlus, cls: 'bg-[#1b74e4] text-white hover:bg-[#1a6ed8]' },
-    none: { label: 'Add Friend', icon: UserPlus, cls: 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' },
+    none: { label: 'Link Up', icon: UserPlus, cls: 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' },
   }
   const fb = friendBtnConfig[friendshipStatus]
 

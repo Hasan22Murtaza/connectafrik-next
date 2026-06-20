@@ -128,7 +128,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
                   onClick={() => handleAddFriend(contact)}
                   disabled={sendingRequest[contact.id]}
                   className="rounded-full px-3 py-1.5 text-sm font-medium text-content-inverse bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Add Friend"
+                  title="Link Up"
                 >
                   {sendingRequest[contact.id] ? (
                     'Sending...'
