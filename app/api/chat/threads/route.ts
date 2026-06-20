@@ -10,6 +10,9 @@ const THREAD_SELECT = `
   title,
   name,
   group_id,
+  product_id,
+  seller_id,
+  product:products!chat_threads_product_id_fkey(id, title, images),
   group_banner:groups!chat_threads_group_id_fkey(banner_url),
   last_message_preview,
   last_message_at,
@@ -154,6 +157,9 @@ export async function GET(request: NextRequest) {
     const parsedLimit = parseInt(searchParams.get('limit') || '50', 10)
     const parsedPage = parseInt(searchParams.get('page') || '0', 10)
     const groupId = searchParams.get('group_id') || undefined
+    const rawCategory = searchParams.get('category') || undefined
+    const category: 'general' | 'marketplace' | undefined =
+      rawCategory === 'general' || rawCategory === 'marketplace' ? rawCategory : undefined
     const limit = Number.isNaN(parsedLimit) ? 50 : Math.min(Math.max(parsedLimit, 1), 100)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
     const from = page * limit
@@ -176,7 +182,13 @@ export async function GET(request: NextRequest) {
         if (rpcError) return errorResponse(rpcError.message, 400)
         const rows = Array.isArray(rpcData) ? rpcData : []
         const normalized = mapRpcRowsToThreadShape(rows)
-        const deduped = deduplicateThreadsByParticipants(normalized)
+        const categorized =
+          category === 'marketplace'
+            ? normalized.filter((t: { type?: string }) => t.type === 'marketplace')
+            : category === 'general'
+              ? normalized.filter((t: { type?: string }) => t.type !== 'marketplace')
+              : normalized
+        const deduped = deduplicateThreadsByParticipants(categorized)
         const rpcPrefs = await getParticipantPrefsForThreads(
           serviceClient,
           user.id,
@@ -273,11 +285,21 @@ export async function GET(request: NextRequest) {
         threads = deduped.slice(from, to + 1)
       }
     } else {
-      const threadsRes = await serviceClient
+      let threadsQuery = serviceClient
         .from('chat_threads')
         .select(THREAD_SELECT)
         .in('id', threadIds)
-        .order('last_message_at', { ascending: false, nullsFirst: false })
+
+      if (category === 'marketplace') {
+        threadsQuery = threadsQuery.eq('type', 'marketplace')
+      } else if (category === 'general') {
+        threadsQuery = threadsQuery.neq('type', 'marketplace')
+      }
+
+      const threadsRes = await threadsQuery.order('last_message_at', {
+        ascending: false,
+        nullsFirst: false,
+      })
 
       threadError = threadsRes.error
       if (!threadError) {

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, Ban, ChevronDown, Loader2, MoreVertical, Pin, PinOff, Search, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, MoreVertical, Pin, PinOff, Search, Store, Trash2 } from "lucide-react";
 import { isDirectBlockableThread } from "@/features/chat/utils/threadHelpers";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { ChatThread, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";
@@ -44,8 +44,11 @@ export default function ChatSidebar({
   const [search, setSearch] = useState("");
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
   const [blockedExpanded, setBlockedExpanded] = useState(false);
+  const [view, setView] = useState<"chats" | "marketplace">("chats");
+  const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
+  const [mpLoading, setMpLoading] = useState(true);
 
-  useEffect(() => {
+  const loadGeneral = useCallback(async () => {
     if (!currentUser?.id) {
       setThreads([]);
       setIsLoading(false);
@@ -53,29 +56,62 @@ export default function ChatSidebar({
       setLastLoadedPage(-1);
       return;
     }
-
-    let cancelled = false;
-    const loadThreads = async () => {
-      setIsLoading(true);
-      setLastLoadedPage(-1);
-      try {
-        const { threads: rows, hasMore: more } = await supabaseMessagingService.getUserThreads(
-          { id: currentUser.id, name: currentUser.name || "" },
-          { limit: PAGE_SIZE, page: 0 }
-        );
-        if (cancelled) return;
-        setThreads(rows);
-        setHasMore(more);
-        setLastLoadedPage(0);
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    };
-    void loadThreads();
-    return () => {
-      cancelled = true;
-    };
+    setIsLoading(true);
+    setLastLoadedPage(-1);
+    try {
+      const { threads: rows, hasMore: more } = await supabaseMessagingService.getUserThreads(
+        { id: currentUser.id, name: currentUser.name || "" },
+        { limit: PAGE_SIZE, page: 0, category: "general" }
+      );
+      setThreads(rows);
+      setHasMore(more);
+      setLastLoadedPage(0);
+    } finally {
+      setIsLoading(false);
+    }
   }, [currentUser?.id, currentUser?.name]);
+
+  const loadMarketplace = useCallback(async () => {
+    if (!currentUser?.id) {
+      setMpThreads([]);
+      setMpLoading(false);
+      return;
+    }
+    setMpLoading(true);
+    try {
+      const { threads: rows } = await supabaseMessagingService.getUserThreads(
+        { id: currentUser.id, name: currentUser.name || "" },
+        { limit: 50, page: 0, category: "marketplace" }
+      );
+      setMpThreads(rows);
+    } finally {
+      setMpLoading(false);
+    }
+  }, [currentUser?.id, currentUser?.name]);
+
+  useEffect(() => {
+    void loadGeneral();
+  }, [loadGeneral]);
+
+  useEffect(() => {
+    void loadMarketplace();
+  }, [loadMarketplace]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const handler = (event: Event) => {
+      const tid = (event as CustomEvent<{ threadId?: string }>).detail?.threadId;
+      if (!tid) return;
+      const known = threads.some((t) => t.id === tid) || mpThreads.some((t) => t.id === tid);
+      if (known) return;
+      // A thread we haven't listed was opened — let the API place it in the
+      // right list (general vs marketplace) by reloading both.
+      void loadGeneral();
+      void loadMarketplace();
+    };
+    window.addEventListener("openChatThread", handler as EventListener);
+    return () => window.removeEventListener("openChatThread", handler as EventListener);
+  }, [currentUser?.id, threads, mpThreads, loadGeneral, loadMarketplace]);
 
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser?.id || isLoadingMore || !hasMore || lastLoadedPage < 0) return;
@@ -84,7 +120,7 @@ export default function ChatSidebar({
     try {
       const { threads: more, hasMore: moreLeft } = await supabaseMessagingService.getUserThreads(
         { id: currentUser.id, name: currentUser.name || "" },
-        { limit: PAGE_SIZE, page: nextPage }
+        { limit: PAGE_SIZE, page: nextPage, category: "general" }
       );
       setHasMore(moreLeft);
       setLastLoadedPage(nextPage);
@@ -135,10 +171,12 @@ export default function ChatSidebar({
   }, [menuThreadId]);
 
   const mergedThreads = useMemo(() => {
-    const map = new Map<string, ChatThread>();
-    for (const t of threads) map.set(t.id, t);
-    for (const t of contextThreads) map.set(t.id, t);
-    return Array.from(map.values()).sort((a, b) => {
+    // Membership comes from the API (general category). The realtime context
+    // pool only overlays live fields (unread, last message) for listed threads.
+    const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
+    return threads
+      .map((t) => ctxById.get(t.id) ?? t)
+      .sort((a, b) => {
       const pinA = a.pinned ? 1 : 0;
       const pinB = b.pinned ? 1 : 0;
       if (pinA !== pinB) return pinB - pinA;
@@ -152,6 +190,28 @@ export default function ChatSidebar({
       return bTime - aTime;
     });
   }, [threads, contextThreads]);
+
+  const marketplaceThreads = useMemo(() => {
+    // Membership from the API (marketplace category); overlay live fields by id.
+    const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
+    return mpThreads
+      .map((t) => ctxById.get(t.id) ?? t)
+      .filter((t) => !t.archived && !t.is_block)
+      .sort((a, b) => {
+        const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+        const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+        return bTime - aTime;
+      });
+  }, [mpThreads, contextThreads]);
+
+  const marketplaceUnread = useMemo(
+    () =>
+      marketplaceThreads.reduce(
+        (sum, t) => sum + (typeof t.unread_count === "number" ? t.unread_count : 0),
+        0
+      ),
+    [marketplaceThreads]
+  );
 
   const query = search.trim().toLowerCase();
 
@@ -185,6 +245,18 @@ export default function ChatSidebar({
   const filteredBlocked = useMemo(
     () => blockedThreads.filter(matchesSearch),
     [blockedThreads, matchesSearch]
+  );
+
+  const filteredMarketplace = useMemo(
+    () =>
+      marketplaceThreads.filter((t) => {
+        if (!query) return true;
+        const others = t.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id);
+        const title = (t.product_title || others[0]?.name || t.name || "").toLowerCase();
+        const preview = (t.last_message_preview || "").toLowerCase();
+        return title.includes(query) || preview.includes(query);
+      }),
+    [marketplaceThreads, query, currentUser?.id]
   );
 
   const updateThreadState = useCallback((updated: ChatThread) => {
@@ -302,21 +374,146 @@ export default function ChatSidebar({
       }`}
     >
       <div className="border-b border-border bg-surface px-4 py-4">
-        <h1 className="text-xl font-semibold text-content">Chats</h1>
+        {view === "marketplace" ? (
+          <button
+            type="button"
+            onClick={() => {
+              setView("chats");
+              setSearch("");
+            }}
+            className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
+          >
+            <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+            Marketplace
+          </button>
+        ) : (
+          <h1 className="text-xl font-semibold text-content">Chats</h1>
+        )}
         <div className="relative mt-3">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
           <input
             ref={searchInputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search or start a new chat"
+            placeholder={view === "marketplace" ? "Search marketplace" : "Search or start a new chat"}
             className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
           />
         </div>
       </div>
 
+      {view === "chats" ? (
+        <button
+          type="button"
+          onClick={() => {
+            setView("marketplace");
+            setSearch("");
+          }}
+          className="flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3 text-left transition hover:bg-surface-hover"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+            <Store className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-content">Marketplace messages</p>
+            <p className="truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
+          </div>
+          {marketplaceUnread > 0 ? (
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+              {marketplaceUnread > 99 ? "99+" : marketplaceUnread}
+            </span>
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+          )}
+        </button>
+      ) : null}
+
+      {view === "marketplace" ? (
+        <div className="h-[calc(100%-7.75rem)] overflow-y-auto">
+          {mpLoading && marketplaceThreads.length === 0 ? (
+            <div className="p-4 text-sm text-content-secondary">Loading marketplace…</div>
+          ) : marketplaceThreads.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <Store className="mx-auto mb-3 h-10 w-10 text-content-tertiary" aria-hidden />
+              <p className="text-sm font-semibold text-content">No marketplace messages</p>
+              <p className="mt-1 text-sm text-content-secondary">
+                Conversations about listings appear here.
+              </p>
+            </div>
+          ) : filteredMarketplace.length === 0 ? (
+            <div className="p-4 text-sm text-content-secondary">No conversations found.</div>
+          ) : (
+            filteredMarketplace.map((thread) => {
+              const others = thread.participants.filter(
+                (participant: ChatParticipant) => participant.id !== currentUser?.id
+              );
+              const primary = others[0] ?? thread.participants[0];
+              const displayName =
+                thread.product_title || primary?.name || thread.name || "Marketplace chat";
+              const avatarUrl = thread.product_image || primary?.avatarUrl;
+              const selected = selectedThreadId === thread.id;
+              const activeCall = activeCallsByThread[thread.id];
+
+              return (
+                <div
+                  key={thread.id}
+                  onClick={() => onOpenThread(thread.id, thread)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenThread(thread.id, thread);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle px-4 py-3 text-left transition hover:bg-surface-hover ${
+                    selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : "bg-transparent"
+                  }`}
+                >
+                  <div className="h-11 w-11 shrink-0">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
+                    ) : (
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary-100 font-semibold text-primary-700">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 truncate text-sm font-semibold text-content">{displayName}</p>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <span
+                          className={`text-xs tabular-nums ${
+                            thread.unread_count > 0 ? "text-primary-600" : "text-content-tertiary"
+                          }`}
+                        >
+                          {formatThreadListTime(thread.last_message_at)}
+                        </span>
+                        {thread.unread_count > 0 ? (
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                            {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <p
+                      className={`mt-0.5 truncate text-sm ${
+                        activeCall ? "font-medium text-green-600" : "text-content-secondary"
+                      }`}
+                    >
+                      {activeCall
+                        ? `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
+                        : thread.last_message_preview || "Tap to open chat"}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
       <div
-        className="h-[calc(100%-7.75rem)] overflow-y-auto"
+        className="h-[calc(100%-11.25rem)] overflow-y-auto"
         onScroll={handleThreadsScroll}
       >
         {isLoading ? (
@@ -552,6 +749,7 @@ export default function ChatSidebar({
           </div>
         ) : null}
       </div>
+      )}
     </aside>
   );
 }

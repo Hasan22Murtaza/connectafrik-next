@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { format, isToday, isYesterday, isThisYear } from 'date-fns'
-import { ChevronDown, Loader2, Pin, Search } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pin, Search, Store } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant } from '@/shared/types/chat'
@@ -123,6 +123,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const [threadsHasMore, setThreadsHasMore] = useState(true)
   const [threadsListLastPage, setThreadsListLastPage] = useState(-1)
   const [search, setSearch] = useState('')
+  const [view, setView] = useState<'chats' | 'marketplace'>('chats')
+  const [mpThreads, setMpThreads] = useState<ChatThread[]>([])
+  const [mpLoading, setMpLoading] = useState(true)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -159,7 +162,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
       try {
         const { threads: userThreads, hasMore } = await supabaseMessagingService.getUserThreads(
           { id: currentUser.id, name: currentUser.name || '' },
-          { limit: PAGE_SIZE, page: 0 }
+          { limit: PAGE_SIZE, page: 0, category: 'general' }
         )
         setThreads(userThreads)
         setThreadsHasMore(hasMore)
@@ -171,6 +174,27 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     loadThreads()
   }, [currentUser])
 
+  useEffect(() => {
+    const loadMarketplace = async () => {
+      if (!currentUser) {
+        setMpThreads([])
+        setMpLoading(false)
+        return
+      }
+      setMpLoading(true)
+      try {
+        const { threads: rows } = await supabaseMessagingService.getUserThreads(
+          { id: currentUser.id, name: currentUser.name || '' },
+          { limit: 50, page: 0, category: 'marketplace' }
+        )
+        setMpThreads(rows)
+      } finally {
+        setMpLoading(false)
+      }
+    }
+    loadMarketplace()
+  }, [currentUser])
+
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser || threadsLoadingMore || !threadsHasMore || threadsListLastPage < 0) return
     const nextPage = threadsListLastPage + 1
@@ -178,7 +202,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     try {
       const { threads: moreThreads, hasMore } = await supabaseMessagingService.getUserThreads(
         { id: currentUser.id, name: currentUser.name || '' },
-        { limit: PAGE_SIZE, page: nextPage }
+        { limit: PAGE_SIZE, page: nextPage, category: 'general' }
       )
       setThreadsHasMore(hasMore)
       setThreadsListLastPage(nextPage)
@@ -203,15 +227,32 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   )
 
   const mergedThreads = useMemo(() => {
-    const map = new Map<string, ChatThread>()
-    for (const t of threads) {
-      map.set(t.id, t)
-    }
-    for (const t of contextThreads) {
-      map.set(t.id, t)
-    }
-    return Array.from(map.values())
+    // Membership comes from the API (general category); the realtime context
+    // pool only overlays live fields (unread, last message) for listed threads.
+    const ctxById = new Map(contextThreads.map((t) => [t.id, t]))
+    return threads.map((t) => ctxById.get(t.id) ?? t)
   }, [threads, contextThreads])
+
+  const marketplaceThreads = useMemo(() => {
+    const ctxById = new Map(contextThreads.map((t) => [t.id, t]))
+    return mpThreads
+      .map((t) => ctxById.get(t.id) ?? t)
+      .filter((t) => !t.archived && !t.is_block)
+      .sort((a, b) => {
+        const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
+        const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
+        return bTime - aTime
+      })
+  }, [mpThreads, contextThreads])
+
+  const marketplaceUnread = useMemo(
+    () =>
+      marketplaceThreads.reduce(
+        (sum, t) => sum + (typeof t.unread_count === 'number' ? t.unread_count : 0),
+        0
+      ),
+    [marketplaceThreads]
+  )
 
   const sortedThreads = useMemo(() => {
     return [...mergedThreads].sort((a, b) => {
@@ -275,6 +316,17 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     () => blockedThreads.filter(filterThread),
     [blockedThreads, filterThread]
   )
+  const filteredMarketplace = useMemo(
+    () =>
+      marketplaceThreads.filter((t) => {
+        if (!query) return true
+        const others = t.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id)
+        const title = (t.product_title || others[0]?.name || t.name || '').toLowerCase()
+        const preview = (t.last_message_preview || '').toLowerCase()
+        return title.includes(query) || preview.includes(query)
+      }),
+    [marketplaceThreads, query, currentUser?.id]
+  )
 
   const handleOpenThread = async (threadId: string) => {
     openThread(threadId)
@@ -289,7 +341,21 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     >
       <div className="border-b border-border-subtle pb-3">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h4 className="text-lg font-semibold text-content">Chats</h4>
+          {view === 'marketplace' ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView('chats')
+                setSearch('')
+              }}
+              className="-ml-1 flex items-center gap-1.5 text-lg font-semibold text-content"
+            >
+              <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+              Marketplace
+            </button>
+          ) : (
+            <h4 className="text-lg font-semibold text-content">Chats</h4>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -304,14 +370,112 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search chats"
+            placeholder={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
             className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
-            aria-label="Search chats"
+            aria-label={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
           />
         </div>
       </div>
 
-      {threadsLoading ? (
+      {view === 'chats' ? (
+        <button
+          type="button"
+          onClick={() => {
+            setView('marketplace')
+            setSearch('')
+          }}
+          className="mt-2 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-surface-hover"
+        >
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+            <Store className="h-5 w-5" aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-medium leading-tight text-content">Marketplace messages</p>
+            <p className="mt-0.5 truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
+          </div>
+          {marketplaceUnread > 0 ? (
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+              {marketplaceUnread > 99 ? '99+' : marketplaceUnread}
+            </span>
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+          )}
+        </button>
+      ) : null}
+
+      {view === 'marketplace' ? (
+        <div className="custom-scrollbar max-h-[min(70vh,24rem)] overflow-y-auto pt-2">
+          {mpLoading && marketplaceThreads.length === 0 ? (
+            <ChatDropdownShimmer mode="chat" count={4} />
+          ) : marketplaceThreads.length === 0 ? (
+            <div className="py-8 text-center">
+              <Store className="mx-auto mb-3 h-9 w-9 text-content-tertiary" aria-hidden />
+              <p className="text-sm font-semibold text-content">No marketplace messages</p>
+              <p className="mt-1 text-sm text-content-secondary">Conversations about listings appear here.</p>
+            </div>
+          ) : filteredMarketplace.length === 0 ? (
+            <p className="py-6 text-center text-sm text-content-secondary">No conversations match your search.</p>
+          ) : (
+            <div className="divide-y divide-border-subtle">
+              {filteredMarketplace.map((thread) => {
+                const others = thread.participants.filter(
+                  (p: ChatParticipant) => p.id !== currentUser?.id
+                )
+                const primary = others[0] ?? thread.participants[0]
+                const displayName =
+                  thread.product_title || primary?.name || thread.name || 'Marketplace chat'
+                const avatarUrl = thread.product_image || primary?.avatarUrl
+                const unread = typeof thread.unread_count === 'number' ? thread.unread_count : 0
+                const timeLabel = formatThreadListTime(thread.last_message_at)
+                return (
+                  <button
+                    key={thread.id}
+                    type="button"
+                    onClick={() => handleOpenThread(thread.id)}
+                    className="flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-surface-hover"
+                  >
+                    <div className="h-12 w-12 shrink-0">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 text-base font-semibold text-primary-700">
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 py-0.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="min-w-0 truncate text-[15px] font-medium leading-tight text-content">
+                          {displayName}
+                        </p>
+                        {timeLabel ? (
+                          <span
+                            className={`shrink-0 text-xs tabular-nums ${
+                              unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
+                            }`}
+                          >
+                            {timeLabel}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 flex items-center justify-between gap-2">
+                        <p className="min-w-0 flex-1 truncate text-sm text-content-secondary">
+                          {thread.last_message_preview || 'Tap to open chat'}
+                        </p>
+                        {unread > 0 ? (
+                          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                            {unread > 99 ? '99+' : unread}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      ) : threadsLoading ? (
         <ChatDropdownShimmer mode="chat" count={5} />
       ) : mergedThreads.length === 0 ? (
         <div className="py-6 text-center text-sm text-content-secondary">

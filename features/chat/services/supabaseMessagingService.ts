@@ -932,7 +932,7 @@ export type GetUserThreadsResult = {
 export const supabaseMessagingService = {
   async getUserThreads(
     currentUser?: ChatParticipant | null,
-    options?: { limit?: number; page?: number }
+    options?: { limit?: number; page?: number; category?: 'general' | 'marketplace' }
   ): Promise<GetUserThreadsResult> {
     if (!currentUser) {
       return { threads: [], hasMore: false }
@@ -940,14 +940,22 @@ export const supabaseMessagingService = {
 
     const limit = options?.limit ?? 20
     const page = options?.page ?? 0
+    const category = options?.category
 
     const sortThreads = (threads: ChatThread[]) =>
       [...threads].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
 
+    const applyCategory = (list: ChatThread[]) =>
+      category === 'marketplace'
+        ? list.filter((t) => t.type === 'marketplace')
+        : category === 'general'
+          ? list.filter((t) => t.type !== 'marketplace')
+          : list
+
     try {
       const res = await apiClient.get<{ data: any[]; meta?: { page: number; pageSize: number; hasMore: boolean } }>(
         '/api/chat/threads',
-        { limit, page }
+        category ? { limit, page, category } : { limit, page }
       )
       const threads = res?.data ?? []
       if (fallbackEnabled) {
@@ -967,14 +975,14 @@ export const supabaseMessagingService = {
     } catch (error: any) {
       const details = error?.details ?? error?.message
       if (isPolicyRecursionError(details ?? error)) {
-        const all = await loadThreadsViaRpc(currentUser.id, sortThreads)
+        const all = applyCategory(await loadThreadsViaRpc(currentUser.id, sortThreads))
         const from = page * limit
         const slice = all.slice(from, from + limit)
         return { threads: slice, hasMore: from + limit < all.length }
       }
       console.error('Error in getUserThreads:', error)
       activateFallback(error)
-      const all = sortThreads(getLocalThreadsForUser(currentUser.id))
+      const all = applyCategory(sortThreads(getLocalThreadsForUser(currentUser.id)))
       const from = page * limit
       const slice = all.slice(from, from + limit)
       return { threads: slice, hasMore: from + limit < all.length }
