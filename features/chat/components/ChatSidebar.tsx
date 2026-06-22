@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, MoreVertical, Pin, PinOff, Search, Store, Trash2 } from "lucide-react";
+import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, UserPlus, Users, X } from "lucide-react";
 import { isDirectBlockableThread } from "@/features/chat/utils/threadHelpers";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { ChatThread, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";
@@ -23,6 +24,31 @@ function formatThreadListTime(iso: string | null | undefined): string {
   return format(d, "MMM d, yyyy");
 }
 
+function isGroupThread(thread: ChatThread, currentUserId?: string): boolean {
+  const others = thread.participants.filter((p) => p.id !== currentUserId);
+  return (
+    thread.type === "group" ||
+    Boolean(thread.group_id) ||
+    others.length > 1 ||
+    Boolean((thread as { isGroup?: boolean }).isGroup)
+  );
+}
+
+/** Pinned-first, then most-recent activity. Mirrors the main thread list ordering. */
+function sortThreadsByPinnedRecency(a: ChatThread, b: ChatThread): number {
+  const pinA = a.pinned ? 1 : 0;
+  const pinB = b.pinned ? 1 : 0;
+  if (pinA !== pinB) return pinB - pinA;
+  if (pinA && pinB) {
+    const pinnedAtA = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+    const pinnedAtB = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+    if (pinnedAtA !== pinnedAtB) return pinnedAtB - pinnedAtA;
+  }
+  const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+  const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+  return bTime - aTime;
+}
+
 interface ChatSidebarProps {
   selectedThreadId?: string;
   /** Pass the row’s thread when opening from the list so the app shell does not refetch the full thread list (WhatsApp-style). */
@@ -35,6 +61,7 @@ export default function ChatSidebar({
   onOpenThread,
   searchInputRef,
 }: ChatSidebarProps) {
+  const router = useRouter();
   const { currentUser, threads: contextThreads, activeCallsByThread } = useProductionChat();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,8 +72,12 @@ export default function ChatSidebar({
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
   const [blockedExpanded, setBlockedExpanded] = useState(false);
   const [view, setView] = useState<"chats" | "marketplace">("chats");
+  const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
   const [mpLoading, setMpLoading] = useState(true);
+  const [filterThreads, setFilterThreads] = useState<ChatThread[]>([]);
+  const [filterLoading, setFilterLoading] = useState(false);
 
   const loadGeneral = useCallback(async () => {
     if (!currentUser?.id) {
@@ -96,6 +127,41 @@ export default function ChatSidebar({
   useEffect(() => {
     void loadMarketplace();
   }, [loadMarketplace]);
+
+  useEffect(() => {
+    if (filter === "all") {
+      setFilterThreads([]);
+      return;
+    }
+    if (!currentUser?.id) {
+      setFilterThreads([]);
+      return;
+    }
+    let cancelled = false;
+    setFilterLoading(true);
+    const participant = { id: currentUser.id, name: currentUser.name || "" };
+    const request =
+      filter === "groups"
+        ? supabaseMessagingService.getGroupThreads(participant, { limit: 50, page: 0 })
+        : supabaseMessagingService.getUnreadThreads(participant, {
+            limit: 50,
+            page: 0,
+            category: "general",
+          });
+    request
+      .then(({ threads: rows }) => {
+        if (!cancelled) setFilterThreads(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setFilterThreads([]);
+      })
+      .finally(() => {
+        if (!cancelled) setFilterLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filter, currentUser?.id, currentUser?.name]);
 
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -169,6 +235,19 @@ export default function ChatSidebar({
     document.addEventListener("mousedown", closeMenu);
     return () => document.removeEventListener("mousedown", closeMenu);
   }, [menuThreadId]);
+
+  useEffect(() => {
+    if (!headerMenuOpen) return;
+    const close = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-header-menu]") || target?.closest("[data-header-menu-trigger]")) {
+        return;
+      }
+      setHeaderMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [headerMenuOpen]);
 
   const mergedThreads = useMemo(() => {
     // Membership comes from the API (general category). The realtime context
@@ -246,6 +325,23 @@ export default function ChatSidebar({
     () => blockedThreads.filter(matchesSearch),
     [blockedThreads, matchesSearch]
   );
+
+  // Server-fetched filter list (groups/unread), overlaid with realtime context
+  // fields, kept to active conversations and matched against the search query.
+  const filteredFilterThreads = useMemo(() => {
+    if (filter === "all") return [];
+    const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
+    return filterThreads
+      .map((t) => ctxById.get(t.id) ?? t)
+      .filter((t) => !t.archived && !t.is_block)
+      .filter((t) => (filter === "unread" ? (t.unread_count ?? 0) > 0 : true))
+      .filter(matchesSearch)
+      .sort(sortThreadsByPinnedRecency);
+  }, [filter, filterThreads, contextThreads, matchesSearch]);
+
+  const visibleActive = filter === "all" ? filteredActive : filteredFilterThreads;
+
+  const showBlockedSection = filter === "all" && blockedThreads.length > 0;
 
   const filteredMarketplace = useMemo(
     () =>
@@ -367,39 +463,148 @@ export default function ChatSidebar({
     [handleClear, handleToggleArchive, handleToggleBlock, handleTogglePin]
   );
 
+  const filterChips: { key: "all" | "unread" | "groups"; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "unread", label: "Unread" },
+    { key: "groups", label: "Groups" },
+  ];
+
   return (
     <aside
-      className={`w-full max-w-sm shrink-0 border-r border-border bg-surface-canvas ${
-        selectedThreadId ? "hidden sm:block" : "block"
+      className={`flex h-full w-full flex-col border-r border-border bg-surface-canvas sm:w-[360px] sm:shrink-0 lg:w-[400px] ${
+        selectedThreadId ? "hidden sm:flex" : "flex"
       }`}
     >
-      <div className="border-b border-border bg-surface px-4 py-4">
-        {view === "marketplace" ? (
-          <button
-            type="button"
-            onClick={() => {
-              setView("chats");
-              setSearch("");
-            }}
-            className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
-          >
-            <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
-            Marketplace
-          </button>
-        ) : (
-          <h1 className="text-xl font-semibold text-content">Chats</h1>
-        )}
-        <div className="relative mt-3">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
-          <input
-            ref={searchInputRef}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={view === "marketplace" ? "Search marketplace" : "Search or start a new chat"}
-            className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
-          />
+      <header className="shrink-0 border-b border-border bg-surface">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3 sm:pt-4">
+          {view === "marketplace" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("chats");
+                setSearch("");
+              }}
+              className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
+            >
+              <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+              Marketplace
+            </button>
+          ) : (
+            <h1 className="text-xl font-semibold text-content">Chats</h1>
+          )}
+          {view === "chats" ? (
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => router.push("/friends")}
+                aria-label="New chat"
+                title="New chat"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content"
+              >
+                <SquarePen className="h-5 w-5" aria-hidden />
+              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  data-header-menu-trigger
+                  onClick={() => setHeaderMenuOpen((o) => !o)}
+                  aria-label="Menu"
+                  aria-expanded={headerMenuOpen}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content"
+                >
+                  <MoreVertical className="h-5 w-5" aria-hidden />
+                </button>
+                {headerMenuOpen ? (
+                  <div
+                    data-header-menu
+                    className="absolute right-0 top-11 z-30 w-56 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        router.push("/groups/create");
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                    >
+                      <Users className="h-4 w-4 text-content-secondary" aria-hidden />
+                      <span>New group</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        router.push("/friends");
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                    >
+                      <UserPlus className="h-4 w-4 text-content-secondary" aria-hidden />
+                      <span>New contact</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        setView("marketplace");
+                        setSearch("");
+                      }}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                    >
+                      <Store className="h-4 w-4 text-content-secondary" aria-hidden />
+                      <span>Marketplace messages</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
-      </div>
+
+        <div className="px-4 py-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
+            <input
+              ref={searchInputRef}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={view === "marketplace" ? "Search marketplace" : "Search or start a new chat"}
+              className="w-full rounded-full border border-transparent bg-surface-canvas py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus:border-primary-300 focus:bg-surface focus:ring-2 focus:ring-primary-100"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-content-tertiary transition hover:bg-surface-hover hover:text-content"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {view === "chats" ? (
+          <div className="flex items-center gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {filterChips.map((chip) => {
+              const active = filter === chip.key;
+              return (
+                <button
+                  key={chip.key}
+                  type="button"
+                  onClick={() => setFilter(chip.key)}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
+                    active
+                      ? "bg-[#25D366]/20 text-content dark:bg-[#25D366]/25"
+                      : "border border-border text-content-secondary hover:bg-surface-hover"
+                  }`}
+                >
+                  <span>{chip.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </header>
 
       {view === "chats" ? (
         <button
@@ -408,27 +613,28 @@ export default function ChatSidebar({
             setView("marketplace");
             setSearch("");
           }}
-          className="flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3 text-left transition hover:bg-surface-hover"
+          className="relative flex w-full shrink-0 items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover"
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
             <Store className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-content">Marketplace messages</p>
+            <p className="truncate text-[15px] font-medium text-content">Marketplace messages</p>
             <p className="truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
           </div>
           {marketplaceUnread > 0 ? (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
               {marketplaceUnread > 99 ? "99+" : marketplaceUnread}
             </span>
           ) : (
             <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
           )}
+          <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
         </button>
       ) : null}
 
       {view === "marketplace" ? (
-        <div className="h-[calc(100%-7.75rem)] overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
           {mpLoading && marketplaceThreads.length === 0 ? (
             <div className="p-4 text-sm text-content-secondary">Loading marketplace…</div>
           ) : marketplaceThreads.length === 0 ? (
@@ -465,47 +671,48 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle px-4 py-3 text-left transition hover:bg-surface-hover ${
-                    selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : "bg-transparent"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover ${
+                    selected ? "bg-surface-hover" : "bg-transparent"
                   }`}
                 >
-                  <div className="h-11 w-11 shrink-0">
+                  <div className="h-12 w-12 shrink-0">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="" className="h-11 w-11 rounded-lg object-cover" />
+                      <img src={avatarUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
                     ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary-100 font-semibold text-primary-700">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 font-semibold text-primary-700">
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="min-w-0 truncate text-sm font-semibold text-content">{displayName}</p>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <span
-                          className={`text-xs tabular-nums ${
-                            thread.unread_count > 0 ? "text-primary-600" : "text-content-tertiary"
-                          }`}
-                        >
-                          {formatThreadListTime(thread.last_message_at)}
-                        </span>
-                        {thread.unread_count > 0 ? (
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
-                            {thread.unread_count > 99 ? "99+" : thread.unread_count}
-                          </span>
-                        ) : null}
-                      </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</p>
+                      <span
+                        className={`shrink-0 text-xs tabular-nums ${
+                          thread.unread_count > 0 ? "text-[#25D366]" : "text-content-tertiary"
+                        }`}
+                      >
+                        {formatThreadListTime(thread.last_message_at)}
+                      </span>
                     </div>
-                    <p
-                      className={`mt-0.5 truncate text-sm ${
-                        activeCall ? "font-medium text-green-600" : "text-content-secondary"
-                      }`}
-                    >
-                      {activeCall
-                        ? `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
-                        : thread.last_message_preview || "Tap to open chat"}
-                    </p>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p
+                        className={`truncate text-sm ${
+                          activeCall ? "font-medium text-green-600" : "text-content-secondary"
+                        }`}
+                      >
+                        {activeCall
+                          ? `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
+                          : thread.last_message_preview || "Tap to open chat"}
+                      </p>
+                      {thread.unread_count > 0 ? (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
+                  <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
                 </div>
               );
             })
@@ -513,30 +720,32 @@ export default function ChatSidebar({
         </div>
       ) : (
       <div
-        className="h-[calc(100%-11.25rem)] overflow-y-auto"
-        onScroll={handleThreadsScroll}
+        className="flex-1 overflow-y-auto"
+        onScroll={filter === "all" ? handleThreadsScroll : undefined}
       >
-        {isLoading ? (
+        {(filter === "all" ? isLoading : filterLoading && visibleActive.length === 0) ? (
           <div className="p-4 text-sm text-content-secondary">Loading chats...</div>
-        ) : filteredActive.length === 0 && filteredBlocked.length === 0 ? (
-          <div className="p-4 text-sm text-content-secondary">No conversations found.</div>
+        ) : visibleActive.length === 0 && !showBlockedSection ? (
+          <div className="px-4 py-10 text-center text-sm text-content-secondary">
+            {filter === "unread"
+              ? "No unread chats."
+              : filter === "groups"
+                ? "No group chats."
+                : "No conversations found."}
+          </div>
         ) : (
           <>
-          {filteredActive.length === 0 && filteredBlocked.length > 0 && !query ? (
-            <p className="px-4 pb-2 text-xs text-content-secondary">
+          {visibleActive.length === 0 && showBlockedSection && !query ? (
+            <p className="px-4 pb-2 pt-3 text-xs text-content-secondary">
               No active chats — open <span className="font-medium text-content">Blocked</span> below.
             </p>
           ) : null}
-          {filteredActive.map((thread) => {
+          {visibleActive.map((thread) => {
             const others = thread.participants.filter(
               (participant: ChatParticipant) => participant.id !== currentUser?.id
             );
             const primary = others[0] ?? thread.participants[0];
-            const isGroup =
-              thread.type === "group" ||
-              Boolean(thread.group_id) ||
-              others.length > 1 ||
-              Boolean((thread as { isGroup?: boolean }).isGroup);
+            const isGroup = isGroupThread(thread, currentUser?.id);
             const displayName = isGroup && thread.name ? thread.name : primary?.name || thread.name || "Chat";
             const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
             const selected = selectedThreadId === thread.id;
@@ -555,49 +764,47 @@ export default function ChatSidebar({
                 }}
                 role="button"
                 tabIndex={0}
-                className={`group cursor-pointer relative flex w-full items-start gap-3 border-b border-border-subtle px-4 py-3 text-left transition hover:bg-surface-hover ${
-                  selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : "bg-transparent"
+                className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover ${
+                  selected ? "bg-surface-hover" : "bg-transparent"
                 }`}
               >
-                <div className="h-11 w-11 shrink-0">
+                <div className="h-12 w-12 shrink-0">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
+                    <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                   ) : (
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
                       {displayName.charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="flex min-w-0 items-center gap-1 truncate text-sm font-semibold text-content">
-                      {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" /> : null}
-                      <span className="truncate">{displayName}</span>
-                    </p>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <span
-                        className={`text-xs tabular-nums ${
-                          thread.unread_count > 0 ? "text-primary-600" : "text-content-tertiary"
-                        }`}
-                      >
-                        {formatThreadListTime(thread.last_message_at)}
-                      </span>
-                      {thread.unread_count > 0 ? (
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
-                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
-                        </span>
-                      ) : null}
-                    </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</span>
+                    <span
+                      className={`shrink-0 text-xs tabular-nums ${
+                        thread.unread_count > 0 ? "text-[#25D366]" : "text-content-tertiary"
+                      }`}
+                    >
+                      {formatThreadListTime(thread.last_message_at)}
+                    </span>
                   </div>
-                  <div className="mt-0.5">
+                  <div className="mt-0.5 flex items-center justify-between gap-2">
                     <p className={`truncate text-sm ${activeCall ? 'text-green-600 font-medium' : 'text-content-secondary'}`}>
                       {activeCall
                         ? `● ${activeCall.callType === 'video' ? 'Video' : 'Audio'} call · ${activeCall.participantCount} in call`
                         : (thread.last_message_preview || "Tap to open chat")}
                     </p>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {thread.pinned ? <Pin className="h-3.5 w-3.5 text-content-tertiary" aria-label="Pinned" /> : null}
+                      {thread.unread_count > 0 ? (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                        </span>
+                      ) : null}
+                    </span>
                   </div>
                 </div>
-                <div className="relative">
+                <div className="relative self-center">
                   <button
                     type="button"
                     data-chat-menu-trigger
@@ -606,7 +813,7 @@ export default function ChatSidebar({
                       e.stopPropagation();
                       setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                     }}
-                    className="rounded-full p-1.5 text-content-tertiary opacity-0 transition hover:bg-surface-hover hover:text-content group-hover:opacity-100"
+                    className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </button>
@@ -653,10 +860,11 @@ export default function ChatSidebar({
                     </div>
                   ) : null}
                 </div>
+                <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
               </div>
             );
           })}
-          {blockedThreads.length > 0 ? (
+          {showBlockedSection ? (
             <div className="border-t border-border px-4 pt-2">
               <button
                 type="button"
@@ -688,17 +896,17 @@ export default function ChatSidebar({
                           selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : ""
                         }`}
                       >
-                        <div className="h-11 w-11 shrink-0">
+                        <div className="h-12 w-12 shrink-0">
                           {avatarUrl ? (
-                            <img src={avatarUrl} alt="" className="h-11 w-11 rounded-full object-cover" />
+                            <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                           ) : (
-                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
                               {displayName.charAt(0).toUpperCase()}
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-content">{displayName}</p>
+                          <p className="truncate text-[15px] font-medium text-content">{displayName}</p>
                           <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
                         </div>
                         <button
@@ -736,7 +944,7 @@ export default function ChatSidebar({
           ) : null}
           </>
         )}
-        {!isLoading && hasMore ? (
+        {filter === "all" && !isLoading && hasMore ? (
           <div className="flex justify-center py-3 text-sm text-content-secondary">
             {isLoadingMore ? (
               <span className="inline-flex items-center gap-2">

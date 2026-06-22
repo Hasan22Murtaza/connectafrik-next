@@ -932,7 +932,13 @@ export type GetUserThreadsResult = {
 export const supabaseMessagingService = {
   async getUserThreads(
     currentUser?: ChatParticipant | null,
-    options?: { limit?: number; page?: number; category?: 'general' | 'marketplace' }
+    options?: {
+      limit?: number
+      page?: number
+      category?: 'general' | 'marketplace'
+      /** WhatsApp-style sidebar filter. `groups`/`unread` hit dedicated endpoints. */
+      filter?: 'all' | 'unread' | 'groups'
+    }
   ): Promise<GetUserThreadsResult> {
     if (!currentUser) {
       return { threads: [], hasMore: false }
@@ -941,20 +947,37 @@ export const supabaseMessagingService = {
     const limit = options?.limit ?? 20
     const page = options?.page ?? 0
     const category = options?.category
+    const filter = options?.filter ?? 'all'
 
     const sortThreads = (threads: ChatThread[]) =>
       [...threads].sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
 
-    const applyCategory = (list: ChatThread[]) =>
-      category === 'marketplace'
-        ? list.filter((t) => t.type === 'marketplace')
-        : category === 'general'
-          ? list.filter((t) => t.type !== 'marketplace')
-          : list
+    const isGroupThread = (t: ChatThread) =>
+      t.type === 'group' || Boolean(t.group_id) || Boolean((t as { isGroup?: boolean }).isGroup)
+
+    const applyCategory = (list: ChatThread[]) => {
+      const byCategory =
+        category === 'marketplace'
+          ? list.filter((t) => t.type === 'marketplace')
+          : category === 'general'
+            ? list.filter((t) => t.type !== 'marketplace')
+            : list
+      if (filter === 'groups') return byCategory.filter(isGroupThread)
+      if (filter === 'unread')
+        return byCategory.filter((t) => (t.unread_count ?? 0) > 0 && !t.archived && !t.is_block)
+      return byCategory
+    }
+
+    const endpoint =
+      filter === 'groups'
+        ? '/api/chat/threads/groups'
+        : filter === 'unread'
+          ? '/api/chat/threads/unread'
+          : '/api/chat/threads'
 
     try {
       const res = await apiClient.get<{ data: any[]; meta?: { page: number; pageSize: number; hasMore: boolean } }>(
-        '/api/chat/threads',
+        endpoint,
         category ? { limit, page, category } : { limit, page }
       )
       const threads = res?.data ?? []
@@ -987,6 +1010,22 @@ export const supabaseMessagingService = {
       const slice = all.slice(from, from + limit)
       return { threads: slice, hasMore: from + limit < all.length }
     }
+  },
+
+  /** Group chat threads for the current user (GET /api/chat/threads/groups). */
+  async getGroupThreads(
+    currentUser?: ChatParticipant | null,
+    options?: { limit?: number; page?: number }
+  ): Promise<GetUserThreadsResult> {
+    return this.getUserThreads(currentUser, { ...options, filter: 'groups' })
+  },
+
+  /** Unread chat threads for the current user (GET /api/chat/threads/unread). */
+  async getUnreadThreads(
+    currentUser?: ChatParticipant | null,
+    options?: { limit?: number; page?: number; category?: 'general' | 'marketplace' }
+  ): Promise<GetUserThreadsResult> {
+    return this.getUserThreads(currentUser, { ...options, filter: 'unread' })
   },
 
   /** Full thread row from API (includes banner_url, group_id). Use when list/temp thread is incomplete. */

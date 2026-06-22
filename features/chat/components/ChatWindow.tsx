@@ -1881,7 +1881,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <div
         ref={messagesScrollRef}
-        className={`flex flex-col space-y-3 overflow-y-auto bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${isPageVariant ? "h-[calc(100vh-16rem)] sm:h-[calc(100vh-14rem)]" : "h-[250px] sm:h-[290px]"
+        className={`flex flex-col space-y-3 overflow-y-auto bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
           }`}
       >
         {isLoadingOlderMessages && (

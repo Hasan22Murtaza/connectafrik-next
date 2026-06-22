@@ -1,7 +1,7 @@
 /** Shared layout tokens for chat UI (theme-aware). */
 export const CH = {
   pageShell:
-    "mx-auto flex h-[calc(100vh-6rem)] w-full overflow-hidden rounded-none border border-border sm:rounded-2xl",
+    "mx-auto flex h-[calc(100vh-6.5rem)] w-full overflow-hidden rounded-none border border-border sm:h-[calc(100vh-7rem)] md:h-[calc(100vh-4rem)]",
   sidebar:
     "w-full max-w-sm shrink-0 border-r border-border bg-surface-canvas",
   sidebarHeader: "border-b border-border bg-surface px-4 py-4",
