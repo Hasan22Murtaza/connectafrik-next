@@ -95,6 +95,7 @@ const GroupDetailPage: React.FC = () => {
     loading: postsLoading, 
     createGroupPost, 
     toggleLike, 
+    recordShare,
     deletePost, 
     updatePost, 
     refetch: refetchGroupPosts,
@@ -240,6 +241,7 @@ const GroupDetailPage: React.FC = () => {
     content: string
     post_type: 'discussion' | 'goal_update' | 'announcement' | 'event' | 'resource'
     media_urls?: string[]
+    background_id?: string | null
   }) => {
     if (!user || !group) return
 
@@ -601,6 +603,7 @@ const GroupDetailPage: React.FC = () => {
                             title: data.title,
                             content: data.content,
                             media_urls: data.media_urls ?? [],
+                            background_id: data.background_id ?? null,
                           })
                         }
                         onEmojiReaction={handleEmojiReaction}
@@ -859,6 +862,11 @@ const GroupDetailPage: React.FC = () => {
           postId={shareModalState.postId}
           members={members}
           onSendToMembers={handleSendToMembers}
+          onShared={(platform) => {
+            if (shareModalState.postId) {
+              recordShare(shareModalState.postId, { platform })
+            }
+          }}
         />
       )}
     </div>

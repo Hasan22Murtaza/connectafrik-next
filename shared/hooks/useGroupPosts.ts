@@ -12,8 +12,10 @@ export interface GroupPost {
   content: string
   post_type: 'discussion' | 'goal_update' | 'announcement' | 'event' | 'resource'
   media_urls: string[] | null
+  background_id?: string | null
   likes_count: number
   comments_count: number
+  shares_count: number
   is_pinned: boolean
   is_deleted: boolean
   created_at: string
@@ -75,6 +77,7 @@ export const useGroupPosts = (groupId: string) => {
             country: null
           },
           isLiked: p.isLiked ?? false,
+          shares_count: p.shares_count ?? 0,
           reactions: p.reactions ?? [],
           reactions_total_count: p.reactions_total_count ?? 0
         }))
@@ -93,6 +96,7 @@ export const useGroupPosts = (groupId: string) => {
     content: string
     post_type?: 'discussion' | 'goal_update' | 'announcement' | 'event' | 'resource'
     media_urls?: string[]
+    background_id?: string | null
   }) => {
     if (!user) throw new Error('Must be logged in to create a post')
 
@@ -101,7 +105,8 @@ export const useGroupPosts = (groupId: string) => {
         title: postData.title,
         content: postData.content,
         post_type: postData.post_type || 'discussion',
-        media_urls: postData.media_urls || []
+        media_urls: postData.media_urls || [],
+        background_id: postData.background_id ?? null
       })
 
       const newPost: GroupPost = {
@@ -113,7 +118,8 @@ export const useGroupPosts = (groupId: string) => {
           avatar_url: null,
           country: null
         },
-        isLiked: false
+        isLiked: false,
+        shares_count: res.data.shares_count ?? 0
       }
 
       setPosts(prev => [newPost, ...prev])
@@ -183,6 +189,37 @@ export const useGroupPosts = (groupId: string) => {
     }
   }
 
+  const recordShare = async (
+    postId: string,
+    options?: { share_type?: string; platform?: string }
+  ) => {
+    if (!user) return
+
+    setPosts(prev =>
+      prev.map(post =>
+        post.id === postId
+          ? { ...post, shares_count: (post.shares_count || 0) + 1 }
+          : post
+      )
+    )
+
+    try {
+      await apiClient.post(`/api/groups/${groupId}/posts/${postId}/share`, {
+        share_type: options?.share_type ?? 'internal',
+        platform: options?.platform ?? null,
+      })
+    } catch (err: any) {
+      setPosts(prev =>
+        prev.map(post =>
+          post.id === postId
+            ? { ...post, shares_count: Math.max(0, (post.shares_count || 1) - 1) }
+            : post
+        )
+      )
+      console.error('Error recording share:', err)
+    }
+  }
+
   const deletePost = async (postId: string) => {
     if (!user) return
 
@@ -200,7 +237,7 @@ export const useGroupPosts = (groupId: string) => {
 
   const updatePost = async (
     postId: string,
-    updates: { title?: string; content?: string; media_urls?: string[] }
+    updates: { title?: string; content?: string; media_urls?: string[]; background_id?: string | null }
   ) => {
     if (!user) return
 
@@ -225,6 +262,7 @@ export const useGroupPosts = (groupId: string) => {
     error,
     createGroupPost,
     toggleLike,
+    recordShare,
     deletePost,
     updatePost,
     refetch: fetchGroupPosts

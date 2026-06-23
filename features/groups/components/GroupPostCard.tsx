@@ -10,6 +10,7 @@ import GroupPostCommentsSection from '@/features/groups/components/GroupPostComm
 import { useGroupPostReactions, GroupReactionGroup, GroupPostReactionsData } from '@/shared/hooks/useGroupPostReactions'
 import PostEngagement from '@/shared/components/PostEngagement'
 import CreatePost, { type PostSubmitData } from '@/features/social/components/CreatePost'
+import { getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
 
 interface GroupPostCardProps {
   post: GroupPost
@@ -79,6 +80,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   })
 
   const isAuthor = user?.id === post.author_id
+
+  const hasMedia = !!(post.media_urls && post.media_urls.length > 0)
+  // Decorative text backgrounds only render on text-only posts (same as feed).
+  const backgroundPreset = !hasMedia ? getPostBackgroundPreset(post.background_id) : null
 
   const handleSaveEdit = async (postData: PostSubmitData) => {
     if (!onEdit) return
@@ -261,8 +266,26 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
 
       {/* Content */}
       <>
-        <h3 className="font-semibold text-gray-900 mb-2">{post.title}</h3>
-        <p className="text-gray-700 whitespace-pre-wrap mb-4">{post.content}</p>
+        {backgroundPreset ? (
+          <div
+            className="mb-4 flex min-h-[220px] flex-col items-center justify-center rounded-xl p-6 sm:p-8 text-center"
+            style={{ background: backgroundPreset.css }}
+          >
+            {post.title && (
+              <h3 className={`mb-2 text-xl font-bold sm:text-2xl ${backgroundPreset.textClass} drop-shadow-lg`}>
+                {post.title}
+              </h3>
+            )}
+            <p className={`whitespace-pre-wrap break-words text-lg font-semibold leading-relaxed sm:text-xl ${backgroundPreset.textClass} drop-shadow-lg`}>
+              {post.content}
+            </p>
+          </div>
+        ) : (
+          <>
+            <h3 className="font-semibold text-gray-900 mb-2">{post.title}</h3>
+            <p className="text-gray-700 whitespace-pre-wrap mb-4">{post.content}</p>
+          </>
+        )}
 
         {/* Media */}
         {post.media_urls && post.media_urls.length > 0 && (
@@ -290,6 +313,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         reactionGroups={getReactionGroups()}
         totalReactionCount={prefetchedReactionGroups ? (prefetchedTotalReactionCount ?? 0) : reactions.totalCount}
         commentsCount={post.comments_count}
+        sharesCount={post.shares_count ?? 0}
         onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
         onComment={() => onToggleComments ? onToggleComments() : onComment()}
         onShare={onShare}
@@ -310,6 +334,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
             category: 'general',
             media_urls: post.media_urls ?? [],
             location: undefined,
+            background_id: post.background_id ?? null,
           }}
           onSubmit={handleSaveEdit}
           onCancel={handleCancelEdit}

@@ -208,6 +208,34 @@ const GroupsPage: React.FC = () => {
     setShareModalState({ open: true, postId, groupId: post?.group_id || null });
   };
 
+  const handleRecordShare = async (platform: string) => {
+    const postId = shareModalState.postId;
+    const groupId = shareModalState.groupId;
+    if (!postId || !groupId) return;
+
+    setRecentActivity((prev: any[]) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, shares_count: (p.shares_count || 0) + 1 } : p
+      )
+    );
+
+    try {
+      await apiClient.post(`/api/groups/${groupId}/posts/${postId}/share`, {
+        share_type: 'internal',
+        platform,
+      });
+    } catch (err) {
+      setRecentActivity((prev: any[]) =>
+        prev.map((p) =>
+          p.id === postId
+            ? { ...p, shares_count: Math.max(0, (p.shares_count || 1) - 1) }
+            : p
+        )
+      );
+      console.error('Error recording share:', err);
+    }
+  };
+
   const handleSendToMembers = async (memberIds: string[], message: string) => {
     if (!memberIds.length) {
       toast.success('No members selected');
@@ -769,6 +797,7 @@ const GroupsPage: React.FC = () => {
           postId={shareModalState.postId}
           members={members}
           onSendToMembers={handleSendToMembers}
+          onShared={handleRecordShare}
         />
       )}
     </div>

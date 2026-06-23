@@ -483,7 +483,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               return { title: split.title, content: split.content }
             })()
           : { content: text }),
-        ...(!groupPostEdit ? { background_id: media_type === 'none' ? selectedBackgroundId : null } : {}),
+        background_id: media_type === 'none' ? selectedBackgroundId : null,
       }
 
       await onSubmit(payload)
@@ -698,7 +698,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
           <div className="mt-2 flex min-h-[2.25rem] items-end justify-between gap-2">
             <div className="flex shrink-0 items-center gap-2">
-              {!hasMedia && !groupPostEdit && (
+              {!hasMedia && (
                 <button
                   type="button"
                   title="Text backgrounds"

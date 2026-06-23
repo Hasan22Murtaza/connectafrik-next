@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
@@ -6,7 +7,8 @@ import toast from 'react-hot-toast'
 
 export const useGroupChat = () => {
   const { user } = useAuth()
-  const { startChatWithMembers, openThread } = useProductionChat()
+  const router = useRouter()
+  const { startChatWithMembers } = useProductionChat()
 
   /**
    * Opens or creates a group chat for a specific group
@@ -30,8 +32,8 @@ export const useGroupChat = () => {
         const existingThread = threadsRes?.data?.[0]
 
         if (existingThread?.id) {
-          // Thread exists, just open it
-          openThread(existingThread.id)
+          // Thread exists, navigate to its chat page
+          router.push(`/chat/${existingThread.id}`)
           return existingThread.id
         }
 
@@ -93,11 +95,11 @@ export const useGroupChat = () => {
           type: 'group',
           name: groupName,
           group_id: groupId,
-          openInDock: true,
+          openInDock: false,
         })
 
         if (threadId) {
-          toast.success(`Group chat opened: ${groupName}`)
+          router.push(`/chat/${threadId}`)
         }
 
         return threadId
@@ -107,7 +109,7 @@ export const useGroupChat = () => {
         return null
       }
     },
-    [user, startChatWithMembers, openThread]
+    [user, startChatWithMembers, router]
   )
 
   return {

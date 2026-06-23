@@ -22,6 +22,9 @@ export interface Reel {
   updated_at: string
   is_following?: boolean
   is_saved?: boolean
+  is_liked?: boolean
+  is_shared?: boolean
+  is_viewed?: boolean
   // Joined fields from profiles
   profiles?: {
     username: string

@@ -90,6 +90,9 @@ export async function GET(request: NextRequest) {
       const reels = fData ?? []
       let followingSet = new Set<string>()
       let savedSet = new Set<string>()
+      let likedSet = new Set<string>()
+      let sharedSet = new Set<string>()
+      let viewedSet = new Set<string>()
       if (userId && reels.length > 0) {
         const authorIds = [...new Set(reels.map((r: { author_id: string }) => r.author_id).filter((id: string) => id !== userId))]
         const reelIds = [...new Set(reels.map((r: { id: string }) => r.id))]
@@ -102,18 +105,25 @@ export async function GET(request: NextRequest) {
           if (followsData) followingSet = new Set(followsData.map((f: { following_id: string }) => f.following_id))
         }
         if (reelIds.length > 0) {
-          const { data: savesData } = await supabase
-            .from('reel_saves')
-            .select('reel_id')
-            .eq('user_id', userId)
-            .in('reel_id', reelIds)
-          if (savesData) savedSet = new Set(savesData.map((s: { reel_id: string }) => s.reel_id))
+          const [savesData, likesData, sharesData, viewsData] = await Promise.all([
+            supabase.from('reel_saves').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+            supabase.from('reel_likes').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+            supabase.from('reel_shares').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+            supabase.from('reel_views').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+          ])
+          if (savesData.data) savedSet = new Set(savesData.data.map((s: { reel_id: string }) => s.reel_id))
+          if (likesData.data) likedSet = new Set(likesData.data.map((s: { reel_id: string }) => s.reel_id))
+          if (sharesData.data) sharedSet = new Set(sharesData.data.map((s: { reel_id: string }) => s.reel_id))
+          if (viewsData.data) viewedSet = new Set(viewsData.data.map((s: { reel_id: string }) => s.reel_id))
         }
       }
       const result = reels.map((reel: Record<string, unknown>) => ({
         ...reel,
         is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id as string) : false,
         is_saved: userId ? savedSet.has(reel.id as string) : false,
+        is_liked: userId ? likedSet.has(reel.id as string) : false,
+        is_shared: userId ? sharedSet.has(reel.id as string) : false,
+        is_viewed: userId ? viewedSet.has(reel.id as string) : false,
       }))
       return jsonResponse({ data: result, page, pageSize: limit, hasMore: result.length === limit })
     }
@@ -144,6 +154,9 @@ export async function GET(request: NextRequest) {
 
     let followingSet = new Set<string>()
     let savedSet = new Set<string>()
+    let likedSet = new Set<string>()
+    let sharedSet = new Set<string>()
+    let viewedSet = new Set<string>()
     if (userId && reels.length > 0) {
       const authorIds = [...new Set(reels.map((r: any) => r.author_id).filter((id: string) => id !== userId))]
       const reelIds = [...new Set(reels.map((r: any) => r.id))]
@@ -158,14 +171,16 @@ export async function GET(request: NextRequest) {
         }
       }
       if (reelIds.length > 0) {
-        const { data: savesData } = await supabase
-          .from('reel_saves')
-          .select('reel_id')
-          .eq('user_id', userId)
-          .in('reel_id', reelIds)
-        if (savesData) {
-          savedSet = new Set(savesData.map((s: any) => s.reel_id))
-        }
+        const [savesData, likesData, sharesData, viewsData] = await Promise.all([
+          supabase.from('reel_saves').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+          supabase.from('reel_likes').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+          supabase.from('reel_shares').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+          supabase.from('reel_views').select('reel_id').eq('user_id', userId).in('reel_id', reelIds),
+        ])
+        if (savesData.data) savedSet = new Set(savesData.data.map((s: any) => s.reel_id))
+        if (likesData.data) likedSet = new Set(likesData.data.map((s: any) => s.reel_id))
+        if (sharesData.data) sharedSet = new Set(sharesData.data.map((s: any) => s.reel_id))
+        if (viewsData.data) viewedSet = new Set(viewsData.data.map((s: any) => s.reel_id))
       }
     }
 
@@ -173,6 +188,9 @@ export async function GET(request: NextRequest) {
       ...reel,
       is_following: userId && userId !== reel.author_id ? followingSet.has(reel.author_id) : false,
       is_saved: userId ? savedSet.has(reel.id) : false,
+      is_liked: userId ? likedSet.has(reel.id) : false,
+      is_shared: userId ? sharedSet.has(reel.id) : false,
+      is_viewed: userId ? viewedSet.has(reel.id) : false,
     }))
 
     return jsonResponse({

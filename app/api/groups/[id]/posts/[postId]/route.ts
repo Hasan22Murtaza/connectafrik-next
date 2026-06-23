@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
 
 type RouteContext = { params: Promise<{ id: string; postId: string }> }
 
@@ -13,8 +14,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const updates: Record<string, unknown> = {}
     if (body.title !== undefined) updates.title = body.title
     if (body.content !== undefined) updates.content = body.content
+    const hasMedia = Array.isArray(body.media_urls) && body.media_urls.length > 0
     if (Array.isArray(body.media_urls)) {
       updates.media_urls = body.media_urls
+    }
+    if (body.background_id !== undefined) {
+      // Decorative backgrounds only apply to text-only posts.
+      updates.background_id = hasMedia ? null : sanitizePostBackgroundId(body.background_id)
     }
 
     if (Object.keys(updates).length === 0) {

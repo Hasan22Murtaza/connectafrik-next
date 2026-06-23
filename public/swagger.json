@@ -1913,6 +1913,28 @@
         }
       }
     },
+    "/groups/{id}/posts/{postId}/share": {
+      "post": {
+        "tags": ["Group Posts"],
+        "summary": "Share a group post",
+        "description": "Records a share of a group post and increments the post's share count. The request body is optional; when omitted, share_type defaults to \"internal\".",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "postId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "share_type": { "type": "string", "default": "internal" }, "platform": { "type": "string", "nullable": true } } } } }
+        },
+        "responses": {
+          "200": { "description": "Share recorded", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "shares_count": { "type": "integer" } } } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "500": { "$ref": "#/components/responses/ServerError" }
+        }
+      }
+    },
     "/groups/{id}/posts/{postId}/comments": {
       "get": {
         "tags": ["Group Posts"],

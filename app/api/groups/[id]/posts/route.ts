@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -146,6 +147,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Content is required', 400)
     }
 
+    const normalizedMedia = Array.isArray(media_urls) ? media_urls : []
+    // Decorative backgrounds only apply to text-only posts.
+    const background_id =
+      normalizedMedia.length > 0 ? null : sanitizePostBackgroundId(body.background_id)
+
     const { data: post, error: insertError } = await supabase
       .from('group_posts')
       .insert({
@@ -154,7 +160,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         title: title ?? '',
         content,
         post_type: post_type ?? 'text',
-        media_urls: media_urls ?? [],
+        media_urls: normalizedMedia,
+        background_id,
         likes_count: 0,
         comments_count: 0,
         is_pinned: false,

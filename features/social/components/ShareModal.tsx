@@ -27,6 +27,8 @@ export interface ShareModalProps {
   onSendToMembers: (memberIds: string[], message: string) => Promise<void>;
   /** Optional custom handler when user taps Share now (caption only, no repost). */
   onShareNow?: (message: string) => Promise<void>;
+  /** Optional callback fired whenever a share action succeeds, with the destination platform. */
+  onShared?: (platform: string) => void;
 }
 
 const FB_BLUE = "#0866ff";
@@ -46,12 +48,14 @@ const buildShareToOptions = (
   fullUrl: string,
   caption: string,
   onCopy: () => void,
-  onFeedShare: () => void
+  onFeedShare: () => void,
+  onShared?: (platform: string) => void
 ): ShareToOption[] => [
   {
     name: "Chat",
     icon: <MessageCircle className="w-5 h-5 text-gray-700" />,
     action: () => {
+      onShared?.("chat");
       window.open("/chat", "_blank", "noopener,noreferrer");
     },
   },
@@ -59,6 +63,7 @@ const buildShareToOptions = (
     name: "WhatsApp",
     icon: <FaWhatsapp className="w-5 h-5 text-gray-700" />,
     action: () => {
+      onShared?.("whatsapp");
       window.open(
         `https://wa.me/?text=${encodeURIComponent(buildShareText(caption, fullUrl))}`,
         "_blank",
@@ -140,6 +145,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
   members,
   onSendToMembers,
   onShareNow,
+  onShared,
 }) => {
   const { user } = useAuth();
   const { profile } = useProfile();
@@ -198,6 +204,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
     setSending(true);
     try {
       await onSendToMembers(selected, message);
+      onShared?.("members");
       setSelected([]);
       setMessage("");
       onClose();
@@ -211,9 +218,11 @@ const ShareModal: React.FC<ShareModalProps> = ({
     try {
       if (selected.length > 0) {
         await onSendToMembers(selected, message);
+        onShared?.("members");
         setSelected([]);
       } else if (onShareNow) {
         await onShareNow(message);
+        onShared?.("internal");
       } else {
         const shareText = buildShareText(message, fullUrl);
         if (navigator.share) {
@@ -221,8 +230,10 @@ const ShareModal: React.FC<ShareModalProps> = ({
             url: fullUrl,
             text: message.trim() || undefined,
           });
+          onShared?.("native");
         } else {
           await navigator.clipboard.writeText(shareText);
+          onShared?.("copy");
           toast.success("Link copied");
         }
       }
@@ -244,6 +255,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(buildShareText(message, fullUrl));
+    onShared?.("copy");
     setCopied(true);
     toast.success("Link copied");
     setTimeout(() => setCopied(false), 2000);
@@ -261,7 +273,8 @@ const ShareModal: React.FC<ShareModalProps> = ({
     fullUrl,
     message,
     handleCopy,
-    handleShareNow
+    handleShareNow,
+    onShared
   );
 
   return (
