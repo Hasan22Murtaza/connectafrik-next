@@ -59,6 +59,10 @@ export default function CallWindowPage() {
   const [callDisplay, setCallDisplay] = useState<CallDisplay | null>(null)
   /** Pre-issued VideoSDK JWT for outgoing calls (from sessionStorage). */
   const [joinTokenHint, setJoinTokenHint] = useState<string | undefined>(undefined)
+  /** True once the same user answered this call on another device — close this ringing window. */
+  const [answeredElsewhere, setAnsweredElsewhere] = useState(false)
+  /** Guards against terminating when the call was accepted on THIS device. */
+  const acceptedLocallyRef = useRef(false)
   const outgoingBootstrapCallIdRef = useRef<string | null>(null)
   const outgoingBootstrapTokenRef = useRef<string | undefined>(undefined)
 
@@ -276,7 +280,89 @@ export default function CallWindowPage() {
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [threadId, callId])
 
+  // Cross-device accept: when the same user answers this incoming call on another
+  // device (e.g. mobile), the "call accepted" push fans out to this device too
+  // (the accepting device is skipped server-side via device_session_id). The SW
+  // broadcasts CALL_STATUS:active and FCM foreground dispatches fcm-foreground-message.
+  // We listen for that signal here and close this stale ringing window.
+  useEffect(() => {
+    if (!isIncoming || !threadId) return
+
+    const matchesThisCall = (payloadThreadId?: string, payloadCallId?: string) => {
+      const tid = (payloadThreadId || '').trim()
+      if (!tid || tid !== threadId) return false
+      const pcid = (payloadCallId || '').trim()
+      if (callId && pcid) return pcid === callId
+      return true
+    }
+
+    const terminateAnsweredElsewhere = (payloadThreadId?: string, payloadCallId?: string) => {
+      if (acceptedLocallyRef.current || answeredElsewhere) return
+      if (!matchesThisCall(payloadThreadId, payloadCallId)) return
+      setAnsweredElsewhere(true)
+      setTimeout(() => {
+        if (typeof window !== 'undefined') window.close()
+      }, 1500)
+    }
+
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      const data = event.data
+      if (!data || data.type !== 'CALL_STATUS' || data.status !== 'active') return
+      terminateAnsweredElsewhere(data.threadId, data.callId)
+    }
+
+    const handleFcmForeground = (event: Event) => {
+      const detail = (event as CustomEvent<{ data?: Record<string, string> }>).detail
+      const data = detail?.data
+      if (!data || typeof data !== 'object') return
+      const type = String(data.type || data.status || data.call_status || '').trim().toLowerCase()
+      const last = String(data.last_signal || '').trim().toLowerCase()
+      if (type !== 'active' && last !== 'active') return
+      const tid = String(data.thread_id || data.threadId || data.chat_thread_id || '').trim()
+      const cidRaw = data.call_id || data.callId || ''
+      const cid = typeof cidRaw === 'string' ? cidRaw.trim() : ''
+      terminateAnsweredElsewhere(tid, cid)
+    }
+
+    // The modal posts CALL_STATUS:active to this same window the instant Accept is
+    // tapped here. Use it to mark a local accept so the cross-device path never
+    // terminates the device that actually answered.
+    const handleWindowMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      const data = event.data
+      if (!data || data.type !== 'CALL_STATUS' || data.status !== 'active') return
+      if (matchesThisCall(data.threadId, data.callId)) {
+        acceptedLocallyRef.current = true
+      }
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage)
+    }
+    window.addEventListener('message', handleWindowMessage)
+    window.addEventListener('fcm-foreground-message', handleFcmForeground)
+
+    return () => {
+      if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+        navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage)
+      }
+      window.removeEventListener('message', handleWindowMessage)
+      window.removeEventListener('fcm-foreground-message', handleFcmForeground)
+    }
+  }, [isIncoming, threadId, callId, answeredElsewhere])
+
   const showCallUi = callDisplay !== null && !authLoading && user?.id
+
+  if (answeredElsewhere) {
+    return (
+      <div className="w-full h-screen bg-black overflow-hidden">
+        <div className="flex flex-col items-center justify-center h-full text-white gap-2 px-4 text-center">
+          <p className="text-base sm:text-lg font-medium">Answered on another device</p>
+          <p className="text-sm text-white/70">This call was picked up elsewhere.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="w-full h-screen bg-black overflow-hidden">
@@ -292,7 +378,9 @@ export default function CallWindowPage() {
             recipientAvatarUrl={callDisplay.recipientAvatarUrl}
             isGroupCallHint={isGroupCallHint}
             isIncoming={isIncoming}
-            onAccept={() => {}}
+            onAccept={() => {
+              acceptedLocallyRef.current = true
+            }}
             onReject={handleCallEnd}
             onCallEnd={handleCallEnd}
             threadId={threadId}
