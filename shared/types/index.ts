@@ -55,6 +55,9 @@ export interface Profile {
   show_following?: boolean
   show_country?: boolean
   show_followers_count?: boolean
+  // Chat privacy: control recording / screen capture in chats with this user
+  is_record?: boolean
+  is_capture?: boolean
   // Notification settings
   email_notifications?: boolean
   push_notifications?: boolean
@@ -98,7 +101,7 @@ export interface UserProfile {
 export type UserProfileWithVisibility = UserProfile & Partial<Pick<Profile,
   'profile_visibility' | 'post_visibility' | 'allow_comments' | 'allow_follows' | 'allow_direct_messages' |
   'show_country' | 'show_phone' | 'show_email' | 'show_followers' | 'show_following' | 'show_followers_count' |
-  'show_last_seen' | 'show_online_status' | 'show_location'>>
+  'show_last_seen' | 'show_online_status' | 'show_location' | 'is_record' | 'is_capture'>>
 
 export interface MutualFriend {
   user_id: string

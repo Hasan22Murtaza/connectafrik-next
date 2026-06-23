@@ -61,6 +61,8 @@ const ProfileSettings: React.FC = () => {
     show_following: boolean
     show_country: boolean
     show_followers_count: boolean
+    is_record: boolean
+    is_capture: boolean
   }>({
     profile_visibility: 'public',
     post_visibility: 'public',
@@ -75,7 +77,9 @@ const ProfileSettings: React.FC = () => {
     show_followers: true,
     show_following: true,
     show_country: true,
-    show_followers_count: true
+    show_followers_count: true,
+    is_record: true,
+    is_capture: true
   })
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -242,7 +246,9 @@ const ProfileSettings: React.FC = () => {
         show_followers: profile.show_followers ?? true,
         show_following: profile.show_following ?? true,
         show_country: profile.show_country ?? true,
-        show_followers_count: profile.show_followers_count ?? true
+        show_followers_count: profile.show_followers_count ?? true,
+        is_record: profile.is_record ?? true,
+        is_capture: profile.is_capture ?? true
       })
 
       setNotificationSettings({
@@ -722,6 +728,29 @@ const ProfileSettings: React.FC = () => {
                             onChange={(e) => setPrivacySettings({ 
                               ...privacySettings, 
                               [option.key]: e.target.checked 
+                            })}
+                            className="text-primary-600"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-medium text-content mb-4">Chat privacy</h3>
+                    <div className="space-y-4">
+                      {[
+                        { key: 'is_record', label: 'Allow others to record calls with you' },
+                        { key: 'is_capture', label: 'Allow others to screenshot/capture your chats' }
+                      ].map(option => (
+                        <label key={option.key} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                          <span className="text-content">{option.label}</span>
+                          <input
+                            type="checkbox"
+                            checked={privacySettings[option.key as keyof typeof privacySettings] as boolean}
+                            onChange={(e) => setPrivacySettings({
+                              ...privacySettings,
+                              [option.key]: e.target.checked
                             })}
                             className="text-primary-600"
                           />
