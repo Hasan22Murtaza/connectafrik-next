@@ -56,8 +56,11 @@ function StripePayoutSection() {
   const [connecting, setConnecting] = useState(false);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [statusDetails, setStatusDetails] = useState<Record<string, unknown> | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const loadBankAccountStatus = useCallback(async () => {
+    setLoadingStatus(true);
+    setStatusError(null);
     try {
       const data = await getStripeConnectStatus();
       setStatusDetails(data);
@@ -76,6 +79,11 @@ function StripePayoutSection() {
       }
     } catch (error) {
       console.error("Error fetching bank account status:", error);
+      setStatusError(
+        error instanceof Error
+          ? error.message
+          : "We couldn't load your payout account status."
+      );
     } finally {
       setLoadingStatus(false);
     }
@@ -102,11 +110,18 @@ function StripePayoutSection() {
     try {
       const { url } = await startStripeConnectOnboarding();
       window.location.href = url;
-    } catch {
-      toast.error("Failed to set up bank account. Please try again.");
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Failed to set up bank account. Please try again.";
+      toast.error(message);
       setConnecting(false);
     }
   };
+
+  const connectEnabled = Boolean(statusDetails?.enabled);
+  const displayStatus = accountStatus ?? "not connected";
 
   const statusBadgeClass =
     accountStatus === "active"
@@ -129,15 +144,24 @@ function StripePayoutSection() {
           <Loader2 className="w-4 h-4 animate-spin" />
           Loading payout account status...
         </div>
+      ) : statusError ? (
+        <div>
+          <p className="text-sm text-red-600 mb-3">{statusError}</p>
+          <button
+            type="button"
+            onClick={loadBankAccountStatus}
+            className="btn-secondary text-sm"
+          >
+            Try again
+          </button>
+        </div>
       ) : (
         <>
-          {accountStatus && (
-            <div className="mb-4">
-              <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${statusBadgeClass}`}>
-                Status: {accountStatus}
-              </span>
-            </div>
-          )}
+          <div className="mb-4">
+            <span className={`inline-flex px-3 py-1 rounded-full text-xs font-medium capitalize ${statusBadgeClass}`}>
+              Status: {displayStatus}
+            </span>
+          </div>
 
           {reserveBalance !== 0 && (
             <p className="text-sm text-content-secondary mb-4">
@@ -149,7 +173,7 @@ function StripePayoutSection() {
           <button
             type="button"
             onClick={handleAddBankAccount}
-            disabled={connecting || !statusDetails?.enabled}
+            disabled={connecting || !connectEnabled}
             className="btn-primary text-sm disabled:opacity-50"
           >
             {connecting ? (
@@ -164,9 +188,12 @@ function StripePayoutSection() {
             )}
           </button>
 
-          {!statusDetails?.enabled && (
+          {!connectEnabled && (
             <p className="text-xs text-amber-700 mt-3">
-              Stripe Connect is not configured on this platform yet.
+              Stripe Connect is not configured on this platform yet. Set{" "}
+              <code>STRIPE_SECRET_KEY</code> (and keep{" "}
+              <code>MARKETPLACE_STRIPE_CONNECT_ENABLED</code> unset or{" "}
+              <code>true</code>) in this environment, then reload.
             </p>
           )}
         </>

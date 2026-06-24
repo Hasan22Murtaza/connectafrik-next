@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { syncConnectAccountStatus, isStripeConnectEnabled } from '@/lib/marketplace/stripeConnect'
+import { syncConnectAccountStatus, isStripeConnectEnabled, deriveAccountStatus } from '@/lib/marketplace/stripeConnect'
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
       return jsonResponse({
         data: {
           enabled: isStripeConnectEnabled(),
+          hasAccount: Boolean(updated?.stripe_connect_account_id),
+          accountStatus: deriveAccountStatus(updated),
           ...updated,
         },
       })
@@ -45,6 +47,8 @@ export async function GET(request: NextRequest) {
     return jsonResponse({
       data: {
         enabled: isStripeConnectEnabled(),
+        hasAccount: Boolean(profile?.stripe_connect_account_id),
+        accountStatus: deriveAccountStatus(profile),
         stripe_connect_account_id: profile?.stripe_connect_account_id ?? null,
         stripe_connect_onboarded: profile?.stripe_connect_onboarded ?? false,
         stripe_connect_charges_enabled: profile?.stripe_connect_charges_enabled ?? false,

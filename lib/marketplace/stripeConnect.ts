@@ -53,6 +53,7 @@ export async function createConnectExpressAccount(
 
   const body: Record<string, string> = {
     type: 'express',
+    'capabilities[card_payments][requested]': 'true',
     'capabilities[transfers][requested]': 'true',
   }
   if (email) body.email = email
@@ -146,6 +147,18 @@ export async function createConnectTransfer(params: {
     status: 'success',
     reference: transfer.id as string,
   }
+}
+
+export type ConnectAccountStatus = 'active' | 'pending' | null
+
+export function deriveAccountStatus(profile: {
+  stripe_connect_account_id?: string | null
+  stripe_connect_onboarded?: boolean | null
+} | null | undefined): ConnectAccountStatus {
+  if (!profile?.stripe_connect_account_id) {
+    return null
+  }
+  return profile.stripe_connect_onboarded ? 'active' : 'pending'
 }
 
 export function isStripeConnectEnabled(): boolean {

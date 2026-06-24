@@ -534,14 +534,7 @@ const FriendsPage: React.FC = () => {
                             {/* Mutual Friends */}
                             {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
                               <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                                <div className="flex -space-x-1">
-                                  {Array.from({ length: Math.min(request.mutualFriendsCount, 2) }).map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
-                                    />
-                                  ))}
-                                </div>
+                               
                                 <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                               </div>
                             )}
@@ -639,14 +632,7 @@ const FriendsPage: React.FC = () => {
                             {/* Mutual Friends */}
                             {suggestion.mutual_friends_count > 0 && (
                               <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                                <div className="flex -space-x-1">
-                                  {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
-                                    />
-                                  ))}
-                                </div>
+                              
                                 <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
                               </div>
                             )}
@@ -736,14 +722,7 @@ const FriendsPage: React.FC = () => {
                         {/* Mutual Friends */}
                         {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
                           <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                            <div className="flex -space-x-1">
-                              {Array.from({ length: Math.min(request.mutualFriendsCount, 2) }).map((_, i) => (
-                                <div
-                                  key={i}
-                                  className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
-                                />
-                              ))}
-                            </div>
+                         
                             <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                           </div>
                         )}
@@ -917,14 +896,7 @@ const FriendsPage: React.FC = () => {
                         {/* Mutual Friends */}
                         {suggestion.mutual_friends_count > 0 && (
                           <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
-                            <div className="flex -space-x-1">
-                              {Array.from({ length: Math.min(suggestion.mutual_friends_count, 2) }).map((_, i) => (
-                                <div
-                                  key={i}
-                                  className="w-4 h-4 rounded-full bg-surface-tertiary border-2 border-white"
-                                />
-                              ))}
-                            </div>
+                         
                             <span>{suggestion.mutual_friends_count} mutual {suggestion.mutual_friends_count === 1 ? 'friend' : 'friends'}</span>
                           </div>
                         )}
