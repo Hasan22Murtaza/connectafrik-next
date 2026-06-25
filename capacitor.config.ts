@@ -26,7 +26,14 @@ type CapacitorConfig = {
  * intent filters) and surfaced to the web layer via the `App.appUrlOpen`
  * listener handled in `app/components/DeepLinkHandler.tsx`.
  *
- * NOTE: `appId` MUST match the AASA appID bundle and the assetlinks package.
+ * Per-platform identifiers (must stay in sync with the association files):
+ *   - iOS bundle id   = NEXT_PUBLIC_IOS_BUNDLE_ID  (-> AASA appID)
+ *   - Android package = NEXT_PUBLIC_ANDROID_PACKAGE (-> assetlinks package_name)
+ *
+ * Capacitor only stores ONE `appId` (used when scaffolding). We default it to
+ * the iOS bundle. Because Android differs, set the Android `applicationId` in
+ * android/app/build.gradle to NEXT_PUBLIC_ANDROID_PACKAGE — see
+ * docs/deep-linking/android/build.gradle.snippet.gradle.
  */
 const config: CapacitorConfig = {
   appId: process.env.NEXT_PUBLIC_IOS_BUNDLE_ID || 'com.senyoapp.connectAfrick',

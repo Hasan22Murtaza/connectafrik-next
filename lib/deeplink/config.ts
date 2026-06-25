@@ -66,19 +66,19 @@ export const deepLinkConfig = {
 
   android: {
     /** Application id of the Android app. */
-    packageName: process.env.NEXT_PUBLIC_ANDROID_PACKAGE || 'com.senyoapp.connectAfrick',
+    packageName: process.env.NEXT_PUBLIC_ANDROID_PACKAGE || 'com.example.connectafrik',
     /**
      * SHA-256 signing-certificate fingerprints (comma separated).
      * Include BOTH the upload key and the Play App Signing key.
      */
-    sha256CertFingerprints: (process.env.ANDROID_SHA256_CERT_FINGERPRINTS || '')
+    sha256CertFingerprints: (
+      process.env.ANDROID_SHA256_CERT_FINGERPRINTS ||
+      '57:4A:E0:49:8D:A1:73:28:C6:75:32:F9:5A:48:3D:26:A2:34:D8:9F:D0:8B:23:AC:73:EA:8A:AB:94:C9:8C:68,3D:1F:61:FA:84:53:97:9C:03:1C:54:2C:AB:5E:09:62:D5:A6:9D:6D:E1:5A:11:92:6D:61:5D:8E:91:3B:D8:B3'
+    )
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean),
   },
-
-  /** HMAC secret used to sign sensitive / time-limited deep links. */
-  signingSecret: process.env.DEEPLINK_SIGNING_SECRET || '',
 } as const
 
 /** App Store (iOS) fallback URL when the app is not installed. */
