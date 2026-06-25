@@ -7,6 +7,7 @@ import { Globe, Eye, EyeOff, Mail, Lock, Phone } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { apiClient } from "@/lib/api-client";
 import { getPostAuthRedirect } from "@/lib/auth/postAuthRedirect";
+import { deepLinkConfig } from "@/lib/deeplink/config";
 import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import PhoneInput from "react-phone-number-input";
@@ -40,7 +41,9 @@ const SigninForm: React.FC = () => {
     setIsGoogleLoading(true);
     try {
       const redirectTo = searchParams.get("redirect") || "/feed";
-      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      // Use the canonical deep-link base so the OAuth return URL is a Universal /
+      // App Link that hands control back to the native app when installed.
+      const callbackUrl = new URL("/auth/callback", deepLinkConfig.webBaseUrl);
       callbackUrl.searchParams.set("redirect", redirectTo);
 
       const { error } = await supabase.auth.signInWithOAuth({

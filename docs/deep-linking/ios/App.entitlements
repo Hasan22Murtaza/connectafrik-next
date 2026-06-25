@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  iOS Associated Domains entitlement for Universal Links + Shared Web Credentials.
+  Copy into: ios/App/App/App.entitlements
+  Then enable the "Associated Domains" capability in Xcode (Signing & Capabilities).
+
+  Use one entry per environment domain. The `applinks:` prefix enables Universal
+  Links; `webcredentials:` enables password autofill shared with the website.
+
+  For staging you can append `?mode=developer` to test against a non-cached AASA
+  while the device has the "Associated Domains Development" toggle on in Settings.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>com.apple.developer.associated-domains</key>
+  <array>
+    <string>applinks:connectafrik.com</string>
+    <string>applinks:www.connectafrik.com</string>
+    <string>applinks:staging.connectafrik.com</string>
+    <string>webcredentials:connectafrik.com</string>
+  </array>
+</dict>
+</plist>

@@ -5,6 +5,7 @@ import { ProductionChatProvider } from '@/contexts/ProductionChatContext'
 import { ThemeProvider } from '@/shared/theme/ThemeProvider'
 import { ThemedToaster } from '@/shared/components/theme/ThemedToaster'
 import SignupEmailConfirmHandler from './components/SignupEmailConfirmHandler'
+import DeepLinkHandler from './components/DeepLinkHandler'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -12,6 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <ProductionChatProvider>
           <SignupEmailConfirmHandler />
+          <DeepLinkHandler />
           {children}
           <ThemedToaster />
         </ProductionChatProvider>

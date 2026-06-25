@@ -1,0 +1,30 @@
+<!--
+  Custom URL scheme registration (fallback for contexts where Universal Links
+  don't fire, e.g. some in-app browsers). Merge this <dict> entry into the top
+  level <dict> of ios/App/App/Info.plist.
+
+  This registers connectafrik:// so links like connectafrik://post/123 open the
+  app. Universal Links (https://connectafrik.com/...) remain the primary,
+  preferred mechanism — the custom scheme is only a fallback.
+-->
+<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleURLName</key>
+    <string>com.senyoapp.connectAfrick</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <string>connectafrik</string>
+    </array>
+  </dict>
+</array>
+
+<!--
+  If you open external store / social URLs from within the app, declare the
+  schemes you query so canOpenURL works on iOS 9+:
+-->
+<key>LSApplicationQueriesSchemes</key>
+<array>
+  <string>https</string>
+  <string>itms-apps</string>
+</array>

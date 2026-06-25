@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendSignupConfirmationEmail } from '@/shared/services/emailService'
+import { deepLinkConfig } from '@/lib/deeplink/config'
 import { isRecord } from '../_shared'
 
 export async function POST(request: NextRequest) {
@@ -15,7 +16,9 @@ export async function POST(request: NextRequest) {
       return errorResponse('Email and password are required', 400)
     }
 
-    const redirectTo = `${request.nextUrl.origin}/confirm-signup`
+    // Use the canonical deep-link base URL so the activation link is a Universal
+    // / App Link that opens the native app when installed.
+    const redirectTo = `${deepLinkConfig.webBaseUrl}/confirm-signup`
     const serviceClient = createServiceClient()
 
     const { data, error } = await serviceClient.auth.admin.generateLink({

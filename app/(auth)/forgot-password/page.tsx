@@ -16,9 +16,9 @@ const ForgotPassword: React.FC = () => {
     
     setIsLoading(true)
     try {
+      // Redirect destination is enforced server-side (canonical deep-link URL).
       await apiClient.post<{ sent: boolean }>('/api/auth/reset-password', {
         email,
-        redirectTo: `${window.location.origin}/reset-password`,
       })
       setIsSubmitted(true)
       toast.success('Password reset email sent! Please check your inbox.')

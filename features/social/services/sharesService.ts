@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api-client'
+import { buildShareLink } from '@/lib/deeplink/links'
 
 export interface Share {
   id: string
@@ -11,9 +12,10 @@ export const sharePost = async (postId: string): Promise<{ success: boolean; err
   try {
     const result = await apiClient.post<{ success: boolean; error?: string }>(`/api/posts/${postId}/share`)
 
-    // Also copy link to clipboard
+    // Also copy a deep link to clipboard (Universal / App Link that opens the
+    // app when installed, otherwise the web page).
     try {
-      const url = `${process.env.NEXT_PUBLIC_APP_URL}/post/${postId}`
+      const url = buildShareLink(`/post/${postId}`)
       await navigator.clipboard.writeText(url)
     } catch {
       // Clipboard may not be available

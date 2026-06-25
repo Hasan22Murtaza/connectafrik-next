@@ -1,0 +1,45 @@
+<!--
+  Android App Links + custom scheme intent filters.
+  Merge the <intent-filter> blocks below INTO the main <activity> element of
+  android/app/src/main/AndroidManifest.xml (the activity with the MAIN/LAUNCHER
+  intent filter — typically .MainActivity).
+
+  - android:autoVerify="true" makes Android verify /.well-known/assetlinks.json
+    so https links open the app directly with no chooser dialog.
+  - The second filter registers the connectafrik:// custom scheme fallback.
+
+  Replace hosts as needed per environment (use product flavors for staging/prod).
+-->
+
+<!-- App Links: verified HTTPS links open the app automatically -->
+<intent-filter android:autoVerify="true">
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+
+  <data android:scheme="https" android:host="connectafrik.com" />
+  <data android:scheme="https" android:host="www.connectafrik.com" />
+
+  <!-- Paths that should open the app. Mirror the AASA components. -->
+  <data android:pathPrefix="/post" />
+  <data android:pathPrefix="/user" />
+  <data android:pathPrefix="/groups" />
+  <data android:pathPrefix="/marketplace" />
+  <data android:pathPrefix="/memories" />
+  <data android:pathPrefix="/chat" />
+  <data android:pathPrefix="/feed" />
+  <data android:pathPrefix="/open" />
+  <data android:pathPrefix="/confirm-signup" />
+  <data android:pathPrefix="/account-activated" />
+  <data android:pathPrefix="/reset-password" />
+  <data android:pathPrefix="/verify-otp" />
+  <data android:pathPrefix="/auth/callback" />
+</intent-filter>
+
+<!-- Custom scheme fallback: connectafrik://post/123 -->
+<intent-filter>
+  <action android:name="android.intent.action.VIEW" />
+  <category android:name="android.intent.category.DEFAULT" />
+  <category android:name="android.intent.category.BROWSABLE" />
+  <data android:scheme="connectafrik" />
+</intent-filter>
