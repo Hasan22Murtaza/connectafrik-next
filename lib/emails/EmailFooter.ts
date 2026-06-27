@@ -1,34 +1,33 @@
-import { SWIPPED, supportEmailHtml, supportEmailPlain } from './swippedTheme'
+import { EMAIL_THEME, supportEmailHtml, supportEmailPlain } from './emailTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
 
-/** Standard footer — app link, support, legal-style one-liner (modern transactional pattern). */
+/**
+ * Branded footer — brand line, tagline, support link, copyright, and the
+ * automated-message note. Matches the standard (signup confirmation) template.
+ */
 export function EmailFooter(): string {
   const base = getAppBaseUrl()
   const year = new Date().getFullYear()
   const supportDisplay = supportEmailHtml()
   const supportAddr = supportEmailPlain()
-  const safeBase = escapeHtml(base)
 
   const supportLine =
     supportAddr && supportDisplay
-      ? `<a href="mailto:${escapeHtml(supportAddr)}" style="color:${SWIPPED.link};text-decoration:none;">${supportDisplay}</a>`
-      : `<a href="${base}/support" style="color:${SWIPPED.link};text-decoration:none;">Help center</a>`
+      ? `<p style="font-size:13px;color:${EMAIL_THEME.textMuted};margin:5px 0;">
+          Need help? <a href="mailto:${escapeHtml(supportAddr)}" style="color:${EMAIL_THEME.link};text-decoration:none;">${supportDisplay}</a>
+        </p>`
+      : base
+        ? `<p style="font-size:13px;color:${EMAIL_THEME.textMuted};margin:5px 0;">
+            Need help? <a href="${base}/support" style="color:${EMAIL_THEME.link};text-decoration:none;">Visit our help center</a>
+          </p>`
+        : ''
 
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:32px;">
-      <tr>
-        <td style="padding-top:24px;border-top:1px solid ${SWIPPED.borderSubtle};">
-          <p style="margin:0 0 12px;font-size:13px;line-height:1.5;color:${SWIPPED.mutedFooter};text-align:center;">
-            <a href="${base}" style="color:${SWIPPED.mutedFooter};text-decoration:underline;">Open ConnectAfrik</a>
-            &nbsp;·&nbsp;
-            ${supportLine}
-          </p>
-          <p style="margin:0;font-size:12px;line-height:1.5;color:${SWIPPED.mutedFooter};text-align:center;">
-            © ${year} ConnectAfrik. You’re receiving this because of activity on your account.<br />
-            <span style="color:${SWIPPED.borderSubtle};">${safeBase}</span>
-          </p>
-        </td>
-      </tr>
-    </table>
-  `
+    <div class="footer" style="background:${EMAIL_THEME.footerBg};padding:30px;text-align:center;border-top:1px solid ${EMAIL_THEME.border};">
+      <p class="brand" style="color:${EMAIL_THEME.brand};font-weight:600;font-size:14px;margin:5px 0;">ConnectAfrik</p>
+      <p style="font-size:13px;color:${EMAIL_THEME.textMuted};margin:5px 0;">Uniting Africans and the diaspora worldwide</p>
+      ${supportLine}
+      <p style="font-size:13px;color:${EMAIL_THEME.textMuted};margin:5px 0;">&copy; ${year} ConnectAfrik. All rights reserved.</p>
+      <p style="margin-top:15px;font-size:11px;color:${EMAIL_THEME.textMuted};">This is an automated email. Please do not reply to this message.</p>
+    </div>`
 }

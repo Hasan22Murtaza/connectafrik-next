@@ -1,5 +1,24 @@
-import { SWIPPED, emailHeadlineHtml, emailLeadHtml, supportEmailPlain } from './swippedTheme'
+import {
+  EMAIL_THEME,
+  emailButtonHtml,
+  emailHeadlineHtml,
+  emailLeadHtml,
+  emailSecondaryLinkHtml,
+  emailSignOffHtml,
+  supportEmailPlain,
+} from './emailTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
+
+function featureRowHtml(title: string, description: string, last = false): string {
+  const border = last ? '' : `border-bottom:1px solid ${EMAIL_THEME.border};`
+  return `
+    <tr>
+      <td style="padding:16px 0;${border}">
+        <p style="margin:0;font-size:15px;font-weight:600;color:${EMAIL_THEME.heading};">${title}</p>
+        <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:${EMAIL_THEME.text};">${description}</p>
+      </td>
+    </tr>`
+}
 
 export function getWelcomeEmailHtml(userName: string): string {
   const base = getAppBaseUrl()
@@ -10,12 +29,12 @@ export function getWelcomeEmailHtml(userName: string): string {
   const safeName = escapeHtml(userName)
 
   const helpLine = supportPlain
-    ? `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
-      Questions? Reply to this email or write us at <a href="mailto:${supportSafe}" style="color:${SWIPPED.link};">${supportSafe}</a>.
-    </p>`
-    : `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
-      Need help? Visit our <a href="${base}/support" style="color:${SWIPPED.link};">help center</a>.
-    </p>`
+    ? `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${EMAIL_THEME.text};text-align:center;">
+        Questions? Reply to this email or write us at <a href="mailto:${supportSafe}" style="color:${EMAIL_THEME.link};">${supportSafe}</a>.
+      </p>`
+    : `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${EMAIL_THEME.text};text-align:center;">
+        Need help? Visit our <a href="${base}/support" style="color:${EMAIL_THEME.link};">help center</a>.
+      </p>`
 
   return `
     ${emailHeadlineHtml(`Welcome, ${safeName}`)}
@@ -24,53 +43,21 @@ export function getWelcomeEmailHtml(userName: string): string {
     )}
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;">
-      <tr>
-        <td style="padding:16px 0;border-bottom:1px solid ${SWIPPED.borderSubtle};">
-          <p style="margin:0;font-size:15px;font-weight:600;color:${SWIPPED.text};">Finish your profile</p>
-          <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-            Add a photo and a short bio so people recognize you.
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:16px 0;border-bottom:1px solid ${SWIPPED.borderSubtle};">
-          <p style="margin:0;font-size:15px;font-weight:600;color:${SWIPPED.text};">Open your feed</p>
-          <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-            See posts from people and groups you care about.
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:16px 0;border-bottom:1px solid ${SWIPPED.borderSubtle};">
-          <p style="margin:0;font-size:15px;font-weight:600;color:${SWIPPED.text};">Discover the marketplace</p>
-          <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-            Shop and sell products and services from African creators and businesses.
-          </p>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:16px 0;">
-          <p style="margin:0;font-size:15px;font-weight:600;color:${SWIPPED.text};">Join a group</p>
-          <p style="margin:6px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-            Find communities around culture, business, and shared interests.
-          </p>
-        </td>
-      </tr>
+      ${featureRowHtml('Finish your profile', 'Add a photo and a short bio so people recognize you.')}
+      ${featureRowHtml('Open your feed', 'See posts from people and groups you care about.')}
+      ${featureRowHtml(
+        'Discover the marketplace',
+        'Shop and sell products and services from African creators and businesses.'
+      )}
+      ${featureRowHtml('Join a group', 'Find communities around culture, business, and shared interests.', true)}
     </table>
 
-    <p style="text-align:center;margin:8px 0 12px;">
-      <a href="${feedUrl}" style="${SWIPPED.ctaInline}">Go to your feed</a>
-    </p>
-    <p style="text-align:center;margin:0;">
-      <a href="${profileUrl}" style="font-size:14px;color:${SWIPPED.link};text-decoration:underline;">Edit your profile</a>
-    </p>
+    ${emailButtonHtml(feedUrl, 'Go to your feed')}
+    ${emailSecondaryLinkHtml(profileUrl, 'Edit your profile')}
 
     ${helpLine}
 
-    <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-      Glad you’re here.<br />
-      <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
-    </p>
+    ${emailSignOffHtml('Glad you’re here.')}
   `
 }
 
@@ -93,7 +80,6 @@ Thanks for signing up. Your account is ready. Here’s what to try first:
 Go to your feed: ${base}/feed
 Edit profile: ${base}/profile
 
-${helpLine}
-— The ConnectAfrik team
+${helpLine}— The ConnectAfrik team
 `
 }

@@ -1,5 +1,13 @@
 import { getCurrencySymbol } from './currency'
-import { SWIPPED, emailHeadlineHtml, emailLeadHtml, supportEmailPlain } from './swippedTheme'
+import {
+  EMAIL_THEME,
+  emailAccentBoxHtml,
+  emailButtonHtml,
+  emailHeadlineHtml,
+  emailLeadHtml,
+  emailSignOffHtml,
+  supportEmailPlain,
+} from './emailTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
 
 export function getNewOrderNotificationEmailHtml(orderDetails: {
@@ -24,53 +32,47 @@ export function getNewOrderNotificationEmailHtml(orderDetails: {
   const safeTitle = escapeHtml(productTitle)
 
   const supportHtml = supportPlain
-    ? `<p style="margin:20px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
-      Seller support: <a href="mailto:${escapeHtml(supportPlain)}" style="color:${SWIPPED.link};">${escapeHtml(supportPlain)}</a>
-    </p>`
+    ? `<p style="margin:20px 0 0;font-size:14px;line-height:1.55;color:${EMAIL_THEME.text};text-align:center;">
+        Seller support: <a href="mailto:${escapeHtml(supportPlain)}" style="color:${EMAIL_THEME.link};">${escapeHtml(supportPlain)}</a>
+      </p>`
     : ''
 
   return `
     ${emailHeadlineHtml(`You’ve got a new order, ${safeSeller}`)}
-    ${emailLeadHtml(
-      'Nice work — someone just bought from your shop. Here’s what you need at a glance.'
-    )}
+    ${emailLeadHtml('Nice work — someone just bought from your shop. Here’s what you need at a glance.')}
 
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border:1px solid ${SWIPPED.borderSubtle};border-radius:10px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;border:1px solid ${EMAIL_THEME.border};border-radius:10px;overflow:hidden;">
       <tr>
-        <td style="padding:18px 20px;background-color:${SWIPPED.greenBoxBg};">
-          <p style="margin:0;font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${SWIPPED.greenBorder};">Sale</p>
-          <p style="margin:8px 0 0;font-size:18px;font-weight:700;color:${SWIPPED.text};">${amountStr}</p>
-          <p style="margin:4px 0 0;font-size:14px;color:${SWIPPED.textSecondary};">Order ${safeOrder}</p>
+        <td style="padding:18px 20px;background-color:${EMAIL_THEME.successBg};border-bottom:1px solid ${EMAIL_THEME.border};">
+          <p style="margin:0;font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:${EMAIL_THEME.successAccent};">Sale</p>
+          <p style="margin:8px 0 0;font-size:18px;font-weight:700;color:${EMAIL_THEME.heading};">${amountStr}</p>
+          <p style="margin:4px 0 0;font-size:14px;color:${EMAIL_THEME.text};">Order ${safeOrder}</p>
         </td>
       </tr>
       <tr>
         <td style="padding:18px 20px;">
-          <p style="margin:0 0 6px;font-size:14px;color:${SWIPPED.text};"><strong>Item:</strong> ${safeTitle}</p>
-          <p style="margin:0 0 6px;font-size:14px;color:${SWIPPED.text};"><strong>Quantity:</strong> ${quantity}</p>
-          <p style="margin:0;font-size:14px;color:${SWIPPED.text};"><strong>Buyer:</strong> ${safeBuyer}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:${EMAIL_THEME.heading};"><strong>Item:</strong> ${safeTitle}</p>
+          <p style="margin:0 0 6px;font-size:14px;color:${EMAIL_THEME.heading};"><strong>Quantity:</strong> ${quantity}</p>
+          <p style="margin:0;font-size:14px;color:${EMAIL_THEME.heading};"><strong>Buyer:</strong> ${safeBuyer}</p>
         </td>
       </tr>
     </table>
 
-    <div style="background-color:${SWIPPED.warnBoxBg};padding:18px 20px;border-radius:10px;border-left:4px solid ${SWIPPED.warnBorder};margin:0 0 20px;">
-      <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${SWIPPED.warnText};">Suggested next steps</p>
-      <p style="margin:0;font-size:14px;line-height:1.6;color:${SWIPPED.textSecondary};">
+    ${emailAccentBoxHtml({
+      variant: 'warn',
+      eyebrow: 'Suggested next steps',
+      bodyHtml: `<p style="margin:0;font-size:14px;line-height:1.6;color:${EMAIL_THEME.text};">
         Confirm shipping details with your buyer if needed, pack the order carefully, and mark it as shipped when it’s on the way so they can track it.
-      </p>
-    </div>
+      </p>`,
+    })}
 
-    <p style="text-align:center;margin:0;">
-      <a href="${ordersUrl}" style="${SWIPPED.ctaBold}">Open order in dashboard</a>
-    </p>
+    ${emailButtonHtml(ordersUrl, 'Open order in dashboard')}
 
     ${supportHtml}
 
-    <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-      Keep selling,<br />
-      <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
-    </p>
+    ${emailSignOffHtml('Keep selling,')}
 
-    <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:${SWIPPED.mutedFooter};text-align:center;">
+    <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:${EMAIL_THEME.textMuted};text-align:center;">
       This is an automated message about activity on your seller account.
     </p>
   `

@@ -90,13 +90,19 @@ export const sendEmail = async (options: SendEmailOptions): Promise<SendEmailRes
   }
 }
 
-/** Wrap inner HTML with brand shell (header, card, footer) and optional inbox preheader. */
+/** Wrap inner HTML with brand shell (gradient banner header, card, footer) and optional inbox preheader. */
 export function renderBrandEmailHtml(
   subject: string,
   innerContentHtml: string,
-  preheader?: string
+  options?: { preheader?: string; headerTitle?: string; headerSubtitle?: string }
 ): string {
-  return EmailTemplate({ content: innerContentHtml, subject, preheader })
+  return EmailTemplate({
+    content: innerContentHtml,
+    subject,
+    preheader: options?.preheader,
+    headerTitle: options?.headerTitle,
+    headerSubtitle: options?.headerSubtitle,
+  })
 }
 
 /** Email when a feed post is created: confirmation to author or alert to a friend. */
@@ -117,8 +123,14 @@ export const sendPostCreatedEmail = async (
       ? 'Tap to view your post and share it with your network.'
       : `See what ${authorName} posted on ConnectAfrik.`
 
+  const headerTitle = variant === 'author' ? 'Your post is live!' : 'New on ConnectAfrik'
+  const headerSubtitle =
+    variant === 'author'
+      ? 'Your update is now in the feed'
+      : `${authorName} just shared something new`
+
   const innerHtml = getPostCreatedEmailHtml({ variant, authorName, postPreview, postId })
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml, preheader)
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, { preheader, headerTitle, headerSubtitle })
   const textBody = getPostCreatedEmailText({ variant, authorName, postPreview, postId })
 
   const r = await sendEmail({ to, subject, htmlBody, textBody })
@@ -141,11 +153,11 @@ export const sendOrderConfirmationEmail = async (
 ): Promise<boolean> => {
   const subject = `Payment received · Order ${orderDetails.orderNumber}`
   const innerHtml = getOrderConfirmationEmailHtml(orderDetails)
-  const htmlBody = renderBrandEmailHtml(
-    subject,
-    innerHtml,
-    `We’ve got your order ${orderDetails.orderNumber}. The seller has been notified.`
-  )
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
+    preheader: `We’ve got your order ${orderDetails.orderNumber}. The seller has been notified.`,
+    headerTitle: 'Payment Received!',
+    headerSubtitle: 'Thank you for your purchase',
+  })
   const textBody = getOrderConfirmationEmailText(orderDetails)
 
   const r = await sendEmail({
@@ -174,11 +186,11 @@ export const sendNewOrderNotificationEmail = async (
 ): Promise<boolean> => {
   const subject = `New sale · Order ${orderDetails.orderNumber}`
   const innerHtml = getNewOrderNotificationEmailHtml(orderDetails)
-  const htmlBody = renderBrandEmailHtml(
-    subject,
-    innerHtml,
-    `${orderDetails.buyerName} purchased ${orderDetails.productTitle}. Open your dashboard to fulfill it.`
-  )
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
+    preheader: `${orderDetails.buyerName} purchased ${orderDetails.productTitle}. Open your dashboard to fulfill it.`,
+    headerTitle: 'You Made a Sale!',
+    headerSubtitle: 'A new order is waiting for you',
+  })
   const textBody = getNewOrderNotificationEmailText(orderDetails)
 
   const r = await sendEmail({
@@ -216,11 +228,11 @@ export const sendSignupConfirmationEmail = async (
 export const sendWelcomeEmail = async (userEmail: string, userName: string): Promise<boolean> => {
   const subject = 'Welcome to ConnectAfrik'
   const innerHtml = getWelcomeEmailHtml(userName)
-  const htmlBody = renderBrandEmailHtml(
-    subject,
-    innerHtml,
-    'Your account is ready. Open the app to finish your profile and explore the feed.'
-  )
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
+    preheader: 'Your account is ready. Open the app to finish your profile and explore the feed.',
+    headerTitle: 'Welcome to ConnectAfrik!',
+    headerSubtitle: 'Your journey with the African diaspora starts here',
+  })
   const textBody = getWelcomeEmailText(userName)
 
   const r = await sendEmail({

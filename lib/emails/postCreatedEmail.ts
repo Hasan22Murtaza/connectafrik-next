@@ -1,4 +1,12 @@
-import { SWIPPED, emailHeadlineHtml, emailLeadHtml, supportEmailPlain } from './swippedTheme'
+import {
+  EMAIL_THEME,
+  emailAccentBoxHtml,
+  emailButtonHtml,
+  emailHeadlineHtml,
+  emailLeadHtml,
+  emailSignOffHtml,
+  supportEmailPlain,
+} from './emailTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
 
 export type PostCreatedEmailVariant = 'author' | 'friend'
@@ -16,35 +24,29 @@ export function getPostCreatedEmailHtml(params: {
   const postUrl = `${base}/post/${postId}`
   const supportPlain = supportEmailPlain()
 
-  const supportBlock =
-    supportPlain &&
-    `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${SWIPPED.textSecondary};">
-      Something look off? Reach us at <a href="mailto:${escapeHtml(supportPlain)}" style="color:${SWIPPED.link};">${escapeHtml(supportPlain)}</a>.
-    </p>`
+  const supportBlock = supportPlain
+    ? `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${EMAIL_THEME.text};text-align:center;">
+        Something look off? Reach us at <a href="mailto:${escapeHtml(supportPlain)}" style="color:${EMAIL_THEME.link};">${escapeHtml(supportPlain)}</a>.
+      </p>`
+    : ''
+
+  const previewBody = `<p style="margin:0;font-size:15px;line-height:1.5;color:${EMAIL_THEME.heading};">${safePreview}</p>`
 
   if (variant === 'author') {
     return `
       ${emailHeadlineHtml('Your post is live')}
       ${emailLeadHtml('It’s on your profile and in your followers’ feeds. Here’s a quick preview.')}
 
-      <div style="background-color:${SWIPPED.blueBoxBg};padding:20px;border-radius:10px;margin:0 0 24px;border-left:4px solid ${SWIPPED.blueBorder};">
-        <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${SWIPPED.textSecondary};">Preview</p>
-        <p style="margin:0;font-size:15px;line-height:1.5;color:${SWIPPED.text};">${safePreview}</p>
-      </div>
+      ${emailAccentBoxHtml({ variant: 'info', eyebrow: 'Preview', bodyHtml: previewBody })}
 
-      <p style="text-align:center;margin:0 0 8px;">
-        <a href="${postUrl}" style="${SWIPPED.ctaInline}">View on ConnectAfrik</a>
-      </p>
-      <p style="text-align:center;margin:0;font-size:14px;color:${SWIPPED.textSecondary};">
+      ${emailButtonHtml(postUrl, 'View on ConnectAfrik')}
+      <p style="text-align:center;margin:0;font-size:14px;color:${EMAIL_THEME.text};">
         Share the link or keep the conversation going in comments.
       </p>
 
-      ${supportBlock || ''}
+      ${supportBlock}
 
-      <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-        Keep posting,<br />
-        <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
-      </p>
+      ${emailSignOffHtml('Keep posting,')}
     `
   }
 
@@ -52,21 +54,13 @@ export function getPostCreatedEmailHtml(params: {
     ${emailHeadlineHtml(`${safeAuthor} shared something new`)}
     ${emailLeadHtml('Open the post to read the full update and join the conversation.')}
 
-    <div style="background-color:${SWIPPED.blueBoxBg};padding:20px;border-radius:10px;margin:0 0 24px;border-left:4px solid ${SWIPPED.blueBorder};">
-      <p style="margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${SWIPPED.textSecondary};">From ${safeAuthor}</p>
-      <p style="margin:0;font-size:15px;line-height:1.5;color:${SWIPPED.text};">${safePreview}</p>
-    </div>
+    ${emailAccentBoxHtml({ variant: 'info', eyebrow: `From ${safeAuthor}`, bodyHtml: previewBody })}
 
-    <p style="text-align:center;margin:0;">
-      <a href="${postUrl}" style="${SWIPPED.ctaInline}">View post</a>
-    </p>
+    ${emailButtonHtml(postUrl, 'View post')}
 
-    ${supportBlock || ''}
+    ${supportBlock}
 
-    <p style="margin:28px 0 0;font-size:14px;line-height:1.5;color:${SWIPPED.textSecondary};">
-      See you in the feed,<br />
-      <span style="color:${SWIPPED.text};font-weight:600;">The ConnectAfrik team</span>
-    </p>
+    ${emailSignOffHtml('See you in the feed,')}
   `
 }
 

@@ -1,22 +1,18 @@
-import { SWIPPED } from './swippedTheme'
-import { getAppBaseUrl } from './utils'
+import { EMAIL_THEME } from './emailTheme'
+import { escapeHtml } from './utils'
 
-export function EmailHeader(): string {
-  const baseUrl = getAppBaseUrl()
-  const logoSrc = `${baseUrl}/assets/images/logo_2.png`
+/**
+ * Gradient banner header — title + subtitle, matching the standard
+ * (signup confirmation) template. Decorative SVG overlay adds depth.
+ */
+export function EmailHeader(title: string, subtitle: string): string {
+  const subtitleHtml = subtitle
+    ? `<p style="font-size:16px;opacity:0.95;position:relative;z-index:1;margin:0;">${escapeHtml(subtitle)}</p>`
+    : ''
 
   return `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
-      <tr>
-        <td align="center" style="padding:24px 16px 8px;">
-          <a href="${baseUrl}" target="_blank" style="text-decoration:none;display:inline-block;">
-            <img src="${logoSrc}" width="160" alt="ConnectAfrik" style="border:0;height:auto;max-width:160px;display:block;">
-          </a>
-          <p style="margin:12px 0 0;font-size:13px;line-height:1.4;color:${SWIPPED.tagline};max-width:420px;">
-            The network for Africans and the diaspora — community, culture, and commerce in one place.
-          </p>
-        </td>
-      </tr>
-    </table>
-  `
+    <div class="header" style="background:${EMAIL_THEME.gradient};color:#ffffff;padding:50px 30px;text-align:center;position:relative;">
+      <h1 style="font-size:32px;font-weight:700;margin:0 0 10px;position:relative;z-index:1;">${escapeHtml(title)}</h1>
+      ${subtitleHtml}
+    </div>`
 }
