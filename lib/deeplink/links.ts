@@ -16,6 +16,7 @@ import { deepLinkConfig } from './config'
 const ALLOWED_TARGET_PATTERNS: RegExp[] = [
   /^\/feed\/?$/,
   /^\/post\/[A-Za-z0-9_-]+\/?$/,
+  /^\/groups\/[A-Za-z0-9_-]+\/post\/[A-Za-z0-9_-]+\/?$/,
   /^\/user\/[A-Za-z0-9_.-]+\/?$/,
   /^\/groups(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/marketplace(\/[A-Za-z0-9_-]+)?\/?$/,
