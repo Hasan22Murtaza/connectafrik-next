@@ -166,6 +166,18 @@ export async function formatPostsForClient(
     }
   }
 
+  let sharedPostIds = new Set<string>()
+  if (userId && filtered.length > 0) {
+    const { data: sharesRows } = await supabase
+      .from('shares')
+      .select('post_id')
+      .eq('user_id', userId)
+      .in('post_id', filtered.map((p: any) => p.id))
+    if (sharesRows) {
+      sharedPostIds = new Set(sharesRows.map((r: any) => r.post_id))
+    }
+  }
+
   const postIds = filtered.map((p: any) => p.id)
   const reactionsMap = new Map<string, { groups: Record<string, any>; totalCount: number }>()
   if (postIds.length > 0) {
@@ -316,6 +328,7 @@ export async function formatPostsForClient(
         : null,
       isLiked: likedPostIds.has(post.id),
       is_saved: userId ? savedPostIds.has(post.id) : false,
+      isShare: userId ? sharedPostIds.has(post.id) : false,
       is_following: userId && userId !== post.author_id ? followingSet.has(post.author_id) : false,
       reactions: reactionGroupsArray,
       reactions_total_count: postReactions?.totalCount ?? 0,

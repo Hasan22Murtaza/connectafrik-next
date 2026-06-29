@@ -25,6 +25,8 @@ export interface PostEngagementProps {
   sharesCount?: number
   viewsCount?: number
   showViews?: boolean
+  /** When true, the current user has already shared this post (highlights the Share action). */
+  isShared?: boolean
   onLike: (emoji?: string) => void
   onComment: () => void
   onShare: () => void
@@ -40,6 +42,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
   sharesCount = 0,
   viewsCount = 0,
   showViews = false,
+  isShared = false,
   onLike,
   onComment,
   onShare,
@@ -217,11 +220,19 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
             e.stopPropagation()
             onShare()
           }}
-          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-gray-500 hover:text-green-600 hover:bg-green-50 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium"
-          aria-label="Share post"
+          className={`flex flex-1 items-center justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium ${
+            isShared
+              ? 'text-green-600 hover:bg-green-50'
+              : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
+          }`}
+          aria-label={isShared ? 'Shared post' : 'Share post'}
+          aria-pressed={isShared}
         >
           <PiShareFatLight className="w-4 h-4" />
-          <span>Share</span>
+          <span>{isShared ? 'Shared' : 'Share'}</span>
+          {sharesCount > 0 && (
+            <span className="text-xs font-semibold">{sharesCount}</span>
+          )}
         </button>
       </div>
 

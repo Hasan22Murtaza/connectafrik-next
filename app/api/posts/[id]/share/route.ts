@@ -29,10 +29,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (shareError) return errorResponse(shareError.message, 400)
 
+    // Keep posts.shares_count in sync
+    let sharesCount: number | undefined
+    const { data: postRow } = await supabase
+      .from('posts')
+      .select('shares_count')
+      .eq('id', postId)
+      .single()
+
+    if (postRow) {
+      sharesCount = (postRow.shares_count || 0) + 1
+      await supabase
+        .from('posts')
+        .update({ shares_count: sharesCount })
+        .eq('id', postId)
+    }
+
     // Notify post author (fire-and-forget)
     notifyShareAuthor(supabase, user, postId).catch(() => {})
 
-    return jsonResponse({ success: true })
+    return jsonResponse({ success: true, shares_count: sharesCount })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
@@ -54,7 +70,23 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     if (error) return errorResponse(error.message, 400)
 
-    return jsonResponse({ success: true })
+    // Keep posts.shares_count in sync
+    let sharesCount: number | undefined
+    const { data: postRow } = await supabase
+      .from('posts')
+      .select('shares_count')
+      .eq('id', postId)
+      .single()
+
+    if (postRow) {
+      sharesCount = Math.max(0, (postRow.shares_count || 0) - 1)
+      await supabase
+        .from('posts')
+        .update({ shares_count: sharesCount })
+        .eq('id', postId)
+    }
+
+    return jsonResponse({ success: true, shares_count: sharesCount })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

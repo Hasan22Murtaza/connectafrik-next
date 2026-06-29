@@ -35,6 +35,8 @@ export interface Post {
   created_at: string
   isLiked?: boolean
   is_saved?: boolean
+  /** Current user has already shared this post */
+  isShare?: boolean
   canComment?: boolean
   canFollow?: boolean
   repost_of_id?: string | null
@@ -82,6 +84,7 @@ interface ReactionResponse {
 interface ShareResponse {
   success: boolean
   error?: string
+  shares_count?: number
 }
 
 export const usePosts = (category?: string, options?: UsePostsOptions) => {
@@ -227,7 +230,11 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
       if (response.success) {
         setPosts(prev => prev.map(p =>
           p.id === postId
-            ? { ...p, shares_count: p.shares_count + 1 }
+            ? {
+                ...p,
+                shares_count: response.shares_count ?? p.shares_count + 1,
+                isShare: true,
+              }
             : p
         ))
       }

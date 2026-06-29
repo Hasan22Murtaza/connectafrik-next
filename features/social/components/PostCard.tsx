@@ -57,6 +57,8 @@ interface Post {
   isLiked?: boolean;
   /** From API when user has bookmarked this post */
   is_saved?: boolean;
+  /** From API when the current user has already shared this post */
+  isShare?: boolean;
   is_following?: boolean;
   reactions?: Array<{
     type: string;
@@ -151,12 +153,17 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
   const [postSaved, setPostSaved] = useState(post.is_saved ?? false);
+  const [isShared, setIsShared] = useState(post.isShare ?? false);
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setPostSaved(post.is_saved ?? false);
   }, [post.id, post.is_saved]);
+
+  useEffect(() => {
+    setIsShared(post.isShare ?? false);
+  }, [post.id, post.isShare]);
 
   useEffect(() => {
     setIsContentExpanded(false);
@@ -1250,9 +1257,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         sharesCount={post.shares_count}
         viewsCount={post.views_count}
         showViews={!!(post.media_urls && post.media_urls.some((url) => isVideoFile(url)))}
+        isShared={isShared}
         onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
         onComment={() => setShowInlineComments(prev => !prev)}
-        onShare={() => onShare(post.id)}
+        onShare={() => {
+          setIsShared(true);
+          onShare(post.id);
+        }}
         onUserClick={(username) => router.push(`/user/${username}`)}
         postId={post.id}
       />

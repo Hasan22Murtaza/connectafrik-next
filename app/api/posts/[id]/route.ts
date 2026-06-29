@@ -44,6 +44,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     let isLiked = false
     let is_saved = false
+    let isShare = false
     if (userId) {
       const { data: reactionData } = await supabase
         .from('post_reactions')
@@ -61,6 +62,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .eq('user_id', userId)
         .maybeSingle()
       is_saved = !!saveRow
+
+      const { data: shareRow } = await supabase
+        .from('shares')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .maybeSingle()
+      isShare = !!shareRow
     }
 
     const reactionsByType: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }> = {}
@@ -103,15 +112,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const reactions = Object.values(reactionsByType).sort((a, b) => b.count - a.count)
 
-    // Increment view count (non-blocking, skip for post author)
+    // Increment view count once per user. Skip the post author, and skip if the
+    // same user has already been counted as a viewer before (e.g. re-watching the
+    // same video) so repeat views don't inflate views_count.
+    let countedNewView = false
     if (userId && userId !== post.author_id) {
       const svc = createServiceClient()
-      svc.from('posts')
-        .update({ views_count: (post.views_count || 0) + 1 })
-        .eq('id', postId)
-        .then(({ error: viewErr }) => {
-          if (viewErr) console.error('Failed to increment views:', viewErr.message)
-        })
+
+      const { count: priorViews } = await svc
+        .from('user_events')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('post_id', postId)
+        .eq('event_type', 'view')
+
+      if ((priorViews ?? 0) === 0) {
+        countedNewView = true
+        svc.from('posts')
+          .update({ views_count: (post.views_count || 0) + 1 })
+          .eq('id', postId)
+          .then(({ error: viewErr }) => {
+            if (viewErr) console.error('Failed to increment views:', viewErr.message)
+          })
+      }
     }
 
     return jsonResponse({
@@ -128,7 +151,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           ? post.comments[0].count
           : post.comments_count,
         shares_count: post.shares_count,
-        views_count: post.views_count + (userId && userId !== post.author_id ? 1 : 0),
+        views_count: post.views_count + (countedNewView ? 1 : 0),
         location: post.location,
         background_id: post.background_id ?? null,
         created_at: post.created_at,
@@ -141,6 +164,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         } : null,
         isLiked,
         is_saved,
+        isShare,
         reactions,
         reactions_total_count: reactionsTotalCount,
       },
@@ -235,6 +259,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           country: post.author.country,
         } : null,
         isLiked: false,
+        isShare: false,
       },
     })
   } catch (error: any) {

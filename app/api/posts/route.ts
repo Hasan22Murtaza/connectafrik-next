@@ -145,6 +145,7 @@ export async function POST(request: NextRequest) {
           country: post.author.country,
         } : null,
         isLiked: false,
+        isShare: false,
       },
     }, 201)
   } catch (error: any) {
