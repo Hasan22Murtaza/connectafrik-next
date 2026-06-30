@@ -15,7 +15,7 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
   onUploadComplete,
   onUploadStart,
   onUploadError,
-  maxSizeMB = 500, // 500MB default max
+  maxSizeMB = 500,
   className = ''
 }) => {
   const { uploadFile, uploading } = useFileUpload()
@@ -30,8 +30,8 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
     'video/mp4',
     'video/webm',
     'video/ogg',
-    'video/quicktime', // .mov
-    'video/x-msvideo', // .avi
+    'video/quicktime',
+    'video/x-msvideo',
   ]
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -52,12 +52,10 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
   }, [])
 
   const validateFile = (file: File): string | null => {
-    // Check file type
     if (!acceptedFormats.includes(file.type)) {
       return 'Please upload a valid video file (MP4, WebM, OGG, MOV, AVI)'
     }
 
-    // Check file size
     const maxSizeBytes = maxSizeMB * 1024 * 1024
     if (file.size > maxSizeBytes) {
       return `File size exceeds ${maxSizeMB}MB limit. Your file is ${formatFileSize(file.size)}`
@@ -75,7 +73,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
   }
 
   const handleFileSelect = useCallback((file: File) => {
-    // Validate file
     const error = validateFile(file)
     if (error) {
       setUploadError(error)
@@ -86,7 +83,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
     setSelectedFile(file)
     setUploadError(null)
 
-    // Create preview URL
     const url = URL.createObjectURL(file)
     setPreviewUrl(url)
   }, [maxSizeMB])
@@ -120,24 +116,13 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
     }
 
     try {
-      // Simulate progress for better UX
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) {
-            clearInterval(progressInterval)
-            return 90
-          }
-          return prev + 10
-        })
-      }, 500)
-
       const result = await uploadFile(selectedFile, {
         bucket: 'post-videos',
-        compress: false, // Don't compress videos
-        maxSize: maxSizeMB * 1024 * 1024
+        compress: false,
+        maxSize: maxSizeMB * 1024 * 1024,
+        onProgress: ({ percent }) => setProgress(percent),
       })
 
-      clearInterval(progressInterval)
       setProgress(100)
 
       if (result.error) {
@@ -150,11 +135,9 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
 
       toast.success('Video uploaded successfully!')
       
-      // Extract key from URL for compatibility
       const key = result.url.split('/').pop() || 'unknown'
       onUploadComplete(result.url, key)
 
-      // Cleanup
       setTimeout(() => {
         handleCancel()
       }, 1000)
@@ -232,7 +215,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Video Preview */}
           <div className="relative bg-black rounded-lg overflow-hidden">
             <video
               src={previewUrl!}
@@ -249,7 +231,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
             )}
           </div>
 
-          {/* File Info */}
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-3">
               <Film className="w-5 h-5 text-primary-600" />
@@ -267,7 +248,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
             )}
           </div>
 
-          {/* Upload Progress */}
           {uploading && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
@@ -283,7 +263,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
             </div>
           )}
 
-          {/* Error Message */}
           {uploadError && (
             <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
               <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -291,7 +270,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
             </div>
           )}
 
-          {/* Action Buttons */}
           {!uploading && progress !== 100 && (
             <div className="flex space-x-3">
               <button
@@ -309,7 +287,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
             </div>
           )}
 
-          {/* Uploading State */}
           {uploading && (
             <div className="flex items-center justify-center space-x-2 py-2 text-gray-600">
               <Loader className="w-4 h-4 animate-spin" />
