@@ -120,7 +120,7 @@ const Header: React.FC<HeaderProps> = ({
       <header className="sticky top-0 z-50 bg-surface shadow-header">
         <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 overflow-visible">
           <div className="flex items-center h-14 sm:h-16 justify-between gap-2 w-full">
-            <div className="flex items-center w-65 xl:w-80 2xl:w-[24rem]">
+            <div className="flex items-center ">
             {/* Logo - Pinned to left */}
             <Link href="/" className="flex-shrink-0 ">
               <img src="/assets/images/logo_2.png" alt="" className="w-16" />
@@ -388,7 +388,7 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
                 </>
               ) : (
-                <div className="flex items-center space-x-2 sm:space-x-4 pr-1 sm:pr-4 sm:border-r border-0 border-border-subtle">
+                <div className="flex items-center space-x-2 sm:space-x-4 pr-1  border-0 border-border-subtle">
                   <Link
                     href="/signin"
                     className="btn-secondary !px-3 sm:px-5 sm:text-base text-sm"
