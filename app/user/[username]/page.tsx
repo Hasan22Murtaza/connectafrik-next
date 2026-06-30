@@ -43,13 +43,13 @@ interface PostWithAuthor {
 type TabId = 'posts' | 'about' | 'photos' | 'friends' | 'reels'
 type FriendStatus = 'none' | 'pending_sent' | 'pending_received' | 'friends'
 
-/** Same as API `resolve-user-request` — path segment may be username or profile `id`. */
+/** Profile routes are keyed by the user's profile `id` (UUID). */
 const PROFILE_ROUTE_UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * Route param (`[username]`) may be a handle or `user_id` (UUID). It can also be over-encoded
- * (`%2520`). Decode until stable; normalize UUID to lowercase for stable lookups.
+ * Route param holds a profile `id` (UUID). It can be over-encoded (`%2520`);
+ * decode until stable and normalize a UUID to lowercase for stable lookups.
  */
 function normalizeProfileRouteSegment(raw: string): string {
   let s = raw
@@ -152,7 +152,7 @@ const UserProfilePage: React.FC = () => {
   const userIdQuery =
     (searchParams.get('user_id')?.trim() || searchParams.get('userId')?.trim()) ?? ''
 
-  /** Username or profile UUID for `/api/users/:identifier/...`. Query `user_id` / `userId` wins when it is a valid UUID. */
+  /** Profile UUID for `/api/users/:id/...`. Query `user_id` / `userId` wins when it is a valid UUID. */
   const profileIdentifier = useMemo(() => {
     if (userIdQuery && PROFILE_ROUTE_UUID_RE.test(userIdQuery)) return userIdQuery.toLowerCase()
     if (rawSegment) return normalizeProfileRouteSegment(rawSegment)
@@ -791,7 +791,7 @@ const UserProfilePage: React.FC = () => {
                 <p className="text-[13px] text-content-secondary mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
                 <div className="grid grid-cols-3 gap-2">
                   {mutualFriends.slice(0, 6).map((f) => (
-                    <button key={f.user_id} onClick={() => router.push(`/user/${f.username || f.user_id}`)} className="text-left group focus:outline-none">
+                    <button key={f.user_id} onClick={() => router.push(`/user/${f.user_id}`)} className="text-left group focus:outline-none">
                       <div className="aspect-square rounded-lg overflow-hidden bg-surface-secondary">
                         {f.avatar_url
                           ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover group-hover:brightness-95 transition" />

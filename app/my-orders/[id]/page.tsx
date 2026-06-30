@@ -743,7 +743,7 @@ const statusColor = deliveryStatus
                     <div>
                       <p className="font-medium text-content">{otherParty.full_name || otherParty.username}</p>
                       <Link
-                        href={`/user/${otherParty.username}`}
+                        href={`/user/${otherParty.id}`}
                         className="text-sm text-primary-600 hover:text-primary-700"
                       >
                         @{otherParty.username}

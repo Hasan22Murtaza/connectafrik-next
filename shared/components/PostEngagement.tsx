@@ -30,7 +30,7 @@ export interface PostEngagementProps {
   onLike: (emoji?: string) => void
   onComment: () => void
   onShare: () => void
-  onUserClick?: (username: string) => void
+  onUserClick?: (userId: string) => void
   postId?: string
   reactionsEndpoint?: string
 }

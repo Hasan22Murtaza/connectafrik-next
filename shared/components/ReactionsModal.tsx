@@ -22,7 +22,7 @@ export interface ReactionsModalProps {
   isOpen: boolean
   onClose: () => void
   reactionGroups: ReactionsModalGroup[]
-  onUserClick?: (username: string) => void
+  onUserClick?: (userId: string) => void
   /** API endpoint for paginated reactions, e.g. '/api/posts/{id}/reaction' */
   reactionsEndpoint?: string
   /** Use native emoji for tabs/badges (chat messages) instead of reaction icons */
@@ -251,8 +251,8 @@ const ReactionsModal: React.FC<ReactionsModalProps> = ({
                     key={user.id}
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
                     onClick={() => {
-                      if (user.username && onUserClick) {
-                        onUserClick(user.username)
+                      if (user.id && onUserClick) {
+                        onUserClick(user.id)
                       }
                       onClose()
                     }}

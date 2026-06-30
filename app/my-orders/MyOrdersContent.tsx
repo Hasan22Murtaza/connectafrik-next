@@ -35,11 +35,13 @@ interface Order {
   status: string;
   created_at: string;
   seller?: {
+    id: string;
     full_name: string;
     username: string;
     avatar_url: string | null;
   };
   buyer?: {
+    id: string;
     full_name: string;
     username: string;
     avatar_url: string | null;
@@ -328,14 +330,14 @@ export function MyOrdersContent() {
                     {isSale ? "Buyer" : "Seller"}:
                   </span>
                   <span
-                    className={`text-xs text-content ${otherParty?.username
+                    className={`text-xs text-content ${otherParty?.id
                         ? "hover:text-primary-600 hover:underline cursor-pointer"
                         : ""
                       }`}
                     onClick={(e) => {
-                      if (!otherParty?.username) return;
+                      if (!otherParty?.id) return;
                       e.stopPropagation();
-                      router.push(`/user/${otherParty.username}`);
+                      router.push(`/user/${otherParty.id}`);
                     }}
                   >
                     {otherParty?.full_name || otherParty?.username || "Unknown"}
@@ -444,14 +446,14 @@ export function MyOrdersContent() {
                 </div>
               )}
               <span
-                className={`text-xs text-content ${otherParty?.username
+                className={`text-xs text-content ${otherParty?.id
                     ? "hover:text-primary-600 hover:underline cursor-pointer"
                     : ""
                   }`}
                 onClick={(e) => {
-                  if (!otherParty?.username) return;
+                  if (!otherParty?.id) return;
                   e.stopPropagation();
-                  router.push(`/user/${otherParty.username}`);
+                  router.push(`/user/${otherParty.id}`);
                 }}
               >
                 {otherParty?.full_name || otherParty?.username || "Unknown"}

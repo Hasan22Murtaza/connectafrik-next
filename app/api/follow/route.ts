@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
           type: 'follow',
           follower_id: user.id,
           follower_name,
-          url: `/user/${followerProfile?.username || user.id}`,
+          url: `/user/${user.id}`,
         },
       })
     }
@@ -123,7 +123,7 @@ export async function DELETE(request: NextRequest) {
           type: 'unfollow',
           follower_id: user.id,
           follower_name,
-          url: `/user/${followerProfile?.username || user.id}`,
+          url: `/user/${user.id}`,
         },
       })
     }

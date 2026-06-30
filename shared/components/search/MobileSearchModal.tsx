@@ -105,7 +105,7 @@ const MobileSearchModal: React.FC<MobileSearchModalProps> = ({ isOpen, onClose }
                   {searchResults.users.map((user) => (
                     <Link
                       key={user.id}
-                      href={`/user/${user.username}`}
+                      href={`/user/${user.id}`}
                       onClick={handleClose}
                       className="flex items-center px-4 py-3 hover:bg-surface-hover transition-colors"
                     >

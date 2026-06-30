@@ -507,7 +507,7 @@ const FriendsPage: React.FC = () => {
                           className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
-                          <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                          <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
                             <div className="w-full aspect-square bg-surface-secondary relative">
                               {request.requester?.avatar_url ? (
                                 <img
@@ -525,7 +525,7 @@ const FriendsPage: React.FC = () => {
 
                           {/* Content */}
                           <div className="p-4">
-                            <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                            <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
                               <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {request.requester?.full_name || "Unknown User"}
                               </h3>
@@ -605,7 +605,7 @@ const FriendsPage: React.FC = () => {
                           className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
-                          <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                          <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
                             <div className="w-full aspect-square bg-surface-secondary relative">
                               {suggestion.avatar_url ? (
                                 <img
@@ -623,7 +623,7 @@ const FriendsPage: React.FC = () => {
 
                           {/* Content */}
                           <div className="p-4">
-                            <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                            <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
                               <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {suggestion.full_name || "Unknown User"}
                               </h3>
@@ -695,7 +695,7 @@ const FriendsPage: React.FC = () => {
                       className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
-                      <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                      <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
                         <div className="w-full aspect-square bg-surface-secondary relative">
                           {request.requester?.avatar_url ? (
                             <img
@@ -713,7 +713,7 @@ const FriendsPage: React.FC = () => {
 
                       {/* Content */}
                       <div className="p-4">
-                        <Link href={`/user/${request.requester?.username || ''}`} className="block cursor-pointer">
+                        <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
                           <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                             {request.requester?.full_name || "Unknown User"}
                           </h3>
@@ -784,7 +784,7 @@ const FriendsPage: React.FC = () => {
                       className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
-                      <Link href={`/user/${friend.username || ''}`} className="block cursor-pointer">
+                      <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
                         <div className="w-full aspect-square bg-surface-secondary relative">
                           {friend.avatar_url ? (
                             <img
@@ -802,7 +802,7 @@ const FriendsPage: React.FC = () => {
 
                       {/* Content */}
                       <div className="p-4">
-                        <Link href={`/user/${friend.username || ''}`} className="block cursor-pointer">
+                        <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
                           <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
                             {friend.full_name || "Unknown User"}
                           </h3>
@@ -818,7 +818,7 @@ const FriendsPage: React.FC = () => {
 
                         {/* Action Button */}
                         <button
-                          onClick={() => router.push(`/user/${friend.username}`)}
+                          onClick={() => router.push(`/user/${friend.id}`)}
                           className="w-full btn-sm-primary text-sm"
                         >
                           View Profile
@@ -869,7 +869,7 @@ const FriendsPage: React.FC = () => {
                       className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
-                      <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                      <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
                         <div className="w-full aspect-square bg-surface-secondary relative">
                           {suggestion.avatar_url ? (
                             <img
@@ -887,7 +887,7 @@ const FriendsPage: React.FC = () => {
 
                       {/* Content */}
                       <div className="p-4">
-                        <Link href={`/user/${suggestion.username || ''}`} className="block cursor-pointer">
+                        <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
                           <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                             {suggestion.full_name || "Unknown User"}
                           </h3>
@@ -952,7 +952,7 @@ const FriendsPage: React.FC = () => {
                               key={friend.id}
                               className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
                             >
-                              <Link href={`/user/${friend.username || ""}`} className="shrink-0">
+                              <Link href={`/user/${friend.id || ""}`} className="shrink-0">
                                 {friend.avatar_url ? (
                                   <img
                                     src={friend.avatar_url}
@@ -966,7 +966,7 @@ const FriendsPage: React.FC = () => {
                                 )}
                               </Link>
                               <div className="flex-1 min-w-0">
-                                <Link href={`/user/${friend.username || ""}`}>
+                                <Link href={`/user/${friend.id || ""}`}>
                                   <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
                                     {friend.full_name}
                                   </h4>
@@ -1014,7 +1014,7 @@ const FriendsPage: React.FC = () => {
                                 key={friend.id}
                                 className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
                               >
-                                <Link href={`/user/${friend.username || ""}`} className="shrink-0">
+                                <Link href={`/user/${friend.id || ""}`} className="shrink-0">
                                   {friend.avatar_url ? (
                                     <img
                                       src={friend.avatar_url}
@@ -1028,7 +1028,7 @@ const FriendsPage: React.FC = () => {
                                   )}
                                 </Link>
                                 <div className="flex-1 min-w-0">
-                                  <Link href={`/user/${friend.username || ""}`}>
+                                  <Link href={`/user/${friend.id || ""}`}>
                                     <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
                                       {friend.full_name}
                                     </h4>
@@ -1078,7 +1078,7 @@ const FriendsPage: React.FC = () => {
                                 key={friend.id}
                                 className="bg-surface border border-gray-200 rounded-xl p-4 flex items-center space-x-4 hover:shadow-md transition-shadow"
                               >
-                                <Link href={`/user/${friend.username || ""}`} className="shrink-0">
+                                <Link href={`/user/${friend.id || ""}`} className="shrink-0">
                                   {friend.avatar_url ? (
                                     <img
                                       src={friend.avatar_url}
@@ -1092,7 +1092,7 @@ const FriendsPage: React.FC = () => {
                                   )}
                                 </Link>
                                 <div className="flex-1 min-w-0">
-                                  <Link href={`/user/${friend.username || ""}`}>
+                                  <Link href={`/user/${friend.id || ""}`}>
                                     <h4 className="font-semibold text-content truncate hover:text-primary-600 transition-colors">
                                       {friend.full_name}
                                     </h4>

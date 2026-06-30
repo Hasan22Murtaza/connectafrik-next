@@ -29,6 +29,10 @@ export async function GET(
       return jsonResponse({ data: { ...profile, threadId: null } })
     }
 
+    if (!UUID_RE.test(identifier)) {
+      return errorResponse('Invalid user id', 400)
+    }
+
     let viewerUserId: string | null = null
     try {
       const auth = await getAuthenticatedUser(request)
@@ -41,11 +45,11 @@ export async function GET(
       )
     }
 
-    const isUUID = UUID_RE.test(identifier)
-    const query = supabase.from('profiles').select('*')
-    const { data: profile, error } = isUUID
-      ? await query.eq('id', identifier).single()
-      : await query.eq('username', identifier).single()
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', identifier)
+      .single()
 
     if (error || !profile) {
       return errorResponse('User not found', 404)

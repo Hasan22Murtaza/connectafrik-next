@@ -208,7 +208,7 @@ produce Universal Links.
 | Purpose | URL |
 |---------|-----|
 | Open a post | `https://connectafrik.com/post/123` |
-| Open a profile | `https://connectafrik.com/user/amina` |
+| Open a profile | `https://connectafrik.com/user/3f1c2e8a-9b4d-4c7a-8e21-2a6f0b9d1c34` |
 | Open a group | `https://connectafrik.com/groups/42` |
 | Marketplace listing | `https://connectafrik.com/marketplace/987` |
 | Smart "open in app" | `https://connectafrik.com/open?target=/post/123` |

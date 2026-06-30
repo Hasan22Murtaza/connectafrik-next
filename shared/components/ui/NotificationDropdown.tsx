@@ -352,13 +352,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
         // Follow / Tap In → navigate to follower's profile
         case 'follow': {
-          console.log(data);
           const followerId = data.follower_id || data.actor_id || data.user_id
-          const username =  data.follower_name
           if (fallbackUrl) {
             router.push(fallbackUrl)
-          } else if (username) {
-            router.push(`/user/${username}`)
           } else if (followerId) {
             router.push(`/user/${followerId}`)
           }
@@ -368,11 +364,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
         case 'unfollow': {
           const followerId = data.follower_id || data.actor_id || data.user_id
-          const username = data.follower_username || data.username
           if (fallbackUrl) {
             router.push(fallbackUrl)
-          } else if (username) {
-            router.push(`/user/${username}`)
           } else if (followerId) {
             router.push(`/user/${followerId}`)
           } else {
@@ -415,11 +408,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
         case 'friend_request_accepted':
         case 'friend_request_confirmed': {
           const actorId = data.sender_id || data.actor_id || data.user_id
-          const username = data.username || data.actor_username || data.sender_name
           if (fallbackUrl) {
             router.push(fallbackUrl)
-          } else if (username) {
-            router.push(`/user/${username}`)
           } else if (actorId) {
             router.push(`/user/${actorId}`)
           }

@@ -317,7 +317,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
         onComment={() => onToggleComments ? onToggleComments() : onComment()}
         onShare={onShare}
-        onUserClick={(username) => router.push(`/user/${username}`)}
+        onUserClick={(userId) => router.push(`/user/${userId}`)}
         postId={post.id}
         reactionsEndpoint={`/api/groups/${post.group_id}/posts/${post.id}/reactions`}
       />

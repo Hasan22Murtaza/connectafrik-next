@@ -21,7 +21,7 @@ const UserResultItem: React.FC<{
   onClose: () => void
 }> = ({ user, onClose }) => (
   <Link
-    href={`/user/${user.username}`}
+    href={`/user/${user.id}`}
     onClick={onClose}
     className="flex items-center px-4 py-3 hover:bg-surface-hover transition-colors"
   >

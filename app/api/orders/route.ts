@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       ...order,
       seller: order.seller_full_name
         ? {
+            id: order.seller_id,
             username: order.seller_username,
             full_name: order.seller_full_name,
             avatar_url: order.seller_avatar_url,
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
         : undefined,
       buyer: order.buyer_full_name
         ? {
+            id: order.buyer_id,
             username: order.buyer_username,
             full_name: order.buyer_full_name,
             avatar_url: order.buyer_avatar_url,
