@@ -180,7 +180,7 @@ export default function AdminUserDetailPage() {
         action={
           <div className="flex items-center gap-2">
             <Link
-              href={`/user/${user.username}`}
+              href={`/user/${user.id}`}
               target="_blank"
               className={AP.btnSecondary}
             >

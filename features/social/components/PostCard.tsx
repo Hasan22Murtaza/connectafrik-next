@@ -429,7 +429,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
 
   // Navigate to user profile
   const handleUserProfileClick = () => {
-    router.push(`/user/${post.author.username}`);
+    router.push(`/user/${post.author.id}`);
   };
 
   // Handle edit post
@@ -1264,7 +1264,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           setIsShared(true);
           onShare(post.id);
         }}
-        onUserClick={(username) => router.push(`/user/${username}`)}
+        onUserClick={(userId) => router.push(`/user/${userId}`)}
         postId={post.id}
       />
 

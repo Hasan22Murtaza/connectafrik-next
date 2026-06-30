@@ -44,7 +44,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ friends, isOwnProfile }) => {
             {friends.map((f: any) => (
               <button
                 key={f.id}
-                onClick={() => router.push(`/user/${f.username}`)}
+                onClick={() => router.push(`/user/${f.id}`)}
                 className="flex items-center gap-3 p-2.5 sm:p-3 rounded-lg hover:bg-gray-50 transition text-left"
               >
                 <div className="w-[52px] h-[52px] sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">

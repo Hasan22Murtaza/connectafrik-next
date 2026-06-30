@@ -103,7 +103,7 @@ const createBirthdayNotification = async (
         birthday_username: birthdayUser.username,
         birthday_full_name: birthdayUser.full_name,
         when,
-        url: `/user/${birthdayUser.username}`,
+        url: `/user/${birthdayUser.id}`,
         birthday_dedupe_key: `${birthdayUser.id}:${when}:${getViewerLocalDateKey()}`,
       }
     })

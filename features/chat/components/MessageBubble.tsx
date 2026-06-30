@@ -985,7 +985,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         }
         reactionsEndpoint={reactionsEndpoint}
         reactionDisplay="emoji"
-        onUserClick={(username) => router.push(`/profile/${username}`)}
+        onUserClick={(userId) => router.push(`/user/${userId}`)}
       />
     </div>
   );

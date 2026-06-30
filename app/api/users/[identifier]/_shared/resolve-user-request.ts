@@ -28,15 +28,8 @@ export async function resolveOwnerId(
   supabase: SupabaseClient,
   identifier: string
 ): Promise<string | null> {
-  if (UUID_RE.test(identifier)) {
-    const { data } = await supabase.from('profiles').select('id').eq('id', identifier).maybeSingle()
-    return data?.id ?? null
-  }
-  const { data } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('username', identifier)
-    .maybeSingle()
+  if (!UUID_RE.test(identifier)) return null
+  const { data } = await supabase.from('profiles').select('id').eq('id', identifier).maybeSingle()
   return data?.id ?? null
 }
 

@@ -24,9 +24,9 @@ const ReactionTooltip: React.FC<ReactionTooltipProps> = ({ users, isVisible }) =
       <ul className="space-y-1">
         {users.map((user) => (
           <li key={user.id}>
-            {user.username ? (
+            {user.id ? (
               <Link
-                href={`/user/${user.username}`}
+                href={`/user/${user.id}`}
                 className="hover:underline cursor-pointer block"
               >
                 {user.full_name || user.username}

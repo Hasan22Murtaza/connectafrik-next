@@ -98,7 +98,7 @@ function PartyCard({
                 {party.full_name || party.username}
               </p>
               <Link
-                href={`/user/${party.username}`}
+                href={`/user/${party.id}`}
                 target="_blank"
                 className="text-xs text-primary-600 hover:text-primary-700"
               >

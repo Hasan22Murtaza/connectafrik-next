@@ -458,33 +458,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     presentUserIds,
   ]);
 
-  /** `/user/[username]` accepts handle, display name, or profile id (see user profile page). */
+  /** `/user/[id]` is keyed by the peer's profile id. */
   const peerProfileRouteSegment = useMemo(() => {
     if (isGroupThread) return null;
-    if (isSelfChat) {
-      if (!currentUser?.id) return null;
-      const m = members.find((mem) => mem.id === currentUser.id);
-      if (m?.username?.trim()) return m.username.trim();
-      return currentUser.id;
-    }
-    if (!primaryParticipant?.id) return null;
-    const fromUsername =
-      primaryMember?.username?.trim() ||
-      String(
-        (primaryParticipant as { username?: string | null }).username ?? ""
-      ).trim();
-    if (fromUsername) return fromUsername;
-    const fromName = primaryParticipant.name?.trim();
-    if (fromName) return fromName;
-    return primaryParticipant.id;
-  }, [
-    isGroupThread,
-    isSelfChat,
-    currentUser?.id,
-    primaryParticipant,
-    primaryMember?.username,
-    members,
-  ]);
+    if (isSelfChat) return currentUser?.id ?? null;
+    return primaryParticipant?.id ?? null;
+  }, [isGroupThread, isSelfChat, currentUser?.id, primaryParticipant?.id]);
 
   const [draft, setDraft] = useState("");
   

@@ -241,11 +241,8 @@ const NotificationsPage: React.FC = () => {
         case 'follow':
         case 'unfollow': {
           const followerId = data.follower_id || data.actor_id || data.user_id
-          const username = data.follower_username || data.username || data.follower_name
           if (fallbackUrl) {
             router.push(fallbackUrl)
-          } else if (username) {
-            router.push(`/user/${username}`)
           } else if (followerId) {
             router.push(`/user/${followerId}`)
           } else {
@@ -280,11 +277,8 @@ const NotificationsPage: React.FC = () => {
         case 'friend_request_accepted':
         case 'friend_request_confirmed': {
           const actorId = data.sender_id || data.actor_id || data.user_id
-          const username = data.username || data.actor_username || data.sender_name
           if (fallbackUrl) {
             router.push(fallbackUrl)
-          } else if (username) {
-            router.push(`/user/${username}`)
           } else if (actorId) {
             router.push(`/user/${actorId}`)
           }
