@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Volume2, VolumeX } from 'lucide-react'
+import { Maximize2, Volume2, VolumeX } from 'lucide-react'
 import { useFeedVideoAutoplay } from '@/features/social/context/FeedVideoAutoplayContext'
 
 type FeedPostVideoLayout = 'single' | 'grid'
@@ -11,6 +11,8 @@ interface FeedPostVideoProps {
   src: string
   layout: FeedPostVideoLayout
   altIndex: number
+  /** Called when the user clicks the video to play it in a big/fullscreen player. */
+  onExpand?: (src: string) => void
 }
 
 export const FeedPostVideo: React.FC<FeedPostVideoProps> = ({
@@ -18,6 +20,7 @@ export const FeedPostVideo: React.FC<FeedPostVideoProps> = ({
   src,
   layout,
   altIndex,
+  onExpand,
 }) => {
   const autoplay = useFeedVideoAutoplay()
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,6 +57,14 @@ export const FeedPostVideo: React.FC<FeedPostVideoProps> = ({
       ? 'relative h-full w-full min-h-0 bg-black'
       : 'relative w-full bg-black'
 
+  const handleExpand = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onExpand?.(src)
+    },
+    [onExpand, src]
+  )
+
   return (
     <div
       ref={containerRef}
@@ -67,13 +78,24 @@ export const FeedPostVideo: React.FC<FeedPostVideoProps> = ({
         loop
         playsInline
         preload="metadata"
-        className={videoClassName}
+        className={`${videoClassName}${onExpand ? ' cursor-pointer' : ''}`}
         aria-label={`Post video ${altIndex + 1}`}
+        onClick={onExpand ? handleExpand : undefined}
         onError={(e) => {
           const target = e.target as HTMLVideoElement
           target.style.display = 'none'
         }}
       />
+      {onExpand && (
+        <button
+          type="button"
+          onClick={handleExpand}
+          className="absolute bottom-3 left-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+          aria-label="Play video in full screen"
+        >
+          <Maximize2 className="h-4 w-4" aria-hidden />
+        </button>
+      )}
       <button
         type="button"
         onClick={toggleMute}
