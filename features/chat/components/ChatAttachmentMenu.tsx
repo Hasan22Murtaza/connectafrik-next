@@ -59,13 +59,13 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
   };
 
   const menuRowClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-2xl px-2 py-1 text-left text-sm text-content transition-colors hover:bg-surface-hover";
+    "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-content transition-colors hover:bg-surface-hover";
 
   return (
     <>
       {open ? (
         <div
-          className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-2xl border border-border bg-surface p-1 py-1.5 shadow-xl"
+          className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-lg border border-border bg-surface p-1 py-1.5 shadow-xl"
           role="menu"
           aria-label="Attach"
           onMouseDown={stopMenuPointerBubble}

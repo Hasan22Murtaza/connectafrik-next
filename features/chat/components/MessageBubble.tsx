@@ -182,32 +182,39 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   selectionMode = false,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
-  const [menuPlacement, setMenuPlacement] = useState<"above" | "below">("below");
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [showQuickReactions, setShowQuickReactions] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState<"above" | "below" | "side">("below");
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [showReactionPicker, setShowReactionPicker] = useState(false);
   const reactionPickerCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quickReactionsRef = useRef<HTMLDivElement | null>(null);
   const bubbleBlockRef = useRef<HTMLDivElement | null>(null);
   const messageMenuRef = useRef<HTMLDivElement | null>(null);
   const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({});
   const [showReactionsModal, setShowReactionsModal] = useState(false);
   const [reactionModalGroups, setReactionModalGroups] = useState<ReactionsModalGroup[]>([]);
 
-  const router = useRouter(); 
+  const router = useRouter();
   const MENU_VIEWPORT_GAP = 8;
   /** Conservative height for reactions + overflow menu so we pick above/below before paint. */
   const ESTIMATED_MENU_HEIGHT = 320;
   const MESSAGE_PREVIEW_LIMIT = 220;
 
-  const computeMenuPlacement = useCallback((): "above" | "below" => {
+  const computeMenuPlacement = useCallback((): "above" | "below" | "side" => {
     const el = bubbleBlockRef.current;
     if (!el) return "below";
     const rect = el.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom - MENU_VIEWPORT_GAP;
     const spaceAbove = rect.top - MENU_VIEWPORT_GAP;
+    const spaceRight = window.innerWidth - rect.right - MENU_VIEWPORT_GAP;
+    const spaceLeft = rect.left - MENU_VIEWPORT_GAP;
+
     if (spaceBelow >= ESTIMATED_MENU_HEIGHT) return "below";
     if (spaceAbove >= ESTIMATED_MENU_HEIGHT) return "above";
+
+    if (spaceRight >= 220 && spaceLeft >= 220) return "side";
     return spaceBelow >= spaceAbove ? "below" : "above";
   }, []);
 
@@ -229,19 +236,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     const el = bubbleBlockRef.current;
     const menuEl = messageMenuRef.current;
     if (!el || !menuEl) return;
+
     const rect = el.getBoundingClientRect();
     const menuHeight = menuEl.getBoundingClientRect().height;
     const spaceBelow = window.innerHeight - rect.bottom - MENU_VIEWPORT_GAP;
     const spaceAbove = rect.top - MENU_VIEWPORT_GAP;
+    const spaceRight = window.innerWidth - rect.right - MENU_VIEWPORT_GAP;
+    const spaceLeft = rect.left - MENU_VIEWPORT_GAP;
     const fitsBelow = spaceBelow >= menuHeight;
     const fitsAbove = spaceAbove >= menuHeight;
 
     setMenuPlacement((prev) => {
-      if (prev === "below" && !fitsBelow && (fitsAbove || spaceAbove >= spaceBelow)) return "above";
-      if (prev === "above" && !fitsAbove && (fitsBelow || spaceBelow > spaceAbove)) return "below";
-      return prev;
+      if (fitsBelow) return "below";
+      if (fitsAbove) return "above";
+      if (spaceRight >= 220 && spaceLeft >= 220) return "side";
+      return prev === "below" ? "above" : prev === "above" ? "below" : "below";
     });
   }, [showMenu, showReactionPicker]);
+
+  useLayoutEffect(() => {
+    if (!showQuickReactions) return;
+    setMenuPlacement(computeMenuPlacement());
+    const el = bubbleBlockRef.current;
+    const quickEl = quickReactionsRef.current;
+    if (!el || !quickEl) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - MENU_VIEWPORT_GAP;
+    const spaceAbove = rect.top - MENU_VIEWPORT_GAP;
+    // prefer below if there's room, otherwise above
+    setMenuPlacement((prev) => (spaceBelow >= 120 ? "below" : spaceAbove >= 120 ? "above" : prev));
+  }, [showQuickReactions, computeMenuPlacement]);
 
   const handleReactionPickerEnter = useCallback(() => {
     if (reactionPickerCloseTimer.current) {
@@ -303,15 +327,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   React.useEffect(() => {
-    if (!showMenu) return;
+    if (!showMenu && !showQuickReactions && !showReactionPicker) return;
     const handlePointerDown = (e: MouseEvent) => {
       const el = bubbleBlockRef.current;
       if (el && e.target instanceof Node && el.contains(e.target)) return;
       setShowMenu(false);
+      setShowQuickReactions(false);
+      setShowReactionPicker(false);
     };
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [showMenu]);
+  }, [showMenu, showQuickReactions, showReactionPicker]);
 
   const isDeleted = message.is_deleted;
   const isDeletedForMe = message.deleted_for?.includes(currentUserId) ?? false;
@@ -350,93 +376,93 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     const primary: ChatHeaderOptionsMenuItem[] = [
       ...(onReply
         ? [
-            {
-              id: "reply",
-              label: "Reply",
-              Icon: Reply,
-              onClick: () => {
-                handleReply();
-              },
+          {
+            id: "reply",
+            label: "Reply",
+            Icon: Reply,
+            onClick: () => {
+              handleReply();
             },
-          ]
+          },
+        ]
         : []),
       ...(canCopy
         ? [
-            {
-              id: "copy",
-              label: "Copy",
-              Icon: Copy,
-              onClick: () => {
-                void handleCopyText();
-              },
+          {
+            id: "copy",
+            label: "Copy",
+            Icon: Copy,
+            onClick: () => {
+              void handleCopyText();
             },
-          ]
+          },
+        ]
         : []),
       ...(canForward
         ? [
-            {
-              id: "forward",
-              label: "Forward",
-              Icon: Forward,
-              onClick: () => {
-                handleForwardClick();
-              },
+          {
+            id: "forward",
+            label: "Forward",
+            Icon: Forward,
+            onClick: () => {
+              handleForwardClick();
             },
-          ]
+          },
+        ]
         : []),
       ...(canEditMessage
         ? [
-            {
-              id: "edit",
-              label: "Edit",
-              Icon: Pencil,
-              onClick: () => {
-                startComposerEdit();
-              },
+          {
+            id: "edit",
+            label: "Edit",
+            Icon: Pencil,
+            onClick: () => {
+              startComposerEdit();
             },
-          ]
+          },
+        ]
         : [])
     ];
 
     const secondary: ChatHeaderOptionsMenuItem[] = [
-    
+
       ...(canShowInfo
         ? [
-            {
-              id: "message-info",
-              label: "Message info",
-              Icon: Info,
-              onClick: () => {
-                onShowInfo?.(message);
-                setShowMenu(false);
-              },
+          {
+            id: "message-info",
+            label: "Message info",
+            Icon: Info,
+            onClick: () => {
+              onShowInfo?.(message);
+              setShowMenu(false);
             },
-          ]
+          },
+        ]
         : []),
     ];
 
     const destructive: ChatHeaderOptionsMenuItem[] = [
-     
+
       ...(canDeleteForMe
         ? [
-            {
-              id: "delete-for-me",
-              label: "Delete for me",
-              Icon: Trash2,
-              onClick: () => handleDelete(false),
-            },
-          ]
+          {
+            id: "delete-for-me",
+            label: "Delete for me",
+            Icon: Trash2,
+            onClick: () => handleDelete(false),
+          },
+        ]
         : []),
       ...(canDeleteForEveryone
         ? [
-            {
-              id: "delete-for-everyone",
-              label: "Delete for everyone",
-              Icon: Trash2,
-              tone: "danger" as const,
-              onClick: () => handleDelete(true),
-            },
-          ]
+          {
+            id: "delete-for-everyone",
+            label: "Delete for everyone",
+            Icon: Trash2,
+            tone: "danger" as const,
+            onClick: () => handleDelete(true),
+          },
+        ]
         : []),
     ];
 
@@ -549,12 +575,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       [messageId]: !prev[messageId],
     }));
   };
-  
+
   const isExpanded = expandedMessages[message.id];
   const shouldTruncate =
     message.content &&
     message.content.length > MESSAGE_PREVIEW_LIMIT;
-  
+
   const displayText =
     shouldTruncate && !isExpanded
       ? `${message.content.slice(0, MESSAGE_PREVIEW_LIMIT)}...`
@@ -605,7 +631,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   return (
     <div
-      className={`relative flex items-end gap-2 ${hasReactions ? "mb-4" : "mb-2"} ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"}`}
+      className={`relative flex items-end gap-2 ${hasReactions ? "mb-8" : "mb-2"} ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -616,7 +642,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         setShowReactionPicker(false);
       }}
     >
-    
+
 
       <div
         className={`relative min-w-0 max-w-[min(78%,420px)] flex-1 ${isOwnMessage ? "ml-auto flex flex-col items-end" : "mr-auto flex flex-col items-start"}`}
@@ -634,43 +660,73 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         {message.reply_to_id ? (
           <div
-            className={`mb-1 max-w-full rounded-md border-l-[3px] p-2 ${
-              isOwnMessage ? "border-[#25d366] bg-[#b8e995]/50" : "border-[#25d366] bg-surface/90"
-            }`}
+            className={`mb-1 max-w-full rounded-md border-l-[3px] p-2 ${isOwnMessage ? "border-[#25d366] bg-[#b8e995]/50" : "border-[#25d366] bg-surface/90"
+              }`}
           >
             <div className="text-[11px] italic text-content-tertiary">Replying to a message</div>
           </div>
         ) : null}
 
         <div className="relative" ref={bubbleBlockRef}>
-          {isHovered && !isDeleted && onReact && !selectionMode ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleMessageMenu();
-              }}
-              className={`absolute top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-content-secondary shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-surface-hover ${
-                isOwnMessage ? "-left-9" : "-right-9"
-              }`}
-              aria-label="Add reaction"
-            >
-              <Smile className="h-4 w-4" />
-            </button>
-          ) : null}
 
-          {showMenu ? (
-            <div
-              ref={messageMenuRef}
-              className={`absolute z-[10001] flex flex-col items-stretch gap-1 ${isOwnMessage ? "right-0 items-end" : "left-0 items-start"} ${
-                menuPlacement === "below" ? "top-full mt-1" : "bottom-full mb-1"
+
+
+          <div
+            className={`relative inline-block max-w-full overflow-visible  rounded-br-[7.5px] rounded-bl-[7.5px] px-2.5 pb-1.5 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${forwardAccent} ${isOwnMessage
+                ? "after:pointer-events-none after:absolute after:-right-[7px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[#dcf8c6] rounded-tl-[7.5px]"
+                : "before:pointer-events-none before:absolute before:-left-[7px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-surface rounded-tr-[7.5px]"
+              } ${isComposerEditingThis
+                ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-[#e5ddd5]"
+                : ""
               }`}
-              onClick={(e) => e.stopPropagation()}
-              onMouseEnter={handleReactionPickerEnter}
-              onMouseLeave={handleReactionPickerLeave}
-            >
+          >
+            {isHovered && !isDeleted && (showOverflowMenu || onReact) && !selectionMode ? (
+              <div className="absolute right-0 top-0 z-20">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleMessageMenu();
+                  }}
+                  className=" flex h-5 w-5 items-center justify-center
+                      rounded-bl-[18px] rounded-tl-2xl rounded-br-[18px]
+                      bg-black/10 backdrop-blur-sm
+                      text-white
+                      transition
+                      hover:bg-black/20 hover:text-white/90"
+                  aria-label="Open message actions"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
+
+            {/* menu */}
+            {isHovered && !isDeleted && onReact && !selectionMode ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowQuickReactions((s) => !s);
+                  setShowMenu(false);
+                }}
+                className={`absolute top-1/2 -translate-y-1/2  flex h-7 w-7  items-center justify-center rounded-full bg-surface text-content-secondary shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-surface-hover ${isOwnMessage ? "-left-9" : "-right-9"
+                  }`}
+                aria-label="Add reaction"
+              >
+                <Smile className="h-4 w-4" />
+              </button>
+            ) : null}
+            {/* emojis */}
+            <div>
               {onReact ? (
-                <div className="flex items-center gap-0.5 rounded-full bg-surface px-1.5 py-1 shadow-[0_2px_5px_rgba(11,20,26,0.16)] ring-1 ring-black/[0.06]">
+                <div
+                  ref={quickReactionsRef}
+                  className={`absolute z-40 ${menuPlacement === 'above' ? 'bottom-1/2 mb-4' : menuPlacement === 'below' ? 'top-1/2 mt-4' : 'top-1/2 -translate-y-1/2'} flex items-center gap-0.5 rounded-full bg-surface px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] transform-gpu transition-all duration-150 ease-out ${showQuickReactions ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"
+                    } ${isOwnMessage ? "right-full mr-2" : "left-full ml-2"}`}
+                  style={{ willChange: "transform, opacity" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {WA_QUICK_REACTION_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
@@ -678,9 +734,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         onReact(message.id, emoji);
-                        setShowMenu(false);
+                        setShowQuickReactions(false);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-[22px] transition hover:bg-surface-hover"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-[22px] transition hover:bg-surface-hover noto-color-emoji-regular"
                       aria-label={`React ${emoji}`}
                     >
                       {emoji}
@@ -691,6 +747,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowReactionPicker((prev) => !prev);
+                      // keep quick reactions visible while picker is open
                     }}
                     className="flex h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
                     aria-label="More reactions"
@@ -700,7 +757,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </div>
               ) : null}
               {showReactionPicker && onReact ? (
-                <div className="flex flex-wrap gap-1 rounded-2xl bg-surface p-1.5 shadow-[0_2px_5px_rgba(11,20,26,0.16)] ring-1 ring-black/[0.06]">
+                <div
+                  className={`absolute z-50 ${menuPlacement === 'above' ? 'bottom-1/2 mb-4' : menuPlacement === 'below' ? 'top-1/2 mt-4' : 'top-1/2 -translate-y-1/2'} ${isOwnMessage ? 'right-full mr-2' : 'left-full ml-2'} noto-color-emoji-regular flex items-center gap-0.5 rounded-full bg-surface px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] transform-gpu transition-all duration-150 ease-out`}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={handleReactionPickerEnter}
+                  onMouseLeave={handleReactionPickerLeave}
+                >
                   {PICKER_REACTIONS.map((kind: ReactionKind) => (
                     <button
                       key={`extra-${kind}`}
@@ -711,269 +773,261 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         onReact(message.id, KIND_TO_EMOJI[kind]);
                         setShowMenu(false);
                       }}
-                      className="rounded-full p-0.5 transition hover:scale-110"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-[22px] transition hover:bg-surface-hover noto-color-emoji-regular"
                     >
                       <ReactionIcon type={kind} size={22} />
                     </button>
                   ))}
                 </div>
               ) : null}
-
-              {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
-                <div
-                  role="menu"
-                  className="min-w-[200px] max-w-[280px] overflow-hidden rounded-lg bg-surface py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08]"
-                >
-                  {messageOverflowMenuSections.map((section, sectionIdx) => (
-                    <Fragment key={section.id}>
-                      {sectionIdx > 0 ? <div role="separator" className="my-1 h-px bg-border-subtle" /> : null}
-                      {section.items.map((item) => {
-                        const { id, label, Icon, tone = "default", trailing, disabled, onClick } = item;
-                        const baseRow =
-                          "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug transition-colors";
-                        const rowClass = disabled
-                          ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
-                          : tone === "danger"
-                            ? `${baseRow} text-red-600 hover:bg-red-50`
-                            : `${baseRow} text-content hover:bg-surface-hover`;
-                        return (
-                          <button
-                            key={id}
-                            type="button"
-                            role="menuitem"
-                            disabled={disabled}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onClick();
-                            }}
-                            className={rowClass}
-                          >
-                            <Icon
-                              className={`h-[18px] w-[18px] shrink-0 ${
-                                disabled ? "text-content-tertiary" : tone === "danger" ? "text-red-600" : "text-content-secondary"
-                              }`}
-                              aria-hidden
-                            />
-                            <span className="min-w-0 flex-1">{label}</span>
-                            {trailing ? <span className="shrink-0">{trailing}</span> : null}
-                          </button>
-                        );
-                      })}
-                    </Fragment>
-                  ))}
-                </div>
-              ) : null}
             </div>
-          ) : null}
+
+            {showMenu ? (
+              <div
+                ref={messageMenuRef}
+                className={`absolute z-9999 flex flex-col items-stretch gap-1 ${isOwnMessage ? "right-full mr-1 items-end" : "left-full ml-1 items-start"
+                  } ${menuPlacement === "above"
+                    ? "bottom-full mb-2"
+                    : menuPlacement === "side"
+                      ? "top-4"
+                      : "top-4"
+                  }`}
+                onClick={(e) => e.stopPropagation()}
+                onMouseEnter={handleReactionPickerEnter}
+                onMouseLeave={handleReactionPickerLeave}
+              >
 
 
-            <div
-              className={`relative z-[1] inline-block max-w-full overflow-visible rounded-[7.5px] px-2.5 pb-1.5 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${forwardAccent} ${
-                isOwnMessage
-                  ? "after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[#dcf8c6]"
-                  : "before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-surface"
-              } ${
-                isComposerEditingThis
-                  ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-[#e5ddd5]"
-                  : ""
-              }`}
-            >
-              {isHovered && !isDeleted && (showOverflowMenu || onReact) && !selectionMode ? (
-                <div className="absolute right-1 top-1 z-20">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMessageMenu();
-                    }}
-                    className="flex h-5 w-5 items-center justify-center rounded-full bg-surface/90 text-content-secondary shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-surface-hover"
-                    aria-label="Open message actions"
+                {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
+                  <div
+                    role="menu"
+                    className="min-w-[200px] max-w-[280px] overflow-hidden rounded-lg bg-surface py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08]"
                   >
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ) : null}
-
-              {showForwardBadge && !isDeleted ? (
-                <div className="mb-1 flex items-center gap-1 pr-1">
-                  <ChevronsRight
-                    className="h-3.5 w-3.5 shrink-0 text-content-tertiary"
-                    strokeWidth={2}
-                    aria-hidden
-                  />
-                  <span className="text-[12px] italic leading-snug text-content-tertiary">Forwarded</span>
-                </div>
-              ) : null}
-
-              {isDeleted ? (
-                <p className="pr-1 text-sm italic text-content-tertiary">This message was deleted</p>
-              ) : callPresentation ? (
-                <div className="flex min-w-0 items-start gap-2.5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
-                    {callPresentation.variant === "missed" ? (
-                      <PhoneMissed className="h-[22px] w-[22px] text-[#ea0038]" strokeWidth={2} aria-hidden />
-                    ) : isOwnMessage ? (
-                      <PhoneOutgoing className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
-                    ) : (
-                      <PhoneIncoming className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1 pt-0.5">
-                    <p className="text-[15px] font-medium leading-snug text-content">{callPresentation.title}</p>
-                    <p className="mt-0.5 text-[13px] leading-snug text-content-tertiary">{callPresentation.subtitle}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
-                    <div className="flex items-end justify-end gap-1">
-                      {showEditedBadge ? (
-                        <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
-                      ) : null}
-                      <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
-                        {format(new Date(message.created_at), "HH:mm")}
-                      </span>
-                      <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {message.attachments && message.attachments.length > 0 ? (
-                    <div className="mb-1 space-y-2">
-                      {message.attachments.map((att: ChatAttachment) => {
-                        if (att.type === "image") {
+                    {messageOverflowMenuSections.map((section, sectionIdx) => (
+                      <Fragment key={section.id}>
+                        {sectionIdx > 0 ? <div role="separator" className="my-1 h-px bg-border-subtle" /> : null}
+                        {section.items.map((item) => {
+                          const { id, label, Icon, tone = "default", trailing, disabled, onClick } = item;
+                          const baseRow =
+                            "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug transition-colors";
+                          const rowClass = disabled
+                            ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
+                            : tone === "danger"
+                              ? `${baseRow} text-red-600 hover:bg-red-50`
+                              : `${baseRow} text-content hover:bg-surface-hover`;
                           return (
-                            <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="block">
-                              <img
-                                src={att.url}
-                                alt={att.name}
-                                className="max-h-48 max-w-full cursor-pointer rounded-md object-cover transition-opacity hover:opacity-90"
-                                loading="lazy"
+                            <button
+                              key={id}
+                              type="button"
+                              role="menuitem"
+                              disabled={disabled}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onClick();
+                              }}
+                              className={rowClass}
+                            >
+                              <Icon
+                                className={`h-[18px] w-[18px] shrink-0 ${disabled ? "text-content-tertiary" : tone === "danger" ? "text-red-600" : "text-content-secondary"
+                                  }`}
+                                aria-hidden
                               />
-                            </a>
+                              <span className="min-w-0 flex-1">{label}</span>
+                              {trailing ? <span className="shrink-0">{trailing}</span> : null}
+                            </button>
                           );
-                        }
+                        })}
+                      </Fragment>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
-                        if (att.type === "video") {
-                          return (
-                            <video
-                              key={att.id}
-                              src={att.url}
-                              controls
-                              preload="metadata"
-                              className="max-h-48 max-w-full rounded-md"
-                            />
-                          );
-                        }
+            {showForwardBadge && !isDeleted ? (
+              <div className="mb-1 flex items-center gap-1 pr-1">
+                <ChevronsRight
+                  className="h-3.5 w-3.5 shrink-0 text-content-tertiary"
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                <span className="text-[12px] italic leading-snug text-content-tertiary">Forwarded</span>
+              </div>
+            ) : null}
 
-                        if (att.mimeType?.startsWith("audio/")) {
-                          return (
-                            <audio
-                              key={att.id}
-                              src={att.url}
-                              controls
-                              preload="metadata"
-                              className="w-full max-w-[min(100%,280px)]"
-                            />
-                          );
-                        }
-
-                        return (
-                          <a
-                            key={att.id}
-                            href={att.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`flex items-center gap-2 rounded-md p-2 transition-colors ${
-                              isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas hover:bg-surface-hover"
-                            }`}
-                          >
-                            <FileText className="h-5 w-5 shrink-0 text-content-secondary" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-medium text-content">{att.name}</p>
-                              <p className="text-[10px] text-content-tertiary">
-                                {att.size < 1024
-                                  ? `${att.size} B`
-                                  : att.size < 1048576
-                                    ? `${(att.size / 1024).toFixed(1)} KB`
-                                    : `${(att.size / 1048576).toFixed(1)} MB`}
-                              </p>
-                            </div>
-                            <Download className="h-4 w-4 shrink-0 text-content-secondary" />
-                          </a>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-
-                  {message.content ? (
-                    <div className="pr-1">
-                      <p className="break-words text-[14.2px] leading-[1.45] text-content whitespace-pre-wrap">
-                        {linkifyContent(displayText || "", isOwnMessage)}
-                      </p>
-
-                      {shouldTruncate ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(message.id)}
-                          className={`mt-1 text-[12px] font-medium hover:underline ${
-                            isOwnMessage ? "text-[#027eb5] hover:text-[#026aa1]" : "text-blue-600 hover:text-blue-800"
-                          }`}
-                        >
-                          {isExpanded ? "Read less" : "Read more"}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </>
-              )}
-
-              {!callPresentation ? (
-                <div className="mt-0.5 flex items-end justify-end gap-1 pl-6">
-                  <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
+            {isDeleted ? (
+              <p className="pr-1 text-sm italic text-content-tertiary">This message was deleted</p>
+            ) : callPresentation ? (
+              <div className="flex min-w-0 items-start gap-2.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
+                  {callPresentation.variant === "missed" ? (
+                    <PhoneMissed className="h-[22px] w-[22px] text-[#ea0038]" strokeWidth={2} aria-hidden />
+                  ) : isOwnMessage ? (
+                    <PhoneOutgoing className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
+                  ) : (
+                    <PhoneIncoming className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <p className="text-[15px] font-medium leading-snug text-content">{callPresentation.title}</p>
+                  <p className="mt-0.5 text-[13px] leading-snug text-content-tertiary">{callPresentation.subtitle}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
+                  <div className="flex items-end justify-end gap-1">
                     {showEditedBadge ? (
                       <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
                     ) : null}
                     <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
                       {format(new Date(message.created_at), "HH:mm")}
                     </span>
+                    <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
                   </div>
-                  <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
                 </div>
-              ) : null}
+              </div>
+            ) : (
+              <>
+                {message.attachments && message.attachments.length > 0 ? (
+                  <div className="mb-1 space-y-2">
+                    {message.attachments.map((att: ChatAttachment) => {
+                      if (att.type === "image") {
+                        return (
+                          <a key={att.id} href={att.url} target="_blank" rel="noopener noreferrer" className="block">
+                            <img
+                              src={att.url}
+                              alt={att.name}
+                              className=" max-h-80
+                                  max-w-lg
+                                  w-auto
+                                  h-auto
+                                  cursor-pointer
+                                  rounded-xl
+                                  object-contain
+                                  transition-opacity
+                                  hover:opacity-90"
+                              loading="lazy"
+                            />
+                          </a>
+                        );
+                      }
 
-              {hasReactions && !isDeleted ? (
-                <button
-                  type="button"
-                  role="group"
-                  aria-label="View message reactions"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void openReactionsModal();
-                  }}
-                  className={`absolute z-10 flex max-w-[min(100%,200px)] cursor-pointer items-center rounded-full bg-surface py-0.5 pl-1 pr-1.5 shadow-[0_1px_2px_rgba(11,20,26,0.14)] ring-1 ring-border-subtle transition hover:bg-surface-hover ${
-                    isOwnMessage
-                      ? "bottom-0 left-2 translate-y-1/2"
-                      : "bottom-0 right-2 translate-y-1/2"
-                  }`}
-                >
-                  {activeReactions.slice(0, 3).map((reaction, index) => (
-                    <span
-                      key={reaction.emoji}
-                      className={`flex shrink-0 items-center justify-center rounded-full p-px ${
-                        index > 0 ? "-ml-1" : ""
-                      }`}
-                      aria-hidden
-                    >
-                      <span className="text-[13px] leading-none">{reaction.emoji}</span>
-                    </span>
-                  ))}
-                  {reactionTotal > 1 ? (
-                    <span className="min-w-[10px] shrink-0 pl-0.5 text-[11px] font-normal tabular-nums leading-none text-content-tertiary">
-                      {reactionTotal}
-                    </span>
+                      if (att.type === "video") {
+                        return (
+                          <video
+                            key={att.id}
+                            src={att.url}
+                            controls
+                            preload="metadata"
+                            className="max-h-48 max-w-full rounded-md"
+                          />
+                        );
+                      }
+
+                      if (att.mimeType?.startsWith("audio/")) {
+                        return (
+                          <audio
+                            key={att.id}
+                            src={att.url}
+                            controls
+                            preload="metadata"
+                            className="w-full max-w-[min(100%,280px)]"
+                          />
+                        );
+                      }
+
+                      return (
+                        <a
+                          key={att.id}
+                          href={att.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex items-center gap-2 rounded-md p-2 transition-colors ${isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas hover:bg-surface-hover"
+                            }`}
+                        >
+                          <FileText className="h-5 w-5 shrink-0 text-content-secondary" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium text-content">{att.name}</p>
+                            <p className="text-[10px] text-content-tertiary">
+                              {att.size < 1024
+                                ? `${att.size} B`
+                                : att.size < 1048576
+                                  ? `${(att.size / 1024).toFixed(1)} KB`
+                                  : `${(att.size / 1048576).toFixed(1)} MB`}
+                            </p>
+                          </div>
+                          <Download className="h-4 w-4 shrink-0 text-content-secondary" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {message.content ? (
+                  <div className="pr-1">
+                    <p className="break-words text-[14.2px] leading-[1.45] text-content whitespace-pre-wrap">
+                      {linkifyContent(displayText || "", isOwnMessage)}
+                    </p>
+
+                    {shouldTruncate ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(message.id)}
+                        className={`mt-1 text-[12px] font-medium hover:underline ${isOwnMessage ? "text-[#027eb5] hover:text-[#026aa1]" : "text-blue-600 hover:text-blue-800"
+                          }`}
+                      >
+                        {isExpanded ? "Read less" : "Read more"}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            )}
+
+            {!callPresentation ? (
+              <div className="mt-0.5 flex items-end justify-end gap-1 pl-6">
+                <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
+                  {showEditedBadge ? (
+                    <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
                   ) : null}
-                </button>
-              ) : null}
-            </div>
+                  <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
+                    {format(new Date(message.created_at), "HH:mm")}
+                  </span>
+                </div>
+                <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
+              </div>
+            ) : null}
+
+            {hasReactions && !isDeleted ? (
+              <button
+                type="button"
+                role="group"
+                aria-label="View message reactions"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void openReactionsModal();
+                }}
+                className={`absolute z-10 flex max-w-[min(100%,200px)] cursor-pointer items-center rounded-full bg-surface p-1 shadow-[0_1px_2px_rgba(11,20,26,0.14)] ring-1 ring-border-subtle transition hover:bg-surface-hover noto-color-emoji-regular ${isOwnMessage
+                    ? "-bottom-4 right-2 "
+                    : "-bottom-4 left-2  "
+                  }`}
+              >
+                {activeReactions.slice(0, 3).map((reaction, index) => (
+                  <span
+                    key={reaction.emoji}
+                    className={`flex shrink-0 items-center justify-center rounded-full p-px ${index > 0 ? "-ml-0.5" : ""
+                      }`}
+                    aria-hidden
+                  >
+                    <span className="text-[13px] leading-none">{reaction.emoji}</span>
+                  </span>
+                ))}
+                {reactionTotal > 1 ? (
+                  <span className="min-w-[10px] shrink-0 pl-0.5 text-[11px] font-normal tabular-nums leading-none text-content-tertiary">
+                    {reactionTotal}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 

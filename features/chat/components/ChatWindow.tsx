@@ -1660,7 +1660,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }`}
     >
       <div
-        className={`flex items-center justify-between border-b border-border bg-surface-canvas p-2 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+        className={`flex items-center justify-between border-b border-border bg-surface-canvas px-3 py-2 sm:px-6 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
       >
         <div className="flex items-center space-x-3">
@@ -1742,6 +1742,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           )}
           {!canJoin && !isInCall && (
             <>
+          <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => handleStartCall("audio")}
@@ -1758,6 +1759,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <Video className="h-5 w-5" />
           </button>
+          </div>
             </>
           )}
 
@@ -1881,7 +1883,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       <div
         ref={messagesScrollRef}
-        className={`flex flex-col space-y-3 overflow-y-auto bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
+        className={`flex flex-col space-y-3 overflow-y-auto bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-6 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
           }`}
       >
         {isLoadingOlderMessages && (
@@ -1999,7 +2001,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
           </div>
         ) : replyingTo ? (
-          <div className="mb-2 flex items-start gap-2 rounded-lg bg-surface-secondary p-2 border-l-4 border-orange-500">
+          <div className="px-3 sm:px-10">
+          <div className="mb-2 flex items-start gap-2 rounded-lg bg-surface-secondary p-2  border-l-4 border-orange-500">
             <div className="flex-1 min-w-0">
               <div className="text-xs font-medium text-content-secondary mb-1">
                 Replying to {replyingTo.sender?.name || "Unknown"}
@@ -2018,6 +2021,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             >
               <X className="h-4 w-4" />
             </button>
+          </div>
           </div>
         ) : null}
 
