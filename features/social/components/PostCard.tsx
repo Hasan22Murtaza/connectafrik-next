@@ -10,6 +10,7 @@ import {
   BookmarkX,
   Repeat2,
   Globe,
+  Play,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
 import { apiClient, ApiError } from "@/lib/api-client";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
+import VideoViewer from "@/shared/components/ui/VideoViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
@@ -152,6 +154,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
+  const [videoViewerSrc, setVideoViewerSrc] = useState<string | null>(null);
   const [postSaved, setPostSaved] = useState(post.is_saved ?? false);
   const [isShared, setIsShared] = useState(post.isShare ?? false);
   const [isContentExpanded, setIsContentExpanded] = useState(false);
@@ -509,6 +512,11 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     setImageViewerOpen(true);
   };
 
+  // Open video viewer (big/fullscreen player) on video click
+  const handleVideoExpand = (url: string) => {
+    setVideoViewerSrc(url);
+  };
+
   // Get only image URLs for the viewer (exclude videos)
   const isImageFile = (url: string): boolean => {
     return /\.(jpg|jpeg|png|gif|webp|bmp|svg|jfif|avif)(\?|#|$)/i.test(url);
@@ -617,16 +625,24 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             src={url}
             layout={layout}
             altIndex={index}
+            onExpand={handleVideoExpand}
           />
         );
       }
       if (layout === "grid") {
         return (
-          <div className="relative h-full w-full min-h-0 bg-black">
+          <div
+            className="relative h-full w-full min-h-0 bg-black cursor-pointer group"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleVideoExpand(url);
+            }}
+          >
             <video
               src={url}
-              controls
-              className="absolute inset-0 h-full w-full object-cover"
+              muted
+              playsInline
+              className="absolute inset-0 h-full w-full object-cover pointer-events-none"
               preload="metadata"
               onError={(e) => {
                 const target = e.target as HTMLVideoElement;
@@ -635,22 +651,41 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             >
               Your browser does not support the video tag.
             </video>
+            <div className="absolute inset-0 flex items-center justify-center transition-colors group-hover:bg-black/20">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm">
+                <Play className="h-6 w-6 translate-x-0.5" aria-hidden />
+              </span>
+            </div>
           </div>
         );
       }
       return (
-        <video
-          src={url}
-          controls
-          className="block w-full h-auto max-h-[min(70dvh,560px)] bg-black"
-          preload="metadata"
-          onError={(e) => {
-            const target = e.target as HTMLVideoElement;
-            target.style.display = "none";
+        <div
+          className="relative w-full bg-black cursor-pointer group"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleVideoExpand(url);
           }}
         >
-          Your browser does not support the video tag.
-        </video>
+          <video
+            src={url}
+            muted
+            playsInline
+            className="block w-full h-auto max-h-[min(70dvh,560px)] bg-black pointer-events-none"
+            preload="metadata"
+            onError={(e) => {
+              const target = e.target as HTMLVideoElement;
+              target.style.display = "none";
+            }}
+          >
+            Your browser does not support the video tag.
+          </video>
+          <div className="absolute inset-0 flex items-center justify-center transition-colors group-hover:bg-black/20">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm">
+              <Play className="h-7 w-7 translate-x-0.5" aria-hidden />
+            </span>
+          </div>
+        </div>
       );
     }
 
@@ -1306,6 +1341,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           onClose={() => setImageViewerOpen(false)}
         />
       )}
+
+      {/* Video Viewer - big/fullscreen player */}
+      <VideoViewer
+        src={videoViewerSrc}
+        isOpen={!!videoViewerSrc}
+        onClose={() => setVideoViewerSrc(null)}
+      />
 
       {/* Inline Comments Section - Facebook style */}
       {showInlineComments && (

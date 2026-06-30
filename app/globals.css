@@ -560,3 +560,110 @@ button {
     transform: translateX(0);
   }
 }
+
+/* ─── Landing page motion utilities ─────────────────────────────────────── */
+@keyframes lp-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+.lp-animate-float {
+  animation: lp-float 6s ease-in-out infinite;
+}
+.lp-animate-float-slow {
+  animation: lp-float 9s ease-in-out infinite;
+}
+
+@keyframes lp-blob {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -40px) scale(1.1);
+  }
+  66% {
+    transform: translate(-25px, 25px) scale(0.92);
+  }
+}
+.lp-animate-blob {
+  animation: lp-blob 14s ease-in-out infinite;
+}
+
+@keyframes lp-gradient-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+.lp-animate-gradient {
+  background-size: 200% 200%;
+  animation: lp-gradient-pan 8s ease infinite;
+}
+
+@keyframes lp-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.lp-animate-marquee {
+  animation: lp-marquee 28s linear infinite;
+}
+
+@keyframes lp-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scroll-reveal: hidden until .is-visible is added by IntersectionObserver */
+.lp-reveal {
+  opacity: 0;
+}
+.lp-reveal.is-visible {
+  animation: lp-reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.lp-delay-1 {
+  animation-delay: 0.08s;
+}
+.lp-delay-2 {
+  animation-delay: 0.16s;
+}
+.lp-delay-3 {
+  animation-delay: 0.24s;
+}
+.lp-delay-4 {
+  animation-delay: 0.32s;
+}
+.lp-delay-5 {
+  animation-delay: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-animate-float,
+  .lp-animate-float-slow,
+  .lp-animate-blob,
+  .lp-animate-gradient,
+  .lp-animate-marquee,
+  .lp-reveal,
+  .lp-reveal.is-visible {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
