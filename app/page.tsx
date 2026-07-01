@@ -27,6 +27,8 @@ import {
   Send,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import Slider, { Settings } from "react-slick";
+
 
 /* ------------------------------------------------------------------ */
 /*  Content                                                            */
@@ -116,6 +118,14 @@ const testimonials = [
     initials: "ZD",
     color: "from-sky-500 to-blue-600",
   },
+   {
+    quote:
+      "I grew my small business through the marketplace in weeks. Selling to a community that gets me changed everything.",
+    name: "Zanele Dlamini",
+    role: "Seller, Johannesburg",
+    initials: "ZD",
+    color: "from-sky-500 to-blue-600",
+  },
 ];
 
 const faqs = [
@@ -141,6 +151,31 @@ const faqs = [
   },
 ];
 
+
+const settings: Settings = {
+  dots: true,
+  infinite: true,
+  speed: 500,
+  slidesToShow: 3,
+  slidesToScroll: 1,
+  autoplay: true,
+  autoplaySpeed: 3000,
+  arrows: true,
+  responsive: [
+    {
+      breakpoint: 1024,
+      settings: {
+        slidesToShow: 2,
+      },
+    },
+    {
+      breakpoint: 768,
+      settings: {
+        slidesToShow: 1,
+      },
+    },
+  ],
+};
 /* ------------------------------------------------------------------ */
 /*  Scroll-reveal helper                                               */
 /* ------------------------------------------------------------------ */
@@ -186,6 +221,12 @@ const Home: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
+  const users = [
+    { name: "Amara Okafor", avatarUrl: "/assets/images/avatar-1.png" },
+    { name: "Kwame Mensah", avatarUrl: "/assets/images/avatar-2.png" },
+    { name: "Zanele Dlamini", avatarUrl: "/assets/images/avatar-4.png" },
+     { name: "Zanele Dlamini", avatarUrl: "/assets/images/avatar-5.png" }
+  ];
   return (
     <div ref={rootRef} className="overflow-x-hidden">
       {/* ============================== HERO ============================== */}
@@ -196,7 +237,7 @@ const Home: React.FC = () => {
         <div className="absolute top-1/3 -right-24 -z-10 h-96 w-96 rounded-full bg-emerald-400/25 blur-3xl lp-animate-blob [animation-delay:3s]" />
         <div className="absolute -bottom-24 left-1/3 -z-10 h-96 w-96 rounded-full bg-sky-400/20 blur-3xl lp-animate-blob [animation-delay:6s]" />
 
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 pb-16 lg:pt-28 lg:pb-24">
+        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 mx-auto py-18 ">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             {/* Left: copy */}
             <div className="text-center lg:text-left">
@@ -258,17 +299,18 @@ const Home: React.FC = () => {
               <Reveal delay={4}>
                 <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row lg:justify-start justify-center">
                   <div className="flex -space-x-3">
-                    {[
-                      "from-orange-400 to-amber-500",
-                      "from-emerald-400 to-green-500",
-                      "from-sky-400 to-blue-500",
-                      "from-violet-400 to-purple-500",
-                    ].map((c, i) => (
-                      <div
-                        key={i}
-                        className={`h-10 w-10 rounded-full border-2 border-white bg-gradient-to-br ${c} dark:border-surface`}
-                      />
-                    ))}
+                 {users.map((user, i) => (
+  <div
+    key={i}
+    className="h-10 w-10 rounded-full border-2 border-white overflow-hidden dark:border-surface"
+  >
+    <img
+      src={user.avatarUrl}
+      alt={user.name}
+      className="h-full w-full object-cover"
+    />
+  </div>
+))}
                     <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-gray-900 text-xs font-semibold text-white dark:border-surface">
                       10k+
                     </div>
@@ -612,7 +654,7 @@ const Home: React.FC = () => {
             </p>
           </Reveal>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          {/* <div className="grid gap-6 md:grid-cols-3">
             {testimonials.map((t, i) => (
               <Reveal key={t.name} delay={((i % 3) + 1) as 1 | 2 | 3} className="h-full">
                 <figure className="flex h-full flex-col rounded-2xl border border-gray-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
@@ -639,7 +681,45 @@ const Home: React.FC = () => {
                 </figure>
               </Reveal>
             ))}
+          </div> */}
+          <Slider {...settings}>
+  {testimonials.map((t, i) => (
+    <div key={t.name} className="px-3">
+      <Reveal delay={((i % 3) + 1) as 1 | 2 | 3}>
+        <figure className="flex min-h-[300px] flex-col rounded-2xl border border-gray-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
+          <Quote className="h-8 w-8 text-orange-300" />
+
+          <blockquote className="mt-4 flex-1 text-gray-700">
+            "{t.quote}"
+          </blockquote>
+
+          <div className="mt-5 flex items-center gap-1 text-amber-400">
+            {[...Array(5)].map((_, s) => (
+              <Star key={s} className="h-4 w-4 fill-amber-400" />
+            ))}
           </div>
+
+          <figcaption className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-border">
+            <div
+              className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-sm font-bold text-white`}
+            >
+              {t.initials}
+            </div>
+
+            <div>
+              <div className="font-semibold text-gray-900">
+                {t.name}
+              </div>
+              <div className="text-sm text-gray-500">
+                {t.role}
+              </div>
+            </div>
+          </figcaption>
+        </figure>
+      </Reveal>
+    </div>
+  ))}
+</Slider>
         </div>
       </section>
 

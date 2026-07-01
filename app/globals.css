@@ -655,6 +655,25 @@ button {
   animation-delay: 0.4s;
 }
 
+/* Default dots */
+.slick-dots li button:before {
+  color: #fb923c !important;
+  opacity: 0.4;
+  font-size: 10px !important;
+  width: 10px ;
+  height: 10px ;
+}
+
+.slick-dots li button:hover:before {
+  color: #e9ac80bd !important;
+}
+
+/* Active dot */
+.slick-dots li.slick-active button:before {
+  color: #f97316 !important;
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp-animate-float,
   .lp-animate-float-slow,

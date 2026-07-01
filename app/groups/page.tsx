@@ -591,7 +591,7 @@ const GroupsPage: React.FC = () => {
 
 
           {/* Main Content */}
-          <div className="flex-1 ">
+          <div className="flex-1  ">
             {view === "feed" && (
               <div className="">
                 <h2 className="text-xl sm:text-2xl font-semibold text-content-secondary mb-4 sm:mb-6">

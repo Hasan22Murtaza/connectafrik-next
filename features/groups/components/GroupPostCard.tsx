@@ -297,7 +297,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                 key={index}
                 src={url}
                 alt={`Post media ${index + 1}`}
-                className="w-full h-auto rounded-lg object-cover"
+                className="w-full max-h-[60vh] rounded-lg object-contain"
               />
             ))}
           </div>
