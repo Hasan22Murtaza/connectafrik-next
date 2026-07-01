@@ -61,6 +61,7 @@ export function MemoriesVerticalFeed({
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const [commentsPanelEl, setCommentsPanelEl] = useState<HTMLDivElement | null>(null)
   const intersectionRatiosRef = useRef<Map<string, number>>(new Map())
   const [activeReelId, setActiveReelId] = useState<string | null>(null)
 
@@ -104,6 +105,10 @@ export function MemoriesVerticalFeed({
   const activeShareReel = useMemo(
     () => (shareModalState.reelId ? reels.find((reel) => reel.id === shareModalState.reelId) : null),
     [reels, shareModalState.reelId]
+  )
+  const activeCommentsReel = useMemo(
+    () => (showCommentsFor ? reels.find((reel) => reel.id === showCommentsFor) : null),
+    [reels, showCommentsFor]
   )
   const shareUrl = useMemo(() => {
     if (!shareModalState.reelId) return ''
@@ -412,66 +417,87 @@ export function MemoriesVerticalFeed({
           </div>
         </div>
 
-        {exploreBackHref && (
-          <button
-            type="button"
-            onClick={() => router.push(exploreBackHref)}
-            className="absolute left-3 top-14 z-30 inline-flex items-center gap-1 rounded-full bg-surface/95 px-3 py-2 text-sm font-medium text-content shadow-sm ring-1 ring-black/10 backdrop-blur-md transition hover:bg-surface sm:top-16 lg:left-6 lg:top-[5.25rem]"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Explore
-          </button>
-        )}
+        <div className="lg:flex lg:min-h-[calc(100dvh-4.5rem)]">
+          <div className="relative min-w-0 flex-1">
+            {exploreBackHref && (
+              <button
+                type="button"
+                onClick={() => router.push(exploreBackHref)}
+                className="absolute left-3 top-14 z-30 inline-flex items-center gap-1 rounded-full bg-surface/95 px-3 py-2 text-sm font-medium text-content shadow-sm ring-1 ring-black/10 backdrop-blur-md transition hover:bg-surface sm:top-16 lg:left-6 lg:top-[5.25rem]"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Explore
+              </button>
+            )}
 
-        <button
-          type="button"
-          aria-label="Next memory"
-          className="absolute right-3 top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/90 text-content-secondary shadow-sm backdrop-blur-sm transition hover:bg-surface lg:flex"
-          onClick={() => {
-            const el = scrollRef.current
-            if (!el) return
-            el.scrollBy({ top: el.clientHeight, behavior: 'smooth' })
-          }}
-        >
-          <ChevronDown className="h-7 w-7 opacity-70" strokeWidth={1.5} />
-        </button>
-
-        <div
-          ref={scrollRef}
-          className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth [-webkit-overflow-scrolling:touch] snap-y snap-mandatory pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-14 sm:pt-16 lg:h-[calc(100dvh-4.5rem)] lg:pb-0 lg:pt-0"
-          style={{ scrollSnapStop: 'always' } as React.CSSProperties}
-        >
-          {reels.map((reel, index) => (
-            <MemoryShortsSlide
-              key={reel.id}
-              reel={reel}
-              isActive={activeReelId === reel.id}
-              loadMedia={shouldLoadMedia(index)}
-              onLikeTracked={handleLikeTracked}
-              onComment={() => handleCommentOpen(reel.id)}
-              onShare={() => handleShare(reel.id)}
-              isOwner={!!user?.id && user.id === reel.author_id}
-              onEdit={() => openEditModal(reel)}
-              onDelete={() => handleDelete(reel.id)}
-            />
-          ))}
-
-          {hasMore && (
-            <div
-              ref={sentinelRef}
-              className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-black lg:bg-surface-canvas"
-              aria-hidden
+            <button
+              type="button"
+              aria-label="Next memory"
+              className={`absolute top-1/2 z-20 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-surface/90 text-content-secondary shadow-sm backdrop-blur-sm transition hover:bg-surface lg:flex ${
+                showCommentsFor ? 'right-6' : 'right-3'
+              }`}
+              onClick={() => {
+                const el = scrollRef.current
+                if (!el) return
+                el.scrollBy({ top: el.clientHeight, behavior: 'smooth' })
+              }}
             >
-              {loading && (
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80 lg:border-border lg:border-t-primary-600" />
+              <ChevronDown className="h-7 w-7 opacity-70" strokeWidth={1.5} />
+            </button>
+
+            <div
+              ref={scrollRef}
+              className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden overscroll-y-contain scroll-smooth [-webkit-overflow-scrolling:touch] snap-y snap-mandatory pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-14 sm:pt-16 lg:h-[calc(100dvh-4.5rem)] lg:pb-0 lg:pt-0"
+              style={{ scrollSnapStop: 'always' } as React.CSSProperties}
+            >
+              {reels.map((reel, index) => (
+                <MemoryShortsSlide
+                  key={reel.id}
+                  reel={reel}
+                  isActive={activeReelId === reel.id}
+                  loadMedia={shouldLoadMedia(index)}
+                  onLikeTracked={handleLikeTracked}
+                  onComment={() => handleCommentOpen(reel.id)}
+                  onShare={() => handleShare(reel.id)}
+                  isOwner={!!user?.id && user.id === reel.author_id}
+                  onEdit={() => openEditModal(reel)}
+                  onDelete={() => handleDelete(reel.id)}
+                />
+              ))}
+
+              {hasMore && (
+                <div
+                  ref={sentinelRef}
+                  className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-black lg:bg-surface-canvas"
+                  aria-hidden
+                >
+                  {loading && (
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80 lg:border-border lg:border-t-primary-600" />
+                  )}
+                </div>
               )}
             </div>
+          </div>
+
+          {showCommentsFor && (
+            <div
+              ref={setCommentsPanelEl}
+              className="hidden h-[calc(100dvh-4.5rem)] w-[min(420px,32vw)] shrink-0 border-l border-border bg-surface lg:block"
+              aria-label="Comments panel"
+            />
           )}
         </div>
       </div>
 
       {showCommentsFor && (
-        <ReelComments reelId={showCommentsFor} isOpen={!!showCommentsFor} onClose={() => setShowCommentsFor(null)} />
+        <ReelComments
+          reelId={showCommentsFor}
+          isOpen={!!showCommentsFor}
+          onClose={() => setShowCommentsFor(null)}
+          commentsCount={activeCommentsReel?.comments_count}
+          desktopContainer={commentsPanelEl}
+          inlineDesktopPanel
+        />
       )}
 
       {activeShareReel && (

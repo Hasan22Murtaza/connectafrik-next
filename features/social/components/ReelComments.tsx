@@ -1,5 +1,8 @@
-import React, { useState } from 'react'
-import { Send, Reply, Trash2, Edit2, Check, X, Heart } from 'lucide-react'
+'use client'
+
+import React, { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { AtSign, ChevronDown, Heart, MessageCircle, Reply, Send, Smile, Trash2, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReelComments } from '@/shared/hooks/useReels'
 import { ReelComment } from '@/shared/types/reels'
@@ -10,40 +13,89 @@ interface ReelCommentsProps {
   reelId: string
   isOpen: boolean
   onClose: () => void
+  commentsCount?: number
+  /** When set, desktop panel renders inside this element (inline layout). */
+  desktopContainer?: HTMLElement | null
+  /** Use inline desktop panel slot instead of fixed right overlay. */
+  inlineDesktopPanel?: boolean
 }
 
-const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) => {
+function CommentAvatar({
+  author,
+  size = 'md',
+}: {
+  author?: { username?: string; full_name?: string; avatar_url?: string }
+  size?: 'sm' | 'md'
+}) {
+  const dim = size === 'sm' ? 'h-8 w-8' : 'h-10 w-10'
+  const text = size === 'sm' ? 'text-[11px]' : 'text-xs'
+  const displayName = author?.full_name || author?.username
+  const ring = 'ring-1 ring-border/60'
+
+  if (author?.avatar_url) {
+    return (
+      <img
+        src={author.avatar_url}
+        alt={displayName ?? ''}
+        className={`${dim} shrink-0 rounded-full object-cover ${ring}`}
+      />
+    )
+  }
+  return (
+    <div
+      className={`${dim} flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-surface-tertiary to-surface-secondary font-semibold text-content-secondary ${text} ${ring}`}
+    >
+      {(displayName ?? '?').charAt(0).toUpperCase()}
+    </div>
+  )
+}
+
+function useReelCommentsLogic(reelId: string, isOpen: boolean) {
   const { user } = useAuth()
   const { comments, loading, addComment, deleteComment, toggleCommentLike } = useReelComments(reelId, isOpen)
-  
+
   const [newComment, setNewComment] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
-  const [editingComment, setEditingComment] = useState<string | null>(null)
-  const [editText, setEditText] = useState('')
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const getCommentAuthor = (comment: ReelComment) => comment.author ?? comment.profiles
-  const isOwnComment = (comment: ReelComment) => {
-    if (!user) return false
-    return (comment.user_id || comment.author_id) === user.id
-  }
+  const userAvatarUrl =
+    (user?.user_metadata?.avatar_url as string | undefined) ||
+    (user?.user_metadata?.profile_image as string | undefined)
 
-  const handleSubmitComment = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const getCommentAuthor = useCallback(
+    (comment: ReelComment) => comment.author ?? comment.profiles,
+    []
+  )
+
+  const isOwnComment = useCallback(
+    (comment: ReelComment) => {
+      if (!user) return false
+      return (comment.user_id || comment.author_id) === user.id
+    },
+    [user]
+  )
+
+  useEffect(() => {
+    if (!isOpen) {
+      setNewComment('')
+      setReplyingTo(null)
+      setReplyText('')
+      setExpandedReplies(new Set())
+    }
+  }, [isOpen])
+
+  const handleSubmitComment = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     if (!newComment.trim() || !user) return
 
     setIsSubmitting(true)
     try {
       const { error } = await addComment(newComment.trim())
-      if (error) {
-        toast.error(error)
-      } else {
-        setNewComment('')
-        toast.success('Comment added successfully!')
-      }
-    } catch (err) {
-      console.error('Error adding comment:', err)
+      if (error) toast.error(error)
+      else setNewComment('')
+    } catch {
       toast.error('Failed to add comment')
     } finally {
       setIsSubmitting(false)
@@ -56,15 +108,13 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
     setIsSubmitting(true)
     try {
       const { error } = await addComment(replyText.trim(), parentId)
-      if (error) {
-        toast.error(error)
-      } else {
+      if (error) toast.error(error)
+      else {
         setReplyText('')
         setReplyingTo(null)
-        toast.success('Reply added successfully!')
+        setExpandedReplies((prev) => new Set(prev).add(parentId))
       }
-    } catch (err) {
-      console.error('Error adding reply:', err)
+    } catch {
       toast.error('Failed to add reply')
     } finally {
       setIsSubmitting(false)
@@ -73,304 +123,408 @@ const ReelComments: React.FC<ReelCommentsProps> = ({ reelId, isOpen, onClose }) 
 
   const handleDeleteComment = async (commentId: string) => {
     if (!user) return
-
-    try {
-      const { error } = await deleteComment(commentId)
-      if (error) {
-        toast.error(error)
-      } else {
-        toast.success('Comment deleted successfully!')
-      }
-    } catch (err) {
-      console.error('Error deleting comment:', err)
-      toast.error('Failed to delete comment')
-    }
+    const { error } = await deleteComment(commentId)
+    if (error) toast.error(error)
   }
 
   const handleLikeComment = async (commentId: string) => {
-    if (!user) return
+    if (!user) {
+      toast.error('Please sign in to like comments')
+      return
+    }
     const { error } = await toggleCommentLike(commentId)
     if (error) toast.error(error)
   }
 
-  const handleEditComment = async (commentId: string) => {
-    if (!editText.trim() || !user) return
-
-    setIsSubmitting(true)
-    try {
-      // Note: Edit functionality would need to be implemented in the hook
-      // For now, we'll just show a success message
-      toast.success('Comment updated successfully!')
-      setEditingComment(null)
-      setEditText('')
-    } catch (err) {
-      console.error('Error editing comment:', err)
-      toast.error('Failed to edit comment')
-    } finally {
-      setIsSubmitting(false)
-    }
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies((prev) => {
+      const next = new Set(prev)
+      if (next.has(commentId)) next.delete(commentId)
+      else next.add(commentId)
+      return next
+    })
   }
 
-  const startReply = (commentId: string) => {
-    setReplyingTo(commentId)
-    setReplyText('')
+  return {
+    user,
+    userAvatarUrl,
+    comments,
+    loading,
+    newComment,
+    setNewComment,
+    replyingTo,
+    setReplyingTo,
+    replyText,
+    setReplyText,
+    expandedReplies,
+    isSubmitting,
+    getCommentAuthor,
+    isOwnComment,
+    handleSubmitComment,
+    handleSubmitReply,
+    handleDeleteComment,
+    handleLikeComment,
+    toggleReplies,
   }
+}
 
-  const startEdit = (comment: ReelComment) => {
-    setEditingComment(comment.id)
-    setEditText(comment.content)
-  }
+type CommentsLogic = ReturnType<typeof useReelCommentsLogic>
 
-  const cancelReply = () => {
-    setReplyingTo(null)
-    setReplyText('')
-  }
+function CommentRow({
+  comment,
+  logic,
+  isReply = false,
+}: {
+  comment: ReelComment
+  logic: CommentsLogic
+  isReply?: boolean
+}) {
+  const author = logic.getCommentAuthor(comment)
+  const {
+    isOwnComment,
+    handleLikeComment,
+    handleDeleteComment,
+    replyingTo,
+    setReplyingTo,
+    replyText,
+    setReplyText,
+    handleSubmitReply,
+    isSubmitting,
+    expandedReplies,
+    toggleReplies,
+  } = logic
 
-  const cancelEdit = () => {
-    setEditingComment(null)
-    setEditText('')
-  }
+  const replyCount = comment.replies?.length ?? comment.replies_count ?? 0
+  const showReplies = expandedReplies.has(comment.id)
 
-  if (!isOpen) return null
+  const displayName = author?.full_name || author?.username || 'user'
+  const likeCount = comment.likes_count || 0
+  const contentIndent = isReply ? 'ml-10' : 'ml-[3.25rem]'
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center bg-primary-600 justify-between p-6 border-b border-border">
-          <h2 className="text-xl font-semibold text-white">Comments</h2>
+    <div className={isReply ? 'ml-10' : ''}>
+      <div className="group flex gap-3 py-2">
+        <div className="shrink-0 self-start">
+          <CommentAvatar author={author} size={isReply ? 'sm' : 'md'} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-semibold leading-tight text-content">{displayName}</p>
+          <p className="mt-1 text-sm leading-relaxed text-content break-words whitespace-pre-wrap">
+            {comment.content}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="text-xs text-content-tertiary">
+              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+            </span>
+            {!isReply && (
+              <button
+                type="button"
+                onClick={() => {
+                  setReplyingTo(comment.id)
+                  setReplyText('')
+                }}
+                className="text-xs font-semibold text-content-secondary transition hover:text-primary-600"
+              >
+                Reply
+              </button>
+            )}
+            {isOwnComment(comment) && (
+              <button
+                type="button"
+                onClick={() => handleDeleteComment(comment.id)}
+                className="rounded p-0.5 text-content-tertiary transition hover:bg-red-50 hover:text-red-600 sm:opacity-0 sm:group-hover:opacity-100"
+                aria-label="Delete comment"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => handleLikeComment(comment.id)}
+          className="flex shrink-0 flex-col items-center gap-0.5 self-start pt-1 text-content-tertiary transition hover:text-red-500"
+          aria-label="Like comment"
+        >
+          <Heart className={`h-[18px] w-[18px] ${likeCount > 0 ? 'fill-red-500 text-red-500' : ''}`} />
+          {likeCount > 0 && (
+            <span className="text-[11px] font-medium tabular-nums text-content-secondary">{likeCount}</span>
+          )}
+        </button>
+      </div>
+
+      {replyingTo === comment.id && (
+        <div className={`${contentIndent} mb-2 flex gap-2.5`}>
+          <input
+            type="text"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void handleSubmitReply(comment.id)
+              if (e.key === 'Escape') setReplyingTo(null)
+            }}
+            placeholder={`Reply to ${displayName}...`}
+            className="flex-1 rounded-2xl border border-border bg-surface-canvas px-4 py-2.5 text-sm text-content placeholder:text-content-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+            autoFocus
+          />
           <button
-            onClick={onClose}
-            className="text-white hover:text-content-tertiary"
+            type="button"
+            onClick={() => handleSubmitReply(comment.id)}
+            disabled={isSubmitting || !replyText.trim()}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-40"
           >
-            <X className="w-6 h-6" />
+            <Send className="h-4 w-4" />
           </button>
         </div>
+      )}
 
-        {/* Comments List */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-content-secondary">Loading comments...</p>
-            </div>
-          ) : comments.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-content-secondary">No comments yet. Be the first to comment!</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {comments.map((comment) => (
-                <div key={comment.id} className="space-y-3">
-                  {/* Main Comment */}
-                  <div className="flex space-x-3">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-surface-tertiary rounded-full flex items-center justify-center">
-                        <span className="text-content-secondary font-medium text-sm">
-                          {getCommentAuthor(comment)?.username?.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="bg-surface-canvas rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-content">
-                              {getCommentAuthor(comment)?.username}
-                            </span>
-                            <span className="text-xs text-content-secondary">
-                              {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                            </span>
-                          </div>
-                          
-                          {isOwnComment(comment) && (
-                            <div className="flex items-center space-x-1">
-                              <button
-                                onClick={() => startEdit(comment)}
-                                className="text-content-tertiary hover:text-content-secondary transition-colors"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteComment(comment.id)}
-                                className="text-content-tertiary hover:text-red-600 transition-colors"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {editingComment === comment.id ? (
-                          <div className="space-y-2">
-                            <textarea
-                              value={editText}
-                              onChange={(e) => setEditText(e.target.value)}
-                              className="w-full p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                              rows={2}
-                            />
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleEditComment(comment.id)}
-                                disabled={isSubmitting}
-                                className="px-3 py-1 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                              >
-                                <Check className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="px-3 py-1 bg-surface-tertiary text-content text-sm rounded-lg hover:bg-surface-hover"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-content">{comment.content}</p>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center space-x-4 mt-2">
-                        <button
-                          onClick={() => handleLikeComment(comment.id)}
-                          className="text-xs text-content-secondary hover:text-primary-600 transition-colors flex items-center space-x-1"
-                        >
-                          <Heart className="w-3 h-3" />
-                          <span>{comment.likes_count || 0}</span>
-                        </button>
-                        <button
-                          onClick={() => startReply(comment.id)}
-                          className="text-xs text-content-secondary hover:text-primary-600 transition-colors flex items-center space-x-1"
-                        >
-                          <Reply className="w-3 h-3" />
-                          <span>Reply</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+      {!isReply && replyCount > 0 && !showReplies && (
+        <button
+          type="button"
+          onClick={() => toggleReplies(comment.id)}
+          className={`${contentIndent} mb-1 flex items-center gap-1.5 text-xs font-semibold text-content-secondary transition hover:text-content`}
+        >
+          <Reply className="h-3.5 w-3.5 rotate-180" />
+          View {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
+      )}
 
-                  {/* Reply Input */}
-                  {replyingTo === comment.id && (
-                    <div className="ml-11 space-y-2">
-                      <textarea
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder={`Reply to ${getCommentAuthor(comment)?.username}...`}
-                        className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        rows={2}
-                      />
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleSubmitReply(comment.id)}
-                          disabled={isSubmitting || !replyText.trim()}
-                          className="px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                        >
-                          <Send className="w-3 h-3" />
-                          <span>Reply</span>
-                        </button>
-                        <button
-                          onClick={cancelReply}
-                          className="px-4 py-2 bg-surface-tertiary text-content text-sm rounded-lg hover:bg-surface-hover"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Replies */}
-                  {comment.replies && comment.replies.length > 0 && (
-                    <div className="ml-11 space-y-3">
-                      {comment.replies.map((reply) => (
-                        <div key={reply.id} className="flex space-x-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-6 h-6 bg-surface-tertiary rounded-full flex items-center justify-center">
-                              <span className="text-content-secondary font-medium text-xs">
-                                {getCommentAuthor(reply)?.username?.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="bg-surface-canvas rounded-lg p-2">
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs font-medium text-content">
-                                    {getCommentAuthor(reply)?.username}
-                                  </span>
-                                  <span className="text-xs text-content-secondary">
-                                    {formatDistanceToNow(new Date(reply.created_at), { addSuffix: true })}
-                                  </span>
-                                </div>
-                                
-                                {isOwnComment(reply) && (
-                                  <button
-                                    onClick={() => handleDeleteComment(reply.id)}
-                                    className="text-content-tertiary hover:text-red-600 transition-colors"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-                              <p className="text-xs text-content">{reply.content}</p>
-                              <button
-                                onClick={() => handleLikeComment(reply.id)}
-                                className="mt-1 text-[11px] text-content-secondary hover:text-primary-600 transition-colors inline-flex items-center gap-1"
-                              >
-                                <Heart className="w-3 h-3" />
-                                <span>{reply.likes_count || 0}</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+      {!isReply && showReplies && comment.replies && comment.replies.length > 0 && (
+        <div className="mt-1 space-y-1 border-l-2 border-border/50 pl-2">
+          {comment.replies.map((reply) => (
+            <CommentRow key={reply.id} comment={reply} logic={logic} isReply />
+          ))}
+          <button
+            type="button"
+            onClick={() => toggleReplies(comment.id)}
+            className={`${contentIndent} flex items-center gap-1.5 py-1 text-xs font-semibold text-content-secondary transition hover:text-content`}
+          >
+            Hide replies
+            <ChevronDown className="h-3.5 w-3.5 rotate-180" />
+          </button>
         </div>
-
-        {/* Add Comment Form */}
-        {user && (
-          <div className="p-6 border-t border-border">
-            <form onSubmit={handleSubmitComment} className="flex space-x-3">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-surface-tertiary rounded-full flex items-center justify-center">
-                  <span className="text-content-secondary font-medium text-sm">
-                    {user.email?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex-1">
-                <textarea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Write a comment..."
-                  className="input-field"
-                  rows={2}
-                  maxLength={500}
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs text-content-secondary">{newComment.length}/500</span>
-                  <button
-                    type="submit"
-                    disabled={!newComment.trim() || isSubmitting}
-                    className="btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>{isSubmitting ? 'Posting...' : 'Comment'}</span>
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        )}
-      </div>
+      )}
     </div>
+  )
+}
+
+function CommentsList({
+  logic,
+  loading,
+  comments,
+}: {
+  logic: CommentsLogic
+  loading: boolean
+  comments: ReelComment[]
+}) {
+  if (loading && comments.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary-600" />
+        <p className="mt-3 text-sm text-content-secondary">Loading comments…</p>
+      </div>
+    )
+  }
+
+  if (comments.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-surface-secondary">
+          <MessageCircle className="h-7 w-7 text-content-tertiary" />
+        </div>
+        <p className="text-sm font-medium text-content">No comments yet</p>
+        <p className="mt-1 text-xs text-content-secondary">Start the conversation</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="divide-y divide-border/40">
+      {comments.map((comment) => (
+        <CommentRow key={comment.id} comment={comment} logic={logic} />
+      ))}
+    </div>
+  )
+}
+
+function CommentComposer({ logic }: { logic: CommentsLogic }) {
+  const { user, userAvatarUrl, newComment, setNewComment, handleSubmitComment, isSubmitting } = logic
+
+  if (!user) {
+    return (
+      <div className="shrink-0 border-t border-border bg-surface-secondary/50 px-4 py-4 text-center text-sm text-content-secondary">
+        Sign in to comment
+      </div>
+    )
+  }
+
+  return (
+    <div className="shrink-0 border-t border-border bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          void handleSubmitComment(e)
+        }}
+        className="flex items-start gap-3"
+      >
+        <div className="shrink-0 pt-1">
+          <CommentAvatar
+            author={{
+              username: user.email?.split('@')[0],
+              avatar_url: userAvatarUrl,
+            }}
+            size="sm"
+          />
+        </div>
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Add comment..."
+            maxLength={500}
+            className="w-full rounded-2xl border border-border bg-surface-canvas py-2.5 pl-4 pr-[4.5rem] text-sm text-content placeholder:text-content-tertiary transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+          />
+          <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+            <AtSign className="h-4 w-4 text-content-tertiary" aria-hidden />
+            <Smile className="h-4 w-4 text-content-tertiary" aria-hidden />
+          </div>
+        </div>
+        {newComment.trim() && (
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm transition hover:bg-primary-700 disabled:opacity-50"
+            aria-label="Post comment"
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        )}
+      </form>
+    </div>
+  )
+}
+
+function CommentsBody({
+  logic,
+  commentsCount,
+  onClose,
+  variant,
+}: {
+  logic: CommentsLogic
+  commentsCount?: number
+  onClose: () => void
+  variant: 'sheet' | 'panel'
+}) {
+  const { comments, loading } = logic
+  const displayCount = commentsCount ?? comments.length
+  const countLabel = `${displayCount.toLocaleString()} ${displayCount === 1 ? 'comment' : 'comments'}`
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface">
+      <div
+        className={`relative flex shrink-0 items-center border-b border-border px-4 ${
+          variant === 'sheet' ? 'justify-center py-3.5' : 'justify-between py-4'
+        }`}
+      >
+        {variant === 'panel' ? (
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-content">Comments</h2>
+            <p className="mt-0.5 text-xs text-content-secondary">{countLabel}</p>
+          </div>
+        ) : (
+          <p className="text-sm font-semibold text-content">{countLabel}</p>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className={`flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-secondary hover:text-content ${
+            variant === 'sheet' ? 'absolute right-3 top-1/2 -translate-y-1/2' : ''
+          }`}
+          aria-label="Close comments"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-2">
+        <CommentsList logic={logic} loading={loading} comments={comments} />
+      </div>
+
+      <CommentComposer logic={logic} />
+    </div>
+  )
+}
+
+const ReelComments: React.FC<ReelCommentsProps> = ({
+  reelId,
+  isOpen,
+  onClose,
+  commentsCount,
+  desktopContainer,
+  inlineDesktopPanel = false,
+}) => {
+  const logic = useReelCommentsLogic(reelId, isOpen)
+  const [mounted, setMounted] = useState(false)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    setPortalTarget(desktopContainer ?? null)
+  }, [desktopContainer])
+
+  useEffect(() => {
+    if (!isOpen) return
+    const prev = document.body.style.overflow
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const lock = () => {
+      if (mq.matches) document.body.style.overflow = 'hidden'
+    }
+    lock()
+    mq.addEventListener('change', lock)
+    return () => {
+      document.body.style.overflow = prev
+      mq.removeEventListener('change', lock)
+    }
+  }, [isOpen])
+
+  if (!isOpen || !mounted) return null
+
+  const panel = <CommentsBody logic={logic} commentsCount={commentsCount} onClose={onClose} variant="panel" />
+  const sheet = <CommentsBody logic={logic} commentsCount={commentsCount} onClose={onClose} variant="sheet" />
+
+  const desktopPanel = inlineDesktopPanel ? (
+    portalTarget ? (
+      createPortal(<div className="flex h-full min-h-0 w-full flex-col">{panel}</div>, portalTarget)
+    ) : null
+  ) : (
+    <div className="pointer-events-auto fixed right-0 top-[4.5rem] z-50 hidden h-[calc(100dvh-4.5rem)] w-[min(420px,32vw)] flex-col border-l border-border bg-surface shadow-xl lg:flex">
+      {panel}
+    </div>
+  )
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[55] flex flex-col justify-end lg:hidden">
+        <button
+          type="button"
+          className="absolute inset-0 bg-black/40"
+          aria-label="Close comments"
+          onClick={onClose}
+        />
+        <div className="relative flex max-h-[85dvh] min-h-[50dvh] flex-col overflow-hidden rounded-t-2xl bg-surface shadow-2xl transition-transform duration-300 ease-out">
+          {sheet}
+        </div>
+      </div>
+
+      {desktopPanel}
+    </>
   )
 }
 
