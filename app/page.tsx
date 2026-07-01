@@ -25,6 +25,7 @@ import {
   Zap,
   MoreHorizontal,
   Send,
+  Icon,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import Slider, { Settings } from "react-slick";
@@ -101,6 +102,7 @@ const testimonials = [
     role: "Creator, Lagos",
     initials: "AO",
     color: "from-orange-500 to-amber-500",
+    image_url: "/assets/images/avatar-1.png",
   },
   {
     quote:
@@ -109,6 +111,8 @@ const testimonials = [
     role: "Entrepreneur, Accra",
     initials: "KM",
     color: "from-emerald-500 to-green-600",
+    image_url: "/assets/images/avatar-2.png",
+
   },
   {
     quote:
@@ -117,14 +121,16 @@ const testimonials = [
     role: "Seller, Johannesburg",
     initials: "ZD",
     color: "from-sky-500 to-blue-600",
+    image_url: "/assets/images/avatar-4.png",
   },
-   {
+  {
     quote:
       "I grew my small business through the marketplace in weeks. Selling to a community that gets me changed everything.",
     name: "Zanele Dlamini",
     role: "Seller, Johannesburg",
     initials: "ZD",
     color: "from-sky-500 to-blue-600",
+    image_url: "/assets/images/avatar-5.png",
   },
 ];
 
@@ -160,7 +166,7 @@ const settings: Settings = {
   slidesToScroll: 1,
   autoplay: true,
   autoplaySpeed: 3000,
-  arrows: true,
+  arrows: false,
   responsive: [
     {
       breakpoint: 1024,
@@ -225,17 +231,12 @@ const Home: React.FC = () => {
     { name: "Amara Okafor", avatarUrl: "/assets/images/avatar-1.png" },
     { name: "Kwame Mensah", avatarUrl: "/assets/images/avatar-2.png" },
     { name: "Zanele Dlamini", avatarUrl: "/assets/images/avatar-4.png" },
-     { name: "Zanele Dlamini", avatarUrl: "/assets/images/avatar-5.png" }
+    { name: "Zanele Dlamini", avatarUrl: "/assets/images/avatar-5.png" }
   ];
   return (
-    <div ref={rootRef} className="overflow-x-hidden">
+    <div ref={rootRef} className="overflow-x-hidden ">
       {/* ============================== HERO ============================== */}
       <section className="relative isolate overflow-hidden">
-        {/* Animated gradient backdrop */}
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-orange-50 via-white to-emerald-50 dark:from-surface-canvas dark:via-surface-canvas dark:to-surface-canvas" />
-        <div className="absolute -top-24 -left-24 -z-10 h-96 w-96 rounded-full bg-orange-400/30 blur-3xl lp-animate-blob" />
-        <div className="absolute top-1/3 -right-24 -z-10 h-96 w-96 rounded-full bg-emerald-400/25 blur-3xl lp-animate-blob [animation-delay:3s]" />
-        <div className="absolute -bottom-24 left-1/3 -z-10 h-96 w-96 rounded-full bg-sky-400/20 blur-3xl lp-animate-blob [animation-delay:6s]" />
 
         <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 mx-auto py-18 ">
           <div className="grid items-center gap-12 lg:grid-cols-2">
@@ -247,16 +248,11 @@ const Home: React.FC = () => {
                   Where Africa connects, one story at a time
                 </span>
               </Reveal>
-
-              <Reveal delay={1}>
+              <div className="max-w-2xl">
                 <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
-                  The social home for
-                  <span className="block bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-500 bg-clip-text text-transparent lp-animate-gradient">
-                    Africa & the diaspora
-                  </span>
+                  The social home for Africa & the diaspora
                 </h1>
-              </Reveal>
-
+              </div>
               <Reveal delay={2}>
                 <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-600 lg:mx-0">
                   Share your story, join vibrant communities, message in
@@ -299,18 +295,18 @@ const Home: React.FC = () => {
               <Reveal delay={4}>
                 <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row lg:justify-start justify-center">
                   <div className="flex -space-x-3">
-                 {users.map((user, i) => (
-  <div
-    key={i}
-    className="h-10 w-10 rounded-full border-2 border-white overflow-hidden dark:border-surface"
-  >
-    <img
-      src={user.avatarUrl}
-      alt={user.name}
-      className="h-full w-full object-cover"
-    />
-  </div>
-))}
+                    {users.map((user, i) => (
+                      <div
+                        key={i}
+                        className="h-10 w-10 rounded-full border-2 border-white overflow-hidden dark:border-surface"
+                      >
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ))}
                     <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-gray-900 text-xs font-semibold text-white dark:border-surface">
                       10k+
                     </div>
@@ -457,6 +453,7 @@ const Home: React.FC = () => {
               );
             })}
           </div>
+
         </div>
       </section>
 
@@ -683,43 +680,44 @@ const Home: React.FC = () => {
             ))}
           </div> */}
           <Slider {...settings}>
-  {testimonials.map((t, i) => (
-    <div key={t.name} className="px-3">
-      <Reveal delay={((i % 3) + 1) as 1 | 2 | 3}>
-        <figure className="flex min-h-[300px] flex-col rounded-2xl border border-gray-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
-          <Quote className="h-8 w-8 text-orange-300" />
+            {testimonials.map((t, i) => (
+              <div key={t.name} className="px-3 py-4">
+                <Reveal delay={((i % 3) + 1) as 1 | 2 | 3}>
+                  <figure className="flex min-h-[300px] flex-col rounded-2xl border border-gray-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
+                    <Quote className="h-8 w-8 text-orange-300" />
 
-          <blockquote className="mt-4 flex-1 text-gray-700">
-            "{t.quote}"
-          </blockquote>
+                    <blockquote className="mt-4 flex-1 text-gray-700">
+                      "{t.quote}"
+                    </blockquote>
 
-          <div className="mt-5 flex items-center gap-1 text-amber-400">
-            {[...Array(5)].map((_, s) => (
-              <Star key={s} className="h-4 w-4 fill-amber-400" />
+                    <div className="mt-5 flex items-center gap-1 text-amber-400">
+                      {[...Array(5)].map((_, s) => (
+                        <Star key={s} className="h-4 w-4 fill-amber-400" />
+                      ))}
+                    </div>
+
+                    <figcaption className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-border">
+                      {/* <div
+                        className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-sm font-bold text-white`}
+                      >
+                        {t.initials}
+                      </div> */}
+                      <img src={t.image_url} alt={t.name} className="h-11 w-11 rounded-full border-2 border-orange-500" />
+
+                      <div>
+                        <div className="font-semibold text-gray-900">
+                          {t.name}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {t.role}
+                        </div>
+                      </div>
+                    </figcaption>
+                  </figure>
+                </Reveal>
+              </div>
             ))}
-          </div>
-
-          <figcaption className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-border">
-            <div
-              className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-sm font-bold text-white`}
-            >
-              {t.initials}
-            </div>
-
-            <div>
-              <div className="font-semibold text-gray-900">
-                {t.name}
-              </div>
-              <div className="text-sm text-gray-500">
-                {t.role}
-              </div>
-            </div>
-          </figcaption>
-        </figure>
-      </Reveal>
-    </div>
-  ))}
-</Slider>
+          </Slider>
         </div>
       </section>
 
@@ -750,11 +748,10 @@ const Home: React.FC = () => {
                   >
                     <span className="font-semibold text-gray-900">{faq.q}</span>
                     <span
-                      className={`flex h-8 w-8 flex-none items-center justify-center rounded-full transition-colors ${
-                        isOpen
-                          ? "bg-orange-500 text-white"
-                          : "bg-orange-100 text-orange-600 dark:bg-surface-secondary"
-                      }`}
+                      className={`flex h-8 w-8 flex-none items-center justify-center rounded-full transition-colors ${isOpen
+                        ? "bg-orange-500 text-white"
+                        : "bg-orange-100 text-orange-600 dark:bg-surface-secondary"
+                        }`}
                     >
                       {isOpen ? (
                         <Minus className="h-4 w-4" />
@@ -764,11 +761,10 @@ const Home: React.FC = () => {
                     </span>
                   </button>
                   <div
-                    className={`grid transition-all duration-300 ease-in-out ${
-                      isOpen
-                        ? "grid-rows-[1fr] opacity-100"
-                        : "grid-rows-[0fr] opacity-0"
-                    }`}
+                    className={`grid transition-all duration-300 ease-in-out ${isOpen
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0"
+                      }`}
                   >
                     <div className="overflow-hidden">
                       <p className="px-6 pb-5 text-gray-600">{faq.a}</p>
@@ -784,13 +780,13 @@ const Home: React.FC = () => {
       {/* ============================== CTA ============================= */}
       <section className="px-4 pb-20 sm:px-6 lg:px-8">
         <Reveal className="mx-auto max-w-7xl">
-          <div className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-r from-orange-500 via-orange-500 to-amber-500 px-6 py-16 text-center shadow-2xl shadow-orange-500/30 sm:px-12 sm:py-20 lp-animate-gradient">
+          <div className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 px-6 py-16 text-center  sm:px-12 sm:py-20 lp-animate-gradient">
             <div className="absolute -left-10 -top-10 -z-10 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
             <div className="absolute -bottom-10 -right-10 -z-10 h-48 w-48 rounded-full bg-emerald-300/30 blur-3xl" />
-            <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl">
+            <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-primary-600 sm:text-4xl lg:text-5xl">
               Ready to join the conversation?
             </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-lg text-orange-50">
+            <p className="mx-auto mt-5 max-w-2xl text-lg text-gray-600 ">
               Connect with thousands of Africans sharing their stories, ideas
               and culture. Your voice matters in shaping our continent's future.
             </p>
@@ -799,14 +795,14 @@ const Home: React.FC = () => {
                 <>
                   <Link
                     href="/signup"
-                    className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-orange-600 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl sm:w-auto"
+                    className="btn-primary"
                   >
                     Get Started — it's free
                     <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                   </Link>
                   <Link
                     href="/signin"
-                    className="inline-flex w-full items-center justify-center rounded-xl border border-white/40 bg-white/10 px-8 py-3.5 text-base font-semibold text-white backdrop-blur transition-all duration-300 hover:bg-white/20 sm:w-auto"
+                    className="btn-secondary"
                   >
                     Sign In
                   </Link>

@@ -303,7 +303,6 @@ body {
 
 .btn-secondary:hover {
   background-color: var(--interactive-secondary-hover);
-  transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
 

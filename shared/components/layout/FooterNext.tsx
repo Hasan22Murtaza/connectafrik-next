@@ -41,7 +41,7 @@ const Footer: React.FC = () => {
   return (
     <footer className="relative mt-20 border-t border-gray-100 bg-surface-secondary text-content dark:border-border">
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className=" px-4 sm:px-6 ">
         {/* Main content */}
         <div className="grid grid-cols-1 gap-10 py-14 sm:grid-cols-2 xl:grid-cols-4 xl:gap-12">
           {/* Company Info */}
