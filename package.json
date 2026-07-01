@@ -48,6 +48,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-slick": "^0.23.13",
     "@types/web-push": "^3.6.4",
     "baseline-browser-mapping": "^2.10.34",
     "eslint": "^9",
