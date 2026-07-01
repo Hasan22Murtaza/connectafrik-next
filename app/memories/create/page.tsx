@@ -2,23 +2,40 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Upload, Play, Pause, Volume2, VolumeX, Tag, Globe, Lock, Camera, Square, RotateCcw, ArrowLeft } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { ArrowLeft } from 'lucide-react'
 import { useCreateReel } from '@/shared/hooks/useReels'
-import { REEL_CATEGORIES, REEL_ASPECT_RATIOS, MAX_REEL_DURATION, MAX_REEL_TITLE_LENGTH, MAX_REEL_DESCRIPTION_LENGTH, MAX_REEL_TAGS } from '@/shared/types/reels'
+import {
+  MAX_REEL_DURATION,
+  MAX_REEL_DESCRIPTION_LENGTH,
+  MAX_REEL_TITLE_LENGTH,
+  MAX_REEL_TAGS,
+} from '@/shared/types/reels'
 import { ReelCategory } from '@/shared/types/reels'
 import toast from 'react-hot-toast'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
+import { MediaSection } from './components/MediaSection'
+import { DetailsForm } from './components/DetailsForm'
+import { ReviewStep } from './components/ReviewStep'
+import { WizardHeaderActions, type CreateStep } from './components/WizardNavigation'
 
-// Aspect ratio to CSS dimensions mapping for preview
-const ASPECT_RATIO_STYLES: Record<string, { containerClass: string; width: string; height: string; cameraWidth: number; cameraHeight: number }> = {
+type SubmitStage = 'idle' | 'uploading-video' | 'uploading-thumbnail' | 'publishing'
+
+const STEP_SUBTITLES: Record<CreateStep, string> = {
+  media: 'Upload or record your video',
+  details: 'Add a title and choose who can see it',
+  review: 'Review everything before you publish',
+}
+
+const ASPECT_RATIO_STYLES: Record<
+  string,
+  { containerClass: string; width: string; height: string; cameraWidth: number; cameraHeight: number }
+> = {
   '9:16': { containerClass: 'max-w-[280px] w-full', width: '100%', height: 'auto', cameraWidth: 1080, cameraHeight: 1920 },
   '16:9': { containerClass: 'max-w-full w-full', width: '100%', height: 'auto', cameraWidth: 1920, cameraHeight: 1080 },
   '1:1': { containerClass: 'max-w-[360px] w-full', width: '100%', height: 'auto', cameraWidth: 1080, cameraHeight: 1080 },
   '4:3': { containerClass: 'max-w-[420px] w-full', width: '100%', height: 'auto', cameraWidth: 1440, cameraHeight: 1080 },
 }
 
-// CSS aspect-ratio values for responsive sizing
 const ASPECT_RATIO_CSS: Record<string, string> = {
   '9:16': '9/16',
   '16:9': '16/9',
@@ -26,9 +43,22 @@ const ASPECT_RATIO_CSS: Record<string, string> = {
   '4:3': '4/3',
 }
 
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
 const CreateMemoryPage: React.FC = () => {
   const router = useRouter()
-  const { user } = useAuth()
   const { createReel, loading } = useCreateReel()
   const { uploadFile, uploading: isUploadingFile } = useFileUpload()
 
@@ -40,10 +70,8 @@ const CreateMemoryPage: React.FC = () => {
   const [isPublic, setIsPublic] = useState(true)
   const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9' | '1:1' | '4:3'>('9:16')
 
-  // Aspect ratio style for preview
   const previewStyle = useMemo(() => ASPECT_RATIO_STYLES[aspectRatio] || ASPECT_RATIO_STYLES['9:16'], [aspectRatio])
 
-  // Video state
   const [videoFile, setVideoFile] = useState<File | null>(null)
   const [videoUrl, setVideoUrl] = useState<string>('')
   const [videoDuration, setVideoDuration] = useState<number>(0)
@@ -53,7 +81,6 @@ const CreateMemoryPage: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(0)
   const [volume, setVolume] = useState(1)
 
-  // Recording state
   const [isRecording, setIsRecording] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [recordingTime, setRecordingTime] = useState(0)
@@ -61,8 +88,15 @@ const CreateMemoryPage: React.FC = () => {
   const [recordingMode, setRecordingMode] = useState<'upload' | 'record'>('upload')
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user')
-  const [showPreview, setShowPreview] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [isDragging, setIsDragging] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [submitStage, setSubmitStage] = useState<SubmitStage>('idle')
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [currentStep, setCurrentStep] = useState<CreateStep>('media')
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -70,60 +104,158 @@ const CreateMemoryPage: React.FC = () => {
   const recordedChunksRef = useRef<Blob[]>([])
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  const isReadyToPublish = Boolean(videoFile && title.trim())
+  const isPublishing = submitStage !== 'idle'
+
+  const canGoNext =
+    currentStep === 'media'
+      ? Boolean(videoFile) && !isRecording
+      : currentStep === 'details'
+        ? Boolean(title.trim())
+        : isReadyToPublish
+
+  const publishLabel =
+    submitStage === 'uploading-video'
+      ? 'Uploading…'
+      : submitStage === 'uploading-thumbnail'
+        ? 'Thumbnail…'
+        : submitStage === 'publishing'
+          ? 'Publishing…'
+          : 'Publish'
+
   const revokeVideoUrl = useCallback((url: string) => {
     if (url && url.startsWith('blob:')) {
       URL.revokeObjectURL(url)
     }
   }, [])
 
-  const handleVideoSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith('video/')) {
-      toast.error('Please select a valid video file')
-      return
+  const clearVideo = useCallback(() => {
+    if (videoUrl) revokeVideoUrl(videoUrl)
+    setVideoFile(null)
+    setVideoUrl('')
+    setVideoDuration(0)
+    setThumbnailUrl('')
+    setIsPlaying(false)
+    setCurrentTime(0)
+    setValidationError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((track) => track.stop())
+      setMediaStream(null)
     }
+    if (videoRef.current) videoRef.current.srcObject = null
+    setRecordingMode('upload')
+  }, [videoUrl, revokeVideoUrl, mediaStream])
 
-    const maxSize = 100 * 1024 * 1024
-    if (file.size > maxSize) {
-      toast.error('Video file size must be less than 100MB')
-      return
-    }
+  const processVideoFile = useCallback(
+    (file: File) => {
+      setValidationError(null)
 
-    setVideoFile(file)
-    if (videoUrl) {
-      revokeVideoUrl(videoUrl)
-    }
-    const url = URL.createObjectURL(file)
-    setVideoUrl(url)
-
-    const video = document.createElement('video')
-    video.onloadedmetadata = () => {
-      const duration = Math.round(video.duration)
-      setVideoDuration(duration)
-
-      if (duration > MAX_REEL_DURATION) {
-        toast.error(`Video must be shorter than ${MAX_REEL_DURATION / 60} minutes`)
-        setVideoFile(null)
-        setVideoUrl('')
-        setVideoDuration(0)
+      if (!file.type.startsWith('video/')) {
+        const message = 'Please select a valid video file'
+        setValidationError(message)
+        toast.error(message)
         return
       }
 
-      video.currentTime = duration / 2
-      video.onseeked = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        const ctx = canvas.getContext('2d')
-        ctx?.drawImage(video, 0, 0)
-        const thumb = canvas.toDataURL('image/jpeg', 0.8)
-        setThumbnailUrl(thumb)
+      const maxSize = 100 * 1024 * 1024
+      if (file.size > maxSize) {
+        const message = 'Video file size must be less than 100MB'
+        setValidationError(message)
+        toast.error(message)
+        return
       }
-    }
-    video.src = url
-  }, [videoUrl, revokeVideoUrl])
+
+      setVideoFile(file)
+      if (videoUrl) revokeVideoUrl(videoUrl)
+      const url = URL.createObjectURL(file)
+      setVideoUrl(url)
+
+      const video = document.createElement('video')
+      video.onloadedmetadata = () => {
+        const duration = Math.round(video.duration)
+        setVideoDuration(duration)
+
+        if (duration > MAX_REEL_DURATION) {
+          const message = `Video must be shorter than ${MAX_REEL_DURATION / 60} minutes`
+          setValidationError(message)
+          toast.error(message)
+          setVideoFile(null)
+          revokeVideoUrl(url)
+          setVideoUrl('')
+          setVideoDuration(0)
+          return
+        }
+
+        video.currentTime = duration / 2
+        video.onseeked = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(video, 0, 0)
+          setThumbnailUrl(canvas.toDataURL('image/jpeg', 0.8))
+        }
+      }
+      video.src = url
+    },
+    [videoUrl, revokeVideoUrl]
+  )
+
+  const handleVideoSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (file) processVideoFile(file)
+    },
+    [processVideoFile]
+  )
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragging(false)
+      const file = e.dataTransfer.files?.[0]
+      if (file) processVideoFile(file)
+    },
+    [processVideoFile]
+  )
+
+  const handleBrowseClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleInsertHashtag = useCallback((tag: string) => {
+    const snippet = description.trim() ? ` #${tag}` : `#${tag}`
+    setDescription((prev) => {
+      const next = prev + snippet
+      return next.length <= MAX_REEL_DESCRIPTION_LENGTH ? next : prev
+    })
+  }, [description])
+
+  const handleInsertEmoji = useCallback((emoji: string) => {
+    setDescription((prev) => {
+      const next = prev + emoji
+      return next.length <= MAX_REEL_DESCRIPTION_LENGTH ? next : prev
+    })
+  }, [])
 
   const handlePlayPause = useCallback(async () => {
     if (videoRef.current) {
@@ -142,17 +274,13 @@ const CreateMemoryPage: React.FC = () => {
   }, [isPlaying])
 
   const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime)
-    }
+    if (videoRef.current) setCurrentTime(videoRef.current.currentTime)
   }, [])
 
   const handleVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value)
     setVolume(newVolume)
-    if (videoRef.current) {
-      videoRef.current.volume = newVolume
-    }
+    if (videoRef.current) videoRef.current.volume = newVolume
     setIsMuted(newVolume === 0)
   }, [])
 
@@ -187,70 +315,72 @@ const CreateMemoryPage: React.FC = () => {
   }, [newTag, tags])
 
   const removeTag = useCallback((tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove))
+    setTags(tags.filter((tag) => tag !== tagToRemove))
   }, [tags])
 
-  // Camera recording functions
-  const startCamera = useCallback(async (facingMode: 'user' | 'environment' = cameraFacing) => {
-    try {
-      setCameraError(null)
-
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop())
-      }
-
-      const ratioConfig = ASPECT_RATIO_STYLES[aspectRatio] || ASPECT_RATIO_STYLES['9:16']
-      const constraints: MediaStreamConstraints = {
-        video: {
-          width: { ideal: ratioConfig.cameraWidth },
-          height: { ideal: ratioConfig.cameraHeight },
-          facingMode: facingMode
-        },
-        audio: true
-      }
-
-      let stream
+  const startCamera = useCallback(
+    async (facingMode: 'user' | 'environment' = cameraFacing) => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints)
-      } catch (highResError) {
-        const basicConstraints: MediaStreamConstraints = {
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: facingMode as 'user' | 'environment'
-          },
-          audio: true
+        setCameraError(null)
+
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((track) => track.stop())
         }
-        stream = await navigator.mediaDevices.getUserMedia(basicConstraints)
+
+        const ratioConfig = ASPECT_RATIO_STYLES[aspectRatio] || ASPECT_RATIO_STYLES['9:16']
+        const constraints: MediaStreamConstraints = {
+          video: {
+            width: { ideal: ratioConfig.cameraWidth },
+            height: { ideal: ratioConfig.cameraHeight },
+            facingMode: facingMode,
+          },
+          audio: true,
+        }
+
+        let stream
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints)
+        } catch {
+          const basicConstraints: MediaStreamConstraints = {
+            video: {
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: facingMode as 'user' | 'environment',
+            },
+            audio: true,
+          }
+          stream = await navigator.mediaDevices.getUserMedia(basicConstraints)
+        }
+
+        setMediaStream(stream)
+        setCameraFacing(facingMode)
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.muted = true
+          videoRef.current.play()
+        }
+
+        setRecordingMode('record')
+      } catch (error: unknown) {
+        console.error('Camera access error:', error)
+        const err = error as { name?: string }
+        let errorMessage = 'Camera access denied. Please allow camera permissions and try again.'
+
+        if (err.name === 'NotAllowedError') {
+          errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.'
+        } else if (err.name === 'NotFoundError') {
+          errorMessage = 'No camera found. Please connect a camera and try again.'
+        } else if (err.name === 'NotReadableError') {
+          errorMessage = 'Camera is being used by another application. Please close other apps and try again.'
+        }
+
+        setCameraError(errorMessage)
+        toast.error(errorMessage)
       }
-
-      setMediaStream(stream)
-      setCameraFacing(facingMode)
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.muted = true
-        videoRef.current.play()
-      }
-
-      setRecordingMode('record')
-      setShowPreview(true)
-    } catch (error: any) {
-      console.error('Camera access error:', error)
-      let errorMessage = 'Camera access denied. Please allow camera permissions and try again.'
-
-      if (error.name === 'NotAllowedError') {
-        errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.'
-      } else if (error.name === 'NotFoundError') {
-        errorMessage = 'No camera found. Please connect a camera and try again.'
-      } else if (error.name === 'NotReadableError') {
-        errorMessage = 'Camera is being used by another application. Please close other apps and try again.'
-      }
-
-      setCameraError(errorMessage)
-      toast.error(errorMessage)
-    }
-  }, [aspectRatio, cameraFacing, mediaStream])
+    },
+    [aspectRatio, cameraFacing, mediaStream]
+  )
 
   const flipCamera = useCallback(async () => {
     const newFacing = cameraFacing === 'user' ? 'environment' : 'user'
@@ -259,70 +389,12 @@ const CreateMemoryPage: React.FC = () => {
 
   const stopCamera = useCallback(() => {
     if (mediaStream) {
-      mediaStream.getTracks().forEach(track => track.stop())
+      mediaStream.getTracks().forEach((track) => track.stop())
       setMediaStream(null)
     }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
+    if (videoRef.current) videoRef.current.srcObject = null
     setRecordingMode('upload')
     setCameraError(null)
-  }, [mediaStream])
-
-  const startRecording = useCallback(() => {
-    if (!mediaStream) return
-
-    try {
-      const mediaRecorder = new MediaRecorder(mediaStream, {
-        mimeType: 'video/webm;codecs=vp9,opus'
-      })
-
-      mediaRecorderRef.current = mediaRecorder
-      recordedChunksRef.current = []
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          recordedChunksRef.current.push(event.data)
-        }
-      }
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
-        const url = URL.createObjectURL(blob)
-        setVideoUrl(url)
-        setVideoFile(new File([blob], 'recording.webm', { type: 'video/webm' }))
-
-        const video = document.createElement('video')
-        video.onloadedmetadata = () => {
-          setVideoDuration(Math.round(video.duration))
-        }
-        video.src = url
-
-        if (videoRef.current) {
-          videoRef.current.src = url
-          videoRef.current.srcObject = null
-        }
-      }
-
-      mediaRecorder.start(1000)
-      setIsRecording(true)
-      setIsPaused(false)
-      setRecordingTime(0)
-      setShowPreview(true)
-
-      recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime(prev => {
-          const newTime = prev + 1
-          if (newTime >= MAX_REEL_DURATION) {
-            stopRecording()
-          }
-          return newTime
-        })
-      }, 1000)
-    } catch (error: any) {
-      console.error('Recording start error:', error)
-      toast.error('Failed to start recording')
-    }
   }, [mediaStream])
 
   const stopRecording = useCallback(() => {
@@ -337,6 +409,55 @@ const CreateMemoryPage: React.FC = () => {
       }
     }
   }, [isRecording])
+
+  const startRecording = useCallback(() => {
+    if (!mediaStream) return
+
+    try {
+      const mediaRecorder = new MediaRecorder(mediaStream, {
+        mimeType: 'video/webm;codecs=vp9,opus',
+      })
+
+      mediaRecorderRef.current = mediaRecorder
+      recordedChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedChunksRef.current.push(event.data)
+      }
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+        const url = URL.createObjectURL(blob)
+        setVideoUrl(url)
+        setVideoFile(new File([blob], 'recording.webm', { type: 'video/webm' }))
+
+        const video = document.createElement('video')
+        video.onloadedmetadata = () => setVideoDuration(Math.round(video.duration))
+        video.src = url
+
+        if (videoRef.current) {
+          videoRef.current.src = url
+          videoRef.current.srcObject = null
+        }
+      }
+
+      mediaRecorder.start(1000)
+      setIsRecording(true)
+      setIsPaused(false)
+      setRecordingTime(0)
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => {
+          const newTime = prev + 1
+          if (newTime >= MAX_REEL_DURATION) stopRecording()
+          return newTime
+        })
+      }, 1000)
+    } catch (error) {
+      console.error('Recording start error:', error)
+      toast.error('Failed to start recording')
+    }
+  }, [mediaStream, stopRecording])
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current && isRecording && !isPaused) {
@@ -356,38 +477,87 @@ const CreateMemoryPage: React.FC = () => {
       setIsPaused(false)
 
       recordingIntervalRef.current = setInterval(() => {
-        setRecordingTime(prev => {
+        setRecordingTime((prev) => {
           const newTime = prev + 1
-          if (newTime >= MAX_REEL_DURATION) {
-            stopRecording()
-          }
+          if (newTime >= MAX_REEL_DURATION) stopRecording()
           return newTime
         })
       }, 1000)
     }
-  }, [isRecording, isPaused])
+  }, [isRecording, isPaused, stopRecording])
 
   const discardRecording = useCallback(() => {
     stopRecording()
     stopCamera()
-    setVideoUrl('')
-    setVideoFile(null)
+    clearVideo()
     setRecordingTime(0)
     recordedChunksRef.current = []
-  }, [])
+  }, [stopRecording, stopCamera, clearVideo])
 
-  // Cleanup on unmount
+  const handleWizardBack = useCallback(() => {
+    if (isPublishing) return
+    if (currentStep === 'media') {
+      router.back()
+      return
+    }
+    if (currentStep === 'details') setCurrentStep('media')
+    else if (currentStep === 'review') setCurrentStep('details')
+  }, [currentStep, isPublishing, router])
+
+  const handleWizardNext = useCallback(() => {
+    if (isPublishing) return
+
+    if (currentStep === 'media') {
+      if (!videoFile) {
+        toast.error('Please add a video before continuing')
+        return
+      }
+      if (isRecording) {
+        toast.error('Stop recording before continuing')
+        return
+      }
+      if (recordingMode === 'record' && mediaStream) stopCamera()
+      setCurrentStep('details')
+      return
+    }
+
+    if (currentStep === 'details') {
+      if (!title.trim()) {
+        toast.error('Please enter a title before continuing')
+        return
+      }
+      if (title.length > MAX_REEL_TITLE_LENGTH) {
+        toast.error(`Title must be ${MAX_REEL_TITLE_LENGTH} characters or less`)
+        return
+      }
+      if (description.length > MAX_REEL_DESCRIPTION_LENGTH) {
+        toast.error(`Description must be ${MAX_REEL_DESCRIPTION_LENGTH} characters or less`)
+        return
+      }
+      setShowEmojiPicker(false)
+      setCurrentStep('review')
+    }
+  }, [
+    currentStep,
+    isPublishing,
+    videoFile,
+    isRecording,
+    recordingMode,
+    mediaStream,
+    stopCamera,
+    title,
+    description,
+  ])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [currentStep])
+
   useEffect(() => {
     return () => {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop())
-      }
-      if (recordingIntervalRef.current) {
-        clearInterval(recordingIntervalRef.current)
-      }
-      if (videoUrl) {
-        revokeVideoUrl(videoUrl)
-      }
+      if (mediaStream) mediaStream.getTracks().forEach((track) => track.stop())
+      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current)
+      if (videoUrl) revokeVideoUrl(videoUrl)
     }
   }, [mediaStream, videoUrl, revokeVideoUrl])
 
@@ -404,9 +574,7 @@ const CreateMemoryPage: React.FC = () => {
       const binaryString = atob(parts[1])
       const len = binaryString.length
       const bytes = new Uint8Array(len)
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i)
-      }
+      for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i)
       return new File([bytes], filename, { type: mime })
     } catch (error) {
       console.error('Failed to convert data URL to file:', error)
@@ -414,627 +582,258 @@ const CreateMemoryPage: React.FC = () => {
     }
   }, [])
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
 
-    if (!videoFile) {
-      toast.error('Please select a video file')
-      return
-    }
-
-    if (!title.trim()) {
-      toast.error('Please enter a title')
-      return
-    }
-
-    if (title.length > MAX_REEL_TITLE_LENGTH) {
-      toast.error(`Title must be ${MAX_REEL_TITLE_LENGTH} characters or less`)
-      return
-    }
-
-    if (description.length > MAX_REEL_DESCRIPTION_LENGTH) {
-      toast.error(`Description must be ${MAX_REEL_DESCRIPTION_LENGTH} characters or less`)
-      return
-    }
-
-    try {
-      setIsSubmitting(true)
-
-      const uploadResult = await uploadFile(videoFile, { bucket: 'post-videos' })
-      if (uploadResult.error || !uploadResult.url) {
-        throw new Error(uploadResult.error || 'Video upload failed')
-      }
-
-      let uploadedThumbnailUrl: string | undefined
-      if (thumbnailUrl) {
-        if (thumbnailUrl.startsWith('http')) {
-          uploadedThumbnailUrl = thumbnailUrl
-        } else {
-          const fileName = `thumbnail_${Date.now()}.jpg`
-          const thumbnailFile = dataUrlToFile(thumbnailUrl, fileName)
-          if (thumbnailFile) {
-            const thumbnailUpload = await uploadFile(thumbnailFile, { bucket: 'post-images' })
-            if (thumbnailUpload.error) {
-              console.warn('Thumbnail upload failed:', thumbnailUpload.error)
-            } else {
-              uploadedThumbnailUrl = thumbnailUpload.url || undefined
-            }
-          }
-        }
-      }
-
-      const reelData = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        video_url: uploadResult.url,
-        thumbnail_url: uploadedThumbnailUrl,
-        duration: videoDuration,
-        aspect_ratio: aspectRatio,
-        category,
-        tags,
-        is_public: isPublic
-      }
-
-      const { data, error } = await createReel(reelData)
-
-      if (error) {
-        toast.error(error)
+      if (currentStep !== 'review') return
+      if (!videoFile) {
+        toast.error('Please select a video file')
         return
       }
 
-      toast.success('Memory created successfully!')
-      router.push('/memories/foryou')
-    } catch (err) {
-      console.error('Error creating reel:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to create memory')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [videoFile, title, description, videoDuration, thumbnailUrl, aspectRatio, category, tags, isPublic, uploadFile, dataUrlToFile, createReel, router])
+      if (!title.trim()) {
+        toast.error('Please enter a title')
+        return
+      }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.floor(seconds % 60)
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+      if (title.length > MAX_REEL_TITLE_LENGTH) {
+        toast.error(`Title must be ${MAX_REEL_TITLE_LENGTH} characters or less`)
+        return
+      }
+
+      if (description.length > MAX_REEL_DESCRIPTION_LENGTH) {
+        toast.error(`Description must be ${MAX_REEL_DESCRIPTION_LENGTH} characters or less`)
+        return
+      }
+
+      let progressTimer: ReturnType<typeof setInterval> | null = null
+
+      try {
+        setIsSubmitting(true)
+        setSubmitStage('uploading-video')
+        setUploadProgress(8)
+
+        progressTimer = setInterval(() => {
+          setUploadProgress((prev) => (prev < 55 ? prev + 4 : prev))
+        }, 400)
+
+        const uploadResult = await uploadFile(videoFile, { bucket: 'post-videos' })
+        if (uploadResult.error || !uploadResult.url) {
+          throw new Error(uploadResult.error || 'Video upload failed')
+        }
+
+        if (progressTimer) clearInterval(progressTimer)
+        setUploadProgress(62)
+
+        let uploadedThumbnailUrl: string | undefined
+        if (thumbnailUrl) {
+          setSubmitStage('uploading-thumbnail')
+          setUploadProgress(68)
+
+          if (thumbnailUrl.startsWith('http')) {
+            uploadedThumbnailUrl = thumbnailUrl
+          } else {
+            const fileName = `thumbnail_${Date.now()}.jpg`
+            const thumbnailFile = dataUrlToFile(thumbnailUrl, fileName)
+            if (thumbnailFile) {
+              const thumbnailUpload = await uploadFile(thumbnailFile, { bucket: 'post-images' })
+              if (thumbnailUpload.error) {
+                console.warn('Thumbnail upload failed:', thumbnailUpload.error)
+              } else {
+                uploadedThumbnailUrl = thumbnailUpload.url || undefined
+              }
+            }
+          }
+        }
+
+        setSubmitStage('publishing')
+        setUploadProgress(85)
+
+        const reelData = {
+          title: title.trim(),
+          description: description.trim() || undefined,
+          video_url: uploadResult.url,
+          thumbnail_url: uploadedThumbnailUrl,
+          duration: videoDuration,
+          aspect_ratio: aspectRatio,
+          category,
+          tags,
+          is_public: isPublic,
+        }
+
+        const { error } = await createReel(reelData)
+
+        if (error) {
+          toast.error(error)
+          return
+        }
+
+        setUploadProgress(100)
+        toast.success('Memory created successfully!')
+        router.push('/memories/foryou')
+      } catch (err) {
+        console.error('Error creating reel:', err)
+        toast.error(err instanceof Error ? err.message : 'Failed to create memory')
+      } finally {
+        if (progressTimer) clearInterval(progressTimer)
+        setIsSubmitting(false)
+        setSubmitStage('idle')
+        setUploadProgress(0)
+      }
+    },
+    [
+      currentStep,
+      videoFile,
+      title,
+      description,
+      videoDuration,
+      thumbnailUrl,
+      aspectRatio,
+      category,
+      tags,
+      isPublic,
+      uploadFile,
+      dataUrlToFile,
+      createReel,
+      router,
+    ]
+  )
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
-      {/* Page Header */}
-      <div className="bg-surface border-b border-border sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-3 sm:px-6 py-3 flex items-center gap-3">
+    <div className="flex min-h-screen flex-col bg-surface-canvas">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-6">
           <button
-            onClick={() => router.back()}
-            className="p-2 hover:bg-surface-hover rounded-full transition-colors"
+            type="button"
+            onClick={handleWizardBack}
+            disabled={isPublishing}
+            className="rounded-full p-2 text-content transition-colors hover:bg-surface-hover disabled:opacity-50"
+            aria-label={currentStep === 'media' ? 'Exit' : 'Go back one step'}
           >
-            <ArrowLeft className="w-5 h-5 text-content" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold text-content">Create Memory</h1>
-        </div>
-      </div>
-
-      {/* Page Content */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
-        <form onSubmit={handleSubmit}>
-          <div className="bg-surface rounded-xl shadow-sm border border-border">
-
-            {/* Video Upload/Recording Section */}
-            <div className="p-3 sm:p-6">
-              <h2 className="text-sm sm:text-base font-semibold text-content mb-3 sm:mb-4">Video</h2>
-
-              {!videoFile && recordingMode === 'upload' ? (
-                <div className="space-y-4">
-                  {/* Mode Selection */}
-                  <div className="flex gap-4 sm:gap-6">
-                    <button
-                      type="button"
-                      onClick={() => setRecordingMode('upload')}
-                      className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg border-2 transition-colors ${
-                        recordingMode === 'upload'
-                          ? 'border-orange-400 bg-primary-50 text-primary-700'
-                          : 'border-border text-content-secondary hover:border-gray-400'
-                      }`}
-                    >
-                      <Upload className="w-5 h-5 mx-auto mb-1 sm:mb-2" />
-                      <span className="text-xs sm:text-sm font-medium">Upload Video</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRecordingMode('record')
-                        startCamera('user').catch(err => console.error('Camera error:', err))
-                      }}
-                      className={`flex-1 py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg border-2 transition-colors ${
-                        (recordingMode as string) === 'record'
-                          ? 'border-primary-500 bg-primary-50 text-primary-700'
-                          : 'border-border text-content-secondary hover:border-gray-400'
-                      }`}
-                    >
-                      <Camera className="w-5 h-5 mx-auto mb-1 sm:mb-2" />
-                      <span className="text-xs sm:text-sm font-medium">Record Video</span>
-                    </button>
-                  </div>
-
-                  {/* Upload Interface */}
-                  <div className="border-2 border-dashed border-border rounded-lg p-4 sm:p-8 text-center">
-                    <Upload className="w-10 h-10 sm:w-12 sm:h-12 text-content-tertiary mx-auto mb-3 sm:mb-4" />
-                    <p className="text-sm sm:text-base text-content-secondary mb-1.5 sm:mb-2">Click to upload or drag and drop</p>
-                    <p className="text-xs sm:text-sm text-content-secondary mb-3 sm:mb-4">
-                      MP4, MOV, AVI up to 100MB &bull; Max {MAX_REEL_DURATION / 60} minutes
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="btn-primary text-sm sm:text-base"
-                    >
-                      Select Video
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="video/*"
-                      onChange={handleVideoSelect}
-                      className="hidden"
-                    />
-                  </div>
-                </div>
-              ) : recordingMode === 'record' && !videoFile ? (
-                <div className="space-y-4">
-                  {/* Camera Preview — aspect-ratio-aware */}
-                  <div className="flex justify-center px-2 sm:px-0">
-                    <div
-                      className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
-                      style={{ aspectRatio: ASPECT_RATIO_CSS[aspectRatio] || '9/16', maxHeight: '70vh' }}
-                    >
-                      <video
-                        ref={videoRef}
-                        autoPlay
-                        muted
-                        playsInline
-                        className="w-full h-full object-cover"
-                      />
-
-                      {/* Aspect Ratio Badge */}
-                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
-                        <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
-                        <span>{aspectRatio}</span>
-                      </div>
-
-                      {/* Camera Flip Button */}
-                      <button
-                        type="button"
-                        onClick={flipCamera}
-                        className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white rounded-full p-2.5 transition-colors backdrop-blur-sm"
-                        title={`Switch to ${cameraFacing === 'user' ? 'back' : 'front'} camera`}
-                      >
-                        <RotateCcw className="w-5 h-5" />
-                      </button>
-
-                      {/* Camera Indicator */}
-                      <div className="absolute top-12 right-3 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[10px]">
-                        {cameraFacing === 'user' ? 'Front' : 'Back'}
-                      </div>
-
-                      {/* Recording indicator dot */}
-                      {isRecording && !isPaused && (
-                        <div className="absolute top-3 left-1/2 -translate-x-1/2">
-                          <div className="flex items-center gap-1.5 bg-red-600/90 backdrop-blur-sm px-3 py-1 rounded-full">
-                            <div className="w-2 h-2 bg-surface rounded-full animate-pulse" />
-                            <span className="text-white text-xs font-medium">REC</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Recording Controls */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 sm:p-4 pt-8 sm:pt-10">
-                        {isRecording && (
-                          <div className="text-center mb-2 sm:mb-3">
-                            <div className="inline-flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                              <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-yellow-400' : 'bg-red-500 animate-pulse'}`} />
-                              <span className="text-white text-xs sm:text-sm font-mono font-medium">
-                                {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                              </span>
-                            </div>
-                            <div className="text-white/60 text-[10px] mt-1">
-                              {isPaused ? 'Paused' : 'Recording...'}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-center space-x-3 sm:space-x-4">
-                          {!isRecording ? (
-                            <button
-                              type="button"
-                              onClick={startRecording}
-                              className="bg-red-600 hover:bg-red-700 text-white rounded-full p-3 sm:p-4 transition-all shadow-lg shadow-red-600/30 hover:scale-105 active:scale-95"
-                            >
-                              <Camera className="w-5 h-5 sm:w-6 sm:h-6" />
-                            </button>
-                          ) : (
-                            <div className="flex items-center space-x-2 sm:space-x-3">
-                              <button
-                                type="button"
-                                onClick={isPaused ? resumeRecording : pauseRecording}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white rounded-full p-2.5 sm:p-3 transition-all hover:scale-105 active:scale-95"
-                              >
-                                {isPaused ? <Play className="w-4 h-4 sm:w-5 sm:h-5" /> : <Pause className="w-4 h-4 sm:w-5 sm:h-5" />}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={stopRecording}
-                                className="bg-surface hover:bg-surface-hover text-red-600 rounded-full p-2.5 sm:p-3 transition-all hover:scale-105 active:scale-95 ring-2 ring-red-400"
-                              >
-                                <Square className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Camera Controls */}
-                  <div className="flex justify-center space-x-2 sm:space-x-4">
-                    <button
-                      type="button"
-                      onClick={stopCamera}
-                      className="btn-secondary text-xs sm:text-sm py-2 px-3 sm:px-4"
-                    >
-                      <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                      Cancel
-                    </button>
-                    {videoFile && (
-                      <button
-                        type="button"
-                        onClick={discardRecording}
-                        className="btn-secondary text-xs sm:text-sm py-2 px-3 sm:px-4"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                        Record Again
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Camera Error */}
-                  {cameraError && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <p className="text-red-700 text-sm">{cameraError}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Video Preview — aspect-ratio-aware */}
-                  <div className="flex justify-center px-2 sm:px-0">
-                    <div
-                      className={`relative bg-black rounded-xl overflow-hidden transition-all duration-300 ${previewStyle.containerClass}`}
-                      style={{ aspectRatio: ASPECT_RATIO_CSS[aspectRatio] || '9/16', maxHeight: '70vh' }}
-                    >
-                      <video
-                        ref={videoRef}
-                        src={videoUrl}
-                        className="w-full h-full object-contain"
-                        onTimeUpdate={handleTimeUpdate}
-                        onEnded={() => setIsPlaying(false)}
-                      />
-
-                      {/* Aspect Ratio Badge */}
-                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
-                        <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
-                        <span>{aspectRatio}</span>
-                      </div>
-
-                      {/* Video Controls */}
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 sm:p-4 pt-8 sm:pt-10">
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <button
-                            type="button"
-                            onClick={handlePlayPause}
-                            className="text-white hover:text-gray-300 transition-colors flex-shrink-0"
-                          >
-                            {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5" />}
-                          </button>
-
-                          <div className="flex-1 min-w-0">
-                            <input
-                              type="range"
-                              min="0"
-                              max={videoDuration}
-                              value={currentTime}
-                              onChange={handleSeek}
-                              className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
-                            />
-                            <div className="flex justify-between text-[10px] text-white/80 mt-0.5">
-                              <span>{formatTime(currentTime)}</span>
-                              <span>{formatTime(videoDuration)}</span>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-1.5 flex-shrink-0">
-                            <button
-                              type="button"
-                              onClick={handleMuteToggle}
-                              className="text-white hover:text-gray-300 transition-colors"
-                            >
-                              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                            </button>
-                            <input
-                              type="range"
-                              min="0"
-                              max="1"
-                              step="0.1"
-                              value={volume}
-                              onChange={handleVolumeChange}
-                              className="w-12 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer slider hidden sm:block"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs sm:text-sm text-content-secondary px-1">
-                    <span>Duration: {formatTime(videoDuration)}</span>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      Change Video
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Details Section */}
-            <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
-              <h2 className="text-sm sm:text-base font-semibold text-content">Details</h2>
-
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium text-content mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Give your memory a catchy title..."
-                  className="input-field"
-                  maxLength={MAX_REEL_TITLE_LENGTH}
-                  required
-                />
-                <div className="text-right text-xs text-content-secondary mt-1">
-                  {title.length}/{MAX_REEL_TITLE_LENGTH}
-                </div>
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-content mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Tell people what your memory is about..."
-                  rows={3}
-                  className="w-full px-3 py-2 text-sm sm:text-base text-content placeholder-gray-400 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-                  maxLength={MAX_REEL_DESCRIPTION_LENGTH}
-                />
-                <div className="text-right text-xs text-content-secondary mt-1">
-                  {description.length}/{MAX_REEL_DESCRIPTION_LENGTH}
-                </div>
-              </div>
-
-              {/* Category & Aspect Ratio - side by side on md+ */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Category */}
-                <div>
-                  <label className="block text-sm font-medium text-content mb-2">
-                    Category
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as ReelCategory)}
-                    className="input-field"
-                  >
-                    {REEL_CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.icon} {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Aspect Ratio */}
-                <div>
-                  <label className="block text-sm font-medium text-content mb-2">
-                    Aspect Ratio
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {REEL_ASPECT_RATIOS.map((ratio) => (
-                      <button
-                        key={ratio.value}
-                        type="button"
-                        onClick={() => setAspectRatio(ratio.value as '9:16' | '16:9' | '1:1' | '4:3')}
-                        className={`sm:p-3 p-2 border rounded-lg text-[12px] font-medium transition-all duration-200 ${
-                          aspectRatio === ratio.value
-                            ? 'border-orange-500 bg-orange-50 text-orange-700 ring-1 ring-orange-300 shadow-sm'
-                            : 'border-border text-content-secondary hover:border-border hover:bg-surface-canvas'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-1">
-                          <span>{ratio.icon}</span>
-                          <span>{ratio.label}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Settings Section */}
-            <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
-              <h2 className="text-sm sm:text-base font-semibold text-content">Settings</h2>
-
-              {/* Tags & Privacy - side by side on md+ */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                {/* Tags */}
-                <div>
-                  <label className="block text-sm font-medium text-content mb-2">
-                    Tags
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            addTag()
-                          }
-                        }}
-                        placeholder="Add a tag..."
-                        className="input-field flex-1"
-                        maxLength={20}
-                      />
-                      <button
-                        type="button"
-                        onClick={addTag}
-                        disabled={!newTag.trim() || tags.length >= MAX_REEL_TAGS}
-                        className="px-3 sm:px-4 py-2 bg-primary-600 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                      >
-                        Add
-                      </button>
-                    </div>
-
-                    {tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center space-x-1 px-3 py-1 bg-surface-secondary text-content rounded-full text-sm"
-                          >
-                            <Tag className="w-3 h-3" />
-                            <span>{tag}</span>
-                            <button
-                              type="button"
-                              onClick={() => removeTag(tag)}
-                              className="text-content-secondary hover:text-content"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="text-xs text-content-secondary">
-                      {tags.length}/{MAX_REEL_TAGS} tags
-                    </div>
-                  </div>
-                </div>
-
-                {/* Privacy Settings */}
-                <div>
-                  <label className="block text-sm font-medium text-content mb-2">
-                    Privacy
-                  </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={isPublic}
-                        onChange={() => setIsPublic(true)}
-                        className="text-primary-600 focus:ring-primary-500"
-                      />
-                      <div className="flex items-center space-x-2">
-                        <Globe className="w-4 h-4 text-content-secondary" />
-                        <span className="text-sm text-content">Public</span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        checked={!isPublic}
-                        onChange={() => setIsPublic(false)}
-                        className="text-primary-600 focus:ring-primary-500"
-                      />
-                      <div className="flex items-center space-x-2">
-                        <Lock className="w-4 h-4 text-content-secondary" />
-                        <span className="text-sm text-content">Private</span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Video Info */}
-              {videoFile && (
-                <div className="bg-surface-canvas rounded-lg p-3 sm:p-4">
-                  <h4 className="text-sm font-medium text-content mb-2">Video Information</h4>
-                  <div className="space-y-1.5 text-xs sm:text-sm text-content-secondary">
-                    <div className="flex items-center justify-between">
-                      <span className="text-content-secondary flex-shrink-0">File:</span>
-                      <span className="font-medium text-content truncate ml-2 max-w-[50%] sm:max-w-[180px]">{videoFile.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-content-secondary">Size:</span>
-                      <span className="font-medium text-content">{(videoFile.size / (1024 * 1024)).toFixed(1)} MB</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-content-secondary">Duration:</span>
-                      <span className="font-medium text-content">{formatTime(videoDuration)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-content-secondary">Type:</span>
-                      <span className="font-medium text-content">{videoFile.type}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-content-secondary">Ratio:</span>
-                      <span className="font-medium text-content">{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.label || aspectRatio}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-border" />
-
-            {/* Action Buttons */}
-            <div className="p-3 sm:p-6">
-              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-4">
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  className="btn-secondary text-sm sm:text-base py-2.5 sm:py-2"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading || isSubmitting || isUploadingFile || !videoFile || !title.trim()}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base py-2.5 sm:py-2"
-                >
-                  {loading || isSubmitting || isUploadingFile ? 'Creating...' : 'Create Memory'}
-                </button>
-              </div>
-            </div>
-
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-semibold text-content sm:text-lg">Create Memory</h1>
+            <p className="truncate text-[11px] text-content-secondary sm:text-xs">
+              {STEP_SUBTITLES[currentStep]}
+            </p>
           </div>
+          <WizardHeaderActions
+            currentStep={currentStep}
+            canGoNext={canGoNext && !loading && !isSubmitting && !isUploadingFile}
+            isPublishing={isPublishing}
+            publishLabel={publishLabel}
+            onNext={handleWizardNext}
+          />
+        </div>
+        {isPublishing && (
+          <div className="h-0.5 w-full bg-border" aria-hidden>
+            <div
+              className="h-full bg-[var(--african-orange)] transition-all duration-300 ease-out"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        )}
+      </header>
+
+      <div className="mx-auto w-full max-w-2xl flex-1 px-3 py-4 sm:px-6 sm:py-6">
+        <form id="create-memory-form" onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          {currentStep === 'media' && (
+            <MediaSection
+              recordingMode={recordingMode}
+              setRecordingMode={setRecordingMode}
+              videoFile={videoFile}
+              videoUrl={videoUrl}
+              videoDuration={videoDuration}
+              thumbnailUrl={thumbnailUrl}
+              aspectRatio={aspectRatio}
+              aspectRatioCss={ASPECT_RATIO_CSS}
+              previewStyle={previewStyle}
+              isDragging={isDragging}
+              isPlaying={isPlaying}
+              isMuted={isMuted}
+              currentTime={currentTime}
+              volume={volume}
+              isRecording={isRecording}
+              isPaused={isPaused}
+              recordingTime={recordingTime}
+              cameraError={cameraError}
+              cameraFacing={cameraFacing}
+              validationError={validationError}
+              videoRef={videoRef}
+              fileInputRef={fileInputRef}
+              formatTime={formatTime}
+              formatFileSize={formatFileSize}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onBrowseClick={handleBrowseClick}
+              onVideoInputChange={handleVideoSelect}
+              onStartCamera={startCamera}
+              onFlipCamera={flipCamera}
+              onStopCamera={stopCamera}
+              onStartRecording={startRecording}
+              onStopRecording={stopRecording}
+              onPauseRecording={pauseRecording}
+              onResumeRecording={resumeRecording}
+              onDiscardRecording={discardRecording}
+              onClearVideo={clearVideo}
+              onPlayPause={handlePlayPause}
+              onTimeUpdate={handleTimeUpdate}
+              onSeek={handleSeek}
+              onMuteToggle={handleMuteToggle}
+              onVolumeChange={handleVolumeChange}
+              onVideoEnded={() => setIsPlaying(false)}
+            />
+          )}
+
+          {currentStep === 'details' && (
+            <DetailsForm
+              title={title}
+              setTitle={setTitle}
+              description={description}
+              setDescription={setDescription}
+              category={category}
+              setCategory={setCategory}
+              aspectRatio={aspectRatio}
+              setAspectRatio={setAspectRatio}
+              tags={tags}
+              newTag={newTag}
+              setNewTag={setNewTag}
+              addTag={addTag}
+              removeTag={removeTag}
+              isPublic={isPublic}
+              setIsPublic={setIsPublic}
+              showAdvanced={showAdvanced}
+              setShowAdvanced={setShowAdvanced}
+              showEmojiPicker={showEmojiPicker}
+              setShowEmojiPicker={setShowEmojiPicker}
+              videoFile={videoFile}
+              videoDuration={videoDuration}
+              formatTime={formatTime}
+              formatFileSize={formatFileSize}
+              onInsertHashtag={handleInsertHashtag}
+              onInsertEmoji={handleInsertEmoji}
+            />
+          )}
+
+          {currentStep === 'review' && videoFile && (
+            <ReviewStep
+              title={title}
+              description={description}
+              thumbnailUrl={thumbnailUrl}
+              videoFile={videoFile}
+              videoDuration={videoDuration}
+              aspectRatio={aspectRatio}
+              category={category}
+              tags={tags}
+              isPublic={isPublic}
+              formatTime={formatTime}
+              formatFileSize={formatFileSize}
+            />
+          )}
         </form>
       </div>
     </div>
