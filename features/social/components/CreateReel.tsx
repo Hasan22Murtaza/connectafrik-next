@@ -53,13 +53,13 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null)
   const [recordingMode, setRecordingMode] = useState<'upload' | 'record'>('upload')
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user')
   const [showPreview, setShowPreview] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const revokeVideoUrl = useCallback((url: string) => {
@@ -83,6 +83,12 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
     if (file.size > maxSize) {
       toast.error('Video file size must be less than 100MB')
       return
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop())
+      mediaStreamRef.current = null
+      setMediaStream(null)
     }
 
     setVideoFile(file)
@@ -187,59 +193,78 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
     setTags(tags.filter(tag => tag !== tagToRemove))
   }, [tags])
 
-  // Camera recording functions
-  const startCamera = useCallback(async (facingMode: 'user' | 'environment' = cameraFacing) => {
+  const attachCameraPreview = useCallback((stream: MediaStream) => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream
+      videoRef.current.muted = true
+      videoRef.current.play().catch(err => console.error('Camera preview play error:', err))
+    }
+  }, [])
+
+  const releaseCamera = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop())
+      mediaStreamRef.current = null
+    }
+    setMediaStream(null)
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+  }, [])
+
+  // Camera recording functions — reuse active stream when reopening (no repeat permission prompt)
+  const startCamera = useCallback(async () => {
     try {
       setCameraError(null)
-      
-      // Stop existing stream if any
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop())
+
+      const existingStream = mediaStreamRef.current
+      if (existingStream?.getTracks().every(track => track.readyState === 'live')) {
+        setMediaStream(existingStream)
+        attachCameraPreview(existingStream)
+        setRecordingMode('record')
+        setShowPreview(true)
+        return
       }
-      
-      // Use aspect ratio style mapping for camera resolution
+
+      if (existingStream) {
+        existingStream.getTracks().forEach(track => track.stop())
+        mediaStreamRef.current = null
+      }
+
       const ratioConfig = ASPECT_RATIO_STYLES[aspectRatio] || ASPECT_RATIO_STYLES['9:16']
       const constraints: MediaStreamConstraints = {
         video: {
           width: { ideal: ratioConfig.cameraWidth },
           height: { ideal: ratioConfig.cameraHeight },
-          facingMode: facingMode
+          facingMode: 'user'
         },
         audio: true
       }
 
-      let stream
+      let stream: MediaStream
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints)
-      } catch (highResError) {
-        console.log('High resolution not supported, trying basic constraints')
-        // Fallback to basic constraints with proper type
+      } catch {
         const basicConstraints: MediaStreamConstraints = {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            facingMode: facingMode as 'user' | 'environment'
+            facingMode: 'user'
           },
           audio: true
         }
         stream = await navigator.mediaDevices.getUserMedia(basicConstraints)
       }
 
+      mediaStreamRef.current = stream
       setMediaStream(stream)
-      setCameraFacing(facingMode)
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.muted = true // Mute preview to avoid feedback
-        videoRef.current.play() // Ensure video plays
-      }
-      
+      attachCameraPreview(stream)
       setRecordingMode('record')
       setShowPreview(true)
     } catch (error: any) {
       console.error('Camera access error:', error)
       let errorMessage = 'Camera access denied. Please allow camera permissions and try again.'
-      
+
       if (error.name === 'NotAllowedError') {
         errorMessage = 'Camera permission denied. Please allow camera access in your browser settings.'
       } else if (error.name === 'NotFoundError') {
@@ -247,28 +272,20 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
       } else if (error.name === 'NotReadableError') {
         errorMessage = 'Camera is being used by another application. Please close other apps and try again.'
       }
-      
+
       setCameraError(errorMessage)
       toast.error(errorMessage)
     }
-  }, [aspectRatio, cameraFacing, mediaStream])
-
-  const flipCamera = useCallback(async () => {
-    const newFacing = cameraFacing === 'user' ? 'environment' : 'user'
-    await startCamera(newFacing)
-  }, [cameraFacing, startCamera])
+  }, [aspectRatio, attachCameraPreview])
 
   const stopCamera = useCallback(() => {
-    if (mediaStream) {
-      mediaStream.getTracks().forEach(track => track.stop())
-      setMediaStream(null)
-    }
     if (videoRef.current) {
       videoRef.current.srcObject = null
     }
+    setMediaStream(null)
     setRecordingMode('upload')
     setCameraError(null)
-  }, [mediaStream])
+  }, [])
 
   const startRecording = useCallback(() => {
     if (!mediaStream) return
@@ -292,15 +309,19 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
         const url = URL.createObjectURL(blob)
         setVideoUrl(url)
         setVideoFile(new File([blob], 'recording.webm', { type: 'video/webm' }))
-        
-        // Get video duration
+
+        if (mediaStreamRef.current) {
+          mediaStreamRef.current.getTracks().forEach(track => track.stop())
+          mediaStreamRef.current = null
+          setMediaStream(null)
+        }
+
         const video = document.createElement('video')
         video.onloadedmetadata = () => {
           setVideoDuration(Math.round(video.duration))
         }
         video.src = url
-        
-        // Keep the preview showing the recorded video
+
         if (videoRef.current) {
           videoRef.current.src = url
           videoRef.current.srcObject = null
@@ -375,18 +396,20 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
 
   const discardRecording = useCallback(() => {
     stopRecording()
-    stopCamera()
+    releaseCamera()
+    setRecordingMode('upload')
+    setCameraError(null)
     setVideoUrl('')
     setVideoFile(null)
     setRecordingTime(0)
     recordedChunksRef.current = []
-  }, [])
+  }, [releaseCamera, stopRecording])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop())
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop())
+        mediaStreamRef.current = null
       }
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current)
@@ -395,7 +418,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
         revokeVideoUrl(videoUrl)
       }
     }
-  }, [mediaStream, videoUrl, revokeVideoUrl])
+  }, [videoUrl, revokeVideoUrl])
 
   const dataUrlToFile = useCallback((dataUrl: string, filename: string): File | null => {
     if (!dataUrl || !dataUrl.startsWith('data:')) {
@@ -544,8 +567,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                   <button
                     type="button"
                     onClick={() => {
-                      setRecordingMode('record')
-                      startCamera('user').catch(err => console.error('Camera error:', err))
+                      startCamera().catch(err => console.error('Camera error:', err))
                     }}
                     className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
                       (recordingMode as string) === 'record'
@@ -601,21 +623,6 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                     <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
                       <span>{REEL_ASPECT_RATIOS.find(r => r.value === aspectRatio)?.icon}</span>
                       <span>{aspectRatio}</span>
-                    </div>
-                    
-                    {/* Camera Flip Button */}
-                    <button
-                      type="button"
-                      onClick={flipCamera}
-                      className="absolute top-3 right-3 bg-black/50 hover:bg-black/70 text-white rounded-full p-2.5 transition-colors backdrop-blur-sm"
-                      title={`Switch to ${cameraFacing === 'user' ? 'back' : 'front'} camera`}
-                    >
-                      <RotateCcw className="w-5 h-5" />
-                    </button>
-
-                    {/* Camera Indicator */}
-                    <div className="absolute top-12 right-3 bg-black/50 backdrop-blur-sm text-white px-2 py-1 rounded-full text-[10px]">
-                      {cameraFacing === 'user' ? 'Front' : 'Back'}
                     </div>
                     
                     {/* Recording indicator dot */}
