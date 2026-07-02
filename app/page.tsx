@@ -40,7 +40,7 @@ const features = [
     icon: Share2,
     title: "Share Your Story",
     description:
-      "Post photos, videos and ideas to a feed built for African voices. Your culture, your perspective, your stage.",
+      "Post photos, videos and ideas to a feed built for every voice. Your culture, your perspective, your stage.",
     accent: "from-orange-500 to-amber-500",
   },
   {
@@ -54,21 +54,21 @@ const features = [
     icon: Users,
     title: "Communities & Groups",
     description:
-      "Find your people across 54 nations and the diaspora. Join groups around politics, culture, business and more.",
+      "Find your people across borders and time zones. Join groups around politics, culture, business and more.",
     accent: "from-emerald-500 to-green-600",
   },
   {
     icon: Globe,
     title: "Networking",
     description:
-      "Build meaningful connections with creators, entrepreneurs and changemakers shaping the continent's future.",
+      "Build meaningful connections with creators, entrepreneurs and changemakers shaping a better world.",
     accent: "from-violet-500 to-purple-600",
   },
   {
     icon: Video,
     title: "Memories & Video",
     description:
-      "Share short-form videos and live moments. Discover stories from every corner of Africa as they happen.",
+      "Share short-form videos and live moments. Discover stories from every corner of the world as they happen.",
     accent: "from-rose-500 to-pink-600",
   },
   {
@@ -81,14 +81,14 @@ const features = [
 ];
 
 const stats = [
-  { number: "54", label: "African Countries" },
+  { number: "190+", label: "Countries" },
   { number: "10k+", label: "Active Members" },
   { number: "25k+", label: "Discussions" },
   { number: "50+", label: "Communities" },
 ];
 
 const benefits = [
-  "Built for the African community and global diaspora",
+  "Built for a global community — wherever you are",
   "Lightning-fast, real-time interactions everywhere",
   "Private by design with secure, encrypted messaging",
   "Free to join — no hidden fees, ever",
@@ -97,39 +97,39 @@ const benefits = [
 const testimonials = [
   {
     quote:
-      "ConnectAfrik finally feels like home online. I've reconnected with my roots and met incredible people across the continent.",
-    name: "Amara Okafor",
-    role: "Creator, Lagos",
-    initials: "AO",
+      "ConnectAfrik finally feels like home online. I've met incredible people from all over the world and found communities that truly get me.",
+    name: "Sofia Reyes",
+    role: "Creator, Mexico City",
+    initials: "SR",
     color: "from-orange-500 to-amber-500",
     image_url: "/assets/images/avatar-1.png",
   },
   {
     quote:
-      "The communities here are alive. Real conversations about culture and politics that actually go somewhere. I'm hooked.",
-    name: "Kwame Mensah",
-    role: "Entrepreneur, Accra",
-    initials: "KM",
+      "The communities here are alive. Real conversations about culture, ideas and current events that actually go somewhere. I'm hooked.",
+    name: "James Chen",
+    role: "Entrepreneur, Singapore",
+    initials: "JC",
     color: "from-emerald-500 to-green-600",
     image_url: "/assets/images/avatar-2.png",
 
   },
   {
     quote:
-      "I grew my small business through the marketplace in weeks. Selling to a community that gets me changed everything.",
-    name: "Zanele Dlamini",
-    role: "Seller, Johannesburg",
-    initials: "ZD",
+      "I grew my small business through the marketplace in weeks. Reaching customers worldwide who share my values changed everything.",
+    name: "Emma Laurent",
+    role: "Seller, Paris",
+    initials: "EL",
     color: "from-sky-500 to-blue-600",
     image_url: "/assets/images/avatar-4.png",
   },
   {
     quote:
-      "I grew my small business through the marketplace in weeks. Selling to a community that gets me changed everything.",
-    name: "Zanele Dlamini",
-    role: "Seller, Johannesburg",
-    initials: "ZD",
-    color: "from-sky-500 to-blue-600",
+      "Finally a platform where distance doesn't matter. I've built friendships across continents and learned so much from people I'd never have met otherwise.",
+    name: "Marcus Webb",
+    role: "Developer, Toronto",
+    initials: "MW",
+    color: "from-violet-500 to-purple-600",
     image_url: "/assets/images/avatar-5.png",
   },
 ];
@@ -137,23 +137,27 @@ const testimonials = [
 const faqs = [
   {
     q: "Is ConnectAfrik free to use?",
-    a: "Yes. Creating an account, posting, messaging and joining communities are completely free. Optional premium features may be added later, but the core experience will always be free.",
+    a: "Yes. Creating an account, posting, messaging and joining communities are completely free — no matter where you are in the world. Optional premium features may be added later, but the core experience will always be free.",
   },
   {
     q: "Who is ConnectAfrik for?",
-    a: "It's built for Africans across the continent and the global diaspora — creators, students, entrepreneurs, and anyone who wants to celebrate culture, discuss ideas and build genuine connections.",
+    a: "Everyone. Whether you're a creator in Tokyo, a student in Nairobi, an entrepreneur in Berlin or simply someone who wants meaningful connection — ConnectAfrik is the social home for the world.",
   },
   {
     q: "How is my privacy protected?",
-    a: "Your data is yours. We use secure, encrypted messaging and give you granular control over who sees your content. We never sell your personal information.",
+    a: "Your data is yours. We use secure, encrypted messaging and give you granular control over who sees your content. We never sell your personal information to third parties.",
   },
   {
     q: "Can I sell products on the platform?",
-    a: "Absolutely. Our marketplace lets you list products, reach a trusted community and accept secure payments — all in one place.",
+    a: "Absolutely. Our marketplace lets you list products, reach customers around the world and accept secure payments — all in one place.",
   },
   {
     q: "What can I do on ConnectAfrik?",
-    a: "Share posts and videos, message friends, join groups, follow political and cultural discussions, discover memories, and buy or sell in the marketplace.",
+    a: "Share posts and videos, message friends across borders, join global communities, follow discussions on topics you care about, discover memories and reels, and buy or sell in the marketplace.",
+  },
+  {
+    q: "Is ConnectAfrik available in my country?",
+    a: "Yes. ConnectAfrik is built for a global audience. You can sign up, connect and participate from virtually anywhere — we're here to bring people together for a better world.",
   },
 ];
 
@@ -228,36 +232,36 @@ const Home: React.FC = () => {
   }, []);
 
   const users = [
-    { name: "Amara Okafor", avatarUrl: "/assets/images/avatar-1.png" },
-    { name: "Kwame Mensah", avatarUrl: "/assets/images/avatar-2.png" },
-    { name: "Zanele Dlamini", avatarUrl: "/assets/images/avatar-4.png" },
-    { name: "Zanele Dlamini", avatarUrl: "/assets/images/avatar-5.png" }
+    { name: "Sofia Reyes", avatarUrl: "/assets/images/avatar-1.png" },
+    { name: "James Chen", avatarUrl: "/assets/images/avatar-2.png" },
+    { name: "Emma Laurent", avatarUrl: "/assets/images/avatar-4.png" },
+    { name: "Marcus Webb", avatarUrl: "/assets/images/avatar-5.png" }
   ];
   return (
     <div ref={rootRef} className="overflow-x-hidden ">
       {/* ============================== HERO ============================== */}
       <section className="relative isolate overflow-hidden">
 
-        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 mx-auto py-18 ">
+        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-10  2xl:px-6 mx-auto py-18 ">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             {/* Left: copy */}
             <div className="text-center lg:text-left">
               <Reveal>
                 <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/70 px-4 py-1.5 text-sm font-medium text-orange-700 shadow-sm backdrop-blur dark:border-border dark:bg-surface dark:text-orange-300">
                   <Sparkles className="h-4 w-4" />
-                  Where Africa connects, one story at a time
+                  Connecting people for a better world
                 </span>
               </Reveal>
               <div className="max-w-2xl">
                 <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
-                  The social home for Africa & the diaspora
+                  The social home for the world
                 </h1>
               </div>
               <Reveal delay={2}>
                 <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-600 lg:mx-0">
                   Share your story, join vibrant communities, message in
                   real time and discover the culture, ideas and people shaping
-                  the continent. One platform, endless connection.
+                  our world. One platform, endless connection.
                 </p>
               </Reveal>
 
@@ -320,7 +324,7 @@ const Home: React.FC = () => {
                         />
                       ))}
                     </div>
-                    <span>Loved by members across the continent</span>
+                    <span>Loved by members around the world</span>
                   </div>
                 </div>
               </Reveal>
@@ -336,26 +340,26 @@ const Home: React.FC = () => {
                 <div className="lp-animate-float rounded-3xl border border-white/60 bg-white/90 p-5 shadow-2xl shadow-black/10 backdrop-blur-xl dark:border-border dark:bg-surface">
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-sm font-bold text-white">
-                      AO
+                      SR
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">
-                        Amara Okafor
+                        Sofia Reyes
                       </p>
-                      <p className="text-xs text-gray-500">Lagos · 2h ago</p>
+                      <p className="text-xs text-gray-500">Mexico City · 2h ago</p>
                     </div>
                     <MoreHorizontal className="h-5 w-5 text-gray-400" />
                   </div>
 
                   <p className="mt-3 text-sm leading-relaxed text-gray-700">
-                    Sunset over the Lagos skyline never gets old. Proud of how
-                    far our community has come
+                    Golden hour in the city never gets old. Grateful for a
+                    community that brings the whole world a little closer.
                   </p>
 
                   <div className="mt-3 aspect-[16/10] overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 via-amber-400 to-rose-400">
                     <img
                       src="/assets/images/hero2.jpeg"
-                      alt="A scenic view shared by the ConnectAfrik community"
+                      alt="A scenic view shared by the ConnectAfrik community worldwide"
                       className="h-full w-full object-cover"
                     />
                   </div>
@@ -385,7 +389,7 @@ const Home: React.FC = () => {
                     <p className="text-xs font-semibold text-gray-900">
                       New follower
                     </p>
-                    <p className="text-[11px] text-gray-500">Kwame started following you</p>
+                    <p className="text-[11px] text-gray-500">James started following you</p>
                   </div>
                 </div>
 
@@ -396,7 +400,7 @@ const Home: React.FC = () => {
                   </span>
                   <div>
                     <p className="text-xs font-semibold text-gray-900">
-                      Zanele
+                      Emma
                     </p>
                     <p className="text-[11px] text-gray-500">Sent you a message ✨</p>
                   </div>
@@ -416,7 +420,7 @@ const Home: React.FC = () => {
               <Zap className="h-4 w-4" /> Everything in one place
             </span>
             <h2 className="mt-5 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Built for the way Africa connects
+              Built for the way the world connects
             </h2>
             <p className="mt-4 text-lg text-gray-600">
               From real-time chat to thriving communities and a trusted
@@ -472,8 +476,8 @@ const Home: React.FC = () => {
               </h2>
               <p className="mt-4 text-lg text-gray-600">
                 A rich, fast feed packed with photos, videos and real
-                conversations. React, comment and share — engagement that
-                actually means something.
+                conversations from every time zone. React, comment and share —
+                engagement that actually means something.
               </p>
 
               <ul className="mt-8 space-y-4">
@@ -488,7 +492,7 @@ const Home: React.FC = () => {
                   },
                   {
                     icon: TrendingUp,
-                    text: "Discover trending topics from politics to culture",
+                    text: "Discover trending topics from every corner of the globe",
                   },
                 ].map(({ icon: Icon, text }) => (
                   <li key={text} className="flex items-start gap-3">
@@ -527,11 +531,11 @@ const Home: React.FC = () => {
                   </div>
                 </div>
                 <h3 className="font-semibold text-gray-900">
-                  The Role of Youth in African Democracy
+                  The Role of Youth in Global Democracy
                 </h3>
                 <p className="mt-1.5 text-sm text-gray-600">
-                  Young Africans are driving democratic change across the
-                  continent — from the streets to the ballot box.
+                  Young people everywhere are driving democratic change —
+                  from the streets to the ballot box.
                 </p>
                 <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
                   <span className="flex items-center gap-1.5">
@@ -560,11 +564,11 @@ const Home: React.FC = () => {
                   </div>
                 </div>
                 <h3 className="font-semibold text-gray-900">
-                  Celebrating Kente: The Art of Ghanaian Weaving
+                  Celebrating Cultures That Connect the World
                 </h3>
                 <p className="mt-1.5 text-sm text-gray-600">
-                  Each pattern tells a story, each color has meaning. Discover
-                  the heritage behind the cloth.
+                  From festivals to family traditions — discover the stories,
+                  art and heritage people share across borders.
                 </p>
                 <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
                   <span className="flex items-center gap-1.5">
@@ -606,11 +610,11 @@ const Home: React.FC = () => {
                   <ShieldCheck className="h-4 w-4" /> Why ConnectAfrik
                 </span>
                 <h2 className="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                  A platform that puts community first
+                  Connecting people for a better world
                 </h2>
                 <p className="mt-4 text-lg text-gray-300">
-                  We're not just another social network. We're a home built
-                  with care for African voices — fast, private and genuinely
+                  We're not just another social network. We're a global home
+                  built with care for every voice — fast, private and genuinely
                   yours.
                 </p>
               </Reveal>
@@ -646,7 +650,7 @@ const Home: React.FC = () => {
               Real stories from real members
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Thousands across Africa and the diaspora are already building
+              Thousands of people around the world are already building
               their home here.
             </p>
           </Reveal>
@@ -729,7 +733,7 @@ const Home: React.FC = () => {
               Frequently asked questions
             </h2>
             <p className="mt-4 text-lg text-gray-600">
-              Everything you need to know before you join.
+              Everything you need to know before joining the global community.
             </p>
           </Reveal>
 
@@ -784,11 +788,11 @@ const Home: React.FC = () => {
             <div className="absolute -left-10 -top-10 -z-10 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
             <div className="absolute -bottom-10 -right-10 -z-10 h-48 w-48 rounded-full bg-emerald-300/30 blur-3xl" />
             <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-primary-600 sm:text-4xl lg:text-5xl">
-              Ready to join the conversation?
+              Ready to connect with the world?
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-lg text-gray-600 ">
-              Connect with thousands of Africans sharing their stories, ideas
-              and culture. Your voice matters in shaping our continent's future.
+              Connect with people everywhere sharing their stories, ideas
+              and culture. Your voice matters in shaping a better world.
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               {!user ? (
