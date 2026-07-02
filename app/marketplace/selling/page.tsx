@@ -609,7 +609,7 @@ const SellerDashboardPage: React.FC = () => {
                 return (
                   <div
                     key={product.id}
-                    className={`${MP.card} overflow-hidden ${MP.cardPadding}`}
+                    className={`${MP.card}  ${MP.cardPadding}`}
                   >
                     <div className="flex gap-2">
                       <button

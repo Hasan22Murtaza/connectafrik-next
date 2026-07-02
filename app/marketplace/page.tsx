@@ -385,7 +385,18 @@ const MarketplacePage: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as MarketplaceSort)}
-                  className="appearance-none pl-2.5 pr-7 py-1.5 bg-surface border border-border rounded-lg text-xs text-content focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer"
+                  className="appearance-none
+pl-2.5 pr-7 py-1.5
+bg-surface
+border border-border
+rounded-lg
+text-xs text-content
+shadow-sm
+transition-all duration-200
+focus:outline-none
+focus:border-orange-500
+focus:ring-[3px]
+focus:ring-orange-200"
                   aria-label="Sort products"
                 >
                   {MARKETPLACE_SORT_OPTIONS.map((option) => (

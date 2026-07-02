@@ -526,7 +526,7 @@ const BuyingPageContent: React.FC = () => {
           {renderTabContent()}
         </main>
 
-        <aside className={`hidden xl:block ${MP.sidebarRight}`}>
+        <aside className={`hidden xl:block ${MP.sidebarRight} `}>
           <div className={MP.sidebarRightStack}>
             <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
               <div className="flex items-center gap-3 mb-4">
