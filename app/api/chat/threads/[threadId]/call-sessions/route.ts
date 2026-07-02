@@ -104,6 +104,18 @@ async function resolveActorName(serviceClient: ReturnType<typeof createServiceCl
   return (data?.full_name || data?.username || 'Someone') as string
 }
 
+async function resolveActorAvatar(
+  serviceClient: ReturnType<typeof createServiceClient>,
+  userId: string,
+): Promise<string> {
+  const { data } = await serviceClient
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', userId)
+    .maybeSingle()
+  return typeof data?.avatar_url === 'string' && data.avatar_url.trim() ? data.avatar_url.trim() : ''
+}
+
 async function resolveParticipantProfiles(
   serviceClient: ReturnType<typeof createServiceClient>,
   participantIds: string[],
@@ -798,6 +810,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         updated.metadata && typeof updated.metadata === 'object' && !Array.isArray(updated.metadata)
           ? (updated.metadata as Record<string, unknown>)
           : {}
+      const actorAvatar =
+        (typeof metaObj.callerAvatarUrl === 'string' && metaObj.callerAvatarUrl.trim()) ||
+        (typeof metaObj.caller_avatar_url === 'string' && metaObj.caller_avatar_url.trim()) ||
+        (await resolveActorAvatar(serviceClient, user.id))
       const targetUserId =
         (typeof metaObj.targetUserId === 'string' && metaObj.targetUserId) ||
         (typeof metaObj.target_user_id === 'string' && metaObj.target_user_id) ||
@@ -843,6 +859,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           callId: String(updated.call_id || ''),
           caller_id: user.id,
           caller_name: actorName,
+          ...(actorAvatar
+            ? {
+                caller_avatar_url: actorAvatar,
+                actor_avatar: actorAvatar,
+                sender_image: actorAvatar,
+              }
+            : {}),
           sent_at: new Date().toISOString(),
           url: threadId ? `/chat?thread=${threadId}` : '/feed',
         })
@@ -863,6 +886,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
                   requireInteraction: false,
                   silent: false,
                   vibrate: [200, 100, 200],
+                  ...(actorAvatar ? { sender_image: actorAvatar } : {}),
                   data: pushData,
                   ...(device_session_id && (status === 'active' || status === 'declined')
                     ? {

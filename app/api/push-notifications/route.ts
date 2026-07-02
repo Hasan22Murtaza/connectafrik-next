@@ -43,6 +43,30 @@ export interface NotificationPayload {
   sender_image?: string
 }
 
+const DEFAULT_NOTIFICATION_LOGO = '/assets/images/logo.png'
+
+function pickNonEmptyString(...candidates: unknown[]): string {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) return candidate.trim()
+  }
+  return ''
+}
+
+function pickProfileImageUrl(...candidates: unknown[]): string {
+  return pickNonEmptyString(...candidates)
+}
+
+async function resolveProfileAvatar(userId: string): Promise<string> {
+  const normalized = userId.trim()
+  if (!normalized) return ''
+  const { data } = await supabase
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', normalized)
+    .maybeSingle()
+  return typeof data?.avatar_url === 'string' && data.avatar_url.trim() ? data.avatar_url.trim() : ''
+}
+
 function stringifyFcmDataValues(obj: Record<string, unknown>): Record<string, string> {
   const out: Record<string, string> = {}
   for (const [k, v] of Object.entries(obj)) {
@@ -222,11 +246,36 @@ export async function POST(request: NextRequest) {
         ? { ...(body.data as Record<string, unknown>) }
         : {}
 
-    const senderImage =
-      typeof body.sender_image === 'string' && body.sender_image.trim()
-        ? body.sender_image.trim()
-        : ''
-    if (senderImage && !rawPushData.sender_image) rawPushData.sender_image = senderImage
+    let profileImage = pickProfileImageUrl(
+      body.sender_image,
+      body.image,
+      rawPushData.sender_image,
+      rawPushData.caller_avatar_url,
+      rawPushData.actor_avatar,
+      rawPushData.avatar_url,
+    )
+
+    if (!profileImage && canonicalType === 'call') {
+      const actorId = pickNonEmptyString(
+        rawPushData.caller_id,
+        rawPushData.sender_id,
+        rawPushData.actor_id,
+      )
+      if (actorId) {
+        profileImage = await resolveProfileAvatar(actorId)
+      }
+    }
+
+    if (profileImage) {
+      if (!rawPushData.sender_image) rawPushData.sender_image = profileImage
+      if (!rawPushData.caller_avatar_url) rawPushData.caller_avatar_url = profileImage
+      if (!rawPushData.actor_avatar) rawPushData.actor_avatar = profileImage
+    }
+
+    const notificationIcon =
+      pickProfileImageUrl(body.icon) && body.icon !== DEFAULT_NOTIFICATION_LOGO
+        ? pickProfileImageUrl(body.icon)
+        : profileImage || DEFAULT_NOTIFICATION_LOGO
 
     const messageId =
       typeof body.message_id === 'string' && body.message_id.trim()
@@ -402,9 +451,9 @@ export async function POST(request: NextRequest) {
         ...fcmStringData,
         title: body.title,
         body: notificationBody,
-        // No large image in notifications — keep them clean and compact
-        icon: body.icon || '/assets/images/logo.png',
-        badge: body.badge || '/assets/images/logo.png',
+        // Use sender/caller profile image as icon when available (chat, missed call, etc.)
+        icon: notificationIcon,
+        badge: body.badge || DEFAULT_NOTIFICATION_LOGO,
         tag: body.tag || 'connectafrik-notification',
         requireInteraction: String(body.requireInteraction || false),
         silent: String(body.silent || false),
