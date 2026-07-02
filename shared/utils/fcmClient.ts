@@ -139,7 +139,7 @@ export const initialize = async (): Promise<boolean> => {
           // `renotify` omitted: not in all TS lib.dom NotificationOptions (breaks `next build` on some hosts).
           await registration.showNotification(d.title || 'ConnectAfrik', {
             body: d.body || '',
-            icon: d.icon || '/assets/images/logo.png',
+            icon: d.icon || d.sender_image || d.caller_avatar_url || '/assets/images/logo.png',
             badge: d.badge || '/assets/images/logo.png',
             tag: statusTag,
             data: { ...d },
