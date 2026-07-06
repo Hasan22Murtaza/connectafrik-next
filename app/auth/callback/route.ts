@@ -2,12 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
+import { getAppOrigin } from '@/lib/auth/appOrigin'
 import { getPostAuthRedirect } from '@/lib/auth/postAuthRedirect'
 import { authLinkErrorQuery } from '@/lib/auth/parseAuthHash'
 import { clearAuthCookiesOnResponse } from '@/lib/auth/supabaseAuthCookies'
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams } = new URL(request.url)
+  const origin = getAppOrigin(request)
   const code = searchParams.get('code')
   const flow = searchParams.get('flow')
   const authError = searchParams.get('error')
