@@ -561,8 +561,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
       >
         {useModalShell ? (
           <>
-            <div className="relative flex shrink-0 items-center justify-center border-b border-border px-12 py-3">
-              <h2 id="create-post-dialog-title" className="text-center text-lg font-bold text-content">
+            <div className="relative flex shrink-0  border-b border-border px-4 py-3">
+              <h2 id="create-post-dialog-title" className=" text-lg font-bold ">
                 {isEditMode ? 'Edit post' : 'Create post'}
               </h2>
               <button
@@ -625,7 +625,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
       <form noValidate onSubmit={handleSubmit} className={useModalShell ? 'flex min-h-0 flex-1 flex-col' : undefined}>
         <div className={useModalShell ? 'flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain' : undefined}>
         {!culturePageMode && !politicsPageMode && (
-          <div className="px-3 sm:px-4 pb-2">
+          <div className="px-3 sm:px-4 py-2">
             <div className="flex flex-wrap gap-1.5">
               {CATEGORIES.map(({ value, label, icon, active }) => (
                 <button
@@ -896,7 +896,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
         </div>
 
-        <div className="mx-3 mt-3 shrink-0 sm:mx-4">
+        <div className="mx-3 my-3 shrink-0 sm:mx-4">
           <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3 py-2.5 shadow-sm sm:px-3.5">
             <span className="text-[15px] font-semibold text-content">Add to your post</span>
             <div className="flex flex-1 items-center justify-end gap-1.5 sm:gap-2">
