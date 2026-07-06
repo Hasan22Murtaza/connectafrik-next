@@ -33,7 +33,7 @@
   <data android:pathPrefix="/account-activated" />
   <data android:pathPrefix="/reset-password" />
   <data android:pathPrefix="/verify-otp" />
-  <data android:pathPrefix="/auth/callback" />
+  <data android:pathPrefix="/api/auth/callback" />
 </intent-filter>
 
 <!-- Custom scheme fallback: connectafrik://post/123 -->

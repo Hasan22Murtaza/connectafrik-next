@@ -39,11 +39,7 @@ function extractInternalPath(rawUrl: string): string | null {
 
 /** Routes that must be handled by the server (set cookies, exchange codes). */
 function isServerHandledRoute(path: string): boolean {
-  return (
-    path.startsWith('/auth/callback') ||
-    path.startsWith('/.well-known') ||
-    path.startsWith('/api/')
-  )
+  return path.startsWith('/.well-known') || path.startsWith('/api/')
 }
 
 export default function DeepLinkHandler() {

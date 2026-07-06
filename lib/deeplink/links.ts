@@ -30,7 +30,7 @@ const ALLOWED_TARGET_PATTERNS: RegExp[] = [
   /^\/account-activated\/?$/,
   /^\/reset-password\/?$/,
   /^\/verify-otp\/?$/,
-  /^\/auth\/callback\/?$/,
+  /^\/api\/auth\/callback\/?$/,
 ]
 
 /**
