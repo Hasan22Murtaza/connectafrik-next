@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Globe, Eye, EyeOff, Mail, Lock, Phone } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { apiClient } from "@/lib/api-client";
+import { apiClient, ApiError } from "@/lib/api-client";
 import { getPostAuthRedirect } from "@/lib/auth/postAuthRedirect";
+import { savePendingLogin } from "@/lib/auth/clientStorage";
 import { deepLinkConfig } from "@/lib/deeplink/config";
 import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
@@ -165,9 +166,36 @@ const SigninForm: React.FC = () => {
           }
         }
       }
-    } catch (error: any) {
-      toast.error(error?.message || "An unexpected error occurred");
-      setIsLoading(false);
+    } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 403) {
+        const details = error.details as { data?: { code?: string; email?: string } } | undefined
+        if (details?.data?.code === 'EMAIL_NOT_VERIFIED' && loginMethod === 'email') {
+          try {
+            savePendingLogin({
+              email: formData.email,
+              password: formData.password,
+            })
+            await apiClient.post<{ sent: boolean }>('/api/auth/send-email-otp', {
+              email: formData.email,
+              purpose: 'login',
+            })
+            toast.success('Please verify your email to continue.')
+            router.push(
+              `/verify-otp?email=${encodeURIComponent(formData.email)}&purpose=login&redirect=${encodeURIComponent(searchParams.get('redirect') || '/feed')}`
+            )
+          } catch (otpError: unknown) {
+            const message =
+              otpError instanceof Error ? otpError.message : 'Failed to send verification code'
+            toast.error(message)
+          }
+          setIsLoading(false)
+          return
+        }
+      }
+
+      const message = error instanceof Error ? error.message : 'An unexpected error occurred'
+      toast.error(message)
+      setIsLoading(false)
     }
   };
 

@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation'
 import { checkAndSetupFCMTokenOnLogin, deactivateTokenOnLogout } from '@/shared/utils/fcmClient'
 import { flushUserPresenceOnLeave } from '@/lib/flushUserPresenceOnLeave'
 import { useTheme } from '@/shared/theme/useTheme'
-import { buildUniversalLink } from '@/lib/deeplink/links'
 
 interface AuthContextType {
   user: User | null
@@ -103,13 +102,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const resetPassword = async (email: string) => {
-    // Canonical deep-link base so the reset link is a Universal / App Link.
-    const redirectTo = buildUniversalLink('/reset-password')
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    })
-    return { error }
+    try {
+      await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      return { error: null }
+    } catch (error) {
+      return {
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to send reset code',
+        } as AuthError,
+      }
+    }
   }
 
   const updatePassword = async (password: string) => {

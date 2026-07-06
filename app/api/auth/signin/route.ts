@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
 import { createAuthClient } from '../_shared'
 import { createServiceClient } from '@/lib/supabase-server'
@@ -20,7 +20,23 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      return errorResponse(error.message, 400)
+      const message = error.message || 'Failed to sign in'
+      const isUnverified =
+        message.toLowerCase().includes('email not confirmed') ||
+        message.toLowerCase().includes('email not verified')
+
+      if (isUnverified) {
+        return NextResponse.json(
+          {
+            success: false,
+            data: { code: 'EMAIL_NOT_VERIFIED', email },
+            message,
+          },
+          { status: 403 }
+        )
+      }
+
+      return errorResponse(message, 400)
     }
 
     let profileAvatarUrl: string | null = null

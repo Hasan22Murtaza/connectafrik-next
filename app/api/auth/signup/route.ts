@@ -1,62 +1,70 @@
 import { NextRequest } from 'next/server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
 import { createServiceClient } from '@/lib/supabase-server'
-import { sendSignupConfirmationEmail } from '@/shared/services/emailService'
-import { deepLinkConfig } from '@/lib/deeplink/config'
+import { sendOtpEmail } from '@/shared/services/emailService'
+import {
+  assertOtpSendAllowed,
+  findAuthUserByEmail,
+  isSignupProfileMetadata,
+  storeAndSendEmailOtp,
+} from '@/lib/auth/emailOtp'
 import { isRecord } from '../_shared'
 
+/**
+ * Initiate email signup: validate profile metadata and send a 6-digit OTP.
+ * Account creation completes after OTP verification and password setup.
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const email = typeof body?.email === 'string' ? body.email.trim() : ''
-    const password = typeof body?.password === 'string' ? body.password : ''
+    const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
     const metadata = isRecord(body?.metadata) ? body.metadata : undefined
 
-    if (!email || !password) {
-      return errorResponse('Email and password are required', 400)
+    if (!email) {
+      return errorResponse('Email is required', 400)
     }
 
-    // Use the canonical deep-link base URL so the activation link is a Universal
-    // / App Link that opens the native app when installed.
-    const redirectTo = `${deepLinkConfig.webBaseUrl}/confirm-signup`
-    const serviceClient = createServiceClient()
+    if (!isSignupProfileMetadata(metadata)) {
+      return errorResponse('Signup profile information is required', 400)
+    }
 
-    const { data, error } = await serviceClient.auth.admin.generateLink({
-      type: 'signup',
+    const serviceClient = createServiceClient()
+    const existingUser = await findAuthUserByEmail(serviceClient, email)
+
+    if (existingUser) {
+      return errorResponse('An account with this email already exists. Please sign in instead.', 409)
+    }
+
+    const { data: usernameConflict } = await serviceClient
+      .from('profiles')
+      .select('id')
+      .eq('username', metadata.username)
+      .maybeSingle()
+
+    if (usernameConflict) {
+      return errorResponse('This username is already taken. Please choose another.', 409)
+    }
+
+    const rateLimit = await assertOtpSendAllowed(serviceClient, email, 'signup')
+    if (rateLimit.error) {
+      return errorResponse(rateLimit.error, 429)
+    }
+
+    const sendResult = await storeAndSendEmailOtp({
+      serviceClient,
       email,
-      password,
-      options: {
-        redirectTo,
-        ...(metadata ? { data: metadata } : {}),
-      },
+      purpose: 'signup',
+      metadata,
+      sendEmail: sendOtpEmail,
     })
 
-    if (error) {
-      return errorResponse(error.message, 400)
+    if (sendResult.error) {
+      return errorResponse(sendResult.error, 500)
     }
 
-    const confirmationUrl = data?.properties?.action_link
-    if (!confirmationUrl) {
-      return errorResponse('Failed to generate confirmation link', 500)
-    }
-
-    const emailSent = await sendSignupConfirmationEmail(email, confirmationUrl)
-    if (!emailSent) {
-      return errorResponse(
-        'Account created but failed to send confirmation email. Please contact support.',
-        500
-      )
-    }
-
-    return jsonResponse(
-      {
-        user: data.user,
-        session: null,
-        emailSent: true,
-      },
-      201
-    )
-  } catch (error: any) {
-    return errorResponse(error?.message || 'Failed to sign up', 500)
+    return jsonResponse({ sent: true, cooldownSeconds: 60 }, 201)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to initiate signup'
+    return errorResponse(message, 500)
   }
 }

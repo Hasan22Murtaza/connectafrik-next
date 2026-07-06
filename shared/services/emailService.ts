@@ -17,6 +17,8 @@ import {
   getSignupConfirmationEmailHtml,
   getSignupConfirmationEmailText,
 } from '@/lib/emails/signupConfirmationEmail'
+import { getOtpEmailHtml, getOtpEmailText } from '@/lib/emails/otpEmail'
+import type { OtpPurpose } from '@/lib/auth/otpTypes'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 
 // Initialize AWS SES Client
@@ -195,6 +197,33 @@ export const sendNewOrderNotificationEmail = async (
 
   const r = await sendEmail({
     to: sellerEmail,
+    subject,
+    htmlBody,
+    textBody,
+  })
+  return r.ok
+}
+
+/**
+ * Send a 6-digit OTP email for signup, login verification, or password recovery.
+ */
+export const sendOtpEmail = async (
+  userEmail: string,
+  code: string,
+  purpose: OtpPurpose
+): Promise<boolean> => {
+  const purposeCopy: Record<OtpPurpose, string> = {
+    signup: 'Your ConnectAfrik verification code',
+    login: 'Your ConnectAfrik sign-in code',
+    recovery: 'Your ConnectAfrik password reset code',
+  }
+
+  const subject = purposeCopy[purpose]
+  const htmlBody = getOtpEmailHtml(code, purpose)
+  const textBody = getOtpEmailText(code, purpose)
+
+  const r = await sendEmail({
+    to: userEmail,
     subject,
     htmlBody,
     textBody,
