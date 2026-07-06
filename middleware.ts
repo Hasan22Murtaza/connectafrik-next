@@ -22,14 +22,6 @@ function clearSupabaseAuthCookies(
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-
-  // OAuth / email-link callback exchanges the code and sets cookies itself.
-  // Skip session refresh here so middleware does not race the code exchange.
-  if (pathname.startsWith('/auth/callback')) {
-    return NextResponse.next()
-  }
-
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -104,6 +96,8 @@ export async function middleware(request: NextRequest) {
     }
     // Proceed with session = null so user is treated as unauthenticated
   }
+
+  const { pathname } = request.nextUrl
 
   /** Ensure auth cookies are cleared on an outgoing response (e.g. redirect). */
   const applyClearedAuthCookiesIfNeeded = (res: NextResponse) => {
