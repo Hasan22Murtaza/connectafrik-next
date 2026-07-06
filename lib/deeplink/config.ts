@@ -11,14 +11,12 @@
 export type DeepLinkEnvironment = 'development' | 'staging' | 'production'
 
 function pickEnvironment(): DeepLinkEnvironment {
-  const explicit = process.env.NEXT_PUBLIC_DEEPLINK_ENV as DeepLinkEnvironment | undefined
-  if (explicit === 'development' || explicit === 'staging' || explicit === 'production') {
-    return explicit
+  const env = process.env.NEXT_PUBLIC_DEEPLINK_ENV
+  if (env === 'development' || env === 'staging' || env === 'production') {
+    return env
   }
-  if (process.env.VERCEL_ENV === 'production') return 'production'
-  if (process.env.VERCEL_ENV === 'preview') return 'staging'
-  if (process.env.NODE_ENV === 'production') return 'production'
-  return 'development'
+  // Next.js sets NODE_ENV automatically; only used when DEEPLINK_ENV is unset.
+  return process.env.NODE_ENV === 'production' ? 'production' : 'development'
 }
 
 /** Remove a trailing slash so we can safely concatenate paths. */
