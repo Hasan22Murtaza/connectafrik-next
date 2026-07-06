@@ -16,9 +16,7 @@ const Signup: React.FC = () => {
     username: '',
     emailOrPhone: '',
     password: '',
-    birthMonth: '',
-    birthDay: '',
-    birthYear: '',
+    birthday: '',
     gender: '',
     customGender: '',
     formattedAddress: '',
@@ -104,8 +102,8 @@ const Signup: React.FC = () => {
       return
     }
 
-    if (!formData.birthMonth || !formData.birthDay || !formData.birthYear) {
-      toast.error('Please enter your complete birthday')
+    if (!formData.birthday) {
+      toast.error('Please enter your birthday')
       return
     }
 
@@ -121,15 +119,12 @@ const Signup: React.FC = () => {
 
     setIsLoading(true)
     try {
-      // Construct birthday
-      const birthday = `${formData.birthYear}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`
-
       // Profile data to pass to verification page
       const profileData = {
         username: formData.username,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        birthday: birthday,
+        birthday: formData.birthday,
         gender: formData.gender === 'custom' ? formData.customGender : formData.gender,
         address: formData.address.trim() || null,
         city: formData.city.trim() || null,
@@ -217,19 +212,7 @@ const Signup: React.FC = () => {
     }
   }
 
-  // Generate arrays for date dropdowns
-  const months = [
-    { value: '1', label: 'January' }, { value: '2', label: 'February' },
-    { value: '3', label: 'March' }, { value: '4', label: 'April' },
-    { value: '5', label: 'May' }, { value: '6', label: 'June' },
-    { value: '7', label: 'July' }, { value: '8', label: 'August' },
-    { value: '9', label: 'September' }, { value: '10', label: 'October' },
-    { value: '11', label: 'November' }, { value: '12', label: 'December' }
-  ]
-
-  const days = Array.from({ length: 31 }, (_, i) => i + 1)
-  const currentYear = new Date().getFullYear()
-  const years = Array.from({ length: 120 }, (_, i) => currentYear - i)
+  const maxBirthday = new Date().toISOString().split('T')[0]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
@@ -334,98 +317,35 @@ const Signup: React.FC = () => {
               <div>
                 <label className="flex items-center text-xs text-content-secondary mb-1">
                   Birthday
-                 
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  <select
-                    name="birthMonth"
-                    value={formData.birthMonth}
-                    onChange={handleInputChange}
-                    className=" w-full p-2  border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
-                    required
-                  >
-                    <option value="">Month</option>
-                    {months.map((month) => (
-                      <option key={month.value} value={month.value}>
-                        {month.label}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    name="birthDay"
-                    value={formData.birthDay}
-                    onChange={handleInputChange}
-                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
-                    required
-                  >
-                    <option value="">Day</option>
-                    {days.map((day) => (
-                      <option key={day} value={day}>
-                        {day}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    name="birthYear"
-                    value={formData.birthYear}
-                    onChange={handleInputChange}
-                    className=" w-full p-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
-                    required
-                  >
-                    <option value="">Year</option>
-                    {years.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <input
+                  type="date"
+                  name="birthday"
+                  value={formData.birthday}
+                  onChange={handleInputChange}
+                  max={maxBirthday}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                  required
+                />
               </div>
 
               {/* Gender */}
               <div>
                 <label className="flex items-center text-xs text-content-secondary mb-1">
                   Gender
-                 
                 </label>
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-surface-hover">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value="female"
-                      checked={formData.gender === "female"}
-                      onChange={handleInputChange}
-                      className="mr-2 text-primary-600 focus:ring-primary-500"
-                      required
-                    />
-                    Female
-                  </label>
-                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-surface-hover">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value="male"
-                      checked={formData.gender === "male"}
-                      onChange={handleInputChange}
-                      className="mr-2 text-primary-600 focus:ring-primary-500"
-                      required
-                    />
-                    Male
-                  </label>
-                  <label className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm cursor-pointer hover:bg-surface-hover">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value="custom"
-                      checked={formData.gender === "custom"}
-                      onChange={handleInputChange}
-                      className="mr-2 text-primary-600 focus:ring-primary-500"
-                      required
-                    />
-                    Custom
-                  </label>
-                </div>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                  required
+                >
+                  <option value="">Select gender</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="custom">Custom</option>
+                </select>
                 {formData.gender === "custom" && (
                   <input
                     type="text"
@@ -433,7 +353,7 @@ const Signup: React.FC = () => {
                     value={formData.customGender}
                     onChange={handleInputChange}
                     placeholder="Enter your gender (optional)"
-                    className=" w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
+                    className="w-full mt-2 px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]"
                   />
                 )}
               </div>

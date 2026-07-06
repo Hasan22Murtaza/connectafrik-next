@@ -166,7 +166,7 @@ const SigninForm: React.FC = () => {
         }
       }
     } catch (error: any) {
-      toast.error("An unexpected error occurred");
+      toast.error(error?.message || "An unexpected error occurred");
       setIsLoading(false);
     }
   };
