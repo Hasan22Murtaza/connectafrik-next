@@ -371,7 +371,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
-            className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-primary-300 focus:ring-2 focus:ring-primary-100"
+            className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
             aria-label={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
           />
         </div>
@@ -485,7 +485,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="custom-scrollbar max-h-[min(70vh,22rem)] overflow-y-auto pt-1 sm:max-h-[min(70vh,24rem)]"
+          className="custom-scrollbar max-h-[min(60vh,22rem)] overflow-y-auto pt-1 sm:max-h-[min(50vh,24rem)]"
         >
           {filteredActive.length === 0 &&
           filteredArchived.length === 0 &&

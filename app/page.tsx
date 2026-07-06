@@ -480,7 +480,7 @@ const Home: React.FC = () => {
                 engagement that actually means something.
               </p>
 
-              <ul className="mt-8 space-y-4">
+              <ul className="my-8 space-y-4">
                 {[
                   {
                     icon: Heart,
@@ -507,7 +507,7 @@ const Home: React.FC = () => {
               {!user && (
                 <Link
                   href="/signup"
-                  className="group mt-8 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
+                  className="btn-primary"
                 >
                   Start exploring
                   <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
@@ -585,7 +585,10 @@ const Home: React.FC = () => {
 
               {/* Quick comment composer */}
               <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-border dark:bg-surface">
-                <div className="h-9 w-9 flex-none rounded-full bg-gradient-to-br from-violet-400 to-purple-500" />
+                {/* <div className="h-9 w-9 flex-none rounded-full bg-gradient-to-br from-violet-400 to-purple-500" /> */}
+                <button type="button" className="flex h-8 w-8 items-center justify-center pointer-events-none rounded-full bg-transparent text-content-secondary hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40 ring-1 ring-[#25d366] text-[#128c7e]" aria-label="Attach" aria-expanded="true">
+                  <Plus className="h-4 w-4" />
+                  </button>
                 <div className="flex-1 truncate rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-400 dark:bg-surface-secondary">
                   Share something with your community…
                 </div>

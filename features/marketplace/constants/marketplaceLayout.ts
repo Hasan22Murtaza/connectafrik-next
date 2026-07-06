@@ -1,19 +1,19 @@
 /** Shared layout and spacing tokens for consistent marketplace UI. */
 export const MP = {
-  page: "min-h-screen bg-surface-canvas px-0 sm:px-0",
-  shell: "flex gap-0 min-w-0 w-full max-w-screen-2xl mx-auto",
+  page: "min-h-screen bg-surface-canvas px-0 sm:px-0 ",
+  shell: "flex gap-0 min-w-0 w-full",
 
   sidebar:
-    "w-[245px] shrink-0 py-3 px-2 bg-surface border-r border-border lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto",
+    "w-[280px] shrink-0 py-3 px-4 bg-surface  lg:sticky lg:top-18 lg:self-start lg:max-h-screen lg:overflow-y-auto",
   sidebarFull:
-    "w-[245px] shrink-0 py-3 px-2 bg-surface lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto scrollbar-hover",
-  shellFull: "flex gap-0 min-w-0 w-full max-w-screen-2xl mx-auto min-h-[calc(100vh-4rem)]",
+    "w-[280px] shrink-0 py-3 px-4 bg-surface lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto scrollbar-hover",
+  shellFull: "flex gap-0 min-w-0 w-full min-h-[calc(100vh-4rem)]",
   sidebarRight:
-    "w-[260px] shrink-0 py-3 px-2 lg:sticky lg:top-0 lg:self-start lg:max-h-screen lg:overflow-y-auto",
+    "w-[280px] shrink-0 py-4 px-4 lg:sticky lg:top-18 lg:self-start lg:max-h-screen lg:overflow-y-auto",
   sidebarBrowse:
-    "fixed md:relative inset-y-0 left-0 z-40 w-[245px] shrink-0 px-2 py-3 bg-surface sm:top-0 top-12 md:h-screen h-[calc(100vh-6rem)] scrollbar-hover overflow-y-auto transform transition-transform duration-300 md:translate-x-0 md:border-r md:border-border",
+    "sticky md:relative inset-y-0 left-0 z-40 w-[280px] shrink-0 px-4 py-3 bg-surface sm:top-0 top-20 md:h-screen h-[calc(100vh-10rem)] scrollbar-hover overflow-y-auto transform transition-transform duration-300 md:translate-x-0 ",
 
-  main: "flex-1 py-4 px-4 min-w-0",
+  main: "flex-1 py-4 px-4 min-w-0 ",
   mainBrowse: "flex-1 px-4 py-4 min-w-0 w-full",
 
   productGrid:
