@@ -22,6 +22,13 @@ function clearSupabaseAuthCookies(
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // OAuth callback exchanges the PKCE code — skip session refresh so verifier cookies stay intact.
+  if (pathname === '/auth/callback' || pathname === '/api/auth/callback') {
+    return NextResponse.next()
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -96,8 +103,6 @@ export async function middleware(request: NextRequest) {
     }
     // Proceed with session = null so user is treated as unauthenticated
   }
-
-  const { pathname } = request.nextUrl
 
   /** Ensure auth cookies are cleared on an outgoing response (e.g. redirect). */
   const applyClearedAuthCookiesIfNeeded = (res: NextResponse) => {
