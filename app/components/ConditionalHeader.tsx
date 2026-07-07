@@ -14,6 +14,7 @@ export default function ConditionalHeader() {
     "/reset-password",
     "/account-activated",
     "/confirm-signup",
+    "/auth/callback",
     "/api-docs",
   ];
   

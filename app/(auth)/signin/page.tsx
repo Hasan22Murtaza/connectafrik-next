@@ -44,7 +44,7 @@ const SigninForm: React.FC = () => {
       const redirectTo = searchParams.get("redirect") || "/feed";
       // Use the canonical deep-link base so the OAuth return URL is a Universal /
       // App Link that hands control back to the native app when installed.
-      const callbackUrl = new URL("/api/auth/callback", deepLinkConfig.webBaseUrl);
+      const callbackUrl = new URL("/auth/callback", deepLinkConfig.webBaseUrl);
       callbackUrl.searchParams.set("redirect", redirectTo);
 
       const { error } = await supabase.auth.signInWithOAuth({

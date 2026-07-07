@@ -25,7 +25,7 @@ export async function GET() {
           appID,
           appIDs: [appID],
           components: [
-            { '/': '/api/auth/callback', comment: 'OAuth / social login redirect' },
+            { '/': '/auth/callback', comment: 'OAuth / social login redirect' },
             { '/': '/api/*', exclude: true, comment: 'Let API calls hit the server' },
             { '/': '/_next/*', exclude: true, comment: 'Framework assets' },
             { '/': '/.well-known/*', exclude: true },
@@ -43,7 +43,7 @@ export async function GET() {
             { '/': '/verify-otp', comment: 'Email / OTP verification' },
           ],
           paths: [
-            '/api/auth/callback',
+            '/auth/callback',
             'NOT /api/*',
             'NOT /_next/*',
             'NOT /.well-known/*',
