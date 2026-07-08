@@ -1,7 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { getPostAuthRedirect } from '@/lib/auth/postAuthRedirect'
 
 export const runtime = 'nodejs'
+
+type SessionCookie = {
+  name: string
+  value: string
+  options?: Parameters<NextResponse['cookies']['set']>[2]
+}
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
@@ -25,7 +33,7 @@ export async function GET(request: NextRequest) {
     return signinError()
   }
 
-  const response = NextResponse.redirect(`${url.origin}${next}`)
+  let sessionCookies: SessionCookie[] = []
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
@@ -33,21 +41,41 @@ export async function GET(request: NextRequest) {
         return request.cookies.getAll()
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options)
-        })
+        sessionCookies = cookiesToSet
       },
     },
   })
 
   try {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { error, data } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
       return signinError()
     }
+
+    let platformRole: string | null = null
+    if (data.user?.id && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        const serviceClient = createServiceClient()
+        const { data: profile } = await serviceClient
+          .from('profiles')
+          .select('platform_role')
+          .eq('id', data.user.id)
+          .maybeSingle()
+        platformRole = profile?.platform_role ?? null
+      } catch {
+        platformRole = null
+      }
+    }
+
+    next = getPostAuthRedirect(platformRole, next)
+    const response = NextResponse.redirect(`${url.origin}${next}`)
+
+    for (const { name, value, options } of sessionCookies) {
+      response.cookies.set(name, value, options)
+    }
+
+    return response
   } catch {
     return signinError()
   }
-
-  return response
 }
