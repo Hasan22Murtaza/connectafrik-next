@@ -293,6 +293,7 @@ export async function patchCallSessionWithRetry(
       | 'missed'
       | 'join'
       | 'leave'
+      | 'heartbeat'
       | 'switch_to_video'
       | 'switch_to_audio'
       | 'request_video'

@@ -13,6 +13,7 @@ const PATCH_EVENTS = [
   'missed',
   'join',
   'leave',
+  'heartbeat',
   'switch_to_video',
   'switch_to_audio',
   'request_video',
@@ -76,6 +77,15 @@ async function resolveTargetUserIds(
 
 async function assertThreadMember(serviceClient: ServiceClient, threadId: string, userId: string) {
   return requireChatThreadAccess(serviceClient, userId, threadId)
+}
+
+function userIsCallParticipant(
+  row: { created_by: string | null; participants: unknown },
+  userId: string,
+): boolean {
+  if (row.created_by === userId) return true
+  const parts = row.participants
+  return Array.isArray(parts) && parts.includes(userId)
 }
 
 async function touchThreadPreview(
@@ -512,7 +522,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!call_id) return errorResponse('call_id is required', 400)
     if (!PATCH_EVENTS.includes(event as PatchEvent)) {
       return errorResponse(
-        'event must be accept | declined | end | missed | join | leave | switch_to_video | switch_to_audio | request_video | accept_video | decline_video',
+        'event must be accept | declined | end | missed | join | leave | heartbeat | switch_to_video | switch_to_audio | request_video | accept_video | decline_video',
         400,
       )
     }
@@ -533,6 +543,35 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (fetchError) return errorResponse(fetchError.message, 400)
     if (!row) return errorResponse('Call session not found', 404)
 
+    if (event === 'heartbeat') {
+      if (row.status !== 'active') {
+        return errorResponse('Call session is not active', 409)
+      }
+      if (!userIsCallParticipant(row, user.id)) {
+        return errorResponse('Only call participants can send heartbeats', 403)
+      }
+      const heartbeatNow = new Date().toISOString()
+      const heartbeatMeta = mergeSessionMetadata(row.metadata, {
+        last_signal: 'heartbeat',
+        last_heartbeat_by: user.id,
+        last_heartbeat_at: heartbeatNow,
+      })
+      const { data: heartbeatRow, error: heartbeatError } = await serviceClient
+        .from('call_sessions')
+        .update({
+          last_heartbeat_at: heartbeatNow,
+          metadata: heartbeatMeta,
+          updated_at: heartbeatNow,
+        })
+        .eq('id', row.id)
+        .select('*')
+        .single()
+      if (heartbeatError || !heartbeatRow) {
+        return errorResponse(heartbeatError?.message || 'Failed to update heartbeat', 400)
+      }
+      return jsonResponse({ session: heartbeatRow })
+    }
+
     const baseMeta = mergeSessionMetadata(row.metadata, {})
 
     let nextStatus = row.status as string
@@ -541,11 +580,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     let nextEndedAt: string | null = row.ended_at
     let nextDuration: number | null = row.duration_seconds
     const now = new Date().toISOString()
+    let nextHeartbeatAt: string | null = row.last_heartbeat_at ?? null
     let metaPatch: Record<string, unknown> = {}
     const groupCall = isGroupSession(row)
 
     if (event === 'accept') {
       nextStatus = 'active'
+      nextHeartbeatAt = now
       if (!nextParticipants.includes(user.id)) nextParticipants.push(user.id)
       metaPatch = {
         acceptedBy: user.id,
@@ -557,6 +598,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return errorResponse('Call session is not active', 409)
       }
       nextStatus = 'active'
+      nextHeartbeatAt = now
       if (!nextParticipants.includes(user.id)) nextParticipants.push(user.id)
       metaPatch = {
         joinedBy: user.id,
@@ -771,6 +813,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         participants: nextParticipants,
         ended_at: nextEndedAt,
         duration_seconds: nextDuration,
+        last_heartbeat_at: nextStatus === 'active' ? nextHeartbeatAt : row.last_heartbeat_at,
         metadata: nextMetadata,
         updated_at: now,
       })

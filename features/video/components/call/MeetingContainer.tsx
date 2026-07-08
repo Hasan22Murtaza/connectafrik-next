@@ -48,6 +48,7 @@ import MessageInput from './MessageInput';
 import GroupCallParticipantsStrip from './GroupCallParticipantsStrip';
 import type { CallParticipantProfile } from './GroupCallParticipantsStrip';
 import { LocalAdaptiveSendQuality } from './LocalAdaptiveSendQuality';
+import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
 
 const LAST_PARTICIPANT_AUTO_END_MS = 5000;
 
@@ -181,6 +182,16 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     const id = (callIdHint || '').trim();
     if (id) callIdRef.current = id;
   }, [callIdHint]);
+
+  useCallHeartbeat({
+    threadId,
+    callId: callIdHint || '',
+    enabled:
+      isOpen &&
+      !!threadId &&
+      !!(callIdHint || '').trim() &&
+      (callStatus === 'connected' || callStatus === 'connecting_media'),
+  });
 
   // --------------------------------------------------------------------------
   // Helpers
