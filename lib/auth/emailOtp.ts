@@ -217,7 +217,6 @@ export function isSignupProfileMetadata(value: unknown): value is SignupProfileM
     typeof v.first_name === 'string' &&
     typeof v.last_name === 'string' &&
     typeof v.birthday === 'string' &&
-    typeof v.gender === 'string' &&
-    typeof v.country === 'string'
+    typeof v.gender === 'string'
   )
 }

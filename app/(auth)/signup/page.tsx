@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { saveSignupMetadata } from '@/lib/auth/clientStorage'
-import { LocationSearch } from '@/shared/components/ui/LocationSearch'
+import type { SignupProfileMetadata } from '@/lib/auth/otpTypes'
 import { AuthPageShell } from '@/shared/components/auth/AuthPageShell'
 
 const Signup: React.FC = () => {
@@ -19,12 +19,6 @@ const Signup: React.FC = () => {
     birthday: '',
     gender: '',
     customGender: '',
-    formattedAddress: '',
-    address: '',
-    city: '',
-    state: '',
-    zipcode: '',
-    country: '',
   })
   const [isLoading, setIsLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -56,7 +50,7 @@ const Signup: React.FC = () => {
     return cleanPhone.length >= 7 && cleanPhone.length <= 15
   }
 
-  const validateForm = (): boolean => {
+  const getFormErrors = (): Record<string, string> => {
     const errors: Record<string, string> = {}
 
     if (!formData.firstName.trim()) errors.firstName = 'First name is required'
@@ -81,16 +75,19 @@ const Signup: React.FC = () => {
 
     if (!formData.birthday) errors.birthday = 'Date of Birthday is required'
     if (!formData.gender) errors.gender = 'Gender is required'
-    if (!formData.formattedAddress.trim() || !formData.country) {
-      errors.location = 'Choose your location from the search suggestions'
-    }
 
+    return errors
+  }
+
+  const isFormValid = Object.keys(getFormErrors()).length === 0
+
+  const validateForm = (): boolean => {
+    const errors = getFormErrors()
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) {
       toast.error('Please fix the highlighted fields')
       return false
     }
-
     return true
   }
 
@@ -108,17 +105,12 @@ const Signup: React.FC = () => {
 
     setIsLoading(true)
     try {
-      const profileData = {
+      const profileData: SignupProfileMetadata = {
         username: formData.username,
         first_name: formData.firstName,
         last_name: formData.lastName,
         birthday: formData.birthday,
         gender: formData.gender === 'custom' ? formData.customGender : formData.gender,
-        address: formData.address.trim() || null,
-        city: formData.city.trim() || null,
-        state: formData.state.trim() || null,
-        zipcode: formData.zipcode.trim() || null,
-        country: formData.country,
         phone_number: null,
         is_phone_registration: false,
       }
@@ -158,7 +150,7 @@ const Signup: React.FC = () => {
       title="Create a new account"
       subtitle="Connect with the African community worldwide"
     >
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} noValidate className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <input
@@ -168,7 +160,6 @@ const Signup: React.FC = () => {
               onChange={handleInputChange}
               placeholder="First name"
               className={inputClassName}
-              required
               aria-invalid={!!fieldErrors.firstName}
             />
             {fieldErrors.firstName && (
@@ -183,7 +174,6 @@ const Signup: React.FC = () => {
               onChange={handleInputChange}
               placeholder="Last name"
               className={inputClassName}
-              required
               aria-invalid={!!fieldErrors.lastName}
             />
             {fieldErrors.lastName && (
@@ -200,7 +190,6 @@ const Signup: React.FC = () => {
             onChange={handleInputChange}
             placeholder="Username"
             className={inputClassName}
-            required
             aria-invalid={!!fieldErrors.username}
           />
           {fieldErrors.username && (
@@ -210,13 +199,12 @@ const Signup: React.FC = () => {
 
         <div>
           <input
-            type="email"
+            type="text"
             name="emailOrPhone"
             value={formData.emailOrPhone}
             onChange={handleInputChange}
             placeholder="Email address"
             className={inputClassName}
-            required
             aria-invalid={!!fieldErrors.emailOrPhone}
           />
           {fieldErrors.emailOrPhone && (
@@ -224,82 +212,54 @@ const Signup: React.FC = () => {
           )}
         </div>
 
-        <div>
-          <label className="flex items-center text-xs text-content-secondary mb-1">Date of Birthday</label>
-          <input
-            type="date"
-            name="birthday"
-            value={formData.birthday}
-            onChange={handleInputChange}
-            max={maxBirthday}
-            className={inputClassName}
-            required
-            aria-invalid={!!fieldErrors.birthday}
-          />
-          {fieldErrors.birthday && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.birthday}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="flex items-center text-xs text-content-secondary mb-1">Gender</label>
-          <select
-            name="gender"
-            value={formData.gender}
-            onChange={handleInputChange}
-            className={inputClassName}
-            required
-            aria-invalid={!!fieldErrors.gender}
-          >
-            <option value="">Select gender</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-            <option value="custom">Custom</option>
-          </select>
-          {formData.gender === 'custom' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="flex items-center text-xs text-content-secondary mb-1">Date of Birthday</label>
             <input
-              type="text"
-              name="customGender"
-              value={formData.customGender}
+              type="date"
+              name="birthday"
+              value={formData.birthday}
               onChange={handleInputChange}
-              placeholder="Enter your gender (optional)"
-              className={`${inputClassName} mt-2`}
+              max={maxBirthday}
+              className={inputClassName}
+              aria-invalid={!!fieldErrors.birthday}
             />
-          )}
-          {fieldErrors.gender && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.gender}</p>
-          )}
+            {fieldErrors.birthday && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.birthday}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="flex items-center text-xs text-content-secondary mb-1">Gender</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleInputChange}
+              className={inputClassName}
+              aria-invalid={!!fieldErrors.gender}
+            >
+              <option value="">Select gender</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="custom">Custom</option>
+            </select>
+            {formData.gender === 'custom' && (
+              <input
+                type="text"
+                name="customGender"
+                value={formData.customGender}
+                onChange={handleInputChange}
+                placeholder="Enter your gender (optional)"
+                className={`${inputClassName} mt-2`}
+              />
+            )}
+            {fieldErrors.gender && (
+              <p className="text-xs text-red-600 mt-1">{fieldErrors.gender}</p>
+            )}
+          </div>
         </div>
 
-        <LocationSearch
-          label="Location"
-          required
-          value={{
-            formattedAddress: formData.formattedAddress,
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            zipcode: formData.zipcode,
-            country: formData.country,
-          }}
-          onChange={(loc) =>
-            setFormData((prev) => ({
-              ...prev,
-              formattedAddress: loc.formattedAddress,
-              address: loc.address,
-              city: loc.city,
-              state: loc.state,
-              zipcode: loc.zipcode,
-              country: loc.country,
-            }))
-          }
-          fieldClassName={inputClassName}
-        />
-        {fieldErrors.location && (
-          <p className="text-xs text-red-600">{fieldErrors.location}</p>
-        )}
-
-        <div className="space-y-2 pt-2">
+        {/* <div className="space-y-2 pt-2">
           <p className="text-xs text-content-secondary">
             People who use our service may have uploaded your contact information to ConnectAfrik.{' '}
             <Link href="/support" className="text-primary-600 hover:underline">
@@ -321,11 +281,11 @@ const Signup: React.FC = () => {
             </Link>
             .
           </p>
-        </div>
+        </div> */}
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={!isFormValid || isLoading}
           className="w-full btn-primary text-base disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? 'Sending code...' : 'Continue'}

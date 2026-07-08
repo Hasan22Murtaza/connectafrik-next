@@ -12,11 +12,11 @@ export type SignupProfileMetadata = {
   last_name: string
   birthday: string
   gender: string
-  address: string | null
-  city: string | null
-  state: string | null
-  zipcode: string | null
-  country: string
+  address?: string | null
+  city?: string | null
+  state?: string | null
+  zipcode?: string | null
+  country?: string | null
   phone_number?: string | null
   is_phone_registration?: boolean
 }
