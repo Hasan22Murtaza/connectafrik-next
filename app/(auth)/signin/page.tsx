@@ -8,7 +8,6 @@ import { supabase } from "@/lib/supabase";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { getPostAuthRedirect } from "@/lib/auth/postAuthRedirect";
 import { savePendingLogin } from "@/lib/auth/clientStorage";
-import { deepLinkConfig } from "@/lib/deeplink/config";
 import toast from "react-hot-toast";
 import { FcGoogle } from "react-icons/fc";
 import PhoneInput from "react-phone-number-input";
@@ -42,9 +41,10 @@ const SigninForm: React.FC = () => {
     setIsGoogleLoading(true);
     try {
       const redirectTo = searchParams.get("redirect") || "/feed";
-      // Use the canonical deep-link base so the OAuth return URL is a Universal /
-      // App Link that hands control back to the native app when installed.
-      const callbackUrl = new URL("/auth/callback", deepLinkConfig.webBaseUrl);
+      // OAuth PKCE verifier cookies are host-scoped, so the callback must use the
+      // same origin the user started from (www vs apex). Universal/App Links still
+      // work because both hosts serve /auth/callback.
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
       callbackUrl.searchParams.set("redirect", redirectTo);
 
       const { error } = await supabase.auth.signInWithOAuth({
