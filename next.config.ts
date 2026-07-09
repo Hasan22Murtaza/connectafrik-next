@@ -1,14 +1,27 @@
 import type { NextConfig } from 'next'
 
+const bunnyCdnHost = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_BUNNY_CDN_URL
+      ? new URL(process.env.NEXT_PUBLIC_BUNNY_CDN_URL).hostname
+      : null
+  } catch {
+    return null
+  }
+})()
+
 const nextConfig: NextConfig = {
   reactStrictMode: false,
 
-  /**
-   * Expose the deep-link association files at their required well-known paths.
-   * The handlers live under /api/well-known/* (regular, non-dot routes) and are
-   * surfaced here so iOS/Android fetch them from the canonical locations with no
-   * redirects.
-   */
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.b-cdn.net' },
+      ...(bunnyCdnHost
+        ? [{ protocol: 'https' as const, hostname: bunnyCdnHost }]
+        : []),
+    ],
+  },
+
   async rewrites() {
     return [
       {
