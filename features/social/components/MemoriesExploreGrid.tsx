@@ -79,7 +79,7 @@ function ExploreGridBody() {
                 exploreCategory === c.value ? 'bg-content text-content-inverse' : 'bg-surface-secondary text-content hover:bg-surface-hover'
               }`}
             >
-              {c.icon} {c.label}
+              {c.label}
             </button>
           ))}
         </div>

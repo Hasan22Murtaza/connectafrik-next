@@ -358,7 +358,7 @@ const Home: React.FC = () => {
 
                   <div className="mt-3 aspect-[16/10] overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 via-amber-400 to-rose-400">
                     <img
-                      src="/assets/images/hero2.jpeg"
+                      src="/assets/images/hero2.png"
                       alt="A scenic view shared by the ConnectAfrik community worldwide"
                       className="h-full w-full object-cover"
                     />
