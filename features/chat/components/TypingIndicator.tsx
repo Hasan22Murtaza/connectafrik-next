@@ -8,51 +8,22 @@ interface TypingIndicatorProps {
 }
 
 /**
- * WhatsApp-style typing indicator — three animated dots + "typing..."
+ * WhatsApp-inspired typing indicator — three animated dots in a bubble
  */
 const TypingIndicator: React.FC<TypingIndicatorProps> = ({ isTyping }) => {
   if (!isTyping) return null;
 
   return (
-    <div className="flex items-center gap-1.5 px-3 pb-1 pt-0.5 animate-fadeIn">
-      {/* Animated dots bubble */}
-      <div className="flex items-center gap-[3px] rounded-2xl bg-surface-secondary px-3 py-1.5">
-        <span className="typing-dot typing-dot-1" />
-        <span className="typing-dot typing-dot-2" />
-        <span className="typing-dot typing-dot-3" />
+    <div
+      className="flex items-center gap-1.5 px-3 pb-1.5 pt-0.5 animate-[chatFadeIn_200ms_ease-out]"
+      aria-live="polite"
+      aria-label="Typing"
+    >
+      <div className="flex items-center gap-[4px] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+        <span className="chat-typing-dot chat-typing-dot-1" />
+        <span className="chat-typing-dot chat-typing-dot-2" />
+        <span className="chat-typing-dot chat-typing-dot-3" />
       </div>
-
-      {/* Scoped keyframes */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes typingBounce {
-          0%, 60%, 100% {
-            transform: translateY(0);
-            opacity: 0.4;
-          }
-          30% {
-            transform: translateY(-4px);
-            opacity: 1;
-          }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        .typing-dot {
-          display: inline-block;
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background-color: #9ca3af;
-          animation: typingBounce 1.4s infinite ease-in-out;
-        }
-        .typing-dot-1 { animation-delay: 0s; }
-        .typing-dot-2 { animation-delay: 0.2s; }
-        .typing-dot-3 { animation-delay: 0.4s; }
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-      `}} />
     </div>
   );
 };

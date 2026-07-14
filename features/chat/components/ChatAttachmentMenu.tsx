@@ -4,8 +4,10 @@ import React, { useId } from "react";
 import {
   Camera,
   FileText,
-  Headphones,
   Image as ImageIcon,
+  MapPin,
+  Video,
+  X,
 } from "lucide-react";
 import {
   fileUploadService,
@@ -18,10 +20,21 @@ interface ChatAttachmentMenuProps {
   onClose: () => void;
   /** Opens live webcam (getUserMedia); use on laptop/desktop instead of file input capture. */
   onOpenCamera?: () => void;
+  /** Opens WhatsApp-style location picker (same Places API as post create). */
+  onOpenLocation?: () => void;
 }
 
 const stopMenuPointerBubble = (e: React.SyntheticEvent) => {
   e.stopPropagation();
+};
+
+type SheetItem = {
+  id: string;
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  inputId?: string;
+  onClick?: () => void;
 };
 
 const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
@@ -29,15 +42,15 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
   onFilesSelected,
   onClose,
   onOpenCamera,
+  onOpenLocation,
 }) => {
   const uid = useId();
   const docInputId = `${uid}-doc`;
   const galleryInputId = `${uid}-gallery`;
+  const videoInputId = `${uid}-video`;
   const cameraInputId = `${uid}-camera`;
-  const audioInputId = `${uid}-audio`;
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Snapshot before clearing — FileList is live and empties when value is reset.
     const picked = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (!picked.length) return;
@@ -58,55 +71,117 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
     document.getElementById(cameraInputId)?.click();
   };
 
-  const menuRowClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-content transition-colors hover:bg-surface-hover";
+  const handleLocationClick = () => {
+    onOpenLocation?.();
+    onClose();
+  };
+
+  const sheetItems: SheetItem[] = [
+    {
+      id: "camera",
+      label: "Camera",
+      Icon: Camera,
+      color: "bg-pink-500",
+      onClick: handleCameraClick,
+    },
+    {
+      id: "gallery",
+      label: "Gallery",
+      Icon: ImageIcon,
+      color: "bg-violet-500",
+      inputId: galleryInputId,
+    },
+    {
+      id: "video",
+      label: "Video",
+      Icon: Video,
+      color: "bg-rose-500",
+      inputId: videoInputId,
+    },
+    {
+      id: "document",
+      label: "Document",
+      Icon: FileText,
+      color: "bg-sky-500",
+      inputId: docInputId,
+    },
+    {
+      id: "location",
+      label: "Location",
+      Icon: MapPin,
+      color: "bg-emerald-500",
+      onClick: handleLocationClick,
+    },
+  ];
 
   return (
     <>
       {open ? (
         <div
-          className="absolute bottom-full left-0 z-[60] mb-1 w-[220px] overflow-hidden rounded-lg border border-border bg-surface p-1 py-1.5 shadow-xl"
+          className="absolute bottom-full left-0 right-0 z-[70] mb-2 max-w-full animate-[chatSheetIn_220ms_cubic-bezier(0.22,1,0.36,1)] sm:left-0 sm:right-auto sm:w-[min(20rem,calc(100vw-1.5rem))]"
           role="menu"
           aria-label="Attach"
           onMouseDown={stopMenuPointerBubble}
           onPointerDown={stopMenuPointerBubble}
         >
-          <label htmlFor={docInputId} role="menuitem" className={menuRowClass}>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-violet-600">
-              <FileText className="h-5 w-5" />
-            </span>
-            <span className="font-medium">Document</span>
-          </label>
+          <div className="mx-0 overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-[0_8px_28px_rgba(11,20,26,0.18)] dark:shadow-[0_8px_28px_rgba(0,0,0,0.45)]">
+            <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
+              <span className="text-sm font-semibold text-content">Share</span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
+                aria-label="Close attachments"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-5 gap-x-1 gap-y-3 px-2 py-3.5 sm:gap-x-2 sm:px-3">
+              {sheetItems.map((item) => {
+                const Icon = item.Icon;
+                const inner = (
+                  <>
+                    <span
+                      className={`flex h-10 w-10 items-center justify-center rounded-full text-white shadow-sm sm:h-11 sm:w-11 ${item.color} transition-transform duration-150 group-hover:scale-105 group-active:scale-95`}
+                    >
+                      <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </span>
+                    <span className="max-w-full truncate text-center text-[10px] font-medium text-content-secondary sm:text-[11px]">
+                      {item.label}
+                    </span>
+                  </>
+                );
 
-          <label htmlFor={galleryInputId} role="menuitem" className={menuRowClass}>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-sky-600">
-              <ImageIcon className="h-5 w-5" />
-            </span>
-            <span className="font-medium">Photos &amp; videos</span>
-          </label>
+                if (item.inputId) {
+                  return (
+                    <label
+                      key={item.id}
+                      htmlFor={item.inputId}
+                      role="menuitem"
+                      className="group flex min-w-0 cursor-pointer flex-col items-center gap-1.5"
+                    >
+                      {inner}
+                    </label>
+                  );
+                }
 
-          <button
-            type="button"
-            role="menuitem"
-            className={menuRowClass}
-            onClick={handleCameraClick}
-          >
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-pink-600">
-              <Camera className="h-5 w-5" />
-            </span>
-            <span className="font-medium">Camera</span>
-          </button>
-
-          <label htmlFor={audioInputId} role="menuitem" className={menuRowClass}>
-            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-surface-secondary text-orange-600">
-              <Headphones className="h-5 w-5" />
-            </span>
-            <span className="font-medium">Audio</span>
-          </label>
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="menuitem"
+                    className="group flex min-w-0 flex-col items-center gap-1.5"
+                    onClick={item.onClick}
+                  >
+                    {inner}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       ) : null}
 
-      {/* Keep inputs mounted so file picker + onChange still work after the menu closes */}
       <input
         id={docInputId}
         type="file"
@@ -124,7 +199,17 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
         className="hidden"
         tabIndex={-1}
         multiple
-        accept="image/*,video/*"
+        accept="image/*"
+        onChange={handleChange}
+      />
+      <input
+        id={videoInputId}
+        type="file"
+        form=""
+        className="hidden"
+        tabIndex={-1}
+        multiple
+        accept="video/*"
         onChange={handleChange}
       />
       <input
@@ -135,16 +220,6 @@ const ChatAttachmentMenu: React.FC<ChatAttachmentMenuProps> = ({
         tabIndex={-1}
         accept="image/*"
         capture="environment"
-        onChange={handleChange}
-      />
-      <input
-        id={audioInputId}
-        type="file"
-        form=""
-        className="hidden"
-        tabIndex={-1}
-        multiple
-        accept="audio/*"
         onChange={handleChange}
       />
     </>

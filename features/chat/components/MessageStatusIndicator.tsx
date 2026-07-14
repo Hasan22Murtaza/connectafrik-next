@@ -1,104 +1,55 @@
-import React from 'react'
+import React from "react";
+import { Check, CheckCheck, Clock } from "lucide-react";
 
 interface MessageStatusIndicatorProps {
-  status: 'sending' | 'sent' | 'delivered' | 'read'
-  isOwnMessage: boolean
+  status: "sending" | "sent" | "delivered" | "read";
+  isOwnMessage: boolean;
 }
 
-const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({ 
-  status, 
-  isOwnMessage 
+const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({
+  status,
+  isOwnMessage,
 }) => {
-  if (!isOwnMessage) return null
+  if (!isOwnMessage) return null;
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'sending':
-        return (
-          <div className="flex items-center">
-            <div className="w-3 h-3 border border-content-tertiary rounded-full animate-pulse"></div>
-          </div>
-        )
-      case 'sent':
-        return (
-          <div className="flex items-center">
-            <svg 
-              className="w-3 h-3 text-content-tertiary" 
-              fill="currentColor" 
-              viewBox="0 0 20 20"
-            >
-              <path 
-                fillRule="evenodd" 
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                clipRule="evenodd" 
-              />
-            </svg>
-          </div>
-        )
-      case 'delivered':
-        return (
-          <div className="flex items-center">
-            <svg 
-              className="w-3 h-3 text-content-tertiary" 
-              fill="currentColor" 
-              viewBox="0 0 20 20"
-            >
-              <path 
-                fillRule="evenodd" 
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                clipRule="evenodd" 
-              />
-            </svg>
-            <svg 
-              className="w-3 h-3 text-content-tertiary -ml-1" 
-              fill="currentColor" 
-              viewBox="0 0 20 20"
-            >
-              <path 
-                fillRule="evenodd" 
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                clipRule="evenodd" 
-              />
-            </svg>
-          </div>
-        )
-      case 'read':
-        return (
-          <div className="flex items-center">
-            <svg 
-              className="w-3 h-3 text-[#53bdeb]" 
-              fill="currentColor" 
-              viewBox="0 0 20 20"
-            >
-              <path 
-                fillRule="evenodd" 
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                clipRule="evenodd" 
-              />
-            </svg>
-            <svg 
-              className="w-3 h-3 text-[#53bdeb] -ml-1" 
-              fill="currentColor" 
-              viewBox="0 0 20 20"
-            >
-              <path 
-                fillRule="evenodd" 
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                clipRule="evenodd" 
-              />
-            </svg>
-          </div>
-        )
-      default:
-        return null
-    }
+  const base = "h-[14px] w-[14px] shrink-0";
+
+  switch (status) {
+    case "sending":
+      return (
+        <Clock
+          className={`${base} text-content-tertiary opacity-80`}
+          strokeWidth={2}
+          aria-label="Sending"
+        />
+      );
+    case "sent":
+      return (
+        <Check
+          className={`${base} text-content-tertiary`}
+          strokeWidth={2.5}
+          aria-label="Sent"
+        />
+      );
+    case "delivered":
+      return (
+        <CheckCheck
+          className={`${base} text-content-tertiary`}
+          strokeWidth={2.25}
+          aria-label="Delivered"
+        />
+      );
+    case "read":
+      return (
+        <CheckCheck
+          className={`${base} text-[#53bdeb]`}
+          strokeWidth={2.25}
+          aria-label="Read"
+        />
+      );
+    default:
+      return null;
   }
+};
 
-  return (
-    <div className="flex items-end ">
-      {getStatusIcon()}
-    </div>
-  )
-}
-
-export default MessageStatusIndicator
+export default MessageStatusIndicator;

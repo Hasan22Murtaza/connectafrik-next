@@ -50,7 +50,8 @@ import {
   Trash2,
   Video,
   X,
-  XCircle
+  XCircle,
+  ChevronDown,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import React, {
@@ -63,11 +64,21 @@ import React, {
 } from "react";
 import { toast } from "react-hot-toast";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
+import ChatLocationPicker, {
+  type ChatLocationSelection,
+} from "./ChatLocationPicker";
 import ChatMediaGallery from "./ChatMediaGallery";
 import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
-import { ChatDateDivider, MessageBubble } from "./MessageBubble";
+import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
+import { formatMediaDuration } from "./messageMediaUtils";
+import {
+  ChatRichTextEditor,
+  type ChatRichTextEditorHandle,
+  richTextIsEmpty,
+} from "@/features/chat/richtext";
+import { serializePostLocation } from "@/features/social/utils/postLocation";
 import {
   isDirectBlockableThread,
   isThreadMessagingBlocked,
@@ -192,6 +203,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const {
     getThreadById,
     getMessagesForThread,
+    isMessagesLoadingForThread,
     sendMessage,
     currentUser,
     callRequests,
@@ -232,6 +244,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const thread = getThreadById(threadId);
   const messages = getMessagesForThread(threadId);
+  const isMessagesLoading = isMessagesLoadingForThread(threadId);
   const visibleMessages = useMemo(() => {
     if (!currentUser) return messages;
     return messages.filter((message: ChatMessage) =>
@@ -469,11 +482,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [webcamOpen, setWebcamOpen] = useState(false);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const [voiceRecording, setVoiceRecording] = useState(false);
-  const attachMenuRef = useRef<HTMLDivElement>(null);
+  const [voiceElapsedSec, setVoiceElapsedSec] = useState(0);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const attachMenuRef = useRef<HTMLFormElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const initialUnreadCountRef = useRef(0);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(
@@ -485,9 +502,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     null
   );
   const draftBeforeComposerEditRef = useRef("");
-  const composerInputRef = useRef<HTMLInputElement>(null);
+  const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [showParticipantsList, setShowParticipantsList] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
   const [messageInfoLoading, setMessageInfoLoading] = useState(false);
@@ -721,6 +739,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   }, [threadId, thread, minimizedThreadIds, messages.length, markThreadRead]);
 
+  // Capture unread count before markThreadRead clears it (render-phase snapshot on thread switch)
+  const unreadThreadKeyRef = useRef(threadId);
+  if (unreadThreadKeyRef.current !== threadId) {
+    unreadThreadKeyRef.current = threadId;
+    initialUnreadCountRef.current = Math.max(0, Number(thread?.unread_count) || 0);
+  }
+
   useEffect(() => {
     const el = messagesScrollRef.current;
     if (!el || displayMessages.length === 0) return;
@@ -730,6 +755,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
     scrollToBottom();
     requestAnimationFrame(scrollToBottom);
+    setShowScrollToBottom(false);
   }, [threadId, displayMessages.length]);
 
   useEffect(() => {
@@ -740,6 +766,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       if (el.scrollTop <= 32) {
         void loadOlderMessages();
       }
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      setShowScrollToBottom(distanceFromBottom > 120);
     };
 
     el.addEventListener("scroll", handleScroll);
@@ -747,6 +775,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       el.removeEventListener("scroll", handleScroll);
     };
   }, [loadOlderMessages]);
+
+  useEffect(() => {
+    if (!voiceRecording) {
+      setVoiceElapsedSec(0);
+      return;
+    }
+    setVoiceElapsedSec(0);
+    const id = window.setInterval(() => {
+      setVoiceElapsedSec((s) => s + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [voiceRecording]);
+
+  const scrollMessagesToBottom = useCallback(() => {
+    const el = messagesScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    setShowScrollToBottom(false);
+  }, []);
+
+  const unreadDividerBeforeIndex = useMemo(() => {
+    const n = initialUnreadCountRef.current;
+    if (!n || messageSearchKeyword.trim() || displayMessages.length === 0) return -1;
+    return Math.max(0, displayMessages.length - n);
+  }, [displayMessages.length, messageSearchKeyword, threadId]);
 
   useEffect(() => {
     if (!attachmentMenuOpen) return;
@@ -821,7 +874,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     if (editingMessage) {
       const text = draft.trim();
-      if (!text) return;
+      if (richTextIsEmpty(text)) return;
       if (pendingFiles.length > 0) {
         toast.error("Remove attachments before saving an edited message.");
         return;
@@ -841,6 +894,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         setEditingMessage(null);
         draftBeforeComposerEditRef.current = "";
         setDraft("");
+        composerEditorRef.current?.clear();
         stopTyping();
       } catch {
         toast.error("Could not update message");
@@ -851,7 +905,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
 
     const text = draft.trim();
-    if (!text && pendingFiles.length === 0) return;
+    if (richTextIsEmpty(text) && pendingFiles.length === 0) return;
 
     const filesSnapshot = [...pendingFiles];
     const replyTarget = replyingTo;
@@ -896,6 +950,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
 
     setDraft("");
+    composerEditorRef.current?.clear();
     setPendingFiles([]);
     setReplyingTo(null);
     stopTyping();
@@ -971,8 +1026,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const cancelComposerEdit = useCallback(() => {
     setEditingMessage(null);
-    setDraft(draftBeforeComposerEditRef.current);
+    const restored = draftBeforeComposerEditRef.current;
     draftBeforeComposerEditRef.current = "";
+    setDraft(restored);
+    composerEditorRef.current?.setMarkdown(restored);
   }, []);
 
   const beginComposerEdit = useCallback((message: ChatMessage) => {
@@ -983,10 +1040,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     fileUploadService.revokePreviews(pendingFiles);
     setPendingFiles([]);
     setAttachmentMenuOpen(false);
-    setDraft(message.content ?? "");
+    const next = message.content ?? "";
+    setDraft(next);
     requestAnimationFrame(() => {
-      composerInputRef.current?.focus();
-      composerInputRef.current?.select?.();
+      composerEditorRef.current?.setMarkdown(next);
+      composerEditorRef.current?.focus();
     });
   }, [draft, pendingFiles]);
 
@@ -1020,6 +1078,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       draftBeforeComposerEditRef.current = "";
       setEditingMessage(null);
       setDraft(restore);
+      composerEditorRef.current?.setMarkdown(restore);
     }
     setForwardingMessage(null);
     setReplyingTo(message);
@@ -1031,6 +1090,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       draftBeforeComposerEditRef.current = "";
       setEditingMessage(null);
       setDraft(restore);
+      composerEditorRef.current?.setMarkdown(restore);
     }
     setReplyingTo(null);
     setForwardingMessage(message);
@@ -1451,13 +1511,66 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     void startVoiceRecording();
   };
 
+  const handleSendLocation = useCallback(
+    async (place: ChatLocationSelection) => {
+      if (messagingBlocked || isSending) {
+        toast.error(
+          blockedByMe
+            ? "Unblock this contact to send messages"
+            : "You cannot message this contact"
+        );
+        return;
+      }
+      const content = serializePostLocation({
+        name: place.name,
+        address: place.address,
+        lat: place.lat,
+        lng: place.lng,
+      });
+      setLocationPickerOpen(false);
+      setIsSending(true);
+      try {
+        await sendMessage(threadId, content, {
+          content,
+          message_type: "location",
+        });
+        stopTyping();
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to send location");
+      } finally {
+        setIsSending(false);
+      }
+    },
+    [
+      messagingBlocked,
+      isSending,
+      blockedByMe,
+      sendMessage,
+      threadId,
+      stopTyping,
+    ]
+  );
+
   const showSendButton =
     editingMessage !== null
       ? true
-      : draft.trim().length > 0 || pendingFiles.length > 0;
+      : !richTextIsEmpty(draft) || pendingFiles.length > 0;
 
   const composerSendDisabled =
-    messagingBlocked || (editingMessage !== null && draft.trim().length === 0);
+    messagingBlocked || (editingMessage !== null && richTextIsEmpty(draft));
+
+  const mentionCandidates = useMemo(
+    () =>
+      (thread?.participants || [])
+        .filter((p: ChatParticipant) => p.id !== currentUser?.id)
+        .map((p: ChatParticipant) => ({
+          id: p.id,
+          name: p.name || "User",
+          username: (p as { username?: string }).username ?? null,
+          avatarUrl: p.avatarUrl ?? null,
+        })),
+    [thread?.participants, currentUser?.id]
+  );
 
   const removePendingFile = (index: number) => {
     setPendingFiles((prev) => {
@@ -1633,41 +1746,45 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`pointer-events-auto relative flex max-w-full flex-col   ${isPageVariant
-          ? "h-full w-full "
-          : "w-72 rounded-2xl sm:w-80 sm:max-w-full"
+      className={`pointer-events-auto relative flex max-w-full flex-col ${
+        attachmentMenuOpen ? "overflow-visible" : "overflow-hidden"
+      } ${isPageVariant
+          ? "h-full w-full"
+          : "w-72 rounded-2xl sm:w-80 sm:max-w-full shadow-[0_8px_28px_rgba(11,20,26,0.14)]"
         }`}
     >
       <div
-        className={`flex items-center justify-between border-b border-border bg-surface-canvas px-3 py-2 sm:px-6 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+        className={`flex items-center justify-between gap-2 border-b border-border/80 bg-surface px-2.5 py-2 sm:px-4 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
       >
-        <div className="flex items-center space-x-3">
-          <div className="relative h-10 w-10">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <div className="relative h-10 w-10 shrink-0">
             {headerAvatarAvailable ? (
               <img
                 src={headerAvatarUrl}
                 alt={displayThreadName}
-                className="h-10 w-10 rounded-full object-cover"
+                className="h-10 w-10 rounded-full object-cover ring-2 ring-border-subtle"
                 onError={() => setHeaderImageFailed(true)}
               />
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700 ring-2 ring-border-subtle">
                 {headerInitial}
               </div>
             )}
+            {!isGroupThread && directSubtitle === "Online" ? (
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-green-500" aria-hidden />
+            ) : null}
           </div>
-          <div className="cursor-pointer" onClick={handleOpenThreadDetailPage}
-          >
-            <div className="text-sm font-semibold text-content line-clamp-1" >
+          <div className="min-w-0 cursor-pointer" onClick={handleOpenThreadDetailPage}>
+            <div className="truncate text-sm font-semibold text-content">
               {displayThreadName}
             </div>
             {(canJoin || isInCall || threadActiveCall) && (
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="mt-0.5 flex items-center gap-2">
                 {canJoin && activeSession?.participantProfiles?.length ? (
                   <div className="flex -space-x-1.5">
                     {activeSession.participantProfiles.slice(0, 4).map((p) => (
-                      <div key={p.id} className="h-5 w-5 rounded-full border border-white overflow-hidden bg-primary-100">
+                      <div key={p.id} className="h-5 w-5 overflow-hidden rounded-full border border-white bg-primary-100 dark:border-surface">
                         {p.avatar_url ? (
                           <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
                         ) : (
@@ -1679,8 +1796,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     ))}
                   </div>
                 ) : null}
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" />
-                <span className="text-xs text-green-600 font-medium">
+                <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-green-500" />
+                <span className="min-w-0 truncate text-xs font-medium text-green-600 dark:text-green-400">
                   {canJoin
                     ? `Group call · ${activeSession?.participants.length ?? threadActiveCall?.participantCount ?? 0} in call`
                     : `In call · ${activeSession?.participants.length ?? threadActiveCall?.participantCount ?? 0} participants`}
@@ -1693,55 +1810,61 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 if (isMarketplaceThread && thread?.product_id) {
                   e.stopPropagation();
                   router.push(`/marketplace/${thread.product_id}`);
+                  return;
+                }
+                if (isGroupThread) {
+                  e.stopPropagation();
+                  setShowParticipantsList(true);
                 }
               }}
-              className="block w-full text-left text-xs text-content-secondary hover:text-content hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500"
+              className={`block w-full truncate text-left text-xs text-content-secondary hover:text-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500 ${
+                isGroupThread ? "cursor-pointer hover:underline" : ""
+              }`}
             >
               {isSelfChat
                 ? "Save messages to yourself"
                 : isMarketplaceThread && marketplaceProductTitle
                   ? `Marketplace · ${marketplaceProductTitle}`
-                  : (thread?.participants?.length ?? 0) > 2
-                    ? `${thread?.participants?.length} participants`
+                  : isGroupThread
+                    ? `${thread?.participants?.length ?? 0} participants`
                     : (directSubtitle ?? "Offline")}
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           {canJoin && (
             <button
               type="button"
               onClick={() => void handleJoinCall()}
               disabled={messagingBlocked}
-              className="flex items-center gap-1.5 rounded-full bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="mr-1 flex max-w-[5.5rem] items-center gap-1 rounded-full bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-none sm:gap-1.5 sm:px-3"
             >
-              <Phone className="h-3.5 w-3.5" />
-              Join Call
+              <Phone className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Join</span>
             </button>
           )}
           {!canJoin && !isInCall && (
             <>
-          <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => handleStartCall("audio")}
-            disabled={messagingBlocked}
-            className="text-content-secondary transition hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Phone className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleStartCall("video")}
-            disabled={messagingBlocked}
-            className="text-content-secondary hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Video className="h-5 w-5" />
-          </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => handleStartCall("audio")}
+                disabled={messagingBlocked}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Voice call"
+              >
+                <Phone className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStartCall("video")}
+                disabled={messagingBlocked}
+                className="hidden h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 min-[380px]:flex"
+                aria-label="Video call"
+              >
+                <Video className="h-5 w-5" />
+              </button>
             </>
           )}
-
 
           <div className="relative">
             <button
@@ -1750,9 +1873,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 event.stopPropagation();
                 setShowOptionsMenu((open) => !open);
               }}
-              className="text-content-tertiary hover:text-content-secondary"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-content-tertiary transition hover:bg-surface-hover hover:text-content-secondary"
               aria-expanded={showOptionsMenu}
               aria-haspopup="menu"
+              aria-label="More options"
             >
               <MoreVertical className="h-5 w-5" />
             </button>
@@ -1760,7 +1884,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div
                 ref={menuRef}
                 role="menu"
-                className="absolute right-0 top-full mt-1 z-50 min-w-[240px] rounded-lg border border-border bg-surface py-1 shadow-xl"
+                className="absolute right-0 top-full z-50 mt-1 min-w-[min(240px,calc(100vw-1.5rem))] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-xl animate-[chatFadeIn_140ms_ease-out]"
               >
                 {chatHeaderOptionsMenuSections.map((section, sectionIdx) => (
                   <React.Fragment key={section.id}>
@@ -1781,7 +1905,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         onClick,
                       } = item;
                       const baseRow =
-                        "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug";
+                        "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] leading-snug";
                       const rowClass =
                         disabled
                           ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
@@ -1797,7 +1921,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           onClick={onClick}
                           className={rowClass}
                         >
-                          <Icon className="h-[22px] w-[22px] shrink-0 opacity-90" />
+                          <Icon className="h-[20px] w-[20px] shrink-0 opacity-90" />
                           <span className="min-w-0 flex-1">{label}</span>
                           {trailing ? (
                             <span className="shrink-0">{trailing}</span>
@@ -1837,7 +1961,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             }}
             placeholder="Search…"
             autoFocus
-            className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-content placeholder:text-content-tertiary focus:border-[#f97316] focus:outline-none focus:ring-1 focus:ring-orange-200"
+            className="min-w-0 flex-1 rounded-full border-0 bg-surface px-3 py-1.5 text-xs text-content placeholder:text-content-tertiary focus:outline-none focus:ring-0"
             aria-label="Search messages in this chat"
           />
           <button
@@ -1860,23 +1984,46 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
+      <div className={`relative ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
       <div
         ref={messagesScrollRef}
-        className={`flex flex-col space-y-3 overflow-y-auto bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-6 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
+        className={`flex flex-col space-y-1 overflow-y-auto overflow-x-hidden bg-surface-canvas px-2 py-2 sm:space-y-1.5 sm:px-4 sm:py-3 scroll-smooth ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
           }`}
       >
         {isLoadingOlderMessages && (
-          <div className="py-1 text-center text-xs text-content-secondary">
-            {messageSearchKeyword.trim() ? "Loading older matches..." : "Loading older messages..."}
+          <div className="flex justify-center py-2">
+            <div className="flex items-center gap-2 rounded-full bg-surface/90 px-3 py-1.5 text-xs text-content-secondary shadow-sm backdrop-blur-sm">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary-600" />
+              {messageSearchKeyword.trim() ? "Loading older matches…" : "Loading older messages…"}
+            </div>
           </div>
         )}
         {searchLoading && messageSearchKeyword.trim() ? (
-          <div className="py-12 text-center text-sm text-content-secondary">Searching messages...</div>
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <div className="h-10 w-10 animate-pulse rounded-full bg-surface-secondary" />
+            <div className="h-3 w-40 animate-pulse rounded-full bg-surface-secondary" />
+            <p className="text-sm text-content-secondary">Searching messages…</p>
+          </div>
+        ) : isMessagesLoading && displayMessages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+            <p className="text-sm text-content-secondary">Loading messages…</p>
+          </div>
         ) : displayMessages.length === 0 ? (
-          <div className="py-12 text-center text-sm text-content-secondary">
-            {messageSearchKeyword.trim()
-              ? `No messages match "${messageSearchKeyword.trim()}".`
-              : "Send a message to kick off the conversation."}
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center animate-[chatFadeIn_220ms_ease-out]">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface/90 text-2xl shadow-sm ring-1 ring-border-subtle">
+              💬
+            </div>
+            <p className="text-sm font-medium text-content">
+              {messageSearchKeyword.trim()
+                ? `No messages match "${messageSearchKeyword.trim()}"`
+                : "No messages yet"}
+            </p>
+            <p className="max-w-[220px] text-xs text-content-secondary">
+              {messageSearchKeyword.trim()
+                ? "Try a different keyword."
+                : "Say hello — send a message to start the conversation."}
+            </p>
           </div>
         ) : (
           displayMessages.map((message: ChatMessage, index: number) => {
@@ -1891,12 +2038,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 new Date(prev.created_at),
                 new Date(message.created_at)
               );
+            const showSenderHeader =
+              isGroupThread &&
+              !isOwn &&
+              (!prev ||
+                showDateDivider ||
+                !chatUserIdsEqual(
+                  getChatMessageAuthorId(prev),
+                  getChatMessageAuthorId(message)
+                ));
 
             return (
               <Fragment key={message.id}>
                 {showDateDivider ? (
                   <ChatDateDivider dateIso={message.created_at} />
                 ) : null}
+                {index === unreadDividerBeforeIndex ? <ChatUnreadDivider /> : null}
                 <MessageBubble
                   message={message}
                   threadId={threadId}
@@ -1906,6 +2063,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     thread?.participants?.map((p: ChatParticipant) => p.id) || []
                   }
                   participantPresence={participantPresenceById}
+                  showSenderHeader={showSenderHeader}
                   onReply={handleReply}
                   onForward={openForwardPicker}
                   onDelete={handleDelete}
@@ -1919,6 +2077,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           })
         )}
         <div aria-hidden="true" />
+      </div>
+
+      {showScrollToBottom ? (
+        <button
+          type="button"
+          onClick={scrollMessagesToBottom}
+          className="absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-content-secondary shadow-[0_2px_8px_rgba(11,20,26,0.2)] ring-1 ring-border transition hover:bg-surface-hover hover:text-content animate-[chatFadeIn_160ms_ease-out]"
+          aria-label="Scroll to bottom"
+        >
+          <ChevronDown className="h-5 w-5" />
+        </button>
+      ) : null}
       </div>
 
       <TypingIndicator isTyping={typingUserIds.length > 0} />
@@ -1945,24 +2115,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       ) : null}
 
       {pendingFiles.length > 0 && !editingMessage && (
-        <div className="border-t border-border-subtle px-4 pb-3">
+        <div className="border-t border-border-subtle px-2.5 pb-2 sm:px-4 sm:pb-3">
           <FilePreview files={pendingFiles} onRemove={removePendingFile} />
         </div>
       )}
 
       <form
+        id={`chat-composer-${threadId}`}
         onSubmit={handleSend}
-        className={`border-t border-border bg-surface-canvas px-2 py-2 sm:px-3 sm:py-3 ${isPageVariant ? "sm:rounded-b-2xl" : "rounded-bl-2xl rounded-br-2xl"
+        className={`relative overflow-visible border-t border-border/60 bg-surface px-2.5 py-2 sm:px-3 sm:py-2.5 ${isPageVariant ? "pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "rounded-bl-2xl rounded-br-2xl"
           } ${messagingBlocked ? "pointer-events-none opacity-60" : ""}`}
+        ref={attachMenuRef}
       >
+        <ChatAttachmentMenu
+          open={attachmentMenuOpen}
+          onFilesSelected={handleFilesSelected}
+          onClose={() => setAttachmentMenuOpen(false)}
+          onOpenCamera={() => setWebcamOpen(true)}
+          onOpenLocation={() => setLocationPickerOpen(true)}
+        />
+
         {editingMessage ? (
-          <div className="mb-2 flex items-start gap-2 rounded-lg border border-amber-200/80 bg-amber-50/90 dark:border-orange-900/70 dark:bg-orange-950/45 px-2.5 py-2 border-l-[3px] border-l-teal-500 dark:border-l-teal-500">
-            <Pencil className="h-4 w-4 shrink-0 text-teal-600 dark:text-teal-400 mt-0.5" aria-hidden />
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-teal-800 dark:text-teal-300">
+          <div className="mb-2 flex items-start gap-2 rounded-xl border border-border bg-surface-secondary px-2.5 py-2 border-l-[3px] border-l-[#128c7e]">
+            <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-[#128c7e]" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-[#128c7e]">
                 Editing message
               </div>
-              <div className="text-xs text-teal-900/85 dark:text-teal-100/80 truncate mt-0.5 font-medium">
+              <div className="mt-0.5 truncate text-xs font-medium text-content-secondary">
                 {editingMessage.is_deleted ? (
                   "This message was deleted"
                 ) : (
@@ -1973,52 +2153,72 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <button
               type="button"
               onClick={cancelComposerEdit}
-              className="flex-shrink-0 rounded-full p-1 text-teal-800 hover:bg-amber-100 dark:text-teal-200 dark:hover:bg-orange-900/60 transition"
+              className="flex-shrink-0 rounded-full p-1 text-content-secondary transition hover:bg-surface-hover hover:text-content"
               aria-label="Discard edit"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         ) : replyingTo ? (
-          <div className="px-3 sm:px-10">
-          <div className="mb-2 flex items-start gap-2 rounded-lg bg-surface-secondary p-2  border-l-4 border-orange-500">
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-content-secondary mb-1">
+          <div className="mb-2 flex items-start gap-2 rounded-xl bg-surface-secondary p-2 border-l-[3px] border-[#128c7e]">
+            <div className="min-w-0 flex-1">
+              <div className="mb-0.5 text-xs font-semibold text-[#128c7e]">
                 Replying to {replyingTo.sender?.name || "Unknown"}
               </div>
-              <div className="text-sm text-content truncate">
+              <div className="truncate text-sm text-content-secondary">
                 {replyingTo.is_deleted
-                  ? "🚫 This message was deleted"
+                  ? "This message was deleted"
                   : replyingTo.content}
               </div>
             </div>
             <button
               type="button"
               onClick={() => setReplyingTo(null)}
-              className="flex-shrink-0 text-content-secondary hover:text-content"
+              className="flex-shrink-0 rounded-full p-1 text-content-secondary hover:bg-surface-hover hover:text-content"
               aria-label="Cancel reply"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
-          </div>
         ) : null}
 
-        {voiceRecording && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-500" />
-            Recording… tap the stop button to send
+          {voiceRecording && (
+          <div className="mb-2 flex items-center gap-2 rounded-xl bg-surface-secondary px-2.5 py-2 animate-[chatFadeIn_160ms_ease-out] sm:gap-3 sm:px-3 sm:py-2.5">
+            <span className="inline-block h-2.5 w-2.5 shrink-0 animate-[chatRecPulse_1s_ease-in-out_infinite] rounded-full bg-red-500" />
+            <div className="flex min-w-0 flex-1 items-center gap-2 text-content-secondary">
+              <div className="flex h-6 min-w-0 flex-1 items-end gap-[2px] overflow-hidden text-[#128c7e]/70">
+                {Array.from({ length: 24 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="chat-wave-bar w-[3px] rounded-full bg-current"
+                    style={{
+                      height: `${6 + ((i * 5) % 14)}px`,
+                      animationDelay: `${(i % 6) * 70}ms`,
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="shrink-0 text-xs font-semibold tabular-nums text-content">
+                {formatMediaDuration(voiceElapsedSec)}
+              </span>
+            </div>
+            <span className="hidden shrink-0 text-[11px] font-medium text-content-tertiary sm:inline">
+              Tap stop to send
+            </span>
           </div>
         )}
 
-        <div className="flex items-center gap-1.5">
-          <div className="relative flex-shrink-0" ref={attachMenuRef}>
+        <div className="flex items-end gap-1.5 sm:gap-2">
+          <div className="relative flex-shrink-0 self-end">
             <button
               type="button"
-              onClick={() => !editingMessage && setAttachmentMenuOpen((o) => !o)}
+              onClick={() => {
+                !editingMessage && setAttachmentMenuOpen((o) => !o);
+              }}
               disabled={!!editingMessage}
-              className={`flex h-9 w-9 items-center justify-center rounded-full bg-transparent text-content-secondary hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40 ${attachmentMenuOpen ? "ring-1 ring-[#25d366] text-[#128c7e]" : ""
-                }`}
+              className={`mb-0.5 flex h-10 w-10 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content disabled:pointer-events-none disabled:opacity-40 ${
+                attachmentMenuOpen ? "bg-surface-hover text-[#128c7e]" : ""
+              }`}
               aria-label="Attach"
               aria-expanded={attachmentMenuOpen}
               title={
@@ -2027,22 +2227,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   : undefined
               }
             >
-              <Plus className="h-5 w-5" />
+              <Plus className={`h-[22px] w-[22px] transition-transform duration-200 ${attachmentMenuOpen ? "rotate-45" : ""}`} strokeWidth={1.75} />
             </button>
-            <ChatAttachmentMenu
-              open={attachmentMenuOpen}
-              onFilesSelected={handleFilesSelected}
-              onClose={() => setAttachmentMenuOpen(false)}
-              onOpenCamera={() => setWebcamOpen(true)}
-            />
           </div>
-          <input
-            ref={composerInputRef}
+
+          <ChatRichTextEditor
+            ref={composerEditorRef}
             value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              handleTyping();
+            onChange={setDraft}
+            onTyping={handleTyping}
+            onSubmit={() => {
+              const form = document.getElementById(`chat-composer-${threadId}`) as HTMLFormElement | null;
+              form?.requestSubmit();
             }}
+            disabled={messagingBlocked}
+            mentionCandidates={mentionCandidates}
             placeholder={
               messagingBlocked
                 ? blockedByMe
@@ -2050,57 +2249,57 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   : "Messaging unavailable"
                 : editingMessage
                   ? "Edit message"
-                  : "Message"
+                  : "Type a message"
             }
-            disabled={messagingBlocked}
-            aria-label={
-              editingMessage ? "Editing message — press Escape to discard" : "Message input"
-            }
-            className="min-w-0 flex-1 rounded-full border border-border bg-surface px-3 py-2 text-sm text-content focus:border-[#d1d7db] focus:outline-none "
+            showToolbar
           />
-          {showSendButton ? (
-            <button
-              type="submit"
-              disabled={isSending || composerSendDisabled}
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#22c55e] text-white hover:bg-[#22c55e] active:bg-[#22c55e] disabled:cursor-not-allowed disabled:opacity-50 sm:h-9 sm:w-9"
-              aria-label={
-                editingMessage ? "Done editing — save changes" : "Send message"
-              }
-            >
-              {isSending ? (
-                <svg className="h-5 w-5 sm:h-4 sm:w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              ) : (
-                <Send className="h-5 w-5 sm:h-4 sm:w-4" />
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={toggleVoiceRecording}
-              disabled={isSending || !!editingMessage}
-              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 sm:h-9 sm:w-9 ${voiceRecording
-                ? "bg-orange-600 hover:bg-orange-700"
-                : "bg-primary-600 hover:bg-primary-700"
+
+          <div className="relative mb-0.5 h-10 w-10 flex-shrink-0 self-end">
+            {showSendButton ? (
+              <button
+                type="submit"
+                disabled={isSending || composerSendDisabled}
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-primary-600 text-white transition hover:bg-primary-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 animate-[chatFadeIn_140ms_ease-out]"
+                aria-label={
+                  editingMessage ? "Done editing — save changes" : "Send message"
+                }
+              >
+                {isSending ? (
+                  <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <Send className="h-[18px] w-[18px]" />
+                )}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={toggleVoiceRecording}
+                disabled={isSending || !!editingMessage}
+                className={`absolute inset-0 flex items-center justify-center rounded-full text-white transition active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 animate-[chatFadeIn_140ms_ease-out] ${
+                  voiceRecording
+                    ? "bg-red-500 hover:bg-red-600"
+                    : "bg-primary-600 hover:bg-primary-700"
                 }`}
-              aria-label={voiceRecording ? "Stop recording" : "Voice message"}
-              title={
-                editingMessage
-                  ? "Finish editing before sending a voice message"
-                  : voiceRecording
-                    ? "Stop and send"
-                    : "Voice message"
-              }
-            >
-              {voiceRecording ? (
-                <Square className="h-4 w-4 fill-current" />
-              ) : (
-                <Mic className="h-5 w-5 sm:h-4 sm:w-4" />
-              )}
-            </button>
-          )}
+                aria-label={voiceRecording ? "Stop recording" : "Voice message"}
+                title={
+                  editingMessage
+                    ? "Finish editing before sending a voice message"
+                    : voiceRecording
+                      ? "Stop and send"
+                      : "Voice message"
+                }
+              >
+                {voiceRecording ? (
+                  <Square className="h-4 w-4 fill-current" />
+                ) : (
+                  <Mic className="h-5 w-5" strokeWidth={1.75} />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </form>
 
@@ -2110,12 +2309,120 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onCaptured={handleFilesSelected}
       />
 
+      <ChatLocationPicker
+        open={locationPickerOpen}
+        onClose={() => setLocationPickerOpen(false)}
+        onSelect={(place) => void handleSendLocation(place)}
+      />
+
       <ChatMediaGallery
         threadId={threadId}
         open={showMediaGallery}
         onClose={() => setShowMediaGallery(false)}
         isGroupChat={isGroupThread}
       />
+
+      {showParticipantsList ? (
+        <div
+          className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-surface"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Participants"
+        >
+          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-secondary px-2 py-2 text-content">
+            <button
+              type="button"
+              onClick={() => setShowParticipantsList(false)}
+              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-hover"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <span className="truncate text-sm font-semibold">Participants</span>
+              <p className="truncate text-xs text-content-secondary">
+                {thread?.participants?.length ?? 0}{" "}
+                {(thread?.participants?.length ?? 0) === 1
+                  ? "participant"
+                  : "participants"}
+              </p>
+            </div>
+          </div>
+
+          <ul className="min-h-0 flex-1 overflow-y-auto divide-y divide-border-subtle bg-surface">
+            {[...(thread?.participants ?? [])]
+              .sort((a, b) => {
+                if (a.id === currentUser?.id) return 1;
+                if (b.id === currentUser?.id) return -1;
+                return (a.name || "").localeCompare(b.name || "");
+              })
+              .map((p: ChatParticipant) => {
+                const isYou = p.id === currentUser?.id;
+                const isOnline =
+                  participantPresenceById[p.id] === "online" ||
+                  presentUserIds.has(p.id);
+                const member = members.find((m) => m.id === p.id);
+                const subtitle = isYou
+                  ? "You"
+                  : isOnline
+                    ? "Online"
+                    : formatContactPresenceLine(
+                        member?.status ?? null,
+                        member?.last_seen ?? null
+                      ) || "Offline";
+                const label = p.name || "User";
+
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowParticipantsList(false);
+                        router.push(`/user/${encodeURIComponent(p.id)}`);
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-hover"
+                    >
+                      <div className="relative h-11 w-11 shrink-0">
+                        {p.avatarUrl ? (
+                          <img
+                            src={p.avatarUrl}
+                            alt=""
+                            className="h-11 w-11 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
+                            {label.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        {isOnline ? (
+                          <span
+                            className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-green-500"
+                            aria-hidden
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-content">
+                          {isYou ? `${label} (You)` : label}
+                        </p>
+                        <p
+                          className={`truncate text-xs ${
+                            isOnline && !isYou
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-content-secondary"
+                          }`}
+                        >
+                          {subtitle}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-content-secondary" />
+                    </button>
+                  </li>
+                );
+              })}
+          </ul>
+        </div>
+      ) : null}
 
       {infoMessage ? (
         <div

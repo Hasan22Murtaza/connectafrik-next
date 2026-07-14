@@ -1,7 +1,7 @@
 /** Shared layout tokens for chat UI (theme-aware). */
 export const CH = {
   pageShell:
-    "mx-auto flex h-[calc(100vh-6.5rem)] w-full overflow-hidden rounded-none border border-border sm:h-[calc(100vh-7rem)] md:h-[calc(100vh-4rem)]",
+    "mx-auto flex h-[calc(100dvh-6.5rem)] w-full max-w-full overflow-hidden rounded-none border border-border sm:h-[calc(100dvh-7rem)] md:h-[calc(100dvh-4rem)]",
   sidebar:
     "w-full max-w-sm shrink-0 border-r border-border bg-surface-canvas",
   sidebarHeader: "border-b border-border bg-surface px-4 py-4",
@@ -17,7 +17,7 @@ export const CH = {
   dropdownSearch:
     "w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none focus:border-primary-300 focus:ring-2 focus:ring-primary-100",
   windowHeader: "flex items-center justify-between border-b border-border bg-surface-canvas p-2",
-  messageArea: "flex flex-col space-y-3 overflow-y-auto bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3",
+  messageArea: "flex flex-col space-y-3 overflow-y-auto overflow-x-hidden bg-surface-canvas px-3 py-2 sm:space-y-4 sm:px-4 sm:py-3",
   composer: "border-t border-border bg-surface-canvas px-2 py-2 sm:px-3 sm:py-3",
   composerInput:
     "min-w-0 flex-1 rounded-full border border-border bg-surface px-3 py-2 text-sm text-content focus:border-primary focus:outline-none",

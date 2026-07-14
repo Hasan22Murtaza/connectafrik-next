@@ -476,7 +476,7 @@ export default function ChatSidebar({
       }`}
     >
       <header className="shrink-0 border-b border-border bg-surface">
-        <div className="flex items-center justify-between gap-2 px-4 pt-3 sm:pt-4">
+        <div className="flex items-center justify-between gap-2 px-4 pt-1 sm:pt-1">
           {view === "marketplace" ? (
             <button
               type="button"
@@ -560,7 +560,7 @@ export default function ChatSidebar({
           ) : null}
         </div>
 
-        <div className="px-4 py-3">
+        <div className="px-4 py-1">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
             <input
@@ -568,7 +568,7 @@ export default function ChatSidebar({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={view === "marketplace" ? "Search marketplace" : "Search or start a new chat"}
-              className="w-full rounded-full border border-transparent bg-surface-canvas py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus:border-primary-300 focus:bg-surface focus:ring-2 focus:ring-primary-100"
+              className="w-full rounded-full border border-transparent bg-surface-canvas py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
             />
             {search ? (
               <button

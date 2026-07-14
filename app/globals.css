@@ -217,6 +217,171 @@
   background-color: var(--chat-bubble-own-file-hover);
 }
 
+/* ─── Chat rich text ────────────────────────────────────────────────────── */
+.chat-rt-editor {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.chat-rt-content {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.chat-rt-content strong,
+.chat-rt-b {
+  font-weight: 700;
+}
+.chat-rt-content em,
+.chat-rt-i {
+  font-style: italic;
+}
+.chat-rt-content u,
+.chat-rt-u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-rt-content del,
+.chat-rt-s {
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+.chat-rt-mark {
+  background: color-mix(in srgb, #eab308 35%, transparent);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.dark .chat-rt-mark {
+  background: color-mix(in srgb, #eab308 28%, transparent);
+}
+.chat-rt-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.85em;
+  background: color-mix(in srgb, var(--content-primary) 8%, transparent);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.chat-rt-pre {
+  margin: 0.35rem 0;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+.chat-rt-own .chat-rt-pre {
+  background: #0f3d36;
+}
+.chat-rt-codeblock {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre;
+}
+.chat-rt-quote {
+  margin: 0.25rem 0;
+  border-left: 3px solid #00a884;
+  padding: 0.15rem 0.6rem;
+  color: var(--content-secondary);
+  background: color-mix(in srgb, var(--content-primary) 4%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+.chat-rt-ul,
+.chat-rt-ol {
+  margin: 0.2rem 0;
+  padding-left: 1.25rem;
+}
+.chat-rt-ul { list-style: disc; }
+.chat-rt-ol { list-style: decimal; }
+.chat-rt-ul li,
+.chat-rt-ol li {
+  margin: 0.1rem 0;
+}
+.chat-rt-link {
+  color: #027eb5;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+.dark .chat-rt-link,
+.chat-rt-own .chat-rt-link {
+  color: #7dd3fc;
+}
+.chat-rt-mention {
+  border-radius: 4px;
+  padding: 0 3px;
+  font-weight: 600;
+  background: color-mix(in srgb, #00a884 18%, transparent);
+  color: #0f766e;
+}
+.dark .chat-rt-mention {
+  color: #5eead4;
+}
+.chat-rt-hashtag {
+  font-weight: 600;
+  color: #2563eb;
+}
+.dark .chat-rt-hashtag {
+  color: #93c5fd;
+}
+.chat-rt-toolbar {
+  scrollbar-width: thin;
+}
+
+/* ─── Chat UI ───────────────────────────────────────────────────────────── */
+.chat-typing-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--content-tertiary);
+  animation: chatTypingBounce 1.35s infinite ease-in-out;
+}
+.chat-typing-dot-1 { animation-delay: 0s; }
+.chat-typing-dot-2 { animation-delay: 0.18s; }
+.chat-typing-dot-3 { animation-delay: 0.36s; }
+
+.chat-wave-bar {
+  animation: chatWavePulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes chatTypingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+@keyframes chatFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes chatMsgIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes chatMediaIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes chatSheetIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes chatReactPop {
+  0% { opacity: 0; transform: scale(0.6); }
+  70% { transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes chatWavePulse {
+  from { opacity: 0.45; transform: scaleY(0.65); }
+  to { opacity: 0.95; transform: scaleY(1); }
+}
+@keyframes chatImgShine {
+  from { filter: brightness(0.92); }
+  to { filter: brightness(1); }
+}
+@keyframes chatRecPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.7; }
+}
+
 /* ─── Tailwind v4 theme tokens ──────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
@@ -683,5 +848,10 @@ button {
   .lp-reveal.is-visible {
     animation: none !important;
     opacity: 1 !important;
+  }
+
+  .chat-typing-dot,
+  .chat-wave-bar {
+    animation: none !important;
   }
 }

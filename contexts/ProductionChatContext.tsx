@@ -110,6 +110,8 @@ interface ProductionChatContextType {
   closeThread: (threadId: string) => void
   getThreadById: (threadId: string) => ChatThread | undefined
   getMessagesForThread: (threadId: string) => ChatMessage[]
+  /** True until the first messages fetch for this thread completes (success or error). */
+  isMessagesLoadingForThread: (threadId: string) => boolean
   sendMessage: (threadId: string, text: string, payload?: any) => Promise<void>
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
@@ -316,6 +318,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const getMessagesForThread = useCallback((threadId: string) => {
     return messages[threadId] || []
+  }, [messages])
+
+  const isMessagesLoadingForThread = useCallback((threadId: string) => {
+    // Absence of a key means the initial fetch has not finished yet.
+    // An explicit empty array means loaded with no messages.
+    return !Object.prototype.hasOwnProperty.call(messages, threadId)
   }, [messages])
 
   const sendMessage = useCallback(async (threadId: string, text: string, payload?: any) => {
@@ -1153,6 +1161,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           })
         } catch (error) {
           console.error(`Error loading messages for thread ${threadId}:`, error)
+          // Mark as loaded so the UI does not spin forever on failure.
+          setMessages((prev) => {
+            if (Object.prototype.hasOwnProperty.call(prev, threadId)) return prev
+            return { ...prev, [threadId]: [] }
+          })
         }
       }
     }
@@ -1402,6 +1415,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     closeThread,
     getThreadById,
     getMessagesForThread,
+    isMessagesLoadingForThread,
     sendMessage,
     minimizedThreadIds,
     markThreadRead,
