@@ -33,6 +33,7 @@ import {
   CheckCheck,
   ChevronLeft,
   ChevronRight,
+  FileText,
   Info,
   Loader2,
   Mic,
@@ -68,6 +69,8 @@ import ChatLocationPicker, {
   type ChatLocationSelection,
 } from "./ChatLocationPicker";
 import ChatMediaGallery from "./ChatMediaGallery";
+import ChatTranscriptModal from "./ChatTranscriptModal";
+import ChatTranslationMenu from "./ChatTranslationMenu";
 import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
 import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
@@ -84,6 +87,7 @@ import {
   isThreadMessagingBlocked,
 } from "@/features/chat/utils/threadHelpers";
 import { useActiveCallSession } from "@/features/chat/hooks/useActiveCallSession";
+import { useMessageTranslations } from "@/features/chat/hooks/useMessageTranslations";
 
 interface ChatWindowProps {
   threadId: string;
@@ -270,6 +274,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const displayMessages = messageSearchKeyword.trim()
     ? searchVisibleMessages
     : visibleMessages;
+
+  const {
+    receiveLanguage,
+    setReceiveLanguage,
+    getDisplayContent,
+    translateOneMessage,
+    showOriginalForMessage,
+    isTranslating,
+    getMessageLanguage,
+    overrides,
+    defaultOneClickLanguage,
+  } = useMessageTranslations(threadId, displayMessages, currentUser?.id);
 
   const forwardCandidateThreads = useMemo(() => {
     return threads
@@ -504,6 +520,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [showParticipantsList, setShowParticipantsList] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
@@ -532,6 +549,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setSearchHasOlder(false);
     setSearchLoading(false);
     setShowMediaGallery(false);
+    setShowTranscriptModal(false);
     setEditingMessage(null);
     draftBeforeComposerEditRef.current = "";
     setForwardingMessage(null);
@@ -1687,6 +1705,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         Icon: thread?.pinned ? PinOff : Pin,
         onClick: () => void handlePinToggle(),
       },
+      {
+        id: "transcript",
+        label: "Generate Transcript",
+        Icon: FileText,
+        onClick: () => {
+          setShowOptionsMenu(false);
+          setShowTranscriptModal(true);
+        },
+      },
       ...(canBlockContact
         ? [
             {
@@ -1832,6 +1859,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <ChatTranslationMenu
+            value={receiveLanguage}
+            onChange={(language) => void setReceiveLanguage(language)}
+          />
           {canJoin && (
             <button
               type="button"
@@ -2071,6 +2102,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   composerEditingMessageId={editingMessage?.id ?? null}
                   onReact={handleMessageReaction}
                   onShowInfo={(msg) => void openMessageInfo(msg)}
+                  translationDisplay={getDisplayContent(message, isOwn)}
+                  isTranslating={isTranslating(message.id)}
+                  activeTranslationLanguage={getMessageLanguage(message.id, isOwn)}
+                  showOriginalOverride={overrides[message.id]?.showOriginal ?? false}
+                  defaultTranslateLanguage={defaultOneClickLanguage}
+                  onTranslateMessage={(language) =>
+                    void translateOneMessage(message.id, language)
+                  }
+                  onToggleShowOriginal={() =>
+                    showOriginalForMessage(message.id, isOwn)
+                  }
                 />
               </Fragment>
             );
@@ -2730,6 +2772,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
       ) : null}
+
+      <ChatTranscriptModal
+        threadId={threadId}
+        threadName={displayThreadName}
+        open={showTranscriptModal}
+        onClose={() => setShowTranscriptModal(false)}
+      />
     </div>
   );
 };

@@ -72,6 +72,8 @@ export interface Profile {
   two_factor_enabled?: boolean
   login_alerts?: boolean
   data_download_requested?: boolean
+  /** Incoming chat messages auto-translate target; `off` shows originals. */
+  message_translation_language?: 'off' | 'en' | 'fr' | 'es' | 'pt' | 'de' | 'ar' | 'sw'
 }
 
 export interface UserProfile {

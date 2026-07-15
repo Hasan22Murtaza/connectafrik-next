@@ -20,6 +20,8 @@ import {
   ExternalLink,
   Forward,
   Info,
+  Languages,
+  Loader2,
   Pencil,
   PhoneIncoming,
   PhoneMissed,
@@ -39,6 +41,11 @@ import { TbMoodPlus } from "react-icons/tb";
 import { useRouter } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import ReactionsModal, { type ReactionsModalGroup } from "@/shared/components/ReactionsModal";
+import {
+  messageTranslationLanguageLabel,
+  type MessageTranslationTargetCode,
+} from "@/features/chat/constants/messageTranslationLanguages";
+import { shouldOfferMessageTranslate } from "@/features/chat/utils/detectMessageLanguage";
 import MessageAttachments from "./MessageAttachments";
 import ChatMediaViewer, { type ChatMediaViewerItem } from "./ChatMediaViewer";
 import {
@@ -147,6 +154,17 @@ interface MessageBubbleProps {
   isMessageSelected?: boolean;
   /** Group chats only: show avatar + name above inbound bubbles */
   showSenderHeader?: boolean;
+  translationDisplay?: {
+    text: string;
+    isTranslated: boolean;
+    language: MessageTranslationTargetCode | null;
+  };
+  isTranslating?: boolean;
+  activeTranslationLanguage?: MessageTranslationTargetCode | null;
+  showOriginalOverride?: boolean;
+  defaultTranslateLanguage?: MessageTranslationTargetCode;
+  onTranslateMessage?: (language: MessageTranslationTargetCode) => void;
+  onToggleShowOriginal?: () => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -165,6 +183,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onShowInfo,
   selectionMode = false,
   showSenderHeader = false,
+  translationDisplay,
+  isTranslating = false,
+  activeTranslationLanguage = null,
+  showOriginalOverride = false,
+  defaultTranslateLanguage = "en",
+  onTranslateMessage,
+  onToggleShowOriginal,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -304,10 +329,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   const handleCopyText = async () => {
-    const txt = (message.content || "").trim();
+    const txt = (translationDisplay?.text || message.content || "").trim();
     if (!txt) return;
     try {
-      await navigator.clipboard.writeText(txt);
+      await navigator.clipboard.writeText(stripMarkdown(txt));
       toast.success("Copied");
     } catch {
       toast.error("Could not copy");
@@ -337,6 +362,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const canForward = Boolean(onForward) && isForwardableChatMessage(message);
   const canShowInfo = isOwnMessage && Boolean(onShowInfo) && !isDeleted;
   const canCopy = Boolean((message.content || "").trim());
+  const canTranslate =
+    Boolean(onTranslateMessage) &&
+    !isOwnMessage &&
+    !isDeleted &&
+    (message.message_type || "text") === "text" &&
+    Boolean((message.content || "").trim());
+  const offerTranslateLink =
+    canTranslate &&
+    shouldOfferMessageTranslate(message.content || "", defaultTranslateLanguage);
   const showOverflowMenu =
     canEditMessage ||
     canDeleteForMe ||
@@ -410,7 +444,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             },
           },
         ]
-        : [])
+        : []),
     ];
 
     const secondary: ChatHeaderOptionsMenuItem[] = [
@@ -580,9 +614,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     !isDeleted && !locationPayload && message.content
       ? extractConnectAfrikPostId(stripMarkdown(message.content))
       : null;
+  const sourceContent = translationDisplay?.text ?? message.content ?? "";
   const displayContent = sharedPostId
-    ? stripConnectAfrikPostUrls(message.content || "")
-    : message.content || "";
+    ? stripConnectAfrikPostUrls(sourceContent)
+    : sourceContent;
   const linkPreviewUrl =
     !isDeleted &&
     !emojiOnly &&
@@ -994,6 +1029,66 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     expanded={Boolean(isExpanded) || !shouldTruncate}
                     onToggleExpand={() => toggleExpanded(message.id)}
                   />
+                ) : null}
+
+                {canTranslate &&
+                !isDeleted &&
+                !locationPayload &&
+                (offerTranslateLink ||
+                  isTranslating ||
+                  translationDisplay?.isTranslated ||
+                  (activeTranslationLanguage && showOriginalOverride) ||
+                  (activeTranslationLanguage &&
+                    !translationDisplay?.isTranslated &&
+                    !showOriginalOverride)) ? (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    {isTranslating ||
+                    (activeTranslationLanguage &&
+                      !translationDisplay?.isTranslated &&
+                      !showOriginalOverride) ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-content-tertiary">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Translating…
+                      </span>
+                    ) : translationDisplay?.isTranslated ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleShowOriginal?.();
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:underline"
+                      >
+                        <Languages className="h-3 w-3" />
+                        Show original
+                      </button>
+                    ) : activeTranslationLanguage && showOriginalOverride ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleShowOriginal?.();
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:underline"
+                      >
+                        <Languages className="h-3 w-3" />
+                        Show translation
+                      </button>
+                    ) : offerTranslateLink ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTranslateMessage?.(defaultTranslateLanguage);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:underline"
+                      >
+                        <Languages className="h-3 w-3" />
+                        Translate to{" "}
+                        {messageTranslationLanguageLabel(defaultTranslateLanguage)}
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
               </>
             )}
