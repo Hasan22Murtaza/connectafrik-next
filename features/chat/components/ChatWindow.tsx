@@ -535,12 +535,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const scrollHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const messagesById = useMemo(() => {
+    const map = new Map<string, ChatMessage>();
+    for (const msg of messages) {
+      map.set(msg.id, msg);
+    }
+    return map;
+  }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollHighlightTimerRef.current) clearTimeout(scrollHighlightTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setHistoryPage(0);
     setHasOlderMessages(true);
     setIsLoadingOlderMessages(false);
     isPrependingHistoryRef.current = false;
+    setHighlightedMessageId(null);
     setShowMessageSearch(false);
     setMessageSearchDraft("");
     setMessageSearchKeyword("");
@@ -708,6 +725,109 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     getMessagesForThread,
     setMessagesForThread,
   ]);
+
+  const flashMessageHighlight = useCallback((messageId: string) => {
+    setHighlightedMessageId(messageId);
+    if (scrollHighlightTimerRef.current) clearTimeout(scrollHighlightTimerRef.current);
+    scrollHighlightTimerRef.current = setTimeout(() => {
+      setHighlightedMessageId(null);
+      scrollHighlightTimerRef.current = null;
+    }, 1800);
+  }, []);
+
+  const ensureMessageLoaded = useCallback(
+    async (messageId: string): Promise<boolean> => {
+      const hasMessage = () =>
+        getMessagesForThread(threadId).some((msg) => msg.id === messageId);
+
+      if (hasMessage()) return true;
+      if (messageSearchKeyword.trim()) return false;
+
+      let page = historyPage;
+      let canLoadMore = hasOlderMessages;
+      isPrependingHistoryRef.current = true;
+
+      try {
+        while (canLoadMore && page < 40) {
+          page += 1;
+          const { messages: olderMessages, hasMore } =
+            await supabaseMessagingService.getThreadMessages(threadId, {
+              page,
+              limit: MESSAGES_PAGE_SIZE,
+            });
+
+          if (!olderMessages.length) {
+            setHasOlderMessages(false);
+            break;
+          }
+
+          canLoadMore = hasMore;
+          setHasOlderMessages(hasMore);
+          const currentMessages = getMessagesForThread(threadId);
+          const mergedMap = new Map<string, ChatMessage>();
+          currentMessages.forEach((msg) => mergedMap.set(msg.id, msg));
+          olderMessages.forEach((msg) => mergedMap.set(msg.id, msg));
+          const merged = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          setMessagesForThread(threadId, merged);
+          setHistoryPage(page);
+
+          if (hasMessage()) return true;
+        }
+      } finally {
+        requestAnimationFrame(() => {
+          isPrependingHistoryRef.current = false;
+        });
+      }
+
+      return hasMessage();
+    },
+    [
+      threadId,
+      historyPage,
+      hasOlderMessages,
+      messageSearchKeyword,
+      getMessagesForThread,
+      setMessagesForThread,
+    ]
+  );
+
+  const scrollToMessage = useCallback(
+    async (messageId: string) => {
+      if (!messageId) return;
+
+      const loaded = await ensureMessageLoaded(messageId);
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+
+      const el = document.getElementById(`chat-message-${messageId}`);
+      if (!el) {
+        if (!loaded) toast.error("Original message is unavailable");
+        else toast.error("Could not scroll to the original message");
+        return;
+      }
+
+      const container = messagesScrollRef.current;
+      if (container) {
+        const elRect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const top =
+          elRect.top -
+          containerRect.top +
+          container.scrollTop -
+          container.clientHeight / 2 +
+          elRect.height / 2;
+        container.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+      } else {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      flashMessageHighlight(messageId);
+    },
+    [ensureMessageLoaded, flashMessageHighlight]
+  );
 
   const menuRef = useRef<HTMLDivElement>(null);
   const clearChatInFlightRef = useRef(false);
@@ -2102,6 +2222,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   composerEditingMessageId={editingMessage?.id ?? null}
                   onReact={handleMessageReaction}
                   onShowInfo={(msg) => void openMessageInfo(msg)}
+                  onScrollToMessage={(messageId) => void scrollToMessage(messageId)}
+                  repliedToMessage={
+                    message.reply_to_id ? messagesById.get(message.reply_to_id) ?? null : null
+                  }
+                  highlighted={highlightedMessageId === message.id}
                   translationDisplay={getDisplayContent(message, isOwn)}
                   isTranslating={isTranslating(message.id)}
                   activeTranslationLanguage={getMessageLanguage(message.id, isOwn)}

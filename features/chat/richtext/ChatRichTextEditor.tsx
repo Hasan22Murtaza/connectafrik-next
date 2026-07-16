@@ -1,6 +1,5 @@
 "use client";
 
-import EmojiPicker from "@/shared/components/ui/EmojiPicker";
 import React, {
   forwardRef,
   useCallback,
@@ -61,6 +60,14 @@ function restoreSelection(range: Range | null) {
   if (!sel) return;
   sel.removeAllRanges();
   sel.addRange(range);
+}
+
+function getEditorTextSelection(editor: HTMLElement): Range | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const range = sel.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return null;
+  return range;
 }
 
 function insertTextAtCursor(text: string) {
@@ -128,22 +135,46 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
     const savedRangeRef = useRef<Range | null>(null);
 
     const [focused, setFocused] = useState(false);
-    const [emojiOpen, setEmojiOpen] = useState(false);
     const [mentionOpen, setMentionOpen] = useState(false);
     const [mentionQuery, setMentionQuery] = useState("");
-    const [linkOpen, setLinkOpen] = useState(false);
-    const [linkUrl, setLinkUrl] = useState("https://");
-    const [colorOpen, setColorOpen] = useState(false);
     const [showToolbarState, setShowToolbarState] = useState(false);
+    const [toolbarPos, setToolbarPos] = useState<{ left: number; top: number } | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
     const blurHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const hideToolbar = useCallback(() => {
       setShowToolbarState(false);
-      setEmojiOpen(false);
-      setLinkOpen(false);
-      setColorOpen(false);
+      setToolbarPos(null);
       setMentionOpen(false);
+    }, []);
+
+    const updateSelectionToolbar = useCallback(() => {
+      const el = editorRef.current;
+      const root = rootRef.current;
+      if (!el || !root) {
+        setShowToolbarState(false);
+        setToolbarPos(null);
+        return;
+      }
+
+      const range = getEditorTextSelection(el);
+      if (!range) {
+        setShowToolbarState(false);
+        setToolbarPos(null);
+        return;
+      }
+
+      const rect = range.getBoundingClientRect();
+      const rootRect = root.getBoundingClientRect();
+      const toolbarWidth = 7 * 32 + 16;
+      const toolbarHeight = 40;
+      const gap = 14;
+      let left = rect.left + rect.width / 2 - rootRect.left - toolbarWidth / 2;
+      left = Math.max(4, Math.min(left, rootRect.width - toolbarWidth - 4));
+      const top = rect.top - rootRect.top - toolbarHeight - gap;
+
+      setShowToolbarState(true);
+      setToolbarPos({ left, top });
     }, []);
 
     const syncFromEditor = useCallback(() => {
@@ -207,6 +238,16 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
       };
     }, []);
 
+    useEffect(() => {
+      const onSelectionChange = () => {
+        if (document.activeElement === editorRef.current) {
+          updateSelectionToolbar();
+        }
+      };
+      document.addEventListener("selectionchange", onSelectionChange);
+      return () => document.removeEventListener("selectionchange", onSelectionChange);
+    }, [updateSelectionToolbar]);
+
     const pushHistoryAndApply = (md: string) => {
       applyingHistory.current = true;
       setEditorMarkdown(md);
@@ -238,19 +279,6 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
           case "code":
             surroundWithMarkers("`", "`", "code");
             break;
-          case "codeblock":
-            surroundWithMarkers("```\n", "\n```", "code");
-            break;
-          case "highlight":
-            surroundWithMarkers("==", "==");
-            break;
-          case "color":
-            setColorOpen(true);
-            return;
-          case "link":
-            setLinkOpen(true);
-            setLinkUrl("https://");
-            return;
           case "ul":
             prefixLines(el, () => "- ");
             break;
@@ -259,11 +287,6 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
             break;
           case "quote":
             prefixLines(el, () => "> ");
-            break;
-          case "mention":
-            insertTextAtCursor("@");
-            setMentionOpen(true);
-            setMentionQuery("");
             break;
           case "undo": {
             if (historyIndexRef.current > 0) {
@@ -302,52 +325,6 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
       editorRef.current?.focus();
     };
 
-    const applyLink = () => {
-      const url = linkUrl.trim();
-      if (!url) {
-        setLinkOpen(false);
-        return;
-      }
-      const el = editorRef.current;
-      el?.focus();
-      restoreSelection(savedRangeRef.current);
-      const sel = window.getSelection();
-      const label = (sel?.toString() || "link").trim() || "link";
-      if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        range.deleteContents();
-        const text = document.createTextNode(`[${label}](${url})`);
-        range.insertNode(text);
-        range.setStartAfter(text);
-        range.setEndAfter(text);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-      setLinkOpen(false);
-      if (el) {
-        const md = htmlToMarkdown(el);
-        setEditorMarkdown(md);
-        lastExternalValue.current = md;
-        onChange(md);
-        onTyping?.();
-      }
-    };
-
-    const applyColor = (color: string) => {
-      const el = editorRef.current;
-      el?.focus();
-      restoreSelection(savedRangeRef.current);
-      surroundWithMarkers(`{{color:${color}}}`, "{{/color}}");
-      setColorOpen(false);
-      syncFromEditor();
-      if (el) {
-        const md = htmlToMarkdown(el);
-        setEditorMarkdown(md);
-        lastExternalValue.current = md;
-        onChange(md);
-      }
-    };
-
     const filteredMentions = mentionCandidates
       .filter((m) => {
         const q = mentionQuery.toLowerCase();
@@ -372,19 +349,9 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
         applyCommand("italic");
         return;
       }
-      if (mod && e.key.toLowerCase() === "u") {
-        e.preventDefault();
-        applyCommand("underline");
-        return;
-      }
       if (mod && e.key.toLowerCase() === "e") {
         e.preventDefault();
         applyCommand("code");
-        return;
-      }
-      if (mod && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        applyCommand("link");
         return;
       }
       if (mod && e.key.toLowerCase() === "z" && !e.shiftKey) {
@@ -426,7 +393,6 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
 
       if (document.activeElement === el) {
         setFocused(true);
-        setShowToolbarState(true);
       }
 
       // Track mention query from text before caret
@@ -471,35 +437,27 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
     };
 
     const empty = richTextIsEmpty(value);
-    // Visible while typing in the field; hidden on blur / after send (clear).
-    const toolbarVisible = showToolbar && (toolbarAlwaysVisible || showToolbarState);
+    const toolbarVisible = showToolbar && showToolbarState && toolbarPos;
 
     return (
       <div ref={rootRef} className={`relative flex min-w-0 flex-1 flex-col ${className}`}>
         {toolbarVisible ? (
           <div
-            className="mb-1.5 animate-[chatFadeIn_140ms_ease-out]"
+            className="pointer-events-auto absolute z-[70] animate-[chatFadeIn_140ms_ease-out]"
+            style={{ left: toolbarPos.left, top: toolbarPos.top }}
             onMouseDown={(e) => {
-              // Keep editor focus when interacting with toolbar
               e.preventDefault();
             }}
           >
             <ChatFormattingToolbar
               disabled={disabled}
               compact
-              showHighlight
-              showColor
-              onEmoji={() => {
-                savedRangeRef.current = editorRef.current
-                  ? saveSelection(editorRef.current)
-                  : null;
-                setEmojiOpen((o) => !o);
-              }}
               onCommand={(cmd) => {
                 savedRangeRef.current = editorRef.current
                   ? saveSelection(editorRef.current)
                   : null;
                 applyCommand(cmd);
+                requestAnimationFrame(() => updateSelectionToolbar());
               }}
             />
           </div>
@@ -529,7 +487,6 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
                   blurHideTimer.current = null;
                 }
                 setFocused(true);
-                setShowToolbarState(true);
               }}
               onBlur={() => {
                 setFocused(false);
@@ -558,44 +515,18 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
               onMouseUp={() => {
                 if (editorRef.current) {
                   savedRangeRef.current = saveSelection(editorRef.current);
+                  updateSelectionToolbar();
                 }
               }}
               onKeyUp={() => {
                 if (editorRef.current) {
                   savedRangeRef.current = saveSelection(editorRef.current);
+                  updateSelectionToolbar();
                 }
               }}
             />
           </div>
-
-          <button
-            type="button"
-            disabled={disabled}
-            className="mb-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-content-secondary transition hover:text-content disabled:opacity-40 sm:hidden"
-            aria-label="Toggle formatting toolbar"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setShowToolbarState((v) => !v)}
-          >
-            <span className="text-xs font-bold tracking-tight">Aa</span>
-          </button>
         </div>
-
-        {emojiOpen ? (
-          <div className="absolute bottom-full left-0 z-[80] mb-2 w-[min(100%,20rem)] max-w-[calc(100vw-1rem)]">
-            <EmojiPicker
-              isOpen={emojiOpen}
-              variant="compact"
-              onClose={() => setEmojiOpen(false)}
-              onEmojiSelect={(emoji) => {
-                editorRef.current?.focus();
-                restoreSelection(savedRangeRef.current);
-                insertTextAtCursor(emoji);
-                setEmojiOpen(false);
-                syncFromEditor();
-              }}
-            />
-          </div>
-        ) : null}
 
         {mentionOpen && filteredMentions.length > 0 ? (
           <div
@@ -629,51 +560,6 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
                 </span>
               </button>
             ))}
-          </div>
-        ) : null}
-
-        {linkOpen ? (
-          <div className="absolute bottom-full left-0 z-[80] mb-2 flex w-[min(100%,280px)] max-w-[calc(100vw-1.5rem)] items-center gap-1 rounded-xl border border-border bg-surface p-2 shadow-xl animate-[chatFadeIn_140ms_ease-out]">
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://"
-              className="min-w-0 flex-1 rounded-lg bg-surface-secondary px-2 py-1.5 text-sm text-content outline-none"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  applyLink();
-                }
-                if (e.key === "Escape") setLinkOpen(false);
-              }}
-            />
-            <button
-              type="button"
-              className="rounded-lg bg-[#00a884] px-2.5 py-1.5 text-xs font-semibold text-white"
-              onClick={applyLink}
-            >
-              Add
-            </button>
-          </div>
-        ) : null}
-
-        {colorOpen ? (
-          <div className="absolute bottom-full left-0 z-[80] mb-2 flex gap-1.5 rounded-xl border border-border bg-surface p-2 shadow-xl animate-[chatFadeIn_140ms_ease-out]">
-            {["#e11d48", "#ea580c", "#ca8a04", "#16a34a", "#2563eb", "#7c3aed", "#0f172a"].map(
-              (c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className="h-7 w-7 rounded-full ring-1 ring-black/10 transition hover:scale-110"
-                  style={{ backgroundColor: c }}
-                  aria-label={`Color ${c}`}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => applyColor(c)}
-                />
-              )
-            )}
           </div>
         ) : null}
       </div>

@@ -4,9 +4,11 @@ export type {
   MentionCandidate,
 } from "./ChatRichTextEditor";
 export { default as ChatRichTextRenderer } from "./ChatRichTextRenderer";
+export { default as ChatRichTextPreview } from "./ChatRichTextPreview";
 export { default as ChatFormattingToolbar } from "./ChatFormattingToolbar";
 export {
   markdownToHtml,
+  markdownToPreviewHtml,
   htmlToMarkdown,
   stripMarkdown,
   richTextIsEmpty,

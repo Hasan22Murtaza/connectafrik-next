@@ -10,6 +10,7 @@ import { ChatThread, supabaseMessagingService } from "@/features/chat/services/s
 import { CHAT_THREAD_MARKED_READ_EVENT } from "@/features/chat/threadReadEvents";
 import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
+import { ChatRichTextPreview } from "@/features/chat/richtext";
 
 const PAGE_SIZE = 10;
 
@@ -701,9 +702,13 @@ export default function ChatSidebar({
                           activeCall ? "font-medium text-green-600" : "text-content-secondary"
                         }`}
                       >
-                        {activeCall
-                          ? `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
-                          : thread.last_message_preview || "Tap to open chat"}
+                        {activeCall ? (
+                          `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
+                        ) : thread.last_message_preview ? (
+                          <ChatRichTextPreview content={thread.last_message_preview} />
+                        ) : (
+                          "Tap to open chat"
+                        )}
                       </p>
                       {thread.unread_count > 0 ? (
                         <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
@@ -790,9 +795,13 @@ export default function ChatSidebar({
                   </div>
                   <div className="mt-0.5 flex items-center justify-between gap-2">
                     <p className={`truncate text-sm ${activeCall ? 'text-green-600 font-medium' : 'text-content-secondary'}`}>
-                      {activeCall
-                        ? `● ${activeCall.callType === 'video' ? 'Video' : 'Audio'} call · ${activeCall.participantCount} in call`
-                        : (thread.last_message_preview || "Tap to open chat")}
+                      {activeCall ? (
+                        `● ${activeCall.callType === 'video' ? 'Video' : 'Audio'} call · ${activeCall.participantCount} in call`
+                      ) : thread.last_message_preview ? (
+                        <ChatRichTextPreview content={thread.last_message_preview} />
+                      ) : (
+                        "Tap to open chat"
+                      )}
                     </p>
                     <span className="flex shrink-0 items-center gap-1.5">
                       {thread.pinned ? <Pin className="h-3.5 w-3.5 text-content-tertiary" aria-label="Pinned" /> : null}

@@ -111,6 +111,33 @@ function isForwardableChatMessage(m: ChatMessage): boolean {
   return hasText || hasAtt;
 }
 
+function formatReplyQuote(message: ChatMessage | null | undefined): {
+  senderName: string;
+  preview: string;
+} {
+  if (!message) {
+    return { senderName: "Reply", preview: "Original message" };
+  }
+
+  const senderName = message.sender?.name || "Unknown";
+  if (message.is_deleted) {
+    return { senderName, preview: "This message was deleted" };
+  }
+  if (message.attachments?.length) {
+    const att = message.attachments[0];
+    if (att.type === "image") return { senderName, preview: "Photo" };
+    if (att.type === "video") return { senderName, preview: "Video" };
+    return { senderName, preview: att.name || "Attachment" };
+  }
+
+  const mt = (message.message_type || "text").toLowerCase();
+  if (mt === "location") return { senderName, preview: "Location" };
+  if (mt === "audio" || mt === "voice") return { senderName, preview: "Voice message" };
+
+  const text = stripMarkdown(message.content || "").replace(/\s+/g, " ").trim();
+  return { senderName, preview: text || "Message" };
+}
+
 /** WhatsApp-style voice / missed call row inside a bubble */
 function getCallBubblePresentation(
   message: ChatMessage,
@@ -147,6 +174,9 @@ interface MessageBubbleProps {
   onForward?: (message: ChatMessage) => void;
   onDelete?: (messageId: string, deleteForEveryone: boolean) => void;
   onBeginEdit?: (message: ChatMessage) => void;
+  onScrollToMessage?: (messageId: string) => void;
+  repliedToMessage?: ChatMessage | null;
+  highlighted?: boolean;
   composerEditingMessageId?: string | null;
   onReact?: (messageId: string, emoji: string) => void;
   onShowInfo?: (message: ChatMessage) => void;
@@ -178,6 +208,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onForward,
   onDelete,
   onBeginEdit,
+  onScrollToMessage,
+  repliedToMessage = null,
+  highlighted = false,
   composerEditingMessageId = null,
   onReact,
   onShowInfo,
@@ -682,9 +715,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
   }, [reactionsEndpoint, fallbackReactionGroups]);
 
+  const replyQuote = formatReplyQuote(repliedToMessage);
+
   return (
     <div
-      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : "mb-1.5"} ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"}`}
+      id={`chat-message-${message.id}`}
+      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : "mb-1.5"} ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"} ${highlighted ? "chat-message-jump-highlight rounded-xl" : ""}`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -934,20 +970,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             ) : null}
 
             {message.reply_to_id && !isDeleted ? (
-              <div
-                className={`mb-1.5 max-w-full overflow-hidden rounded-lg border-l-[3px] px-2 py-1.5 ${
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onScrollToMessage?.(message.reply_to_id!);
+                }}
+                className={`mb-1.5 max-w-full overflow-hidden rounded-lg border-l-[3px] px-2 py-1.5 text-left transition hover:opacity-90 ${
                   isOwnMessage
                     ? "border-[#25d366] bg-black/[0.06] dark:bg-white/10"
                     : "border-primary-500 bg-surface-secondary/70"
                 }`}
+                aria-label={`Jump to message from ${replyQuote.senderName}`}
               >
-                <div className="text-[11px] font-semibold text-primary-700 dark:text-primary-300">
-                  Reply
+                <div className="truncate text-[11px] font-semibold text-primary-700 dark:text-primary-300">
+                  {replyQuote.senderName}
                 </div>
                 <div className="truncate text-[12px] italic text-content-tertiary">
-                  Original message
+                  {replyQuote.preview}
                 </div>
-              </div>
+              </button>
             ) : null}
 
             {isDeleted ? (

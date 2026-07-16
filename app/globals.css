@@ -327,6 +327,22 @@
   scrollbar-width: thin;
 }
 
+.chat-message-jump-highlight {
+  animation: chatMessageJumpHighlight 1.8s ease-out;
+}
+
+@keyframes chatMessageJumpHighlight {
+  0%,
+  20% {
+    background-color: rgba(18, 140, 126, 0.16);
+    box-shadow: 0 0 0 2px rgba(18, 140, 126, 0.28);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
 /* ─── Chat UI ───────────────────────────────────────────────────────────── */
 .chat-typing-dot {
   display: inline-block;

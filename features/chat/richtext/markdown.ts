@@ -339,6 +339,29 @@ export function pastedHtmlToMarkdown(html: string): string {
   return htmlToMarkdown(tmp);
 }
 
+/** Inline-only markdown HTML for single-line previews (sidebar, notifications) */
+export function markdownToPreviewHtml(md: string): string {
+  if (!md.trim()) return "";
+
+  const line = md
+    .replace(/\r\n/g, "\n")
+    .replace(/```[\s\S]*?```/g, (block) =>
+      block.replace(/^```\w*\n?/, "").replace(/\n?```$/, " ").trim()
+    )
+    .split("\n")
+    .map((l) =>
+      l
+        .replace(/^>\s?/, "")
+        .replace(/^[-*]\s+/, "• ")
+        .replace(/^\d+\.\s+/, "")
+        .trim()
+    )
+    .filter(Boolean)
+    .join(" ");
+
+  return applyInlineMarkdown(escapeHtml(line));
+}
+
 export type FormatCommand =
   | "bold"
   | "italic"
