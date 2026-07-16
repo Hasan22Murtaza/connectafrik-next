@@ -5,26 +5,21 @@ export const MARKETPLACE_SYSTEM = 'marketplace_system'
 
 export const DEFAULT_INQUIRY_MESSAGE = 'Is this still available? 🙂'
 
-export type MarketplaceInboxRole = 'selling' | 'buying'
+import {
+  MARKETPLACE_INBOX_LABELS,
+  orderMatchesInboxLabel,
+  resolveOrderInboxLabel,
+  type MarketplaceInboxLabel,
+  type MarketplaceInboxRole,
+} from '@/lib/marketplace/orderStatus'
 
-export type MarketplaceInboxLabel =
-  | 'all'
-  | 'pending_payment'
-  | 'paid'
-  | 'to_be_shipped'
-  | 'shipped'
-  | 'cash_on_delivery'
-  | 'completed'
-
-export const MARKETPLACE_INBOX_LABELS: { value: MarketplaceInboxLabel; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'pending_payment', label: 'Pending payment' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'to_be_shipped', label: 'To be shipped' },
-  { value: 'shipped', label: 'Shipped' },
-  { value: 'cash_on_delivery', label: 'Cash on delivery' },
-  { value: 'completed', label: 'Completed' },
-]
+export {
+  MARKETPLACE_INBOX_LABELS,
+  orderMatchesInboxLabel,
+  resolveOrderInboxLabel,
+  type MarketplaceInboxLabel,
+  type MarketplaceInboxRole,
+} from '@/lib/marketplace/orderStatus'
 
 export function isMarketplaceMessageType(t: string | undefined): boolean {
   return t === MARKETPLACE_INQUIRY || t === MARKETPLACE_SYSTEM
@@ -39,32 +34,6 @@ type OrderRow = {
   buyer_id: string
   seller_id: string
   created_at: string
-}
-
-export function resolveOrderInboxLabel(order: OrderRow | null | undefined): MarketplaceInboxLabel | null {
-  if (!order) return null
-
-  const method = (order.payment_method || '').toLowerCase()
-  if (method === 'cash_on_delivery' || method === 'cod') {
-    if (order.status === 'completed') return 'completed'
-    return 'cash_on_delivery'
-  }
-
-  if (order.payment_status !== 'completed') return 'pending_payment'
-  if (order.status === 'completed') return 'completed'
-  if (order.status === 'shipped') return 'shipped'
-  if (order.status === 'confirmed' || order.status === 'processing') return 'to_be_shipped'
-  if (order.payment_status === 'completed') return 'paid'
-
-  return null
-}
-
-export function orderMatchesInboxLabel(
-  order: OrderRow | null | undefined,
-  label: MarketplaceInboxLabel
-): boolean {
-  if (label === 'all') return true
-  return resolveOrderInboxLabel(order) === label
 }
 
 const THREAD_SELECT = `

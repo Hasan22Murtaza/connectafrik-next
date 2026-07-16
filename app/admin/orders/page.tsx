@@ -24,18 +24,13 @@ import {
   issueOrderRefund,
   listAdminOrders,
 } from "@/features/marketplace/services/adminService";
+import {
+  ADMIN_ORDER_STATUSES,
+  formatOrderStatus,
+  getOrderDisplayLabelText,
+} from "@/lib/marketplace/orderStatus";
 
-const ORDER_STATUSES = [
-  "",
-  "pending",
-  "confirmed",
-  "processing",
-  "shipped",
-  "delivered",
-  "completed",
-  "cancelled",
-  "disputed",
-];
+const ORDER_STATUSES = ["", ...ADMIN_ORDER_STATUSES];
 
 const ESCROW_STATUSES = ["", "held", "scheduled", "frozen", "released", "refunded"];
 
@@ -147,7 +142,7 @@ export default function AdminOrdersPage() {
             <option value="">All statuses</option>
             {ORDER_STATUSES.filter(Boolean).map((s) => (
               <option key={s} value={s}>
-                {s}
+                {formatOrderStatus(s)}
               </option>
             ))}
           </select>
@@ -221,7 +216,12 @@ export default function AdminOrdersPage() {
                         {Number(order.total_amount).toLocaleString()}
                       </AdminTableCell>
                       <AdminTableCell>
-                        <AdminStatusBadge status={order.status} />
+                        <AdminStatusBadge
+                          status={getOrderDisplayLabelText({
+                            status: order.status,
+                            payment_status: order.payment_status ?? "pending",
+                          })}
+                        />
                       </AdminTableCell>
                       {/* <AdminTableCell>
                         <AdminStatusBadge status={order.escrow_status} />

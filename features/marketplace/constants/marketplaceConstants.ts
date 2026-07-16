@@ -25,25 +25,11 @@ import {
 export type MarketplaceSort = "newest" | "price-asc" | "price-desc" | "featured";
 export type MarketplaceHub = "browse" | "inbox" | "buying" | "selling";
 export type BuyingTab = "activity" | "saved" | "orders";
-export type MarketplaceInboxRole = "selling" | "buying";
-export type MarketplaceInboxLabel =
-  | "all"
-  | "pending_payment"
-  | "paid"
-  | "to_be_shipped"
-  | "shipped"
-  | "cash_on_delivery"
-  | "completed";
-
-export const MARKETPLACE_INBOX_LABELS: { value: MarketplaceInboxLabel; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "pending_payment", label: "Pending payment" },
-  { value: "paid", label: "Paid" },
-  { value: "to_be_shipped", label: "To be shipped" },
-  { value: "shipped", label: "Shipped" },
-  { value: "cash_on_delivery", label: "Cash on delivery" },
-  { value: "completed", label: "Completed" },
-];
+export {
+  MARKETPLACE_INBOX_LABELS,
+  type MarketplaceInboxLabel,
+  type MarketplaceInboxRole,
+} from "@/lib/marketplace/orderStatus";
 
 export const MARKETPLACE_HUB_LINKS = [
   { hub: "browse" as const, label: "Browse all", icon: Home, path: "/marketplace" },

@@ -68,7 +68,7 @@ const PROFILE_LIST_COLUMNS =
   'id, username, full_name, avatar_url, is_verified, created_at, last_seen, last_active_at'
 
 const ACTIVE_WINDOW_DAYS = 30
-const COMPLETED_ORDER_STATUSES = ['completed', 'delivered']
+import { COMPLETED_ORDER_STATUSES } from '@/lib/marketplace/orderStatus'
 
 function startOfToday(): string {
   const d = new Date()

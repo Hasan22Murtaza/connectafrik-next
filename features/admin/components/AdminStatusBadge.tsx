@@ -1,6 +1,11 @@
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700",
+  pending_payment: "bg-amber-50 text-amber-700",
+  paid: "bg-blue-50 text-blue-700",
+  to_be_shipped: "bg-purple-50 text-purple-700",
   processing: "bg-blue-50 text-blue-700",
+  shipped: "bg-indigo-50 text-indigo-700",
+  cash_on_delivery: "bg-amber-50 text-amber-800",
   completed: "bg-green-50 text-green-700",
   approved: "bg-green-50 text-green-700",
   failed: "bg-red-50 text-red-700",

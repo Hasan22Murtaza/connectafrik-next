@@ -2,6 +2,12 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { cancelOrderWithRefund } from '@/lib/marketplace/refundService'
+import {
+  getDeliveryStatusForOrderStatus,
+  getOrderDisplayLabelText,
+  ORDER_STATUS_TRANSITIONS,
+  type OrderStatus,
+} from '@/lib/marketplace/orderStatus'
 
 export async function PATCH(
   request: NextRequest,
@@ -19,7 +25,7 @@ export async function PATCH(
 
     const { data: order } = await supabase
       .from('orders')
-      .select('seller_id, buyer_id, status')
+      .select('seller_id, buyer_id, status, payment_status, payment_method')
       .eq('id', id)
       .single()
 
@@ -31,17 +37,8 @@ export async function PATCH(
       return errorResponse('Only the seller can update order status', 403)
     }
 
-    const statusFlow: Record<string, string[]> = {
-      pending: ['confirmed', 'cancelled'],
-      confirmed: ['processing', 'cancelled'],
-      processing: ['shipped', 'cancelled'],
-      shipped: ['completed'],
-      completed: [],
-      cancelled: [],
-      refunded: [],
-    }
-
-    const allowedNext = statusFlow[order.status] || []
+    const statusFlow = ORDER_STATUS_TRANSITIONS
+    const allowedNext = statusFlow[order.status as OrderStatus] || []
     if (!allowedNext.includes(newStatus)) {
       return errorResponse(`Cannot transition from "${order.status}" to "${newStatus}"`, 400)
     }
@@ -67,10 +64,7 @@ export async function PATCH(
       })
     }
 
-    let deliveryStatus = 'pending'
-    if (newStatus === 'processing') deliveryStatus = 'processing'
-    else if (newStatus === 'shipped') deliveryStatus = 'shipped'
-    else if (newStatus === 'completed') deliveryStatus = 'delivered'
+    const deliveryStatus = getDeliveryStatusForOrderStatus(newStatus)
 
     const { error } = await supabase
       .from('orders')
@@ -83,7 +77,16 @@ export async function PATCH(
 
     if (error) throw error
 
-    return jsonResponse({ success: true, status: newStatus, delivery_status: deliveryStatus })
+    return jsonResponse({
+      success: true,
+      status: newStatus,
+      delivery_status: deliveryStatus,
+      display_label: getOrderDisplayLabelText({
+        status: newStatus,
+        payment_status: order.payment_status,
+        payment_method: order.payment_method,
+      }),
+    })
   } catch (err: unknown) {
     if (err instanceof Error && (err.message === 'Unauthorized' || err.message === 'Missing Authorization header')) {
       return unauthorizedResponse()

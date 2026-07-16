@@ -21,6 +21,12 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import {
+  getNextOrderStatuses,
+  getOrderDisplayBadgeClassesFromOrder,
+  getOrderDisplayLabelText,
+  getSellerTransitionLabel,
+} from "@/lib/marketplace/orderStatus";
 
 interface Order {
   id: string;
@@ -31,6 +37,7 @@ interface Order {
   total_amount: number;
   currency: string;
   payment_status: string;
+  payment_method?: string | null;
   delivery_status: string;
   status: string;
   created_at: string;
@@ -118,31 +125,27 @@ export function MyOrdersContent() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: "bg-yellow-100 text-yellow-700 border-yellow-300",
-      confirmed: "bg-blue-100 text-blue-700 border-blue-300",
-      processing: "bg-purple-100 text-purple-700 border-purple-300",
-      shipped: "bg-indigo-100 text-indigo-700 border-indigo-300",
-      completed: "bg-green-100 text-green-700 border-green-300",
-      cancelled: "bg-red-100 text-red-700 border-red-300",
-      refunded: "bg-surface-secondary text-content border-border",
-    };
-    return colors[status] || "bg-surface-secondary text-content border-border";
-  };
+  const getOrderStatusContext = (order: Order) => ({
+    status: order.status,
+    payment_status: order.payment_status,
+    payment_method: order.payment_method,
+  });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "pending":
-        return <Clock className="w-4 h-4" />;
-      case "completed":
-        return <CheckCircle className="w-4 h-4" />;
-      case "cancelled":
-      case "refunded":
-        return <XCircle className="w-4 h-4" />;
-      default:
-        return <Package className="w-4 h-4" />;
+  const getStatusColor = (order: Order) =>
+    getOrderDisplayBadgeClassesFromOrder(getOrderStatusContext(order));
+
+  const getStatusIcon = (order: Order) => {
+    const label = getOrderDisplayLabelText(getOrderStatusContext(order));
+    if (label === "Pending payment" || label === "Paid") {
+      return <Clock className="w-4 h-4" />;
     }
+    if (label === "Completed") {
+      return <CheckCircle className="w-4 h-4" />;
+    }
+    if (label === "Cancelled" || label === "Refunded") {
+      return <XCircle className="w-4 h-4" />;
+    }
+    return <Package className="w-4 h-4" />;
   };
 
   const getCurrencySymbol = (currency: string) => {
@@ -178,7 +181,12 @@ export function MyOrdersContent() {
       await apiClient.patch(`/api/orders/${orderId}/status`, { status: newStatus });
 
       await fetchOrders();
-      toast.success(`Order status updated to ${newStatus}`);
+      toast.success(
+        `Order updated to ${getOrderDisplayLabelText({
+          status: newStatus,
+          payment_status: "completed",
+        })}`
+      );
     } catch (error: any) {
       console.error('Error updating order status:', error);
       toast.error('Failed to update order status');
@@ -187,21 +195,11 @@ export function MyOrdersContent() {
     }
   };
 
-  const getNextStatusOptions = (currentStatus: string) => {
-    const statusFlow: Record<string, string[]> = {
-      pending: ['confirmed', 'cancelled'],
-      confirmed: ['processing', 'cancelled'],
-      processing: ['shipped', 'cancelled'],
-      shipped: ['completed'],
-      completed: [],
-      cancelled: [],
-      refunded: []
-    };
-    return statusFlow[currentStatus] || [];
-  };
 
   const renderOrderCard = (order: Order, isSale: boolean = false) => {
     const otherParty = isSale ? order.buyer : order.seller;
+    const statusContext = getOrderStatusContext(order);
+    const displayStatus = getOrderDisplayLabelText(statusContext);
     return (
       <div
         key={order.id}
@@ -223,11 +221,11 @@ export function MyOrdersContent() {
 
             <div
               className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-medium border flex items-center gap-1 ${getStatusColor(
-                order.status
+                order
               )}`}
             >
-              {getStatusIcon(order.status)}
-              <span className="capitalize">{order.status}</span>
+              {getStatusIcon(order)}
+              <span>{displayStatus}</span>
             </div>
           </div>
 
@@ -297,10 +295,10 @@ export function MyOrdersContent() {
                       disabled={updatingOrderId === order.id}
                       className="text-xs px-2 py-1 rounded border border-border bg-surface text-content hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 w-full"
                     >
-                      <option value={order.status}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</option>
-                      {getNextStatusOptions(order.status).map((status) => (
+                      <option value={order.status}>{displayStatus}</option>
+                      {getNextOrderStatuses(order.status).map((status) => (
                         <option key={status} value={status}>
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                          {getSellerTransitionLabel(status)}
                         </option>
                       ))}
                     </select>
@@ -353,6 +351,8 @@ export function MyOrdersContent() {
 
   const renderOrderRow = (order: Order, isSale: boolean = false) => {
     const otherParty = isSale ? order.buyer : order.seller;
+    const statusContext = getOrderStatusContext(order);
+    const displayStatus = getOrderDisplayLabelText(statusContext);
     return (
       <div
         key={order.id}
@@ -389,11 +389,11 @@ export function MyOrdersContent() {
             </div>
             <div
               className={`px-2 py-0.5 rounded-full text-[10px] font-medium border flex items-center gap-1 shrink-0 ${getStatusColor(
-                order.status
+                order
               )}`}
             >
-              {getStatusIcon(order.status)}
-              <span className="capitalize">{order.status}</span>
+              {getStatusIcon(order)}
+              <span>{displayStatus}</span>
             </div>
           </div>
 
@@ -475,12 +475,10 @@ export function MyOrdersContent() {
                     disabled={updatingOrderId === order.id}
                     className="text-xs px-2 py-1 rounded border border-border bg-surface text-content hover:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed appearance-none pr-6 w-full"
                   >
-                    <option value={order.status}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </option>
-                    {getNextStatusOptions(order.status).map((status) => (
+                    <option value={order.status}>{displayStatus}</option>
+                    {getNextOrderStatuses(order.status).map((status) => (
                       <option key={status} value={status}>
-                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                        {getSellerTransitionLabel(status)}
                       </option>
                     ))}
                   </select>
