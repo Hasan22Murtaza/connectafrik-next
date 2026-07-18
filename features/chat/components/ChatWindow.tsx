@@ -1506,6 +1506,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setAttachmentMenuOpen(false);
   };
 
+  const handlePasteFiles = useCallback(
+    async (files: File[]) => {
+      if (messagingBlocked || editingMessage || files.length === 0) return;
+      const results = await fileUploadService.fromFiles(files);
+      if (results.length) {
+        setPendingFiles((prev) => [...prev, ...results]);
+      }
+    },
+    [messagingBlocked, editingMessage]
+  );
+
   const stopMediaStream = () => {
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
     mediaStreamRef.current = null;
@@ -2407,6 +2418,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               const form = document.getElementById(`chat-composer-${threadId}`) as HTMLFormElement | null;
               form?.requestSubmit();
             }}
+            onPasteFiles={(files) => void handlePasteFiles(files)}
             disabled={messagingBlocked}
             mentionCandidates={mentionCandidates}
             placeholder={

@@ -35,8 +35,10 @@ interface ChatRichTextEditorProps {
   value: string;
   onChange: (markdown: string) => void;
   onTyping?: () => void;
-  /** Ctrl/Cmd+Enter to send */
+  /** Enter (or Ctrl/Cmd+Enter) to send; Shift+Enter inserts a newline */
   onSubmit?: () => void;
+  /** Called when files (e.g. pasted images) are dropped into the editor */
+  onPasteFiles?: (files: File[]) => void;
   placeholder?: string;
   disabled?: boolean;
   mentionCandidates?: MentionCandidate[];
@@ -117,6 +119,7 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
       onChange,
       onTyping,
       onSubmit,
+      onPasteFiles,
       placeholder = "Type a message",
       disabled = false,
       mentionCandidates = [],
@@ -364,7 +367,15 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
         applyCommand("redo");
         return;
       }
-      if (mod && e.key === "Enter") {
+      // Enter sends the message; Shift+Enter inserts a newline.
+      // Ignore Enter while an IME composition is in progress.
+      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+        // If the mention list is open, Enter picks the first suggestion instead.
+        if (mentionOpen && filteredMentions.length > 0) {
+          e.preventDefault();
+          insertMention(filteredMentions[0]);
+          return;
+        }
         e.preventDefault();
         onSubmit?.();
         return;
@@ -416,6 +427,30 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
     };
 
     const onPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+      const cd = e.clipboardData;
+
+      // Handle pasted files (e.g. screenshots / images) before text content.
+      const pastedFiles: File[] = [];
+      if (cd.files && cd.files.length > 0) {
+        for (let i = 0; i < cd.files.length; i += 1) {
+          pastedFiles.push(cd.files[i]);
+        }
+      } else if (cd.items && cd.items.length > 0) {
+        for (let i = 0; i < cd.items.length; i += 1) {
+          const item = cd.items[i];
+          if (item.kind === "file") {
+            const file = item.getAsFile();
+            if (file) pastedFiles.push(file);
+          }
+        }
+      }
+
+      if (pastedFiles.length > 0 && onPasteFiles) {
+        e.preventDefault();
+        onPasteFiles(pastedFiles);
+        return;
+      }
+
       e.preventDefault();
       const html = e.clipboardData.getData("text/html");
       const text = e.clipboardData.getData("text/plain");
