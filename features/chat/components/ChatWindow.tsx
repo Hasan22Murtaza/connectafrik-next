@@ -12,6 +12,7 @@ import type {
   ChatHeaderOptionsMenuItem,
   ChatHeaderOptionsMenuSection,
 } from "@/features/chat/types/chatHeaderOptionsMenu";
+import type { ChatAttachment } from "@/features/chat/services/supabaseMessagingService";
 import { apiClient } from "@/lib/api-client";
 import { useMembers, type Member } from "@/shared/hooks/useMembers";
 import {
@@ -68,9 +69,11 @@ import ChatLocationPicker, {
   type ChatLocationSelection,
 } from "./ChatLocationPicker";
 import ChatMediaGallery from "./ChatMediaGallery";
+import ChatMediaViewer, { type ChatMediaViewerItem } from "./ChatMediaViewer";
 import ChatTranslationMenu from "./ChatTranslationMenu";
 import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
+import MessageAttachments from "./MessageAttachments";
 import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
 import { formatMediaDuration } from "./messageMediaUtils";
@@ -111,12 +114,42 @@ interface MessageReceipt {
 
 interface MessageInfoData {
   id: string;
+  content?: string | null;
   created_at?: string | null;
   sent_at?: string | null;
   read_count?: number;
   delivered_count?: number;
   read_receipts?: MessageReceipt[];
   delivered_receipts?: MessageReceipt[];
+  attachments?: unknown[];
+}
+
+function normalizeMessageInfoAttachments(
+  raw: unknown[] | ChatAttachment[] | null | undefined
+): ChatAttachment[] {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
+  return raw
+    .map((att: any) => {
+      const mime = String(att?.file_type ?? att?.mimeType ?? att?.mime_type ?? "");
+      const type: ChatAttachment["type"] = mime.startsWith("image/")
+        ? "image"
+        : mime.startsWith("video/")
+          ? "video"
+          : att?.type === "image" || att?.type === "video" || att?.type === "file"
+            ? att.type
+            : "file";
+      const url = String(att?.file_url ?? att?.url ?? "");
+      if (!url) return null;
+      return {
+        id: String(att?.id ?? url),
+        name: String(att?.file_name ?? att?.name ?? "file"),
+        url,
+        type,
+        size: Number(att?.file_size ?? att?.size ?? 0) || 0,
+        mimeType: mime || String(att?.mimeType ?? ""),
+      } satisfies ChatAttachment;
+    })
+    .filter(Boolean) as ChatAttachment[];
 }
 
 const formatMessageInfoDate = (ts?: string | null): string => {
@@ -146,6 +179,40 @@ const receiptDisplayName = (r: MessageReceipt): string =>
 const receiptInitial = (name: string): string => {
   const trimmed = name.trim();
   return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+};
+
+const ReceiptAvatar: React.FC<{
+  receipt: MessageReceipt;
+  tone?: "read" | "delivered";
+}> = ({ receipt, tone = "read" }) => {
+  const name = receiptDisplayName(receipt);
+  const avatarUrl = receipt.user?.avatar_url?.trim() || "";
+  const [imgFailed, setImgFailed] = React.useState(false);
+  const fallbackClass =
+    tone === "delivered"
+      ? "bg-amber-100 text-amber-700"
+      : "bg-fuchsia-100 text-fuchsia-700";
+
+  if (avatarUrl && !imgFailed) {
+    return (
+      <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-surface-secondary">
+        <img
+          src={avatarUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setImgFailed(true)}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${fallbackClass}`}
+    >
+      {receiptInitial(name)}
+    </span>
+  );
 };
 
 function buildForwardPayload(message: ChatMessage): {
@@ -527,6 +594,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
   const [messageInfoLoading, setMessageInfoLoading] = useState(false);
+  const [infoMediaViewer, setInfoMediaViewer] = useState<{
+    items: ChatMediaViewerItem[];
+    index: number;
+  } | null>(null);
   const [messageInfoError, setMessageInfoError] = useState<string | null>(null);
   const userInitiatedCall = useRef(false);
   const lastIncomingCallSyncKeyRef = useRef<string>("");
@@ -2716,6 +2787,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 setMessageInfo(null);
                 setMessageInfoError(null);
                 setMessageInfoLoading(false);
+                setInfoMediaViewer(null);
               }}
               className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-hover"
               aria-label="Back"
@@ -2738,28 +2810,79 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div className="py-4 text-center text-xs text-red-600">{messageInfoError}</div>
             ) : (
               <>
-                <div className="mb-4 rounded-xl border border-border bg-surface p-3 shadow-sm">
-                  <div className="mb-1 text-[11px] font-semibold text-content-secondary">
-                    Message
-                  </div>
-                  <div className="mb-2 flex justify-end">
-                    <div className="max-w-[85%] rounded-xl rounded-br-sm bg-emerald-500 px-3 py-2 text-sm text-white">
-                      {(infoMessage.content || "Media message").trim()}
-                      <div className="mt-1 text-right text-[11px] text-emerald-100">
-                        {formatMessageInfoTimeLabel(messageInfo?.sent_at || messageInfo?.created_at) ||
-                          "--:--"}
+                {(() => {
+                  const infoAttachments =
+                    normalizeMessageInfoAttachments(infoMessage?.attachments) ||
+                    [];
+                  const apiAttachments = normalizeMessageInfoAttachments(
+                    messageInfo?.attachments
+                  );
+                  const attachments =
+                    infoAttachments.length > 0 ? infoAttachments : apiAttachments;
+                  const caption = (
+                    messageInfo?.content ??
+                    infoMessage?.content ??
+                    ""
+                  ).trim();
+                  const hasMedia = attachments.length > 0;
+
+                  return (
+                    <div className="mb-4 rounded-xl border border-border bg-surface p-3 shadow-sm">
+                      <div className="mb-1 text-[11px] font-semibold text-content-secondary">
+                        Message
+                      </div>
+                      <div className="mb-2 flex justify-end">
+                        <div
+                          className={`max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-emerald-500 text-sm text-white ${
+                            hasMedia ? "p-1.5" : "px-3 py-2"
+                          }`}
+                        >
+                          {hasMedia ? (
+                            <MessageAttachments
+                              attachments={attachments}
+                              isOwnMessage
+                              onOpenMedia={(items, index) =>
+                                setInfoMediaViewer({ items, index })
+                              }
+                            />
+                          ) : null}
+                          {caption ? (
+                            <div
+                              className={
+                                hasMedia
+                                  ? "whitespace-pre-wrap break-words px-1.5 pb-0.5 pt-1"
+                                  : "whitespace-pre-wrap break-words"
+                              }
+                            >
+                              {caption}
+                            </div>
+                          ) : !hasMedia ? (
+                            <span>Media message</span>
+                          ) : null}
+                          <div
+                            className={`mt-1 text-right text-[11px] text-emerald-100 ${
+                              hasMedia ? "px-1.5" : ""
+                            }`}
+                          >
+                            {formatMessageInfoTimeLabel(
+                              messageInfo?.sent_at || messageInfo?.created_at
+                            ) || "--:--"}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-0.5 text-xs text-content-secondary">
+                        <div>
+                          Sent:{" "}
+                          {formatMessageInfoDate(
+                            messageInfo?.sent_at || messageInfo?.created_at
+                          ) || "-"}
+                        </div>
+                        <div>Read by: {messageInfo?.read_count ?? 0}</div>
+                        <div>Delivered to: {messageInfo?.delivered_count ?? 0}</div>
                       </div>
                     </div>
-                  </div>
-                  <div className="space-y-0.5 text-xs text-content-secondary">
-                    <div>
-                      Sent:{" "}
-                      {formatMessageInfoDate(messageInfo?.sent_at || messageInfo?.created_at) || "-"}
-                    </div>
-                    <div>Read by: {messageInfo?.read_count ?? 0}</div>
-                    <div>Delivered to: {messageInfo?.delivered_count ?? 0}</div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 <div className="mb-4">
                   <div className="mb-2 flex items-center justify-between">
@@ -2777,9 +2900,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           key={`read-${r.user_id}`}
                           className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fuchsia-100 text-xs font-semibold text-fuchsia-700">
-                            {receiptInitial(receiptDisplayName(r))}
-                          </span>
+                          <ReceiptAvatar receipt={r} tone="read" />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-content">
                               {receiptDisplayName(r)}
@@ -2811,9 +2932,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           key={`delivered-${r.user_id}`}
                           className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">
-                            {receiptInitial(receiptDisplayName(r))}
-                          </span>
+                          <ReceiptAvatar receipt={r} tone="delivered" />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-content">
                               {receiptDisplayName(r)}
@@ -2832,6 +2951,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
           </div>
         </div>
+      ) : null}
+
+      {infoMediaViewer ? (
+        <ChatMediaViewer
+          open
+          items={infoMediaViewer.items}
+          initialIndex={infoMediaViewer.index}
+          onClose={() => setInfoMediaViewer(null)}
+        />
       ) : null}
 
       {forwardingMessage ? (

@@ -169,6 +169,43 @@ function receiptInitial(name: string): string {
   return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
 }
 
+function ReceiptAvatar({
+  receipt,
+  tone = "read",
+}: {
+  receipt: MessageReceipt;
+  tone?: "read" | "delivered";
+}) {
+  const name = receiptName(receipt);
+  const avatarUrl = receipt.user?.avatar_url?.trim() || "";
+  const [imgFailed, setImgFailed] = useState(false);
+  const fallbackClass =
+    tone === "delivered"
+      ? "bg-amber-100 text-amber-700"
+      : "bg-fuchsia-100 text-fuchsia-700";
+
+  if (avatarUrl && !imgFailed) {
+    return (
+      <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-surface-secondary">
+        <img
+          src={avatarUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setImgFailed(true)}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${fallbackClass}`}
+    >
+      {receiptInitial(name)}
+    </span>
+  );
+}
+
 function MediaTile({
   item,
   tab,
@@ -572,9 +609,69 @@ export default function ChatMediaGallery({
                     Message
                   </div>
                   <div className="mb-2 flex justify-end">
-                    <div className="max-w-[85%] rounded-xl rounded-br-sm bg-emerald-500 px-3 py-2 text-sm text-white">
-                      {(selectedItem.content_preview || "Media message").trim()}
-                      <div className="mt-1 text-right text-[11px] text-emerald-100">
+                    <div className="max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-emerald-500 p-1.5 text-sm text-white">
+                      {selectedItem.kind === "image" ||
+                      selectedItem.kind === "photo" ||
+                      (selectedItem.mime_type || "").startsWith("image/") ? (
+                        <img
+                          src={selectedItem.thumbnail_url || selectedItem.url}
+                          alt={selectedItem.file_name || "Photo"}
+                          className="max-h-56 w-full rounded-lg object-cover"
+                        />
+                      ) : selectedItem.kind === "video" ||
+                        (selectedItem.mime_type || "").startsWith("video/") ? (
+                        <div className="relative overflow-hidden rounded-lg bg-black/30">
+                          <video
+                            src={selectedItem.url}
+                            muted
+                            preload="metadata"
+                            className="max-h-56 w-full object-cover"
+                          />
+                          <span className="absolute inset-0 flex items-center justify-center">
+                            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white">
+                              <Video className="h-5 w-5" />
+                            </span>
+                          </span>
+                        </div>
+                      ) : selectedItem.kind === "audio" ||
+                        (selectedItem.mime_type || "").startsWith("audio/") ? (
+                        <div className="flex items-center gap-2 rounded-lg bg-black/10 px-3 py-2 text-white">
+                          <Headphones className="h-5 w-5 shrink-0" />
+                          <span className="truncate text-xs">
+                            {selectedItem.file_name || "Audio"}
+                          </span>
+                        </div>
+                      ) : selectedItem.kind === "doc" ||
+                        selectedItem.kind === "document" ||
+                        selectedItem.kind === "file" ? (
+                        <div className="flex items-center gap-2 rounded-lg bg-black/10 px-3 py-2 text-white">
+                          <FileText className="h-5 w-5 shrink-0" />
+                          <span className="truncate text-xs">
+                            {selectedItem.file_name || "Document"}
+                          </span>
+                        </div>
+                      ) : selectedItem.url &&
+                        !selectedItem.kind?.startsWith("link") ? (
+                        <img
+                          src={selectedItem.thumbnail_url || selectedItem.url}
+                          alt={selectedItem.file_name || "Media"}
+                          className="max-h-56 w-full rounded-lg object-cover"
+                        />
+                      ) : null}
+                      {(
+                        selectedItem.content_preview ||
+                        messageInfo?.content ||
+                        ""
+                      ).trim() ? (
+                        <div className="whitespace-pre-wrap break-words px-1.5 pb-0.5 pt-1">
+                          {(
+                            selectedItem.content_preview ||
+                            messageInfo?.content ||
+                            ""
+                          ).trim()}
+                        </div>
+                      ) : null}
+                      <div className="mt-1 px-1.5 text-right text-[11px] text-emerald-100">
                         {formatTimeLabel(messageInfo?.sent_at || messageInfo?.created_at) || "--:--"}
                       </div>
                     </div>
@@ -602,9 +699,7 @@ export default function ChatMediaGallery({
                           key={`read-${r.user_id}`}
                           className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fuchsia-100 text-xs font-semibold text-fuchsia-700">
-                            {receiptInitial(receiptName(r))}
-                          </span>
+                          <ReceiptAvatar receipt={r} tone="read" />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-content">{receiptName(r)}</div>
                             <div className="text-xs text-content-secondary">
@@ -633,9 +728,7 @@ export default function ChatMediaGallery({
                           key={`delivered-${r.user_id}`}
                           className="flex items-center gap-2 border-b border-border-subtle px-3 py-2 last:border-b-0"
                         >
-                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-semibold text-amber-700">
-                            {receiptInitial(receiptName(r))}
-                          </span>
+                          <ReceiptAvatar receipt={r} tone="delivered" />
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-content">{receiptName(r)}</div>
                             <div className="text-xs text-content-secondary">
