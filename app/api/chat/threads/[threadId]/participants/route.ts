@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ thr
 
     let query = serviceClient
       .from('chat_participants')
-      .select('user_id')
+      .select('user_id, role')
       .eq('thread_id', threadId)
 
     if (excludeUserId) {

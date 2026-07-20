@@ -32,10 +32,9 @@ import { isSameDay } from "date-fns";
 import {
   CheckCheck,
   ChevronLeft,
-  ChevronRight,
-  FileText,
   Info,
   Loader2,
+  LogOut,
   Mic,
   MinusCircle,
   MoreVertical,
@@ -69,7 +68,6 @@ import ChatLocationPicker, {
   type ChatLocationSelection,
 } from "./ChatLocationPicker";
 import ChatMediaGallery from "./ChatMediaGallery";
-import ChatTranscriptModal from "./ChatTranscriptModal";
 import ChatTranslationMenu from "./ChatTranslationMenu";
 import ChatWebcamCapture from "./ChatWebcamCapture";
 import FilePreview from "./FilePreview";
@@ -520,9 +518,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
-  const [showTranscriptModal, setShowTranscriptModal] = useState(false);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [showParticipantsList, setShowParticipantsList] = useState(false);
+  const [participantRolesById, setParticipantRolesById] = useState<
+    Record<string, string>
+  >({});
+  const [leavingGroup, setLeavingGroup] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
   const [messageInfoLoading, setMessageInfoLoading] = useState(false);
@@ -566,7 +567,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setSearchHasOlder(false);
     setSearchLoading(false);
     setShowMediaGallery(false);
-    setShowTranscriptModal(false);
+    setShowParticipantsList(false);
+    setParticipantRolesById({});
+    setLeavingGroup(false);
     setEditingMessage(null);
     draftBeforeComposerEditRef.current = "";
     setForwardingMessage(null);
@@ -585,6 +588,40 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   useEffect(() => {
     if (forwardingMessage) setForwardSearch("");
   }, [forwardingMessage]);
+
+  useEffect(() => {
+    if (!showParticipantsList || !threadId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const map: Record<string, string> = {};
+        const rows = await apiClient.get<
+          Array<{ user_id: string; role?: string }>
+        >(`/api/chat/threads/${threadId}/participants`);
+        for (const row of rows ?? []) {
+          if (row.user_id) map[row.user_id] = (row.role || "member").toLowerCase();
+        }
+
+        // Social groups store admin/moderator on group_memberships
+        if (thread?.group_id) {
+          const groupMembers =
+            await supabaseMessagingService.getGroupMembers(thread.group_id);
+          for (const m of groupMembers) {
+            if (m.user_id && m.role) {
+              map[m.user_id] = m.role.toLowerCase();
+            }
+          }
+        }
+
+        if (!cancelled) setParticipantRolesById(map);
+      } catch {
+        if (!cancelled) setParticipantRolesById({});
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showParticipantsList, threadId, thread?.group_id]);
 
   useEffect(() => {
     if (!threadId || !messageSearchKeyword.trim()) {
@@ -1769,6 +1806,56 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (variant === "page") router.push("/chat");
   }, [threadId, closeThread, variant, router]);
 
+  const handleLeaveGroup = useCallback(async () => {
+    if (!isGroupThread || leavingGroup) return;
+    if (
+      !window.confirm(
+        "Leave this group? You will no longer receive messages from this chat."
+      )
+    ) {
+      return;
+    }
+    setLeavingGroup(true);
+    try {
+      if (thread?.group_id) {
+        const data = await apiClient.post<{ thread_id: string | null }>(
+          `/api/groups/${thread.group_id}/leave`
+        );
+        const leftThreadId = data?.thread_id || threadId;
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("groupChatLeft", {
+              detail: { threadId: leftThreadId },
+            })
+          );
+        }
+      } else {
+        await apiClient.post(
+          `/api/chat/threads/${threadId}/participants/leave`
+        );
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("groupChatLeft", { detail: { threadId } })
+          );
+        }
+      }
+      toast.success("Left group");
+      setShowParticipantsList(false);
+      if (variant === "page") router.push("/chat");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to leave group");
+    } finally {
+      setLeavingGroup(false);
+    }
+  }, [
+    isGroupThread,
+    leavingGroup,
+    thread?.group_id,
+    threadId,
+    variant,
+    router,
+  ]);
+
   const handleDeleteChatFromMenu = useCallback(async () => {
     if (!currentUser) return;
     if (
@@ -1815,10 +1902,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const primary: ChatHeaderOptionsMenuItem[] = [
       {
         id: "contact",
-        label: "Contact info",
+        label: isGroupThread ? "Group info" : "Contact info",
         Icon: Info,
         onClick: () => {
           setShowOptionsMenu(false);
+          if (isGroupThread) {
+            setShowParticipantsList(true);
+            return;
+          }
           handleOpenThreadDetailPage();
         },
       },
@@ -1835,15 +1926,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         label: thread?.pinned ? "Unpin chat" : "Pin chat",
         Icon: thread?.pinned ? PinOff : Pin,
         onClick: () => void handlePinToggle(),
-      },
-      {
-        id: "transcript",
-        label: "Generate Transcript",
-        Icon: FileText,
-        onClick: () => {
-          setShowOptionsMenu(false);
-          setShowTranscriptModal(true);
-        },
       },
       ...(canBlockContact
         ? [
@@ -1890,6 +1972,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     thread?.pinned,
     thread?.is_block,
     canBlockContact,
+    isGroupThread,
     visibleMessages.length,
     openMessageSearchFromMenu,
     handleOpenThreadDetailPage,
@@ -1933,7 +2016,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-green-500" aria-hidden />
             ) : null}
           </div>
-          <div className="min-w-0 cursor-pointer" onClick={handleOpenThreadDetailPage}>
+          <div
+            className="min-w-0 cursor-pointer"
+            onClick={() => {
+              if (isGroupThread) {
+                setShowParticipantsList(true);
+                return;
+              }
+              handleOpenThreadDetailPage();
+            }}
+          >
             <div className="truncate text-sm font-semibold text-content">
               {displayThreadName}
             </div>
@@ -1984,7 +2076,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 : isMarketplaceThread && marketplaceProductTitle
                   ? `Marketplace · ${marketplaceProductTitle}`
                   : isGroupThread
-                    ? `${thread?.participants?.length ?? 0} participants`
+                    ? `${thread?.participants?.length ?? 0} members`
                     : (directSubtitle ?? "Offline")}
             </button>
           </div>
@@ -2503,103 +2595,109 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {showParticipantsList ? (
         <div
-          className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-surface"
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]"
           role="dialog"
           aria-modal="true"
-          aria-label="Participants"
+          aria-label="Group info"
+          onClick={() => setShowParticipantsList(false)}
         >
-          <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-secondary px-2 py-2 text-content">
-            <button
-              type="button"
-              onClick={() => setShowParticipantsList(false)}
-              className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-hover"
-              aria-label="Back"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <div className="min-w-0 flex-1">
-              <span className="truncate text-sm font-semibold">Participants</span>
-              <p className="truncate text-xs text-content-secondary">
-                {thread?.participants?.length ?? 0}{" "}
-                {(thread?.participants?.length ?? 0) === 1
-                  ? "participant"
-                  : "participants"}
-              </p>
+          <div
+            className="flex max-h-[min(90vh,520px)] w-full max-w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_rgba(11,20,26,0.22)] dark:bg-surface"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 py-4">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-content">Group info</h2>
+                <p className="mt-0.5 text-sm text-content-secondary">
+                  {thread?.participants?.length ?? 0}{" "}
+                  {(thread?.participants?.length ?? 0) === 1
+                    ? "member"
+                    : "members"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowParticipantsList(false)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content transition hover:bg-surface-hover"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+              <ul className="space-y-3.5">
+                {[...(thread?.participants ?? [])]
+                  .sort((a, b) => {
+                    const aAdmin =
+                      (participantRolesById[a.id] || "") === "admin" ? 0 : 1;
+                    const bAdmin =
+                      (participantRolesById[b.id] || "") === "admin" ? 0 : 1;
+                    if (aAdmin !== bAdmin) return aAdmin - bAdmin;
+                    return (a.name || "").localeCompare(b.name || "");
+                  })
+                  .map((p: ChatParticipant) => {
+                    const isYou = p.id === currentUser?.id;
+                    const role = participantRolesById[p.id] || "";
+                    const isAdmin = role === "admin";
+                    const label = p.name || "User";
+
+                    return (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowParticipantsList(false);
+                            router.push(`/user/${encodeURIComponent(p.id)}`);
+                          }}
+                          className="flex w-full items-center gap-3 text-left transition hover:opacity-80"
+                        >
+                          <div className="relative h-10 w-10 shrink-0">
+                            {p.avatarUrl ? (
+                              <img
+                                src={p.avatarUrl}
+                                alt=""
+                                className="h-10 w-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600">
+                                {label.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <span className="truncate text-sm font-medium text-content">
+                              {isYou ? `${label} (you)` : label}
+                            </span>
+                            {isAdmin ? (
+                              <span className="shrink-0 rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-medium text-orange-600">
+                                Admin
+                              </span>
+                            ) : null}
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+              </ul>
+            </div>
+
+            <div className="shrink-0 border-t border-border px-5 py-4">
+              <button
+                type="button"
+                onClick={() => void handleLeaveGroup()}
+                disabled={leavingGroup}
+                className="flex items-center gap-2 text-sm font-medium text-red-600 transition hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {leavingGroup ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LogOut className="h-4 w-4" />
+                )}
+                Leave group
+              </button>
             </div>
           </div>
-
-          <ul className="min-h-0 flex-1 overflow-y-auto divide-y divide-border-subtle bg-surface">
-            {[...(thread?.participants ?? [])]
-              .sort((a, b) => {
-                if (a.id === currentUser?.id) return 1;
-                if (b.id === currentUser?.id) return -1;
-                return (a.name || "").localeCompare(b.name || "");
-              })
-              .map((p: ChatParticipant) => {
-                const isYou = p.id === currentUser?.id;
-                const isOnline =
-                  participantPresenceById[p.id] === "online" ||
-                  presentUserIds.has(p.id);
-                const member = members.find((m) => m.id === p.id);
-                const subtitle = isYou
-                  ? "You"
-                  : isOnline
-                    ? "Online"
-                    : formatContactPresenceLine(
-                        member?.status ?? null,
-                        member?.last_seen ?? null
-                      ) || "Offline";
-                const label = p.name || "User";
-
-                return (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowParticipantsList(false);
-                        router.push(`/user/${encodeURIComponent(p.id)}`);
-                      }}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-surface-hover"
-                    >
-                      <div className="relative h-11 w-11 shrink-0">
-                        {p.avatarUrl ? (
-                          <img
-                            src={p.avatarUrl}
-                            alt=""
-                            className="h-11 w-11 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
-                            {label.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        {isOnline ? (
-                          <span
-                            className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-green-500"
-                            aria-hidden
-                          />
-                        ) : null}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-content">
-                          {isYou ? `${label} (You)` : label}
-                        </p>
-                        <p
-                          className={`truncate text-xs ${
-                            isOnline && !isYou
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-content-secondary"
-                          }`}
-                        >
-                          {subtitle}
-                        </p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 shrink-0 text-content-secondary" />
-                    </button>
-                  </li>
-                );
-              })}
-          </ul>
         </div>
       ) : null}
 
@@ -2909,13 +3007,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
       ) : null}
-
-      <ChatTranscriptModal
-        threadId={threadId}
-        threadName={displayThreadName}
-        open={showTranscriptModal}
-        onClose={() => setShowTranscriptModal(false)}
-      />
     </div>
   );
 };
