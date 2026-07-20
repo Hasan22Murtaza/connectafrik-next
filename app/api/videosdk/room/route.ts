@@ -82,6 +82,37 @@ export async function POST(request: NextRequest) {
   if (check_user_ids.length > 0) {
     try {
       const serviceClient = createServiceClient()
+
+      // 1:1 outbound calls must be between accepted friends.
+      for (const otherUserId of check_user_ids) {
+        if (otherUserId === authedUserId) continue
+        const { data: friendshipRows, error: friendshipError } = await serviceClient
+          .from('friend_requests')
+          .select('id')
+          .eq('status', 'accepted')
+          .or(
+            `and(sender_id.eq.${authedUserId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${authedUserId})`
+          )
+          .limit(1)
+
+        if (friendshipError) {
+          console.warn('[videosdk/room] friendship check failed', friendshipError)
+          return NextResponse.json(
+            { error: 'Could not verify friendship. Please try again.' },
+            { status: 500, headers: corsHeaders },
+          )
+        }
+        if (!friendshipRows?.length) {
+          return NextResponse.json(
+            {
+              error: 'You need to be friends to start a call.',
+              code: 'FRIENDS_REQUIRED_FOR_CALL',
+            },
+            { status: 403, headers: corsHeaders },
+          )
+        }
+      }
+
       const busy = await getBusyMapForUserIds(serviceClient, check_user_ids, '')
       const blocked = check_user_ids.some((id) => busy[id])
       if (blocked) {

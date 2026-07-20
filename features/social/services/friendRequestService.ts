@@ -156,8 +156,8 @@ class FriendRequestService {
    */
   async areFriends(userId: string): Promise<boolean> {
     try {
-      const res = await apiClient.get<{ status: string }>(`/api/friends/status/${userId}`)
-      return res.status === 'friends'
+      const { status } = await this.getFriendshipStatus(userId)
+      return status === 'friends'
     } catch (error) {
       return false
     }
@@ -166,13 +166,20 @@ class FriendRequestService {
   /**
    * Check friend request status with another user
    */
-  async getFriendshipStatus(userId: string): Promise<'none' | 'pending_sent' | 'pending_received' | 'friends'> {
+  async getFriendshipStatus(userId: string): Promise<{
+    status: 'none' | 'pending_sent' | 'pending_received' | 'friends'
+    requestId: string | null
+  }> {
     try {
-      const res = await apiClient.get<{ status: string }>(`/api/friends/status/${userId}`)
-      return (res.status as 'none' | 'pending_sent' | 'pending_received' | 'friends') ?? 'none'
+      const res = await apiClient.get<{ status: string; request_id: string | null }>(
+        `/api/friends/status/${userId}`
+      )
+      const status =
+        (res.status as 'none' | 'pending_sent' | 'pending_received' | 'friends') ?? 'none'
+      return { status, requestId: res.request_id ?? null }
     } catch (error) {
       console.error('Error checking friendship status:', error)
-      return 'none'
+      return { status: 'none', requestId: null }
     }
   }
 

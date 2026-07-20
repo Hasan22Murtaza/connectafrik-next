@@ -21,6 +21,11 @@ const DynamicGlobalCallNotification = dynamic(() => import('@/shared/components/
   ssr: false,
 })
 
+const DynamicFriendsRequiredCallDialog = dynamic(
+  () => import('@/shared/components/ui/FriendsRequiredCallDialog'),
+  { ssr: false }
+)
+
 export default function GlobalComponents() {
   const { user } = useAuth()
   const pathname = usePathname()
@@ -32,6 +37,7 @@ export default function GlobalComponents() {
       {/* {user && <DynamicMobileChatButton/>} */}
       {/* {user && <DynamicFriendRequestNotifications />} */}
       {user && <DynamicGlobalCallNotification />}
+      {user && <DynamicFriendsRequiredCallDialog />}
     </>
   )
 }

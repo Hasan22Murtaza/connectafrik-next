@@ -15,6 +15,11 @@ import { apiClient, ApiError } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
 import { openCallWindow } from '@/shared/utils/callWindow'
+import {
+  FriendsRequiredForCallError,
+  dispatchFriendsRequiredForCall,
+  isFriendsRequiredForCallError,
+} from '@/shared/utils/friendsRequiredCall'
 
 /** Realtime UPDATEs use a lightweight mapper (no attachments/sender joins); preserve rich fields from cache. */
 function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): ChatMessage {
@@ -823,6 +828,36 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }
       }
 
+      // 1:1 calls require an accepted friendship (group calls are exempt).
+      if (!isGroupCall && resolvedTargetUserId && resolvedTargetUserId !== currentUser?.id) {
+        const statusRes = await apiClient
+          .get<{ status: string; request_id: string | null }>(
+            `/api/friends/status/${resolvedTargetUserId}`
+          )
+          .catch(() => {
+            throw new Error('Could not verify friendship. Please try again.')
+          })
+        if (statusRes.status !== 'friends') {
+          const status =
+            statusRes.status === 'pending_sent' || statusRes.status === 'pending_received'
+              ? statusRes.status
+              : 'none'
+          const err = new FriendsRequiredForCallError({
+            targetUserId: resolvedTargetUserId,
+            targetUserName: (targetUserName || '').trim() || undefined,
+            status,
+            requestId: statusRes.request_id,
+          })
+          dispatchFriendsRequiredForCall({
+            targetUserId: err.targetUserId,
+            targetUserName: err.targetUserName,
+            status: err.status,
+            requestId: err.requestId,
+          })
+          throw err
+        }
+      }
+
       const { data: { session } } = await supabase.auth.getSession()
       const roomPayload = {
         ...(resolvedTargetUserId && !isGroupCall
@@ -929,6 +964,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         }))
       }
     } catch (error) {
+      if (isFriendsRequiredForCallError(error)) {
+        throw error
+      }
       console.error('Failed to start call:', error)
       if (typeof window !== 'undefined') {
         const msg =
