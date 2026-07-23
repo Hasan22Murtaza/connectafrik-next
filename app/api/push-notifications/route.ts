@@ -125,20 +125,28 @@ async function fetchActiveVoipTokensForUser(userId: string): Promise<string[]> {
   return tokens
 }
 
-/** Call session sub-statuses that should wake iOS via PushKit VoIP. */
-const IOS_VOIP_CALL_STATUSES = new Set(['ringing', 'active', 'declined', 'ended', 'missed'])
+/** Call session sub-statuses that should wake iOS via PushKit VoIP (incoming ring + accept only). */
+const IOS_VOIP_CALL_STATUSES = new Set(['ringing', 'active'])
 
-/** Prefer `data.type`, fall back to legacy `notification_type` sub-status (e.g. `ringing`, `active`). */
+/** Terminal / informational call statuses delivered via FCM only (not PushKit VoIP). */
+const IOS_FCM_CALL_STATUSES = new Set(['ended', 'missed', 'declined'])
+
+const KNOWN_CALL_EVENT_STATUSES = new Set([
+  ...IOS_VOIP_CALL_STATUSES,
+  ...IOS_FCM_CALL_STATUSES,
+])
+
+/** Prefer `data.type`, fall back to legacy `notification_type` sub-status (e.g. `ringing`, `missed`). */
 function resolveCallEventStatus(dataType: string, rawNotificationType: string): string {
   const fromData = dataType.trim().toLowerCase()
-  if (IOS_VOIP_CALL_STATUSES.has(fromData)) return fromData
+  if (KNOWN_CALL_EVENT_STATUSES.has(fromData)) return fromData
   const fromNotification = rawNotificationType.trim().toLowerCase()
-  if (IOS_VOIP_CALL_STATUSES.has(fromNotification)) return fromNotification
+  if (KNOWN_CALL_EVENT_STATUSES.has(fromNotification)) return fromNotification
   return ''
 }
 
 /** iOS call pushes that should skip FCM to avoid duplicate CallKit / banner UI. */
-const IOS_SKIP_FCM_CALL_STATUSES = new Set(['ringing', 'active', 'declined'])
+const IOS_SKIP_FCM_CALL_STATUSES = IOS_VOIP_CALL_STATUSES
 
 export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders })
@@ -312,7 +320,7 @@ export async function POST(request: NextRequest) {
 
     const fcmStringData = stringifyFcmDataValues(rawPushData)
 
-    // Call events on iOS: PushKit VoIP for lifecycle updates; skip FCM on iOS for ring/accept/decline to avoid duplicate UI.
+    // Call events on iOS: VoIP for ring/accept only; ended/missed/declined go through FCM.
     const callRingDataType =
       rawPushData.type != null ? String(rawPushData.type).trim().toLowerCase() : ''
     const callRingNotificationType =
