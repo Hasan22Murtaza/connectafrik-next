@@ -59,6 +59,15 @@ self.addEventListener('push', (event) => {
   const isEndedType = (t) => t === 'ended';
   const isActiveType = (t) => t === 'active' || lastSignal === 'active';
   const isDeclinedType = (t) => t === 'declined' || lastSignal === 'declined';
+  const isAcceptedOnAnotherDevice = (d) => {
+    const raw = d?.acceptedOnAnotherDevice;
+    if (raw === true || raw === 1) return true;
+    if (typeof raw === 'string') {
+      const v = raw.trim().toLowerCase();
+      return v === 'true' || v === '1';
+    }
+    return false;
+  };
 
   // Prevent delayed call-ended pushes from showing long after the call is over.
   if (isEndedType(typeNorm) && Number.isFinite(sentAtMs) && nowMs - sentAtMs > staleAfterMs) {
@@ -70,6 +79,7 @@ self.addEventListener('push', (event) => {
   if (isActiveType(typeNorm)) {
     const threadId = String(notificationData.thread_id || notificationData.threadId || notificationData.chat_thread_id || '').trim();
     const callId = String(notificationData.call_id || notificationData.callId || '').trim();
+    const acceptedOnAnotherDevice = isAcceptedOnAnotherDevice(notificationData);
     event.waitUntil(
       (async () => {
         try {
@@ -100,6 +110,7 @@ self.addEventListener('push', (event) => {
               status: 'active',
               ...(threadId ? { threadId } : {}),
               ...(callId ? { callId } : {}),
+              ...(acceptedOnAnotherDevice ? { acceptedOnAnotherDevice: true } : {}),
             });
           });
         } catch (error) {

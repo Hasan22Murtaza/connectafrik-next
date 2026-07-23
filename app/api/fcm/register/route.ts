@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import jwt from 'jsonwebtoken'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,7 +60,8 @@ export async function POST(request: NextRequest) {
       device_type,
       device_id,
       user_id: providedUserId,
-      voip_token: incomingVoipToken
+      voip_token: incomingVoipToken,
+      auth_session_id: incomingAuthSessionId,
     } = body
     const voip_token =
       typeof incomingVoipToken === 'string' && incomingVoipToken.trim()
@@ -124,6 +126,25 @@ export async function POST(request: NextRequest) {
         )
       }
       user_id = user.id
+    }
+
+    let auth_session_id: string | null =
+      typeof incomingAuthSessionId === 'string' && incomingAuthSessionId.trim()
+        ? incomingAuthSessionId.trim()
+        : null
+    if (!auth_session_id) {
+      const authHeader = request.headers.get('authorization')
+      const bearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+      if (bearer) {
+        try {
+          const decoded = jwt.decode(bearer) as { session_id?: string } | null
+          if (typeof decoded?.session_id === 'string' && decoded.session_id.trim()) {
+            auth_session_id = decoded.session_id.trim()
+          }
+        } catch {
+          // ignore decode errors
+        }
+      }
     }
 
     // One row per (user_id, device_id). Same user re-registering the same device updates in place.
@@ -200,6 +221,7 @@ export async function POST(request: NextRequest) {
           fcm_token: fcm_token,
           device_id,
           voip_token: device_type === 'ios' ? voip_token : null,
+          auth_session_id,
           is_active: true,
           device_type: device_type,
           updated_at: new Date().toISOString()
@@ -242,6 +264,7 @@ export async function POST(request: NextRequest) {
         voip_token: device_type === 'ios' ? voip_token : null,
         device_type: device_type as 'web' | 'ios' | 'android',
         device_id,
+        auth_session_id,
         is_active: true,
         updated_at: new Date().toISOString()
       }
@@ -304,6 +327,7 @@ export async function POST(request: NextRequest) {
                 fcm_token: fcm_token,
                 device_id,
                 voip_token: device_type === 'ios' ? voip_token : null,
+                auth_session_id,
                 is_active: true,
                 device_type: device_type,
                 updated_at: new Date().toISOString()

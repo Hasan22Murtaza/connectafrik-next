@@ -5,6 +5,7 @@ import { getFirebaseAdmin } from '../fcm/_utils'
 import { sendVoipApnsPush } from '@/lib/apns-voip'
 import type { NotificationType } from '@/shared/types/notifications'
 import { isCanonicalNotificationType } from '@/shared/types/notifications'
+import { parsePushBooleanFlag } from '@/shared/types/callPush'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,6 +38,11 @@ export interface NotificationPayload {
   device_session_id?: string
   /** User id that owns the row in `auth_session_device_labels` (e.g. callee who accepted/declined). */
   device_session_actor_id?: string
+  /**
+   * When true, the callee accepted on another device — other sessions of the same user
+   * should dismiss ringing UI. Set automatically for cross-device accept; omit otherwise.
+   */
+  acceptedOnAnotherDevice?: boolean
   /** Chat (or other) message id; merged into stored `data` and FCM `data` for deep-linking. */
   message_id?: string
   /** Optional sender profile image URL for chat notifications. */
@@ -93,11 +99,17 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+type VoipPushTarget = {
+  token: string
+  device_id: string | null
+  auth_session_id: string | null
+}
+
 /** PushKit VoIP tokens for iOS devices (see `fcm_tokens.voip_token`). */
-async function fetchActiveVoipTokensForUser(userId: string): Promise<string[]> {
+async function fetchActiveVoipTokensForUser(userId: string): Promise<VoipPushTarget[]> {
   const { data: rows, error } = await supabase
     .from('fcm_tokens')
-    .select('voip_token, device_id, is_active, device_type')
+    .select('voip_token, device_id, is_active, device_type, auth_session_id')
     .eq('user_id', userId)
     .eq('is_active', true)
     .not('voip_token', 'is', null)
@@ -105,12 +117,13 @@ async function fetchActiveVoipTokensForUser(userId: string): Promise<string[]> {
   if (error || !rows?.length) return []
 
   const seen = new Set<string>()
-  const tokens: string[] = []
+  const targets: VoipPushTarget[] = []
   for (const row of rows as Array<{
     voip_token: string | null
     device_id: string | null
     is_active?: boolean | string
     device_type?: string | null
+    auth_session_id?: string | null
   }>) {
     const isActive = row.is_active === true || row.is_active === 'true'
     if (!isActive) continue
@@ -120,9 +133,70 @@ async function fetchActiveVoipTokensForUser(userId: string): Promise<string[]> {
     const key = `${row.device_id || t}`
     if (seen.has(key)) continue
     seen.add(key)
-    tokens.push(t)
+    const authSessionId =
+      typeof row.auth_session_id === 'string' && row.auth_session_id.trim()
+        ? row.auth_session_id.trim()
+        : null
+    targets.push({ token: t, device_id: row.device_id ?? null, auth_session_id: authSessionId })
   }
-  return tokens
+  return targets
+}
+
+/**
+ * Persist a callee-only chat row when they answer on another device (WhatsApp-style).
+ * Visible only to that user's other sessions via client-side metadata filtering.
+ */
+async function persistAcceptedOnAnotherDeviceChatMessage(params: {
+  threadId: string
+  callId: string
+  callType: string
+  calleeUserId: string
+  acceptingSessionId: string
+}): Promise<void> {
+  const { threadId, callId, callType, calleeUserId, acceptingSessionId } = params
+  const { data: existing } = await supabase
+    .from('chat_messages')
+    .select('id')
+    .eq('thread_id', threadId)
+    .eq('message_type', 'accepted_on_another_device')
+    .eq('is_deleted', false)
+    .contains('metadata', { callId })
+    .maybeSingle()
+
+  if (existing?.id) return
+
+  const now = new Date().toISOString()
+  const callTypeLabel = callType === 'video' ? 'Video' : 'Voice'
+  const preview = `${callTypeLabel} call`
+
+  const { error: insertError } = await supabase.from('chat_messages').insert({
+    thread_id: threadId,
+    sender_id: calleeUserId,
+    content: 'Accepted on another device',
+    message_type: 'accepted_on_another_device',
+    metadata: {
+      callId,
+      callType,
+      for_user_id: calleeUserId,
+      device_session_id: acceptingSessionId,
+      acceptedOnAnotherDevice: true,
+    },
+  })
+
+  if (insertError) {
+    console.error('Failed to insert accepted_on_another_device chat message', insertError)
+    return
+  }
+
+  await supabase
+    .from('chat_threads')
+    .update({
+      last_message_preview: preview,
+      last_message_at: now,
+      last_activity_at: now,
+      updated_at: now,
+    })
+    .eq('id', threadId)
 }
 
 /** Call session sub-statuses that should wake iOS via PushKit VoIP (incoming ring + accept only). */
@@ -318,14 +392,47 @@ export async function POST(request: NextRequest) {
       if (rawLabel) rawPushData.device_session_label = rawLabel
     }
 
-    const fcmStringData = stringifyFcmDataValues(rawPushData)
-
     // Call events on iOS: VoIP for ring/accept only; ended/missed/declined go through FCM.
     const callRingDataType =
       rawPushData.type != null ? String(rawPushData.type).trim().toLowerCase() : ''
     const callRingNotificationType =
       typeof notification_type === 'string' ? notification_type.trim().toLowerCase() : ''
     const callEventStatus = resolveCallEventStatus(callRingDataType, callRingNotificationType)
+
+    const explicitAcceptedOnAnotherDevice =
+      body.acceptedOnAnotherDevice === true ||
+      parsePushBooleanFlag(rawPushData.acceptedOnAnotherDevice)
+
+    /**
+     * Callee answered on a different device: only their other sessions should receive
+     * `acceptedOnAnotherDevice` and dismiss ringing. Callers get a normal `active` push.
+     */
+    const isCalleeCrossDeviceAccept =
+      canonicalType === 'call' &&
+      callEventStatus === 'active' &&
+      Boolean(deviceSessionId) &&
+      Boolean(deviceSessionActorId) &&
+      deviceSessionActorId === user_id
+
+    if (isCalleeCrossDeviceAccept || explicitAcceptedOnAnotherDevice) {
+      const threadIdForChat = pickNonEmptyString(rawPushData.thread_id, rawPushData.threadId)
+      const callIdForChat = pickNonEmptyString(rawPushData.call_id, rawPushData.callId)
+      const callTypeForChat =
+        String(rawPushData.call_type || 'audio').trim().toLowerCase() === 'video' ? 'video' : 'audio'
+
+      if (isCalleeCrossDeviceAccept && threadIdForChat && callIdForChat && deviceSessionId) {
+        await persistAcceptedOnAnotherDeviceChatMessage({
+          threadId: threadIdForChat,
+          callId: callIdForChat,
+          callType: callTypeForChat,
+          calleeUserId: user_id,
+          acceptingSessionId: deviceSessionId,
+        })
+      }
+    }
+
+    const fcmStringData = stringifyFcmDataValues(rawPushData)
+
     const sendIosVoipForCall = canonicalType === 'call' && IOS_VOIP_CALL_STATUSES.has(callEventStatus)
     const skipIosFcmForVoipCall =
       canonicalType === 'call' && IOS_SKIP_FCM_CALL_STATUSES.has(callEventStatus)
@@ -394,7 +501,7 @@ export async function POST(request: NextRequest) {
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
-      .select('fcm_token, device_type, device_id, is_active')
+      .select('fcm_token, device_type, device_id, is_active, auth_session_id')
       .eq('user_id', user_id)
       .eq('is_active', true)
 
@@ -453,10 +560,39 @@ export async function POST(request: NextRequest) {
     }
     const subscriptionsToSend = Array.from(byDevice.values())
 
-    // Prepare base FCM message payload
+    const shouldTagAcceptedOnAnotherDevice = (
+      subscriptionAuthSessionId: string | null | undefined,
+    ): boolean => {
+      if (!isCalleeCrossDeviceAccept && !explicitAcceptedOnAnotherDevice) return false
+      if (!isCalleeCrossDeviceAccept) return explicitAcceptedOnAnotherDevice
+      const subSession =
+        typeof subscriptionAuthSessionId === 'string' && subscriptionAuthSessionId.trim()
+          ? subscriptionAuthSessionId.trim()
+          : ''
+      if (subSession && subSession === deviceSessionId) return false
+      return true
+    }
+
+    const isAcceptingDeviceSession = (subscriptionAuthSessionId: string | null | undefined): boolean => {
+      if (!isCalleeCrossDeviceAccept || !deviceSessionId) return false
+      const subSession =
+        typeof subscriptionAuthSessionId === 'string' && subscriptionAuthSessionId.trim()
+          ? subscriptionAuthSessionId.trim()
+          : ''
+      return Boolean(subSession) && subSession === deviceSessionId
+    }
+
+    const buildPerDeviceFcmData = (subscriptionAuthSessionId: string | null | undefined) => {
+      const perDevice: Record<string, string> = { ...fcmStringData }
+      if (shouldTagAcceptedOnAnotherDevice(subscriptionAuthSessionId)) {
+        perDevice.acceptedOnAnotherDevice = 'true'
+      }
+      return perDevice
+    }
+
+    // Prepare base FCM message payload (per-device `data` is merged in the send loop).
     const baseMessage: Omit<admin.messaging.Message, 'token' | 'topic' | 'condition'> = {
       data: {
-        ...fcmStringData,
         title: body.title,
         body: notificationBody,
         // Use sender/caller profile image as icon when available (chat, missed call, etc.)
@@ -492,6 +628,22 @@ export async function POST(request: NextRequest) {
         ? subscriptionsToSend.map(async (subscription) => {
       try {
         const fcmToken = subscription.fcm_token
+        const subAuthSessionId =
+          typeof (subscription as { auth_session_id?: string | null }).auth_session_id === 'string'
+            ? (subscription as { auth_session_id: string }).auth_session_id
+            : null
+
+        if (isAcceptingDeviceSession(subAuthSessionId)) {
+          const skipReason = 'skipped-accepting-device-session'
+          console.log(`Skipping FCM for accepting device session (${skipReason})`)
+          return {
+            success: true,
+            skipped: true,
+            endpoint: subscription.device_id || fcmToken.substring(0, 50),
+            device_type: subscription.device_type,
+            messageId: skipReason,
+          }
+        }
 
         if (subscription.device_type === 'ios' && skipIosFcmForVoipCall) {
           const skipReason = `skipped-ios-call-${callEventStatus || 'event'}-voip`
@@ -542,6 +694,10 @@ export async function POST(request: NextRequest) {
           ...baseMessage,
           ...iosOnlyMessageOverrides,
           token: fcmToken,
+          data: {
+            ...baseMessage.data,
+            ...buildPerDeviceFcmData(subAuthSessionId),
+          },
         }
 
         const response = await admin.messaging(firebaseAdmin).send(fcmMessage)
@@ -591,15 +747,9 @@ export async function POST(request: NextRequest) {
     }> = []
 
     if (sendIosVoipForCall) {
-      const voipTokens = await fetchActiveVoipTokensForUser(user_id)
-      const voipData: Record<string, string> = {
-        ...fcmStringData,
-        title: body.title,
-        body: notificationBody,
-        type: callEventStatus,
-      }
+      const voipTargets = await fetchActiveVoipTokensForUser(user_id)
 
-      if (voipTokens.length === 0) {
+      if (voipTargets.length === 0) {
         console.warn('No active iOS VoIP tokens for call push', {
           user_id,
           call_status: callEventStatus,
@@ -607,8 +757,26 @@ export async function POST(request: NextRequest) {
       }
 
       voipResults = await Promise.all(
-        voipTokens.map(async (voipToken) => {
+        voipTargets.map(async ({ token: voipToken, auth_session_id: voipAuthSessionId }) => {
           const endpoint = voipToken.substring(0, 12)
+
+          if (isAcceptingDeviceSession(voipAuthSessionId)) {
+            return {
+              success: true,
+              skipped: true,
+              endpoint,
+              device_type: 'ios-voip',
+              messageId: 'skipped-accepting-device-session',
+            }
+          }
+
+          const voipData: Record<string, string> = {
+            ...buildPerDeviceFcmData(voipAuthSessionId),
+            title: body.title,
+            body: notificationBody,
+            type: callEventStatus,
+          }
+
           try {
             await sendVoipApnsPush({
               token: voipToken,

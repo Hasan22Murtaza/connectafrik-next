@@ -1,5 +1,6 @@
 import { useProductionChat, type CallRequest } from '@/contexts/ProductionChatContext'
 import { playRingtone, stopRingtone, stopAll } from '@/features/video/services/ringtoneService'
+import { isAcceptedOnAnotherDevicePush } from '@/shared/types/callPush'
 import React, { useEffect, useMemo, useRef } from 'react'
 
 /** Survives React Strict Mode remount (refs reset while callRequests in parent stays set). */
@@ -267,6 +268,9 @@ const GlobalCallNotification: React.FC = () => {
           status: 'active',
           ...(threadId ? { threadId } : {}),
           ...(callId ? { callId } : {}),
+          ...(isAcceptedOnAnotherDevicePush(data as Record<string, unknown>)
+            ? { acceptedOnAnotherDevice: true }
+            : {}),
         })
         return
       }

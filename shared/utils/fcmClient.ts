@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app'
 import { getMessaging, getToken as getFCMToken, onMessage, Messaging, deleteToken } from 'firebase/messaging'
+import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel'
+import type { CallPushNotificationData } from '@/shared/types/callPush'
+import { isAcceptedOnAnotherDevicePush } from '@/shared/types/callPush'
 
 export interface NotificationPayload {
   title: string
@@ -9,7 +12,7 @@ export interface NotificationPayload {
   image?: string
   badge?: string
   tag?: string
-  data?: any
+  data?: CallPushNotificationData & Record<string, unknown>
   actions?: Array<{
     action: string
     title: string
@@ -104,6 +107,7 @@ export const initialize = async (): Promise<boolean> => {
       )
 
       const d = payload.data
+      const acceptedElsewhere = isAcceptedOnAnotherDevicePush(d)
       const t = String(d.type || d.status || d.call_status || '')
         .trim()
         .toLowerCase()
@@ -118,7 +122,9 @@ export const initialize = async (): Promise<boolean> => {
         isCallStatusForeground &&
         registration &&
         typeof Notification !== 'undefined' &&
-        Notification.permission === 'granted'
+        Notification.permission === 'granted' &&
+        // Cross-device accept: dismiss ringing only — no extra toast on sibling devices.
+        !(t === 'active' && acceptedElsewhere)
       ) {
         try {
           const statusKey =
@@ -252,6 +258,7 @@ export const registerToken = async (token: string): Promise<boolean> => {
 
     const { data: { session } } = await supabase.auth.getSession()
     const authToken = session?.access_token
+    const auth_session_id = getSessionIdFromAccessToken(authToken ?? null)
 
     const response = await fetch('/api/fcm/register', {
       method: 'POST',
@@ -264,6 +271,7 @@ export const registerToken = async (token: string): Promise<boolean> => {
         device_type,
         device_id,
         user_id: user.id,
+        ...(auth_session_id ? { auth_session_id } : {}),
       }),
     })
 

@@ -29,6 +29,9 @@ import {
   fileUploadService,
 } from "@/shared/services/fileUploadService";
 import type { ChatParticipant, PresenceStatus } from "@/shared/types/chat";
+import { shouldShowAcceptedOnAnotherDeviceMessage } from "@/shared/types/callPush";
+import { getSessionIdFromAccessToken } from "@/shared/utils/sessionDeviceLabel";
+import { useAuth } from "@/contexts/AuthContext";
 import { isSameDay } from "date-fns";
 import {
   CheckCheck,
@@ -292,6 +295,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     closeThread,
   } = useProductionChat();
 
+  const { session } = useAuth();
+  const localAuthSessionId = React.useMemo(
+    () => getSessionIdFromAccessToken(session?.access_token ?? null),
+    [session?.access_token],
+  );
+
   const router = useRouter();
   const pathname = usePathname();
 
@@ -316,10 +325,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const isMessagesLoading = isMessagesLoadingForThread(threadId);
   const visibleMessages = useMemo(() => {
     if (!currentUser) return messages;
-    return messages.filter((message: ChatMessage) =>
-      !message.deleted_for?.includes(currentUser.id)
-    );
-  }, [messages, currentUser?.id]);
+    return messages.filter((message: ChatMessage) => {
+      if (message.deleted_for?.includes(currentUser.id)) return false;
+      return shouldShowAcceptedOnAnotherDeviceMessage(
+        message,
+        currentUser.id,
+        localAuthSessionId,
+      );
+    });
+  }, [messages, currentUser, localAuthSessionId]);
 
   const [showMessageSearch, setShowMessageSearch] = useState(false);
   const [messageSearchDraft, setMessageSearchDraft] = useState("");
@@ -331,10 +345,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const searchVisibleMessages = useMemo(() => {
     if (!currentUser) return searchMessages;
-    return searchMessages.filter(
-      (message: ChatMessage) => !message.deleted_for?.includes(currentUser.id)
-    );
-  }, [searchMessages, currentUser?.id]);
+    return searchMessages.filter((message: ChatMessage) => {
+      if (message.deleted_for?.includes(currentUser.id)) return false;
+      return shouldShowAcceptedOnAnotherDeviceMessage(
+        message,
+        currentUser.id,
+        localAuthSessionId,
+      );
+    });
+  }, [searchMessages, currentUser, localAuthSessionId]);
 
   const displayMessages = messageSearchKeyword.trim()
     ? searchVisibleMessages

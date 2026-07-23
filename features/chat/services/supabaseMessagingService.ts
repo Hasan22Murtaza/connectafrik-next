@@ -12,6 +12,7 @@ import { MARKETPLACE_SYSTEM, isMarketplaceMessageType } from '@/lib/marketplaceC
 /** call_sessions.status-aligned message_type values (signaling; excluded from generic chat push). */
 const ALL_CALL_SIGNAL_MESSAGE_TYPES: string[] = [
   'initiated', 'ringing', 'active', 'declined', 'ended', 'missed', 'failed',
+  'accepted_on_another_device',
 ]
 
 const SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES = new Set<string>([

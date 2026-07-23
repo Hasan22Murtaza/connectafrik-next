@@ -29,6 +29,7 @@ import {
   Reply,
   Smile,
   Trash2,
+  Video,
 } from "lucide-react";
 import React, { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -141,10 +142,24 @@ function formatReplyQuote(message: ChatMessage | null | undefined): {
 /** WhatsApp-style voice / missed call row inside a bubble */
 function getCallBubblePresentation(
   message: ChatMessage,
-): { variant: "missed" | "voice"; title: string; subtitle: string } | null {
+): { variant: "missed" | "voice" | "video"; title: string; subtitle: string } | null {
   const mt = (message.message_type || "").toLowerCase();
   const content = (message.content || "").trim();
   const contentLower = content.toLowerCase();
+  const callType =
+    typeof message.metadata?.callType === "string"
+      ? message.metadata.callType.toLowerCase()
+      : typeof message.metadata?.call_type === "string"
+        ? message.metadata.call_type.toLowerCase()
+        : "audio";
+
+  if (mt === "accepted_on_another_device" || contentLower === "accepted on another device") {
+    return {
+      variant: callType === "video" ? "video" : "voice",
+      title: callType === "video" ? "Video call" : "Voice call",
+      subtitle: "Accepted on another device",
+    };
+  }
 
   if (mt === "missed" || contentLower === "missed call") {
     return {
@@ -999,6 +1014,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
                   {callPresentation.variant === "missed" ? (
                     <PhoneMissed className="h-[22px] w-[22px] text-[#ea0038]" strokeWidth={2} aria-hidden />
+                  ) : callPresentation.variant === "video" ? (
+                    <Video className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
                   ) : isOwnMessage ? (
                     <PhoneOutgoing className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
                   ) : (
