@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 
@@ -823,6 +824,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (updateError || !updated) {
       return errorResponse(updateError?.message || 'Failed to update call session', 400)
+    }
+
+    if (event === 'accept' && nextStatus === 'active' && device_session_id && !groupCall) {
+      const callIdForMessage = String(updated.call_id || call_id || '').trim()
+      const callTypeForMessage = updated.call_type === 'video' ? 'video' : 'audio'
+      const roomIdForMessage = String(updated.room_id || '').trim()
+      if (callIdForMessage) {
+        await persistAcceptedOnAnotherDeviceChatMessage(serviceClient, {
+          threadId,
+          callId: callIdForMessage,
+          callType: callTypeForMessage,
+          calleeUserId: user.id,
+          acceptingSessionId: device_session_id,
+          ...(roomIdForMessage ? { roomId: roomIdForMessage } : {}),
+        })
+      }
     }
 
     const preview =

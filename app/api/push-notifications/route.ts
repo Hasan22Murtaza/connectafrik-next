@@ -142,63 +142,6 @@ async function fetchActiveVoipTokensForUser(userId: string): Promise<VoipPushTar
   return targets
 }
 
-/**
- * Persist a callee-only chat row when they answer on another device (WhatsApp-style).
- * Visible only to that user's other sessions via client-side metadata filtering.
- */
-async function persistAcceptedOnAnotherDeviceChatMessage(params: {
-  threadId: string
-  callId: string
-  callType: string
-  calleeUserId: string
-  acceptingSessionId: string
-}): Promise<void> {
-  const { threadId, callId, callType, calleeUserId, acceptingSessionId } = params
-  const { data: existing } = await supabase
-    .from('chat_messages')
-    .select('id')
-    .eq('thread_id', threadId)
-    .eq('message_type', 'accepted_on_another_device')
-    .eq('is_deleted', false)
-    .contains('metadata', { callId })
-    .maybeSingle()
-
-  if (existing?.id) return
-
-  const now = new Date().toISOString()
-  const callTypeLabel = callType === 'video' ? 'Video' : 'Voice'
-  const preview = `${callTypeLabel} call`
-
-  const { error: insertError } = await supabase.from('chat_messages').insert({
-    thread_id: threadId,
-    sender_id: calleeUserId,
-    content: 'Accepted on another device',
-    message_type: 'accepted_on_another_device',
-    metadata: {
-      callId,
-      callType,
-      for_user_id: calleeUserId,
-      device_session_id: acceptingSessionId,
-      acceptedOnAnotherDevice: true,
-    },
-  })
-
-  if (insertError) {
-    console.error('Failed to insert accepted_on_another_device chat message', insertError)
-    return
-  }
-
-  await supabase
-    .from('chat_threads')
-    .update({
-      last_message_preview: preview,
-      last_message_at: now,
-      last_activity_at: now,
-      updated_at: now,
-    })
-    .eq('id', threadId)
-}
-
 /** Call session sub-statuses that should wake iOS via PushKit VoIP (incoming ring + accept only). */
 const IOS_VOIP_CALL_STATUSES = new Set(['ringing', 'active'])
 
@@ -413,23 +356,6 @@ export async function POST(request: NextRequest) {
       Boolean(deviceSessionId) &&
       Boolean(deviceSessionActorId) &&
       deviceSessionActorId === user_id
-
-    if (isCalleeCrossDeviceAccept || explicitAcceptedOnAnotherDevice) {
-      const threadIdForChat = pickNonEmptyString(rawPushData.thread_id, rawPushData.threadId)
-      const callIdForChat = pickNonEmptyString(rawPushData.call_id, rawPushData.callId)
-      const callTypeForChat =
-        String(rawPushData.call_type || 'audio').trim().toLowerCase() === 'video' ? 'video' : 'audio'
-
-      if (isCalleeCrossDeviceAccept && threadIdForChat && callIdForChat && deviceSessionId) {
-        await persistAcceptedOnAnotherDeviceChatMessage({
-          threadId: threadIdForChat,
-          callId: callIdForChat,
-          callType: callTypeForChat,
-          calleeUserId: user_id,
-          acceptingSessionId: deviceSessionId,
-        })
-      }
-    }
 
     const fcmStringData = stringifyFcmDataValues(rawPushData)
 
