@@ -19,9 +19,7 @@ function base64UrlEncodeFromBuffer(buffer: ArrayBuffer): string {
 
 function getVideosdkCredentials(): { apiKey: string; apiSecret: string } {
   const apiKey =
-    process.env.VIDEOSDK_API_KEY ??
-    process.env.VITE_VIDEOSDK_API_KEY ??
-    process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY
+    process.env.VIDEOSDK_API_KEY
   const apiSecret =
     process.env.VIDEOSDK_SECRET_KEY ??
     process.env.VIDEOSDK_SECRET ??

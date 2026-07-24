@@ -127,9 +127,7 @@ export async function POST(request: NextRequest) {
   }
 
   const VIDEOSDK_API_KEY =
-    process.env.VIDEOSDK_API_KEY ??
-    process.env.VITE_VIDEOSDK_API_KEY ??
-    process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY
+    process.env.VIDEOSDK_API_KEY 
   const VIDEOSDK_SECRET_KEY =
     process.env.VIDEOSDK_SECRET_KEY ??
     process.env.VIDEOSDK_SECRET ??
