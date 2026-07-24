@@ -26,6 +26,7 @@ import { useSearch } from "@/shared/hooks/useSearch";
 import SearchResultsDropdown from "@/shared/components/search/SearchResultsDropdown";
 import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
 import UserMenu from "@/shared/components/theme/UserMenu";
+import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -60,8 +61,7 @@ const Header: React.FC<HeaderProps> = ({
   // Sync internal search term with external prop
   const searchTerm = externalSearchTerm !== undefined ? externalSearchTerm : internalSearchTerm;
 
-  // TODO: Get threads from messaging service or realtime hook
-  const unreadMessages = 0;
+  const { unreadMessages, callBadgeCount, markCallsViewed } = useHeaderInboxCounts();
   const pathname = usePathname();
 
   // Sync with external searchTerm prop
@@ -311,13 +311,20 @@ const Header: React.FC<HeaderProps> = ({
                     <div className="relative">
                       <button
                         onClick={() => {
-                          setShowCalls(!showCalls);
+                          const opening = !showCalls;
+                          setShowCalls(opening);
                           setShowNotifications(false);
                           setShowInbox(false);
+                          if (opening) markCallsViewed();
                         }}
                         className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
                       >
                         <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                        {callBadgeCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                            {callBadgeCount > 99 ? "99+" : callBadgeCount}
+                          </span>
+                        )}
                       </button>
                       {showCalls && (
                         <CallHistoryDropdown onClose={() => setShowCalls(false)} />
