@@ -19,6 +19,9 @@ export interface VideoSDKCallModalProps {
   roomIdHint?: string;
   tokenHint?: string;
   callIdHint?: string;
+  /** Staged from /api/videosdk/room when using LiveKit. */
+  mediaProviderHint?: 'livekit' | 'videosdk';
+  wsUrlHint?: string;
 }
 
 export const SPEAKER_VOLUMES: Record<SpeakerLevel, number> = {

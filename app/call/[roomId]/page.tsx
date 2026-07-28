@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
+import { readCallBootstrap } from '@/lib/call-bootstrap'
+import type { CallMediaProviderName } from '@/lib/call-media/types'
 
 const VideoSDKCallModal = dynamic(() => import('@/features/video/components/VideoSDKCallModal'), {
   ssr: false,
@@ -36,18 +38,14 @@ function parseSessionMetadata(raw: unknown): Record<string, unknown> {
 }
 
 /** Outgoing call: one-time read of token staged by the opener tab (avoids a duplicate /token round-trip). */
-function readAndRemoveCallBootstrap(callId: string): string | undefined {
-  if (typeof window === 'undefined') return undefined
-  try {
-    const k = `videosdk_call_bootstrap:${callId}`
-    const raw = sessionStorage.getItem(k)
-    if (!raw) return undefined
-    sessionStorage.removeItem(k)
-    const o = JSON.parse(raw) as { token?: string }
-    return typeof o.token === 'string' ? o.token : undefined
-  } catch {
-    return undefined
-  }
+function readAndRemoveCallBootstrap(callId: string): {
+  token?: string
+  provider?: CallMediaProviderName
+  wsUrl?: string
+} | undefined {
+  const payload = readCallBootstrap(callId)
+  if (!payload) return undefined
+  return payload
 }
 
 export default function CallWindowPage() {
@@ -57,14 +55,20 @@ export default function CallWindowPage() {
   const { user, loading: authLoading } = useAuth()
 
   const [callDisplay, setCallDisplay] = useState<CallDisplay | null>(null)
-  /** Pre-issued VideoSDK JWT for outgoing calls (from sessionStorage). */
+  /** Pre-issued call JWT for outgoing calls (from sessionStorage). */
   const [joinTokenHint, setJoinTokenHint] = useState<string | undefined>(undefined)
+  const [mediaProviderHint, setMediaProviderHint] = useState<CallMediaProviderName | undefined>(
+    undefined,
+  )
+  const [wsUrlHint, setWsUrlHint] = useState<string | undefined>(undefined)
   /** True once the same user answered this call on another device — close this ringing window. */
   const [answeredElsewhere, setAnsweredElsewhere] = useState(false)
   /** Guards against terminating when the call was accepted on THIS device. */
   const acceptedLocallyRef = useRef(false)
   const outgoingBootstrapCallIdRef = useRef<string | null>(null)
-  const outgoingBootstrapTokenRef = useRef<string | undefined>(undefined)
+  const outgoingBootstrapPayloadRef = useRef<
+    { token?: string; provider?: CallMediaProviderName; wsUrl?: string } | undefined
+  >(undefined)
 
   const roomId = params?.roomId as string
   const callParam = searchParams?.get('call') ?? 'true'
@@ -105,16 +109,17 @@ export default function CallWindowPage() {
 
     if (outgoingBootstrapCallIdRef.current !== callId) {
       outgoingBootstrapCallIdRef.current = callId
-      outgoingBootstrapTokenRef.current = undefined
+      outgoingBootstrapPayloadRef.current = undefined
     }
 
-    if (!isIncoming && callId.trim() && outgoingBootstrapTokenRef.current === undefined) {
-      outgoingBootstrapTokenRef.current = readAndRemoveCallBootstrap(callId.trim())
+    if (!isIncoming && callId.trim() && outgoingBootstrapPayloadRef.current === undefined) {
+      outgoingBootstrapPayloadRef.current = readAndRemoveCallBootstrap(callId.trim())
     }
 
-    setJoinTokenHint(
-      !isIncoming && callId.trim() ? outgoingBootstrapTokenRef.current : undefined,
-    )
+    const bootstrap = !isIncoming && callId.trim() ? outgoingBootstrapPayloadRef.current : undefined
+    setJoinTokenHint(bootstrap?.token)
+    setMediaProviderHint(bootstrap?.provider)
+    setWsUrlHint(bootstrap?.wsUrl)
 
     if (!callId.trim()) {
       setCallDisplay({
@@ -388,6 +393,8 @@ export default function CallWindowPage() {
             roomIdHint={roomId}
             tokenHint={joinTokenHint}
             callIdHint={callId}
+            mediaProviderHint={mediaProviderHint}
+            wsUrlHint={wsUrlHint}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-white gap-3 px-4 text-center">

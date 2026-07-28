@@ -15,6 +15,7 @@ import { apiClient, ApiError } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
 import { openCallWindow } from '@/shared/utils/callWindow'
+import { parseCallMediaResponse, writeCallBootstrap } from '@/lib/call-bootstrap'
 import {
   FriendsRequiredForCallError,
   dispatchFriendsRequiredForCall,
@@ -686,7 +687,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         throw new Error('Failed to get call token.')
       }
       const tokenData = await tokenRes.json()
-      const token = typeof tokenData.token === 'string' ? tokenData.token : undefined
+      const media = parseCallMediaResponse(tokenData as Record<string, unknown>)
+      const token = media.token
 
       await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, {
         call_id: callId,
@@ -710,10 +712,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (typeof window !== 'undefined') {
         if (token && callId) {
           try {
-            sessionStorage.setItem(
-              `videosdk_call_bootstrap:${callId}`,
-              JSON.stringify({ token }),
-            )
+            writeCallBootstrap(callId, {
+              token,
+              provider: media.provider,
+              ...(media.wsUrl ? { wsUrl: media.wsUrl } : {}),
+            })
           } catch { /* ignore */ }
         }
         openCallWindow({
@@ -890,8 +893,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       const roomData = await roomResponse.json()
       const roomId = roomData.roomId
-      const token = typeof roomData.token === 'string' ? roomData.token : undefined
-      markCallStartMetric('room_created', { roomId })
+      const media = parseCallMediaResponse(roomData as Record<string, unknown>)
+      const token = media.token
+      markCallStartMetric('room_created', { roomId, provider: media.provider })
       
       if (!roomId) {
         throw new Error('Failed to create call room. Please try again.')
@@ -929,10 +933,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (typeof window !== 'undefined') {
         if (token && callId) {
           try {
-            sessionStorage.setItem(
-              `videosdk_call_bootstrap:${callId}`,
-              JSON.stringify({ token }),
-            )
+            writeCallBootstrap(callId, {
+              token,
+              provider: media.provider,
+              ...(media.wsUrl ? { wsUrl: media.wsUrl } : {}),
+            })
           } catch {
             /* ignore quota or private mode */
           }
