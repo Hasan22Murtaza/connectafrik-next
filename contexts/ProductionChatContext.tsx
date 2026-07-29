@@ -15,7 +15,7 @@ import { apiClient, ApiError } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
 import { openCallWindow } from '@/shared/utils/callWindow'
-import { parseCallMediaResponse, writeCallBootstrap } from '@/lib/call-bootstrap'
+import { parseCallMediaResponse, writeCallBootstrap } from '@/lib/call-media/bootstrap'
 import {
   FriendsRequiredForCallError,
   dispatchFriendsRequiredForCall,

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * VideoSDKCallModal — the outermost call surface component.
  *
  * Split into two clear phases:
@@ -32,7 +32,7 @@ import IncomingCallControls from './call/IncomingCallControls';
 import MeetingContainer from './call/MeetingContainer';
 import LiveKitMeetingContainer from './call/LiveKitMeetingContainer';
 import { LiveKitRoom } from '@livekit/components-react';
-import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-bootstrap';
+import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-media/bootstrap';
 import type { CallMediaProviderName } from '@/lib/call-media/types';
 
 // ---------------------------------------------------------------------------

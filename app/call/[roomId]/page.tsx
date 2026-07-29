@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
-import { readCallBootstrap } from '@/lib/call-bootstrap'
+import { readCallBootstrap } from '@/lib/call-media/bootstrap'
 import type { CallMediaProviderName } from '@/lib/call-media/types'
 
 const VideoSDKCallModal = dynamic(() => import('@/features/video/components/VideoSDKCallModal'), {

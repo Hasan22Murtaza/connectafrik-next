@@ -1,4 +1,4 @@
-import type { CallMediaProviderName } from '@/lib/call-media/types';
+import type { CallMediaProviderName } from './types';
 
 export interface CallBootstrapPayload {
   token: string;

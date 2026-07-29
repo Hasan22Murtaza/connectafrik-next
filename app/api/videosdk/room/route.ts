@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createCallRoom } from '@/lib/call-media/provider'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
-import { getBusyMapForUserIds } from '@/lib/call-session-busy'
+import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const corsHeaders = {
