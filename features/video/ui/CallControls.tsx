@@ -13,7 +13,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import React from 'react';
-import type { SpeakerLevel } from './types';
+import type { SpeakerLevel } from '@/features/video/core/types';
 
 interface CallControlsProps {
   isMuted: boolean;

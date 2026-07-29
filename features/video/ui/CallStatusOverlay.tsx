@@ -1,5 +1,5 @@
 import React from 'react';
-import type { CallStatus } from './types';
+import type { CallStatus } from '@/features/video/core/types';
 
 interface CallStatusOverlayProps {
   callStatus: CallStatus;

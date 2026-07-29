@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { generateVideosdkParticipantJwt } from '@/lib/videosdk-participant-jwt';
+import { generateVideosdkParticipantJwt } from '@/features/video/providers/videosdk/lib/participant-jwt';
 import type { CallMediaCredentials, CreateCallRoomOptions, IssueCallTokenOptions } from './types';
 
 const TOKEN_TTL = '10m';

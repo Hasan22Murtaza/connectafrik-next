@@ -8,6 +8,12 @@ import {
   isVideosdkConfigured,
   issueVideosdkToken,
 } from './videosdk';
+import {
+  DEFAULT_CALL_MEDIA_PROVIDER,
+  isAutoProviderSelection,
+  parseProviderName,
+  resolveFallbackProvider,
+} from './resolve';
 import type {
   CallMediaCredentials,
   CallMediaProviderName,
@@ -16,8 +22,17 @@ import type {
 } from './types';
 
 export function resolvePreferredProvider(): CallMediaProviderName {
-  const env = (process.env.CALL_MEDIA_PROVIDER || 'livekit').trim().toLowerCase();
-  return env === 'videosdk' ? 'videosdk' : 'livekit';
+  const raw = process.env.CALL_MEDIA_PROVIDER;
+  const explicit = parseProviderName(raw);
+  if (explicit) return explicit;
+
+  if (isAutoProviderSelection(raw)) {
+    if (isLiveKitConfigured()) return 'livekit';
+    if (isVideosdkConfigured()) return 'videosdk';
+    return DEFAULT_CALL_MEDIA_PROVIDER;
+  }
+
+  return DEFAULT_CALL_MEDIA_PROVIDER;
 }
 
 async function createWithProvider(
@@ -56,15 +71,14 @@ async function issueWithProvider(
 }
 
 /**
- * Create a call room using the preferred provider, falling back to VideoSDK when
- * LiveKit is unavailable or misconfigured.
+ * Create a call room using the preferred provider, auto-failing over to the other
+ * provider when the preferred one is misconfigured or throws.
  */
 export async function createCallRoom(
   options: CreateCallRoomOptions,
 ): Promise<CallMediaCredentials> {
   const preferred = resolvePreferredProvider();
-  const fallback: CallMediaProviderName =
-    preferred === 'livekit' ? 'videosdk' : 'livekit';
+  const fallback = resolveFallbackProvider(preferred);
 
   const preferredReady =
     preferred === 'livekit' ? isLiveKitConfigured() : isVideosdkConfigured();
@@ -98,8 +112,7 @@ export async function issueCallToken(
   options: IssueCallTokenOptions,
 ): Promise<CallMediaCredentials> {
   const preferred = resolvePreferredProvider();
-  const fallback: CallMediaProviderName =
-    preferred === 'livekit' ? 'videosdk' : 'livekit';
+  const fallback = resolveFallbackProvider(preferred);
 
   const preferredReady =
     preferred === 'livekit' ? isLiveKitConfigured() : isVideosdkConfigured();

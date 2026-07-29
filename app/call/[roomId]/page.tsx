@@ -8,7 +8,7 @@ import { apiClient } from '@/lib/api-client'
 import { readCallBootstrap } from '@/lib/call-media/bootstrap'
 import type { CallMediaProviderName } from '@/lib/call-media/types'
 
-const VideoSDKCallModal = dynamic(() => import('@/features/video/components/VideoSDKCallModal'), {
+const CallModal = dynamic(() => import('@/features/video/CallModal'), {
   ssr: false,
 })
 
@@ -373,7 +373,7 @@ export default function CallWindowPage() {
     <div className="w-full h-screen bg-black overflow-hidden">
       {isOpen ? (
         showCallUi ? (
-          <VideoSDKCallModal
+          <CallModal
             isOpen={true}
             onClose={handleCallEnd}
             callType={callType}

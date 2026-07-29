@@ -1,20 +1,12 @@
 ﻿/**
- * VideoSDKCallModal — the outermost call surface component.
+ * Call entry surface — orchestrates pre-call (token, ringtone) and in-call (provider runtime).
  *
- * Split into two clear phases:
+ * Lives at the feature root (not in context/core/providers) because it is the top-level UI
+ * shell that wraps provider SDKs (MeetingProvider / LiveKitRoom) before handing off to
+ * providers/videosdk or providers/livekit MeetingContainer.
  *
- * 1. Pre-call phase (handled here, outside MeetingProvider):
- *    - Outgoing: fetches a VideoSDK token + room ID, shows "Connecting…" spinner.
- *    - Incoming: plays ringtone, shows the ringing screen; fetches token only after
- *      the user taps Accept so the meeting is joined immediately on accept.
- *
- * 2. In-call phase (delegated to MeetingContainer inside MeetingProvider):
- *    - MeetingProvider initialises the VideoSDK React SDK with the resolved token
- *      and meeting ID.
- *    - MeetingContainer owns `useMeeting`, event handling, signaling, and rendering.
- *
- * This separation keeps MeetingProvider unmounted until we have a valid token,
- * which avoids initialisation errors and makes reconnect logic straightforward.
+ * Flow:
+ *   app/call/[roomId] → CallModal → LiveKitRoom | MeetingProvider → MeetingContainer
  */
 'use client';
 
@@ -26,14 +18,15 @@ import { patchCallSessionWithRetry } from '@/features/chat/services/callSessionR
 import { useAuth } from '@/contexts/AuthContext';
 import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
 import { inferMeetingMaxResolution } from '@/features/video/services/adaptiveCallQuality';
-import type { VideoSDKCallModalProps } from './call/types';
-import CallStatusOverlay from './call/CallStatusOverlay';
-import IncomingCallControls from './call/IncomingCallControls';
-import MeetingContainer from './call/MeetingContainer';
-import LiveKitMeetingContainer from './call/LiveKitMeetingContainer';
+import type { CallModalProps } from '@/features/video/core/types';
+import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
+import IncomingCallControls from '@/features/video/ui/IncomingCallControls';
+import VideoSDKMeetingContainer from '@/features/video/providers/videosdk/MeetingContainer';
+import LiveKitMeetingContainer from '@/features/video/providers/livekit/MeetingContainer';
 import { LiveKitRoom } from '@livekit/components-react';
 import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-media/bootstrap';
 import type { CallMediaProviderName } from '@/lib/call-media/types';
+import { resolveClientVideoProvider } from '@/features/video/core/config';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -50,7 +43,7 @@ function safeDecode(str: string | undefined): string {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
+const CallModal: React.FC<CallModalProps> = (props) => {
   const { session } = useAuth();
   const {
     isOpen,
@@ -89,8 +82,9 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   const [prePhase, setPrePhase] = useState<'connecting' | 'ringing' | 'error'>(
     'connecting',
   );
+  const defaultMediaProvider = resolveClientVideoProvider();
   const [mediaProvider, setMediaProvider] = useState<CallMediaProviderName>(
-    mediaProviderHint ?? 'livekit',
+    mediaProviderHint ?? defaultMediaProvider,
   );
   const [wsUrl, setWsUrl] = useState<string | undefined>(wsUrlHint);
   const [errorMsg, setErrorMsg] = useState('');
@@ -111,11 +105,11 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   useEffect(() => {
     if (!isOpen) {
       setSdkParticipantUserId(null);
-      setMediaProvider(mediaProviderHint ?? 'livekit');
+      setMediaProvider(mediaProviderHint ?? defaultMediaProvider);
       setWsUrl(wsUrlHint);
       hasInitRef.current = false;
     }
-  }, [isOpen, mediaProviderHint, wsUrlHint]);
+  }, [isOpen, mediaProviderHint, wsUrlHint, defaultMediaProvider]);
 
   const applyMediaHints = useCallback(
     (provider: CallMediaProviderName, explicitWsUrl?: string) => {
@@ -216,7 +210,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           setSdkParticipantUserId(uid);
           setMeetingId(ridFromHint);
           setToken(hint);
-          applyMediaHints(mediaProviderHint ?? 'livekit', wsUrlHint);
+          applyMediaHints(mediaProviderHint ?? defaultMediaProvider, wsUrlHint);
         } catch (err: any) {
           if (!isMountedRef.current || cancelled) return;
           hasInitRef.current = false;
@@ -548,12 +542,12 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
         token={token}
         joinWithoutUserInteraction
       >
-        <MeetingContainer {...inCallShellProps} />
+        <VideoSDKMeetingContainer {...inCallShellProps} />
       </MeetingProvider>
     </div>
   );
 };
 
-export { VideoSDKCallModal };
-export type { VideoSDKCallModalProps };
-export default VideoSDKCallModal;
+export { CallModal, CallModal as VideoSDKCallModal };
+export type { CallModalProps };
+export default CallModal;

@@ -203,7 +203,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (cancelled) return
       void import('@videosdk.live/js-sdk')
       void import('@/shared/utils/callWindow')
-      void import('@/features/video/components/VideoSDKCallModal')
+      void import('@/features/video/CallModal')
     }
 
     if (windowWithIdle.requestIdleCallback) {

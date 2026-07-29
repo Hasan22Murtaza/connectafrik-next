@@ -1,8 +1,8 @@
-/**
+﻿/**
  * MeetingContainer — core call experience powered by VideoSDK React SDK.
  *
  * Architecture:
- *   VideoSDKCallModal (MeetingProvider joinWithoutUserInteraction) → MeetingContainer (useMeeting)
+ *   CallModal (MeetingProvider joinWithoutUserInteraction) → MeetingContainer (useMeeting)
  *     └─ ParticipantTile[]  (useParticipant per participant)
  *
  * Key facts about useMeeting:
@@ -37,17 +37,19 @@ import {
   playRingbackTone,
 } from '@/features/video/services/ringtoneService';
 import { apiClient } from '@/lib/api-client';
-import type { CallStatus, SpeakerLevel } from './types';
-import { SPEAKER_VOLUMES } from './types';
-import ParticipantTile from './ParticipantTile';
-import ScreenShareView from './ScreenShareView';
-import CallControls from './CallControls';
-import CallStatusOverlay from './CallStatusOverlay';
-import AddPeoplePanel from './AddPeoplePanel';
-import MessageInput from './MessageInput';
-import GroupCallParticipantsStrip from './GroupCallParticipantsStrip';
-import type { CallParticipantProfile } from './GroupCallParticipantsStrip';
-import { LocalAdaptiveSendQuality } from './LocalAdaptiveSendQuality';
+import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
+import { SPEAKER_VOLUMES } from '@/features/video/core/types';
+import ScreenShareView from '@/features/video/ui/ScreenShareView';
+import { VideoSDKParticipantTileBridge } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
+import { VideoSDKScreenShareMedia } from '@/features/video/providers/videosdk/components/ScreenShareMedia';
+import type { NormalizedParticipant } from '@/features/video/core/models';
+import CallControls from '@/features/video/ui/CallControls';
+import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
+import AddPeoplePanel from '@/features/video/ui/AddPeoplePanel';
+import MessageInput from '@/features/video/ui/MessageInput';
+import GroupCallParticipantsStrip from '@/features/video/ui/GroupCallParticipantsStrip';
+import type { CallParticipantProfile } from '@/features/video/ui/GroupCallParticipantsStrip';
+import { LocalAdaptiveSendQuality } from '@/features/video/providers/videosdk/LocalAdaptiveSendQuality';
 import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
 
 const LAST_PARTICIPANT_AUTO_END_MS = 5000;
@@ -1212,16 +1214,56 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         {/* ── Screen share view (remote full-screen OR local banner) ─────── */}
         {(remotePresenter || isLocalPresenting) && (
           <ScreenShareView
-            presenterId={remotePresenter ?? (localId || '')}
-            presenterName={presenterName}
-            remoteParticipantIds={remoteParticipantIds}
-            localParticipantId={localId ?? null}
+            presenter={{
+              id: remotePresenter ?? localId ?? '',
+              displayName: isLocalPresenting ? 'You' : presenterName,
+              isLocal: isLocalPresenting,
+              isMicOn: true,
+              isCameraOn: false,
+              isScreenSharing: true,
+              isActiveSpeaker: false,
+              avatarUrl: '',
+            }}
+            presenterName={isLocalPresenting ? 'You' : presenterName}
+            sidebarParticipants={(
+              isLocalPresenting
+                ? remoteParticipantIds
+                : [
+                    ...remoteParticipantIds.filter((id) => id !== remotePresenter),
+                    ...(localId ? [localId] : []),
+                  ]
+            ).map(
+              (id): NormalizedParticipant => ({
+                id,
+                displayName: 'Participant',
+                isLocal: id === localId,
+                isMicOn: true,
+                isCameraOn: true,
+                isScreenSharing: false,
+                isActiveSpeaker: false,
+                avatarUrl: '',
+              }),
+            )}
             isLocalPresenting={isLocalPresenting}
             callDuration={callDuration}
             participantCount={participantCount}
             formatDuration={formatDuration}
             audioVolume={audioVolume}
             onStopSharing={handleToggleScreenShare}
+            screenShareMedia={
+              !isLocalPresenting && remotePresenter ? (
+                <VideoSDKScreenShareMedia presenterId={remotePresenter} />
+              ) : null
+            }
+            renderParticipantTile={(p, opts) => (
+              <VideoSDKParticipantTileBridge
+                participantId={p.id}
+                isLocal={p.isLocal}
+                tileCount={opts.tileCount}
+                showNameLabel
+                audioVolume={opts.audioVolume}
+              />
+            )}
           />
         )}
 
@@ -1233,7 +1275,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           (callStatus === 'connected' || callStatus === 'connecting_media') &&
           (effectiveCallType === 'video' ? (
             <div className="absolute inset-0">
-              <ParticipantTile
+              <VideoSDKParticipantTileBridge
                 participantId={remoteParticipantIds[0]}
                 tileCount={1}
                 showNameLabel={false}
@@ -1241,7 +1283,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               />
             </div>
           ) : (
-            <ParticipantTile
+            <VideoSDKParticipantTileBridge
               participantId={remoteParticipantIds[0]}
               audioOnly
               audioVolume={audioVolume}
@@ -1267,7 +1309,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                   minHeight: 0,
                 }}
               >
-                <ParticipantTile
+                <VideoSDKParticipantTileBridge
                   participantId={pid}
                   isLocal={pid === localId}
                   tileCount={gridLayout.total}
@@ -1330,7 +1372,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               onPointerUp={onPipPointerUp}
               onPointerCancel={onPipPointerUp}
             >
-              <ParticipantTile
+              <VideoSDKParticipantTileBridge
                 participantId={localId}
                 isLocal
                 tileCount={2}
@@ -1360,15 +1402,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             </div>
           )} */}
 
-        {/* ── Duration timer (bottom-left, video / group) ───────────────── */}
-        {callStatus === 'connected' &&
-          (effectiveCallType === 'video' || isGroupCall) &&
-          !remotePresenter &&
-          !isLocalPresenting && (
-            <div className="absolute bottom-16 sm:bottom-20 left-3 sm:left-4 text-xs sm:text-sm font-bold tracking-wider text-content font-mono tabular-nums z-30">
-              {formatDuration(callDuration)}
-            </div>
-          )}
 
         {/* ── Call status overlay (connecting / ringing / connecting_media / ended) */}
         <CallStatusOverlay

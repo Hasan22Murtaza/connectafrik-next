@@ -1,3 +1,4 @@
+import { resolveClientPreferredProvider } from './resolve';
 import type { CallMediaProviderName } from './types';
 
 export interface CallBootstrapPayload {
@@ -43,7 +44,7 @@ export function parseCallMediaResponse(payload: Record<string, unknown>): {
   const provider =
     payload.provider === 'videosdk' || payload.provider === 'livekit'
       ? payload.provider
-      : 'livekit';
+      : resolveClientPreferredProvider();
   const wsUrl = typeof payload.wsUrl === 'string' ? payload.wsUrl : undefined;
   return { token, provider, wsUrl };
 }

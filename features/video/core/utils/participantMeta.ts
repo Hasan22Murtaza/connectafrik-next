@@ -1,4 +1,7 @@
-export function profileImageUrlFromParticipantMeta(meta: unknown): string {
+/**
+ * Parse profile image URL from participant metadata (provider-agnostic).
+ */
+export function profileImageUrlFromMeta(meta: unknown): string {
   let o: Record<string, unknown> | null = null;
   if (typeof meta === 'string') {
     try {

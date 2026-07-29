@@ -174,7 +174,6 @@ export async function POST(request: NextRequest) {
     console.log('📱 Push notification API called')
 
     const body = await request.json() as NotificationPayload
-    console.log('✅ Notification payload:', body)
     const { user_id, title, body: notificationBody, notification_type, skip_db } = body
 
     if (!user_id || !title || !notificationBody) {

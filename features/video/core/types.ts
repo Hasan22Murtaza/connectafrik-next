@@ -1,7 +1,8 @@
 export type CallStatus = 'connecting' | 'ringing' | 'connecting_media' | 'connected' | 'ended';
 export type SpeakerLevel = 'normal' | 'low' | 'loud';
 
-export interface VideoSDKCallModalProps {
+/** Props for the call entry surface (`features/video/CallModal.tsx`). */
+export interface CallModalProps {
   isOpen: boolean;
   onClose: () => void;
   callType: 'audio' | 'video';
@@ -19,10 +20,13 @@ export interface VideoSDKCallModalProps {
   roomIdHint?: string;
   tokenHint?: string;
   callIdHint?: string;
-  /** Staged from /api/videosdk/room when using LiveKit. */
+  /** Staged from `/api/videosdk/room` when using LiveKit. */
   mediaProviderHint?: 'livekit' | 'videosdk';
   wsUrlHint?: string;
 }
+
+/** @deprecated Use `CallModalProps` */
+export type VideoSDKCallModalProps = CallModalProps;
 
 export const SPEAKER_VOLUMES: Record<SpeakerLevel, number> = {
   normal: 0.85,
