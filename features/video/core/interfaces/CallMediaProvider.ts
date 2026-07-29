@@ -23,7 +23,6 @@ export interface CallMediaProviderAdapter {
   leaveMeeting(): Promise<void>;
   toggleMic(): Promise<void>;
   toggleCamera(): Promise<void>;
-  switchCamera(): Promise<void>;
   switchSpeaker(level: 'normal' | 'low' | 'loud'): void;
   startScreenShare(): Promise<void>;
   stopScreenShare(): Promise<void>;

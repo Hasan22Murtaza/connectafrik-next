@@ -338,7 +338,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     leave,
     toggleMic,
     toggleWebcam,
-    changeWebcam,
     enableScreenShare,
     disableScreenShare,
     participants,         // remote participants only
@@ -964,18 +963,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     setPendingVideoRequest(null);
   }, [signalCallTypeSwitch]);
 
-  const handleSwitchCamera = useCallback(async () => {
-    if (typeof changeWebcam !== 'function') return;
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices.filter((d) => d.kind === 'videoinput');
-      if (cameras.length < 2) return;
-      const currentIndex = cameras.findIndex((c) => c.label);
-      const next = cameras[(currentIndex + 1) % cameras.length];
-      if (next?.deviceId) changeWebcam(next.deviceId);
-    } catch { /* ignore */ }
-  }, [changeWebcam]);
-
   const handleToggleSpeaker = useCallback(() => {
     setSpeakerLevel((prev) =>
       prev === 'normal' ? 'loud' : prev === 'loud' ? 'low' : 'normal',
@@ -1482,7 +1469,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             onToggleAddPeople={() => setShowAddPeople((p) => !p)}
             onEndCall={handleEndCall}
             onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
-            onSwitchCamera={handleSwitchCamera}
             isGroupCall={isGroupCall || isGroupCallSession}
           />
         )}

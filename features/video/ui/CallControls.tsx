@@ -5,7 +5,6 @@ import {
   MonitorOff,
   MonitorUp,
   PhoneOff,
-  SwitchCamera,
   UserPlus,
   Video,
   VideoOff,
@@ -34,7 +33,6 @@ interface CallControlsProps {
   onToggleAddPeople: () => void;
   onEndCall: () => void;
   onEndCallForAll?: () => void;
-  onSwitchCamera?: () => void;
 }
 
 const CallControls: React.FC<CallControlsProps> = ({
@@ -55,7 +53,6 @@ const CallControls: React.FC<CallControlsProps> = ({
   onToggleAddPeople,
   onEndCall,
   onEndCallForAll,
-  onSwitchCamera,
   isGroupCall = false,
 }) => {
   const screenShareDisabled = !!remoteScreenShareStream && !isScreenSharing;
@@ -105,18 +102,6 @@ const CallControls: React.FC<CallControlsProps> = ({
               ) : (
                 <VideoOff className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
               )}
-            </button>
-          )}
-
-          {/* Switch camera (video calls only) */}
-          {callType === 'video' && isVideoEnabled && onSwitchCamera && (
-            <button
-              onClick={onSwitchCamera}
-              className="rounded-full p-2.5 sm:p-3 md:p-4 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-110 active:scale-95 focus:outline-none bg-surface/90 hover:bg-surface text-content backdrop-blur-sm"
-              title="Switch camera"
-              aria-label="Switch camera"
-            >
-              <SwitchCamera className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </button>
           )}
 

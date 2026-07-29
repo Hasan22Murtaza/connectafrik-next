@@ -428,23 +428,6 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     threadId,
   ]);
 
-  const handleSwitchCamera = useCallback(async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const cameras = devices.filter((d) => d.kind === 'videoinput');
-      if (cameras.length < 2 || !room) return;
-      const currentPub = localParticipantInfo.getTrackPublication(Track.Source.Camera);
-      const currentDeviceId = currentPub?.track?.mediaStreamTrack?.getSettings?.().deviceId;
-      const currentIndex = cameras.findIndex((c) => c.deviceId && c.deviceId === currentDeviceId);
-      const next = cameras[(Math.max(0, currentIndex) + 1) % cameras.length];
-      if (next?.deviceId) {
-        await room.switchActiveDevice('videoinput', next.deviceId);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [localParticipantInfo, room]);
-
   const handleSendMessage = useCallback(async () => {
     if (!messageText.trim() || !threadId || !currentUserId) return;
     try {
@@ -918,7 +901,6 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             onToggleMessageInput={() => setShowMessageInput((v) => !v)}
             onToggleAddPeople={() => setShowAddPeople((v) => !v)}
             onEndCall={handleEndCall}
-            onSwitchCamera={handleSwitchCamera}
             isGroupCall={isGroupCall}
           />
         )}
