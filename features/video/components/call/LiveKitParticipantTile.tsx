@@ -4,7 +4,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AudioTrack, VideoTrack } from '@livekit/components-react';
+import {
+  AudioTrack,
+  VideoTrack,
+  useIsMuted,
+  useIsSpeaking,
+  useParticipantTracks,
+} from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
 import { Track } from 'livekit-client';
 import { profileImageUrlFromParticipantMeta } from './livekitParticipantMeta';
@@ -26,25 +32,31 @@ const LiveKitParticipantTile = React.memo(function LiveKitParticipantTile({
   tileCount = 1,
   showNameLabel = true,
 }: LiveKitParticipantTileProps) {
-  const camPub = participant.getTrackPublication(Track.Source.Camera);
-  const micPub = participant.getTrackPublication(Track.Source.Microphone);
-  const webcamOn = !!camPub?.track && !camPub.isMuted;
-  const micOn = !!micPub?.track && !micPub.isMuted;
+  const cameraTracks = useParticipantTracks([Track.Source.Camera], participant.identity);
+  const micTracks = useParticipantTracks([Track.Source.Microphone], participant.identity);
+  const cameraTrackRef = cameraTracks[0];
+  const micTrackRef = micTracks[0];
+
+  const camMuted = useIsMuted(
+    cameraTrackRef ?? { participant, source: Track.Source.Camera },
+  );
+  const micMuted = useIsMuted(
+    micTrackRef ?? { participant, source: Track.Source.Microphone },
+  );
+
+  const webcamOn = Boolean(cameraTrackRef?.publication?.track) && !camMuted;
+  const micOn = Boolean(micTrackRef?.publication?.track) && !micMuted;
   const name = participant.name || participant.identity || 'Participant';
   const initial = name.trim().charAt(0).toUpperCase();
   const avatarFromMeta = profileImageUrlFromParticipantMeta(participant.metadata);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
-  const isActiveSpeaker = participant.isSpeaking;
+  const isActiveSpeaker = useIsSpeaking(participant);
 
   if (audioOnly) {
-    if (isLocal || !micPub?.track) return null;
+    if (isLocal || !micTrackRef) return null;
     return (
       <AudioTrack
-        trackRef={{
-          participant,
-          publication: micPub,
-          source: Track.Source.Microphone,
-        }}
+        trackRef={micTrackRef}
         volume={audioVolume}
       />
     );
@@ -66,13 +78,9 @@ const LiveKitParticipantTile = React.memo(function LiveKitParticipantTile({
       }`}
       style={{ background: 'rgba(15, 23, 42, 0.58)' }}
     >
-      {webcamOn && camPub && (
+      {webcamOn && cameraTrackRef && (
         <VideoTrack
-          trackRef={{
-            participant,
-            publication: camPub,
-            source: Track.Source.Camera,
-          }}
+          trackRef={cameraTrackRef}
           className="absolute inset-0 h-full w-full min-h-0 min-w-0 object-cover"
           style={{
             transform: isLocal ? 'scaleX(-1)' : undefined,
@@ -104,13 +112,9 @@ const LiveKitParticipantTile = React.memo(function LiveKitParticipantTile({
         </div>
       )}
 
-      {!isLocal && micPub?.track && (
+      {!isLocal && micTrackRef && (
         <AudioTrack
-          trackRef={{
-            participant,
-            publication: micPub,
-            source: Track.Source.Microphone,
-          }}
+          trackRef={micTrackRef}
           volume={audioVolume}
         />
       )}

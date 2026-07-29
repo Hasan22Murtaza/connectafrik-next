@@ -43,7 +43,7 @@ export function parseCallMediaResponse(payload: Record<string, unknown>): {
   const provider =
     payload.provider === 'videosdk' || payload.provider === 'livekit'
       ? payload.provider
-      : 'videosdk';
+      : 'livekit';
   const wsUrl = typeof payload.wsUrl === 'string' ? payload.wsUrl : undefined;
   return { token, provider, wsUrl };
 }

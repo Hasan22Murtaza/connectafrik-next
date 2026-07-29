@@ -30,6 +30,10 @@ import type { VideoSDKCallModalProps } from './call/types';
 import CallStatusOverlay from './call/CallStatusOverlay';
 import IncomingCallControls from './call/IncomingCallControls';
 import MeetingContainer from './call/MeetingContainer';
+import LiveKitMeetingContainer from './call/LiveKitMeetingContainer';
+import { LiveKitRoom } from '@livekit/components-react';
+import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-bootstrap';
+import type { CallMediaProviderName } from '@/lib/call-media/types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,6 +69,8 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     roomIdHint,
     tokenHint,
     callIdHint,
+    mediaProviderHint,
+    wsUrlHint,
   } = props;
 
   // ── Display props (hydrated on `/call/...` from call-sessions + thread API) ─
@@ -83,6 +89,10 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   const [prePhase, setPrePhase] = useState<'connecting' | 'ringing' | 'error'>(
     'connecting',
   );
+  const [mediaProvider, setMediaProvider] = useState<CallMediaProviderName>(
+    mediaProviderHint ?? 'livekit',
+  );
+  const [wsUrl, setWsUrl] = useState<string | undefined>(wsUrlHint);
   const [errorMsg, setErrorMsg] = useState('');
   const [isAcceptingCall, setIsAcceptingCall] = useState(false);
 
@@ -101,16 +111,35 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   useEffect(() => {
     if (!isOpen) {
       setSdkParticipantUserId(null);
+      setMediaProvider(mediaProviderHint ?? 'livekit');
+      setWsUrl(wsUrlHint);
       hasInitRef.current = false;
     }
-  }, [isOpen]);
+  }, [isOpen, mediaProviderHint, wsUrlHint]);
+
+  const applyMediaHints = useCallback(
+    (provider: CallMediaProviderName, explicitWsUrl?: string) => {
+      setMediaProvider(provider);
+      if (provider === 'livekit') {
+        setWsUrl(explicitWsUrl ?? resolveLiveKitWsUrl(wsUrlHint));
+      }
+    },
+    [wsUrlHint],
+  );
 
   // ── Token fetcher ───────────────────────────────────────────────────────────
   // Resolve userId from Supabase session here (not only from props). The call popup
   // often mounts before AuthContext hydrates `user?.id`, and JSON.stringify drops
   // `undefined` userId — the API then returns 400 "Missing roomId or userId".
   const getToken = useCallback(
-    async (rid: string): Promise<{ token: string; userId: string }> => {
+    async (
+      rid: string,
+    ): Promise<{
+      token: string;
+      userId: string;
+      provider: CallMediaProviderName;
+      wsUrl?: string;
+    }> => {
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData.session;
       const resolvedUserId =
@@ -140,10 +169,16 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
         throw new Error(apiErr || 'Failed to get VideoSDK token');
       }
 
-      if (!payload?.token || typeof payload.token !== 'string') {
+      const media = parseCallMediaResponse(payload as Record<string, unknown>);
+      if (!media.token) {
         throw new Error('Invalid token response');
       }
-      return { token: payload.token, userId: resolvedUserId };
+      return {
+        token: media.token,
+        userId: resolvedUserId,
+        provider: media.provider,
+        wsUrl: media.wsUrl,
+      };
     },
     [currentUserId],
   );
@@ -181,6 +216,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
           setSdkParticipantUserId(uid);
           setMeetingId(ridFromHint);
           setToken(hint);
+          applyMediaHints(mediaProviderHint ?? 'livekit', wsUrlHint);
         } catch (err: any) {
           if (!isMountedRef.current || cancelled) return;
           hasInitRef.current = false;
@@ -225,17 +261,20 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
               '';
             if (!uid) throw new Error('You must be signed in to start a call.');
             if (!isMountedRef.current) return;
+            const media = parseCallMediaResponse(data as Record<string, unknown>);
             setSdkParticipantUserId(uid);
             setMeetingId(rid);
             setToken(preTok);
+            applyMediaHints(media.provider, media.wsUrl);
             return;
           }
         }
-        const { token: tok, userId: joinUid } = await getToken(rid);
+        const { token: tok, userId: joinUid, provider, wsUrl: resolvedWsUrl } = await getToken(rid);
         if (!isMountedRef.current) return;
         setSdkParticipantUserId(joinUid);
         setMeetingId(rid);
         setToken(tok);
+        applyMediaHints(provider, resolvedWsUrl);
       } catch (err: any) {
         if (!isMountedRef.current) return;
         // Allow retry when `currentUserId` hydrates after first paint or user refreshes.
@@ -246,7 +285,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     };
 
     init();
-  }, [isOpen, isIncoming, roomIdHint, tokenHint, getToken, currentUserId]);
+  }, [isOpen, isIncoming, roomIdHint, tokenHint, mediaProviderHint, wsUrlHint, getToken, currentUserId, applyMediaHints]);
 
   // ── Incoming ring: PATCH uses accept | declined | end | missed (no legacy reject)
   const signalIncomingTerminal = useCallback(
@@ -336,17 +375,18 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
       } catch { /* ignore */ }
     }
     try {
-      const { token: tok, userId: joinUid } = await getToken(meetingId);
+      const { token: tok, userId: joinUid, provider, wsUrl: resolvedWsUrl } = await getToken(meetingId);
       if (!isMountedRef.current) return;
       setSdkParticipantUserId(joinUid);
       setToken(tok);
+      applyMediaHints(provider, resolvedWsUrl);
     } catch (err: any) {
       if (!isMountedRef.current) return;
       setIsAcceptingCall(false);
       setPrePhase('error');
       setErrorMsg(err.message || 'Failed to connect');
     }
-  }, [isAcceptingCall, meetingId, threadId, callIdHint, getToken, stopRingtone]);
+  }, [isAcceptingCall, meetingId, threadId, callIdHint, getToken, stopRingtone, applyMediaHints]);
 
   // ── Early return: modal is closed ──────────────────────────────────────────
   if (!isOpen) return null;
@@ -415,7 +455,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
     );
   }
 
-  // ── In-call: VideoSDK MeetingProvider wraps the call UI ────────────────────
+  // ── In-call: LiveKit or VideoSDK depending on resolved media provider ───────
   /** Local participant display name for VideoSDK: callee uses recipient*, caller uses caller*. */
   const localDisplayName = isIncoming
     ? decodedRecipientName && decodedRecipientName !== 'Unknown'
@@ -432,6 +472,62 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
   /** VideoSDK optional join payload: must be a plain object when provided (e.g. profile image URL). */
   const meetingMetaData: Record<string, string> =
     localAvatarForSdk.length > 0 ? { profileImage: localAvatarForSdk } : {};
+
+  const inCallShellProps = {
+    isOpen,
+    onClose,
+    callType,
+    isIncoming,
+    onAccept,
+    onCallEnd,
+    threadId,
+    currentUserId,
+    roomIdHint,
+    callIdHint,
+    meetingId,
+    resolvedCallerName: localDisplayName,
+    decodedCallerName,
+    decodedRecipientName,
+    decodedCallerAvatarUrl,
+    decodedRecipientAvatarUrl,
+  };
+
+  if (mediaProvider === 'livekit') {
+    const serverUrl = resolveLiveKitWsUrl(wsUrl);
+    if (!serverUrl) {
+      return (
+        <div className="fixed inset-0 z-[9999] bg-surface-canvas">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-content p-8 text-center">
+            <div className="text-lg font-semibold">Connection Failed</div>
+            <div className="text-sm text-content-secondary">
+              LiveKit server URL is not configured. Set NEXT_PUBLIC_LIVEKIT_WS_URL.
+            </div>
+            <button
+              onClick={onClose}
+              className="px-6 py-2 bg-red-500 text-white rounded-full text-sm font-medium hover:bg-red-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 z-[9999] animate-fadeIn">
+        <LiveKitRoom
+          serverUrl={serverUrl}
+          token={token}
+          connect={true}
+          audio={true}
+          video={callType === 'video'}
+          onError={(err) => console.error('[LiveKitRoom] error:', err)}
+        >
+          <LiveKitMeetingContainer {...inCallShellProps} />
+        </LiveKitRoom>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] animate-fadeIn">
@@ -452,24 +548,7 @@ const VideoSDKCallModal: React.FC<VideoSDKCallModalProps> = (props) => {
         token={token}
         joinWithoutUserInteraction
       >
-        <MeetingContainer
-          isOpen={isOpen}
-          onClose={onClose}
-          callType={callType}
-          isIncoming={isIncoming}
-          onAccept={onAccept}
-          onCallEnd={onCallEnd}
-          threadId={threadId}
-          currentUserId={currentUserId}
-          roomIdHint={roomIdHint}
-          callIdHint={callIdHint}
-          meetingId={meetingId}
-          resolvedCallerName={localDisplayName}
-          decodedCallerName={decodedCallerName}
-          decodedRecipientName={decodedRecipientName}
-          decodedCallerAvatarUrl={decodedCallerAvatarUrl}
-          decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
-        />
+        <MeetingContainer {...inCallShellProps} />
       </MeetingProvider>
     </div>
   );
