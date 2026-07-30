@@ -310,10 +310,22 @@ export default function CallWindowPage() {
       }, 1500)
     }
 
+    const terminateIncomingCall = (payloadThreadId?: string, payloadCallId?: string) => {
+      if (acceptedLocallyRef.current || answeredElsewhere) return
+      if (!matchesThisCall(payloadThreadId, payloadCallId)) return
+      handleCallEnd()
+    }
+
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       const data = event.data
-      if (!data || data.type !== 'CALL_STATUS' || data.status !== 'active') return
-      terminateAnsweredElsewhere(data.threadId, data.callId)
+      if (!data || data.type !== 'CALL_STATUS') return
+      if (data.status === 'active') {
+        terminateAnsweredElsewhere(data.threadId, data.callId)
+        return
+      }
+      if (data.status === 'ended') {
+        terminateIncomingCall(data.threadId, data.callId)
+      }
     }
 
     const handleFcmForeground = (event: Event) => {
@@ -322,11 +334,24 @@ export default function CallWindowPage() {
       if (!data || typeof data !== 'object') return
       const type = String(data.type || data.status || data.call_status || '').trim().toLowerCase()
       const last = String(data.last_signal || '').trim().toLowerCase()
-      if (type !== 'active' && last !== 'active') return
       const tid = String(data.thread_id || data.threadId || data.chat_thread_id || '').trim()
       const cidRaw = data.call_id || data.callId || ''
       const cid = typeof cidRaw === 'string' ? cidRaw.trim() : ''
-      terminateAnsweredElsewhere(tid, cid)
+
+      if (type === 'active' || last === 'active') {
+        terminateAnsweredElsewhere(tid, cid)
+        return
+      }
+      if (
+        type === 'declined' ||
+        last === 'declined' ||
+        type === 'missed' ||
+        last === 'missed' ||
+        type === 'ended' ||
+        last === 'ended'
+      ) {
+        terminateIncomingCall(tid, cid)
+      }
     }
 
     // The modal posts CALL_STATUS:active to this same window the instant Accept is
@@ -354,7 +379,7 @@ export default function CallWindowPage() {
       window.removeEventListener('message', handleWindowMessage)
       window.removeEventListener('fcm-foreground-message', handleFcmForeground)
     }
-  }, [isIncoming, threadId, callId, answeredElsewhere])
+  }, [isIncoming, threadId, callId, answeredElsewhere, handleCallEnd])
 
   const showCallUi = callDisplay !== null && !authLoading && user?.id
 

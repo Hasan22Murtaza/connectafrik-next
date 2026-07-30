@@ -27,6 +27,7 @@ import { LiveKitRoom } from '@livekit/components-react';
 import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-media/bootstrap';
 import type { CallMediaProviderName } from '@/lib/call-media/types';
 import { resolveClientVideoProvider } from '@/features/video/core/config';
+import { useIncomingCallTerminalSignals } from '@/features/video/hooks/useIncomingCallTerminalSignals';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -315,6 +316,22 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     void signalIncomingTerminal('missed');
   }, [signalIncomingTerminal]);
 
+  // Remote terminal while still ringing (caller cancelled, missed, etc.)
+  useIncomingCallTerminalSignals({
+    enabled: isOpen && isIncoming && !token,
+    threadId,
+    callId: callIdHint,
+    currentUserId,
+    onTerminal: () => {
+      stopRingtone();
+      if (callTimeoutRef.current) {
+        clearTimeout(callTimeoutRef.current);
+        callTimeoutRef.current = null;
+      }
+      onClose();
+    },
+  });
+
   // ── Incoming call: ring immediately; token is fetched only on Accept ────────
   // `token` must be in deps: otherwise when callbacks re-create (auth/hydration),
   // this effect re-runs and starts the ringtone again after Accept.
@@ -515,7 +532,13 @@ const CallModal: React.FC<CallModalProps> = (props) => {
           connect={true}
           audio={true}
           video={callType === 'video'}
-          onError={(err) => console.error('[LiveKitRoom] error:', err)}
+          onError={(err) => {
+            console.error('[LiveKitRoom] error:', err);
+            if (isMountedRef.current) {
+              setPrePhase('error');
+              setErrorMsg(err?.message || 'Failed to connect to call');
+            }
+          }}
         >
           <LiveKitMeetingContainer {...inCallShellProps} />
         </LiveKitRoom>

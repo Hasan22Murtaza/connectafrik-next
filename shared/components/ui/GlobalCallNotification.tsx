@@ -277,6 +277,8 @@ const GlobalCallNotification: React.FC = () => {
       if (
         t === 'declined' ||
         last === 'declined' ||
+        t === 'missed' ||
+        last === 'missed' ||
         t === 'ended' ||
         last === 'ended'
       ) {

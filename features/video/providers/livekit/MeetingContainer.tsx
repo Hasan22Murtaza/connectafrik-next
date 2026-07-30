@@ -26,6 +26,8 @@ import {
   playRingbackTone,
 } from '@/features/video/services/ringtoneService';
 import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
+import { useCallSessionSignaling } from '@/features/video/hooks/useCallSessionSignaling';
+import { broadcastCallUiStatus } from '@/features/video/hooks/broadcastCallUiStatus';
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
 import { SPEAKER_VOLUMES } from '@/features/video/core/types';
 import CallControls from '@/features/video/ui/CallControls';
@@ -38,23 +40,7 @@ import { LiveKitScreenShareMedia } from '@/features/video/providers/livekit/comp
 import type { MeetingContainerProps } from '@/features/video/providers/videosdk/MeetingContainer';
 
 const LAST_PARTICIPANT_AUTO_END_MS = 5000;
-
-function broadcastCallUiStatus(status: 'active' | 'ended', threadId: string | undefined) {
-  if (typeof window === 'undefined' || !threadId) return;
-  const payload = { type: 'CALL_STATUS', status, threadId };
-  try {
-    window.postMessage(payload, window.location.origin);
-  } catch {
-    /* ignore */
-  }
-  try {
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage(payload, window.location.origin);
-    }
-  } catch {
-    /* ignore */
-  }
-}
+const CONNECTING_MEDIA_TO_CONNECTED_MS = 600;
 
 const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   isOpen,
@@ -114,8 +100,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const callIdRef = useRef(callIdHint || '');
   const callDurationRef = useRef(0);
   const ringbackRef = useRef<{ stop: () => void } | null>(null);
-  const suppressSignalRef = useRef(false);
   const remoteDisconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleEndCallRef = useRef<() => void>(() => {});
   const hasSignaledJoinRef = useRef(false);
   const remoteScreenShareMarkerRef = useRef<MediaStream | null>(null);
   const meetingSurfaceRef = useRef<HTMLDivElement>(null);
@@ -162,11 +148,36 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       callStatusRef.current = next;
       if (isMountedRef.current) setCallStatus(next);
       if (next === 'connected' && prev !== 'connected' && threadId) {
-        broadcastCallUiStatus('active', threadId);
+        broadcastCallUiStatus('active', threadId, callIdHint);
       }
     },
-    [localParticipantInfo.identity, participants, threadId],
+    [localParticipantInfo.identity, participants, threadId, callIdHint],
   );
+
+  const signaling = useCallSessionSignaling({
+    isOpen,
+    threadId,
+    currentUserId,
+    callIdHint,
+    roomIdHint,
+    meetingId,
+    isIncoming,
+    callStatus,
+    callStatusRef,
+    setCallStatusSafe,
+    callDurationRef,
+    onClose,
+    ringbackRef,
+    onOutgoingRingTimeout: () => handleEndCallRef.current(),
+  });
+
+  const {
+    isGroupCallSession,
+    isGroupCallSessionRef,
+    suppressSignalRef,
+    signalMediaDisconnected,
+    broadcastEnded,
+  } = signaling;
 
   const formatDuration = useCallback((secs: number) => {
     const m = Math.floor(secs / 60)
@@ -194,12 +205,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       if (remoteCount !== 0) return;
       const activeCallId = callIdRef.current || callIdHint || '';
       if (threadId && currentUserId && activeCallId) {
+        const endEvent = isGroupCallSessionRef.current ? 'leave' : 'end';
         await patchCallSessionWithRetry(threadId, {
           call_id: activeCallId,
-          event: 'end',
+          event: endEvent,
           duration_seconds: callDurationRef.current,
         });
       }
+      broadcastEnded();
       setCallStatusSafe('ended');
       setTimeout(() => {
         if (isMountedRef.current) onClose();
@@ -277,10 +290,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         }
       }, 300);
     };
+    const onDisconnected = () => {
+      void signalMediaDisconnected();
+    };
 
     room.on(RoomEvent.Connected, onConnected);
     room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
     room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+    room.on(RoomEvent.Disconnected, onDisconnected);
 
     if (room.state === 'connected') {
       signalMeetingJoined();
@@ -290,6 +307,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       room.off(RoomEvent.Connected, onConnected);
       room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
       room.off(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+      room.off(RoomEvent.Disconnected, onDisconnected);
     };
   }, [
     clearRemoteDisconnectTimer,
@@ -299,7 +317,20 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     scheduleAutoEndWhenAlone,
     setCallStatusSafe,
     signalMeetingJoined,
+    signalMediaDisconnected,
   ]);
+
+  // connecting_media → connected with short delay (matches VideoSDK)
+  useEffect(() => {
+    if (callStatus !== 'connecting_media') return;
+    const remoteCount = participants.filter(
+      (p) => p.identity !== localParticipantInfo.identity,
+    ).length;
+    if (remoteCount > 0) {
+      const t = setTimeout(() => setCallStatusSafe('connected'), CONNECTING_MEDIA_TO_CONNECTED_MS);
+      return () => clearTimeout(t);
+    }
+  }, [callStatus, participants, localParticipantInfo.identity, setCallStatusSafe]);
 
   useEffect(() => {
     if (!isIncomingRef.current) {
@@ -308,16 +339,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       ).length;
       if (
         remoteCount > 0 &&
-        (callStatusRef.current === 'ringing' ||
-          callStatusRef.current === 'connecting_media' ||
-          callStatusRef.current === 'connecting')
+        (callStatusRef.current === 'ringing' || callStatusRef.current === 'connecting')
       ) {
         if (ringbackRef.current) {
           ringbackRef.current.stop();
           ringbackRef.current = null;
         }
         stopAllRingtones();
-        setCallStatusSafe('connected');
+        setCallStatusSafe('connecting_media');
       }
     }
   }, [localParticipantInfo.identity, participants, setCallStatusSafe]);
@@ -379,34 +408,74 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, []);
 
   const handleEndCall = useCallback(async () => {
-    suppressSignalRef.current = false;
     const activeCallId = callIdRef.current || callIdHint || '';
+    const activeRoomId = roomIdHint || meetingId;
     const isConnected =
       callStatusRef.current === 'connected' ||
       callStatusRef.current === 'connecting_media';
+    const groupLeave = isGroupCallSessionRef.current && isConnected;
 
-    if (threadId && currentUserId && activeCallId) {
-      if (isConnected) {
-        await patchCallSessionWithRetry(threadId, {
-          call_id: activeCallId,
-          event: 'end',
-          duration_seconds: callDurationRef.current,
-        });
-      } else if (!isIncomingRef.current) {
-        await patchCallSessionWithRetry(threadId, {
-          call_id: activeCallId,
-          event: 'missed',
-        });
-      } else {
-        await patchCallSessionWithRetry(threadId, {
-          call_id: activeCallId,
-          event: 'declined',
-          ...callSessionDeviceFields,
-        });
+    if (threadId && currentUserId) {
+      try {
+        if (isConnected && activeCallId) {
+          const ok = await patchCallSessionWithRetry(threadId, {
+            call_id: activeCallId,
+            event: groupLeave ? 'leave' : 'end',
+            duration_seconds: callDurationRef.current,
+          });
+          if (ok && !groupLeave) {
+            await supabaseMessagingService.sendMessage(
+              threadId,
+              {
+                content: 'Call ended',
+                message_type: 'ended',
+                metadata: {
+                  callType: effectiveCallType,
+                  roomId: activeRoomId,
+                  callId: activeCallId,
+                  endedBy: currentUserId,
+                  endedAt: new Date().toISOString(),
+                },
+              },
+              { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
+            );
+          }
+        } else if (!isIncomingRef.current && activeCallId) {
+          const ok = await patchCallSessionWithRetry(threadId, {
+            call_id: activeCallId,
+            event: 'missed',
+          });
+          if (ok) {
+            await supabaseMessagingService.sendMessage(
+              threadId,
+              {
+                content: 'Missed call',
+                message_type: 'missed',
+                metadata: {
+                  callType,
+                  roomId: activeRoomId,
+                  callId: activeCallId,
+                  endedBy: currentUserId,
+                  endedAt: new Date().toISOString(),
+                },
+              },
+              { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
+            );
+          }
+        } else if (isIncomingRef.current && activeCallId) {
+          await patchCallSessionWithRetry(threadId, {
+            call_id: activeCallId,
+            event: 'declined',
+            ...callSessionDeviceFields,
+          });
+        }
+      } catch {
+        /* ignore signaling errors */
       }
     }
 
     suppressSignalRef.current = true;
+    broadcastEnded();
     onCallEnd?.();
     try {
       await room.disconnect();
@@ -416,9 +485,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     setCallStatusSafe('ended');
     setTimeout(() => {
       if (isMountedRef.current) onClose();
-    }, 800);
+    }, 1000);
   }, [
     callIdHint,
+    roomIdHint,
+    meetingId,
     callSessionDeviceFields,
     currentUserId,
     onCallEnd,
@@ -426,7 +497,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     room,
     setCallStatusSafe,
     threadId,
+    effectiveCallType,
+    callType,
+    broadcastEnded,
+    user,
   ]);
+
+  handleEndCallRef.current = () => {
+    void handleEndCall();
+  };
 
   const handleSendMessage = useCallback(async () => {
     if (!messageText.trim() || !threadId || !currentUserId) return;
@@ -588,7 +667,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, [participants]);
 
   const participantCount = remoteParticipantIds.length + 1;
-  const isGroupCall = remoteParticipantIds.length > 1;
+  const isGroupCall = remoteParticipantIds.length > 1 || isGroupCallSession;
 
   const remoteScreenShareParticipant = useMemo(
     () =>
