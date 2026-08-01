@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
-import { MARKETPLACE_SYSTEM } from '@/lib/marketplaceChat'
+import { MARKETPLACE_SYSTEM } from '@/lib/chat/marketplaceChat'
 import { deepseekChatCompletion } from '@/lib/deepseek'
 
 const MESSAGE_BATCH_SIZE = 200

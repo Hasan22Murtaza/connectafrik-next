@@ -4,7 +4,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
-import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 
 import {
 
@@ -14,7 +14,7 @@ import {
 
   threadToResponseBody,
 
-} from '@/lib/chatThreadDetail'
+} from '@/lib/chat/chatThreadDetail'
 
 
 

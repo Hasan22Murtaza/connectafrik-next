@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { lookupGroupChatThreadId } from '@/lib/chatThreadLookup'
+import { lookupGroupChatThreadId } from '@/lib/chat/chatThreadLookup'
 
 const GROUP_SELECT = `
   *,

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { filterThreadIdsAccessibleToUser } from '@/lib/chatThreadAccess'
+import { filterThreadIdsAccessibleToUser } from '@/lib/chat/chatThreadAccess'
 
 /** Sum of unread messages across active, non-blocked chat threads for the user. */
 export async function getTotalUnreadMessageCount(

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
-import { filterThreadIdsAccessibleToUser } from '@/lib/chatThreadAccess'
-import { getBlockStatesForThreads } from '@/lib/chatThreadBlock'
+import { filterThreadIdsAccessibleToUser } from '@/lib/chat/chatThreadAccess'
+import { getBlockStatesForThreads } from '@/lib/chat/chatThreadBlock'
 
 export type ThreadCategory = 'general' | 'marketplace'
 export type ThreadListFilter = 'all' | 'unread' | 'groups'

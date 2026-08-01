@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase-server'
-import { getThreadBlockState } from '@/lib/chatThreadBlock'
+import { getThreadBlockState } from '@/lib/chat/chatThreadBlock'
 
 export const CHAT_THREAD_DETAIL_SELECT = `
   id,

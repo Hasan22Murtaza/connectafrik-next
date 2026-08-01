@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import {
   CHAT_THREAD_DETAIL_SELECT,
   getMyThreadParticipantPrefs,
   threadToResponseBody,
-} from '@/lib/chatThreadDetail'
+} from '@/lib/chat/chatThreadDetail'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 

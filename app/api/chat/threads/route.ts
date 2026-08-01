@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { queryUserThreads } from '@/lib/chatThreadsQuery'
+import { queryUserThreads } from '@/lib/chat/chatThreadsQuery'
 
 /**
  * GET /api/chat/threads

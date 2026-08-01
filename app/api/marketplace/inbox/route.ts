@@ -5,7 +5,7 @@ import {
   fetchMarketplaceInboxThreads,
   MarketplaceInboxLabel,
   MarketplaceInboxRole,
-} from '@/lib/marketplaceChat'
+} from '@/lib/chat/marketplaceChat'
 
 export async function GET(request: NextRequest) {
   try {
