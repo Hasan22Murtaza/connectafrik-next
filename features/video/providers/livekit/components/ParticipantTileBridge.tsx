@@ -18,7 +18,11 @@ export function normalizeLiveKitParticipant(
 ): NormalizedParticipant {
   return {
     id: participant.identity,
-    displayName: participant.name || participant.identity || 'Participant',
+    // Never fall back to `participant.identity` for display: it's the raw
+    // Supabase user UUID, not something meaningful to show. The AccessToken
+    // is now always minted with a real `name` (see issueLiveKitToken), so
+    // this is a safety net for tokens issued before that, not the normal path.
+    displayName: participant.name || 'Participant',
     isLocal,
     isMicOn: true,
     isCameraOn: true,

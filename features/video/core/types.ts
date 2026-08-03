@@ -1,4 +1,10 @@
-export type CallStatus = 'connecting' | 'ringing' | 'connecting_media' | 'connected' | 'ended';
+export type CallStatus =
+  | 'connecting'
+  | 'ringing'
+  | 'connecting_media'
+  | 'connected'
+  | 'reconnecting'
+  | 'ended';
 export type SpeakerLevel = 'normal' | 'low' | 'loud';
 
 /** Props for the call entry surface (`features/video/CallModal.tsx`). */

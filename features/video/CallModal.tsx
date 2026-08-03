@@ -11,6 +11,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { MeetingProvider } from '@videosdk.live/react-sdk';
 import { supabase } from '@/lib/supabase';
 import { stopAll as stopAllRingtones, playRingtone } from '@/features/video/services/ringtoneService';
@@ -73,6 +74,22 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   const decodedCallerAvatarUrl = callerAvatarUrl ? safeDecode(callerAvatarUrl) : '';
   const decodedRecipientAvatarUrl = recipientAvatarUrl ? safeDecode(recipientAvatarUrl) : '';
 
+  /** Local participant's own name/avatar: callee uses recipient*, caller uses caller*.
+   *  Computed here (not just at render time) so getToken() can stamp them onto
+   *  the LiveKit participant at token-mint time — without this, LiveKit's
+   *  AccessToken has no name/avatar to fall back to except the raw user id. */
+  const localDisplayName = isIncoming
+    ? decodedRecipientName && decodedRecipientName !== 'Unknown'
+      ? decodedRecipientName
+      : 'User'
+    : decodedCallerName && decodedCallerName !== 'Unknown'
+      ? decodedCallerName
+      : 'User';
+
+  const localAvatarForSdk = (
+    isIncoming ? decodedRecipientAvatarUrl : decodedCallerAvatarUrl
+  ).trim();
+
   // ── Pre-call state ──────────────────────────────────────────────────────────
   const [token, setToken] = useState<string | null>(null);
   /** Same as Supabase `profiles.id` / `call_sessions.participants` — VideoSDK `participantId`. */
@@ -95,6 +112,14 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   const hasInitRef = useRef(false);
   const ringtoneRef = useRef<{ stop: () => void } | null>(null);
   const callTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Token round-trip started WHILE ringing so Accept has nothing left to await. */
+  const prewarmRef = useRef<Promise<{
+    token: string;
+    userId: string;
+    provider: CallMediaProviderName;
+    wsUrl?: string;
+  }> | null>(null);
+  const prewarmStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -153,7 +178,19 @@ const CallModal: React.FC<CallModalProps> = (props) => {
             ? { Authorization: `Bearer ${session.access_token}` }
             : {}),
         },
-        body: JSON.stringify({ roomId: rid, userId: resolvedUserId }),
+        // `mediaProviderHint` here is only ever set from a server-confirmed
+        // source (the outgoing bootstrap, or the call session's stored
+        // metadata.provider for incoming) -- never the client's own default
+        // guess -- so pinning to it is safe. Prevents this token request from
+        // re-resolving to a different provider than the one the room actually
+        // exists on.
+        body: JSON.stringify({
+          roomId: rid,
+          userId: resolvedUserId,
+          ...(mediaProviderHint ? { provider: mediaProviderHint } : {}),
+          ...(localDisplayName ? { displayName: localDisplayName } : {}),
+          ...(localAvatarForSdk ? { avatarUrl: localAvatarForSdk } : {}),
+        }),
       });
 
       const payload = await res.json().catch(() => ({}));
@@ -175,7 +212,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
         wsUrl: media.wsUrl,
       };
     },
-    [currentUserId],
+    [currentUserId, mediaProviderHint, localDisplayName, localAvatarForSdk],
   );
 
   // ── Ringtone helpers ────────────────────────────────────────────────────────
@@ -241,7 +278,11 @@ const CallModal: React.FC<CallModalProps> = (props) => {
                 ? { Authorization: `Bearer ${session.access_token}` }
                 : {}),
             },
-            body: JSON.stringify({ include_participant_token: true }),
+            body: JSON.stringify({
+              include_participant_token: true,
+              ...(localDisplayName ? { display_name: localDisplayName } : {}),
+              ...(localAvatarForSdk ? { avatar_url: localAvatarForSdk } : {}),
+            }),
           });
           if (!res.ok) throw new Error('Failed to create call room');
           const data = await res.json();
@@ -280,7 +321,19 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     };
 
     init();
-  }, [isOpen, isIncoming, roomIdHint, tokenHint, mediaProviderHint, wsUrlHint, getToken, currentUserId, applyMediaHints]);
+  }, [
+    isOpen,
+    isIncoming,
+    roomIdHint,
+    tokenHint,
+    mediaProviderHint,
+    wsUrlHint,
+    getToken,
+    currentUserId,
+    applyMediaHints,
+    localDisplayName,
+    localAvatarForSdk,
+  ]);
 
   // ── Incoming ring: PATCH uses accept | declined | end | missed (no legacy reject)
   const signalIncomingTerminal = useCallback(
@@ -357,6 +410,51 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     };
   }, [isOpen, isIncoming, token, roomIdHint, stopRingtone, handleIncomingNoAnswer]);
 
+  // ── Prewarm: do the join round-trip WHILE the phone is still ringing ───────
+  // Ringing is 5-15s of otherwise idle time. Moving the token fetch (and its
+  // getSession() round-trip) off the critical path after Accept is the bulk of
+  // the "receiver has to say hello three times" connect-latency complaint —
+  // the outgoing path already does the equivalent (tokenHint/roomIdHint from
+  // the caller's own bootstrap), this closes the gap for the callee.
+  useEffect(() => {
+    if (!isOpen || !isIncoming || token || !meetingId) return;
+    if (prewarmRef.current) return;
+    const pending = getToken(meetingId);
+    pending.catch(() => {}); // handleAccept re-awaits and handles the real error
+    prewarmRef.current = pending;
+    return () => {
+      // Ring ended without Accept (declined/missed/closed) — drop it so a stale
+      // token from a prior ring is never reused for a later Accept.
+      prewarmRef.current = null;
+    };
+  }, [isOpen, isIncoming, token, meetingId, getToken]);
+
+  // Acquire the microphone during ringing too — otherwise device wake-up (and
+  // on mobile, possibly a permission prompt) is serialized AFTER the token
+  // fetch inside handleAccept instead of overlapping it.
+  useEffect(() => {
+    if (!isOpen || !isIncoming || token) return;
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
+    let cancelled = false;
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        prewarmStreamRef.current = stream;
+      })
+      .catch(() => {
+        // Denied or unavailable — the SDK will surface it normally on join.
+      });
+    return () => {
+      cancelled = true;
+      prewarmStreamRef.current?.getTracks().forEach((t) => t.stop());
+      prewarmStreamRef.current = null;
+    };
+  }, [isOpen, isIncoming, token]);
+
   // ── Accept handler (incoming ring phase) — fetches token then shows meeting ─
   const handleAccept = useCallback(async () => {
     if (isAcceptingCall || !meetingId) return;
@@ -366,6 +464,10 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       clearTimeout(callTimeoutRef.current);
       callTimeoutRef.current = null;
     }
+    // The prewarmed mic stream was only to front-load the permission prompt /
+    // hardware wake-up; the SDK acquires its own track on join, so release it.
+    prewarmStreamRef.current?.getTracks().forEach((t) => t.stop());
+    prewarmStreamRef.current = null;
     // Immediately tell the parent window to stop the incoming ringtone.
     // We do this here (not inside onMeetingJoined) so the ringtone stops the
     // moment the receiver taps Accept, even before VideoSDK finishes joining.
@@ -386,8 +488,17 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       } catch { /* ignore */ }
     }
     try {
-      const { token: tok, userId: joinUid, provider, wsUrl: resolvedWsUrl } = await getToken(meetingId);
+      let resolved: { token: string; userId: string; provider: CallMediaProviderName; wsUrl?: string };
+      try {
+        // Usually already settled by the time the user taps Accept -> ~0ms.
+        resolved = prewarmRef.current ? await prewarmRef.current : await getToken(meetingId);
+      } catch {
+        // Prewarm failed (e.g. session refreshed mid-ring) — retry inline so a
+        // failed optimization can never break Accept itself.
+        resolved = await getToken(meetingId);
+      }
       if (!isMountedRef.current) return;
+      const { token: tok, userId: joinUid, provider, wsUrl: resolvedWsUrl } = resolved;
       setSdkParticipantUserId(joinUid);
       setToken(tok);
       applyMediaHints(provider, resolvedWsUrl);
@@ -467,18 +578,6 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   }
 
   // ── In-call: LiveKit or VideoSDK depending on resolved media provider ───────
-  /** Local participant display name for VideoSDK: callee uses recipient*, caller uses caller*. */
-  const localDisplayName = isIncoming
-    ? decodedRecipientName && decodedRecipientName !== 'Unknown'
-      ? decodedRecipientName
-      : 'User'
-    : decodedCallerName && decodedCallerName !== 'Unknown'
-      ? decodedCallerName
-      : 'User';
-
-  const localAvatarForSdk = (
-    isIncoming ? decodedRecipientAvatarUrl : decodedCallerAvatarUrl
-  ).trim();
 
   /** VideoSDK optional join payload: must be a plain object when provided (e.g. profile image URL). */
   const meetingMetaData: Record<string, string> =
@@ -534,13 +633,23 @@ const CallModal: React.FC<CallModalProps> = (props) => {
           video={callType === 'video'}
           onError={(err) => {
             console.error('[LiveKitRoom] error:', err);
-            if (isMountedRef.current) {
-              setPrePhase('error');
-              setErrorMsg(err?.message || 'Failed to connect to call');
-            }
+            // This branch always renders past the `!token || !meetingId` gate
+            // (this component only mounts once both are set), so `prePhase`/
+            // `errorMsg` are never read again after this point -- setting them
+            // here was dead code that looked like error handling but wasn't.
+            // LiveKitMeetingContainer's own room-event listeners (Reconnecting/
+            // Reconnected/Disconnected) own recovery for the established call;
+            // surface this one visibly instead of silently dropping it.
+            toast.error(err?.message || 'Call connection issue — trying to recover');
           }}
         >
-          <LiveKitMeetingContainer {...inCallShellProps} />
+          <LiveKitMeetingContainer
+            {...inCallShellProps}
+            livekitServerUrl={serverUrl}
+            refreshToken={() =>
+              getToken(meetingId).then((r) => ({ token: r.token, wsUrl: r.wsUrl }))
+            }
+          />
         </LiveKitRoom>
       </div>
     );

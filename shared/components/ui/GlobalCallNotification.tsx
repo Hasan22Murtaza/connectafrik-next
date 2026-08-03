@@ -1,7 +1,9 @@
 import { useProductionChat, type CallRequest } from '@/contexts/ProductionChatContext'
 import { playRingtone, stopRingtone, stopAll } from '@/features/video/services/ringtoneService'
 import { isAcceptedOnAnotherDevicePush } from '@/shared/types/callPush'
-import React, { useEffect, useMemo, useRef } from 'react'
+import { patchCallSessionWithRetry } from '@/features/chat/services/callSessionRealtime'
+import { buildCallUrl } from '@/shared/utils/callWindow'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 
 /** Survives React Strict Mode remount (refs reset while callRequests in parent stays set). */
 const INCOMING_POPUP_GUARD_KEY = 'ca_incoming_popup_guard'
@@ -66,6 +68,26 @@ const GlobalCallNotification: React.FC = () => {
   /** Prevents ringing again after CALL_STATUS active (effect replays when e.g. profile name loads). */
   const answeredIncomingRingtoneRef = useRef<Set<string>>(new Set())
 
+  /**
+   * In-page fallback when window.open() is blocked.
+   *
+   * An inbound call is never triggered by a user gesture, so default popup
+   * policy in Chrome/Safari/Firefox blocks it. Previously a blocked popup
+   * produced only a console.error/alert and no lasting UI -- indistinguishable
+   * from "nobody called me". This card is the answer/decline surface for that
+   * case; "Answer" navigates the SAME tab (a real click, never blocked).
+   */
+  const [popupBlocked, setPopupBlocked] = useState<{
+    threadId: string
+    roomId: string
+    callType: 'audio' | 'video'
+    callId?: string
+    callerId?: string
+    callerName?: string
+    isGroupCall: boolean
+  } | null>(null)
+  const [decliningPopupBlocked, setDecliningPopupBlocked] = useState(false)
+
   const suppressKeyForIncoming = (threadId: string, callId: string) =>
     callId.trim() ? `${threadId}|${callId.trim()}` : `${threadId}|`
 
@@ -108,6 +130,7 @@ const GlobalCallNotification: React.FC = () => {
   useEffect(() => {
     if (incomingSignature) return
     stopCallRingtone()
+    setPopupBlocked(null)
     const t = window.setTimeout(() => {
       openedIncomingSignatureRef.current = ''
       popupOpeningForSignatureRef.current = ''
@@ -173,8 +196,18 @@ const GlobalCallNotification: React.FC = () => {
           if (next) {
             callPopupRef.current = next
             openedIncomingSignatureRef.current = incomingSignature
+            setPopupBlocked(null)
           } else {
             clearIncomingPopupGuard()
+            setPopupBlocked({
+              threadId,
+              roomId,
+              callType: callRequest.type,
+              callId: callRequest.callId,
+              callerId: callRequest.callerId,
+              callerName: callRequest.callerName,
+              isGroupCall: callRequest.isGroupCall === true,
+            })
           }
         } finally {
           if (popupOpeningForSignatureRef.current === incomingSignature) {
@@ -218,6 +251,7 @@ const GlobalCallNotification: React.FC = () => {
           // Drop incoming row immediately so the ringtone effect does not call
           // startCallRingtone() again while call_sessions realtime catches up.
           clearCallRequest(activeThreadId)
+          setPopupBlocked((prev) => (prev && prev.threadId === activeThreadId ? null : prev))
         }
       }
 
@@ -233,6 +267,7 @@ const GlobalCallNotification: React.FC = () => {
         popupOpeningForSignatureRef.current = ''
         callPopupRef.current = null
         stopCallRingtone()
+        setPopupBlocked((prev) => (prev && prev.threadId === endedTid ? null : prev))
       }
     }
 
@@ -308,7 +343,75 @@ const GlobalCallNotification: React.FC = () => {
     }
   }, [clearCallRequest])
 
-  return null
+  const acceptPopupBlockedInPage = () => {
+    if (!popupBlocked) return
+    const { threadId, roomId, callType, callId, callerId, isGroupCall } = popupBlocked
+    const url = buildCallUrl({
+      roomId,
+      callType,
+      threadId,
+      isGroupCall,
+      isIncoming: true,
+      callerId,
+      callId,
+    })
+    stopCallRingtone()
+    clearIncomingPopupGuard()
+    // Same-tab navigation triggered by this click -- never blocked, unlike window.open().
+    window.location.assign(url)
+  }
+
+  const declinePopupBlockedInPage = async () => {
+    if (!popupBlocked || decliningPopupBlocked) return
+    const { threadId, callId } = popupBlocked
+    setDecliningPopupBlocked(true)
+    stopCallRingtone()
+    try {
+      if (callId) {
+        await patchCallSessionWithRetry(threadId, { call_id: callId, event: 'declined' })
+      }
+    } catch {
+      /* best-effort; clear local UI regardless */
+    } finally {
+      setDecliningPopupBlocked(false)
+      clearIncomingPopupGuard()
+      clearCallRequest(threadId)
+      setPopupBlocked(null)
+    }
+  }
+
+  if (!popupBlocked) return null
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[10000] w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white dark:bg-neutral-900 shadow-2xl ring-1 ring-black/10 dark:ring-white/10 p-4">
+      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        Incoming {popupBlocked.callType} call
+      </p>
+      <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300">
+        {popupBlocked.callerName || 'Unknown caller'}
+      </p>
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Your browser blocked the call window. Answer here, or allow pop-ups for this site.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={acceptPopupBlockedInPage}
+          className="flex-1 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+        >
+          Answer
+        </button>
+        <button
+          type="button"
+          onClick={() => void declinePopupBlockedInPage()}
+          disabled={decliningPopupBlocked}
+          className="flex-1 rounded-lg bg-gray-200 dark:bg-neutral-700 px-3 py-2 text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-neutral-600 disabled:opacity-60"
+        >
+          Decline
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default GlobalCallNotification

@@ -107,11 +107,20 @@ export async function createCallRoom(
 
 /**
  * Issue a participant token for an existing room, with the same failover rules.
+ *
+ * If `options.provider` is set (the provider the room was actually created
+ * on, per `call_sessions.metadata.provider`), it is preferred over re-resolving
+ * from env. Without this, every token request -- accept, rejoin, a late
+ * group-call joiner -- re-derives "preferred" independently, and a transient
+ * failover at room-creation time can silently diverge from what a later
+ * request resolves to: a participant who connects successfully but to a fresh,
+ * empty room on the OTHER provider, indistinguishable from an ordinary
+ * missed/no-media bug.
  */
 export async function issueCallToken(
   options: IssueCallTokenOptions,
 ): Promise<CallMediaCredentials> {
-  const preferred = resolvePreferredProvider();
+  const preferred = options.provider ?? resolvePreferredProvider();
   const fallback = resolveFallbackProvider(preferred);
 
   const preferredReady =

@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase'
 import { apiClient, ApiError } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
-import { openCallWindow } from '@/shared/utils/callWindow'
+import { openCallWindow, buildCallUrl } from '@/shared/utils/callWindow'
 import { parseCallMediaResponse, writeCallBootstrap } from '@/lib/call-media/bootstrap'
 import {
   FriendsRequiredForCallError,
@@ -675,13 +675,24 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       const { data: { session: authSession } } = await supabase.auth.getSession()
+      // Pin to the provider the room was actually created on (persisted in
+      // the session's own metadata) rather than letting this request
+      // re-resolve independently.
+      const sessionProvider =
+        meta.provider === 'livekit' || meta.provider === 'videosdk' ? meta.provider : undefined
       const tokenRes = await fetch('/api/videosdk/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(authSession?.access_token ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
         },
-        body: JSON.stringify({ roomId, userId: currentUser.id }),
+        body: JSON.stringify({
+          roomId,
+          userId: currentUser.id,
+          ...(sessionProvider ? { provider: sessionProvider } : {}),
+          ...(currentUser.name ? { displayName: currentUser.name } : {}),
+          ...(currentUser.avatarUrl ? { avatarUrl: currentUser.avatarUrl } : {}),
+        }),
       })
       if (!tokenRes.ok) {
         throw new Error('Failed to get call token.')
@@ -719,7 +730,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             })
           } catch { /* ignore */ }
         }
-        openCallWindow({
+        const popup = openCallWindow({
           roomId,
           callType,
           threadId,
@@ -728,6 +739,14 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerId: currentUser.id,
           callId,
         })
+        if (!popup) {
+          // Blocked (e.g. the async round-trips above outran the click's gesture
+          // window). Fall back to the same tab rather than leaving the user with
+          // no call UI at all.
+          window.location.assign(
+            buildCallUrl({ roomId, callType, threadId, isGroupCall, isIncoming: false, callerId: currentUser.id, callId })
+          )
+        }
       }
     } catch (error) {
       console.error('Failed to join call:', error)
@@ -867,6 +886,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           ? { check_user_ids: [resolvedTargetUserId] }
           : {}),
         include_participant_token: true,
+        // LiveKit stamps these onto the participant at token-mint time; without
+        // them every tile falls back to showing the raw user-id identity and no
+        // photo instead of a name/avatar.
+        ...(currentUser?.name ? { display_name: currentUser.name } : {}),
+        ...(currentUser?.avatarUrl ? { avatar_url: currentUser.avatarUrl } : {}),
       }
       const roomResponse = await fetch('/api/videosdk/room', {
         method: 'POST',
@@ -923,6 +947,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         is_group_call: isGroupCall,
         caller_name: currentUser?.name || 'Unknown',
         caller_avatar_url: currentUser?.avatarUrl || '',
+        // Persist which provider the room was actually created on, so every
+        // other participant's token request can pin to the same one instead
+        // of re-resolving independently.
+        provider: media.provider,
       })
 
       setCallRequests(prev => ({
@@ -943,7 +971,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           }
         }
 
-        openCallWindow({
+        const popup = openCallWindow({
           roomId,
           callType: type,
           threadId,
@@ -952,6 +980,19 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           callerId: currentUser?.id,
           callId,
         })
+        if (!popup) {
+          window.location.assign(
+            buildCallUrl({
+              roomId,
+              callType: type,
+              threadId,
+              isGroupCall,
+              isIncoming: false,
+              callerId: currentUser?.id,
+              callId,
+            })
+          )
+        }
 
         window.dispatchEvent(new CustomEvent('startCall', {
           detail: {
@@ -1098,9 +1139,34 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     (row: Record<string, any>) => {
       if (!currentUser) return
       if (row.created_by === currentUser.id) return
-      if (row.status !== 'ringing' && row.status !== 'initiated') return
+
       const meta = parseCallSessionMetadata(row.metadata)
+      const status = String(row.status)
+      const isGroup = meta.isGroupCall === true
+
+      // A call is one shared row with one status. In a 1:1 call `active` means
+      // the only callee already answered, so a late row is not an invitation.
+      // In a GROUP call `active` just means the FIRST invitee answered while
+      // everyone else is still being rung -- rejecting `active` there is why a
+      // group call fails to ring on any device whose realtime frame lands
+      // after that first accept (asleep phone, backgrounded tab, reconnecting
+      // socket, or just a later page load).
+      const joinable = isGroup
+        ? status === 'ringing' || status === 'initiated' || status === 'active'
+        : status === 'ringing' || status === 'initiated'
+      if (!joinable) return
+
       if (meta.targetUserId && meta.targetUserId !== currentUser.id) return
+
+      // Already in the call on this device, or already declined -- not an
+      // invitation. These guards are what make widening the status check
+      // above safe: without them a late-active dispatch would re-ring people
+      // who are already on the call or who deliberately hung up.
+      const participants: string[] = Array.isArray(row.participants) ? row.participants : []
+      if (participants.includes(currentUser.id)) return
+      const declined: string[] = Array.isArray(meta.declinedUserIds) ? meta.declinedUserIds : []
+      if (declined.includes(currentUser.id)) return
+
       const roomId = (row.room_id as string) || (meta.roomId as string)
       const callType = (row.call_type as string) || (meta.callType as string)
       const callId = (row.call_id as string) || (meta.callId as string)
@@ -1400,50 +1466,58 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => window.removeEventListener('message', onMessage)
   }, [clearCallRequest])
 
-  // Event-driven fallback for incoming calls (Realtime is primary).
-  // Avoid continuous polling; only perform one initial check and on visibility/focus wake-ups.
-  // useEffect(() => {
-  //   if (!currentUser) return
-  //   // Dedicated call window runs the same provider; do not poll for incoming calls there.
-  //   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/call/')) return
-  //   let cancelled = false
+  // Reconciliation catch-up for missed realtime INSERTs.
+  //
+  // `postgres_changes` has no replay: a device asleep, backgrounded, or
+  // mid-reconnect when a call session row is INSERTed never receives that
+  // event, and nothing else previously re-checked current state. This is the
+  // actual mechanism behind group calls not ringing on every device -- it is
+  // not only the status gate inside tryDispatchIncomingFromCallSession, it is
+  // that without a catch-up query there was no path back to a missed
+  // invitation at all. Kept event-driven (mount + visibility/online restore),
+  // not a continuous poll, and the endpoint bounds itself to a 90s window so
+  // it can only ever surface calls still plausibly ringing.
+  useEffect(() => {
+    if (!currentUser) return
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/call/')) return
+    let cancelled = false
 
-  //   const tick = async () => {
-  //     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-  //     if (pauseIncomingCallsPollRef.current) return
-  //     try {
-  //       const res = await apiClient.get<{ sessions: Record<string, any>[] }>('…') // legacy incoming poll removed
-  //       if (cancelled) return
-  //       const sessions = res?.sessions ?? []
-  //       for (const row of sessions) {
-  //         tryDispatchIncomingFromCallSession(row)
-  //       }
-  //     } catch {
-  //       /* ignore */
-  //     }
-  //   }
+    const tick = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+      if (pauseIncomingCallsPollRef.current) return
+      try {
+        const res = await apiClient.get<{ sessions: Record<string, any>[] }>('/api/chat/calls/incoming')
+        if (cancelled) return
+        const sessions = res?.sessions ?? []
+        for (const row of sessions) {
+          tryDispatchIncomingFromCallSession(row)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
 
-  //   const onVisible = () => {
-  //     if (document.visibilityState === 'visible') void tick()
-  //   }
-  //   const onFocus = () => {
-  //     void tick()
-  //   }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void tick()
+    }
+    const onOnline = () => void tick()
 
-  //   const initial = window.setTimeout(() => {
-  //     void tick()
-  //   }, 800)
+    const initial = window.setTimeout(() => {
+      void tick()
+    }, 800)
 
-  //   document.addEventListener('visibilitychange', onVisible)
-  //   window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('focus', onOnline)
 
-  //   return () => {
-  //     cancelled = true
-  //     window.clearTimeout(initial)
-  //     document.removeEventListener('visibilitychange', onVisible)
-  //     window.removeEventListener('focus', onFocus)
-  //   }
-  // }, [currentUser, tryDispatchIncomingFromCallSession])
+    return () => {
+      cancelled = true
+      window.clearTimeout(initial)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('focus', onOnline)
+    }
+  }, [currentUser, tryDispatchIncomingFromCallSession])
 
   const value: ProductionChatContextType = {
     startChatWithMembers,

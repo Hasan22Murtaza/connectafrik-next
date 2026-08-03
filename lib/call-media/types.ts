@@ -14,10 +14,17 @@ export interface CallMediaCredentials {
 export interface CreateCallRoomOptions {
   userId: string;
   includeParticipantToken?: boolean;
+  /** Caller's display name/avatar — stamped onto the LiveKit participant at join. */
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 export interface IssueCallTokenOptions {
   roomId: string;
   userId: string;
   displayName?: string;
+  /** LiveKit stores this as participant metadata so remote tiles can show a real photo, not initials. */
+  avatarUrl?: string;
+  /** Pin to the provider the room was actually created on, bypassing auto-resolution. */
+  provider?: CallMediaProviderName;
 }

@@ -1,9 +1,4 @@
-/**
- * Opens a new window for video/audio calls (like Facebook calls).
- * Identity (names/avatars) is not passed on the URL — the call page hydrates
- * from `/api/chat/threads/.../call-sessions` and thread data.
- */
-export function openCallWindow(params: {
+export type CallWindowParams = {
   roomId: string
   callType: 'audio' | 'video'
   threadId: string
@@ -11,9 +6,15 @@ export function openCallWindow(params: {
   isIncoming: boolean
   callerId?: string
   callId?: string
-}) {
-  const { roomId, callType, threadId, isGroupCall, isIncoming, callerId, callId } = params
+}
 
+/**
+ * Builds the `/call/[roomId]` URL shared by the popup path and any in-page
+ * fallback (e.g. GlobalCallNotification's blocked-popup card, or a same-tab
+ * navigate when an outgoing call's window.open is blocked).
+ */
+export function buildCallUrl(params: CallWindowParams): string {
+  const { roomId, callType, threadId, isGroupCall, isIncoming, callerId, callId } = params
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const url = new URL(`${baseUrl}/call/${roomId}`)
   url.searchParams.set('call', 'true')
@@ -29,6 +30,17 @@ export function openCallWindow(params: {
   if (callId) {
     url.searchParams.set('callId', callId)
   }
+  return url.toString()
+}
+
+/**
+ * Opens a new window for video/audio calls (like Facebook calls).
+ * Identity (names/avatars) is not passed on the URL — the call page hydrates
+ * from `/api/chat/threads/.../call-sessions` and thread data.
+ */
+export function openCallWindow(params: CallWindowParams) {
+  const { roomId, isIncoming, callId } = params
+  const urlString = buildCallUrl(params)
 
   const width = 1200
   const screenHeight = window.screen.height
@@ -40,27 +52,19 @@ export function openCallWindow(params: {
   const windowName = callId ? `call-${roomId}-${callId}` : `call-${roomId}`
 
   const callWindow = window.open(
-    url.toString(),
+    urlString,
     windowName,
     `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`
   )
 
   if (!callWindow) {
-    console.error('Failed to open call window. Please allow popups for this site.')
-    alert(
-      'Popups are blocked. To make calls, please allow popups for this site:\n\n' +
-      'Chrome/Edge:\n' +
-      '1. Click the popup blocked icon (🚫) in the address bar\n' +
-      '2. Select "Always allow popups and redirects from [this site]"\n' +
-      '3. Click "Done"\n\n' +
-      'Firefox:\n' +
-      '1. Click the popup blocked icon (🚫) in the address bar\n' +
-      '2. Click "Allow popups for this site"\n\n' +
-      'Safari:\n' +
-      '1. Go to Safari > Settings > Websites > Pop-up Windows\n' +
-      '2. Find this site and change to "Allow"\n\n' +
-      'After allowing popups, please try making the call again.'
-    )
+    // Blocked. An inbound call is never a user gesture, so this fires reliably
+    // on default browser policy. Do NOT alert() here: it blocks the main thread
+    // on a call the user hasn't consented to interact with yet, and it used to
+    // be the only signal a blocked popup ever produced. Callers of this
+    // function render a proper in-page answer/decline fallback instead
+    // (see GlobalCallNotification's `popupBlocked` state) -- this just logs.
+    console.warn('[callWindow] window.open blocked; falling back to in-page call UI', { roomId, isIncoming })
     return null
   }
 

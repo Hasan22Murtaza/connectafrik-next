@@ -11,7 +11,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useLocalParticipant, useParticipants, useRoomContext } from '@livekit/components-react';
+import { RoomAudioRenderer, useLocalParticipant, useParticipants, useRoomContext } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
 import { RoomEvent, Track } from 'livekit-client';
 import { PhoneOff } from 'lucide-react';
@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
-import { patchCallSessionWithRetry } from '@/features/chat/services/callSessionRealtime';
+import { patchCallSessionWithRetry, getLatestCallSession } from '@/features/chat/services/callSessionRealtime';
 import { apiClient } from '@/lib/api-client';
 import {
   stopAll as stopAllRingtones,
@@ -39,8 +39,15 @@ import { LiveKitParticipantTileBridge, normalizeLiveKitParticipant } from '@/fea
 import { LiveKitScreenShareMedia } from '@/features/video/providers/livekit/components/ScreenShareMedia';
 import type { MeetingContainerProps } from '@/features/video/providers/videosdk/MeetingContainer';
 
-const LAST_PARTICIPANT_AUTO_END_MS = 5000;
+// 5s used to auto-end on the last remote participant disappearing from the SDK's
+// view was well inside normal mobile behaviour (Wi-Fi/LTE handover, a lift, a
+// tunnel) and turned routine network blips into permanently ended calls. A
+// genuine hang-up is handled immediately by ParticipantDisconnected + the
+// server-confirm check below, so this fallback can afford to be far more
+// patient.
+const LAST_PARTICIPANT_AUTO_END_MS = 20000;
 const CONNECTING_MEDIA_TO_CONNECTED_MS = 600;
+const REJOIN_BACKOFF_MS = [1000, 3000, 7000];
 
 const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   isOpen,
@@ -59,6 +66,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   decodedRecipientName,
   decodedCallerAvatarUrl,
   decodedRecipientAvatarUrl,
+  refreshToken,
+  livekitServerUrl,
 }) => {
   const { session, user } = useAuth();
   const room = useRoomContext();
@@ -102,6 +111,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const ringbackRef = useRef<{ stop: () => void } | null>(null);
   const remoteDisconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleEndCallRef = useRef<() => void>(() => {});
+  const rejoiningRef = useRef(false);
   const hasSignaledJoinRef = useRef(false);
   const remoteScreenShareMarkerRef = useRef<MediaStream | null>(null);
   const meetingSurfaceRef = useRef<HTMLDivElement>(null);
@@ -128,11 +138,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   useCallHeartbeat({
     threadId,
     callId: callIdHint || '',
-    enabled:
-      isOpen &&
-      !!threadId &&
-      !!(callIdHint || '').trim() &&
-      (callStatus === 'connected' || callStatus === 'connecting_media'),
+    // Previously gated on connected/connecting_media only, which switched the
+    // heartbeat off in exactly the states where the call is struggling (e.g.
+    // reconnecting) — right when the server's 90s reaper most needs to be held
+    // back. Beat whenever the call surface is open and not terminal.
+    enabled: isOpen && !!threadId && !!(callIdHint || '').trim() && callStatus !== 'ended',
   });
 
   const setCallStatusSafe = useCallback(
@@ -194,6 +204,53 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     }
   }, []);
 
+  /**
+   * Re-establish the LiveKit transport for a session the SERVER still
+   * considers alive. Previously nothing existed to do this: a resync could
+   * only confirm the call was over, never bring it back, so a recoverable
+   * network blip (once LiveKit's own internal reconnect gave up and fired
+   * Disconnected) became a dead call. Only meaningful once we were actually
+   * in a live call — never fires while still connecting/ringing pre-answer.
+   */
+  const attemptRejoin = useCallback(async () => {
+    if (rejoiningRef.current || !isMountedRef.current) return;
+    if (!refreshToken || !livekitServerUrl) {
+      void signalMediaDisconnected();
+      return;
+    }
+    rejoiningRef.current = true;
+    setCallStatusSafe('reconnecting');
+
+    for (let attempt = 0; attempt < REJOIN_BACKOFF_MS.length; attempt++) {
+      await new Promise((r) => setTimeout(r, REJOIN_BACKOFF_MS[attempt]));
+      if (!isMountedRef.current || suppressSignalRef.current) {
+        rejoiningRef.current = false;
+        return;
+      }
+      try {
+        const { token: freshToken } = await refreshToken();
+        await room.connect(livekitServerUrl, freshToken);
+        rejoiningRef.current = false;
+        if (isMountedRef.current) {
+          // `signalMeetingJoined` no-ops past the first join (hasSignaledJoinRef),
+          // so RoomEvent.Connected won't restore status on a rejoin -- do it
+          // here. Target connecting_media, not connected directly: the
+          // existing promotion effect re-confirms remote participants are
+          // actually present (avoids a race against `participants` not having
+          // re-populated the instant `connect()` resolves).
+          setCallStatusSafe('connecting_media');
+        }
+        return;
+      } catch {
+        // try the next backoff step
+      }
+    }
+
+    rejoiningRef.current = false;
+    if (!isMountedRef.current) return;
+    void signalMediaDisconnected();
+  }, [refreshToken, livekitServerUrl, room, setCallStatusSafe, signalMediaDisconnected, suppressSignalRef]);
+
   const scheduleAutoEndWhenAlone = useCallback(() => {
     if (remoteDisconnectTimerRef.current) return;
     remoteDisconnectTimerRef.current = setTimeout(async () => {
@@ -203,7 +260,26 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         (p) => p.identity !== localParticipantInfo.identity,
       ).length;
       if (remoteCount !== 0) return;
+
       const activeCallId = callIdRef.current || callIdHint || '';
+
+      // Confirm with the server before declaring the call over: our local view
+      // of zero remote participants can be OUR transport dying rather than the
+      // call actually ending. If the server still lists other participants,
+      // we are the one who fell off -- attempt to rejoin instead of ending a
+      // call that is still live for everyone else.
+      if (threadId && activeCallId) {
+        const latest = await getLatestCallSession(threadId, activeCallId);
+        if (!isMountedRef.current) return;
+        if (latest && latest.status === 'active') {
+          const others = latest.participants.filter((id) => id !== currentUserId);
+          if (others.length > 0) {
+            void attemptRejoin();
+            return;
+          }
+        }
+      }
+
       if (threadId && currentUserId && activeCallId) {
         const endEvent = isGroupCallSessionRef.current ? 'leave' : 'end';
         await patchCallSessionWithRetry(threadId, {
@@ -219,6 +295,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       }, 1000);
     }, LAST_PARTICIPANT_AUTO_END_MS);
   }, [
+    attemptRejoin,
     callIdHint,
     currentUserId,
     localParticipantInfo.identity,
@@ -290,13 +367,46 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         }
       }, 300);
     };
+    // LiveKit's own engine already retries transient drops internally (ICE
+    // restart/resume) before ever emitting Disconnected. Previously nothing
+    // listened for Reconnecting/Reconnected, so the UI just sat frozen on
+    // "Connected" during that window with no indication anything was wrong.
+    const onReconnecting = () => {
+      if (callStatusRef.current === 'connected' || callStatusRef.current === 'connecting_media') {
+        setCallStatusSafe('reconnecting');
+      }
+    };
+    const onReconnected = () => {
+      // Target connecting_media (not the exact prior status) regardless of
+      // what preceded reconnecting: the existing connecting_media -> connected
+      // promotion effect below already re-confirms remote participants are
+      // actually present before calling it connected, avoiding a race against
+      // `participants` not having re-populated yet at the instant this fires.
+      if (callStatusRef.current === 'reconnecting') {
+        setCallStatusSafe('connecting_media');
+      }
+    };
     const onDisconnected = () => {
-      void signalMediaDisconnected();
+      // Disconnected means LiveKit's own reconnect attempts are exhausted (or
+      // this was an explicit hangup, flagged via suppressSignalRef). Only try
+      // our own app-level rejoin if we were actually in a live call —
+      // otherwise fall back to the existing teardown/signaling path unchanged.
+      const wasLive =
+        callStatusRef.current === 'connected' ||
+        callStatusRef.current === 'connecting_media' ||
+        callStatusRef.current === 'reconnecting';
+      if (!suppressSignalRef.current && wasLive) {
+        void attemptRejoin();
+      } else {
+        void signalMediaDisconnected();
+      }
     };
 
     room.on(RoomEvent.Connected, onConnected);
     room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
     room.on(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+    room.on(RoomEvent.Reconnecting, onReconnecting);
+    room.on(RoomEvent.Reconnected, onReconnected);
     room.on(RoomEvent.Disconnected, onDisconnected);
 
     if (room.state === 'connected') {
@@ -307,9 +417,12 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       room.off(RoomEvent.Connected, onConnected);
       room.off(RoomEvent.ParticipantConnected, onParticipantConnected);
       room.off(RoomEvent.ParticipantDisconnected, onParticipantDisconnected);
+      room.off(RoomEvent.Reconnecting, onReconnecting);
+      room.off(RoomEvent.Reconnected, onReconnected);
       room.off(RoomEvent.Disconnected, onDisconnected);
     };
   }, [
+    attemptRejoin,
     clearRemoteDisconnectTimer,
     localParticipantInfo.identity,
     participants,
@@ -318,6 +431,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     setCallStatusSafe,
     signalMeetingJoined,
     signalMediaDisconnected,
+    suppressSignalRef,
   ]);
 
   // connecting_media → connected with short delay (matches VideoSDK)
@@ -557,6 +671,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           target_user_id: targetUser.id,
           is_group_call: true,
           caller_name: resolvedCallerName,
+          provider: 'livekit',
         });
         setShowAddPeople(false);
         setAddPeopleSearch('');
@@ -782,6 +897,16 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         className="relative w-full h-screen overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
       >
+        {/* Every remote participant's audio, mounted once, OUTSIDE every layout
+            branch below. Pagination (MAX_PER_PAGE), screen share replacing the
+            whole grid, and the 1:1 status/type gates all used to unmount
+            per-tile <AudioTrack> elements, silencing anyone not on the visible
+            page or tile even though they were still connected and talking.
+            RoomAudioRenderer renders every subscribed remote audio track
+            regardless of what's on screen, so none of those layout decisions
+            can affect who is audible. */}
+        <RoomAudioRenderer volume={audioVolume} />
+
         {(remoteScreenShareParticipant || isLocalPresenting) && (
           <ScreenShareView
             presenter={normalizeLiveKitParticipant(
@@ -825,12 +950,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           />
         )}
 
+        {/* 1-on-1 video fills the screen; audio is unconditional via
+            RoomAudioRenderer above, so the audio call case needs no tile. */}
         {!gridLayout &&
           !remoteScreenShareParticipant &&
           remoteParticipantIds.length === 1 &&
           remoteOne &&
-          (callStatus === 'connected' || callStatus === 'connecting_media') &&
-          (effectiveCallType === 'video' ? (
+          effectiveCallType === 'video' &&
+          (callStatus === 'connected' || callStatus === 'connecting_media') && (
             <div className="absolute inset-0">
               {renderLiveKitTile(remoteOne, {
                 tileCount: 1,
@@ -838,9 +965,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
                 audioVolume,
               })}
             </div>
-          ) : (
-            renderLiveKitTile(remoteOne, { audioOnly: true, audioVolume })
-          ))}
+          )}
 
         {gridLayout && !remoteScreenShareParticipant && (
           <div

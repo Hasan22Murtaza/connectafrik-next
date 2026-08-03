@@ -70,14 +70,22 @@ export async function issueLiveKitToken(
   options: IssueCallTokenOptions,
 ): Promise<string> {
   const { apiKey, apiSecret } = getLiveKitApiCredentials();
-  const { roomId, userId, displayName } = options;
+  const { roomId, userId, displayName, avatarUrl } = options;
 
   await ensureLiveKitRoom(roomId);
+
+  const trimmedAvatar = avatarUrl?.trim();
 
   const at = new AccessToken(apiKey, apiSecret, {
     identity: userId,
     name: displayName?.trim() || userId,
     ttl: TOKEN_TTL,
+    // Read by profileImageUrlFromMeta() on every other participant's tile.
+    // Without this, a LiveKit participant's `name`/`metadata` are only ever
+    // set once at token-mint time, so a missing displayName/avatarUrl here
+    // falls back to the raw participant identity (the user's UUID) and no
+    // photo, which is exactly what was rendering on the call grid tiles.
+    ...(trimmedAvatar ? { metadata: JSON.stringify({ profileImage: trimmedAvatar }) } : {}),
   });
   at.addGrant({
     roomJoin: true,
@@ -109,6 +117,8 @@ export async function createLiveKitCallRoom(
     credentials.token = await issueLiveKitToken({
       roomId,
       userId: options.userId,
+      displayName: options.displayName,
+      avatarUrl: options.avatarUrl,
     });
   }
 

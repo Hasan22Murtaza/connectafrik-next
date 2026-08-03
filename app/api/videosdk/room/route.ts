@@ -77,6 +77,8 @@ export async function POST(request: NextRequest) {
   }
 
   const include_participant_token = body.include_participant_token === true
+  const display_name = typeof body.display_name === 'string' ? body.display_name.trim() : ''
+  const avatar_url = typeof body.avatar_url === 'string' ? body.avatar_url.trim() : ''
 
   if (check_user_ids.length > 0) {
     try {
@@ -129,6 +131,8 @@ export async function POST(request: NextRequest) {
     const credentials = await createCallRoom({
       userId: authedUserId,
       includeParticipantToken: include_participant_token,
+      ...(display_name ? { displayName: display_name } : {}),
+      ...(avatar_url ? { avatarUrl: avatar_url } : {}),
     })
 
     const json: {

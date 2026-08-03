@@ -169,10 +169,20 @@ export function useCallSessionSignaling({
   }, [isOpen, threadId, callIdHint, normalizeSignalMeta, onVideoSwitch]);
 
   // Network/tab resync
+  //
+  // Previously gated on `connected`/`connecting_media` only. That guard meant
+  // the moment a call left those two statuses -- e.g. `reconnecting`, or any
+  // other in-between state -- this check switched off at exactly the point a
+  // call is struggling, and switched off together with the heartbeat's own
+  // matching guard (see useCallHeartbeat `enabled` in each provider
+  // container). A degraded client stopped proving liveness AND stopped
+  // checking whether it should recover at the same time, so the server's
+  // reaper could kill a session a working check would have caught in time.
+  // Only skip once the call is already ended locally.
   useEffect(() => {
     if (!isOpen || !threadId) return;
     const resync = async () => {
-      if (callStatusRef.current !== 'connected' && callStatusRef.current !== 'connecting_media') return;
+      if (callStatusRef.current === 'ended') return;
       try {
         const cid = (callIdHint || '').trim();
         const params = cid

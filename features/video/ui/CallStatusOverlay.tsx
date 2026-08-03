@@ -61,6 +61,15 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
               <div className="text-sm sm:text-base font-medium">Connecting media...</div>
             </div>
           )}
+          {callStatus === 'reconnecting' && (
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 border-3 sm:border-4 border-yellow-400 border-t-transparent mb-2 sm:mb-3"></div>
+              <div className="text-sm sm:text-base font-medium">Reconnecting...</div>
+              <div className="text-xs sm:text-sm text-content-secondary mt-1">
+                {formatDuration(callDuration)} · network issue
+              </div>
+            </div>
+          )}
           {callStatus === 'ringing' && (
             <div className="animate-pulse">
               <div className="mb-3 sm:mb-4">

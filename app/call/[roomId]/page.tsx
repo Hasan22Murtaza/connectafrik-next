@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import { readCallBootstrap } from '@/lib/call-media/bootstrap'
 import type { CallMediaProviderName } from '@/lib/call-media/types'
+import { parseProviderName } from '@/lib/call-media/resolve'
 
 const CallModal = dynamic(() => import('@/features/video/CallModal'), {
   ssr: false,
@@ -21,6 +22,27 @@ function notifyParentCallEnded(threadId: string, callId?: string) {
       )
     } catch {}
   }
+}
+
+/**
+ * `window.close()` only works on a window the SCRIPT opened (i.e. `window.opener`
+ * is set, matching the `window.open()` popup path). When this page was reached
+ * via a same-tab navigation instead -- the in-page fallback for a blocked call
+ * popup, or an outgoing call whose popup was blocked -- there is no opener, and
+ * a browser refuses to close such a tab, silently no-op'ing `window.close()`
+ * and stranding the user on the "Call ended" screen forever. Redirect back to
+ * the conversation (or the feed) in that case instead.
+ */
+function closeCallWindowOrRedirect(
+  threadId: string,
+  router: ReturnType<typeof useRouter>,
+) {
+  if (typeof window === 'undefined') return
+  if (window.opener && !window.opener.closed) {
+    window.close()
+    return
+  }
+  router.replace(threadId ? `/chat?thread=${threadId}` : '/feed')
 }
 
 type CallDisplay = {
@@ -157,6 +179,11 @@ export default function CallWindowPage() {
           if (cancelled) return
 
           const meta = parseSessionMetadata(row?.metadata)
+          // Pin to whichever provider the room was actually created on
+          // (persisted server-side) so this callee's token request can't
+          // silently resolve to a different provider than the caller's.
+          const providerFromMeta = parseProviderName(meta.provider as string | undefined)
+          if (providerFromMeta) setMediaProviderHint(providerFromMeta)
           const callerNameMeta = typeof meta.callerName === 'string' ? meta.callerName : ''
           let callerAvatarMeta = typeof meta.callerAvatarUrl === 'string' ? meta.callerAvatarUrl : ''
           const createdBy = typeof row?.created_by === 'string' ? row.created_by : ''
@@ -275,7 +302,7 @@ export default function CallWindowPage() {
     newParams.set('call', 'false')
     router.replace(`/call/${roomId}?${newParams.toString()}`)
     setTimeout(() => {
-      if (typeof window !== 'undefined') window.close()
+      closeCallWindowOrRedirect(threadId, router)
     }, 1500)
   }
 
@@ -306,7 +333,7 @@ export default function CallWindowPage() {
       if (!matchesThisCall(payloadThreadId, payloadCallId)) return
       setAnsweredElsewhere(true)
       setTimeout(() => {
-        if (typeof window !== 'undefined') window.close()
+        closeCallWindowOrRedirect(threadId, router)
       }, 1500)
     }
 
@@ -379,7 +406,7 @@ export default function CallWindowPage() {
       window.removeEventListener('message', handleWindowMessage)
       window.removeEventListener('fcm-foreground-message', handleFcmForeground)
     }
-  }, [isIncoming, threadId, callId, answeredElsewhere, handleCallEnd])
+  }, [isIncoming, threadId, callId, answeredElsewhere, handleCallEnd, router])
 
   const showCallUi = callDisplay !== null && !authLoading && user?.id
 
