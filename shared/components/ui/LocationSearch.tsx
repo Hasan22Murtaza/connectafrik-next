@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useId, useRef, useState, useCallback } from 'react'
-import { MapPin, Loader2 } from 'lucide-react'
+import { MapPin, Loader2 } from '@/shared/icons'
 import { apiClient } from '@/lib/api-client'
 import { emptyProfileLocation, type ProfileLocationValue } from '@/shared/types/location'
 

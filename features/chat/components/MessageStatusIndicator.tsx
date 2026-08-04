@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, CheckCheck, Clock } from "lucide-react";
+import { Check, CheckCheck, Clock } from '@/shared/icons';
 
 interface MessageStatusIndicatorProps {
   status: "sending" | "sent" | "delivered" | "read";

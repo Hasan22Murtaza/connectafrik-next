@@ -14,7 +14,7 @@ import React, {
 import { RoomAudioRenderer, useLocalParticipant, useParticipants, useRoomContext } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
 import { RoomEvent, Track } from 'livekit-client';
-import { PhoneOff } from 'lucide-react';
+import { PhoneOff } from '@/shared/icons';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';

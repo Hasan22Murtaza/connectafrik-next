@@ -3,7 +3,7 @@
 import {
   Search,
   X
-} from 'lucide-react'
+} from '@/shared/icons'
 import { usePathname, useRouter } from 'next/navigation'
 import React, { useState } from 'react'
 import { UserSearch } from './UserSearch'

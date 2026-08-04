@@ -4,7 +4,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import {
   Film, X, ChevronLeft, ChevronRight,
   Play, Pause, Volume2, VolumeX,
-} from 'lucide-react'
+} from '@/shared/icons'
 
 const EmptyState = ({ icon: Icon, title, sub }: { icon: React.ElementType; title: string; sub: string }) => (
   <div className="text-center py-14">

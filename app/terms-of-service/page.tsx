@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { FileCheck } from 'lucide-react'
+import { FileCheck } from '@/shared/icons'
 
 const TermsOfServicePage: React.FC = () => {
   return (

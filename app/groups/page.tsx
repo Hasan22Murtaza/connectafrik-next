@@ -12,7 +12,7 @@ import {
   Users,
   FileText,
   ChevronRight,
-} from "lucide-react";
+} from '@/shared/icons';
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow } from "date-fns";

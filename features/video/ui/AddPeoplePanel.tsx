@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react';
+import { Search, X } from '@/shared/icons';
 import React from 'react';
 
 /** In-meeting detection uses ids only (VideoSDK `participantId` = app user id). */

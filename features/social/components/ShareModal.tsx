@@ -14,7 +14,7 @@ import {
   Smile,
   Newspaper,
   UserRound,
-} from "lucide-react";
+} from '@/shared/icons';
 import { FaWhatsapp } from "react-icons/fa";
 import toast from "react-hot-toast";
 

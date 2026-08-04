@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Globe, Lock, Tag } from 'lucide-react'
+import { Globe, Lock, Tag } from '@/shared/icons'
 import { REEL_ASPECT_RATIOS, REEL_CATEGORIES, ReelCategory } from '@/shared/types/reels'
 
 interface ReviewStepProps {

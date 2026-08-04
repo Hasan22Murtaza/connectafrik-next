@@ -13,7 +13,7 @@ import {
   PartyPopper,
   Search,
   Users
-} from "lucide-react";
+} from '@/shared/icons';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";

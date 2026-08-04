@@ -4,7 +4,7 @@ import {
   getStripeConnectStatus,
   startStripeConnectOnboarding,
 } from "@/features/marketplace/services/adminService";
-import { AlertCircle, CheckCircle, CreditCard, ExternalLink } from "lucide-react";
+import { AlertCircle, CheckCircle, CreditCard, ExternalLink } from '@/shared/icons';
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 

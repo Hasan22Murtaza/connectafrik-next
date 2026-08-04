@@ -16,7 +16,7 @@ import {
   MessageCircle,
   ChevronDown,
   Eye
-} from 'lucide-react'
+} from '@/shared/icons'
 import {
   Story,
   StoryReply,

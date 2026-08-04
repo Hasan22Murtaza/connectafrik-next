@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from '@/shared/icons'
 import { useCreateReel } from '@/shared/hooks/useReels'
 import {
   MAX_REEL_DURATION,

@@ -8,7 +8,7 @@ import {
   Pause,
   Play,
   UserRound,
-} from "lucide-react";
+} from '@/shared/icons';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMediaViewerItem } from "./ChatMediaViewer";
 import {

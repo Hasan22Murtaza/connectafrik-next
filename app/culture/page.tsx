@@ -7,7 +7,7 @@ import CommentsSection from '@/features/social/components/CommentsSection'
 import { useCultureStats } from '@/shared/hooks/useCultureStats'
 import { usePosts } from '@/shared/hooks/usePosts'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
-import { Camera, Filter, Globe, Heart, Plus, Users } from 'lucide-react'
+import { Camera, Filter, Globe, Heart, Plus, Users } from '@/shared/icons'
 import React, { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 

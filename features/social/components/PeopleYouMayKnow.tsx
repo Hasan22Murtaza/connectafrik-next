@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserPlus, Users, ChevronLeft, ChevronRight, X, MoreHorizontal } from 'lucide-react';
+import { UserPlus, Users, ChevronLeft, ChevronRight, X, MoreHorizontal } from '@/shared/icons';
 import { toast } from 'react-hot-toast';
 import UserSearch from '@/shared/components/ui/UserSearch';
 

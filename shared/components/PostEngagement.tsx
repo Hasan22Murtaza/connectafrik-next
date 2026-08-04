@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useCallback } from 'react'
-import { ThumbsUp, MessageCircle } from 'lucide-react'
+import { ThumbsUp, MessageCircle } from '@/shared/icons'
 import { PiShareFatLight } from 'react-icons/pi'
 import ReactionTooltip from '@/features/social/components/ReactionTooltip'
 import ReactionIcon, {

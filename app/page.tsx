@@ -26,7 +26,7 @@ import {
   MoreHorizontal,
   Send,
   Icon,
-} from "lucide-react";
+} from "@/shared/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import Slider, { Settings } from "react-slick";
 

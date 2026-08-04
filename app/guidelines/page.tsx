@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, Search } from 'lucide-react'
+import { FileText, Search } from '@/shared/icons'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 

@@ -11,7 +11,7 @@ import {
   Link2,
   Loader2,
   Video,
-} from "lucide-react";
+} from '@/shared/icons';
 import React, { useCallback, useEffect, useState } from "react";
 
 export type SharedMediaTab = "media" | "docs" | "links";

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Bell, Check, X, Filter, CheckCheck } from 'lucide-react'
+import { Bell, Check, X, Filter, CheckCheck } from '@/shared/icons'
 import { Notification, NotificationType } from '@/shared/types/notifications'
 import {
   getNotificationPayload,

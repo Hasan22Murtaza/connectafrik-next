@@ -20,7 +20,7 @@ import {
   ShoppingBag,
   Tag as TagIcon,
   Inbox,
-} from "lucide-react";
+} from '@/shared/icons';
 
 export type MarketplaceSort = "newest" | "price-asc" | "price-desc" | "featured";
 export type MarketplaceHub = "browse" | "inbox" | "buying" | "selling";

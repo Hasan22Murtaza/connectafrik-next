@@ -1,6 +1,6 @@
 'use client';
 
-import { MonitorUp } from 'lucide-react';
+import { MonitorUp } from '@/shared/icons';
 import React, { useState } from 'react';
 import type { NormalizedParticipant } from '@/features/video/core/models';
 import ParticipantTile from './ParticipantTile';

@@ -11,7 +11,7 @@ import {
   Smile,
   Tag,
   X,
-} from 'lucide-react'
+} from '@/shared/icons'
 import {
   MAX_REEL_DESCRIPTION_LENGTH,
   MAX_REEL_TAGS,

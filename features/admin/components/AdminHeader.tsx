@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X } from "lucide-react";
+import { Menu, X } from '@/shared/icons';
 import { AdminSearch } from "./AdminSearch";
 import { AdminNotificationDropdown } from "./AdminNotificationDropdown";
 import { AdminUserMenu } from "./AdminUserMenu";

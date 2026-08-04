@@ -10,7 +10,7 @@ import {
   VideoOff,
   Volume1,
   Volume2,
-} from 'lucide-react';
+} from '@/shared/icons';
 import React from 'react';
 import type { SpeakerLevel } from '@/features/video/core/types';
 

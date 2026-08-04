@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Users, Globe, Lock, Plus, Minus, MapPin, Tag, Upload, X, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Users, Globe, Lock, Plus, Minus, MapPin, Tag, Upload, X, Image as ImageIcon } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGroups } from '@/shared/hooks/useGroups'
 import { useImageUpload } from '@/shared/hooks/useImageUpload'

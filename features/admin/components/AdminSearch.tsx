@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight } from '@/shared/icons';
 import { ADMIN_NAV_LINKS } from "../constants/adminNavigation";
 import { AP } from "../constants/adminLayout";
 

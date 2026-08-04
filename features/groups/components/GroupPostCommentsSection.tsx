@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Send, Trash2, Smile, Loader2, Flag } from 'lucide-react'
+import { Send, Trash2, Smile, Loader2, Flag } from '@/shared/icons'
 import { useGroupPostComments, GroupPostComment } from '@/shared/hooks/useGroupPostComments'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Maximize2, Volume2, VolumeX } from 'lucide-react'
+import { Maximize2, Volume2, VolumeX } from '@/shared/icons'
 import { useFeedVideoAutoplay } from '@/features/social/context/FeedVideoAutoplayContext'
 
 type FeedPostVideoLayout = 'single' | 'grid'

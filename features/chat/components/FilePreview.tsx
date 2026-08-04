@@ -1,6 +1,6 @@
 import React from "react";
 import type { FileUploadResult } from "@/shared/services/fileUploadService";
-import { FileText, X } from "lucide-react";
+import { FileText, X } from '@/shared/icons';
 
 interface FilePreviewProps {
   files: FileUploadResult[];

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, ExternalLink } from 'lucide-react'
+import { X, ExternalLink } from '@/shared/icons'
 
 interface AdProps {
   type: 'banner' | 'native' | 'sidebar'

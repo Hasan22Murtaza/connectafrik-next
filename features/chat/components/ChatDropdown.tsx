@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { format, isToday, isYesterday, isThisYear } from 'date-fns'
-import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pin, Search, Store } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pin, Search, Store } from '@/shared/icons'
 import { useRouter } from 'next/navigation'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant } from '@/shared/types/chat'

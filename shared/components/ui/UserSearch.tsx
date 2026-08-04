@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
-import { Search, UserPlus, Users, X } from 'lucide-react'
+import { Search, UserPlus, Users, X } from '@/shared/icons'
 import React, { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-hot-toast'
 

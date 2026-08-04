@@ -10,7 +10,7 @@ import {
   Crown,
   Shield,
   UserCheck,
-} from 'lucide-react'
+} from '@/shared/icons'
 
 export interface CategoryInfo {
   icon: React.ReactNode

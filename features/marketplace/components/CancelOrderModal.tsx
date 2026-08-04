@@ -1,5 +1,5 @@
 import { cancelOrder } from '@/features/marketplace/services/refundService'
-import { AlertCircle, X, XCircle } from 'lucide-react'
+import { AlertCircle, X, XCircle } from '@/shared/icons'
 import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 

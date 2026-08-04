@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/shared/icons'
 import { apiClient } from '@/lib/api-client'
 import ReactionIcon from './ReactionIcon'
 

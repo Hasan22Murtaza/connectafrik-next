@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Phone, MapPin, Palette, Printer, Star, Sparkles, Award, Users, Clock, CheckCircle } from 'lucide-react'
+import { Phone, MapPin, Palette, Printer, Star, Sparkles, Award, Users, Clock, CheckCircle } from '@/shared/icons'
 
 interface ArtOfInksAdProps {
   type?: 'banner' | 'card' | 'featured'

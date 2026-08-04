@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, Globe, Users, Target, Star, Lightbulb } from 'lucide-react'
+import { Heart, Globe, Users, Target, Star, Lightbulb } from '@/shared/icons'
 
 const journeyItems = [
   {

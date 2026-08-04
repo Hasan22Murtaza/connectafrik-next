@@ -2,7 +2,7 @@
 
 import React, { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from '@/shared/icons';
 import { useAuth } from "@/contexts/AuthContext";
 import SellerWallet from "@/features/marketplace/components/wallet/SellerWallet";
 import { getStripeConnectStatus } from "@/features/marketplace/services/adminService";

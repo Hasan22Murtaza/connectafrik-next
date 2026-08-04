@@ -8,7 +8,7 @@ import {
   ListOrdered,
   Quote,
   Strikethrough,
-} from "lucide-react";
+} from '@/shared/icons';
 import React from "react";
 import type { FormatCommand } from "./markdown";
 

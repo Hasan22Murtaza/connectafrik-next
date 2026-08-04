@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { useDeleteReel } from '@/shared/hooks/useReels'

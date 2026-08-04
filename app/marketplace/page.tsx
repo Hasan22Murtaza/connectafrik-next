@@ -31,7 +31,7 @@ import {
   Filter,
   Plus,
   Search,
-} from "lucide-react";
+} from '@/shared/icons';
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";

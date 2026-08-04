@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, Play } from '@/shared/icons'
 import { getStoryRecommendations, getUserStories, Story } from '@/features/social/services/storiesService'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'

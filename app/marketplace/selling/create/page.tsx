@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import CreateProductForm from "@/features/marketplace/components/CreateProductForm";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
-import { ArrowLeft, Lightbulb, Shield } from "lucide-react";
+import { ArrowLeft, Lightbulb, Shield } from '@/shared/icons';
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 

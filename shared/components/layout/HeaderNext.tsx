@@ -13,7 +13,7 @@ import {
   Landmark,
   Palette,
   Users,
-} from "lucide-react";
+} from "@/shared/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { useNotifications } from "@/shared/hooks/useNotifications";

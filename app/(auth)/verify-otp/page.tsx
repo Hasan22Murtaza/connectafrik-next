@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, RefreshCw, CheckCircle, Mail, Phone } from 'lucide-react'
+import { ArrowLeft, RefreshCw, CheckCircle, Mail, Phone } from '@/shared/icons'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
 import { getPostAuthRedirect } from '@/lib/auth/postAuthRedirect'

@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { Users } from 'lucide-react'
+import { Users } from '@/shared/icons'
 
 const EmptyState = ({ icon: Icon, title, sub }: { icon: React.ElementType; title: string; sub: string }) => (
   <div className="text-center py-14">

@@ -1,7 +1,7 @@
 "use client";
 
 import { User } from "@supabase/supabase-js";
-import { Plus, Settings } from "lucide-react";
+import { Plus, Settings } from '@/shared/icons';
 import { useRouter } from "next/navigation";
 import React from "react";
 import toast from "react-hot-toast";

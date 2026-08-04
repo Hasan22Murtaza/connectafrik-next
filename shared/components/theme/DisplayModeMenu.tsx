@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Check, ChevronRight, Monitor, Moon, Sun } from 'lucide-react'
+import { Check, ChevronRight, Monitor, Moon, Sun } from '@/shared/icons'
 import { useTheme } from '@/shared/theme/useTheme'
 import { THEME_MODES, type ThemeMode } from '@/shared/theme/types'
 

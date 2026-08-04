@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Calendar, MapPin, Users, Clock, Video, Building, Trash2, UserPlus, UserCheck, Globe } from 'lucide-react'
+import { Calendar, MapPin, Users, Clock, Video, Building, Trash2, UserPlus, UserCheck, Globe } from '@/shared/icons'
 import { GroupEvent } from '@/shared/hooks/useGroupEvents'
 import { formatDistanceToNow, format } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'

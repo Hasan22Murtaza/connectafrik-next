@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Search, X, User, Users, ShoppingBag, Loader2 } from 'lucide-react'
+import { ArrowLeft, Search, X, User, Users, ShoppingBag, Loader2 } from '@/shared/icons'
 import { useSearch } from '@/shared/hooks/useSearch'
 import type { SearchResults } from '@/shared/services/searchService'
 import { formatCount } from '@/shared/utils/formatUtils'

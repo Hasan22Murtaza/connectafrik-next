@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles } from '@/shared/icons'
 
 export type CreateStep = 'media' | 'details' | 'review'
 

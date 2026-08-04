@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare } from '@/shared/icons'
 import { PostCard } from '@/features/social/components/PostCard'
 import CommentsSection from '@/features/social/components/CommentsSection'
 

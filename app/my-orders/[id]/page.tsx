@@ -30,7 +30,7 @@ import {
   Truck,
   User,
   XCircle,
-} from 'lucide-react';
+} from '@/shared/icons';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import React, { useEffect, useState } from 'react';

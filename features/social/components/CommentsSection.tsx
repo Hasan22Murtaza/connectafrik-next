@@ -1,7 +1,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Send, Trash2, Flag, Smile, Edit2, Check, X, Loader2, CheckCircle } from 'lucide-react'
+import { Send, Trash2, Flag, Smile, Edit2, Check, X, Loader2, CheckCircle } from '@/shared/icons'
 import { useComments, Comment, CommentAttachment, CommentAttachmentInput, UpdateCommentPayload } from '@/shared/hooks/useComments'
 import { useAuth } from '@/contexts/AuthContext'
 import EmojiPicker from '@/shared/components/ui/EmojiPicker'

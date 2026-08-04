@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/shared/icons'
 import { useReels } from '@/shared/hooks/useReels'
 import { REEL_CATEGORIES, ReelCategory } from '@/shared/types/reels'
 import { MemoriesNav } from '@/features/social/components/MemoriesNav'

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield } from '@/shared/icons';
 import { useAuth } from "@/contexts/AuthContext";
 import { ADMIN_NAV_LINKS } from "../constants/adminNavigation";
 import { useAdminShell } from "../context/AdminShellContext";

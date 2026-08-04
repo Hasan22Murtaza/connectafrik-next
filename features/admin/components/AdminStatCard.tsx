@@ -1,7 +1,7 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import { TrendingDown, TrendingUp, Minus } from "lucide-react";
+import type { LucideIcon } from '@/shared/icons';
+import { TrendingDown, TrendingUp, Minus } from '@/shared/icons';
 import { AP } from "../constants/adminLayout";
 
 interface AdminStatCardProps {

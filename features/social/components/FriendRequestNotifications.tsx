@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { X, Check, UserPlus } from 'lucide-react'
+import { X, Check, UserPlus } from '@/shared/icons'
 import { friendRequestService, FriendRequest } from '@/features/social/services/friendRequestService'
 import { supabase } from '@/lib/supabase'
 

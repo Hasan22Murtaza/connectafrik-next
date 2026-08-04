@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Bell, X } from 'lucide-react'
+import { Bell, X } from '@/shared/icons'
 import { Notification } from '@/shared/types/notifications'
 import {
   getNotificationPayload,

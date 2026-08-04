@@ -1,7 +1,7 @@
 "use client";
 
 import { apiClient } from "@/lib/api-client";
-import { Newspaper, Play } from "lucide-react";
+import { Newspaper, Play } from '@/shared/icons';
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 

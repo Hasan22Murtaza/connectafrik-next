@@ -13,7 +13,7 @@ import {
   Lock,
   ChevronDown,
   ChevronLeft,
-} from 'lucide-react'
+} from '@/shared/icons'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReels, useUpdateReel, useDeleteReel } from '@/shared/hooks/useReels'

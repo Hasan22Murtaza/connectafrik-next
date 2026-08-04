@@ -1,5 +1,5 @@
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
-import { AlertCircle, CheckCircle, Film, Loader, Upload, X } from 'lucide-react'
+import { AlertCircle, CheckCircle, Film, Loader, Upload, X } from '@/shared/icons'
 import React, { useCallback, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 

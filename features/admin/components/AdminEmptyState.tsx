@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from '@/shared/icons';
 import { AP } from "../constants/adminLayout";
 
 interface AdminEmptyStateProps {

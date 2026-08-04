@@ -22,7 +22,7 @@ import React, {
   useState,
 } from 'react';
 import { useMeeting } from '@videosdk.live/react-sdk';
-import { PhoneOff } from 'lucide-react';
+import { PhoneOff } from '@/shared/icons';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';

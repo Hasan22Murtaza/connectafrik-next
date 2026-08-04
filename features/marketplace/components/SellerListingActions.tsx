@@ -12,7 +12,7 @@ import {
   Share2,
   Trash2,
   Users,
-} from "lucide-react";
+} from '@/shared/icons';
 import React, { useEffect, useRef, useState } from "react";
 
 export type ListingActionMenuItem =

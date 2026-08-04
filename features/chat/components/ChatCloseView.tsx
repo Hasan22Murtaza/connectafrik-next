@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import { FileText, UserPlus, Users } from "lucide-react";
+import { FileText, UserPlus, Users } from '@/shared/icons';
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 

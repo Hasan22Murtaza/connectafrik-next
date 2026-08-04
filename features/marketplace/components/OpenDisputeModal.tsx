@@ -4,7 +4,7 @@ import {
   DisputeReason,
   openDispute,
 } from '@/features/marketplace/services/disputeService'
-import { AlertTriangle, Shield, X } from 'lucide-react'
+import { AlertTriangle, Shield, X } from '@/shared/icons'
 import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 

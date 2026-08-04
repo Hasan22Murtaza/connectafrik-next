@@ -56,7 +56,7 @@ import {
   X,
   XCircle,
   ChevronDown,
-} from "lucide-react";
+} from '@/shared/icons';
 import { usePathname, useRouter } from "next/navigation";
 import React, {
   Fragment,

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Camera } from 'lucide-react'
+import { Camera } from '@/shared/icons'
 import ImageViewer from '@/shared/components/ui/ImageViewer'
 
 const EmptyState = ({ icon: Icon, title, sub }: { icon: React.ElementType; title: string; sub: string }) => (

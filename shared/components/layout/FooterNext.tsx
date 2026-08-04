@@ -11,7 +11,7 @@ import {
   Youtube,
   Heart,
   Globe,
-} from "lucide-react";
+} from "@/shared/icons";
 
 const socials = [
   { icon: Facebook, href: "https://facebook.com", label: "Facebook" },

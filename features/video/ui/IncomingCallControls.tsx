@@ -1,4 +1,4 @@
-import { PhoneOff } from 'lucide-react';
+import { PhoneOff } from '@/shared/icons';
 import React from 'react';
 
 interface IncomingCallControlsProps {
