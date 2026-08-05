@@ -6,7 +6,7 @@ import {
   User, Lock, Bell, Shield, Eye, EyeOff,
   Globe, Users, Camera, Save,
   Trash2, AlertTriangle, Download, Settings, Monitor, X
-} from 'lucide-react'
+} from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import type { ProfileVisibilityLevel } from '@/shared/types'

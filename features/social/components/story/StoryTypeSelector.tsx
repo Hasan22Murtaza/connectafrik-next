@@ -1,5 +1,5 @@
 import React from 'react'
-import { Camera, FileText } from 'lucide-react'
+import { Camera, FileText } from '@/shared/icons'
 
 export type StoryType = 'photo' | 'text' | null
 

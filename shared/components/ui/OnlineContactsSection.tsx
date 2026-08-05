@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, Phone, Video, UserPlus } from 'lucide-react'
+import { MessageCircle, Phone, Video, UserPlus } from '@/shared/icons'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
 

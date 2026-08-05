@@ -8,7 +8,7 @@ import {
   findOrCreateMarketplaceThread,
   insertMarketplaceMessage,
   insertWaitingForResponseSystemMessage,
-} from '@/lib/marketplaceChat'
+} from '@/lib/chat/marketplaceChat'
 
 export async function POST(request: NextRequest) {
   try {

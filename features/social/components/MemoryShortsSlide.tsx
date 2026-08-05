@@ -12,7 +12,7 @@ import {
   Trash2,
   MoreVertical,
   ThumbsUp,
-} from 'lucide-react'
+} from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReelInteractions } from '@/shared/hooks/useReels'
 import { Reel } from '@/shared/types/reels'

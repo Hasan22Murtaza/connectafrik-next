@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef } from 'react'
-import { Globe } from 'lucide-react'
+import { Globe } from '@/shared/icons'
 import {
   MESSAGE_TRANSLATION_LANGUAGES,
   type MessageTranslationLanguageCode,

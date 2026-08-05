@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { confirmDelivery } from '@/features/marketplace/services/commissionService'
-import { AlertCircle, CheckCircle, Package, X } from 'lucide-react'
+import { AlertCircle, CheckCircle, Package, X } from '@/shared/icons'
 import React, { useState } from 'react'
 import toast from 'react-hot-toast'
 

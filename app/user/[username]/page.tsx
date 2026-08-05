@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   UserPlus, UserCheck, MessageCircle, Phone, Video, MoreHorizontal,
   MapPin, Calendar, Users,
-} from 'lucide-react'
+} from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { followUser, unfollowUser, checkIsFollowing, checkIsMutual } from '@/features/social/services/followService'

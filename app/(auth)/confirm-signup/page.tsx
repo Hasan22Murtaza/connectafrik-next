@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from '@/shared/icons'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
 import { authLinkErrorQuery, parseAuthHash } from '@/lib/auth/parseAuthHash'

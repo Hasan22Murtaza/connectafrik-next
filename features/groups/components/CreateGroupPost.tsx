@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Image, Send, X, Upload, FileText, Target, Megaphone, Calendar, BookOpen, Ban, ArrowLeft } from 'lucide-react'
+import { Image, Send, X, Upload, FileText, Target, Megaphone, Calendar, BookOpen, Ban, ArrowLeft } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'

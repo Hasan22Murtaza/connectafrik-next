@@ -1,4 +1,4 @@
-import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from 'lucide-react'
+import { Maximize, Minimize, Pause, Play, Volume2, VolumeX } from '@/shared/icons'
 import React, { useEffect, useRef, useState } from 'react'
 
 interface VideoPlayerProps {

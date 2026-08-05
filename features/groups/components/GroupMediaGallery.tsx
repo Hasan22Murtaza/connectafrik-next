@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Images, Video, X, Download } from 'lucide-react'
+import { Images, Video, X, Download } from '@/shared/icons'
 
 interface GroupMediaGalleryProps {
   items: GroupMediaItem[]

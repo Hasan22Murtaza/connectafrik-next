@@ -13,7 +13,7 @@ import {
   Wallet,
   ArrowRight,
   Inbox,
-} from "lucide-react";
+} from '@/shared/icons';
 import toast from "react-hot-toast";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";

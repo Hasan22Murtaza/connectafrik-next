@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { getMissedCallCount } from '@/lib/chatHeaderCounts'
+import { getMissedCallCount } from '@/lib/chat/chatHeaderCounts'
 
 /**
  * GET /api/chat/calls/missed-count

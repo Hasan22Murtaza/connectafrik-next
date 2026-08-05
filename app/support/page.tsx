@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Mail, Phone, MessageCircle, HelpCircle } from 'lucide-react'
+import { Mail, Phone, MessageCircle, HelpCircle } from '@/shared/icons'
 
 const faqs = [
   {

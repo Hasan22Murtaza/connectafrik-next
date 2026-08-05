@@ -2,7 +2,7 @@
 
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns'
-import { ArrowDownLeft, ArrowUpRight, Phone, Video, Loader2 } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Phone, Video, Loader2 } from '@/shared/icons'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread, RecentCallEntry } from '@/features/chat/services/supabaseMessagingService'

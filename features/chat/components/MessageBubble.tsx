@@ -30,7 +30,7 @@ import {
   Smile,
   Trash2,
   Video,
-} from "lucide-react";
+} from '@/shared/icons';
 import React, { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import ReactionIcon, {

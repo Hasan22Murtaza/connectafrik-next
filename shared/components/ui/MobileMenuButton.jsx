@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Menu, X, Users, UserPlus, ShoppingBag, Clock, Bookmark, Video, Search, Users2, Package } from 'lucide-react'
+import { Menu, X, Users, UserPlus, ShoppingBag, Clock, Bookmark, Video, Search, Users2, Package } from '@/shared/icons'
 import { useRouter } from 'next/navigation'
 import { UserSearch } from './UserSearch'
 

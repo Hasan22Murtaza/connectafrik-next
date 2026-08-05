@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from '@/shared/icons'
 
 const AccountActivated: React.FC = () => {
   return (

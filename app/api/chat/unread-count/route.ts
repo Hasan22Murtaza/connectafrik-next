@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { getTotalUnreadMessageCount } from '@/lib/chatHeaderCounts'
+import { getTotalUnreadMessageCount } from '@/lib/chat/chatHeaderCounts'
 
 /** GET /api/chat/unread-count — total unread messages across all active chats. */
 export async function GET(request: NextRequest) {

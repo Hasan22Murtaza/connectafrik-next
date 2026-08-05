@@ -21,7 +21,7 @@ import {
 
   ShoppingCart,
   Truck,
-} from "lucide-react";
+} from '@/shared/icons';
 
 import { useAuth } from "@/contexts/AuthContext";
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { MessageCircle, X } from 'lucide-react'
+import { MessageCircle, X } from '@/shared/icons'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useMembers } from '@/shared/hooks/useMembers'
 

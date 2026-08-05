@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { MapPin, Bookmark, Eye, Tag, Package, ShoppingCart, MessageCircle, Share2 } from 'lucide-react'
+import { MapPin, Bookmark, Eye, Tag, Package, ShoppingCart, MessageCircle, Share2 } from '@/shared/icons'
 import { Product } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
 import { useProductionChat } from '@/contexts/ProductionChatContext'

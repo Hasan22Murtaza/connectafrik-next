@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, UserPlus, Users, X } from "lucide-react";
+import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, UserPlus, Users, X } from '@/shared/icons';
 import { isDirectBlockableThread } from "@/features/chat/utils/threadHelpers";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { ChatThread, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";

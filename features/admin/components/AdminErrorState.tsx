@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw } from '@/shared/icons';
 import { AP } from "../constants/adminLayout";
 
 interface AdminErrorStateProps {

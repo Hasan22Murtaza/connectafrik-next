@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, LogOut, User, LayoutDashboard } from "lucide-react";
+import { ChevronDown, LogOut, User, LayoutDashboard } from '@/shared/icons';
 import { useAuth } from "@/contexts/AuthContext";
 export function AdminUserMenu() {
   const { user, signOut } = useAuth();

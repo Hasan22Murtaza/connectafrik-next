@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'

@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { CreditCard, Trash2 } from "lucide-react";
+import { CreditCard, Trash2 } from '@/shared/icons';
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import type { SavedCard } from "@/features/marketplace/services/walletService";

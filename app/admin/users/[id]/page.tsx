@@ -20,7 +20,7 @@ import {
   User,
   UserX,
   Wallet,
-} from "lucide-react";
+} from '@/shared/icons';
 import toast from "react-hot-toast";
 import { AdminErrorState } from "@/features/admin/components/AdminErrorState";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";

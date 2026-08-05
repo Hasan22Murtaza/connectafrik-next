@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PhoneOff, UserPlus, X } from 'lucide-react'
+import { PhoneOff, UserPlus, X } from '@/shared/icons'
 import toast from 'react-hot-toast'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
 import {

@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { User, Users, Loader2, ShoppingBag } from 'lucide-react'
+import { User, Users, Loader2, ShoppingBag } from '@/shared/icons'
 import type { SearchResults } from '@/shared/services/searchService'
 import { formatCount } from '@/shared/utils/formatUtils'
 

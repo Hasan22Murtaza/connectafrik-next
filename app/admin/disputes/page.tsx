@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { Shield, Clock, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Shield, Clock, ExternalLink, CheckCircle2 } from '@/shared/icons';
 import toast from "react-hot-toast";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";

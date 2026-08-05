@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCcw } from '@/shared/icons'
 
 interface ImageViewerProps {
   images: string[]

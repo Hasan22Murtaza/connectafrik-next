@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Plus, Globe, TrendingUp, Users, Sparkles } from 'lucide-react'
+import { Plus, Globe, TrendingUp, Users, Sparkles } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { usePosts } from '@/shared/hooks/usePosts'

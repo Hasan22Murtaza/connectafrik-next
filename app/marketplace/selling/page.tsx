@@ -30,7 +30,7 @@ import {
   Tag,
   TrendingUp,
   Wallet,
-} from "lucide-react";
+} from '@/shared/icons';
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";

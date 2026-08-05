@@ -7,7 +7,7 @@ import {
   callSessionUpdateToChatMessage,
 } from '@/features/chat/services/callSessionRealtime'
 import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
-import { MARKETPLACE_SYSTEM, isMarketplaceMessageType } from '@/lib/marketplaceChat'
+import { MARKETPLACE_SYSTEM, isMarketplaceMessageType } from '@/lib/chat/marketplaceChat'
 
 /** call_sessions.status-aligned message_type values (signaling; excluded from generic chat push). */
 const ALL_CALL_SIGNAL_MESSAGE_TYPES: string[] = [

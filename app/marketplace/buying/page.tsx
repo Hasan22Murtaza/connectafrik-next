@@ -18,7 +18,7 @@ import {
   List,
   Plus,
   ShoppingBag,
-} from "lucide-react";
+} from '@/shared/icons';
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";

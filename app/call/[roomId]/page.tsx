@@ -5,8 +5,11 @@ import dynamic from 'next/dynamic'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
+import { readCallBootstrap } from '@/lib/call-media/bootstrap'
+import type { CallMediaProviderName } from '@/lib/call-media/types'
+import { parseProviderName } from '@/lib/call-media/resolve'
 
-const VideoSDKCallModal = dynamic(() => import('@/features/video/components/VideoSDKCallModal'), {
+const CallModal = dynamic(() => import('@/features/video/CallModal'), {
   ssr: false,
 })
 
@@ -19,6 +22,27 @@ function notifyParentCallEnded(threadId: string, callId?: string) {
       )
     } catch {}
   }
+}
+
+/**
+ * `window.close()` only works on a window the SCRIPT opened (i.e. `window.opener`
+ * is set, matching the `window.open()` popup path). When this page was reached
+ * via a same-tab navigation instead -- the in-page fallback for a blocked call
+ * popup, or an outgoing call whose popup was blocked -- there is no opener, and
+ * a browser refuses to close such a tab, silently no-op'ing `window.close()`
+ * and stranding the user on the "Call ended" screen forever. Redirect back to
+ * the conversation (or the feed) in that case instead.
+ */
+function closeCallWindowOrRedirect(
+  threadId: string,
+  router: ReturnType<typeof useRouter>,
+) {
+  if (typeof window === 'undefined') return
+  if (window.opener && !window.opener.closed) {
+    window.close()
+    return
+  }
+  router.replace(threadId ? `/chat?thread=${threadId}` : '/feed')
 }
 
 type CallDisplay = {
@@ -36,18 +60,14 @@ function parseSessionMetadata(raw: unknown): Record<string, unknown> {
 }
 
 /** Outgoing call: one-time read of token staged by the opener tab (avoids a duplicate /token round-trip). */
-function readAndRemoveCallBootstrap(callId: string): string | undefined {
-  if (typeof window === 'undefined') return undefined
-  try {
-    const k = `videosdk_call_bootstrap:${callId}`
-    const raw = sessionStorage.getItem(k)
-    if (!raw) return undefined
-    sessionStorage.removeItem(k)
-    const o = JSON.parse(raw) as { token?: string }
-    return typeof o.token === 'string' ? o.token : undefined
-  } catch {
-    return undefined
-  }
+function readAndRemoveCallBootstrap(callId: string): {
+  token?: string
+  provider?: CallMediaProviderName
+  wsUrl?: string
+} | undefined {
+  const payload = readCallBootstrap(callId)
+  if (!payload) return undefined
+  return payload
 }
 
 export default function CallWindowPage() {
@@ -57,14 +77,20 @@ export default function CallWindowPage() {
   const { user, loading: authLoading } = useAuth()
 
   const [callDisplay, setCallDisplay] = useState<CallDisplay | null>(null)
-  /** Pre-issued VideoSDK JWT for outgoing calls (from sessionStorage). */
+  /** Pre-issued call JWT for outgoing calls (from sessionStorage). */
   const [joinTokenHint, setJoinTokenHint] = useState<string | undefined>(undefined)
+  const [mediaProviderHint, setMediaProviderHint] = useState<CallMediaProviderName | undefined>(
+    undefined,
+  )
+  const [wsUrlHint, setWsUrlHint] = useState<string | undefined>(undefined)
   /** True once the same user answered this call on another device — close this ringing window. */
   const [answeredElsewhere, setAnsweredElsewhere] = useState(false)
   /** Guards against terminating when the call was accepted on THIS device. */
   const acceptedLocallyRef = useRef(false)
   const outgoingBootstrapCallIdRef = useRef<string | null>(null)
-  const outgoingBootstrapTokenRef = useRef<string | undefined>(undefined)
+  const outgoingBootstrapPayloadRef = useRef<
+    { token?: string; provider?: CallMediaProviderName; wsUrl?: string } | undefined
+  >(undefined)
 
   const roomId = params?.roomId as string
   const callParam = searchParams?.get('call') ?? 'true'
@@ -105,16 +131,17 @@ export default function CallWindowPage() {
 
     if (outgoingBootstrapCallIdRef.current !== callId) {
       outgoingBootstrapCallIdRef.current = callId
-      outgoingBootstrapTokenRef.current = undefined
+      outgoingBootstrapPayloadRef.current = undefined
     }
 
-    if (!isIncoming && callId.trim() && outgoingBootstrapTokenRef.current === undefined) {
-      outgoingBootstrapTokenRef.current = readAndRemoveCallBootstrap(callId.trim())
+    if (!isIncoming && callId.trim() && outgoingBootstrapPayloadRef.current === undefined) {
+      outgoingBootstrapPayloadRef.current = readAndRemoveCallBootstrap(callId.trim())
     }
 
-    setJoinTokenHint(
-      !isIncoming && callId.trim() ? outgoingBootstrapTokenRef.current : undefined,
-    )
+    const bootstrap = !isIncoming && callId.trim() ? outgoingBootstrapPayloadRef.current : undefined
+    setJoinTokenHint(bootstrap?.token)
+    setMediaProviderHint(bootstrap?.provider)
+    setWsUrlHint(bootstrap?.wsUrl)
 
     if (!callId.trim()) {
       setCallDisplay({
@@ -152,6 +179,11 @@ export default function CallWindowPage() {
           if (cancelled) return
 
           const meta = parseSessionMetadata(row?.metadata)
+          // Pin to whichever provider the room was actually created on
+          // (persisted server-side) so this callee's token request can't
+          // silently resolve to a different provider than the caller's.
+          const providerFromMeta = parseProviderName(meta.provider as string | undefined)
+          if (providerFromMeta) setMediaProviderHint(providerFromMeta)
           const callerNameMeta = typeof meta.callerName === 'string' ? meta.callerName : ''
           let callerAvatarMeta = typeof meta.callerAvatarUrl === 'string' ? meta.callerAvatarUrl : ''
           const createdBy = typeof row?.created_by === 'string' ? row.created_by : ''
@@ -270,7 +302,7 @@ export default function CallWindowPage() {
     newParams.set('call', 'false')
     router.replace(`/call/${roomId}?${newParams.toString()}`)
     setTimeout(() => {
-      if (typeof window !== 'undefined') window.close()
+      closeCallWindowOrRedirect(threadId, router)
     }, 1500)
   }
 
@@ -301,14 +333,26 @@ export default function CallWindowPage() {
       if (!matchesThisCall(payloadThreadId, payloadCallId)) return
       setAnsweredElsewhere(true)
       setTimeout(() => {
-        if (typeof window !== 'undefined') window.close()
+        closeCallWindowOrRedirect(threadId, router)
       }, 1500)
+    }
+
+    const terminateIncomingCall = (payloadThreadId?: string, payloadCallId?: string) => {
+      if (acceptedLocallyRef.current || answeredElsewhere) return
+      if (!matchesThisCall(payloadThreadId, payloadCallId)) return
+      handleCallEnd()
     }
 
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       const data = event.data
-      if (!data || data.type !== 'CALL_STATUS' || data.status !== 'active') return
-      terminateAnsweredElsewhere(data.threadId, data.callId)
+      if (!data || data.type !== 'CALL_STATUS') return
+      if (data.status === 'active') {
+        terminateAnsweredElsewhere(data.threadId, data.callId)
+        return
+      }
+      if (data.status === 'ended') {
+        terminateIncomingCall(data.threadId, data.callId)
+      }
     }
 
     const handleFcmForeground = (event: Event) => {
@@ -317,11 +361,24 @@ export default function CallWindowPage() {
       if (!data || typeof data !== 'object') return
       const type = String(data.type || data.status || data.call_status || '').trim().toLowerCase()
       const last = String(data.last_signal || '').trim().toLowerCase()
-      if (type !== 'active' && last !== 'active') return
       const tid = String(data.thread_id || data.threadId || data.chat_thread_id || '').trim()
       const cidRaw = data.call_id || data.callId || ''
       const cid = typeof cidRaw === 'string' ? cidRaw.trim() : ''
-      terminateAnsweredElsewhere(tid, cid)
+
+      if (type === 'active' || last === 'active') {
+        terminateAnsweredElsewhere(tid, cid)
+        return
+      }
+      if (
+        type === 'declined' ||
+        last === 'declined' ||
+        type === 'missed' ||
+        last === 'missed' ||
+        type === 'ended' ||
+        last === 'ended'
+      ) {
+        terminateIncomingCall(tid, cid)
+      }
     }
 
     // The modal posts CALL_STATUS:active to this same window the instant Accept is
@@ -349,7 +406,7 @@ export default function CallWindowPage() {
       window.removeEventListener('message', handleWindowMessage)
       window.removeEventListener('fcm-foreground-message', handleFcmForeground)
     }
-  }, [isIncoming, threadId, callId, answeredElsewhere])
+  }, [isIncoming, threadId, callId, answeredElsewhere, handleCallEnd, router])
 
   const showCallUi = callDisplay !== null && !authLoading && user?.id
 
@@ -368,7 +425,7 @@ export default function CallWindowPage() {
     <div className="w-full h-screen bg-black overflow-hidden">
       {isOpen ? (
         showCallUi ? (
-          <VideoSDKCallModal
+          <CallModal
             isOpen={true}
             onClose={handleCallEnd}
             callType={callType}
@@ -388,6 +445,8 @@ export default function CallWindowPage() {
             roomIdHint={roomId}
             tokenHint={joinTokenHint}
             callIdHint={callId}
+            mediaProviderHint={mediaProviderHint}
+            wsUrlHint={wsUrlHint}
           />
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-white gap-3 px-4 text-center">

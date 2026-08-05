@@ -1,14 +1,14 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { DeepSeekError } from '@/lib/deepseek'
 import {
   fetchThreadDialogueForTranscript,
   generateTranscriptWithDeepSeek,
   getSavedTranscript,
   upsertTranscript,
-} from '@/lib/chatTranscript'
+} from '@/lib/chat/chatTranscript'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 

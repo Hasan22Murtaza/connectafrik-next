@@ -10,7 +10,7 @@ import {
   MoreVertical,
   Eye,
   LogOut,
-} from "lucide-react";
+} from '@/shared/icons';
 import { formatDistanceToNow } from "date-fns";
 import { Group } from "@/shared/types";
 import { useAuth } from "@/contexts/AuthContext";

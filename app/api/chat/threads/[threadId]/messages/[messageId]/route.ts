@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 
 const MESSAGE_SELECT = `
   *,

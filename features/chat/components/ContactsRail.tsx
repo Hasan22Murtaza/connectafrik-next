@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { MessageCircle, Phone, Video } from 'lucide-react'
+import { MessageCircle, Phone, Video } from '@/shared/icons'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { ChatParticipant } from '@/shared/types/chat'

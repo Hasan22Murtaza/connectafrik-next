@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Star, ThumbsUp, MessageSquare, AlertCircle } from 'lucide-react'
+import { Star, ThumbsUp, MessageSquare, AlertCircle } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'

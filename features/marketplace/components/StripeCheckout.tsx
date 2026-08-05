@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-import { Phone } from 'lucide-react'
+import { Phone } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import { Product } from '@/shared/types'

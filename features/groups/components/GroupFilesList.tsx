@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { FileText, Download, Image, Video, File, Calendar, User, Folder } from 'lucide-react'
+import { FileText, Download, Image, Video, File, Calendar, User, Folder } from '@/shared/icons'
 import { formatDistanceToNow } from 'date-fns'
 
 interface GroupFilesListProps {

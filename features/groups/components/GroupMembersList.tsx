@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Users, UserMinus } from 'lucide-react'
+import { Users, UserMinus } from '@/shared/icons'
 import { apiClient } from '@/lib/api-client'
 import { GroupMembership } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'

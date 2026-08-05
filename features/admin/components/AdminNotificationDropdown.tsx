@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Shield, Package, Wallet } from "lucide-react";
+import { Bell, Shield, Package, Wallet } from '@/shared/icons';
 interface AdminNotification {
   id: string;
   title: string;

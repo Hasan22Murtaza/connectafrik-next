@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Clapperboard, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Play } from 'lucide-react'
+import { Clapperboard, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Play } from '@/shared/icons'
 import { useReels } from '@/shared/hooks/useReels'
 import type { Reel } from '@/shared/types/reels'
 

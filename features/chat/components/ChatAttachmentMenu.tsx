@@ -8,7 +8,7 @@ import {
   MapPin,
   Video,
   X,
-} from "lucide-react";
+} from '@/shared/icons';
 import {
   fileUploadService,
   type FileUploadResult,

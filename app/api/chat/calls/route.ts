@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { filterThreadIdsAccessibleToUser } from '@/lib/chatThreadAccess'
+import { filterThreadIdsAccessibleToUser } from '@/lib/chat/chatThreadAccess'
 
 /** Align API message_type with call_sessions.status (Postgres check constraint). */
 function statusToMessageType(status: string | null | undefined): string {

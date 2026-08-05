@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/shared/icons'
 
 interface VideoViewerProps {
   src: string | null

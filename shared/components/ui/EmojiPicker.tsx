@@ -1,7 +1,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Smile, Heart, ThumbsUp, Star } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { Smile, Heart, ThumbsUp, Star } from '@/shared/icons'
+import type { LucideIcon } from '@/shared/icons'
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void

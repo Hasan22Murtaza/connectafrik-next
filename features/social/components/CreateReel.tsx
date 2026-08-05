@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { X, Upload, Play, Pause, Volume2, VolumeX, Settings, Tag, Globe, Lock, Camera, Square, RotateCcw } from 'lucide-react'
+import { X, Upload, Play, Pause, Volume2, VolumeX, Settings, Tag, Globe, Lock, Camera, Square, RotateCcw } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCreateReel } from '@/shared/hooks/useReels'
 import { REEL_CATEGORIES, REEL_ASPECT_RATIOS, MAX_REEL_DURATION, MAX_REEL_TITLE_LENGTH, MAX_REEL_DESCRIPTION_LENGTH, MAX_REEL_TAGS } from '@/shared/types/reels'

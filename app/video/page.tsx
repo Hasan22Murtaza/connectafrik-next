@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { ArrowLeft, Home, Video as VideoIcon } from 'lucide-react'
+import { ArrowLeft, Home, Video as VideoIcon } from '@/shared/icons'
 import { useRouter } from 'next/navigation'
 import Footer from '@/shared/components/layout/FooterNext'
 

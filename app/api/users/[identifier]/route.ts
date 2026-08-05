@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { lookupDirectThreadIdBetweenUsers } from '@/lib/chatThreadLookup'
+import { lookupDirectThreadIdBetweenUsers } from '@/lib/chat/chatThreadLookup'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 

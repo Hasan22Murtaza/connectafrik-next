@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { MapPin, Calendar, Users, MessageSquare } from 'lucide-react'
+import { MapPin, Calendar, Users, MessageSquare } from '@/shared/icons'
 import { formatDistanceToNow } from 'date-fns'
 import { UserProfileWithVisibility } from '@/shared/types'
 import type { VisibleProfileFields } from '@/shared/utils/visibilityUtils'

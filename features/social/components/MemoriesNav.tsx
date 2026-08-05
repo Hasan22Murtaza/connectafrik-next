@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Compass, Home, SquarePlus, Video, Users } from 'lucide-react'
+import { Compass, Home, SquarePlus, Video, Users } from '@/shared/icons'
 
 export type MemoriesTabId = 'foryou' | 'explore' | 'following' | 'mine'
 

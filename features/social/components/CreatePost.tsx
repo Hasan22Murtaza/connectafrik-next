@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images } from 'lucide-react'
+import { MapPin, Send, X, Film, ChevronDown, Save, Loader2, Navigation, ArrowLeft, Search, Ban, Images } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProfile } from '@/shared/hooks/useProfile'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'

@@ -11,7 +11,7 @@ import {
   Tag,
   Trash2,
   Upload,
-} from "lucide-react";
+} from '@/shared/icons';
 import { useAuth } from "@/contexts/AuthContext";
 import {
   PRODUCT_CATEGORIES,

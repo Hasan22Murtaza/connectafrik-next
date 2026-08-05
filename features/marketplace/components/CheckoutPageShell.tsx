@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { ArrowLeft, Lock, Minus, Plus, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, Lock, Minus, Plus, ShieldCheck } from '@/shared/icons'
 import { Product } from '@/shared/types'
 import { formatProductPrice, getCurrencySymbol } from '@/features/marketplace/utils/productFormatting'
 

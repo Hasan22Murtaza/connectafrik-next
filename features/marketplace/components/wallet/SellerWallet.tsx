@@ -20,7 +20,7 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
-import { CreditCard, Loader2, Shield } from "lucide-react";
+import { CreditCard, Loader2, Shield } from '@/shared/icons';
 import { useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";

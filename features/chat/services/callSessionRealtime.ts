@@ -281,6 +281,38 @@ export function callSessionUpdateToChatMessage(
   }
 }
 
+/**
+ * Confirm-with-server before giving up on a call.
+ *
+ * Used by both providers' "last participant left" / "media disconnected"
+ * paths: a local view of zero remote participants can be OUR transport dying
+ * (network blip, SDK error) rather than the call actually being over. Checking
+ * the server's row — which every other participant is still updating — before
+ * ending distinguishes "I fell off a call that's still live for everyone else"
+ * from "the call is genuinely over", and is what should trigger a rejoin
+ * attempt instead of an immediate end.
+ */
+export async function getLatestCallSession(
+  threadId: string,
+  callId: string,
+): Promise<{ status: string; participants: string[] } | null> {
+  if (!threadId || !callId) return null
+  try {
+    const res = await apiClient.get<{ session: Record<string, unknown> | null }>(
+      `/api/chat/threads/${threadId}/call-sessions`,
+      { call_id: callId },
+    )
+    const row = res?.session
+    if (!row) return null
+    return {
+      status: String(row.status || ''),
+      participants: Array.isArray(row.participants) ? (row.participants as string[]) : [],
+    }
+  } catch {
+    return null
+  }
+}
+
 /** PATCH call_sessions with short retries when the row is not visible yet (POST still in flight). */
 export async function patchCallSessionWithRetry(
   threadId: string,

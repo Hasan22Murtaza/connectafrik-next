@@ -8,7 +8,7 @@ import {
   Loader2,
   MapPin,
   X,
-} from "lucide-react";
+} from '@/shared/icons';
 import LocationSearch from "@/shared/components/ui/LocationSearch";
 import { apiClient } from "@/lib/api-client";
 import type { ProfileLocationValue } from "@/shared/types/location";

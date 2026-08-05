@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { queryUserThreads } from '@/lib/chatThreadsQuery'
+import { queryUserThreads } from '@/lib/chat/chatThreadsQuery'
 
 /**
  * GET /api/chat/threads/groups

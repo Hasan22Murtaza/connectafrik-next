@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Bell, BellOff, Settings, X } from 'lucide-react'
+import { Bell, BellOff, Settings, X } from '@/shared/icons'
 import { initialize, requestPermission, subscribe, unsubscribe, isSubscribed as checkIsSubscribed, sendLocalNotification, NotificationPayload } from '@/shared/utils/fcmClient'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'

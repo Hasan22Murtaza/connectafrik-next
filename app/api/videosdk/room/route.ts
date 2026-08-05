@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import jwt from 'jsonwebtoken'
-import { generateVideosdkParticipantJwt } from '@/lib/videosdk-participant-jwt'
+import { createCallRoom } from '@/lib/call-media/provider'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
-import { getBusyMapForUserIds } from '@/lib/call-session-busy'
+import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const corsHeaders = {
@@ -78,6 +77,8 @@ export async function POST(request: NextRequest) {
   }
 
   const include_participant_token = body.include_participant_token === true
+  const display_name = typeof body.display_name === 'string' ? body.display_name.trim() : ''
+  const avatar_url = typeof body.avatar_url === 'string' ? body.avatar_url.trim() : ''
 
   if (check_user_ids.length > 0) {
     try {
@@ -126,110 +127,39 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const VIDEOSDK_API_KEY =
-    process.env.VIDEOSDK_API_KEY 
-  const VIDEOSDK_SECRET_KEY =
-    process.env.VIDEOSDK_SECRET_KEY ??
-    process.env.VIDEOSDK_SECRET ??
-    process.env.VITE_VIDEOSDK_SECRET_KEY ??
-    process.env.NEXT_PUBLIC_VIDEOSDK_SECRET_KEY
-
-  if (!VIDEOSDK_API_KEY || !VIDEOSDK_SECRET_KEY) {
-    return NextResponse.json(
-      { error: 'API keys not configured' },
-      {
-        status: 500,
-        headers: corsHeaders,
-      },
-    )
-  }
-
   try {
-    console.log('Creating VideoSDK room...')
-
-    const apiAuthToken = jwt.sign(
-      {
-        apikey: VIDEOSDK_API_KEY,
-        permissions: ['allow_join', 'allow_mod'],
-        version: 2,
-      },
-      VIDEOSDK_SECRET_KEY,
-      {
-        algorithm: 'HS256',
-        expiresIn: '24h',
-      },
-    )
-
-    const response = await fetch('https://api.videosdk.live/v2/rooms', {
-      method: 'POST',
-      headers: {
-        Authorization: apiAuthToken,
-        'Content-Type': 'application/json',
-      },
+    const credentials = await createCallRoom({
+      userId: authedUserId,
+      includeParticipantToken: include_participant_token,
+      ...(display_name ? { displayName: display_name } : {}),
+      ...(avatar_url ? { avatarUrl: avatar_url } : {}),
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      let errorData: { message?: string; error?: string }
-      try {
-        errorData = JSON.parse(errorText) as { message?: string; error?: string }
-      } catch {
-        errorData = { message: errorText || `HTTP ${response.status}: ${response.statusText}` }
-      }
-
-      console.error('VideoSDK Room API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorData,
-        apiKey: VIDEOSDK_API_KEY ? `${VIDEOSDK_API_KEY.substring(0, 10)}...` : 'missing',
-      })
-
-      return NextResponse.json(
-        {
-          error: errorData.message || errorData.error || 'Failed to create room',
-          details: `Status: ${response.status}. Please verify your API key is correct.`,
-          hint: 'Make sure your VIDEOSDK_API_KEY is correct in .env.local',
-        },
-        {
-          status: response.status,
-          headers: corsHeaders,
-        },
-      )
+    const json: {
+      roomId: string
+      token?: string
+      provider: string
+      wsUrl?: string
+    } = {
+      roomId: credentials.roomId,
+      provider: credentials.provider,
     }
 
-    const data = (await response.json()) as { roomId?: string }
-
-    if (!data.roomId) {
-      console.error('Room ID not found in response:', data)
-      return NextResponse.json(
-        { error: 'Room ID not found in response', response: data },
-        {
-          status: 500,
-          headers: corsHeaders,
-        },
-      )
+    if (credentials.token) {
+      json.token = credentials.token
     }
-
-    console.log('VideoSDK room created successfully:', data.roomId)
-
-    const json: { roomId: string; token?: string } = { roomId: data.roomId }
-    if (include_participant_token) {
-      try {
-        json.token = await generateVideosdkParticipantJwt(data.roomId, authedUserId)
-      } catch (e) {
-        console.error('[videosdk/room] participant token failed', e)
-      }
+    if (credentials.wsUrl) {
+      json.wsUrl = credentials.wsUrl
     }
 
     return NextResponse.json(json, { headers: corsHeaders })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('Room creation error:', error)
+    console.error('[videosdk/room] room creation error:', error)
     return NextResponse.json(
       {
         error: 'Failed to create room',
-        details: message || 'Network error or invalid API endpoint',
-        hint: 'Check your internet connection and VideoSDK API endpoint availability',
+        details: message || 'No call media provider is available',
       },
       {
         status: 500,

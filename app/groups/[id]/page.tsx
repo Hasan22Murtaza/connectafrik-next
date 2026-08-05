@@ -19,7 +19,7 @@ import {
   Images,
   Folder,
   User,
-} from 'lucide-react'
+} from '@/shared/icons'
 import { IoMdShareAlt } from "react-icons/io";
 import { useAuth } from '@/contexts/AuthContext'
 import { useGroups } from '@/shared/hooks/useGroups'

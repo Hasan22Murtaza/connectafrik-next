@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { AtSign, ChevronDown, Heart, MessageCircle, Reply, Send, Smile, Trash2, X } from 'lucide-react'
+import { AtSign, ChevronDown, Heart, MessageCircle, Reply, Send, Smile, Trash2, X } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { useReelComments } from '@/shared/hooks/useReels'
 import { ReelComment } from '@/shared/types/reels'

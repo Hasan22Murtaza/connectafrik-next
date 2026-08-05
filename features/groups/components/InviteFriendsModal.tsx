@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { X, Search, Check, QrCode, UserPlus } from 'lucide-react'
+import { X, Search, Check, QrCode, UserPlus } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { friendRequestService } from '@/features/social/services/friendRequestService'
 import { apiClient } from '@/lib/api-client'

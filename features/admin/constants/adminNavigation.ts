@@ -4,7 +4,7 @@ import {
   Shield,
   Users,
   Wallet,
-} from "lucide-react";
+} from '@/shared/icons';
 
 export const ADMIN_NAV_LINKS = [
   {

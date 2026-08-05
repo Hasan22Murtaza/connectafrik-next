@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { lookupDirectThreadIdBetweenUsers } from '@/lib/chatThreadLookup'
+import { lookupDirectThreadIdBetweenUsers } from '@/lib/chat/chatThreadLookup'
 
 export async function DELETE(
   request: NextRequest,

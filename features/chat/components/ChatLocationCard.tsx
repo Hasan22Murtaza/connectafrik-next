@@ -6,7 +6,7 @@ import {
   parsePostLocation,
   type PostLocationData,
 } from "@/features/social/utils/postLocation";
-import { ExternalLink, MapPin } from "lucide-react";
+import { ExternalLink, MapPin } from '@/shared/icons';
 import React from "react";
 
 /** True when message content is a post-style location JSON payload. */

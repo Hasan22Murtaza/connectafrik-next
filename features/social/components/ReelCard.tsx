@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Heart, Video } from 'lucide-react'
+import { Heart, Video } from '@/shared/icons'
 import { Reel } from '@/shared/types/reels'
 
 function formatShortCount(num: number): string {

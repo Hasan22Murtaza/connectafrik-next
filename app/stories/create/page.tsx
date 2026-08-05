@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Upload, Sparkles, X, ImagePlus } from 'lucide-react'
+import { ArrowLeft, Upload, Sparkles, X, ImagePlus } from '@/shared/icons'
 import { createStory, CreateStoryData } from '@/features/social/services/storiesService'
 import { useFileUpload } from '@/shared/hooks/useFileUpload'
 import { useAuth } from '@/contexts/AuthContext'

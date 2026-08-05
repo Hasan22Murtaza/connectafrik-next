@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Globe, Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
+import { Globe, Eye, EyeOff, Lock, CheckCircle } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'

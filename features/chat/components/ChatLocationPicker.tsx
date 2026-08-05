@@ -9,7 +9,7 @@ import {
   Navigation,
   Search,
   X,
-} from "lucide-react";
+} from '@/shared/icons';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export type ChatLocationSelection = {

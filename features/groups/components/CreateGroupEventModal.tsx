@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { X, Calendar, MapPin, Users, Globe, Lock, Clock, Video, Building } from 'lucide-react'
+import { X, Calendar, MapPin, Users, Globe, Lock, Clock, Video, Building } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 

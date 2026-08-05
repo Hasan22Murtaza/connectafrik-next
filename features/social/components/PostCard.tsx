@@ -11,7 +11,7 @@ import {
   Repeat2,
   Globe,
   Play,
-} from "lucide-react";
+} from '@/shared/icons';
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";

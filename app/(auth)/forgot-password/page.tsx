@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Mail } from 'lucide-react'
+import { Mail } from '@/shared/icons'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
 import { AuthPageShell } from '@/shared/components/auth/AuthPageShell'

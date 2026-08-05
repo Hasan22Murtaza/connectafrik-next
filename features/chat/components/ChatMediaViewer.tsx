@@ -8,7 +8,7 @@ import {
   X,
   ZoomIn,
   ZoomOut,
-} from "lucide-react";
+} from '@/shared/icons';
 import React, { useCallback, useEffect, useState } from "react";
 
 export interface ChatMediaViewerItem {

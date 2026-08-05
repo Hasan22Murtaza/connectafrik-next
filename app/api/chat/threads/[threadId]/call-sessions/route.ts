@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { requireChatThreadAccess } from '@/lib/chatThreadAccess'
+import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
@@ -350,6 +350,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const target_user_id =
       typeof body.target_user_id === 'string' && body.target_user_id.trim() ? body.target_user_id.trim() : undefined
     const is_group_call = body.is_group_call === true
+    // Which media provider the room was actually created on. Persisted so
+    // rejoin/token-reissue for every other participant targets the SAME
+    // provider -- without this, provider selection is re-resolved fresh on
+    // every token request and a transient failover at room-creation time
+    // (LiveKit down for a moment -> videosdk room) can silently diverge from
+    // what a later token request resolves to, producing a callee who connects
+    // successfully but to an empty room on the other provider.
+    const provider = body.provider === 'livekit' || body.provider === 'videosdk' ? body.provider : undefined
     const caller_name = typeof body.caller_name === 'string' ? body.caller_name : user.email || 'Someone'
     let caller_avatar_url = typeof body.caller_avatar_url === 'string' ? body.caller_avatar_url.trim() : ''
     if (!caller_avatar_url) {
@@ -396,6 +404,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       callId: call_id,
       timestamp: new Date().toISOString(),
       last_signal: 'ringing',
+      ...(provider ? { provider } : {}),
     })
 
     const now = new Date().toISOString()

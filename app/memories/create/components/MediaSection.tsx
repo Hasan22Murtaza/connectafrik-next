@@ -14,7 +14,7 @@ import {
   Volume2,
   VolumeX,
   X,
-} from 'lucide-react'
+} from '@/shared/icons'
 import { MAX_REEL_DURATION, REEL_ASPECT_RATIOS } from '@/shared/types/reels'
 
 interface PreviewStyle {

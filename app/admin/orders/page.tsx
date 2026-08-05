@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Eye, Inbox, Package, RefreshCw } from "lucide-react";
+import { Eye, Inbox, Package, RefreshCw } from '@/shared/icons';
 import toast from "react-hot-toast";
 import { AdminLoading } from "@/features/admin/components/AdminLoading";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";

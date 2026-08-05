@@ -14,7 +14,7 @@ import {
   MarketplaceInboxItem,
 } from "@/features/marketplace/services/marketplaceInboxService";
 import { format, isThisWeek, isToday } from "date-fns";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare } from '@/shared/icons';
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";

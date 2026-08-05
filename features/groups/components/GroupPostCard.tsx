@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { MoreHorizontal, Trash2, Edit } from 'lucide-react'
+import { MoreHorizontal, Trash2, Edit } from '@/shared/icons'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'

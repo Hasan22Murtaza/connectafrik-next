@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Link from 'next/link'
-import { LogOut } from 'lucide-react'
+import { LogOut } from '@/shared/icons'
 import DisplayModeMenu from './DisplayModeMenu'
 
 type UserMenuProps = {
