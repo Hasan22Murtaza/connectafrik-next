@@ -2,7 +2,13 @@ import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import type { CallMediaCredentials, CreateCallRoomOptions, IssueCallTokenOptions } from './types';
 import { generateCallRoomId } from './room-id';
 
-const TOKEN_TTL = '10m';
+// LiveKit validates this token only at connect and at resume-after-blip,
+// never to bound call length. A 10-minute TTL therefore did not "expire
+// the call" — it expired the credential mid-call, so the next network
+// blip could not resume and the client fell back to a full rejoin (a new
+// participant id, i.e. "the other person vanished"). A long TTL is the
+// norm; the room grant, not the token clock, controls access.
+const TOKEN_TTL = '6h';
 
 function getLiveKitApiCredentials(): { apiKey: string; apiSecret: string } {
   const apiKey = process.env.LIVEKIT_API_KEY?.trim();

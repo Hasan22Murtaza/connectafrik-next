@@ -34,7 +34,7 @@ async function handleTokenRequest(
       userId: credentials.userId ?? userId,
       provider: credentials.provider,
       ...(credentials.wsUrl ? { wsUrl: credentials.wsUrl } : {}),
-      expiresIn: credentials.expiresIn ?? '10m',
+      expiresIn: credentials.expiresIn ?? '6h',
     },
     { headers: corsHeaders },
   );

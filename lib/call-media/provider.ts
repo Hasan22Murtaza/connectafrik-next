@@ -59,7 +59,7 @@ async function issueWithProvider(
     token,
     provider,
     userId: options.userId,
-    expiresIn: '10m',
+    expiresIn: provider === 'livekit' ? '6h' : '10m',
     ...(provider === 'livekit'
       ? {
           wsUrl:
