@@ -20,7 +20,7 @@ import Image from "next/image";
 const shortcuts = [
   { name: "Friends", to: "/friends", icon: friend },
   { name: "Groups", to: "/groups", icon: group },
-  { name: "Marketplace", to: "/marketplace", icon: marketplace },
+  { name: "TradeHub", to: "/marketplace", icon: marketplace },
   { name: "My Orders", to: "/my-orders", icon: orders },
   { name: "Saved", to: "/saved", icon: saved },
   { name: "Video", to: "/video", icon: video },

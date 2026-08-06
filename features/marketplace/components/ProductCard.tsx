@@ -39,7 +39,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
       'new': 'bg-green-100 text-green-700',
       'like-new': 'bg-blue-100 text-blue-700',
       'good': 'bg-yellow-100 text-yellow-700',
-      'fair': 'bg-orange-100 text-orange-700'
+      'fair': 'bg-orange-100 text-orange-700',
+      'for-parts': 'bg-red-100 text-red-700',
     }
     return colors[condition] || 'bg-surface-secondary text-content'
   }
@@ -129,7 +130,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
 
         {/* Condition Badge */}
         <div className={`absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium ${getConditionColor(product.condition)}`}>
-          {product.condition === 'like-new' ? 'Like New' : product.condition.charAt(0).toUpperCase() + product.condition.slice(1)}
+          {product.condition === 'like-new'
+            ? 'Like New'
+            : product.condition === 'for-parts'
+              ? 'For Parts'
+              : product.condition.charAt(0).toUpperCase() + product.condition.slice(1)}
         </div>
 
         {/* Stock Status */}

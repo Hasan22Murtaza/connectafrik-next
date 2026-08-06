@@ -648,7 +648,7 @@ export function MyOrdersContent() {
               onClick={() => router.push("/marketplace")}
               className="btn-primary"
             >
-              Browse Marketplace
+              Browse TradeHub
             </button>
           </div>
         )}

@@ -1,18 +1,15 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import MarketplaceHubNav from "@/features/marketplace/components/MarketplaceHubNav";
-import ProductBrowseCard from "@/features/marketplace/components/ProductBrowseCard";
-import MarketplaceLocationPicker from "@/features/marketplace/components/MarketplaceLocationPicker";
 import {
   CREATE_LISTING_PATH,
-  MARKETPLACE_CATEGORIES,
-  MARKETPLACE_SORT_OPTIONS,
   MarketplaceSort,
 } from "@/features/marketplace/constants/marketplaceConstants";
+import TradeHubFilterSidebar from "@/features/marketplace/components/TradeHubFilterSidebar";
+import MarketplaceHubNav from "@/features/marketplace/components/MarketplaceHubNav";
+import ProductBrowseCard from "@/features/marketplace/components/ProductBrowseCard";
 import {
-  marketplaceFilterFromProfile,
-  readStoredMarketplaceFilter,
+  emptyMarketplaceLocationFilter,
   writeStoredMarketplaceFilter,
   type MarketplaceLocationFilter,
 } from "@/features/marketplace/utils/marketplaceLocation";
@@ -23,50 +20,59 @@ import {
   MarketplacePageShimmer,
   useShimmerCount,
 } from "@/shared/components/ui/ShimmerLoaders";
-import { useProfile } from "@/shared/hooks/useProfile";
 import { Product } from "@/shared/types";
 import {
-  ArrowLeft,
-  ChevronDown,
-  Filter,
   Plus,
   Search,
-} from '@/shared/icons';
+  X,
+} from "@/shared/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import ReactPaginate from "react-paginate";
 import toast from "react-hot-toast";
 
-const PAGE_SIZE = 24;
+const PAGE_SIZE = 12;
 
 const mapSortToApi = (sort: MarketplaceSort): string => {
   const map: Record<MarketplaceSort, string> = {
     newest: "newest",
+    oldest: "oldest",
     "price-asc": "price_asc",
     "price-desc": "price_desc",
     featured: "featured",
+    nearest: "nearest",
+    popular: "popular",
   };
   return map[sort];
 };
 
 const MarketplacePage: React.FC = () => {
   const { user } = useAuth();
-  const { profile } = useProfile();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [locationFilter, setLocationFilter] = useState<MarketplaceLocationFilter>(() =>
-    marketplaceFilterFromProfile(null)
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+  const [selectedCondition, setSelectedCondition] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [postedWithinDays, setPostedWithinDays] = useState("");
+  const [pickupOnly, setPickupOnly] = useState(false);
+  const [deliveryAvailable, setDeliveryAvailable] = useState(false);
+  const [urgentSale, setUrgentSale] = useState(false);
+  const [featuredOnly, setFeaturedOnly] = useState(false);
+  const [locationFilter, setLocationFilter] = useState<MarketplaceLocationFilter>(
+    emptyMarketplaceLocationFilter
   );
   const [sortBy, setSortBy] = useState<MarketplaceSort>("newest");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
 
   const goToCreateListing = () => {
     if (!user) {
@@ -77,26 +83,7 @@ const MarketplacePage: React.FC = () => {
   };
 
   const shimmerCount = useShimmerCount();
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   const paymentHandledRef = useRef(false);
-  const pageRef = useRef(0);
-  const locationHydratedRef = useRef(false);
-
-  useEffect(() => {
-    if (locationHydratedRef.current) return;
-
-    const stored = readStoredMarketplaceFilter();
-    if (stored) {
-      setLocationFilter(stored);
-      locationHydratedRef.current = true;
-      return;
-    }
-
-    if (profile) {
-      setLocationFilter(marketplaceFilterFromProfile(profile));
-      locationHydratedRef.current = true;
-    }
-  }, [profile]);
 
   const handleLocationFilterChange = useCallback(
     (patch: Partial<MarketplaceLocationFilter>) => {
@@ -133,85 +120,97 @@ const MarketplacePage: React.FC = () => {
     }
   }, [searchParams, router]);
 
-  const fetchProducts = useCallback(
-    async (reset = true) => {
-      try {
-        if (reset) {
-          setLoading(true);
-        } else {
-          setLoadingMore(true);
-        }
+  const fetchProducts = useCallback(async () => {
+    try {
+      setLoading(true);
 
-        const currentPage = reset ? 0 : pageRef.current + 1;
+      const params: Record<string, string | number | boolean> = {
+        page,
+        limit: PAGE_SIZE,
+        sort: mapSortToApi(sortBy),
+      };
 
-        const params: Record<string, string | number> = {
-          page: currentPage,
-          limit: PAGE_SIZE,
-          sort: mapSortToApi(sortBy),
-        };
-
-        if (selectedCategory) params.category = selectedCategory;
-        if (locationFilter.location.country) {
-          params.country = locationFilter.location.country;
-        }
-        if (
-          locationFilter.location.latitude != null &&
-          locationFilter.location.longitude != null
-        ) {
-          params.lat = locationFilter.location.latitude;
-          params.lng = locationFilter.location.longitude;
-          params.radius_km = locationFilter.radiusKm;
-        }
-        if (debouncedSearch) params.search = debouncedSearch;
-
-        const res = await apiClient.get<{ data: Product[]; hasMore?: boolean }>(
-          "/api/marketplace",
-          params
-        );
-
-        const nextProducts = res.data || [];
-
-        setProducts((prev) => (reset ? nextProducts : [...prev, ...nextProducts]));
-        pageRef.current = currentPage;
-        setHasMore(Boolean(res.hasMore));
-      } catch {
-        toast.error("Failed to load products");
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
+      if (selectedCategory) params.category = selectedCategory;
+      if (selectedSubcategory) params.subcategory = selectedSubcategory;
+      if (selectedCondition) params.condition = selectedCondition;
+      if (minPrice.trim()) params.min_price = minPrice.trim();
+      if (maxPrice.trim()) params.max_price = maxPrice.trim();
+      if (postedWithinDays) params.posted_within_days = postedWithinDays;
+      if (pickupOnly) params.pickup_only = true;
+      if (deliveryAvailable) params.delivery_available = true;
+      if (urgentSale) params.urgent = true;
+      if (featuredOnly) params.featured = true;
+      if (locationFilter.location.country) {
+        params.country = locationFilter.location.country;
       }
-    },
-    [
-      selectedCategory,
-      locationFilter,
-      debouncedSearch,
-      sortBy,
-    ]
-  );
+      if (
+        locationFilter.location.latitude != null &&
+        locationFilter.location.longitude != null
+      ) {
+        params.lat = locationFilter.location.latitude;
+        params.lng = locationFilter.location.longitude;
+        params.radius_km = locationFilter.radiusKm;
+      }
+      if (debouncedSearch) params.search = debouncedSearch;
+
+      const res = await apiClient.get<{
+        data: Product[];
+        hasMore?: boolean;
+        pageCount?: number;
+        total?: number;
+      }>("/api/marketplace", params);
+
+      setProducts(res.data || []);
+      const nextPageCount =
+        typeof res.pageCount === "number" && res.pageCount > 0
+          ? res.pageCount
+          : res.hasMore
+            ? page + 2
+            : Math.max(1, page + 1);
+      setPageCount(nextPageCount);
+    } catch {
+      toast.error("Failed to load listings");
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    page,
+    selectedCategory,
+    selectedSubcategory,
+    selectedCondition,
+    minPrice,
+    maxPrice,
+    postedWithinDays,
+    pickupOnly,
+    deliveryAvailable,
+    urgentSale,
+    featuredOnly,
+    locationFilter,
+    debouncedSearch,
+    sortBy,
+  ]);
 
   useEffect(() => {
-    fetchProducts(true);
-  }, [selectedCategory, locationFilter, debouncedSearch, sortBy]);
+    setPage(0);
+  }, [
+    selectedCategory,
+    selectedSubcategory,
+    selectedCondition,
+    minPrice,
+    maxPrice,
+    postedWithinDays,
+    pickupOnly,
+    deliveryAvailable,
+    urgentSale,
+    featuredOnly,
+    locationFilter,
+    debouncedSearch,
+    sortBy,
+  ]);
 
   useEffect(() => {
-    if (!hasMore || loading || loadingMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          fetchProducts(false);
-        }
-      },
-      { rootMargin: "200px" }
-    );
-
-    const node = loadMoreRef.current;
-    if (node) observer.observe(node);
-
-    return () => {
-      if (node) observer.unobserve(node);
-    };
-  }, [hasMore, loading, loadingMore, fetchProducts]);
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleViewProduct = (productId: string) => {
     router.push(`/marketplace/${productId}`);
@@ -220,7 +219,16 @@ const MarketplacePage: React.FC = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedCategory("");
-    const resetLocation = marketplaceFilterFromProfile(profile);
+    setSelectedSubcategory("");
+    setSelectedCondition("");
+    setMinPrice("");
+    setMaxPrice("");
+    setPostedWithinDays("");
+    setPickupOnly(false);
+    setDeliveryAvailable(false);
+    setUrgentSale(false);
+    setFeaturedOnly(false);
+    const resetLocation = emptyMarketplaceLocationFilter();
     setLocationFilter(resetLocation);
     writeStoredMarketplaceFilter(resetLocation);
     setSortBy("newest");
@@ -229,35 +237,21 @@ const MarketplacePage: React.FC = () => {
   const hasActiveFilters =
     searchTerm ||
     selectedCategory ||
+    selectedSubcategory ||
+    selectedCondition ||
+    minPrice ||
+    maxPrice ||
+    postedWithinDays ||
+    pickupOnly ||
+    deliveryAvailable ||
+    urgentSale ||
+    featuredOnly ||
     Boolean(locationFilter.location.country || locationFilter.location.city) ||
     sortBy !== "newest";
 
-  const renderSidebarItem = (
-    isActive: boolean,
-    onClick: () => void,
-    label: string,
-    Icon?: React.ComponentType<{ className?: string }>
-  ) => (
-    <div
-      onClick={onClick}
-      className={`${MP.navItem} ${
-        isActive ? MP.navItemActive : MP.navItemInactive
-      }`}
-    >
-      {Icon && (
-        <Icon
-          className={`${MP.navIcon} ${
-            isActive ? MP.navIconActive : MP.navIconInactive
-          }`}
-        />
-      )}
-      <span>{label}</span>
-    </div>
-  );
-
   const renderEmptyState = () => (
     <div className="text-center py-16 px-4">
-      <p className="text-content-secondary mb-2">No products found</p>
+      <p className="text-content-secondary mb-2">No listings found</p>
       <p className="text-sm text-content-tertiary mb-4">
         Try adjusting your filters or create a new listing
       </p>
@@ -272,140 +266,106 @@ const MarketplacePage: React.FC = () => {
   return (
     <div className={MP.page}>
       <div className={MP.shell}>
-        <aside
-          className={`${MP.sidebarBrowse} ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="md:hidden flex items-center mb-3 gap-1.5">
-            <button onClick={() => setIsSidebarOpen(false)} aria-label="Close filters">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <span className="font-semibold">Marketplace</span>
-          </div>
-
+        {/* Permanent hub nav (desktop) */}
+        <aside className={MP.sidebarBrowse}>
           <MarketplaceHubNav
             activeHub="browse"
             user={user}
             onCreateListing={goToCreateListing}
-          >
-            <div className="hidden md:block mb-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary" />
-                <input
-                  className={MP.searchInput}
-                  placeholder="Search Marketplace"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
-          </MarketplaceHubNav>
-
-          <div className="md:hidden mb-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary" />
-              <input
-                className={MP.searchInput}
-                placeholder="Search Marketplace"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className={MP.sectionDivider} />
-
-
-
-          <div className={MP.section}>
-            <h3 className={MP.sectionTitle}>Categories</h3>
-            <ul className={MP.navList}>
-              {MARKETPLACE_CATEGORIES.map((category) => {
-                const Icon = category.icon;
-                return (
-                  <li key={category.value || "all"}>
-                    {renderSidebarItem(
-                      selectedCategory === category.value,
-                      () => setSelectedCategory(category.value),
-                      category.label,
-                      Icon
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="w-full text-sm text-content-secondary hover:text-primary-600 transition py-2"
-            >
-              Clear all filters
-            </button>
-          )}
+            onOpenFilters={() => setIsFilterDrawerOpen(true)}
+          />
         </aside>
 
-        {isSidebarOpen && (
+        {/* Amazon-style filter drawer (desktop + mobile) */}
+        {isFilterDrawerOpen && (
           <div
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/40 z-30 md:hidden"
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={() => setIsFilterDrawerOpen(false)}
+            aria-hidden
           />
         )}
+        <div
+          className={`${MP.filterDrawer} ${
+            isFilterDrawerOpen ? MP.filterDrawerOpen : MP.filterDrawerClosed
+          }`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="TradeHub filters"
+        >
+          <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white shrink-0">
+            <span className="font-bold text-[16px]">Hello, TradeHub</span>
+            <button
+              type="button"
+              onClick={() => setIsFilterDrawerOpen(false)}
+              aria-label="Close filters"
+              className="p-1.5 rounded-full hover:bg-primary-700 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <TradeHubFilterSidebar
+            key={isFilterDrawerOpen ? "open" : "closed"}
+            filters={{
+              category: selectedCategory,
+              subcategory: selectedSubcategory,
+              condition: selectedCondition,
+              minPrice,
+              maxPrice,
+              postedWithinDays,
+              pickupOnly,
+              deliveryAvailable,
+              urgentSale,
+              featuredOnly,
+            }}
+            onChange={(patch) => {
+              if (patch.category !== undefined) setSelectedCategory(patch.category);
+              if (patch.subcategory !== undefined) {
+                setSelectedSubcategory(patch.subcategory);
+              }
+              if (patch.condition !== undefined) setSelectedCondition(patch.condition);
+              if (patch.minPrice !== undefined) setMinPrice(patch.minPrice);
+              if (patch.maxPrice !== undefined) setMaxPrice(patch.maxPrice);
+              if (patch.postedWithinDays !== undefined) {
+                setPostedWithinDays(patch.postedWithinDays);
+              }
+              if (patch.pickupOnly !== undefined) setPickupOnly(patch.pickupOnly);
+              if (patch.deliveryAvailable !== undefined) {
+                setDeliveryAvailable(patch.deliveryAvailable);
+              }
+              if (patch.urgentSale !== undefined) setUrgentSale(patch.urgentSale);
+              if (patch.featuredOnly !== undefined) setFeaturedOnly(patch.featuredOnly);
+            }}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            location={locationFilter.location}
+            radiusKm={locationFilter.radiusKm}
+            onLocationChange={(location) =>
+              handleLocationFilterChange({ location })
+            }
+            onLocationFilterApply={(location, radiusKm) =>
+              handleLocationFilterChange({ location, radiusKm })
+            }
+            onClear={clearFilters}
+            hasActiveFilters={Boolean(hasActiveFilters)}
+            onCloseMobile={() => setIsFilterDrawerOpen(false)}
+          />
+        </div>
 
         <main className={MP.mainBrowse}>
-          <div className={MP.headerRow}>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden p-1.5 rounded-lg bg-surface-secondary shrink-0"
-                aria-label="Open filters"
-              >
-                <Filter className="w-4 h-4" />
-              </button>
-              <h1 className={`${MP.pageTitleLg} truncate`}>
-                Today&apos;s picks
-              </h1>
-            </div>
+          <div className={`${MP.headerRow} mb-3`}>
+            <h1 className={`${MP.pageTitleLg} truncate`}>Today&apos;s picks</h1>
 
             <div className={MP.headerActions}>
-              <MarketplaceLocationPicker
-                location={locationFilter.location}
-                radiusKm={locationFilter.radiusKm}
-                onLocationChange={(location) =>
-                  handleLocationFilterChange({ location })
-                }
-                onFilterApply={(location, radiusKm) =>
-                  handleLocationFilterChange({ location, radiusKm })
-                }
-              />
-
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as MarketplaceSort)}
-                  className="appearance-none
-pl-2.5 pr-7 py-1.5
-bg-surface
-border border-border
-rounded-lg
-text-xs text-content
-shadow-sm
-transition-all duration-200
-focus:outline-none
-focus:border-orange-500
-focus:ring-[3px]
-focus:ring-orange-200"
-                  aria-label="Sort products"
-                >
-                  {MARKETPLACE_SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-content-tertiary pointer-events-none" />
+              <div className="relative w-full sm:w-56 md:w-64 lg:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary pointer-events-none" />
+                <input
+                  className={MP.searchInput}
+                  placeholder="Search TradeHub"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Search TradeHub"
+                />
               </div>
 
               {user && (
@@ -414,13 +374,11 @@ focus:ring-orange-200"
                   className="btn-primary hidden sm:flex items-center gap-1.5 text-sm"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Sell
+                  Create Listing
                 </button>
               )}
             </div>
           </div>
-
-        
 
           {loading ? (
             <MarketplaceGridShimmer count={shimmerCount} />
@@ -438,13 +396,35 @@ focus:ring-orange-200"
                 ))}
               </div>
 
-              <div ref={loadMoreRef} className="h-8 mt-4">
-                {loadingMore && (
-                  <p className="text-center text-sm text-content-tertiary py-4">
-                    Loading more...
-                  </p>
-                )}
-              </div>
+              {(pageCount > 1 || page > 0) && (
+                <div className="mt-6 mb-2 flex justify-end">
+                  <ReactPaginate
+                    breakLabel="..."
+                    nextLabel="Next"
+                    previousLabel="Prev"
+                    onPageChange={({ selected }) => {
+                      setPage(selected);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    pageRangeDisplayed={3}
+                    marginPagesDisplayed={1}
+                    pageCount={pageCount}
+                    forcePage={page}
+                    renderOnZeroPageCount={null}
+                    containerClassName="marketplace-paginate"
+                    pageClassName="marketplace-paginate__item"
+                    pageLinkClassName="marketplace-paginate__link"
+                    activeClassName="marketplace-paginate__item--active"
+                    previousClassName="marketplace-paginate__item"
+                    nextClassName="marketplace-paginate__item"
+                    previousLinkClassName="marketplace-paginate__link marketplace-paginate__link--nav"
+                    nextLinkClassName="marketplace-paginate__link marketplace-paginate__link--nav"
+                    disabledClassName="marketplace-paginate__item--disabled"
+                    breakClassName="marketplace-paginate__item"
+                    breakLinkClassName="marketplace-paginate__link marketplace-paginate__link--break"
+                  />
+                </div>
+              )}
             </>
           )}
         </main>
@@ -454,7 +434,7 @@ focus:ring-orange-200"
         <button
           onClick={goToCreateListing}
           className="sm:hidden fixed bottom-5 right-5 z-20 w-12 h-12 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center hover:bg-primary-700 transition-colors"
-          aria-label="Create new listing"
+          aria-label="Create Listing"
         >
           <Plus className="w-5 h-5" />
         </button>

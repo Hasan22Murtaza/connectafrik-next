@@ -1,5 +1,6 @@
 import { Product } from "@/shared/types";
 import React from "react";
+import { hasTag, URGENT_TAG } from "../utils/listingTags";
 import {
   formatProductLocation,
   formatProductPrice,
@@ -23,14 +24,16 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   const isOutOfStock = product.stock_quantity === 0;
   const isUnavailable = !product.is_available;
   const justListed = isJustListed(product.created_at);
+  const isUrgent = hasTag(product.tags, URGENT_TAG);
+  const showStatusOverlay = isOutOfStock || isUnavailable;
 
   return (
     <article
-      className="group cursor-pointer rounded-md overflow-hidden bg-surface hover:bg-surface-hover transition-colors"
+      className="group cursor-pointer rounded-xl overflow-hidden bg-surface border border-border-subtle shadow-sm hover:bg-surface-hover hover:shadow-md transition-all duration-200"
       onClick={() => onView(product.id)}
       aria-label={`${product.title} - ${formatProductPrice(product)}`}
     >
-      <div className="relative aspect-square overflow-hidden bg-surface-secondary rounded-md">
+      <div className="relative aspect-square overflow-hidden bg-surface-secondary">
         <img
           src={mainImage}
           alt={product.title}
@@ -41,19 +44,27 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200"
         />
 
-        {justListed && !isOutOfStock && !isUnavailable && (
-          <span className="absolute top-1.5 left-1.5 bg-surface/90 backdrop-blur-sm text-content text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
-            Just listed
-          </span>
+        {!showStatusOverlay && (
+          <div className="absolute top-2 left-2 flex flex-col items-start gap-1 z-10">
+            {justListed && (
+              <span className="bg-surface/95 backdrop-blur-sm text-content text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
+                Just listed
+              </span>
+            )}
+            {product.is_featured && (
+              <span className="bg-primary-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
+                Featured
+              </span>
+            )}
+            {isUrgent && (
+              <span className="bg-red-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded shadow-sm">
+                Urgent
+              </span>
+            )}
+          </div>
         )}
 
-        {product.is_featured && !justListed && (
-          <span className="absolute top-1.5 left-1.5 bg-primary-600 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
-            Featured
-          </span>
-        )}
-
-        {(isOutOfStock || isUnavailable) && (
+        {showStatusOverlay && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-surface text-content text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
               {isOutOfStock ? "Sold out" : "Unavailable"}
@@ -62,7 +73,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         )}
       </div>
 
-      <div className="flex flex-col gap-1 px-2 pt-2.5 pb-3 min-w-0">
+      <div className="flex flex-col gap-1 px-3 pt-2.5 pb-3 min-w-0">
         <p className="text-base font-bold text-content truncate leading-none">
           {formatProductPrice(product)}
         </p>

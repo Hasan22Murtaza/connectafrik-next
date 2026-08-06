@@ -1,10 +1,55 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+async function syncProductRatingAggregates(
+  supabase: SupabaseClient,
+  productId: string
+) {
+  const { data: rows, error } = await supabase
+    .from('product_reviews')
+    .select('rating')
+    .eq('product_id', productId)
+
+  if (error) throw error
+
+  const breakdown = {
+    rating_1_count: 0,
+    rating_2_count: 0,
+    rating_3_count: 0,
+    rating_4_count: 0,
+    rating_5_count: 0,
+  }
+  let sum = 0
+  for (const row of rows || []) {
+    const value = Math.round(Number(row.rating))
+    if (value >= 1 && value <= 5) {
+      breakdown[`rating_${value}_count` as keyof typeof breakdown] += 1
+      sum += value
+    }
+  }
+
+  const reviewsCount = rows?.length || 0
+  const averageRating = reviewsCount > 0 ? sum / reviewsCount : 0
+
+  const { error: updateError } = await supabase
+    .from('products')
+    .update({
+      average_rating: Number(averageRating.toFixed(2)),
+      reviews_count: reviewsCount,
+      ...breakdown,
+    })
+    .eq('id', productId)
+
+  if (updateError) {
+    // Aggregates are best-effort; don't fail the review write if columns are missing.
+    console.warn('Failed to sync product rating aggregates:', updateError.message)
+  }
+}
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -99,6 +144,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
+    const reviewText = typeof body.review_text === 'string' ? body.review_text.trim() : ''
+
+    const rating = Number(body.rating)
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+      return errorResponse('Rating must be between 1 and 5', 400)
+    }
+
     const { data: product } = await supabase
       .from('products')
       .select('seller_id')
@@ -113,14 +165,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const { error } = await supabase
         .from('product_reviews')
         .update({
-          rating: body.rating,
-          review_text: body.review_text,
+          rating,
+          review_text: reviewText,
           updated_at: new Date().toISOString(),
         })
         .eq('id', body.reviewId)
         .eq('user_id', user.id)
 
       if (error) throw error
+      await syncProductRatingAggregates(supabase, productId)
       return jsonResponse({ success: true, updated: true })
     }
 
@@ -129,11 +182,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .insert({
         product_id: productId,
         user_id: user.id,
-        rating: body.rating,
-        review_text: body.review_text,
+        rating,
+        review_text: reviewText,
       })
 
     if (error) throw error
+    await syncProductRatingAggregates(supabase, productId)
     return jsonResponse({ success: true, created: true }, 201)
   } catch (err: any) {
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {

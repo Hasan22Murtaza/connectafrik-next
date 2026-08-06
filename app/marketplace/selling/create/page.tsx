@@ -4,19 +4,29 @@ import { useAuth } from "@/contexts/AuthContext";
 import CreateProductForm from "@/features/marketplace/components/CreateProductForm";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import { ArrowLeft, Lightbulb, Shield } from '@/shared/icons';
-import { useRouter } from "next/navigation";
-import React, { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useEffect, useMemo } from "react";
 
-const CreateListingPage: React.FC = () => {
+const CreateListingPageContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editProductId = useMemo(() => {
+    const id = searchParams.get("edit")?.trim();
+    return id || undefined;
+  }, [searchParams]);
+  const isEditMode = Boolean(editProductId);
+  const pageTitle = isEditMode ? "Edit Listing" : "Create Listing";
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.replace("/signin?redirect=/marketplace/selling/create");
+      const redirect = editProductId
+        ? `/marketplace/selling/create?edit=${editProductId}`
+        : "/marketplace/selling/create";
+      router.replace(`/signin?redirect=${encodeURIComponent(redirect)}`);
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, editProductId]);
 
   if (authLoading || !user) {
     return (
@@ -36,7 +46,7 @@ const CreateListingPage: React.FC = () => {
             className="flex items-center gap-2 text-content-secondary hover:text-content mb-2 text-sm px-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Your listings
+            My Listings
           </button>
 
         </aside>
@@ -51,16 +61,17 @@ const CreateListingPage: React.FC = () => {
               <ArrowLeft className="w-4 h-4" />
               Back to listings
             </button>
-            <h1 className="text-2xl font-bold text-content">Create listing</h1>
+            <h1 className="text-2xl font-bold text-content">{pageTitle}</h1>
 
           </div>
 
           <div className="hidden lg:block mb-6">
-            <h1 className="text-2xl font-bold text-content">Create listing</h1>
+            <h1 className="text-2xl font-bold text-content">{pageTitle}</h1>
 
           </div>
 
           <CreateProductForm
+            productId={editProductId}
             onCancel={() => router.push("/marketplace/selling")}
             onSuccess={() => router.push("/marketplace/selling")}
           />
@@ -99,6 +110,20 @@ const CreateListingPage: React.FC = () => {
         </aside>
       </div>
     </div>
+  );
+};
+
+const CreateListingPage: React.FC = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen px-4 py-6">
+          <MarketplaceGridShimmer count={4} />
+        </div>
+      }
+    >
+      <CreateListingPageContent />
+    </Suspense>
   );
 };
 

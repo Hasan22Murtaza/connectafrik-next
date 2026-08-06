@@ -1,7 +1,7 @@
 "use client";
 
 import { User } from "@supabase/supabase-js";
-import { Plus, Settings } from '@/shared/icons';
+import { Filter, Plus } from "@/shared/icons";
 import { useRouter } from "next/navigation";
 import React from "react";
 import toast from "react-hot-toast";
@@ -17,6 +17,7 @@ interface MarketplaceHubNavProps {
   activeHub: MarketplaceHub;
   user: User | null;
   onCreateListing?: () => void;
+  onOpenFilters?: () => void;
   compact?: boolean;
   children?: React.ReactNode;
 }
@@ -25,6 +26,7 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
   activeHub,
   user,
   onCreateListing,
+  onOpenFilters,
   compact = false,
   children,
 }) => {
@@ -69,14 +71,18 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
     <div className={compact ? "mb-3" : MP.section}>
       {!compact && (
         <div className={`hidden md:flex ${MP.sidebarHeader}`}>
-          <h2 className={MP.pageTitleLg}>Marketplace</h2>
-          <button
-            type="button"
-            className={MP.settingsBtn}
-            aria-label="Marketplace settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          <h2 className={MP.pageTitleLg}>TradeHub</h2>
+          {onOpenFilters && (
+            <button
+              type="button"
+              onClick={onOpenFilters}
+              className={MP.settingsBtn}
+              aria-label="Open filters"
+              title="Filters"
+            >
+              <Filter className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 
@@ -124,7 +130,7 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
               className={MP.createListingBtn}
             >
               <Plus className="w-4 h-4" />
-              Create new listing
+              Create Listing
             </button>
           ) : (
             <button
@@ -132,7 +138,7 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
               onClick={() => router.push("/signin?redirect=/marketplace")}
               className={MP.createListingBtn}
             >
-              Sign in to sell
+              Sign in to create a listing
             </button>
           )}
         </>

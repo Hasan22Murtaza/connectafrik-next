@@ -314,7 +314,7 @@ const BuyingPageContent: React.FC = () => {
               Items you save or purchase will appear here
             </p>
             <button onClick={() => router.push("/marketplace")} className="btn-primary">
-              Browse Marketplace
+              Browse TradeHub
             </button>
           </div>
         );
@@ -333,7 +333,7 @@ const BuyingPageContent: React.FC = () => {
             <Bookmark className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
             <p className="text-content-secondary mb-2">No saved items</p>
             <button onClick={() => router.push("/marketplace")} className="btn-primary">
-              Browse Marketplace
+              Browse TradeHub
             </button>
           </div>
         );
@@ -447,7 +447,7 @@ const BuyingPageContent: React.FC = () => {
             className={`${MP.backLink} mb-2`}
           >
             <ArrowLeft className="w-4 h-4" />
-            Marketplace
+            TradeHub
           </button>
 
           <div className={MP.sidebarTitleBlock}>
@@ -482,7 +482,7 @@ const BuyingPageContent: React.FC = () => {
             className={MP.createListingBtn}
           >
             <Plus className="w-4 h-4" />
-            Create new listing
+            Create Listing
           </button>
         </aside>
 
@@ -494,7 +494,7 @@ const BuyingPageContent: React.FC = () => {
               className={`${MP.backLink} mb-2`}
             >
               <ArrowLeft className="w-4 h-4" />
-              Marketplace
+              TradeHub
             </button>
             <h1 className={MP.pageTitle}>Buying</h1>
           </div>
@@ -526,52 +526,7 @@ const BuyingPageContent: React.FC = () => {
           {renderTabContent()}
         </main>
 
-        <aside className={`hidden xl:block ${MP.sidebarRight} `}>
-          <div className={MP.sidebarRightStack}>
-            <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
-              <div className="flex items-center gap-3 mb-4">
-                <img
-                  src={
-                    buyerAvatar ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(buyerName)}&background=random`
-                  }
-                  alt={buyerName}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-                <div className="min-w-0">
-                  <p className="font-semibold text-content truncate">{buyerName}</p>
-                  <p className="text-sm text-content-secondary">
-                    {savedItems.length} saved · {orders.length} purchases
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => router.push("/profile")}
-                className="w-full py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-              >
-                See Marketplace profile
-              </button>
-            </div>
-
-            <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
-              <div className="flex items-start gap-3 text-sm text-content-secondary">
-                <HelpCircle className="w-5 h-5 shrink-0 text-content-tertiary" />
-                <div>
-                  <p className="font-semibold text-content mb-1">Need help?</p>
-                  <button
-                    type="button"
-                    onClick={() => router.push("/support")}
-                    className="text-primary-600 hover:underline text-sm"
-                  >
-                    See all help topics
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </aside>
+  
       </div>
     </div>
   );

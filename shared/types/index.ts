@@ -263,7 +263,7 @@ export interface GroupGoal {
   }
 }
 
-// Marketplace types
+// Marketplace types (TradeHub UI; backend table/routes remain products/marketplace)
 export interface Product {
   id: string
   seller_id: string
@@ -271,8 +271,11 @@ export interface Product {
   description: string
   price: number
   currency: 'USD' | 'EUR' | 'GBP' | 'GHS' | 'NGN' | 'KES' | 'ZAR' | 'XOF' | 'XAF'
-  category: 'fashion' | 'crafts' | 'electronics' | 'food' | 'beauty' | 'home' | 'books' | 'art' | 'jewelry' | 'services' | 'other'
-  condition: 'new' | 'like-new' | 'good' | 'fair'
+  /** Category slug (TradeHub categories or legacy marketplace values). */
+  category: string
+  /** Subcategory slug stored on products.subcategory. */
+  subcategory?: string | null
+  condition: 'new' | 'like-new' | 'good' | 'fair' | 'for-parts'
   location?: string
   country?: string
   latitude?: number | null

@@ -73,7 +73,7 @@ const features = [
   },
   {
     icon: ShoppingBag,
-    title: "Marketplace",
+    title: "TradeHub",
     description:
       "Buy and sell with confidence. Discover authentic products and grow your business with secure payments.",
     accent: "from-amber-500 to-orange-600",
@@ -116,7 +116,7 @@ const testimonials = [
   },
   {
     quote:
-      "I grew my small business through the marketplace in weeks. Reaching customers worldwide who share my values changed everything.",
+      "I grew my small business through TradeHub in weeks. Reaching customers worldwide who share my values changed everything.",
     name: "Emma Laurent",
     role: "Seller, Paris",
     initials: "EL",
@@ -149,11 +149,11 @@ const faqs = [
   },
   {
     q: "Can I sell products on the platform?",
-    a: "Absolutely. Our marketplace lets you list products, reach customers around the world and accept secure payments — all in one place.",
+    a: "Absolutely. TradeHub lets you list products, reach customers around the world and accept secure payments — all in one place.",
   },
   {
     q: "What can I do on ConnectAfrik?",
-    a: "Share posts and videos, message friends across borders, join global communities, follow discussions on topics you care about, discover memories and reels, and buy or sell in the marketplace.",
+    a: "Share posts and videos, message friends across borders, join global communities, follow discussions on topics you care about, discover memories and reels, and buy or sell on TradeHub.",
   },
   {
     q: "Is ConnectAfrik available in my country?",

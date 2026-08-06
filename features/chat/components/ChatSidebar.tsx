@@ -488,7 +488,7 @@ export default function ChatSidebar({
               className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
             >
               <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
-              Marketplace
+              TradeHub
             </button>
           ) : (
             <h1 className="text-xl font-semibold text-content">Chats</h1>
@@ -552,7 +552,7 @@ export default function ChatSidebar({
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                     >
                       <Store className="h-4 w-4 text-content-secondary" aria-hidden />
-                      <span>Marketplace messages</span>
+                      <span>TradeHub messages</span>
                     </button>
                   </div>
                 ) : null}
@@ -620,7 +620,7 @@ export default function ChatSidebar({
             <Store className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-medium text-content">Marketplace messages</p>
+            <p className="truncate text-[15px] font-medium text-content">TradeHub messages</p>
             <p className="truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
           </div>
           {marketplaceUnread > 0 ? (
@@ -655,7 +655,7 @@ export default function ChatSidebar({
               );
               const primary = others[0] ?? thread.participants[0];
               const displayName =
-                thread.product_title || primary?.name || thread.name || "Marketplace chat";
+                thread.product_title || primary?.name || thread.name || "TradeHub chat";
               const avatarUrl = thread.product_image || primary?.avatarUrl;
               const selected = selectedThreadId === thread.id;
               const activeCall = activeCallsByThread[thread.id];

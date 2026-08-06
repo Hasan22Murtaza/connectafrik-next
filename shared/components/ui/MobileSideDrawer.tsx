@@ -34,7 +34,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
     { icon: Search, label: 'Search Users', action: 'search' },
     { icon: FaRegUser, label: 'Friends', path: '/friends' },
     { icon: MdOutlineGroups2, label: 'Groups', path: '/groups' },
-    { icon: BsShop, label: 'Marketplace', path: '/marketplace' },
+    { icon: BsShop, label: 'TradeHub', path: '/marketplace' },
     { icon: RiHandbagLine, label: 'My Orders', path: '/my-orders' },
     { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
     { icon: FiVideo, label: 'Video', path: '/video' },

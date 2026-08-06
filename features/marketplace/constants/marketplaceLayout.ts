@@ -11,15 +11,19 @@ export const MP = {
   sidebarRight:
     "w-[280px] shrink-0 py-4 px-4 lg:sticky lg:top-18 lg:self-start lg:max-h-screen lg:overflow-y-auto",
   sidebarBrowse:
-    "sticky md:relative inset-y-0 left-0 z-40 w-[280px] shrink-0 px-4 py-3 bg-surface sm:top-0 top-20 md:h-screen h-[calc(100vh-10rem)] scrollbar-hover overflow-y-auto transform transition-transform duration-300 md:translate-x-0 ",
+    "hidden md:block sticky md:relative inset-y-0 left-0 z-20 w-[280px] shrink-0 py-3 px-4 bg-surface sm:top-0 top-20 md:h-screen md:self-start md:overflow-y-auto scrollbar-hover",
+  filterDrawer:
+    "fixed inset-y-0 left-0 z-50 w-[min(100vw-48px,360px)] max-w-[360px] bg-surface shadow-2xl flex flex-col transform transition-transform duration-300 ease-out",
+  filterDrawerOpen: "translate-x-0",
+  filterDrawerClosed: "-translate-x-full",
 
   main: "flex-1 py-4 px-4 min-w-0 ",
   mainBrowse: "flex-1 px-4 py-4 min-w-0 w-full",
 
   productGrid:
-    "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 sm:gap-1.5",
+    "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4",
   productGridCompact:
-    "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1 sm:gap-1.5",
+    "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4",
   sellerGrid: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 sm:gap-2",
   statsGrid: "grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2",
 
@@ -64,7 +68,7 @@ export const MP = {
   sidebarRightPadding: "p-3",
 
   searchInput:
-    "w-full px-3 py-2 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border-0 rounded-full focus:ring-0 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary",
+    "w-full px-3 py-2 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary",
   selectInput:
     "w-full px-2.5 py-2 bg-surface-input hover:bg-surface-hover border-0 rounded-lg text-sm text-content focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer",
 
@@ -80,7 +84,7 @@ export const MP = {
     "w-full flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg bg-primary-50 text-primary-600 font-semibold text-sm hover:bg-primary-100 transition-colors dark:bg-primary-50/15",
   sidebarHeader: "flex items-center justify-between mb-4",
   settingsBtn:
-    "p-2 rounded-full bg-surface-secondary hover:bg-surface-hover transition-colors text-content-secondary",
+    "p-2 rounded-full bg-primary-50 hover:bg-primary-100 transition-colors text-primary-600",
 
   headerRow: "flex items-center justify-between mb-3 flex-wrap gap-2",
   headerActions: "flex items-center gap-1.5 flex-wrap",

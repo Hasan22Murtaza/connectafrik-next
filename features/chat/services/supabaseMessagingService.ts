@@ -586,7 +586,7 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
 
   const displayName =
     resolvedType === 'marketplace'
-      ? otherNames[0] || 'Marketplace chat'
+      ? otherNames[0] || 'TradeHub chat'
       : resolvedType === 'direct'
         ? directFallbackName
         : groupFallbackName

@@ -10,6 +10,7 @@ import { CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplac
 import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import { SellerEarnings } from "@/features/marketplace/services/commissionService";
 import { formatProductPrice } from "@/features/marketplace/utils/productFormatting";
+import { DRAFT_TAG, hasTag } from "@/features/marketplace/utils/listingTags";
 import { apiClient } from "@/lib/api-client";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import { Product } from "@/shared/types";
@@ -35,14 +36,15 @@ import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
-type ListingStatus = "all" | "active" | "sold";
+type ListingStatus = "all" | "active" | "sold" | "draft";
 type ListingSort = "newest" | "oldest" | "title-asc" | "title-desc";
 type ViewMode = "list" | "grid";
 
 const STATUS_FILTERS: { value: ListingStatus; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "active", label: "Available & in stock" },
-  { value: "sold", label: "Sold & out of stock" },
+  { value: "active", label: "Active Listings" },
+  { value: "sold", label: "Sold Listings" },
+  { value: "draft", label: "Draft Listings" },
 ];
 
 const SORT_OPTIONS: { value: ListingSort; label: string }[] = [
@@ -165,9 +167,15 @@ const SellerDashboardPage: React.FC = () => {
     }
 
     if (statusFilter === "active") {
-      result = result.filter((p) => p.is_available && p.stock_quantity > 0);
+      result = result.filter(
+        (p) => p.is_available && p.stock_quantity > 0 && !hasTag(p.tags, DRAFT_TAG)
+      );
     } else if (statusFilter === "sold") {
-      result = result.filter((p) => !p.is_available || p.stock_quantity === 0);
+      result = result.filter(
+        (p) => (!p.is_available || p.stock_quantity === 0) && !hasTag(p.tags, DRAFT_TAG)
+      );
+    } else if (statusFilter === "draft") {
+      result = result.filter((p) => hasTag(p.tags, DRAFT_TAG));
     }
 
     switch (sortBy) {
@@ -289,7 +297,7 @@ const SellerDashboardPage: React.FC = () => {
   };
 
   const handleDeleteListing = async (productId: string) => {
-    if (!window.confirm("Delete this listing? It will be removed from Marketplace.")) {
+    if (!window.confirm("Delete this listing? It will be removed from TradeHub.")) {
       return;
     }
 
@@ -317,7 +325,7 @@ const SellerDashboardPage: React.FC = () => {
         toast("Cross-listing to groups and feed is coming soon", { icon: "ℹ️" });
         break;
       case "edit":
-        router.push(CREATE_LISTING_PATH);
+        router.push(`${CREATE_LISTING_PATH}?edit=${product.id}`);
         break;
       case "delete":
         handleDeleteListing(product.id);
@@ -371,11 +379,11 @@ const SellerDashboardPage: React.FC = () => {
             className={`${MP.backLink} mb-2`}
           >
             <ArrowLeft className="w-4 h-4" />
-            Marketplace
+            TradeHub
           </button>
 
           <div className={MP.sidebarTitleBlock}>
-            <h2 className={MP.sidebarTitle}>Selling</h2>
+            <h2 className={MP.sidebarTitle}>My Listings</h2>
           </div>
 
           <button
@@ -383,13 +391,13 @@ const SellerDashboardPage: React.FC = () => {
             className={MP.createListingBtnTop}
           >
             <Plus className="w-3.5 h-3.5" />
-            Create new listing
+            Create Listing
           </button>
 
           <nav className={`${MP.sidebarNav} ${MP.navList}`}>
             <div className={`${MP.navItem} ${MP.navItemActive}`}>
               <BarChart3 className={`${MP.navIcon} ${MP.navIconActive}`} />
-              <span>Your listings</span>
+              <span>My Listings</span>
             </div>
             <button
               onClick={() => router.push("/my-orders?tab=sales")}
@@ -475,16 +483,16 @@ const SellerDashboardPage: React.FC = () => {
                 className={`lg:hidden ${MP.backLink} mb-2`}
               >
                 <ArrowLeft className="w-4 h-4" />
-                Marketplace
+                TradeHub
               </button>
-              <h1 className={MP.pageTitle}>Your listings</h1>
+              <h1 className={MP.pageTitle}>My Listings</h1>
             </div>
             <button
               onClick={() => router.push(CREATE_LISTING_PATH)}
               className="btn-primary flex items-center gap-1.5 text-sm lg:hidden"
             >
               <Plus className="w-3.5 h-3.5" />
-              New listing
+              New Listing
             </button>
           </div>
 
@@ -596,7 +604,7 @@ const SellerDashboardPage: React.FC = () => {
               </p>
               {listings.length === 0 && (
                 <button onClick={() => router.push(CREATE_LISTING_PATH)} className="btn-primary">
-                  Create new listing
+                  Create Listing
                 </button>
               )}
             </div>
@@ -695,67 +703,6 @@ const SellerDashboardPage: React.FC = () => {
           )}
         </main>
 
-        <aside className={`hidden xl:block ${MP.sidebarRight}`}>
-          <div className={MP.sidebarRightStack}>
-            <div className={`${MP.sidebarRightCard} ${MP.sidebarRightPadding}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <img
-                  src={
-                    sellerAvatar ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(sellerName)}&background=random`
-                  }
-                  alt={sellerName}
-                  className="w-9 h-9 rounded-full object-cover"
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-content truncate">{sellerName}</p>
-                  <p className="text-xs text-content-secondary">
-                    {stats.active} active listing{stats.active !== 1 ? "s" : ""}
-                  </p>
-                </div>
-              </div>
-
-              {earnings && (
-                <div className="space-y-1.5 text-xs border-t border-border-subtle pt-3 mb-3">
-                  <div className="flex justify-between">
-                    <span className="text-content-secondary">Total earnings</span>
-                    <span className="font-medium">${earnings.total_earnings.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-content-secondary">Paid out</span>
-                    <span className="font-medium">${earnings.paid_out.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-content-secondary">Awaiting delivery</span>
-                    <span className="font-medium">${earnings.awaiting_delivery.toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1">
-                <button
-                  onClick={() => router.push(CREATE_LISTING_PATH)}
-                  className={MP.createListingBtnInline}
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Create new listing
-                </button>
-                <button
-                  onClick={() => router.push("/my-orders?tab=sales")}
-                  className="w-full py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                >
-                  View sales & orders
-                </button>
-                <button
-                  onClick={() => router.push("/marketplace/selling/payout-settings")}
-                  className="w-full py-2 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                >
-                  Payout settings
-                </button>
-              </div>
-            </div>
-          </div>
-        </aside>
       </div>
 
     </div>

@@ -435,7 +435,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return `${currentUser?.name || "You"} (Notes)`;
     }
     if (isMarketplaceThread) {
-      return primaryParticipant?.name || thread?.name || "Marketplace chat";
+      return primaryParticipant?.name || thread?.name || "TradeHub chat";
     }
     if (isGroupThread && thread?.name) {
       return thread.name;
@@ -2164,7 +2164,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               {isSelfChat
                 ? "Save messages to yourself"
                 : isMarketplaceThread && marketplaceProductTitle
-                  ? `Marketplace · ${marketplaceProductTitle}`
+                  ? `TradeHub · ${marketplaceProductTitle}`
                   : isGroupThread
                     ? `${thread?.participants?.length ?? 0} members`
                     : (directSubtitle ?? "Offline")}

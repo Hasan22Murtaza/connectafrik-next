@@ -3,9 +3,25 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
 import { getCurrencyForCountry } from '@/features/marketplace/utils/countryCurrency'
+import {
+  buildListingTags,
+  resolveSubcategory,
+  stripReservedListingTags,
+} from '@/features/marketplace/utils/listingTags'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+function enrichProduct(p: Record<string, unknown>) {
+  const tags = Array.isArray(p.tags) ? (p.tags as string[]) : []
+  return {
+    ...p,
+    subcategory: resolveSubcategory(
+      typeof p.subcategory === 'string' ? p.subcategory : null,
+      tags
+    ),
+  }
+}
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -53,7 +69,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       product.is_saved = false
     }
 
-    return jsonResponse({ data: product })
+    return jsonResponse({ data: enrichProduct(product) })
   } catch (err: any) {
     console.error('GET /api/marketplace/[id] error:', err)
     return errorResponse(err.message || 'Failed to fetch product', 500)
@@ -68,7 +84,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const { data: existing } = await supabase
       .from('products')
-      .select('seller_id')
+      .select('seller_id, tags, subcategory')
       .eq('id', id)
       .single()
 
@@ -82,7 +98,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .eq('id', user.id)
       .single()
 
-    const { currency, country, ...updates } = body
+    const {
+      currency: _currency,
+      country: _country,
+      subcategory,
+      urgent_sale,
+      pickup_only,
+      delivery_available,
+      ...updates
+    } = body
     const patch: Record<string, unknown> = { ...updates, updated_at: new Date().toISOString() }
 
     if (profile?.country?.trim()) {
@@ -94,6 +118,63 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       patch.location = body.location.trim()
     }
 
+    if (typeof subcategory === 'string') {
+      patch.subcategory = subcategory.trim() || null
+    }
+
+    const contactEmail = body.contact_email
+    const contactPhonePref = body.contact_phone_pref
+    const contactChat = body.contact_chat
+
+    if (
+      urgent_sale !== undefined ||
+      pickup_only !== undefined ||
+      delivery_available !== undefined ||
+      contactEmail !== undefined ||
+      contactPhonePref !== undefined ||
+      contactChat !== undefined ||
+      Array.isArray(body.tags)
+    ) {
+      const existingTags = Array.isArray(existing.tags) ? existing.tags : []
+      const userTags = Array.isArray(body.tags)
+        ? body.tags.map(String)
+        : stripReservedListingTags(existingTags)
+      patch.tags = buildListingTags({
+        urgentSale:
+          typeof urgent_sale === 'boolean'
+            ? urgent_sale
+            : existingTags.includes('urgent:true'),
+        pickupOnly:
+          typeof pickup_only === 'boolean'
+            ? pickup_only
+            : existingTags.includes('fulfillment:pickup'),
+        deliveryAvailable:
+          typeof delivery_available === 'boolean'
+            ? delivery_available
+            : existingTags.includes('fulfillment:delivery'),
+        contactEmail:
+          typeof contactEmail === 'boolean'
+            ? contactEmail
+            : existingTags.includes('contact:email'),
+        contactPhone:
+          typeof contactPhonePref === 'boolean'
+            ? contactPhonePref
+            : existingTags.includes('contact:phone'),
+        contactChat:
+          typeof contactChat === 'boolean'
+            ? contactChat
+            : existingTags.includes('contact:chat'),
+        userTags,
+      })
+    }
+
+    delete patch.urgent_sale
+    delete patch.pickup_only
+    delete patch.delivery_available
+    delete patch.contact_email
+    delete patch.contact_phone_pref
+    delete patch.contact_chat
+
     const { data, error } = await supabase
       .from('products')
       .update(patch)
@@ -103,7 +184,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (error) throw error
 
-    return jsonResponse({ data })
+    return jsonResponse({ data: enrichProduct(data) })
   } catch (err: any) {
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {
       return errorResponse('Unauthorized', 401)

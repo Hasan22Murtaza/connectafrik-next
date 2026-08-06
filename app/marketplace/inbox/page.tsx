@@ -112,7 +112,7 @@ const InboxPageContent: React.FC = () => {
             className={`${MP.backLink} mb-2`}
           >
             <ArrowLeft className="w-4 h-4" />
-            Marketplace
+            TradeHub
           </button>
           <MarketplaceHubNav activeHub="inbox" user={user} compact />
         </aside>
@@ -125,7 +125,7 @@ const InboxPageContent: React.FC = () => {
               className={`${MP.backLink} mb-2`}
             >
               <ArrowLeft className="w-4 h-4" />
-              Marketplace
+              TradeHub
             </button>
             <h1 className={MP.pageTitle}>Inbox</h1>
           </div>

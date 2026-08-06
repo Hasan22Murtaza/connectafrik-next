@@ -43,6 +43,17 @@ export function sortProducts(products: Product[], sort: MarketplaceSort): Produc
       return sorted.sort((a, b) => a.price - b.price);
     case "price-desc":
       return sorted.sort((a, b) => b.price - a.price);
+    case "oldest":
+      return sorted.sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    case "popular":
+      return sorted.sort((a, b) => (b.views_count || 0) - (a.views_count || 0));
+    case "nearest":
+      // Distance sorting requires a reference point; keep newest as stable fallback.
+      return sorted.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     case "featured":
       return sorted.sort((a, b) => {
         if (a.is_featured !== b.is_featured) {

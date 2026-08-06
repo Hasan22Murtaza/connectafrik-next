@@ -351,7 +351,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
               className="-ml-1 flex items-center gap-1.5 text-lg font-semibold text-content"
             >
               <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
-              Marketplace
+              TradeHub
             </button>
           ) : (
             <h4 className="text-lg font-semibold text-content">Chats</h4>
@@ -390,7 +390,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             <Store className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium leading-tight text-content">Marketplace messages</p>
+            <p className="text-[15px] font-medium leading-tight text-content">TradeHub messages</p>
             <p className="mt-0.5 truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
           </div>
           {marketplaceUnread > 0 ? (
@@ -423,7 +423,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
                 )
                 const primary = others[0] ?? thread.participants[0]
                 const displayName =
-                  thread.product_title || primary?.name || thread.name || 'Marketplace chat'
+                  thread.product_title || primary?.name || thread.name || 'TradeHub chat'
                 const avatarUrl = thread.product_image || primary?.avatarUrl
                 const unread = typeof thread.unread_count === 'number' ? thread.unread_count : 0
                 const timeLabel = formatThreadListTime(thread.last_message_at)

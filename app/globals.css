@@ -854,6 +854,101 @@ button {
   opacity: 1;
 }
 
+/* ─── Marketplace pagination (react-paginate) ───────────────────────────── */
+.marketplace-paginate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.marketplace-paginate__item {
+  display: inline-flex;
+}
+
+.marketplace-paginate__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-default, #e5e7eb);
+  background-color: var(--surface-elevated, #fff);
+  color: var(--content-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  text-decoration: none;
+  user-select: none;
+}
+
+.marketplace-paginate__link:hover {
+  background-color: var(--surface-hover, #f3f4f6);
+  border-color: var(--primary-300, #fdba74);
+  color: var(--primary-700, #c2410c);
+}
+
+.marketplace-paginate__link--nav {
+  min-width: auto;
+  padding: 0 0.875rem;
+  color: var(--primary-600, #ea580c);
+  border-color: var(--primary-200, #fed7aa);
+  background-color: var(--primary-50, #fff7ed);
+}
+
+.marketplace-paginate__link--nav:hover {
+  background-color: var(--primary-100, #ffedd5);
+  border-color: var(--primary-300, #fdba74);
+  color: var(--primary-700, #c2410c);
+}
+
+.marketplace-paginate__link--break {
+  border-color: transparent;
+  background: transparent;
+  color: var(--content-secondary);
+  cursor: default;
+  min-width: 1.5rem;
+  padding: 0 0.25rem;
+}
+
+.marketplace-paginate__link--break:hover {
+  background: transparent;
+  border-color: transparent;
+  color: var(--content-secondary);
+}
+
+.marketplace-paginate__item--active .marketplace-paginate__link {
+  background-color: var(--interactive-primary, var(--primary-600, #ea580c));
+  border-color: var(--interactive-primary, var(--primary-600, #ea580c));
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(234, 88, 12, 0.25);
+}
+
+.marketplace-paginate__item--active .marketplace-paginate__link:hover {
+  background-color: var(--interactive-primary-hover, var(--primary-700, #c2410c));
+  border-color: var(--interactive-primary-hover, var(--primary-700, #c2410c));
+  color: #fff;
+}
+
+.marketplace-paginate__item--disabled .marketplace-paginate__link,
+.marketplace-paginate__item--disabled .marketplace-paginate__link:hover {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+  background-color: var(--surface-elevated, #fff);
+  border-color: var(--border-default, #e5e7eb);
+  color: var(--content-tertiary, #9ca3af);
+  box-shadow: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lp-animate-float,
   .lp-animate-float-slow,

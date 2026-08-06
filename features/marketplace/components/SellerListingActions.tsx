@@ -73,7 +73,7 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
       { action: "view", label: "View listing", icon: ExternalLink },
       {
         action: "list-elsewhere",
-        label: "List in more places",
+        label: "Promote listing",
         icon: Users,
       },
       { action: "edit", label: "Edit listing", icon: Pencil },
