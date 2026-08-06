@@ -1,6 +1,6 @@
 /**
  * Single source of truth for marketplace order statuses.
- * Buyer inbox, seller actions, and admin views all derive labels from here.
+ * Buyer, seller, and admin views all derive labels from here.
  */
 
 export type OrderStatus =
@@ -14,7 +14,7 @@ export type OrderStatus =
   | 'refunded'
   | 'disputed'
 
-/** User-facing status shared by buyer and seller (inbox filter chips). */
+/** User-facing status shared by buyer and seller. */
 export type OrderDisplayLabel =
   | 'all'
   | 'pending_payment'
@@ -26,20 +26,6 @@ export type OrderDisplayLabel =
   | 'cancelled'
   | 'refunded'
   | 'disputed'
-
-export type MarketplaceInboxRole = 'selling' | 'buying'
-
-export type MarketplaceInboxLabel = Exclude<OrderDisplayLabel, 'cancelled' | 'refunded' | 'disputed'>
-
-export const MARKETPLACE_INBOX_LABELS: { value: MarketplaceInboxLabel; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'pending_payment', label: 'Pending payment' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'to_be_shipped', label: 'To be shipped' },
-  { value: 'shipped', label: 'Shipped' },
-  { value: 'cash_on_delivery', label: 'Cash on delivery' },
-  { value: 'completed', label: 'Completed' },
-]
 
 export const ORDER_DISPLAY_LABEL_TEXT: Record<OrderDisplayLabel, string> = {
   all: 'All',
@@ -122,9 +108,6 @@ export function resolveOrderDisplayLabel(
   return null
 }
 
-/** @deprecated Use resolveOrderDisplayLabel */
-export const resolveOrderInboxLabel = resolveOrderDisplayLabel
-
 export function getOrderDisplayLabelText(order: OrderStatusContext): string {
   const label = resolveOrderDisplayLabel(order)
   return label ? ORDER_DISPLAY_LABEL_TEXT[label] : 'Unknown'
@@ -137,9 +120,6 @@ export function orderMatchesDisplayLabel(
   if (label === 'all') return true
   return resolveOrderDisplayLabel(order) === label
 }
-
-/** @deprecated Use orderMatchesDisplayLabel */
-export const orderMatchesInboxLabel = orderMatchesDisplayLabel
 
 export function getNextOrderStatuses(currentStatus: string): OrderStatus[] {
   const key = normalizeStatus(currentStatus) as OrderStatus

@@ -24,9 +24,8 @@ export function isThreadMessagingBlocked(
 }
 
 /**
- * Marketplace conversations live in the Marketplace Inbox, not the general
- * Chats list. Detect them by thread type or the linked listing so they can be
- * excluded from general chat surfaces (sidebar, dropdown).
+ * Detect marketplace listing threads by type or linked product/seller so they
+ * can be scoped separately from general chats (sidebar category filters).
  */
 export function isMarketplaceThread(
   thread: Pick<ChatThread, 'type' | 'product_id' | 'seller_id'> | undefined

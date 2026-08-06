@@ -476,14 +476,6 @@ const BuyingPageContent: React.FC = () => {
             </ul>
           </nav>
 
-          <button
-            type="button"
-            onClick={() => router.push(CREATE_LISTING_PATH)}
-            className={MP.createListingBtn}
-          >
-            <Plus className="w-4 h-4" />
-            Create Listing
-          </button>
         </aside>
 
         <main className={MP.main}>

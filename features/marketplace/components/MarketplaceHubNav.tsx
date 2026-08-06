@@ -115,34 +115,6 @@ const MarketplaceHubNav: React.FC<MarketplaceHubNavProps> = ({
         </ul>
       </nav>
 
-      {!compact && (
-        <>
-          {user ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (onCreateListing) {
-                  onCreateListing();
-                } else {
-                  router.push(CREATE_LISTING_PATH);
-                }
-              }}
-              className={MP.createListingBtn}
-            >
-              <Plus className="w-4 h-4" />
-              Create Listing
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => router.push("/signin?redirect=/marketplace")}
-              className={MP.createListingBtn}
-            >
-              Sign in to create a listing
-            </button>
-          )}
-        </>
-      )}
     </div>
   );
 };

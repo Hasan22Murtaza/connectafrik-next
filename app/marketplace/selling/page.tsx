@@ -382,18 +382,6 @@ const SellerDashboardPage: React.FC = () => {
             TradeHub
           </button>
 
-          <div className={MP.sidebarTitleBlock}>
-            <h2 className={MP.sidebarTitle}>My Listings</h2>
-          </div>
-
-          <button
-            onClick={() => router.push(CREATE_LISTING_PATH)}
-            className={MP.createListingBtnTop}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Create Listing
-          </button>
-
           <nav className={`${MP.sidebarNav} ${MP.navList}`}>
             <div className={`${MP.navItem} ${MP.navItemActive}`}>
               <BarChart3 className={`${MP.navIcon} ${MP.navIconActive}`} />

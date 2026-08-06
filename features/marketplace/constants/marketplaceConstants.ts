@@ -25,7 +25,6 @@ import {
   ChevronRight,
   ShoppingBag,
   Tag as TagIcon,
-  Inbox,
 } from "@/shared/icons";
 
 export type MarketplaceSort =
@@ -37,24 +36,11 @@ export type MarketplaceSort =
   | "nearest"
   | "popular";
 
-export type MarketplaceHub = "browse" | "inbox" | "buying" | "selling";
+export type MarketplaceHub = "browse" | "buying" | "selling";
 export type BuyingTab = "activity" | "saved" | "orders";
-
-export {
-  MARKETPLACE_INBOX_LABELS,
-  type MarketplaceInboxLabel,
-  type MarketplaceInboxRole,
-} from "@/lib/marketplace/orderStatus";
 
 export const MARKETPLACE_HUB_LINKS = [
   { hub: "browse" as const, label: "Browse all", icon: Home, path: "/marketplace" },
-  {
-    hub: "inbox" as const,
-    label: "Inbox",
-    icon: Inbox,
-    path: "/marketplace/inbox",
-    requiresAuth: true,
-  },
   {
     hub: "buying" as const,
     label: "Buying",

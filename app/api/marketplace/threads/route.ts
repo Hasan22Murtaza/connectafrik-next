@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     if (msg === 'Unauthorized' || msg === 'Missing Authorization header') {
       return unauthorizedResponse()
     }
-    console.error('POST /api/marketplace/inbox/threads error:', err)
+    console.error('POST /api/marketplace/threads error:', err)
     return errorResponse(msg, 500)
   }
 }
