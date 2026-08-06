@@ -442,78 +442,83 @@ export function MyOrdersGridShimmer({ count }: { count: number }) {
   );
 }
 
+/** List-style shimmer matching the redesigned My Orders page. */
+export function MyOrdersListShimmer({ count }: { count: number }) {
+  return (
+    <div className="flex flex-col gap-3 sm:gap-4 w-full min-w-0">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="flex gap-3 sm:gap-5 p-4 sm:p-5 bg-surface rounded-2xl shadow-sm ring-1 ring-border-subtle w-full min-w-0"
+        >
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl animate-shimmer shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <div className="h-4 w-3/4 max-w-xs animate-shimmer rounded" />
+                <div className="h-3 w-40 max-w-full animate-shimmer rounded" />
+              </div>
+              <div className="h-5 w-20 animate-shimmer rounded-full shrink-0" />
+            </div>
+            <div className="flex gap-3">
+              <div className="h-3 w-12 animate-shimmer rounded" />
+              <div className="h-3 w-16 animate-shimmer rounded" />
+              <div className="h-3 w-24 animate-shimmer rounded" />
+            </div>
+            <div className="hidden sm:flex items-center gap-1 pt-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <React.Fragment key={n}>
+                  <div className="w-2 h-2 rounded-full animate-shimmer" />
+                  {n < 5 && <div className="flex-1 h-px max-w-8 animate-shimmer" />}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Full-page shimmer for order detail loading. */
 export function OrderDetailPageShimmer() {
   return (
-    <div className="min-h-screen bg-gray-50 w-full min-w-0 overflow-x-hidden">
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
-            <div className="min-w-0 flex-1">
-              <div className="h-7 sm:h-8 w-40 sm:w-52 animate-shimmer rounded mb-2" />
-              <div className="h-4 w-28 animate-shimmer rounded" />
-            </div>
-            <div className="h-9 w-24 animate-shimmer rounded-full shrink-0" />
-          </div>
-        </div>
-      </div>
-      <div className="max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 py-6 w-full min-w-0">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-          <div className="md:col-span-2 space-y-4 sm:space-y-6 min-w-0">
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-              <div className="h-5 w-40 animate-shimmer rounded mb-4" />
-              <div className="flex gap-3 sm:gap-4 min-w-0">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg animate-shimmer shrink-0" />
-                <div className="flex-1 min-w-0 space-y-2">
-                  <div className="h-4 w-3/4 max-w-full animate-shimmer rounded" />
-                  <div className="h-3 w-full max-w-full animate-shimmer rounded" />
-                  <div className="h-3 w-2/3 max-w-full animate-shimmer rounded" />
-                  <div className="h-3 w-1/2 max-w-full animate-shimmer rounded mt-2" />
-                </div>
+    <div className="min-h-screen bg-surface-canvas w-full min-w-0 overflow-x-hidden">
+      <div className="w-full max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+        <div className="h-4 w-28 animate-shimmer rounded mb-4" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+          <div className="lg:col-span-8 space-y-3 sm:space-y-4 min-w-0">
+            <div className="flex gap-3">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg animate-shimmer shrink-0" />
+              <div className="flex-1 space-y-2 min-w-0">
+                <div className="h-4 w-3/4 max-w-full animate-shimmer rounded" />
+                <div className="h-3.5 w-1/2 max-w-full animate-shimmer rounded" />
               </div>
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-              <div className="h-5 w-36 animate-shimmer rounded mb-4" />
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex justify-between py-2 border-b border-gray-100">
-                    <div className="h-4 w-24 animate-shimmer rounded" />
-                    <div className="h-4 w-16 animate-shimmer rounded" />
+            <div className="bg-surface rounded-xl ring-1 ring-border-subtle p-3 sm:p-4 space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="w-6 h-6 rounded-full animate-shimmer shrink-0" />
+                  <div className="space-y-1.5 flex-1 pt-0.5">
+                    <div className="h-3.5 w-32 animate-shimmer rounded" />
+                    <div className="h-3 w-20 animate-shimmer rounded" />
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-              <div className="h-5 w-40 animate-shimmer rounded mb-4" />
-              <div className="space-y-3">
-                <div className="h-4 w-full max-w-full animate-shimmer rounded" />
-                <div className="h-4 w-full max-w-full animate-shimmer rounded" />
-                <div className="h-16 w-full max-w-full animate-shimmer rounded mt-2" />
-              </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="space-y-4 sm:space-y-6 min-w-0">
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-              <div className="h-5 w-32 animate-shimmer rounded mb-4" />
-              <div className="space-y-3">
-                <div className="h-4 w-full max-w-full animate-shimmer rounded" />
-                <div className="h-4 w-full max-w-full animate-shimmer rounded" />
-                <div className="h-5 w-3/4 max-w-full animate-shimmer rounded pt-2" />
-              </div>
+          <div className="lg:col-span-4 space-y-3 sm:space-y-4 min-w-0">
+            <div className="bg-surface rounded-xl ring-1 ring-border-subtle p-3 sm:p-4 space-y-2.5">
+              <div className="h-4 w-28 animate-shimmer rounded" />
+              <div className="h-3.5 w-full animate-shimmer rounded" />
+              <div className="h-3.5 w-full animate-shimmer rounded" />
+              <div className="h-5 w-2/3 animate-shimmer rounded pt-1" />
             </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-              <div className="h-5 w-24 animate-shimmer rounded mb-4" />
-              <div className="space-y-3">
-                <div className="h-3 w-full animate-shimmer rounded" />
-                <div className="h-3 w-full animate-shimmer rounded" />
-              </div>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-              <div className="h-5 w-36 animate-shimmer rounded mb-4" />
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full animate-shimmer shrink-0" />
-                <div className="space-y-2 min-w-0 flex-1">
-                  <div className="h-4 w-24 animate-shimmer rounded" />
+            <div className="bg-surface rounded-xl ring-1 ring-border-subtle p-3 sm:p-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full animate-shimmer shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-3.5 w-28 animate-shimmer rounded" />
                   <div className="h-3 w-16 animate-shimmer rounded" />
                 </div>
               </div>
