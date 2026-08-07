@@ -36,7 +36,7 @@ export interface UseCallSessionSignalingOptions {
   ringbackRef: React.MutableRefObject<{ stop: () => void } | null>;
   /** Called when outgoing ring times out (45s) — should PATCH missed + cleanup like handleEndCall. */
   onOutgoingRingTimeout?: () => void;
-  /** Optional mid-call video switch support (VideoSDK path). */
+  /** Optional mid-call video switch support (LiveKit + VideoSDK). */
   onVideoSwitch?: {
     setEffectiveCallType: (t: 'audio' | 'video') => void;
     toggleWebcam: () => void;
@@ -158,6 +158,30 @@ export function useCallSessionSignaling({
         if (row.call_type === 'video' && onVideoSwitch && isMountedRef.current) {
           onVideoSwitch.setEffectiveCallType('video');
         }
+        // Heartbeats overwrite last_signal, so derive pending from request timestamps.
+        if (onVideoSwitch && isMountedRef.current && row.call_type !== 'video') {
+          const requestedBy = meta.videoRequestedBy ? String(meta.videoRequestedBy) : '';
+          const requestedAt = meta.videoRequestedAt
+            ? Date.parse(String(meta.videoRequestedAt))
+            : 0;
+          const acceptedAt = meta.videoAcceptedAt
+            ? Date.parse(String(meta.videoAcceptedAt))
+            : 0;
+          const declinedAt = meta.videoDeclinedAt
+            ? Date.parse(String(meta.videoDeclinedAt))
+            : 0;
+          const isPendingRequest =
+            !!requestedBy &&
+            requestedBy !== currentUserId &&
+            requestedAt > 0 &&
+            requestedAt > acceptedAt &&
+            requestedAt > declinedAt;
+          onVideoSwitch.setPendingVideoRequest(
+            isPendingRequest ? { fromUserId: requestedBy } : null,
+          );
+        } else if (onVideoSwitch && isMountedRef.current && row.call_type === 'video') {
+          onVideoSwitch.setPendingVideoRequest(null);
+        }
       } catch {
         /* ignore */
       }
@@ -166,7 +190,7 @@ export function useCallSessionSignaling({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, threadId, callIdHint, normalizeSignalMeta, onVideoSwitch]);
+  }, [isOpen, threadId, callIdHint, normalizeSignalMeta, onVideoSwitch, currentUserId]);
 
   // Network/tab resync
   //
@@ -200,6 +224,29 @@ export function useCallSessionSignaling({
         }
         if (row.call_type === 'video' && onVideoSwitch) {
           onVideoSwitch.setEffectiveCallType('video');
+          onVideoSwitch.setPendingVideoRequest(null);
+        } else if (onVideoSwitch) {
+          // Heartbeats overwrite last_signal, so derive pending from request timestamps.
+          const meta = normalizeSignalMeta(row.metadata);
+          const requestedBy = meta.videoRequestedBy ? String(meta.videoRequestedBy) : '';
+          const requestedAt = meta.videoRequestedAt
+            ? Date.parse(String(meta.videoRequestedAt))
+            : 0;
+          const acceptedAt = meta.videoAcceptedAt
+            ? Date.parse(String(meta.videoAcceptedAt))
+            : 0;
+          const declinedAt = meta.videoDeclinedAt
+            ? Date.parse(String(meta.videoDeclinedAt))
+            : 0;
+          const isPendingRequest =
+            !!requestedBy &&
+            requestedBy !== currentUserId &&
+            requestedAt > 0 &&
+            requestedAt > acceptedAt &&
+            requestedAt > declinedAt;
+          onVideoSwitch.setPendingVideoRequest(
+            isPendingRequest ? { fromUserId: requestedBy } : null,
+          );
         }
         if (Array.isArray(res.participant_profiles)) {
           setParticipantProfiles(res.participant_profiles);
@@ -218,7 +265,7 @@ export function useCallSessionSignaling({
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onOnline);
     };
-  }, [isOpen, threadId, callIdHint, closeCall, onVideoSwitch, callStatusRef]);
+  }, [isOpen, threadId, callIdHint, closeCall, onVideoSwitch, callStatusRef, normalizeSignalMeta, currentUserId]);
 
   // 20s join timeout
   useEffect(() => {
@@ -281,11 +328,13 @@ export function useCallSessionSignaling({
       if (onVideoSwitch) {
         if (statusType === 'switched_to_video' || statusType === 'video_accepted') {
           onVideoSwitch.setEffectiveCallType('video');
+          onVideoSwitch.setPendingVideoRequest(null);
           if (!onVideoSwitch.localWebcamOnRef.current) onVideoSwitch.toggleWebcam();
           return;
         }
         if (statusType === 'switched_to_audio') {
           onVideoSwitch.setEffectiveCallType('audio');
+          onVideoSwitch.setPendingVideoRequest(null);
           if (onVideoSwitch.localWebcamOnRef.current) onVideoSwitch.toggleWebcam();
           return;
         }

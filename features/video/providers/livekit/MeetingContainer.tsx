@@ -91,6 +91,10 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const [callDuration, setCallDuration] = useState(0);
   const [speakerLevel, setSpeakerLevel] = useState<SpeakerLevel>('normal');
   const [effectiveCallType, setEffectiveCallType] = useState<'audio' | 'video'>(callType);
+  /** Incoming video upgrade request from remote participant (1:1). */
+  const [pendingVideoRequest, setPendingVideoRequest] = useState<{ fromUserId: string } | null>(
+    null,
+  );
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [showAddPeople, setShowAddPeople] = useState(false);
@@ -118,6 +122,25 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const pipWrapRef = useRef<HTMLDivElement>(null);
   const pipPointerIdRef = useRef<number | null>(null);
   const pipDragStartRef = useRef<{ cx: number; cy: number; tx: number; ty: number } | null>(null);
+  const localWebcamOnRef = useRef(isCameraEnabled);
+  localWebcamOnRef.current = isCameraEnabled;
+  const localParticipantRef = useRef(localParticipantInfo);
+  localParticipantRef.current = localParticipantInfo;
+
+  const onVideoSwitch = useMemo(
+    () => ({
+      setEffectiveCallType,
+      toggleWebcam: () => {
+        const next = !localWebcamOnRef.current;
+        void localParticipantRef.current.setCameraEnabled(next).catch(() => {
+          /* permission / device errors surface via LiveKit */
+        });
+      },
+      localWebcamOnRef,
+      setPendingVideoRequest,
+    }),
+    [],
+  );
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -179,6 +202,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     onClose,
     ringbackRef,
     onOutgoingRingTimeout: () => handleEndCallRef.current(),
+    onVideoSwitch,
   });
 
   const {
@@ -186,6 +210,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     isGroupCallSessionRef,
     suppressSignalRef,
     signalMediaDisconnected,
+    signalCallTypeSwitch,
     broadcastEnded,
   } = signaling;
 
@@ -505,13 +530,60 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, [isMuted, localParticipantInfo]);
 
   const handleToggleVideo = useCallback(async () => {
-    if (effectiveCallType === 'audio' && !isVideoEnabled) {
-      setEffectiveCallType('video');
-      await localParticipantInfo.setCameraEnabled(true);
+    const remoteCount = participants.filter(
+      (p) => p.identity !== localParticipantInfo.identity,
+    ).length;
+
+    // 1:1 audio → request consent before enabling video (matches VideoSDK path).
+    if (effectiveCallType === 'audio') {
+      if (!isGroupCallSessionRef.current && remoteCount === 1) {
+        const ok = await signalCallTypeSwitch('request_video');
+        if (ok) {
+          toast('Waiting for the other person to accept video…');
+        }
+        return;
+      }
+      const ok = await signalCallTypeSwitch('switch_to_video');
+      if (ok) {
+        setEffectiveCallType('video');
+        await localParticipantInfo.setCameraEnabled(true);
+      }
       return;
     }
-    await localParticipantInfo.setCameraEnabled(!isVideoEnabled);
-  }, [effectiveCallType, isVideoEnabled, localParticipantInfo]);
+
+    if (isVideoEnabled) {
+      await localParticipantInfo.setCameraEnabled(false);
+      const ok = await signalCallTypeSwitch('switch_to_audio');
+      if (ok) setEffectiveCallType('audio');
+    } else {
+      await localParticipantInfo.setCameraEnabled(true);
+      const ok = await signalCallTypeSwitch('switch_to_video');
+      if (ok) setEffectiveCallType('video');
+    }
+  }, [
+    effectiveCallType,
+    isVideoEnabled,
+    localParticipantInfo,
+    participants,
+    signalCallTypeSwitch,
+    isGroupCallSessionRef,
+  ]);
+
+  const handleAcceptVideoRequest = useCallback(async () => {
+    const ok = await signalCallTypeSwitch('accept_video');
+    if (ok) {
+      setEffectiveCallType('video');
+      setPendingVideoRequest(null);
+      if (!isVideoEnabled) {
+        await localParticipantInfo.setCameraEnabled(true);
+      }
+    }
+  }, [signalCallTypeSwitch, isVideoEnabled, localParticipantInfo]);
+
+  const handleDeclineVideoRequest = useCallback(async () => {
+    await signalCallTypeSwitch('decline_video');
+    setPendingVideoRequest(null);
+  }, [signalCallTypeSwitch]);
 
   const handleToggleScreenShare = useCallback(async () => {
     await localParticipantInfo.setScreenShareEnabled(!isScreenShareEnabled);
@@ -1084,6 +1156,29 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             >
               <PhoneOff className="w-6 h-6" />
             </button>
+          </div>
+        )}
+
+        {/* Video upgrade confirmation prompt (1:1) — same UX as VideoSDK */}
+        {pendingVideoRequest && callStatus === 'connected' && (
+          <div className="absolute inset-x-0 top-16 z-40 flex justify-center px-4">
+            <div className="bg-black/80 backdrop-blur-md text-white rounded-2xl px-5 py-4 shadow-2xl border border-white/20 max-w-sm w-full text-center">
+              <p className="text-sm font-medium mb-3">Switch to video call?</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={() => void handleDeclineVideoRequest()}
+                  className="px-4 py-2 rounded-full bg-surface/20 hover:bg-surface/30 text-sm font-medium transition"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => void handleAcceptVideoRequest()}
+                  className="px-4 py-2 rounded-full bg-primary-500 hover:bg-primary-600 text-sm font-medium transition"
+                >
+                  Accept
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
