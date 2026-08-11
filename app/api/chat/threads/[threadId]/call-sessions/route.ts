@@ -4,6 +4,15 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 
+/** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
+function pushRequestHeaders(request: NextRequest): Record<string, string> {
+  const auth = request.headers.get('authorization')
+  return {
+    'Content-Type': 'application/json',
+    ...(auth ? { Authorization: auth } : {}),
+  }
+}
+
 type RouteContext = { params: Promise<{ threadId: string }> }
 
 const ACTIVE_STATUSES = ['initiated', 'ringing', 'active']
@@ -197,6 +206,7 @@ function midCallPushCopy(
 
 async function sendMidCallPushNotifications(
   apiBaseUrl: string,
+  pushHeaders: Record<string, string>,
   recipients: string[],
   payload: {
     signal: string
@@ -229,7 +239,7 @@ async function sendMidCallPushNotifications(
       try {
         const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: pushHeaders,
           body: JSON.stringify({
             user_id,
             title,
@@ -465,7 +475,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           try {
             const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: pushRequestHeaders(request),
               body: JSON.stringify({
                 user_id,
                 title: ringTitle,
@@ -944,7 +954,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             try {
               const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: pushRequestHeaders(request),
                 body: JSON.stringify({
                   user_id,
                   title,
@@ -1015,7 +1025,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         Array.isArray(updated.participants) ? (updated.participants as string[]) : [],
         { isGroup: groupCall, targetUserId },
       )
-      await sendMidCallPushNotifications(apiBaseUrl, recipients, {
+      await sendMidCallPushNotifications(apiBaseUrl, pushRequestHeaders(request), recipients, {
         signal,
         actorName,
         actorId: user.id,

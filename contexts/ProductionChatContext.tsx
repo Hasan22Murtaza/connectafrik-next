@@ -675,23 +675,24 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       const { data: { session: authSession } } = await supabase.auth.getSession()
+      if (!authSession?.access_token) {
+        throw new Error('You must be signed in to join a call.')
+      }
       // Pin to the provider the room was actually created on (persisted in
       // the session's own metadata) rather than letting this request
       // re-resolve independently.
       const sessionProvider =
         meta.provider === 'livekit' || meta.provider === 'videosdk' ? meta.provider : undefined
+      // Identity is derived server-side from the bearer token; do not send userId.
       const tokenRes = await fetch('/api/videosdk/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(authSession?.access_token ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
+          Authorization: `Bearer ${authSession.access_token}`,
         },
         body: JSON.stringify({
           roomId,
-          userId: currentUser.id,
           ...(sessionProvider ? { provider: sessionProvider } : {}),
-          ...(currentUser.name ? { displayName: currentUser.name } : {}),
-          ...(currentUser.avatarUrl ? { avatarUrl: currentUser.avatarUrl } : {}),
         }),
       })
       if (!tokenRes.ok) {

@@ -25,10 +25,15 @@ import IncomingCallControls from '@/features/video/ui/IncomingCallControls';
 import VideoSDKMeetingContainer from '@/features/video/providers/videosdk/MeetingContainer';
 import LiveKitMeetingContainer from '@/features/video/providers/livekit/MeetingContainer';
 import { LiveKitRoom } from '@livekit/components-react';
+import type { Room } from 'livekit-client';
 import { parseCallMediaResponse, resolveLiveKitWsUrl } from '@/lib/call-media/bootstrap';
 import type { CallMediaProviderName } from '@/lib/call-media/types';
 import { resolveClientVideoProvider } from '@/features/video/core/config';
 import { useIncomingCallTerminalSignals } from '@/features/video/hooks/useIncomingCallTerminalSignals';
+import {
+  CALL_AUDIO_CAPTURE,
+  connectLiveKitWithPreparedAudio,
+} from '@/features/video/providers/livekit/prepareCallAudio';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -107,6 +112,8 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   const [wsUrl, setWsUrl] = useState<string | undefined>(wsUrlHint);
   const [errorMsg, setErrorMsg] = useState('');
   const [isAcceptingCall, setIsAcceptingCall] = useState(false);
+  const [livekitRoom, setLivekitRoom] = useState<Room | null>(null);
+  const [livekitPrepError, setLivekitPrepError] = useState('');
 
   const isMountedRef = useRef(true);
   const hasInitRef = useRef(false);
@@ -120,6 +127,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     wsUrl?: string;
   }> | null>(null);
   const prewarmStreamRef = useRef<MediaStream | null>(null);
+  const livekitPrepGenRef = useRef(0);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -134,6 +142,9 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       setMediaProvider(mediaProviderHint ?? defaultMediaProvider);
       setWsUrl(wsUrlHint);
       hasInitRef.current = false;
+      livekitPrepGenRef.current += 1;
+      setLivekitRoom(null);
+      setLivekitPrepError('');
     }
   }, [isOpen, mediaProviderHint, wsUrlHint, defaultMediaProvider]);
 
@@ -148,9 +159,8 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   );
 
   // ── Token fetcher ───────────────────────────────────────────────────────────
-  // Resolve userId from Supabase session here (not only from props). The call popup
-  // often mounts before AuthContext hydrates `user?.id`, and JSON.stringify drops
-  // `undefined` userId — the API then returns 400 "Missing roomId or userId".
+  // Identity is derived server-side from the Authorization bearer; do not send
+  // userId / displayName / avatarUrl — the token route ignores them.
   const getToken = useCallback(
     async (
       rid: string,
@@ -162,11 +172,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     }> => {
       const { data: sessionData } = await supabase.auth.getSession();
       const session = sessionData.session;
-      const resolvedUserId =
-        (currentUserId && String(currentUserId).trim()) ||
-        session?.user?.id ||
-        '';
-      if (!resolvedUserId) {
+      if (!session?.access_token) {
         throw new Error('You must be signed in to start a call.');
       }
 
@@ -174,9 +180,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(session?.access_token
-            ? { Authorization: `Bearer ${session.access_token}` }
-            : {}),
+          Authorization: `Bearer ${session.access_token}`,
         },
         // `mediaProviderHint` here is only ever set from a server-confirmed
         // source (the outgoing bootstrap, or the call session's stored
@@ -186,10 +190,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
         // exists on.
         body: JSON.stringify({
           roomId: rid,
-          userId: resolvedUserId,
           ...(mediaProviderHint ? { provider: mediaProviderHint } : {}),
-          ...(localDisplayName ? { displayName: localDisplayName } : {}),
-          ...(localAvatarForSdk ? { avatarUrl: localAvatarForSdk } : {}),
         }),
       });
 
@@ -205,6 +206,16 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       if (!media.token) {
         throw new Error('Invalid token response');
       }
+      const responseUserId =
+        typeof (payload as { userId?: unknown }).userId === 'string'
+          ? String((payload as { userId: string }).userId).trim()
+          : '';
+      const fallbackUserId =
+        (currentUserId && String(currentUserId).trim()) || session.user?.id || '';
+      const resolvedUserId = responseUserId || fallbackUserId;
+      if (!resolvedUserId) {
+        throw new Error('You must be signed in to start a call.');
+      }
       return {
         token: media.token,
         userId: resolvedUserId,
@@ -212,7 +223,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
         wsUrl: media.wsUrl,
       };
     },
-    [currentUserId, mediaProviderHint, localDisplayName, localAvatarForSdk],
+    [currentUserId, mediaProviderHint],
   );
 
   // ── Ringtone helpers ────────────────────────────────────────────────────────
@@ -437,7 +448,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
     let cancelled = false;
     navigator.mediaDevices
-      .getUserMedia({ audio: true })
+      .getUserMedia({ audio: CALL_AUDIO_CAPTURE })
       .then((stream) => {
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -454,6 +465,47 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       prewarmStreamRef.current = null;
     };
   }, [isOpen, isIncoming, token]);
+
+  useEffect(() => {
+    if (!isOpen || !token || mediaProvider !== 'livekit') return;
+    const serverUrl = resolveLiveKitWsUrl(wsUrl);
+    if (!serverUrl) {
+      setLivekitPrepError(
+        'LiveKit server URL is not configured. Set NEXT_PUBLIC_LIVEKIT_WS_URL.',
+      );
+      return;
+    }
+
+    const gen = ++livekitPrepGenRef.current;
+    let cancelled = false;
+    setLivekitPrepError('');
+    setLivekitRoom(null);
+
+    (async () => {
+      try {
+        const { room } = await connectLiveKitWithPreparedAudio({
+          serverUrl,
+          token,
+          video: callType === 'video',
+        });
+        if (cancelled || gen !== livekitPrepGenRef.current || !isMountedRef.current) {
+          await room.disconnect().catch(() => undefined);
+          return;
+        }
+        setLivekitRoom(room);
+      } catch (err: unknown) {
+        if (cancelled || gen !== livekitPrepGenRef.current || !isMountedRef.current) return;
+        const message = err instanceof Error ? err.message : 'Failed to connect';
+        setLivekitPrepError(message);
+        setPrePhase('error');
+        setErrorMsg(message);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, token, mediaProvider, wsUrl, callType]);
 
   // ── Accept handler (incoming ring phase) — fetches token then shows meeting ─
   const handleAccept = useCallback(async () => {
@@ -604,13 +656,14 @@ const CallModal: React.FC<CallModalProps> = (props) => {
 
   if (mediaProvider === 'livekit') {
     const serverUrl = resolveLiveKitWsUrl(wsUrl);
-    if (!serverUrl) {
+    if (!serverUrl || livekitPrepError) {
       return (
         <div className="fixed inset-0 z-[9999] bg-surface-canvas">
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-content p-8 text-center">
             <div className="text-lg font-semibold">Connection Failed</div>
             <div className="text-sm text-content-secondary">
-              LiveKit server URL is not configured. Set NEXT_PUBLIC_LIVEKIT_WS_URL.
+              {livekitPrepError ||
+                'LiveKit server URL is not configured. Set NEXT_PUBLIC_LIVEKIT_WS_URL.'}
             </div>
             <button
               onClick={onClose}
@@ -623,13 +676,34 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       );
     }
 
+    if (!livekitRoom) {
+      return (
+        <div className="fixed inset-0 z-[9999] bg-surface-canvas">
+          <CallStatusOverlay
+            callStatus="connecting"
+            callType={callType}
+            callDuration={0}
+            formatDuration={() => '00:00'}
+            isIncoming={isIncoming}
+            decodedCallerName={decodedCallerName}
+            decodedRecipientName={decodedRecipientName}
+            decodedCallerAvatarUrl={decodedCallerAvatarUrl}
+            decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
+            isScreenSharing={false}
+            remoteScreenShareStream={null}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="fixed inset-0 z-[9999] animate-fadeIn">
         <LiveKitRoom
+          room={livekitRoom}
           serverUrl={serverUrl}
           token={token}
           connect={true}
-          audio={true}
+          audio={CALL_AUDIO_CAPTURE}
           video={callType === 'video'}
           onError={(err) => {
             console.error('[LiveKitRoom] error:', err);

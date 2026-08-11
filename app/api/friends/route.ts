@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { notificationService } from '@/shared/services/notificationService'
 
@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const accessToken = getAccessTokenFromRequest(request)
 
     const body = await request.json().catch(() => ({}))
     const receiver_id = body?.receiver_id
@@ -116,13 +117,16 @@ export async function POST(request: NextRequest) {
       .single()
 
     const senderName = senderProfile?.full_name || senderProfile?.username || 'Someone'
-    await notificationService.sendNotification({
-      user_id: receiver_id,
-      title: 'Friend request',
-      body: `${senderName} sent you a friend request`,
-      notification_type: 'friend_request',
-      data: { sender_id: user.id, sender_name: senderName, url: '/friends' },
-    })
+    await notificationService.sendNotification(
+      {
+        user_id: receiver_id,
+        title: 'Friend request',
+        body: `${senderName} sent you a friend request`,
+        notification_type: 'friend_request',
+        data: { sender_id: user.id, sender_name: senderName, url: '/friends' },
+      },
+      { accessToken },
+    )
 
     return jsonResponse(inserted, 201)
   } catch (error: any) {

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { notificationService } from '@/shared/services/notificationService'
 
@@ -244,20 +244,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const actorName = user.user_metadata?.full_name || user.email || 'Someone'
       const postTitle = postData.content?.substring(0, 50) || 'your post'
 
-      await notificationService.sendNotification({
-        user_id: postData.author_id,
-        title: 'New Comment',
-        body: `${actorName} commented on your post${postTitle ? `: "${postTitle}"` : ''}`,
-        notification_type: 'post_comment',
-        data: {
-          type: 'post_comment',
-          action: 'comment',
-          post_id: postId,
-          actor_id: user.id,
-          actor_name: actorName,
-          url: `/post/${postId}`,
+      await notificationService.sendNotification(
+        {
+          user_id: postData.author_id,
+          title: 'New Comment',
+          body: `${actorName} commented on your post${postTitle ? `: "${postTitle}"` : ''}`,
+          notification_type: 'post_comment',
+          data: {
+            type: 'post_comment',
+            action: 'comment',
+            post_id: postId,
+            actor_id: user.id,
+            actor_name: actorName,
+            url: `/post/${postId}`,
+          },
         },
-      })
+        { accessToken: getAccessTokenFromRequest(request) },
+      )
     }
 
     return jsonResponse({

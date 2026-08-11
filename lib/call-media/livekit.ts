@@ -80,11 +80,13 @@ export async function issueLiveKitToken(
 
   await ensureLiveKitRoom(roomId);
 
+  const identity = userId.trim().toLowerCase();
+
   const trimmedAvatar = avatarUrl?.trim();
 
   const at = new AccessToken(apiKey, apiSecret, {
-    identity: userId,
-    name: displayName?.trim() || userId,
+    identity,
+    name: displayName?.trim() || identity,
     ttl: TOKEN_TTL,
     // Read by profileImageUrlFromMeta() on every other participant's tile.
     // Without this, a LiveKit participant's `name`/`metadata` are only ever
@@ -115,14 +117,14 @@ export async function createLiveKitCallRoom(
     token: '',
     provider: 'livekit',
     wsUrl: getLiveKitWsUrl(),
-    userId: options.userId,
+    userId: options.userId.trim().toLowerCase(),
     expiresIn: TOKEN_TTL,
   };
 
   if (options.includeParticipantToken) {
     credentials.token = await issueLiveKitToken({
       roomId,
-      userId: options.userId,
+      userId: options.userId.trim().toLowerCase(),
       displayName: options.displayName,
       avatarUrl: options.avatarUrl,
     });

@@ -15,6 +15,7 @@ import { RoomAudioRenderer, useLocalParticipant, useParticipants, useRoomContext
 import type { Participant } from 'livekit-client';
 import { RoomEvent, Track } from 'livekit-client';
 import { PhoneOff } from '@/shared/icons';
+import { CALL_AUDIO_CAPTURE } from '@/features/video/providers/livekit/prepareCallAudio';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
@@ -255,6 +256,10 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       try {
         const { token: freshToken } = await refreshToken();
         await room.connect(livekitServerUrl, freshToken);
+        await room.localParticipant
+          .setMicrophoneEnabled(true, CALL_AUDIO_CAPTURE)
+          .catch(() => undefined);
+        await room.startAudio().catch(() => undefined);
         rejoiningRef.current = false;
         if (isMountedRef.current) {
           // `signalMeetingJoined` no-ops past the first join (hasSignaledJoinRef),

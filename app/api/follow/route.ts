@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { notificationService } from '@/shared/services/notificationService'
 
 export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const accessToken = getAccessTokenFromRequest(request)
     const body = await request.json()
     const following_id = body?.following_id as string | undefined
 
@@ -52,18 +53,21 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id)
         .single()
       const follower_name = followerProfile?.full_name || followerProfile?.username || 'Someone'
-      await notificationService.sendNotification({
-        user_id: following_id,
-        title: 'New Tap In!',
-        body: `${follower_name} tapped in to follow you`,
-        notification_type: 'follow',
-        data: {
-          type: 'follow',
-          follower_id: user.id,
-          follower_name,
-          url: `/user/${user.id}`,
+      await notificationService.sendNotification(
+        {
+          user_id: following_id,
+          title: 'New Tap In!',
+          body: `${follower_name} tapped in to follow you`,
+          notification_type: 'follow',
+          data: {
+            type: 'follow',
+            follower_id: user.id,
+            follower_name,
+            url: `/user/${user.id}`,
+          },
         },
-      })
+        { accessToken },
+      )
     }
 
     return jsonResponse({ success: true, followed: true })
@@ -79,6 +83,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { user, supabase } = await getAuthenticatedUser(request)
+    const accessToken = getAccessTokenFromRequest(request)
     const body = await request.json()
     const following_id = body?.following_id as string | undefined
 
@@ -86,20 +91,7 @@ export async function DELETE(request: NextRequest) {
       return errorResponse('following_id is required', 400)
     }
 
-    const { error: deleteError } = await supabase
-      .from('follows')
-      .delete()
-      .eq('follower_id', user.id)
-      .eq('following_id', following_id)
-
-    if (deleteError) {
-      return errorResponse(deleteError.message, 400)
-    }
-
-    await supabase.rpc('decrement_following_count', { user_id: user.id })
-    await supabase.rpc('decrement_follower_count', { user_id: following_id })
-
-    // Optional: notify user about unfollow (best-effort)
+    // Notify while the follow row still exists so session authz can verify the relationship.
     const { data: targetProfile } = await supabase
       .from('profiles')
       .select('follow_notifications')
@@ -114,19 +106,35 @@ export async function DELETE(request: NextRequest) {
         .single()
 
       const follower_name = followerProfile?.full_name || followerProfile?.username || 'Someone'
-      await notificationService.sendNotification({
-        user_id: following_id,
-        title: 'Unfollow',
-        body: `${follower_name} unfollowed you`,
-        notification_type: 'unfollow',
-        data: {
-          type: 'unfollow',
-          follower_id: user.id,
-          follower_name,
-          url: `/user/${user.id}`,
+      await notificationService.sendNotification(
+        {
+          user_id: following_id,
+          title: 'Unfollow',
+          body: `${follower_name} unfollowed you`,
+          notification_type: 'unfollow',
+          data: {
+            type: 'unfollow',
+            follower_id: user.id,
+            follower_name,
+            url: `/user/${user.id}`,
+          },
         },
-      })
+        { accessToken },
+      )
     }
+
+    const { error: deleteError } = await supabase
+      .from('follows')
+      .delete()
+      .eq('follower_id', user.id)
+      .eq('following_id', following_id)
+
+    if (deleteError) {
+      return errorResponse(deleteError.message, 400)
+    }
+
+    await supabase.rpc('decrement_following_count', { user_id: user.id })
+    await supabase.rpc('decrement_follower_count', { user_id: following_id })
 
     return jsonResponse({ success: true, unfollowed: true })
   } catch (error: unknown) {

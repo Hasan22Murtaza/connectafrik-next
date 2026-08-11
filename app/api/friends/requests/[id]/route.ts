@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { notificationService } from '@/shared/services/notificationService'
 
@@ -46,6 +46,7 @@ export async function PATCH(
   try {
     const { id } = await params
     const { user, supabase } = await getAuthenticatedUser(request)
+    const accessToken = getAccessTokenFromRequest(request)
 
     const body = await request.json().catch(() => ({}))
     const status = body?.status
@@ -94,21 +95,27 @@ export async function PATCH(
       const receiverName = receiverProfile?.full_name || receiverProfile?.username || 'Someone'
 
       if (status === 'accepted') {
-        await notificationService.sendNotification({
-          user_id: row.sender_id,
-          title: 'Friend request accepted',
-          body: `${receiverName} accepted your friend request`,
-          notification_type: 'friend_request_accepted',
-          data: { type: 'friend_request_accepted', receiver_id: user.id, receiver_name: receiverName, url: '/friends' },
-        })
+        await notificationService.sendNotification(
+          {
+            user_id: row.sender_id,
+            title: 'Friend request accepted',
+            body: `${receiverName} accepted your friend request`,
+            notification_type: 'friend_request_accepted',
+            data: { type: 'friend_request_accepted', receiver_id: user.id, receiver_name: receiverName, url: '/friends' },
+          },
+          { accessToken },
+        )
       } else if (status === 'declined') {
-        await notificationService.sendNotification({
-          user_id: row.sender_id,
-          title: 'Friend request declined',
-          body: `${receiverName} declined your friend request`,
-          notification_type: 'friend_request_declined',
-          data: { type: 'friend_request_declined', receiver_id: user.id, receiver_name: receiverName, url: '/friends' },
-        })
+        await notificationService.sendNotification(
+          {
+            user_id: row.sender_id,
+            title: 'Friend request declined',
+            body: `${receiverName} declined your friend request`,
+            notification_type: 'friend_request_declined',
+            data: { type: 'friend_request_declined', receiver_id: user.id, receiver_name: receiverName, url: '/friends' },
+          },
+          { accessToken },
+        )
       }
     }
 

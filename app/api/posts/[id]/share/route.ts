@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Notify post author (fire-and-forget)
-    notifyShareAuthor(supabase, user, postId).catch(() => {})
+    notifyShareAuthor(supabase, user, postId, getAccessTokenFromRequest(request)).catch(() => {})
 
     return jsonResponse({ success: true, shares_count: sharesCount })
   } catch (error: any) {
@@ -95,7 +95,12 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   }
 }
 
-async function notifyShareAuthor(supabase: any, user: any, postId: string) {
+async function notifyShareAuthor(
+  supabase: any,
+  user: any,
+  postId: string,
+  accessToken: string | null,
+) {
   const { data: post } = await supabase
     .from('posts')
     .select('author_id, content')
@@ -108,17 +113,20 @@ async function notifyShareAuthor(supabase: any, user: any, postId: string) {
   const actorName = user.user_metadata?.full_name || user.email || 'Someone'
   const postTitle = post.content?.substring(0, 50) || 'your post'
 
-  await sendNotification({
-    user_id: post.author_id,
-    title: 'Post Shared',
-    body: `${actorName} shared your post${postTitle ? `: "${postTitle}"` : ''}`,
-    notification_type: 'system',
-    data: {
-      action: 'share',
-      post_id: postId,
-      actor_id: user.id,
-      actor_name: actorName,
-      url: `/post/${postId}`,
+  await sendNotification(
+    {
+      user_id: post.author_id,
+      title: 'Post Shared',
+      body: `${actorName} shared your post${postTitle ? `: "${postTitle}"` : ''}`,
+      notification_type: 'post_share',
+      data: {
+        action: 'share',
+        post_id: postId,
+        actor_id: user.id,
+        actor_name: actorName,
+        url: `/post/${postId}`,
+      },
     },
-  })
+    { accessToken },
+  )
 }

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import * as admin from 'firebase-admin'
 import { getFirebaseAdmin } from '../fcm/_utils'
 import { sendVoipApnsPush } from '@/lib/apns-voip'
 import type { NotificationType } from '@/shared/types/notifications'
 import { isCanonicalNotificationType } from '@/shared/types/notifications'
 import { parsePushBooleanFlag } from '@/shared/types/callPush'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
+import { verifyCronRequest } from '@/lib/marketplace/cronAuth'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -90,14 +92,67 @@ function stringifyFcmDataValues(obj: Record<string, unknown>): Record<string, st
   return out
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase: SupabaseClient = createServiceClient()
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables')
+/**
+ * Session callers may only notify themselves or users they have a real relationship with.
+ * Trusted server-to-server callers use verifyCronRequest and skip this check.
+ */
+async function canNotifyRecipient(actorId: string, recipientId: string): Promise<boolean> {
+  if (actorId === recipientId) return true
+
+  const { data: friendship } = await supabase
+    .from('friend_requests')
+    .select('id')
+    .or(
+      `and(sender_id.eq.${actorId},receiver_id.eq.${recipientId}),and(sender_id.eq.${recipientId},receiver_id.eq.${actorId})`,
+    )
+    .limit(1)
+    .maybeSingle()
+  if (friendship) return true
+
+  const { data: follow } = await supabase
+    .from('follows')
+    .select('id')
+    .or(
+      `and(follower_id.eq.${actorId},following_id.eq.${recipientId}),and(follower_id.eq.${recipientId},following_id.eq.${actorId})`,
+    )
+    .limit(1)
+    .maybeSingle()
+  if (follow) return true
+
+  const { data: actorThreads } = await supabase
+    .from('chat_participants')
+    .select('thread_id')
+    .eq('user_id', actorId)
+  const threadIds = (actorThreads ?? [])
+    .map((row) => row.thread_id)
+    .filter((id): id is string => typeof id === 'string' && id.length > 0)
+
+  if (threadIds.length > 0) {
+    const { data: shared } = await supabase
+      .from('chat_participants')
+      .select('id')
+      .eq('user_id', recipientId)
+      .in('thread_id', threadIds)
+      .limit(1)
+      .maybeSingle()
+    if (shared) return true
+  }
+
+  return false
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+function authErrorResponse(err: unknown): NextResponse | null {
+  const msg = err instanceof Error ? err.message : ''
+  if (msg === 'Unauthorized' || msg === 'Missing Authorization header') {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized' },
+      { status: 401, headers: corsHeaders },
+    )
+  }
+  return null
+}
 
 type VoipPushTarget = {
   token: string
@@ -173,6 +228,20 @@ export async function POST(request: NextRequest) {
   try {
     console.log('📱 Push notification API called')
 
+    const isTrustedServer = verifyCronRequest(request)
+    let actorUserId: string | null = null
+
+    if (!isTrustedServer) {
+      try {
+        const { user } = await getAuthenticatedUser(request)
+        actorUserId = user.id
+      } catch (err) {
+        const authRes = authErrorResponse(err)
+        if (authRes) return authRes
+        throw err
+      }
+    }
+
     const body = await request.json() as NotificationPayload
     const { user_id, title, body: notificationBody, notification_type, skip_db } = body
 
@@ -187,6 +256,16 @@ export async function POST(request: NextRequest) {
           headers: corsHeaders
         }
       )
+    }
+
+    if (!isTrustedServer && actorUserId) {
+      const allowed = await canNotifyRecipient(actorUserId, user_id)
+      if (!allowed) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden' },
+          { status: 403, headers: corsHeaders },
+        )
+      }
     }
 
     const normalizeIncomingType = (raw: unknown, embeddedRaw: unknown): NotificationType | null => {

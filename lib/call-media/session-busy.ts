@@ -18,7 +18,8 @@ function targetsFromMeta(meta: unknown): string[] {
   return out
 }
 
-function userInvolvedInSession(
+/** True if the user created the call, is in participants, or is a metadata target. */
+export function userInvolvedInSession(
   row: { created_by: string; participants: unknown; metadata: unknown },
   userId: string,
 ): boolean {

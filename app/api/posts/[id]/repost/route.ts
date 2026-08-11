@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { formatPostsForClient } from '../../format-posts-response'
 
@@ -79,7 +79,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .eq('id', sourcePostId)
 
     if (sourcePost.author_id !== user.id) {
-      notifyRepostAuthor(supabase, user, sourcePostId, sourcePost.author_id).catch(() => {})
+      notifyRepostAuthor(
+        supabase,
+        user,
+        sourcePostId,
+        sourcePost.author_id,
+        getAccessTokenFromRequest(request),
+      ).catch(() => {})
     }
 
     const [formatted] = await formatPostsForClient(supabase, user.id, [repostRow])
@@ -98,7 +104,8 @@ async function notifyRepostAuthor(
   supabase: Awaited<ReturnType<typeof getAuthenticatedUser>>['supabase'],
   user: { id: string; user_metadata?: Record<string, unknown>; email?: string | null },
   sourcePostId: string,
-  authorId: string
+  authorId: string,
+  accessToken: string | null,
 ) {
   const { data: post } = await supabase
     .from('posts')
@@ -113,17 +120,20 @@ async function notifyRepostAuthor(
     'Someone'
   const preview = post?.content?.substring(0, 50) || 'your post'
 
-  await sendNotification({
-    user_id: authorId,
-    title: 'Post Reposted',
-    body: `${actorName} reposted ${preview ? `"${preview}"` : 'your post'}`,
-    notification_type: 'system',
-    data: {
-      action: 'repost',
-      post_id: sourcePostId,
-      actor_id: user.id,
-      actor_name: actorName,
-      url: `/post/${sourcePostId}`,
+  await sendNotification(
+    {
+      user_id: authorId,
+      title: 'Post Reposted',
+      body: `${actorName} reposted ${preview ? `"${preview}"` : 'your post'}`,
+      notification_type: 'post_share',
+      data: {
+        action: 'repost',
+        post_id: sourcePostId,
+        actor_id: user.id,
+        actor_name: actorName,
+        url: `/post/${sourcePostId}`,
+      },
     },
-  })
+    { accessToken },
+  )
 }

@@ -46,12 +46,60 @@ export interface NotificationConfig {
   baseUrl?: string
 }
 
+export interface SendNotificationOptions {
+  /** User JWT (preferred for session callers). Server routes should pass this from the request. */
+  accessToken?: string | null
+}
+
 let config: NotificationConfig = {
   baseUrl: ''
 }
 
+async function resolvePushAuthHeaders(
+  options?: SendNotificationOptions,
+): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
 
-export async function sendNotification(notificationData: NotificationData): Promise<NotificationResponse> {
+  // Trusted server-to-server first (API routes already authenticated the actor).
+  if (typeof window === 'undefined') {
+    const cronSecret =
+      process.env.MARKETPLACE_CRON_SECRET ||
+      process.env.CRON_SECRET
+    if (cronSecret) {
+      headers.Authorization = `Bearer ${cronSecret}`
+      return headers
+    }
+  }
+
+  const explicit = typeof options?.accessToken === 'string' ? options.accessToken.trim() : ''
+  if (explicit) {
+    headers.Authorization = `Bearer ${explicit}`
+    return headers
+  }
+
+  // Browser / Capacitor: attach the signed-in user's session.
+  try {
+    const { supabase } = await import('@/lib/supabase')
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`
+    }
+  } catch {
+    // leave unauthenticated; route will 401
+  }
+
+  return headers
+}
+
+
+export async function sendNotification(
+  notificationData: NotificationData,
+  options?: SendNotificationOptions,
+): Promise<NotificationResponse> {
   try {
     // Validate required fields
     if (!notificationData.user_id || !notificationData.title || !notificationData.body) {
@@ -88,11 +136,11 @@ export async function sendNotification(notificationData: NotificationData): Prom
       vibrate: notificationData.vibrate || [200, 100, 200]
     }
 
+    const headers = await resolvePushAuthHeaders(options)
+
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(payload),
       cache: 'no-store',
     })
