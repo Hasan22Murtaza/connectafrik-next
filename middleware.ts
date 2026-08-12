@@ -140,6 +140,7 @@ export async function middleware(request: NextRequest) {
     '/privacy-policy',
     '/terms-of-service',
     '/support',
+    '/feedback',
     '/marketplace',
   ]
 
