@@ -115,7 +115,7 @@ export default function FeedbackPage() {
 
   if (submitted) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-orange-50/80 via-white to-slate-50 py-10 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 sm:py-16">
+      <main className="min-h-screen bg-white py-10 dark:bg-slate-950 sm:py-16">
         <div className="mx-auto max-w-xl px-4 sm:px-6">
           <div className="rounded-2xl border border-orange-100 bg-white p-8 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-10">
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">
@@ -159,19 +159,16 @@ export default function FeedbackPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-orange-50/80 via-white to-slate-50 py-8 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 sm:py-12">
+    <main className="min-h-screen bg-white py-8 dark:bg-slate-950 sm:py-12">
       <div className="mx-auto max-w-2xl px-4 sm:px-6">
         <header className="mb-8 space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700 dark:border-orange-900/50 dark:bg-orange-950/40 dark:text-orange-300">
-            <MessageSquare className="h-3.5 w-3.5" />
-            Feedback
-          </div>
+         
           <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
-            Help us improve ConnectAfrik
+            Help us 
           </h1>
           <p className="max-w-xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
             Share a feature idea, report a bug, or tell us what we can do better. Your feedback goes
-            directly to our team — it is not shown publicly.
+            directly to our team.
           </p>
         </header>
 
@@ -298,12 +295,7 @@ export default function FeedbackPage() {
                 htmlFor="feedback-name"
                 className="mb-1.5 block text-sm font-medium text-slate-800 dark:text-slate-200"
               >
-                Your name{' '}
-                {user ? (
-                  <span className="font-normal text-slate-400">(from your account)</span>
-                ) : (
-                  <span className="font-normal text-slate-400">(optional)</span>
-                )}
+                Your name
               </label>
               <input
                 id="feedback-name"
@@ -320,7 +312,7 @@ export default function FeedbackPage() {
                 htmlFor="feedback-email"
                 className="mb-1.5 block text-sm font-medium text-slate-800 dark:text-slate-200"
               >
-                Email <span className="font-normal text-slate-400">(optional)</span>
+                Email 
               </label>
               <input
                 id="feedback-email"
