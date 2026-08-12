@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { issueCallToken } from '@/lib/call-media/provider';
 import { parseProviderName } from '@/lib/call-media/resolve';
 import { userInvolvedInSession } from '@/lib/call-media/session-busy';
+import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess';
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server';
 
 const corsHeaders = {
@@ -10,19 +11,72 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/** Prefer live sessions when several rows share a room_id / call_id. */
+const LIVE_CALL_STATUSES = ['initiated', 'ringing', 'active'] as const;
+
 export async function OPTIONS() {
   return new NextResponse('ok', { headers: corsHeaders });
 }
 
 type CallSessionRow = {
+  thread_id: string;
   created_by: string;
   participants: unknown;
   metadata: unknown;
+  status?: string | null;
 };
 
+function isGroupCallSession(row: {
+  participants: unknown;
+  metadata: unknown;
+}): boolean {
+  const meta =
+    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
+      ? (row.metadata as Record<string, unknown>)
+      : {};
+  if (meta.isGroupCall === true || meta.is_group_call === true) return true;
+  return Array.isArray(row.participants) && row.participants.length > 2;
+}
+
 /**
- * Signed in, AND actually on this call. Identity is derived from the session —
+ * Resolve a call session by media room id or call id.
+ * Uses order+limit(1) so duplicate historical rows do not trip maybeSingle().
+ */
+async function findCallSessionForRoom(
+  service: ReturnType<typeof createServiceClient>,
+  roomId: string,
+): Promise<CallSessionRow | null> {
+  const select = 'thread_id, created_by, participants, metadata, status';
+
+  const lookup = async (column: 'room_id' | 'call_id', liveOnly: boolean) => {
+    let query = service.from('call_sessions').select(select).eq(column, roomId);
+    if (liveOnly) {
+      query = query.in('status', [...LIVE_CALL_STATUSES]);
+    }
+    const { data, error } = await query
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return (data as CallSessionRow | null) ?? null;
+  };
+
+  // Clients pass the media room id; call_id and room_id are often different UUIDs.
+  return (
+    (await lookup('room_id', true)) ||
+    (await lookup('call_id', true)) ||
+    (await lookup('room_id', false)) ||
+    (await lookup('call_id', false))
+  );
+}
+
+/**
+ * Signed in, AND allowed on this call. Identity is derived from the session —
  * never from caller-supplied userId / displayName / avatarUrl.
+ *
+ * 1:1: creator, participants, or metadata target.
+ * Group: any current thread member may mint a token before PATCH join adds them
+ * to participants (joinCall / incoming accept order).
  */
 async function authorizeForRoom(
   request: NextRequest,
@@ -31,30 +85,15 @@ async function authorizeForRoom(
   const { user } = await getAuthenticatedUser(request);
 
   const service = createServiceClient();
-  const select = 'created_by, participants, metadata';
-
-  // Clients pass the media room id; call_id and room_id are often different UUIDs.
-  let row: CallSessionRow | null = null;
-  const byRoom = await service
-    .from('call_sessions')
-    .select(select)
-    .eq('room_id', roomId)
-    .maybeSingle();
-  if (byRoom.error) throw new Error(byRoom.error.message);
-  row = (byRoom.data as CallSessionRow | null) ?? null;
-
-  if (!row) {
-    const byCall = await service
-      .from('call_sessions')
-      .select(select)
-      .eq('call_id', roomId)
-      .maybeSingle();
-    if (byCall.error) throw new Error(byCall.error.message);
-    row = (byCall.data as CallSessionRow | null) ?? null;
-  }
+  const row = await findCallSessionForRoom(service, roomId);
 
   if (!row) throw new Error('CallNotFound');
-  if (!userInvolvedInSession(row, user.id)) throw new Error('Forbidden');
+
+  let allowed = userInvolvedInSession(row, user.id);
+  if (!allowed && isGroupCallSession(row) && row.thread_id) {
+    allowed = await requireChatThreadAccess(service, user.id, row.thread_id);
+  }
+  if (!allowed) throw new Error('Forbidden');
 
   const { data: profile } = await service
     .from('profiles')

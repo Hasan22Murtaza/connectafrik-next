@@ -30,6 +30,7 @@ const quickLinks = [
 
 const supportLinks = [
   { href: "/support", label: "Support Center" },
+  { href: "/feedback", label: "Feedback" },
   { href: "/guidelines", label: "Community Guidelines" },
   { href: "/privacy-policy", label: "Privacy Policy" },
   { href: "/terms-of-service", label: "Terms of Service" },
@@ -152,6 +153,12 @@ const Footer: React.FC = () => {
             <span>for the African community worldwide.</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-content-secondary">
+            <Link
+              href="/feedback"
+              className="transition-colors duration-300 hover:text-orange-500"
+            >
+              Feedback
+            </Link>
             <Link
               href="/privacy-policy"
               className="transition-colors duration-300 hover:text-orange-500"

@@ -145,6 +145,12 @@ const SupportPage = () => {
             </h2>
             <div className="flex flex-wrap gap-4 text-sm">
               <Link
+                href="/feedback"
+                className="rounded-md border border-slate-200 px-3 py-2 font-medium text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-300"
+              >
+                Send Feedback
+              </Link>
+              <Link
                 href="/guidelines"
                 className="rounded-md border border-slate-200 px-3 py-2 font-medium text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-emerald-500 dark:hover:text-emerald-300"
               >

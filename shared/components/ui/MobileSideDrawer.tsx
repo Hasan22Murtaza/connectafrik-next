@@ -2,7 +2,8 @@
 
 import {
   Search,
-  X
+  X,
+  MessageSquare
 } from '@/shared/icons'
 import { usePathname, useRouter } from 'next/navigation'
 import React, { useState } from 'react'
@@ -38,6 +39,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
     { icon: RiHandbagLine, label: 'My Orders', path: '/my-orders' },
     { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
     { icon: FiVideo, label: 'Video', path: '/video' },
+    { icon: MessageSquare, label: 'Feedback', path: '/feedback' },
   ]
 
   const handleClick = (item: any) => {

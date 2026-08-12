@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  MessageSquare,
   Package,
   Shield,
   Users,
@@ -31,5 +32,10 @@ export const ADMIN_NAV_LINKS = [
     href: "/admin/disputes",
     label: "Disputes",
     icon: Shield,
+  },
+  {
+    href: "/admin/feedback",
+    label: "Feedback",
+    icon: MessageSquare,
   },
 ] as const;

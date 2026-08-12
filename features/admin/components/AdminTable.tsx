@@ -46,11 +46,32 @@ export function AdminTableBody({ children }: { children: React.ReactNode }) {
 export function AdminTableRow({
   children,
   className = "",
+  onClick,
 }: {
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
 }) {
-  return <tr className={`${AP.tableRow} ${className}`}>{children}</tr>;
+  return (
+    <tr
+      className={`${AP.tableRow} ${className}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onClick()
+              }
+            }
+          : undefined
+      }
+    >
+      {children}
+    </tr>
+  );
 }
 
 export function AdminTableCell({
