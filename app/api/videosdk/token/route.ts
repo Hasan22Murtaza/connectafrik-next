@@ -26,21 +26,13 @@ type CallSessionRow = {
   status?: string | null;
 };
 
-function isGroupCallSession(row: {
-  participants: unknown;
-  metadata: unknown;
-}): boolean {
-  const meta =
-    row.metadata && typeof row.metadata === 'object' && !Array.isArray(row.metadata)
-      ? (row.metadata as Record<string, unknown>)
-      : {};
-  if (meta.isGroupCall === true || meta.is_group_call === true) return true;
-  return Array.isArray(row.participants) && row.participants.length > 2;
-}
-
 /**
  * Resolve a call session by media room id or call id.
- * Uses order+limit(1) so duplicate historical rows do not trip maybeSingle().
+ *
+ * Do NOT use maybeSingle()/single() here — room_id / call_id are not unique
+ * (retries, re-rings, historical rows). maybeSingle throws PGRST116
+ * ("JSON object requested, multiple (or no) rows returned") for video and
+ * group joins alike. Take limit(1) as an array instead.
  */
 async function findCallSessionForRoom(
   service: ReturnType<typeof createServiceClient>,
@@ -55,10 +47,10 @@ async function findCallSessionForRoom(
     }
     const { data, error } = await query
       .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
     if (error) throw new Error(error.message);
-    return (data as CallSessionRow | null) ?? null;
+    const rows = (data ?? []) as CallSessionRow[];
+    return rows[0] ?? null;
   };
 
   // Clients pass the media room id; call_id and room_id are often different UUIDs.
@@ -74,9 +66,9 @@ async function findCallSessionForRoom(
  * Signed in, AND allowed on this call. Identity is derived from the session —
  * never from caller-supplied userId / displayName / avatarUrl.
  *
- * 1:1: creator, participants, or metadata target.
- * Group: any current thread member may mint a token before PATCH join adds them
- * to participants (joinCall / incoming accept order).
+ * Creator / participants / metadata target always pass. Otherwise any current
+ * thread member may mint a token — needed for 1:1 video accept and group join
+ * before PATCH accept/join adds them to participants.
  */
 async function authorizeForRoom(
   request: NextRequest,
@@ -90,7 +82,7 @@ async function authorizeForRoom(
   if (!row) throw new Error('CallNotFound');
 
   let allowed = userInvolvedInSession(row, user.id);
-  if (!allowed && isGroupCallSession(row) && row.thread_id) {
+  if (!allowed && row.thread_id) {
     allowed = await requireChatThreadAccess(service, user.id, row.thread_id);
   }
   if (!allowed) throw new Error('Forbidden');
