@@ -294,7 +294,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (activeOnly) {
       const joinableOnly =
         searchParams.get('joinable') === '1' || searchParams.get('joinable') === 'true'
-      let query = serviceClient
+      const { data: rows, error } = await serviceClient
         .from('call_sessions')
         .select('*')
         .eq('thread_id', threadId)
@@ -302,9 +302,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .order('updated_at', { ascending: false })
         .limit(1)
 
-      const { data: row, error } = await query.maybeSingle()
-
       if (error) return errorResponse(error.message, 400)
+      const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
 
       if (includeParticipants && row) {
         const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
@@ -319,16 +318,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return errorResponse('call_id or active=1 is required', 400)
     }
 
-    const { data: row, error } = await serviceClient
+    const { data: rows, error } = await serviceClient
       .from('call_sessions')
       .select('*')
       .eq('thread_id', threadId)
       .eq('call_id', callId)
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle()
 
     if (error) return errorResponse(error.message, 400)
+    const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
 
     if (includeParticipants && row) {
       const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
@@ -389,7 +388,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found or access denied', 404)
     }
 
-    const { data: existing } = await serviceClient
+    const { data: existingRows } = await serviceClient
       .from('call_sessions')
       .select('*')
       .eq('thread_id', threadId)
@@ -397,7 +396,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .in('status', ACTIVE_STATUSES)
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle()
+
+    const existing =
+      Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null
 
     if (existing) {
       return jsonResponse({ session: existing })
@@ -551,16 +552,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found or access denied', 404)
     }
 
-    const { data: row, error: fetchError } = await serviceClient
+    const { data: fetchRows, error: fetchError } = await serviceClient
       .from('call_sessions')
       .select('*')
       .eq('thread_id', threadId)
       .eq('call_id', call_id)
       .order('created_at', { ascending: false })
       .limit(1)
-      .maybeSingle()
 
     if (fetchError) return errorResponse(fetchError.message, 400)
+    const row = Array.isArray(fetchRows) && fetchRows.length > 0 ? fetchRows[0] : null
     if (!row) return errorResponse('Call session not found', 404)
 
     if (event === 'heartbeat') {

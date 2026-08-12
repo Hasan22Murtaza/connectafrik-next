@@ -18,15 +18,21 @@ function targetsFromMeta(meta: unknown): string[] {
   return out
 }
 
+function normId(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : ''
+}
+
 /** True if the user created the call, is in participants, or is a metadata target. */
 export function userInvolvedInSession(
   row: { created_by: string; participants: unknown; metadata: unknown },
   userId: string,
 ): boolean {
-  if (row.created_by === userId) return true
+  const uid = normId(userId)
+  if (!uid) return false
+  if (normId(row.created_by) === uid) return true
   const parts = row.participants
-  if (Array.isArray(parts) && parts.includes(userId)) return true
-  return targetsFromMeta(row.metadata).includes(userId)
+  if (Array.isArray(parts) && parts.some((p) => normId(p) === uid)) return true
+  return targetsFromMeta(row.metadata).some((t) => normId(t) === uid)
 }
 
 /**
