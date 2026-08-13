@@ -64,12 +64,16 @@ export function useHeaderInboxCounts() {
 
   const markCallsViewed = useCallback(() => {
     if (typeof window === 'undefined') return
+    const viewedAt = new Date().toISOString()
     try {
-      sessionStorage.setItem(CALLS_LAST_VIEWED_KEY, new Date().toISOString())
+      sessionStorage.setItem(CALLS_LAST_VIEWED_KEY, viewedAt)
     } catch {
       /* ignore */
     }
     setMissedCalls(0)
+    void apiClient.patch('/api/chat/calls/read-all', {}).catch((error) => {
+      console.error('Error clearing call notifications:', error)
+    })
   }, [])
 
   useEffect(() => {
