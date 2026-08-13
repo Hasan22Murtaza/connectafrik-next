@@ -90,6 +90,20 @@ export function isCanonicalNotificationType(value: unknown): value is CanonicalN
   return typeof value === 'string' && (CANONICAL_NOTIFICATION_TYPES as readonly string[]).includes(value)
 }
 
+/** Call rows in `notifications` (canonical `call` plus legacy session-status types). */
+export const CALL_NOTIFICATION_TYPES = [
+  'call',
+  'initiated',
+  'ringing',
+  'active',
+  'ended',
+  'declined',
+  'missed',
+  'failed',
+] as const satisfies readonly NotificationType[]
+
+export type CallNotificationType = (typeof CALL_NOTIFICATION_TYPES)[number]
+
 export interface CreateNotificationData {
   user_id: string
   type: NotificationType
