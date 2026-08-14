@@ -335,12 +335,16 @@ export async function patchCallSessionWithRetry(
     force_end?: boolean
     device_session_id?: string
   },
-  options?: { maxAttempts?: number },
+  options?: { maxAttempts?: number; keepalive?: boolean },
 ): Promise<boolean> {
-  const maxAttempts = options?.maxAttempts ?? 5
+  const maxAttempts = options?.keepalive ? 1 : options?.maxAttempts ?? 5
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      await apiClient.patch(`/api/chat/threads/${threadId}/call-sessions`, payload)
+      await apiClient.patch(
+        `/api/chat/threads/${threadId}/call-sessions`,
+        payload,
+        options?.keepalive ? { keepalive: true } : undefined,
+      )
       return true
     } catch (e) {
       const st = e instanceof ApiError ? e.status : 0

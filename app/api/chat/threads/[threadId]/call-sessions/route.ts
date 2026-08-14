@@ -3,6 +3,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
+import { listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
 
 /** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
 function pushRequestHeaders(request: NextRequest): Record<string, string> {
@@ -16,6 +17,10 @@ function pushRequestHeaders(request: NextRequest): Record<string, string> {
 type RouteContext = { params: Promise<{ threadId: string }> }
 
 const ACTIVE_STATUSES = ['initiated', 'ringing', 'active']
+/** Collapse double-fires from one action. Older live rows are handled via media presence. */
+const LIVE_DEDUPE_WINDOW_MS = 15_000
+/** Allow heartbeats while the client is still connecting to LiveKit after accept/join. */
+const HEARTBEAT_CONNECT_GRACE_MS = 45_000
 const PATCH_EVENTS = [
   'accept',
   'declined',
@@ -60,7 +65,102 @@ function mergeSessionMetadata(existing: unknown, patch: CallSessionMeta): CallSe
     existing && typeof existing === 'object' && !Array.isArray(existing)
       ? { ...(existing as CallSessionMeta) }
       : {}
-  return { ...base, ...patch }
+  const merged = { ...base, ...patch }
+  delete merged.token
+  return merged
+}
+
+function sanitizeCallSession<T extends Record<string, unknown> | null>(row: T): T {
+  if (!row) return row
+  return { ...row, metadata: mergeSessionMetadata(row.metadata, {}) }
+}
+
+function sessionProvider(row: { metadata: unknown }): string {
+  const meta = mergeSessionMetadata(row.metadata, {})
+  return typeof meta.provider === 'string' ? meta.provider.trim() : ''
+}
+
+function idsEqual(a: unknown, b: string): boolean {
+  return String(a || '').trim().toLowerCase() === b.trim().toLowerCase()
+}
+
+function userIsListedParticipant(
+  row: { participants: unknown },
+  userId: string,
+): boolean {
+  const parts = row.participants
+  return Array.isArray(parts) && parts.some((p) => idsEqual(p, userId))
+}
+
+function sessionActivatedAtMs(row: {
+  metadata: unknown
+  started_at?: string | null
+  created_at?: string | null
+}): number {
+  const meta = mergeSessionMetadata(row.metadata, {})
+  for (const key of ['acceptedAt', 'joinedAt'] as const) {
+    const raw = meta[key]
+    if (typeof raw === 'string') {
+      const ms = Date.parse(raw)
+      if (Number.isFinite(ms)) return ms
+    }
+  }
+  for (const raw of [row.started_at, row.created_at]) {
+    if (typeof raw === 'string') {
+      const ms = Date.parse(raw)
+      if (Number.isFinite(ms)) return ms
+    }
+  }
+  return 0
+}
+
+async function listLiveSessionsForThread(
+  serviceClient: ServiceClient,
+  threadId: string,
+) {
+  const { data, error } = await serviceClient
+    .from('call_sessions')
+    .select('*')
+    .eq('thread_id', threadId)
+    .in('status', ACTIVE_STATUSES)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data || []) as Array<Record<string, unknown>>
+}
+
+/** `[]` empty, `null` unknown / not LiveKit. */
+async function mediaIdentitiesForSession(row: {
+  room_id?: unknown
+  metadata: unknown
+}): Promise<string[] | null> {
+  const provider = sessionProvider(row)
+  if (provider && provider !== 'livekit') return null
+  const roomId = typeof row.room_id === 'string' ? row.room_id : ''
+  if (!roomId) return []
+  return listLiveKitParticipantIdentities(roomId)
+}
+
+async function markSessionEnded(
+  serviceClient: ServiceClient,
+  row: Record<string, unknown>,
+  signal: string,
+) {
+  const now = new Date().toISOString()
+  const started = typeof row.started_at === 'string' ? row.started_at : typeof row.created_at === 'string' ? row.created_at : now
+  const duration = Math.max(0, Math.floor((Date.now() - Date.parse(started)) / 1000))
+  const { data } = await serviceClient
+    .from('call_sessions')
+    .update({
+      status: 'ended',
+      ended_at: now,
+      duration_seconds: Number.isFinite(duration) ? duration : row.duration_seconds,
+      metadata: mergeSessionMetadata(row.metadata, { last_signal: signal, endedAt: now }),
+      updated_at: now,
+    })
+    .eq('id', row.id)
+    .select('*')
+    .single()
+  return data
 }
 
 async function resolveTargetUserIds(
@@ -87,15 +187,6 @@ async function resolveTargetUserIds(
 
 async function assertThreadMember(serviceClient: ServiceClient, threadId: string, userId: string) {
   return requireChatThreadAccess(serviceClient, userId, threadId)
-}
-
-function userIsCallParticipant(
-  row: { created_by: string | null; participants: unknown },
-  userId: string,
-): boolean {
-  if (row.created_by === userId) return true
-  const parts = row.participants
-  return Array.isArray(parts) && parts.includes(userId)
 }
 
 async function touchThreadPreview(
@@ -303,7 +394,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .limit(1)
 
       if (error) return errorResponse(error.message, 400)
-      const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+      const row = Array.isArray(rows) && rows.length > 0 ? sanitizeCallSession(rows[0]) : null
 
       if (includeParticipants && row) {
         const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
@@ -311,7 +402,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         return jsonResponse({ session: row, participant_profiles })
       }
 
-      return jsonResponse({ session: row || null })
+      return jsonResponse({ session: row })
     }
 
     if (!callId) {
@@ -327,7 +418,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .limit(1)
 
     if (error) return errorResponse(error.message, 400)
-    const row = Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+    const row = Array.isArray(rows) && rows.length > 0 ? sanitizeCallSession(rows[0]) : null
 
     if (includeParticipants && row) {
       const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
@@ -335,7 +426,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return jsonResponse({ session: row, participant_profiles })
     }
 
-    return jsonResponse({ session: row || null })
+    return jsonResponse({ session: row })
   } catch (e: any) {
     if (e.message === 'Unauthorized' || e.message === 'Missing Authorization header') {
       return unauthorizedResponse()
@@ -355,7 +446,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const call_id = typeof body.call_id === 'string' ? body.call_id.trim() : ''
     const call_type = body.call_type === 'video' ? 'video' : body.call_type === 'audio' ? 'audio' : ''
     const room_id = typeof body.room_id === 'string' ? body.room_id.trim() : ''
-    const token = typeof body.token === 'string' ? body.token : undefined
     const target_user_id =
       typeof body.target_user_id === 'string' && body.target_user_id.trim() ? body.target_user_id.trim() : undefined
     const is_group_call = body.is_group_call === true
@@ -388,24 +478,33 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found or access denied', 404)
     }
 
-    const { data: existingRows } = await serviceClient
-      .from('call_sessions')
-      .select('*')
-      .eq('thread_id', threadId)
-      .eq('call_id', call_id)
-      .in('status', ACTIVE_STATUSES)
-      .order('created_at', { ascending: false })
-      .limit(1)
+    const live = await listLiveSessionsForThread(serviceClient, threadId)
+    const nowMs = Date.now()
+    const recentLive = live.filter((s) => {
+      const created = typeof s.created_at === 'string' ? Date.parse(s.created_at) : NaN
+      return Number.isFinite(created) && nowMs - created < LIVE_DEDUPE_WINDOW_MS
+    })
+    if (recentLive.length > 0) {
+      return jsonResponse({ session: sanitizeCallSession(recentLive[0]) })
+    }
 
-    const existing =
-      Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null
+    const sameCall = live.find((s) => typeof s.call_id === 'string' && s.call_id === call_id)
+    if (sameCall) {
+      return jsonResponse({ session: sanitizeCallSession(sameCall) })
+    }
 
-    if (existing) {
-      return jsonResponse({ session: existing })
+    for (const existingLive of live) {
+      const identities = await mediaIdentitiesForSession(existingLive)
+      if (identities === null) {
+        return jsonResponse({ session: sanitizeCallSession(existingLive) })
+      }
+      if (identities.length > 0) {
+        return jsonResponse({ session: sanitizeCallSession(existingLive) })
+      }
+      await markSessionEnded(serviceClient, existingLive, 'replaced_empty')
     }
 
     const metadata = mergeSessionMetadata(null, {
-      token: token || undefined,
       targetUserId: target_user_id,
       isGroupCall: is_group_call,
       callerName: caller_name,
@@ -441,6 +540,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse(insertError?.message || 'Failed to create call session', 400)
     }
 
+    const afterInsert = await listLiveSessionsForThread(serviceClient, threadId)
+    const winner = afterInsert[0]
+    if (winner && winner.id !== session.id) {
+      await markSessionEnded(serviceClient, session, 'duplicate_insert')
+      return jsonResponse({ session: sanitizeCallSession(winner) })
+    }
+
     await touchThreadPreview(
       serviceClient,
       threadId,
@@ -456,7 +562,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         room_id,
         thread_id: threadId,
         actor_name: caller_name,
-        ...(token ? { token } : {}),
         call_id,
         callId: call_id,
         caller_id: user.id,
@@ -511,7 +616,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       )
     }
 
-    return jsonResponse({ session })
+    return jsonResponse({ session: sanitizeCallSession(session) })
   } catch (e: any) {
     if (e.message === 'Unauthorized' || e.message === 'Missing Authorization header') {
       return unauthorizedResponse()
@@ -568,9 +673,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       if (row.status !== 'active') {
         return errorResponse('Call session is not active', 409)
       }
-      if (!userIsCallParticipant(row, user.id)) {
+      if (!userIsListedParticipant(row, user.id)) {
         return errorResponse('Only call participants can send heartbeats', 403)
       }
+
+      const identities = await mediaIdentitiesForSession(row)
+      const inGrace = Date.now() - sessionActivatedAtMs(row) < HEARTBEAT_CONNECT_GRACE_MS
+      if (identities && !inGrace) {
+        const present = identities.some((id) => idsEqual(id, user.id))
+        if (identities.length === 0) {
+          const ended = await markSessionEnded(serviceClient, row, 'empty_room')
+          return jsonResponse({ session: sanitizeCallSession(ended || row) })
+        }
+        if (!present) {
+          return jsonResponse({ session: sanitizeCallSession(row) })
+        }
+      }
+
       const heartbeatNow = new Date().toISOString()
       const heartbeatMeta = mergeSessionMetadata(row.metadata, {
         last_signal: 'heartbeat',
@@ -590,7 +709,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       if (heartbeatError || !heartbeatRow) {
         return errorResponse(heartbeatError?.message || 'Failed to update heartbeat', 400)
       }
-      return jsonResponse({ session: heartbeatRow })
+      return jsonResponse({ session: sanitizeCallSession(heartbeatRow) })
     }
 
     const baseMeta = mergeSessionMetadata(row.metadata, {})
@@ -1037,7 +1156,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       })
     }
 
-    return jsonResponse({ session: updated })
+    return jsonResponse({ session: sanitizeCallSession(updated) })
   } catch (e: any) {
     if (e.message === 'Unauthorized' || e.message === 'Missing Authorization header') {
       return unauthorizedResponse()

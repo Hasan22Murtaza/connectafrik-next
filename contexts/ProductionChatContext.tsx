@@ -917,13 +917,57 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       const roomData = await roomResponse.json()
-      const roomId = roomData.roomId
+      const createdRoomId = roomData.roomId
       const media = parseCallMediaResponse(roomData as Record<string, unknown>)
-      const token = media.token
-      markCallStartMetric('room_created', { roomId, provider: media.provider })
+      let token = media.token
+      markCallStartMetric('room_created', { roomId: createdRoomId, provider: media.provider })
       
-      if (!roomId) {
+      if (!createdRoomId) {
         throw new Error('Failed to create call room. Please try again.')
+      }
+
+      // Persist call_sessions before opening the popup so end/missed/declined PATCH never hits 404.
+      const persisted = await apiClient.post<{ session: Record<string, unknown> | null }>(
+        `/api/chat/threads/${threadId}/call-sessions`,
+        {
+          call_id: callId,
+          call_type: type,
+          room_id: createdRoomId,
+          target_user_id: resolvedTargetUserId || undefined,
+          is_group_call: isGroupCall,
+          caller_name: currentUser?.name || 'Unknown',
+          caller_avatar_url: currentUser?.avatarUrl || '',
+          provider: media.provider,
+        },
+      )
+
+      const sessionRow = persisted?.session
+      const roomId =
+        typeof sessionRow?.room_id === 'string' && sessionRow.room_id.trim()
+          ? sessionRow.room_id.trim()
+          : createdRoomId
+      const canonicalCallId =
+        typeof sessionRow?.call_id === 'string' && sessionRow.call_id.trim()
+          ? sessionRow.call_id.trim()
+          : callId
+
+      if (roomId !== createdRoomId) {
+        const tokenRes = await fetch('/api/videosdk/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            roomId,
+            provider: media.provider,
+          }),
+        })
+        if (tokenRes.ok) {
+          const tokenData = (await tokenRes.json()) as Record<string, unknown>
+          const reminted = parseCallMediaResponse(tokenData)
+          if (reminted.token) token = reminted.token
+        }
       }
 
       const callRequest: CallRequest = {
@@ -934,25 +978,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         roomId,
         token,
         targetUserId: resolvedTargetUserId,
-        callId,
+        callId: canonicalCallId,
         isGroupCall,
       }
-
-      // Persist call_sessions before opening the popup so end/missed/declined PATCH never hits 404.
-      await apiClient.post(`/api/chat/threads/${threadId}/call-sessions`, {
-        call_id: callId,
-        call_type: type,
-        room_id: roomId,
-        token,
-        target_user_id: resolvedTargetUserId || undefined,
-        is_group_call: isGroupCall,
-        caller_name: currentUser?.name || 'Unknown',
-        caller_avatar_url: currentUser?.avatarUrl || '',
-        // Persist which provider the room was actually created on, so every
-        // other participant's token request can pin to the same one instead
-        // of re-resolving independently.
-        provider: media.provider,
-      })
 
       setCallRequests(prev => ({
         ...prev,
@@ -960,9 +988,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       }))
 
       if (typeof window !== 'undefined') {
-        if (token && callId) {
+        if (token && canonicalCallId) {
           try {
-            writeCallBootstrap(callId, {
+            writeCallBootstrap(canonicalCallId, {
               token,
               provider: media.provider,
               ...(media.wsUrl ? { wsUrl: media.wsUrl } : {}),
@@ -979,7 +1007,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           isGroupCall,
           isIncoming: false,
           callerId: currentUser?.id,
-          callId,
+          callId: canonicalCallId,
         })
         if (!popup) {
           window.location.assign(
@@ -990,7 +1018,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
               isGroupCall,
               isIncoming: false,
               callerId: currentUser?.id,
-              callId,
+              callId: canonicalCallId,
             })
           )
         }
@@ -1002,7 +1030,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             meetingId: roomId,
             participantId: currentUser?.id,
             participantName: currentUser?.name,
-            callId,
+            callId: canonicalCallId,
             telemetry: {
               t0ClickCallTs: Date.now(),
               roomCreatedTs: Date.now(),
@@ -1186,7 +1214,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
               callerName: (meta.callerName as string) || 'Unknown',
               callerAvatarUrl: meta.callerAvatarUrl as string | undefined,
               roomId,
-              token: meta.token as string | undefined,
               targetUserId: meta.targetUserId as string | undefined,
               callId,
               isGroupCall: meta.isGroupCall === true,

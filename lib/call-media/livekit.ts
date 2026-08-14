@@ -55,6 +55,27 @@ export function isLiveKitConfigured(): boolean {
   }
 }
 
+/**
+ * Live identities currently in a LiveKit room.
+ * `[]` = room missing or empty; `null` = could not check (do not treat as empty).
+ */
+export async function listLiveKitParticipantIdentities(
+  roomId: string,
+): Promise<string[] | null> {
+  const name = roomId.trim();
+  if (!name || !isLiveKitConfigured()) return null;
+  try {
+    const participants = await getRoomServiceClient().listParticipants(name);
+    return (participants || [])
+      .map((p) => String(p.identity || '').trim())
+      .filter(Boolean);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/not found|does not exist|404/i.test(message)) return [];
+    return null;
+  }
+}
+
 async function ensureLiveKitRoom(roomId: string): Promise<void> {
   const client = getRoomServiceClient();
   try {
