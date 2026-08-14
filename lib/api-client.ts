@@ -74,12 +74,13 @@ export const apiClient = {
     return handleResponse<T>(response)
   },
 
-  async patch<T>(endpoint: string, body: unknown): Promise<T> {
+  async patch<T>(endpoint: string, body: unknown, options?: { keepalive?: boolean }): Promise<T> {
     const headers = await getAuthHeaders()
     const response = await fetch(endpoint, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(body),
+      ...(options?.keepalive ? { keepalive: true } : {}),
     })
     return handleResponse<T>(response)
   },

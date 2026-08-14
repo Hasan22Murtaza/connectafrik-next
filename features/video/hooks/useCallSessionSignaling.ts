@@ -490,13 +490,14 @@ export function useCallSessionSignaling({
   }, [threadId, currentUserId, callIdHint, closeCall]);
 
   /** Teardown signaling when media session disconnects unexpectedly (tab close, network). */
-  const signalMediaDisconnected = useCallback(async () => {
+  const signalMediaDisconnected = useCallback(async (opts?: { keepalive?: boolean }) => {
     if (suppressSignalRef.current || remoteTerminalRef.current) return;
     if (!threadId || !currentUserId || callStatusRef.current === 'ended') return;
 
     const activeCallId = (callIdHint || '').trim();
     const isConnected =
       callStatusRef.current === 'connected' || callStatusRef.current === 'connecting_media';
+    const patchOpts = opts?.keepalive ? { keepalive: true } : undefined;
 
     try {
       if (activeCallId) {
@@ -506,17 +507,17 @@ export function useCallSessionSignaling({
             call_id: activeCallId,
             event: groupLeave ? 'leave' : 'end',
             duration_seconds: callDurationRef.current,
-          });
+          }, patchOpts);
         } else if (!isIncomingRef.current) {
           await patchCallSessionWithRetry(threadId, {
             call_id: activeCallId,
             event: 'missed',
-          });
+          }, patchOpts);
         } else {
           await patchCallSessionWithRetry(threadId, {
             call_id: activeCallId,
             event: 'declined',
-          });
+          }, patchOpts);
         }
       }
     } catch {
@@ -539,6 +540,39 @@ export function useCallSessionSignaling({
     onClose,
     callStatusRef,
   ]);
+
+  // pagehide/beforeunload: leave must fire when the call screen is dismissed or
+  // the tab/app is killed — not only on an explicit End tap.
+  useEffect(() => {
+    if (!isOpen) return;
+    const flush = () => {
+      void signalMediaDisconnected({ keepalive: true });
+    };
+    const onPageHide = (event: Event) => {
+      if ('persisted' in event && (event as PageTransitionEvent).persisted) return;
+      flush();
+    };
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('beforeunload', flush);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('beforeunload', flush);
+    };
+  }, [isOpen, signalMediaDisconnected]);
+
+  // Call-screen dismissal (in-page modal) — pagehide does not fire.
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (isOpen) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    if (callStatusRef.current !== 'ended') {
+      void signalMediaDisconnected({ keepalive: true });
+    }
+  }, [isOpen, signalMediaDisconnected, callStatusRef]);
 
   const signalCallTypeSwitch = useCallback(
     async (
