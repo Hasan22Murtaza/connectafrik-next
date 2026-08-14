@@ -75,7 +75,7 @@ function sanitizeCallSession<T extends Record<string, unknown> | null>(row: T): 
   return { ...row, metadata: mergeSessionMetadata(row.metadata, {}) }
 }
 
-function sessionProvider(row: { metadata: unknown }): string {
+function sessionProvider(row: { metadata?: unknown }): string {
   const meta = mergeSessionMetadata(row.metadata, {})
   return typeof meta.provider === 'string' ? meta.provider.trim() : ''
 }
@@ -131,7 +131,7 @@ async function listLiveSessionsForThread(
 /** `[]` empty, `null` unknown / not LiveKit. */
 async function mediaIdentitiesForSession(row: {
   room_id?: unknown
-  metadata: unknown
+  metadata?: unknown
 }): Promise<string[] | null> {
   const provider = sessionProvider(row)
   if (provider && provider !== 'livekit') return null
