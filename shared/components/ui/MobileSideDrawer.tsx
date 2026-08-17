@@ -12,7 +12,6 @@ import { BsShop } from "react-icons/bs";
 import {
   FaRegUser
 } from "react-icons/fa";
-import { FiVideo } from "react-icons/fi";
 import { IoBookmarkOutline } from "react-icons/io5";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { RiHandbagLine } from "react-icons/ri";
@@ -38,7 +37,6 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
     { icon: BsShop, label: 'TradeHub', path: '/marketplace' },
     { icon: RiHandbagLine, label: 'My Orders', path: '/my-orders' },
     { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
-    { icon: FiVideo, label: 'Video', path: '/video' },
     { icon: MessageSquare, label: 'Feedback', path: '/feedback' },
   ]
 

@@ -21,9 +21,9 @@ const ALLOWED_TARGET_PATTERNS: RegExp[] = [
   /^\/groups(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/marketplace(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/memories(\/[A-Za-z0-9_-]+)?\/?$/,
-  /^\/video\/?$/,
   /^\/chat(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/notifications\/?$/,
+  /^\/friends\/?$/,
   /^\/saved\/?$/,
   // Auth flows
   /^\/confirm-signup\/?$/,

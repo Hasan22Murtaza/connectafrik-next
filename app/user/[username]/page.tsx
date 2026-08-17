@@ -205,6 +205,30 @@ const UserProfilePage: React.FC = () => {
   useEffect(() => { if (profileIdentifier) fetchUserProfile() }, [profileIdentifier])
   useEffect(() => { if (profile && user && user.id !== profile.id) checkFollowStatus() }, [profile?.id, user?.id])
 
+  const loadFriendshipStatus = useCallback(async (ownerId: string) => {
+    if (!user?.id || user.id === ownerId) {
+      setFriendshipStatus('none')
+      setFriendRequestId(null)
+      return
+    }
+    try {
+      const statusRes = await apiClient.get<{ status: string; request_id: string | null }>(
+        `/api/friends/status/${ownerId}`
+      )
+      const status = (statusRes.status as FriendStatus) || 'none'
+      setFriendshipStatus(status)
+      setFriendRequestId(statusRes.request_id ?? null)
+    } catch (error) {
+      console.error('Error loading friendship status:', error)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (profile?.id && user?.id && user.id !== profile.id) {
+      void loadFriendshipStatus(profile.id)
+    }
+  }, [profile?.id, user?.id, loadFriendshipStatus])
+
   useEffect(() => {
     if (!profileIdentifier || !profile) return
     setPosts([])
@@ -213,6 +237,8 @@ const UserProfilePage: React.FC = () => {
     setTabReels([])
     setAboutForTab(null)
     setUserFriends([])
+    setFriendshipStatus('none')
+    setFriendRequestId(null)
     setPostsTabFetched(false)
     setPhotosTabFetched(false)
     setReelsTabFetched(false)
@@ -409,11 +435,7 @@ const UserProfilePage: React.FC = () => {
       if (user && !isOwn) {
         await checkFollowStatus()
         await fetchMutualFriends(user.id, ownerId)
-        const statusRes = await apiClient.get<{ status: string; request_id: string | null }>(`/api/friends/status/${ownerId}`)
-        setFriendshipStatus(statusRes.status as FriendStatus)
-        if (statusRes.request_id) {
-          setFriendRequestId(statusRes.request_id)
-        }
+        await loadFriendshipStatus(ownerId)
       }
     } catch (error: any) {
       console.error('Error fetching profile:', error)

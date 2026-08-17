@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Bell, Check, X, Filter, CheckCheck } from '@/shared/icons'
 import { Notification, NotificationType } from '@/shared/types/notifications'
 import {
+  FRIEND_REQUEST_NOTIFICATION_HREF,
   getNotificationPayload,
   getNotificationTypeSource,
   normalizeNotificationType,
@@ -141,7 +142,7 @@ const NotificationsPage: React.FC = () => {
       reel_share: `${actorName} shared your reel`,
       follow: `${actorName} started following you`,
       mention: `${actorName} mentioned you`,
-      friend_request: `${actorName} sent you a friend request`,
+      friend_request: `${actorName} sent you a friend request.`,
       friend_request_accepted: `${actorName} accepted your friend request`,
       chat_message: `${actorName} sent you a message`,
       birthday: `It's ${actorName}'s birthday today!`,
@@ -265,7 +266,7 @@ const NotificationsPage: React.FC = () => {
         }
 
         case 'friend_request': {
-          router.push(fallbackUrl || '/friends?tab=requests')
+          router.push(FRIEND_REQUEST_NOTIFICATION_HREF)
           break
         }
 

@@ -15,7 +15,7 @@ import {
   Users
 } from '@/shared/icons';
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { FiUserPlus, FiUsers } from "react-icons/fi";
@@ -42,9 +42,17 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
   };
 }
 type Section = "home" | "requests" | "suggestions" | "all" | "birthdays";
+const FRIENDS_SECTIONS: Section[] = ["home", "requests", "suggestions", "all", "birthdays"];
+
+function parseFriendsSection(tab: string | null): Section | null {
+  if (tab && FRIENDS_SECTIONS.includes(tab as Section)) return tab as Section
+  return null
+}
+
 const FriendsPage: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { startChatWithMembers, openThread } = useProductionChat();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<(FriendRequest & { mutualFriendsCount?: number })[]>([]);
@@ -63,7 +71,9 @@ const FriendsPage: React.FC = () => {
   const [suggestionsSearchTerm, setSuggestionsSearchTerm] = useState("");
   const [requestsDisplayLimit, setRequestsDisplayLimit] = useState(20);
   const [suggestionsDisplayLimit, setSuggestionsDisplayLimit] = useState(20);
-  const [activeSection, setActiveSection] = useState<Section>("home");
+  const [activeSection, setActiveSection] = useState<Section>(
+    () => parseFriendsSection(searchParams.get("tab")) ?? "home"
+  );
   const [birthdayDisplayLimit, setBirthdayDisplayLimit] = useState(10);
   const [birthdayTabFriends, setBirthdayTabFriends] = useState<Friend[]>([]);
   const [birthdaysLoading, setBirthdaysLoading] = useState(false);
@@ -133,6 +143,21 @@ const FriendsPage: React.FC = () => {
   );
 
   const hasMoreBirthdays = birthdayDisplayLimit < allBirthdayFriends.length;
+
+  const selectSection = (section: Section) => {
+    setActiveSection(section);
+    const next = section === "home" ? "/friends" : `/friends?tab=${section}`;
+    router.replace(next, { scroll: false });
+  };
+
+  useEffect(() => {
+    const section = parseFriendsSection(searchParams.get("tab"));
+    if (section) {
+      setActiveSection(section);
+    } else if (!searchParams.get("tab")) {
+      setActiveSection("home");
+    }
+  }, [searchParams]);
 
   // Reset pagination when switching to birthdays
   useEffect(() => {
@@ -398,7 +423,7 @@ const FriendsPage: React.FC = () => {
                 return (
                   <button
                     key={item.key}
-                    onClick={() => setActiveSection(item.key as Section)}
+                    onClick={() => selectSection(item.key as Section)}
                     className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg
                     transition-all duration-300 ease-in-out
                     ${isActive
@@ -445,7 +470,7 @@ const FriendsPage: React.FC = () => {
           <div className="flex gap-2 sm:hidden overflow-x-auto w-full pb-5  scrollbar-hide">
             {/* We use inline-flex + min-w-fit to prevent shrinking */}
             <button
-              onClick={() => setActiveSection("all")}
+              onClick={() => selectSection("all")}
               className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "home" || activeSection === "all" ? "bg-orange-100 text-orange-700" : "text-content"
                 }`}
             >
@@ -453,28 +478,30 @@ const FriendsPage: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveSection("suggestions")}
+              onClick={() => selectSection("suggestions")}
               className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "suggestions" ? "bg-orange-100 text-orange-700" : "text-content"
                 }`}
             >
               Friend suggestions
             </button>
 
-            <button
-              onClick={() => setActiveSection("requests")}
-              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-content"
-                }`}
-            >
-              Friend requests
-              {requests.length > 0 && (
-                <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  {requests.length}
-                </span>
-              )}
-            </button>
+            {(loading || requests.length > 0) && (
+              <button
+                onClick={() => selectSection("requests")}
+                className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-content"
+                  }`}
+              >
+                Friend requests
+                {requests.length > 0 && (
+                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
+                    {requests.length}
+                  </span>
+                )}
+              </button>
+            )}
 
             <button
-              onClick={() => setActiveSection("birthdays")}
+              onClick={() => selectSection("birthdays")}
               className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "bg-orange-100 text-orange-700" : "text-content"
                 }`}
             >
@@ -483,12 +510,13 @@ const FriendsPage: React.FC = () => {
           </div>
           {activeSection === "home" ? (
             <div className="space-y-8">
-              {/* Friend Requests Section */}
+              {/* Friend Requests Section — only shown when loading or there are requests */}
+              {(loading || requests.length > 0) && (
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-semibold text-content-secondary">Friend Requests</h2>
                   <button
-                    onClick={() => setActiveSection("requests")}
+                    onClick={() => selectSection("requests")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
                   >
                     See all
@@ -498,7 +526,7 @@ const FriendsPage: React.FC = () => {
                 {/* Friend Requests Grid */}
                 {loading ? (
                   <FriendsGridShimmer count={shimmerCount * 2} />
-                ) : requests.length > 0 ? (
+                ) : (
                   <>
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                       {requests.slice(0, requestsDisplayLimit).map((request) => (
@@ -570,23 +598,16 @@ const FriendsPage: React.FC = () => {
                       </div>
                     )}
                   </>
-                ) : (
-                  <div className="text-center py-12 bg-surface rounded-lg">
-                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-content mb-2">
-                      No pending requests
-                    </h3>
-                    <p className="text-content-secondary">You're all caught up!</p>
-                  </div>
                 )}
               </div>
+              )}
 
               {/* People You May Know Section */}
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-semibold text-content-secondary">People You May Know</h2>
                   <button
-                    onClick={() => setActiveSection("suggestions")}
+                    onClick={() => selectSection("suggestions")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
                   >
                     See all
@@ -679,7 +700,7 @@ const FriendsPage: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-semibold text-content-secondary">Friend Requests</h2>
-                <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => setActiveSection("home")}>
+                <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => selectSection("home")}>
                   See all
                 </button>
               </div>
