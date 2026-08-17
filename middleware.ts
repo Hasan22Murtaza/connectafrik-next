@@ -128,7 +128,6 @@ export async function middleware(request: NextRequest) {
     '/profile',
     '/saved',
     '/memories',
-    '/video',
     '/my-orders',
     '/culture',
     '/politics',

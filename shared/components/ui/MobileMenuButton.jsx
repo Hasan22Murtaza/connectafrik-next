@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Menu, X, Users, UserPlus, ShoppingBag, Clock, Bookmark, Video, Search, Users2, Package } from '@/shared/icons'
+import { Menu, X, Users, UserPlus, ShoppingBag, Clock, Bookmark, Search, Users2, Package } from '@/shared/icons'
 import { useRouter } from 'next/navigation'
 import { UserSearch } from './UserSearch'
 
@@ -17,7 +17,6 @@ const MobileMenuButton = () => {
     { icon: ShoppingBag, label: 'TradeHub', path: '/marketplace', color: 'text-orange-600' },
     { icon: Package, label: 'My Orders', path: '/my-orders', color: 'text-orange-600' },
     { icon: Bookmark, label: 'Saved', path: '/saved', color: 'text-yellow-600' },
-    { icon: Video, label: 'Video', path: '/video', color: 'text-red-600' },
   ]
 
   const handleNavigation = (shortcut) => {

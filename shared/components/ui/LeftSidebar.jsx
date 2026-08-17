@@ -12,7 +12,6 @@ import group from "@/public/assets/icons/groups.png";
 import marketplace from "@/public/assets/icons/market.png";
 import orders from "@/public/assets/icons/my-order.png";
 import saved from "@/public/assets/icons/bookmark.png";
-import video from "@/public/assets/icons/video.png";
 import Image from "next/image";
 
 
@@ -23,7 +22,6 @@ const shortcuts = [
   { name: "TradeHub", to: "/marketplace", icon: marketplace },
   { name: "My Orders", to: "/my-orders", icon: orders },
   { name: "Saved", to: "/saved", icon: saved },
-  { name: "Video", to: "/video", icon: video },
 ];
 
 const LeftSidebar = () => {
