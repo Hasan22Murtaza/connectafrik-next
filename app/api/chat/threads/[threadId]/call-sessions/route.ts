@@ -735,7 +735,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     } else if (event === 'join') {
       if (!['active', 'ringing', 'initiated'].includes(String(row.status))) {
-        return errorResponse('Call session is not active', 409)
+        // The row says the call is over, but the media server decides. If people
+        // are still in the room this is a rejoin after a drop, not a late join
+        // to a finished call -- revive the session instead of returning a 409
+        // that strands the user on "Connecting...".
+        const stillPresent = await mediaIdentitiesForSession(row)
+        if (!stillPresent || stillPresent.length === 0) {
+          return errorResponse('Call session is not active', 409)
+        }
+        // nextStatus is set to 'active' immediately below for every join.
+        nextEndedAt = null
       }
       nextStatus = 'active'
       nextHeartbeatAt = now
@@ -806,24 +815,27 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     } else if (event === 'end') {
       const forceEnd = body.force_end === true
-      const isHost = row.created_by === user.id
-      if (groupCall && !forceEnd && !isHost && nextParticipants.length > 1) {
-        // Non-host ending in a group call → treat as leave
+
+      // Who is ACTUALLY still on the media server. The participants array is
+      // maintained by signalling events and drifts out of sync; LiveKit is the
+      // source of truth. null = non-LiveKit session, so fall back to the array.
+      const mediaIdentities = groupCall ? await mediaIdentitiesForSession(row) : null
+      const othersRemaining = mediaIdentities
+        ? mediaIdentities.filter((id) => !idsEqual(id, user.id)).length
+        : nextParticipants.filter((id) => id !== user.id).length
+
+      // A group call ends for EVERYONE only on an explicit "end for all".
+      // Anyone else leaving -- the host included -- is just a leave. Ending the
+      // session while people are still talking strands them: their heartbeats
+      // start returning 409 and they cannot rejoin.
+      if (groupCall && !forceEnd && othersRemaining > 0) {
         nextParticipants = nextParticipants.filter((id) => id !== user.id)
+        nextStatus = 'active'
         metaPatch = {
           leftBy: user.id,
           leftAt: now,
           last_signal: 'participant_left',
-          activeParticipantCount: nextParticipants.length,
-        }
-        if (nextParticipants.length === 0) {
-          nextStatus = 'ended'
-          nextEndedAt = now
-          if (duration_seconds !== undefined) nextDuration = duration_seconds
-          metaPatch.endedBy = user.id
-          metaPatch.endedAt = now
-        } else {
-          nextStatus = 'active'
+          activeParticipantCount: othersRemaining,
         }
       } else {
         nextStatus = 'ended'
