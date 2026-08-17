@@ -128,7 +128,6 @@ async function listLiveSessionsForThread(
   return (data || []) as Array<Record<string, unknown>>
 }
 
-/** `[]` empty, `null` unknown / not LiveKit. */
 async function mediaIdentitiesForSession(row: {
   room_id?: unknown
   metadata?: unknown
