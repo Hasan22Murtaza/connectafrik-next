@@ -16,7 +16,7 @@ import {
 } from '@/shared/icons';
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { FiUserPlus, FiUsers } from "react-icons/fi";
 import { IoHomeOutline } from "react-icons/io5";
@@ -49,7 +49,7 @@ function parseFriendsSection(tab: string | null): Section | null {
   return null
 }
 
-const FriendsPage: React.FC = () => {
+const FriendsPageContent: React.FC = () => {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1169,4 +1169,32 @@ const FriendsPage: React.FC = () => {
   );
 };
 
-export default FriendsPage;
+function FriendsPageFallback() {
+  return (
+    <div className="min-h-screen px-4">
+      <div className="flex gap-6">
+        <div className="hidden md:block w-64 shrink-0">
+          <div className="sticky top-18 h-[calc(100vh-6rem)] py-4">
+            <div className="h-7 w-24 bg-surface-tertiary rounded animate-pulse mb-6" />
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-10 bg-surface-tertiary rounded-lg animate-pulse" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 max-w-full py-3 sm:py-6 px-4">
+          <FriendsGridShimmer count={8} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function FriendsPage() {
+  return (
+    <Suspense fallback={<FriendsPageFallback />}>
+      <FriendsPageContent />
+    </Suspense>
+  );
+}
