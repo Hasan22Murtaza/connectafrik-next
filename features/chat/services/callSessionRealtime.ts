@@ -202,8 +202,12 @@ export function callSessionUpdateToChatMessage(
   const lastSignal = typeof meta.last_signal === 'string' ? meta.last_signal.trim() : ''
   const sessionStatus = resolveSessionStatusFromRow(row)
 
-  // Mid-call metadata signals (participant join/leave, A/V switch)
-  if (lastSignal && CALL_METADATA_SIGNALS.has(lastSignal)) {
+  const isTerminalStatus = ['ended', 'declined', 'missed', 'failed'].includes(newStatus)
+
+  // Mid-call metadata signals (participant join/leave, A/V switch).
+  // If the session itself became terminal (last participant left), prefer
+  // the ended signal so remaining clients hang up instead of staying in-call.
+  if (lastSignal && CALL_METADATA_SIGNALS.has(lastSignal) && !isTerminalStatus) {
     const oldMeta = oldRow ? parseMeta(oldRow.metadata) : {}
     const oldSignal = typeof oldMeta.last_signal === 'string' ? oldMeta.last_signal.trim() : ''
     if (oldRow && lastSignal === oldSignal) return null

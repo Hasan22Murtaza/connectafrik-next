@@ -329,28 +329,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
 
       const activeCallId = callIdRef.current || callIdHint || '';
 
-      // Confirm with the server before declaring the call over: our local view
-      // of zero remote participants can be OUR transport dying rather than the
-      // call actually ending. If the server still lists other participants,
-      // we are the one who fell off -- attempt to rejoin instead of ending a
-      // call that is still live for everyone else.
-      if (threadId && activeCallId) {
-        const latest = await getLatestCallSession(threadId, activeCallId);
-        if (!isMountedRef.current) return;
-        if (latest && latest.status === 'active') {
-          const others = latest.participants.filter((id) => id !== currentUserId);
-          if (others.length > 0) {
-            attemptRejoinRef.current();
-            return;
-          }
-        }
-      }
-
       if (threadId && currentUserId && activeCallId) {
-        const endEvent = isGroupCallSessionRef.current ? 'leave' : 'end';
         await patchCallSessionWithRetry(threadId, {
           call_id: activeCallId,
-          event: endEvent,
+          event: 'end',
+          force_end: true,
           duration_seconds: callDurationRef.current,
         });
       }
@@ -827,7 +810,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             if (res?.participant_profiles) setParticipantProfiles(res.participant_profiles);
             const sessionStatus = String(res?.session?.status || '');
             if (sessionStatus === 'ended' || sessionStatus === 'declined' || sessionStatus === 'missed') {
-              if (!isGroupCallSessionRef.current) closeCall(1000);
+              closeCall(1000);
             }
           } catch { /* ignore */ }
         })();

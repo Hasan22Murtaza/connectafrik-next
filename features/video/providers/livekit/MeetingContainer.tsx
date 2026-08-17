@@ -118,6 +118,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const handleEndCallRef = useRef<() => void>(() => {});
   const rejoiningRef = useRef(false);
   const hasSignaledJoinRef = useRef(false);
+  const hadRemoteParticipantRef = useRef(false);
   const remoteScreenShareMarkerRef = useRef<MediaStream | null>(null);
   const meetingSurfaceRef = useRef<HTMLDivElement>(null);
   const pipWrapRef = useRef<HTMLDivElement>(null);
@@ -127,6 +128,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   localWebcamOnRef.current = isCameraEnabled;
   const localParticipantRef = useRef(localParticipantInfo);
   localParticipantRef.current = localParticipantInfo;
+  const participantsRef = useRef(participants);
+  participantsRef.current = participants;
 
   const onVideoSwitch = useMemo(
     () => ({
@@ -245,6 +248,21 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       return;
     }
     rejoiningRef.current = true;
+
+    const activeCallId = callIdRef.current || callIdHint || '';
+    if (threadId && activeCallId) {
+      const latest = await getLatestCallSession(threadId, activeCallId);
+      if (!isMountedRef.current) {
+        rejoiningRef.current = false;
+        return;
+      }
+      if (!latest || !['active', 'ringing', 'initiated'].includes(latest.status)) {
+        rejoiningRef.current = false;
+        void signalMediaDisconnected();
+        return;
+      }
+    }
+
     setCallStatusSafe('reconnecting');
 
     for (let attempt = 0; attempt < REJOIN_BACKOFF_MS.length; attempt++) {
@@ -279,59 +297,60 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     rejoiningRef.current = false;
     if (!isMountedRef.current) return;
     void signalMediaDisconnected();
-  }, [refreshToken, livekitServerUrl, room, setCallStatusSafe, signalMediaDisconnected, suppressSignalRef]);
+  }, [
+    refreshToken,
+    livekitServerUrl,
+    room,
+    setCallStatusSafe,
+    signalMediaDisconnected,
+    suppressSignalRef,
+    threadId,
+    callIdHint,
+  ]);
+
+  const countRemoteParticipants = useCallback(() => {
+    const localId = localParticipantRef.current?.identity;
+    return participantsRef.current.filter((p) => p.identity !== localId).length;
+  }, []);
 
   const scheduleAutoEndWhenAlone = useCallback(() => {
     if (remoteDisconnectTimerRef.current) return;
     remoteDisconnectTimerRef.current = setTimeout(async () => {
       remoteDisconnectTimerRef.current = null;
       if (!isMountedRef.current || callStatusRef.current !== 'connected') return;
-      const remoteCount = participants.filter(
-        (p) => p.identity !== localParticipantInfo.identity,
-      ).length;
-      if (remoteCount !== 0) return;
+      if (countRemoteParticipants() !== 0) return;
 
       const activeCallId = callIdRef.current || callIdHint || '';
 
-      // Confirm with the server before declaring the call over: our local view
-      // of zero remote participants can be OUR transport dying rather than the
-      // call actually ending. If the server still lists other participants,
-      // we are the one who fell off -- attempt to rejoin instead of ending a
-      // call that is still live for everyone else.
-      if (threadId && activeCallId) {
-        const latest = await getLatestCallSession(threadId, activeCallId);
-        if (!isMountedRef.current) return;
-        if (latest && latest.status === 'active') {
-          const others = latest.participants.filter((id) => id !== currentUserId);
-          if (others.length > 0) {
-            void attemptRejoin();
-            return;
-          }
-        }
-      }
-
       if (threadId && currentUserId && activeCallId) {
-        const endEvent = isGroupCallSessionRef.current ? 'leave' : 'end';
         await patchCallSessionWithRetry(threadId, {
           call_id: activeCallId,
-          event: endEvent,
+          event: 'end',
+          force_end: true,
           duration_seconds: callDurationRef.current,
         });
       }
+      suppressSignalRef.current = true;
       broadcastEnded();
+      try {
+        await room.disconnect();
+      } catch {
+        /* ignore */
+      }
       setCallStatusSafe('ended');
       setTimeout(() => {
         if (isMountedRef.current) onClose();
       }, 1000);
     }, LAST_PARTICIPANT_AUTO_END_MS);
   }, [
-    attemptRejoin,
+    broadcastEnded,
     callIdHint,
+    countRemoteParticipants,
     currentUserId,
-    localParticipantInfo.identity,
     onClose,
-    participants,
+    room,
     setCallStatusSafe,
+    suppressSignalRef,
     threadId,
   ]);
 
@@ -371,6 +390,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 
     const onConnected = () => signalMeetingJoined();
     const onParticipantConnected = () => {
+      hadRemoteParticipantRef.current = true;
       clearRemoteDisconnectTimer();
       if (!isIncomingRef.current) {
         if (ringbackRef.current) {
@@ -389,10 +409,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     const onParticipantDisconnected = () => {
       setTimeout(() => {
         if (!isMountedRef.current) return;
-        const remoteCount = participants.filter(
-          (p) => p.identity !== localParticipantInfo.identity,
-        ).length;
-        if (remoteCount === 0 && callStatusRef.current === 'connected') {
+        if (
+          hadRemoteParticipantRef.current &&
+          countRemoteParticipants() === 0 &&
+          callStatusRef.current === 'connected'
+        ) {
           scheduleAutoEndWhenAlone();
         }
       }, 300);
@@ -454,8 +475,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, [
     attemptRejoin,
     clearRemoteDisconnectTimer,
-    localParticipantInfo.identity,
-    participants,
+    countRemoteParticipants,
     room,
     scheduleAutoEndWhenAlone,
     setCallStatusSafe,
@@ -463,6 +483,31 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     signalMediaDisconnected,
     suppressSignalRef,
   ]);
+
+  // Fallback: if ParticipantDisconnected is missed but the room is down to
+  // only the local participant after others had joined, still auto-end.
+  useEffect(() => {
+    if (callStatus !== 'connected') {
+      clearRemoteDisconnectTimer();
+      return;
+    }
+    const remoteCount = countRemoteParticipants();
+    if (remoteCount > 0) {
+      hadRemoteParticipantRef.current = true;
+      clearRemoteDisconnectTimer();
+      return;
+    }
+    if (hadRemoteParticipantRef.current) scheduleAutoEndWhenAlone();
+    else clearRemoteDisconnectTimer();
+  }, [
+    callStatus,
+    participants,
+    countRemoteParticipants,
+    scheduleAutoEndWhenAlone,
+    clearRemoteDisconnectTimer,
+  ]);
+
+  useEffect(() => () => clearRemoteDisconnectTimer(), [clearRemoteDisconnectTimer]);
 
   // connecting_media → connected with short delay (matches VideoSDK)
   useEffect(() => {
@@ -503,6 +548,13 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     }, 1000);
     return () => clearInterval(timer);
   }, [callStatus]);
+
+  // Session ended remotely (last participant left / heartbeat) — leave LiveKit.
+  useEffect(() => {
+    if (callStatus !== 'ended' || !room) return;
+    suppressSignalRef.current = true;
+    void room.disconnect().catch(() => undefined);
+  }, [callStatus, room, suppressSignalRef]);
 
   const isMuted = !isMicrophoneEnabled;
   const isVideoEnabled = isCameraEnabled;

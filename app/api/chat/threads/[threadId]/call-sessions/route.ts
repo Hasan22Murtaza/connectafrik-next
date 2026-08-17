@@ -3,7 +3,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
-import { listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
+import { deleteLiveKitRoom, listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
 
 /** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
 function pushRequestHeaders(request: NextRequest): Record<string, string> {
@@ -137,6 +137,17 @@ async function mediaIdentitiesForSession(row: {
   const roomId = typeof row.room_id === 'string' ? row.room_id : ''
   if (!roomId) return []
   return listLiveKitParticipantIdentities(roomId)
+}
+
+/** Tear down an empty LiveKit room after the session is already ended. */
+async function deleteLiveKitRoomIfEmpty(row: {
+  room_id?: unknown
+  metadata?: unknown
+}) {
+  const identities = await mediaIdentitiesForSession(row)
+  if (!identities || identities.length > 0) return
+  const roomId = typeof row.room_id === 'string' ? row.room_id : ''
+  if (roomId) await deleteLiveKitRoom(roomId)
 }
 
 async function markSessionEnded(
@@ -682,6 +693,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         const present = identities.some((id) => idsEqual(id, user.id))
         if (identities.length === 0) {
           const ended = await markSessionEnded(serviceClient, row, 'empty_room')
+          void deleteLiveKitRoomIfEmpty(row)
+          return jsonResponse({ session: sanitizeCallSession(ended || row) })
+        }
+        // A live call with only one person left is over — keep the remaining
+        // client from sitting in an empty LiveKit room ("In call · 1").
+        if (identities.length === 1) {
+          const ended = await markSessionEnded(serviceClient, row, 'ended')
           return jsonResponse({ session: sanitizeCallSession(ended || row) })
         }
         if (!present) {
@@ -756,13 +774,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     } else if (event === 'leave') {
       nextParticipants = nextParticipants.filter((id) => id !== user.id)
+      const mediaIdentities = groupCall ? await mediaIdentitiesForSession(row) : null
+      const othersInMedia = mediaIdentities
+        ? mediaIdentities.filter((id) => !idsEqual(id, user.id)).length
+        : null
+      // Once the call is live, one remaining person (in LiveKit, or in the
+      // participant list when LiveKit cannot be queried) means everyone else
+      // has left — end the session instead of leaving a zombie "In call · 1".
+      const lastPersonAlone =
+        String(row.status) === 'active' &&
+        (othersInMedia !== null ? othersInMedia <= 1 : nextParticipants.length <= 1)
+      const shouldEnd = !groupCall || nextParticipants.length === 0 || lastPersonAlone
       metaPatch = {
         leftBy: user.id,
         leftAt: now,
-        last_signal: 'participant_left',
-        activeParticipantCount: nextParticipants.length,
+        last_signal: shouldEnd ? 'ended' : 'participant_left',
+        activeParticipantCount: shouldEnd ? 0 : nextParticipants.length,
       }
-      if (nextParticipants.length === 0 || !groupCall) {
+      if (shouldEnd) {
         nextStatus = 'ended'
         nextEndedAt = now
         if (duration_seconds !== undefined) nextDuration = duration_seconds
@@ -780,8 +809,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         if (!declinedList.includes(user.id)) declinedList.push(user.id)
         const callWasActive = String(row.status) === 'active'
         const callerStillPresent = nextParticipants.includes(String(row.created_by))
-        if (callWasActive && nextParticipants.length >= 1) {
+        if (callWasActive && nextParticipants.length > 1) {
           nextStatus = 'active'
+        } else if (callWasActive) {
+          nextStatus = 'ended'
+          nextEndedAt = now
         } else if (callerStillPresent) {
           nextStatus = 'ringing'
           nextEndedAt = null
@@ -823,11 +855,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         ? mediaIdentities.filter((id) => !idsEqual(id, user.id)).length
         : nextParticipants.filter((id) => id !== user.id).length
 
-      // A group call ends for EVERYONE only on an explicit "end for all".
-      // Anyone else leaving -- the host included -- is just a leave. Ending the
-      // session while people are still talking strands them: their heartbeats
-      // start returning 409 and they cannot rejoin.
-      if (groupCall && !forceEnd && othersRemaining > 0) {
+      // A group call ends for EVERYONE on an explicit "end for all", or when
+      // at most one person would be left in LiveKit (a 1-person call is over).
+      // Leaving while 2+ people are still talking is just a leave — ending
+      // then strands them: their heartbeats start returning 409 and they
+      // cannot rejoin.
+      if (groupCall && !forceEnd && othersRemaining > 1) {
         nextParticipants = nextParticipants.filter((id) => id !== user.id)
         nextStatus = 'active'
         metaPatch = {
@@ -974,6 +1007,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (updateError || !updated) {
       return errorResponse(updateError?.message || 'Failed to update call session', 400)
+    }
+
+    if (['ended', 'missed', 'declined', 'failed'].includes(nextStatus)) {
+      void deleteLiveKitRoomIfEmpty(updated)
     }
 
     if (event === 'accept' && nextStatus === 'active' && device_session_id && !groupCall) {

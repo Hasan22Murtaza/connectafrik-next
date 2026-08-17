@@ -375,7 +375,7 @@ export function useCallSessionSignaling({
               sessionStatus === 'declined' ||
               sessionStatus === 'missed'
             ) {
-              if (!isGroupCallSessionRef.current) closeCall(1000);
+              closeCall(1000);
             }
           } catch {
             /* ignore */

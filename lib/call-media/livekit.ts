@@ -76,6 +76,19 @@ export async function listLiveKitParticipantIdentities(
   }
 }
 
+/** Drop an empty LiveKit room so a finished call cannot be rejoined. */
+export async function deleteLiveKitRoom(roomId: string): Promise<void> {
+  const name = roomId.trim();
+  if (!name || !isLiveKitConfigured()) return;
+  try {
+    await getRoomServiceClient().deleteRoom(name);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/not found|does not exist|404/i.test(message)) return;
+    console.warn('[livekit] deleteRoom failed', message);
+  }
+}
+
 async function ensureLiveKitRoom(roomId: string): Promise<void> {
   const client = getRoomServiceClient();
   try {
