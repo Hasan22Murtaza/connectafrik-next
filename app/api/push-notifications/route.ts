@@ -441,6 +441,71 @@ export async function POST(request: NextRequest) {
     const skipIosFcmForVoipCall =
       canonicalType === 'call' && IOS_SKIP_FCM_CALL_STATUSES.has(callEventStatus)
 
+    if (!isTrustedServer && actorUserId && canonicalType === 'friend_request') {
+      const friendRequestId =
+        typeof rawPushData.friend_request_id === 'string'
+          ? rawPushData.friend_request_id.trim()
+          : ''
+      if (!friendRequestId) {
+        return NextResponse.json(
+          { success: false, error: 'friend_request_id is required' },
+          { status: 400, headers: corsHeaders },
+        )
+      }
+
+      const { data: friendRequestRow } = await supabase
+        .from('friend_requests')
+        .select('id, sender_id, receiver_id, status')
+        .eq('id', friendRequestId)
+        .maybeSingle()
+
+      const isValidFriendRequestNotification =
+        !!friendRequestRow &&
+        friendRequestRow.sender_id === actorUserId &&
+        friendRequestRow.receiver_id === user_id &&
+        friendRequestRow.status === 'pending'
+
+      if (!isValidFriendRequestNotification) {
+        return NextResponse.json(
+          { success: false, error: 'Forbidden' },
+          { status: 403, headers: corsHeaders },
+        )
+      }
+    }
+
+    // Friend requests: at most one in-app notification per active friend_request_id.
+    if (canonicalType === 'friend_request') {
+      const friendRequestId =
+        typeof rawPushData.friend_request_id === 'string'
+          ? rawPushData.friend_request_id.trim()
+          : ''
+      if (friendRequestId) {
+        const { data: existingFriendRequest } = await supabase
+          .from('notifications')
+          .select('id')
+          .eq('user_id', user_id)
+          .eq('type', 'friend_request')
+          .contains('data', { friend_request_id: friendRequestId })
+          .maybeSingle()
+
+        if (existingFriendRequest?.id) {
+          return NextResponse.json(
+            {
+              success: true,
+              duplicate: true,
+              message: 'Friend request notification already exists',
+              notification_id: existingFriendRequest.id,
+              sent: 0,
+              failed: 0,
+              total: 0,
+              results: [],
+            },
+            { headers: corsHeaders }
+          )
+        }
+      }
+    }
+
     // Birthday reminders: at most one per friend per day per "when" (today vs tomorrow) for this user.
     if (canonicalType === 'birthday' && !skip_db) {
       const dedupeKey =

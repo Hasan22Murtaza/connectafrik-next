@@ -28,3 +28,6 @@ export function stripLeadingEmoji(text: string): string {
 export function normalizeNotificationType(raw: string): NotificationType {
   return raw as NotificationType
 }
+
+/** Existing friends screen that lists incoming requests (honor `?tab=requests`). */
+export const FRIEND_REQUEST_NOTIFICATION_HREF = '/friends?tab=requests'

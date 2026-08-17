@@ -23,6 +23,7 @@ const ALLOWED_TARGET_PATTERNS: RegExp[] = [
   /^\/memories(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/chat(\/[A-Za-z0-9_-]+)?\/?$/,
   /^\/notifications\/?$/,
+  /^\/friends\/?$/,
   /^\/saved\/?$/,
   // Auth flows
   /^\/confirm-signup\/?$/,

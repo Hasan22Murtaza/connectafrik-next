@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Bell, X } from '@/shared/icons'
 import { Notification } from '@/shared/types/notifications'
 import {
+  FRIEND_REQUEST_NOTIFICATION_HREF,
   getNotificationPayload,
   getNotificationTypeSource,
   normalizeNotificationType,
@@ -35,6 +36,8 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   const [stats, setStats] = useState({ unread: 0 })
   const dropdownRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const isOpenRef = useRef(isOpen)
+  isOpenRef.current = isOpen
 
   const fetchUnreadCount = async () => {
     if (!user) return
@@ -161,7 +164,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       reel_share: `${actorName} shared your reel`,
       follow: `${actorName} started following you`,
       mention: `${actorName} mentioned you`,
-      friend_request: `${actorName} sent you a friend request`,
+      friend_request: `${actorName} sent you a friend request.`,
       friend_request_accepted: `${actorName} accepted your friend request`,
       friend_request_confirmed: `${actorName} confirmed your friend request`,
       friend_request_declined: `${actorName} declined your friend request`,
@@ -230,29 +233,35 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
   useEffect(() => {
     if (isOpen && user) {
       fetchNotifications(0, false)
-
-      const channel = supabase
-        .channel('notifications-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            fetchNotifications(0, false)
-            fetchUnreadCount()
-          }
-        )
-        .subscribe()
-
-      return () => {
-        supabase.removeChannel(channel)
-      }
     }
   }, [isOpen, user?.id])
+
+  useEffect(() => {
+    if (!user) return
+
+    const channel = supabase
+      .channel(`header-notifications:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          fetchUnreadCount()
+          if (isOpenRef.current) {
+            fetchNotifications(0, false)
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id])
 
   const handleListScroll = async (event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget
@@ -392,7 +401,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
         // Friend request → go to friend requests page
         case 'friend_request': {
-          router.push(fallbackUrl || '/friends?tab=requests')
+          router.push(FRIEND_REQUEST_NOTIFICATION_HREF)
           onClose()
           break
         }

@@ -1,7 +1,63 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
+
+async function notifyFriendRequestReceived(params: {
+  senderId: string
+  receiverId: string
+  friendRequestId: string
+  senderName: string
+  senderUsername?: string
+  senderAvatar?: string
+  accessToken: string | null
+  reactivate?: boolean
+}) {
+  const message = `${params.senderName} sent you a friend request.`
+  const data = {
+    type: 'friend_request',
+    sender_id: params.senderId,
+    receiver_id: params.receiverId,
+    friend_request_id: params.friendRequestId,
+    sender_name: params.senderName,
+    sender_username: params.senderUsername || '',
+    actor_id: params.senderId,
+    actor_name: params.senderName,
+    actor_avatar: params.senderAvatar || '',
+    url: '/friends?tab=requests',
+  }
+
+  try {
+    await createNotification({
+      user_id: params.receiverId,
+      type: 'friend_request',
+      title: 'Friend Request',
+      message,
+      data,
+      reactivate: params.reactivate,
+    })
+  } catch (error) {
+    console.error('Failed to save friend request notification:', error)
+  }
+
+  try {
+    await notificationService.sendNotification(
+      {
+        user_id: params.receiverId,
+        title: 'Friend Request',
+        body: message,
+        notification_type: 'friend_request',
+        skip_db: true,
+        tag: `friend-request-${params.friendRequestId}`,
+        data,
+      },
+      { accessToken: params.accessToken },
+    )
+  } catch (error) {
+    console.error('Failed to send friend request push:', error)
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -87,17 +143,71 @@ export async function POST(request: NextRequest) {
 
     const { data: existingList } = await supabase
       .from('friend_requests')
-      .select('id, status, sender_id')
+      .select('id, status, sender_id, receiver_id')
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${receiver_id}),and(sender_id.eq.${receiver_id},receiver_id.eq.${user.id})`)
       .limit(2)
 
     const existing = existingList?.[0]
+    const { data: senderProfile } = await supabase
+      .from('profiles')
+      .select('full_name, username, avatar_url')
+      .eq('id', user.id)
+      .single()
+    const senderName = senderProfile?.full_name || senderProfile?.username || 'Someone'
+    const senderPayload = {
+      senderId: user.id,
+      receiverId: receiver_id,
+      senderName,
+      senderUsername: senderProfile?.username || '',
+      senderAvatar: senderProfile?.avatar_url || '',
+      accessToken,
+    }
+
     if (existing) {
       if (existing.status === 'pending') {
         const isSentByMe = existing.sender_id === user.id
-        return errorResponse(isSentByMe ? 'Request already sent' : 'Request already received', 400)
+        if (isSentByMe) {
+          await notifyFriendRequestReceived({
+            ...senderPayload,
+            friendRequestId: existing.id,
+          })
+          return jsonResponse(existing, 200)
+        }
+        return errorResponse('Request already received', 400)
       }
-      return errorResponse('Friend request already exists', 400)
+
+      if (existing.status === 'accepted') {
+        return errorResponse('Already friends', 400)
+      }
+
+      if (existing.status === 'blocked') {
+        return errorResponse('Cannot send friend request', 403)
+      }
+
+      // Declined (or other inactive status): Link Up is shown again — reuse the row.
+      const service = createServiceClient()
+      const { data: revived, error: reviveError } = await service
+        .from('friend_requests')
+        .update({
+          sender_id: user.id,
+          receiver_id,
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select()
+        .single()
+
+      if (reviveError || !revived) {
+        return errorResponse(reviveError?.message || 'Failed to send friend request', 400)
+      }
+
+      await notifyFriendRequestReceived({
+        ...senderPayload,
+        friendRequestId: revived.id,
+        reactivate: true,
+      })
+      return jsonResponse(revived, 201)
     }
 
     const { data: inserted, error: insertError } = await supabase
@@ -110,23 +220,10 @@ export async function POST(request: NextRequest) {
       return errorResponse(insertError.message, 400)
     }
 
-    const { data: senderProfile } = await supabase
-      .from('profiles')
-      .select('full_name, username')
-      .eq('id', user.id)
-      .single()
-
-    const senderName = senderProfile?.full_name || senderProfile?.username || 'Someone'
-    await notificationService.sendNotification(
-      {
-        user_id: receiver_id,
-        title: 'Friend request',
-        body: `${senderName} sent you a friend request`,
-        notification_type: 'friend_request',
-        data: { sender_id: user.id, sender_name: senderName, url: '/friends' },
-      },
-      { accessToken },
-    )
+    await notifyFriendRequestReceived({
+      ...senderPayload,
+      friendRequestId: inserted.id,
+    })
 
     return jsonResponse(inserted, 201)
   } catch (error: any) {
