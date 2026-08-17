@@ -485,18 +485,20 @@ const FriendsPage: React.FC = () => {
               Friend suggestions
             </button>
 
-            <button
-              onClick={() => selectSection("requests")}
-              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-content"
-                }`}
-            >
-              Friend requests
-              {requests.length > 0 && (
-                <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
-                  {requests.length}
-                </span>
-              )}
-            </button>
+            {(loading || requests.length > 0) && (
+              <button
+                onClick={() => selectSection("requests")}
+                className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-content"
+                  }`}
+              >
+                Friend requests
+                {requests.length > 0 && (
+                  <span className="ml-2 bg-orange-600 text-white text-xs px-2 py-0.5 rounded-full">
+                    {requests.length}
+                  </span>
+                )}
+              </button>
+            )}
 
             <button
               onClick={() => selectSection("birthdays")}
@@ -508,7 +510,8 @@ const FriendsPage: React.FC = () => {
           </div>
           {activeSection === "home" ? (
             <div className="space-y-8">
-              {/* Friend Requests Section */}
+              {/* Friend Requests Section — only shown when loading or there are requests */}
+              {(loading || requests.length > 0) && (
               <div>
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-semibold text-content-secondary">Friend Requests</h2>
@@ -523,7 +526,7 @@ const FriendsPage: React.FC = () => {
                 {/* Friend Requests Grid */}
                 {loading ? (
                   <FriendsGridShimmer count={shimmerCount * 2} />
-                ) : requests.length > 0 ? (
+                ) : (
                   <>
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
                       {requests.slice(0, requestsDisplayLimit).map((request) => (
@@ -595,16 +598,9 @@ const FriendsPage: React.FC = () => {
                       </div>
                     )}
                   </>
-                ) : (
-                  <div className="text-center py-12 bg-surface rounded-lg">
-                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-content mb-2">
-                      No pending requests
-                    </h3>
-                    <p className="text-content-secondary">You're all caught up!</p>
-                  </div>
                 )}
               </div>
+              )}
 
               {/* People You May Know Section */}
               <div>
