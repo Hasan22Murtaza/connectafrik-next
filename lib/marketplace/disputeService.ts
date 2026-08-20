@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js'
 import { appendOrderLedgerEntry } from './orderLedger'
 import { getPlatformSetting } from './platformSettings'
 import { issueOrderRefund } from './refundService'
-import { releaseOrderEscrow } from './escrowService'
+import { ensureScheduledSellerPayout, releaseOrderEscrow } from './escrowService'
 
 export type DisputeReason =
   | 'not_received'
@@ -125,6 +125,10 @@ async function unfreezeOrderEscrow(
     metadata: { escrow_status: escrowStatus },
     created_by: userId,
   })
+
+  if (escrowStatus === 'scheduled') {
+    await ensureScheduledSellerPayout(serviceClient, orderId)
+  }
 }
 
 export function isDisputeActive(status: string): boolean {

@@ -37,6 +37,107 @@ function computeCommission(order: MarketplaceOrder, sellerNet: number): number {
   return Math.round((order.total_amount - sellerNet) * 100) / 100
 }
 
+/**
+ * Create (or reuse) a pending seller_payouts row as soon as payout is scheduled.
+ * The Stripe transfer still happens later in releaseOrderEscrow after the hold.
+ */
+async function ensurePendingSellerPayout(
+  serviceClient: SupabaseClient,
+  order: MarketplaceOrder
+): Promise<string> {
+  const sellerNet = computeSellerNet(order)
+  const commission = computeCommission(order, sellerNet)
+  const idempotencyKey = `order-${order.id}`
+
+  const { data: existingPayout } = await serviceClient
+    .from('seller_payouts')
+    .select('id')
+    .eq('order_id', order.id)
+    .not('status', 'in', '(failed,cancelled)')
+    .maybeSingle()
+
+  if (existingPayout?.id) {
+    return existingPayout.id as string
+  }
+
+  const { data: payout, error: payoutError } = await serviceClient
+    .from('seller_payouts')
+    .insert({
+      seller_id: order.seller_id,
+      order_id: order.id,
+      amount: sellerNet,
+      commission_amount: commission,
+      status: 'pending',
+      gateway: 'stripe',
+      hold_reason: 'delivery_confirmed',
+      scheduled_release_at: order.release_eligible_at,
+      idempotency_key: idempotencyKey,
+      requested_at: new Date().toISOString(),
+    })
+    .select('id')
+    .single()
+
+  if (payoutError) {
+    if (payoutError.code === '23505') {
+      const { data: dup } = await serviceClient
+        .from('seller_payouts')
+        .select('id')
+        .eq('order_id', order.id)
+        .not('status', 'in', '(failed,cancelled)')
+        .maybeSingle()
+
+      if (dup?.id) return dup.id as string
+
+      const { data: byKey } = await serviceClient
+        .from('seller_payouts')
+        .select('id')
+        .eq('idempotency_key', idempotencyKey)
+        .maybeSingle()
+
+      if (byKey?.id) {
+        await serviceClient
+          .from('seller_payouts')
+          .update({
+            status: 'pending',
+            hold_reason: 'delivery_confirmed',
+            scheduled_release_at: order.release_eligible_at,
+            notes: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', byKey.id)
+        return byKey.id as string
+      }
+    }
+    throw new Error(payoutError.message)
+  }
+
+  if (!payout?.id) {
+    throw new Error('Failed to create seller payout')
+  }
+
+  return payout.id as string
+}
+
+/** Backfill a pending seller_payouts row for an already-scheduled order. */
+export async function ensureScheduledSellerPayout(
+  serviceClient: SupabaseClient,
+  orderId: string
+): Promise<string | null> {
+  const { data: order, error } = await serviceClient
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .single()
+
+  if (error || !order) return null
+
+  const typedOrder = order as MarketplaceOrder
+  if (typedOrder.escrow_status !== 'scheduled') return null
+  if (typedOrder.payout_status === 'completed') return null
+
+  return ensurePendingSellerPayout(serviceClient, typedOrder)
+}
+
 export async function confirmDeliveryWithHold(
   serviceClient: SupabaseClient,
   orderId: string,
@@ -135,9 +236,16 @@ export async function confirmDeliveryWithHold(
     }
   }
 
+  const payoutId = await ensurePendingSellerPayout(serviceClient, {
+    ...typedOrder,
+    escrow_status: 'scheduled',
+    release_eligible_at: releaseEligibleAt.toISOString(),
+  })
+
   return {
     success: true,
     order_id: orderId,
+    payout_id: payoutId,
     seller_tier: tier,
     hold_days: holdDays,
     release_eligible_at: releaseEligibleAt.toISOString(),
@@ -170,55 +278,7 @@ export async function releaseOrderEscrow(
   }
 
   const sellerNet = computeSellerNet(typedOrder)
-  const commission = computeCommission(typedOrder, sellerNet)
-  const idempotencyKey = `order-${orderId}`
-
-  const { data: existingPayout } = await serviceClient
-    .from('seller_payouts')
-    .select('id, status')
-    .eq('order_id', orderId)
-    .not('status', 'in', '(failed,cancelled)')
-    .maybeSingle()
-
-  let payoutId = existingPayout?.id as string | undefined
-
-  if (!payoutId) {
-    const { data: payout, error: payoutError } = await serviceClient
-      .from('seller_payouts')
-      .insert({
-        seller_id: typedOrder.seller_id,
-        order_id: orderId,
-        amount: sellerNet,
-        commission_amount: commission,
-        status: 'pending',
-        gateway: 'stripe',
-        hold_reason: 'delivery_confirmed',
-        scheduled_release_at: typedOrder.release_eligible_at,
-        idempotency_key: idempotencyKey,
-        requested_at: new Date().toISOString(),
-      })
-      .select('id')
-      .single()
-
-    if (payoutError) {
-      if (payoutError.code === '23505') {
-        const { data: dup } = await serviceClient
-          .from('seller_payouts')
-          .select('id')
-          .eq('order_id', orderId)
-          .maybeSingle()
-        payoutId = dup?.id
-      } else {
-        throw new Error(payoutError.message)
-      }
-    } else {
-      payoutId = payout?.id
-    }
-  }
-
-  if (!payoutId) {
-    throw new Error('Failed to create seller payout')
-  }
+  const payoutId = await ensurePendingSellerPayout(serviceClient, typedOrder)
 
   const autoPayout = isAutoPayoutEnabled()
 
@@ -277,6 +337,27 @@ export async function releaseOrderEscrow(
 export async function processEscrowReleases(serviceClient: SupabaseClient) {
   const now = new Date().toISOString()
 
+  const { data: scheduledOrders, error: scheduledError } = await serviceClient
+    .from('orders')
+    .select('id')
+    .eq('escrow_status', 'scheduled')
+    .not('payout_status', 'eq', 'completed')
+
+  if (scheduledError) {
+    throw new Error(scheduledError.message)
+  }
+
+  const backfilled: Array<{ order_id: string; payout_id?: string; error?: string }> = []
+  for (const row of scheduledOrders ?? []) {
+    try {
+      const payoutId = await ensureScheduledSellerPayout(serviceClient, row.id)
+      if (payoutId) backfilled.push({ order_id: row.id, payout_id: payoutId })
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      backfilled.push({ order_id: row.id, error: message })
+    }
+  }
+
   const { data: orders, error } = await serviceClient
     .from('orders')
     .select('id')
@@ -303,6 +384,7 @@ export async function processEscrowReleases(serviceClient: SupabaseClient) {
 
   return {
     processed: results.length,
+    backfilled: backfilled.length,
     results,
   }
 }

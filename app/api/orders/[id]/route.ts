@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { ensureScheduledSellerPayout } from '@/lib/marketplace/escrowService'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -25,6 +26,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const isBuyer = order.buyer_id === user.id
     const isSeller = order.seller_id === user.id
+
+    if (order.escrow_status === 'scheduled' && order.payout_status !== 'completed') {
+      try {
+        await ensureScheduledSellerPayout(createServiceClient(), order.id)
+      } catch (payoutErr) {
+        console.error('ensureScheduledSellerPayout:', payoutErr)
+      }
+    }
 
     const { data: sellerProfile } = await supabase
       .from('profiles')

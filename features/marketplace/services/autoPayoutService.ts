@@ -22,7 +22,7 @@ export async function processAutoPayout(_data: AutoPayoutData) {
 /** @deprecated Realtime listener removed in Phase 2 */
 export function startAutoPayoutListener() {
   console.warn(
-    'startAutoPayoutListener is deprecated. Configure Vercel cron for /api/internal/cron/release-escrow.'
+    'startAutoPayoutListener is deprecated. Escrow release runs in-process on Digital Ocean or via /api/internal/cron/release-escrow.'
   )
   return null
 }
