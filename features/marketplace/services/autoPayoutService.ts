@@ -1,6 +1,6 @@
 /**
  * @deprecated Phase 2 replaced client-side Realtime auto-payout with server cron
- * (`/api/internal/cron/release-escrow`).
+ * (`/api/internal/cron/release-payouts`).
  * Do not call startAutoPayoutListener() — it is a no-op.
  */
 
@@ -14,7 +14,7 @@ interface AutoPayoutData {
 /** @deprecated Use lib/marketplace/payoutTransfer.executeStripeConnectPayout on the server */
 export async function processAutoPayout(_data: AutoPayoutData) {
   console.warn(
-    'processAutoPayout is deprecated. Payouts are handled by the escrow cron.'
+    'processAutoPayout is deprecated. Payouts are handled by the payout-hold cron.'
   )
   return { success: false, status: 'deprecated' }
 }
@@ -22,7 +22,7 @@ export async function processAutoPayout(_data: AutoPayoutData) {
 /** @deprecated Realtime listener removed in Phase 2 */
 export function startAutoPayoutListener() {
   console.warn(
-    'startAutoPayoutListener is deprecated. Escrow release runs in-process on Digital Ocean or via /api/internal/cron/release-escrow.'
+    'startAutoPayoutListener is deprecated. Configure Supabase cron for /api/internal/cron/release-payouts.'
   )
   return null
 }
