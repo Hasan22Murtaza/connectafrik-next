@@ -1,7 +1,14 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { getSellerHoldDays } from './sellerTier'
 import { appendOrderLedgerEntry } from './orderLedger'
-import { isAutoPayoutEnabled, executeStripeConnectPayout } from './payoutTransfer'
+import {
+  isAutoPayoutEnabled,
+  executeStripeConnectPayout,
+  markPayoutProcessing,
+  markPayoutWaiting,
+} from './payoutTransfer'
+
+const MAX_PAYOUT_RETRIES = 10
 
 interface MarketplaceOrder {
   id: string
@@ -37,9 +44,27 @@ function computeCommission(order: MarketplaceOrder, sellerNet: number): number {
   return Math.round((order.total_amount - sellerNet) * 100) / 100
 }
 
+async function findPayoutByOrder(
+  serviceClient: SupabaseClient,
+  orderId: string
+): Promise<{ id: string; status: string | null; retry_count: number | null } | null> {
+  const { data } = await serviceClient
+    .from('seller_payouts')
+    .select('id, status, retry_count')
+    .eq('order_id', orderId)
+    .maybeSingle()
+
+  if (!data?.id) return null
+  return {
+    id: data.id as string,
+    status: (data.status as string | null) ?? null,
+    retry_count: (data.retry_count as number | null) ?? 0,
+  }
+}
+
 /**
  * Create (or reuse) a pending seller_payouts row as soon as payout is scheduled.
- * The Stripe transfer still happens later in releaseOrderEscrow after the hold.
+ * Unique(order_id) means failed rows are reused instead of inserting a second payout.
  */
 async function ensurePendingSellerPayout(
   serviceClient: SupabaseClient,
@@ -49,15 +74,9 @@ async function ensurePendingSellerPayout(
   const commission = computeCommission(order, sellerNet)
   const idempotencyKey = `order-${order.id}`
 
-  const { data: existingPayout } = await serviceClient
-    .from('seller_payouts')
-    .select('id')
-    .eq('order_id', order.id)
-    .not('status', 'in', '(failed,cancelled)')
-    .maybeSingle()
-
-  if (existingPayout?.id) {
-    return existingPayout.id as string
+  const existingPayout = await findPayoutByOrder(serviceClient, order.id)
+  if (existingPayout) {
+    return existingPayout.id
   }
 
   const { data: payout, error: payoutError } = await serviceClient
@@ -79,14 +98,8 @@ async function ensurePendingSellerPayout(
 
   if (payoutError) {
     if (payoutError.code === '23505') {
-      const { data: dup } = await serviceClient
-        .from('seller_payouts')
-        .select('id')
-        .eq('order_id', order.id)
-        .not('status', 'in', '(failed,cancelled)')
-        .maybeSingle()
-
-      if (dup?.id) return dup.id as string
+      const dup = await findPayoutByOrder(serviceClient, order.id)
+      if (dup) return dup.id
 
       const { data: byKey } = await serviceClient
         .from('seller_payouts')
@@ -94,19 +107,7 @@ async function ensurePendingSellerPayout(
         .eq('idempotency_key', idempotencyKey)
         .maybeSingle()
 
-      if (byKey?.id) {
-        await serviceClient
-          .from('seller_payouts')
-          .update({
-            status: 'pending',
-            hold_reason: 'delivery_confirmed',
-            scheduled_release_at: order.release_eligible_at,
-            notes: null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', byKey.id)
-        return byKey.id as string
-      }
+      if (byKey?.id) return byKey.id as string
     }
     throw new Error(payoutError.message)
   }
@@ -134,6 +135,21 @@ export async function ensureScheduledSellerPayout(
   const typedOrder = order as MarketplaceOrder
   if (typedOrder.escrow_status !== 'scheduled') return null
   if (typedOrder.payout_status === 'completed') return null
+
+  const existing = await findPayoutByOrder(serviceClient, orderId)
+  if (existing?.status === 'cancelled') {
+    await serviceClient
+      .from('seller_payouts')
+      .update({
+        status: 'pending',
+        hold_reason: 'delivery_confirmed',
+        scheduled_release_at: typedOrder.release_eligible_at,
+        notes: null,
+        failure_reason: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+  }
 
   return ensurePendingSellerPayout(serviceClient, typedOrder)
 }
@@ -277,8 +293,22 @@ export async function releaseOrderEscrow(
     return { skipped: true, reason: 'already_paid' }
   }
 
+  const existing = await findPayoutByOrder(serviceClient, orderId)
+
+  if (existing?.status === 'completed') {
+    return { skipped: true, reason: 'already_paid', payout_id: existing.id }
+  }
+
+  if (existing?.status === 'cancelled') {
+    return { skipped: true, reason: 'payout_cancelled', payout_id: existing.id }
+  }
+
+  if ((existing?.retry_count ?? 0) >= MAX_PAYOUT_RETRIES) {
+    return { skipped: true, reason: 'max_retries', payout_id: existing?.id }
+  }
+
   const sellerNet = computeSellerNet(typedOrder)
-  const payoutId = await ensurePendingSellerPayout(serviceClient, typedOrder)
+  const payoutId = existing?.id ?? (await ensurePendingSellerPayout(serviceClient, typedOrder))
 
   const autoPayout = isAutoPayoutEnabled()
 
@@ -292,46 +322,57 @@ export async function releaseOrderEscrow(
     sellerProfile?.stripe_connect_account_id && sellerProfile?.stripe_connect_payouts_enabled
   )
 
+  if (!autoPayout) {
+    await markPayoutWaiting(serviceClient, payoutId, 'Waiting for auto-payouts to be enabled')
+    return {
+      payout_id: payoutId,
+      auto_payout: false,
+      message: 'Payout queued — auto-payouts are disabled',
+    }
+  }
+
+  if (!canStripeConnect) {
+    await markPayoutWaiting(
+      serviceClient,
+      payoutId,
+      'Waiting for seller Stripe Connect onboarding'
+    )
+    return {
+      payout_id: payoutId,
+      auto_payout: false,
+      message: 'Payout queued — complete Stripe Connect onboarding to receive payouts',
+    }
+  }
+
+  await markPayoutProcessing(serviceClient, payoutId)
   await serviceClient
     .from('orders')
     .update({
-      escrow_status: 'released',
-      payout_status: autoPayout && canStripeConnect ? 'processing' : 'pending',
+      payout_status: 'processing',
       updated_at: new Date().toISOString(),
     })
     .eq('id', orderId)
 
-  await appendOrderLedgerEntry(serviceClient, {
-    order_id: orderId,
-    entry_type: 'escrow_released',
+  const transfer = await executeStripeConnectPayout(serviceClient, {
+    payout_id: payoutId,
+    seller_id: typedOrder.seller_id,
     amount: sellerNet,
+    order_id: orderId,
     currency: typedOrder.currency,
-    reference_type: 'seller_payouts',
-    reference_id: payoutId,
   })
 
-  if (autoPayout && canStripeConnect) {
-    const transfer = await executeStripeConnectPayout(serviceClient, {
-      payout_id: payoutId,
-      seller_id: typedOrder.seller_id,
-      amount: sellerNet,
+  if (transfer.success) {
+    await appendOrderLedgerEntry(serviceClient, {
       order_id: orderId,
+      entry_type: 'escrow_released',
+      amount: sellerNet,
       currency: typedOrder.currency,
+      reference_type: 'seller_payouts',
+      reference_id: payoutId,
     })
-
-    return { payout_id: payoutId, transfer, auto_payout: true, gateway: 'stripe_connect' }
   }
 
-  await serviceClient
-    .from('seller_payouts')
-    .update({ status: 'pending', updated_at: new Date().toISOString() })
-    .eq('id', payoutId)
-
-  return {
-    payout_id: payoutId,
-    auto_payout: false,
-    message: 'Payout queued — complete Stripe Connect onboarding to receive payouts',
-  }
+  return { payout_id: payoutId, transfer, auto_payout: true, gateway: 'stripe_connect' }
 }
 
 export async function processEscrowReleases(serviceClient: SupabaseClient) {
@@ -358,6 +399,23 @@ export async function processEscrowReleases(serviceClient: SupabaseClient) {
     }
   }
 
+  const dueOrderIds = new Set<string>()
+
+  const { data: duePayouts, error: duePayoutsError } = await serviceClient
+    .from('seller_payouts')
+    .select('order_id, status, retry_count')
+    .in('status', ['pending', 'approved', 'failed', 'processing'])
+    .lte('scheduled_release_at', now)
+
+  if (duePayoutsError) {
+    throw new Error(duePayoutsError.message)
+  }
+
+  for (const payout of duePayouts ?? []) {
+    if ((payout.retry_count ?? 0) >= MAX_PAYOUT_RETRIES) continue
+    if (payout.order_id) dueOrderIds.add(payout.order_id as string)
+  }
+
   const { data: orders, error } = await serviceClient
     .from('orders')
     .select('id')
@@ -370,15 +428,19 @@ export async function processEscrowReleases(serviceClient: SupabaseClient) {
     throw new Error(error.message)
   }
 
+  for (const row of orders ?? []) {
+    dueOrderIds.add(row.id)
+  }
+
   const results: Array<{ order_id: string; result: unknown }> = []
 
-  for (const row of orders ?? []) {
+  for (const orderId of dueOrderIds) {
     try {
-      const result = await releaseOrderEscrow(serviceClient, row.id)
-      results.push({ order_id: row.id, result })
+      const result = await releaseOrderEscrow(serviceClient, orderId)
+      results.push({ order_id: orderId, result })
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error'
-      results.push({ order_id: row.id, result: { error: message } })
+      results.push({ order_id: orderId, result: { error: message } })
     }
   }
 
