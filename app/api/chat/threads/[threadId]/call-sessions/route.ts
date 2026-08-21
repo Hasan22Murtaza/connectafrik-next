@@ -276,6 +276,24 @@ const MID_CALL_PUSH_EVENTS = new Set<string>([
   'decline_video',
 ])
 
+/** Missed-call toast depends on who timed out, not a single "tried to call you" line. */
+function missedCallPushBody(
+  actorId: string,
+  actorName: string,
+  callType: 'audio' | 'video',
+  callerId: string,
+  targetUserId: string | null,
+): string {
+  const actorIsOriginalCaller = callerId
+    ? idsEqual(actorId, callerId)
+    : !(targetUserId && idsEqual(actorId, targetUserId))
+  // Caller timeout → tell the callee they missed an incoming call.
+  // Callee timeout → tell the caller the other person missed their outgoing call.
+  return actorIsOriginalCaller
+    ? `${actorName} tried to ${callType} call you`
+    : `${actorName} missed your ${callType} call`
+}
+
 function midCallPushCopy(
   signal: string,
   actorName: string,
@@ -1094,7 +1112,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               ? 'Call ended'
               : status === 'active'
                 ? `${actorName} accepted your ${callType} call`
-                : `${actorName} tried to ${callType} call you`
+                : missedCallPushBody(
+                    user.id,
+                    actorName,
+                    callType,
+                    String(updated.created_by || ''),
+                    targetUserId,
+                  )
 
         const pushData = toPushDataRecord({
           type: status,
