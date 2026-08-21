@@ -9,19 +9,25 @@ function getStripeSecret(): string | null {
 async function stripeRequest(
   path: string,
   method: 'GET' | 'POST',
-  body?: Record<string, string>
+  body?: Record<string, string>,
+  options?: { idempotencyKey?: string }
 ) {
   const secret = getStripeSecret()
   if (!secret) {
     throw new Error('STRIPE_SECRET_KEY not configured')
   }
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${secret}`,
+    'Content-Type': 'application/x-www-form-urlencoded',
+  }
+  if (options?.idempotencyKey) {
+    headers['Idempotency-Key'] = options.idempotencyKey
+  }
+
   const response = await fetch(`${STRIPE_API}${path}`, {
     method,
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
+    headers,
     body: body ? new URLSearchParams(body).toString() : undefined,
   })
 
@@ -133,14 +139,19 @@ export async function createConnectTransfer(params: {
   orderId: string
   payoutId: string
 }) {
-  const transfer = await stripeRequest('/transfers', 'POST', {
-    amount: String(Math.round(params.amount * 100)),
-    currency: params.currency.toLowerCase(),
-    destination: params.destinationAccountId,
-    transfer_group: params.orderId,
-    'metadata[payout_id]': params.payoutId,
-    'metadata[order_id]': params.orderId,
-  })
+  const transfer = await stripeRequest(
+    '/transfers',
+    'POST',
+    {
+      amount: String(Math.round(params.amount * 100)),
+      currency: params.currency.toLowerCase(),
+      destination: params.destinationAccountId,
+      transfer_group: params.orderId,
+      'metadata[payout_id]': params.payoutId,
+      'metadata[order_id]': params.orderId,
+    },
+    { idempotencyKey: `seller-payout-${params.payoutId}` }
+  )
 
   return {
     transfer_id: transfer.id as string,

@@ -398,7 +398,7 @@ export default function AdminOrderDetailPage() {
                   value={formatMoney(order.currency, order.seller_net_amount)}
                 />
               )}
-              <DetailRow label="Escrow" value={<AdminStatusBadge status={order.escrow_status} />} />
+              <DetailRow label="Payout hold" value={<AdminStatusBadge status={order.escrow_status} />} />
               <DetailRow label="Payout" value={<AdminStatusBadge status={order.payout_status} />} />
               <DetailRow label="Paid to seller" value={formatDate(order.paid_to_seller_at)} />
               <DetailRow label="Release eligible" value={formatDate(order.release_eligible_at)} />

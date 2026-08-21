@@ -33,14 +33,22 @@ export async function finalizeSuccessfulPayout(
 ): Promise<void> {
   const { payout_id, order_id, amount, currency, reference, method } = params
 
+  const payoutUpdate: Record<string, unknown> = {
+    status: 'completed',
+    payout_reference: reference,
+    payout_method: method ?? 'stripe_connect',
+    processed_at: new Date().toISOString(),
+    failure_reason: null,
+    notes: method ? `${method} transfer` : 'Payout completed',
+    updated_at: new Date().toISOString(),
+  }
+  if (method === 'stripe_connect') {
+    payoutUpdate.gateway = 'stripe'
+  }
+
   await serviceClient
     .from('seller_payouts')
-    .update({
-      status: 'completed',
-      payout_reference: reference,
-      processed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+    .update(payoutUpdate)
     .eq('id', payout_id)
 
   await serviceClient
@@ -70,11 +78,47 @@ async function markPayoutFailed(
   payoutId: string,
   reason: string
 ): Promise<void> {
+  const { data: row } = await serviceClient
+    .from('seller_payouts')
+    .select('retry_count')
+    .eq('id', payoutId)
+    .maybeSingle()
+
   await serviceClient
     .from('seller_payouts')
     .update({
       status: 'failed',
       failure_reason: reason,
+      notes: reason,
+      retry_count: (row?.retry_count ?? 0) + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', payoutId)
+}
+
+export async function markPayoutProcessing(
+  serviceClient: SupabaseClient,
+  payoutId: string
+): Promise<void> {
+  await serviceClient
+    .from('seller_payouts')
+    .update({
+      status: 'processing',
+      notes: 'Payout transfer in progress',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', payoutId)
+}
+
+export async function markPayoutWaiting(
+  serviceClient: SupabaseClient,
+  payoutId: string,
+  reason: string
+): Promise<void> {
+  await serviceClient
+    .from('seller_payouts')
+    .update({
+      status: 'pending',
       notes: reason,
       updated_at: new Date().toISOString(),
     })
@@ -88,8 +132,8 @@ export async function executeStripeConnectPayout(
   const { payout_id, seller_id, amount, order_id, currency = 'USD' } = params
 
   if (!isStripeConnectEnabled()) {
-    await markPayoutFailed(serviceClient, payout_id, 'Stripe Connect not configured')
-    return { success: false, status: 'failed', error: 'Stripe Connect not configured' }
+    await markPayoutWaiting(serviceClient, payout_id, 'Stripe Connect not configured')
+    return { success: false, status: 'pending', error: 'Stripe Connect not configured' }
   }
 
   const { data: seller, error: sellerError } = await serviceClient
@@ -99,13 +143,25 @@ export async function executeStripeConnectPayout(
     .single()
 
   if (sellerError || !seller?.stripe_connect_account_id) {
-    await markPayoutFailed(serviceClient, payout_id, 'Stripe Connect account not linked')
-    return { success: false, status: 'failed', error: 'Seller has not completed Stripe Connect onboarding' }
+    await markPayoutWaiting(
+      serviceClient,
+      payout_id,
+      'Waiting for seller Stripe Connect onboarding'
+    )
+    return {
+      success: false,
+      status: 'pending',
+      error: 'Seller has not completed Stripe Connect onboarding',
+    }
   }
 
   if (!seller.stripe_connect_payouts_enabled) {
-    await markPayoutFailed(serviceClient, payout_id, 'Stripe Connect payouts not enabled')
-    return { success: false, status: 'failed', error: 'Stripe Connect payouts not enabled for seller' }
+    await markPayoutWaiting(
+      serviceClient,
+      payout_id,
+      'Waiting for Stripe Connect payouts to be enabled'
+    )
+    return { success: false, status: 'pending', error: 'Stripe Connect payouts not enabled for seller' }
   }
 
   try {
@@ -116,19 +172,6 @@ export async function executeStripeConnectPayout(
       orderId: order_id,
       payoutId: payout_id,
     })
-
-    await serviceClient
-      .from('seller_payouts')
-      .update({
-        status: 'completed',
-        payout_reference: transfer.reference,
-        payout_method: 'stripe_connect',
-        gateway: 'stripe',
-        processed_at: new Date().toISOString(),
-        notes: 'Stripe Connect transfer',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', payout_id)
 
     await finalizeSuccessfulPayout(serviceClient, {
       payout_id,

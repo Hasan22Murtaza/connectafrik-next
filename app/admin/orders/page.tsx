@@ -149,7 +149,7 @@ export default function AdminOrdersPage() {
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">
-            Escrow status
+            Payout hold
           </label>
           <select
             value={escrowFilter}
@@ -159,7 +159,7 @@ export default function AdminOrdersPage() {
             }}
             className={MP.selectInput}
           >
-            <option value="">All escrow</option>
+            <option value="">All holds</option>
             {ESCROW_STATUSES.filter(Boolean).map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -192,7 +192,6 @@ export default function AdminOrdersPage() {
                   <AdminTableHeadCell>Product</AdminTableHeadCell>
                   <AdminTableHeadCell>Amount</AdminTableHeadCell>
                   <AdminTableHeadCell>Status</AdminTableHeadCell>
-                  {/* <AdminTableHeadCell>Escrow</AdminTableHeadCell> */}
                   <AdminTableHeadCell>Payout</AdminTableHeadCell>
                   <AdminTableHeadCell>Date</AdminTableHeadCell>
                   <AdminTableHeadCell>Actions</AdminTableHeadCell>

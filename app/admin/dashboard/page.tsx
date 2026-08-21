@@ -286,7 +286,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
         <CurrencyBreakdown title="GMV by currency" data={summary.gmv_by_currency} delay={0} />
         <CurrencyBreakdown
-          title="Escrow held (seller net)"
+          title="Held payouts (seller net)"
           data={summary.escrow_by_currency}
           delay={60}
         />
@@ -332,7 +332,7 @@ export default function AdminDashboardPage() {
                   <AdminTableHeadCell>Order</AdminTableHeadCell>
                   <AdminTableHeadCell>Amount</AdminTableHeadCell>
                   <AdminTableHeadCell>Status</AdminTableHeadCell>
-                  <AdminTableHeadCell>Escrow</AdminTableHeadCell>
+                  <AdminTableHeadCell>Payout hold</AdminTableHeadCell>
                   <AdminTableHeadCell>Payout</AdminTableHeadCell>
                 </AdminTableHead>
                 <AdminTableBody>

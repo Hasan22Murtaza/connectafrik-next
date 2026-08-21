@@ -35,7 +35,7 @@ const DEFAULT_NOTIFICATIONS: AdminNotification[] = [
   {
     id: "3",
     title: "Recent orders",
-    description: "Monitor escrow and payout status",
+    description: "Monitor payout hold and payout status",
     href: "/admin/orders",
     icon: Package,
     time: "Today",
