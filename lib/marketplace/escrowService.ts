@@ -48,23 +48,48 @@ async function findPayoutByOrder(
   serviceClient: SupabaseClient,
   orderId: string
 ): Promise<{ id: string; status: string | null; retry_count: number | null } | null> {
-  const { data } = await serviceClient
+  const { data, error } = await serviceClient
     .from('seller_payouts')
     .select('id, status, retry_count')
     .eq('order_id', orderId)
-    .maybeSingle()
+    .order('created_at', { ascending: false })
+    .limit(1)
 
-  if (!data?.id) return null
-  return {
-    id: data.id as string,
-    status: (data.status as string | null) ?? null,
-    retry_count: (data.retry_count as number | null) ?? 0,
+  if (error) {
+    throw new Error(`Failed to load seller payout: ${error.message}`)
   }
+
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row?.id) return null
+  return {
+    id: row.id as string,
+    status: (row.status as string | null) ?? null,
+    retry_count: (row.retry_count as number | null) ?? 0,
+  }
+}
+
+async function resetPayoutToPending(
+  serviceClient: SupabaseClient,
+  payoutId: string,
+  scheduledReleaseAt: string | null
+): Promise<void> {
+  await serviceClient
+    .from('seller_payouts')
+    .update({
+      status: 'pending',
+      payout_method: 'bank_transfer',
+      hold_reason: 'delivery_confirmed',
+      scheduled_release_at: scheduledReleaseAt,
+      notes: null,
+      failure_reason: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', payoutId)
 }
 
 /**
  * Create (or reuse) a pending seller_payouts row as soon as payout is scheduled.
- * Unique(order_id) means failed rows are reused instead of inserting a second payout.
+ * seller_payouts.order_id is UNIQUE, so failed/cancelled rows are reset instead of inserting a second payout.
  */
 async function ensurePendingSellerPayout(
   serviceClient: SupabaseClient,
@@ -76,6 +101,14 @@ async function ensurePendingSellerPayout(
 
   const existingPayout = await findPayoutByOrder(serviceClient, order.id)
   if (existingPayout) {
+    const reusable =
+      existingPayout.status === 'pending' ||
+      existingPayout.status === 'approved' ||
+      existingPayout.status === 'processing' ||
+      existingPayout.status === 'completed'
+    if (!reusable) {
+      await resetPayoutToPending(serviceClient, existingPayout.id, order.release_eligible_at)
+    }
     return existingPayout.id
   }
 
@@ -86,6 +119,7 @@ async function ensurePendingSellerPayout(
       order_id: order.id,
       amount: sellerNet,
       commission_amount: commission,
+      payout_method: 'bank_transfer',
       status: 'pending',
       gateway: 'stripe',
       hold_reason: 'delivery_confirmed',
@@ -99,17 +133,28 @@ async function ensurePendingSellerPayout(
   if (payoutError) {
     if (payoutError.code === '23505') {
       const dup = await findPayoutByOrder(serviceClient, order.id)
-      if (dup) return dup.id
+      if (dup) {
+        if (dup.status !== 'completed' && dup.status !== 'pending' && dup.status !== 'processing') {
+          await resetPayoutToPending(serviceClient, dup.id, order.release_eligible_at)
+        }
+        return dup.id
+      }
 
       const { data: byKey } = await serviceClient
         .from('seller_payouts')
-        .select('id')
+        .select('id, status')
         .eq('idempotency_key', idempotencyKey)
-        .maybeSingle()
+        .limit(1)
 
-      if (byKey?.id) return byKey.id as string
+      const keyRow = Array.isArray(byKey) ? byKey[0] : byKey
+      if (keyRow?.id) {
+        if (keyRow.status !== 'completed' && keyRow.status !== 'pending' && keyRow.status !== 'processing') {
+          await resetPayoutToPending(serviceClient, keyRow.id as string, order.release_eligible_at)
+        }
+        return keyRow.id as string
+      }
     }
-    throw new Error(payoutError.message)
+    throw new Error(`Failed to create seller payout: ${payoutError.message}`)
   }
 
   if (!payout?.id) {
@@ -135,21 +180,6 @@ export async function ensureScheduledSellerPayout(
   const typedOrder = order as MarketplaceOrder
   if (typedOrder.escrow_status !== 'scheduled') return null
   if (typedOrder.payout_status === 'completed') return null
-
-  const existing = await findPayoutByOrder(serviceClient, orderId)
-  if (existing?.status === 'cancelled') {
-    await serviceClient
-      .from('seller_payouts')
-      .update({
-        status: 'pending',
-        hold_reason: 'delivery_confirmed',
-        scheduled_release_at: typedOrder.release_eligible_at,
-        notes: null,
-        failure_reason: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-  }
 
   return ensurePendingSellerPayout(serviceClient, typedOrder)
 }
@@ -239,11 +269,18 @@ export async function confirmDeliveryWithHold(
     created_by: confirmedBy,
   })
 
+  const payoutId = await ensurePendingSellerPayout(serviceClient, {
+    ...typedOrder,
+    escrow_status: 'scheduled',
+    release_eligible_at: releaseEligibleAt.toISOString(),
+  })
+
   if (holdDays === 0) {
     const releaseResult = await releaseOrderEscrow(serviceClient, orderId)
     return {
       success: true,
       order_id: orderId,
+      payout_id: payoutId,
       seller_tier: tier,
       hold_days: holdDays,
       release_eligible_at: releaseEligibleAt.toISOString(),
@@ -251,12 +288,6 @@ export async function confirmDeliveryWithHold(
       message: 'Delivery confirmed. Payout is being processed.',
     }
   }
-
-  const payoutId = await ensurePendingSellerPayout(serviceClient, {
-    ...typedOrder,
-    escrow_status: 'scheduled',
-    release_eligible_at: releaseEligibleAt.toISOString(),
-  })
 
   return {
     success: true,
@@ -382,7 +413,7 @@ export async function processEscrowReleases(serviceClient: SupabaseClient) {
     .from('orders')
     .select('id')
     .eq('escrow_status', 'scheduled')
-    .not('payout_status', 'eq', 'completed')
+    .or('payout_status.is.null,payout_status.neq.completed')
 
   if (scheduledError) {
     throw new Error(scheduledError.message)
@@ -422,7 +453,7 @@ export async function processEscrowReleases(serviceClient: SupabaseClient) {
     .eq('escrow_status', 'scheduled')
     .is('dispute_id', null)
     .lte('release_eligible_at', now)
-    .not('payout_status', 'eq', 'completed')
+    .or('payout_status.is.null,payout_status.neq.completed')
 
   if (error) {
     throw new Error(error.message)
