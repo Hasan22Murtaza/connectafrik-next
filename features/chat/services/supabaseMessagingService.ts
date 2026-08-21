@@ -150,6 +150,8 @@ export interface RecentCallEntry {
   contact_name?: string | null
   contact_avatar_url?: string | null
   banner_url?: string | null
+  is_group_call?: boolean
+  other_participants?: Array<{ id: string; name: string; avatar_url?: string | null }>
 }
 
 type ThreadSubscriber = (thread: ChatThread) => void
@@ -1197,6 +1199,8 @@ export const supabaseMessagingService = {
           contact_name: r.contact_name ?? null,
           contact_avatar_url: r.contact_avatar_url ?? null,
           banner_url: r.banner_url ?? null,
+          is_group_call: Boolean(r.is_group_call || meta.isGroupCall),
+          other_participants: Array.isArray(r.other_participants) ? r.other_participants : [],
         }
       })
     } catch (err) {

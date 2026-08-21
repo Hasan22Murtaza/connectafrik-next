@@ -105,7 +105,8 @@ interface ProductionChatContextType {
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    participantIds?: string[],
   ) => Promise<void>
   joinCall: (threadId: string) => Promise<void>
   callRequests: Record<string, CallRequest>
@@ -764,7 +765,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    participantIds?: string[],
   ) => {
     const telemetryBase = {
       threadId,
@@ -827,7 +829,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const cachedParticipantIds = (thread?.participants || [])
         .map((p: any) => p?.id)
         .filter((id: string | undefined) => Boolean(id && id !== currentUser?.id)) as string[]
-      let isGroupCall = (thread?.participants?.length || 0) > 2 || thread?.type === 'group'
+      const recallParticipantIds = Array.from(
+        new Set(
+          (participantIds || [])
+            .map((id) => String(id || '').trim())
+            .filter((id) => id && id !== currentUser?.id),
+        ),
+      )
+      let isGroupCall =
+        (thread?.participants?.length || 0) > 2 ||
+        thread?.type === 'group' ||
+        recallParticipantIds.length > 1
 
       let resolvedTargetUserId = (targetUserId || '').trim()
       if (isGroupCall && resolvedTargetUserId) {
@@ -1037,6 +1049,31 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             },
           }
         }))
+      }
+
+      const originMemberIds = new Set(cachedParticipantIds)
+      const extraInviteIds = recallParticipantIds.filter((id) => !originMemberIds.has(id))
+      if (extraInviteIds.length > 0 && canonicalCallId && roomId) {
+        await Promise.allSettled(
+          extraInviteIds.map(async (uid) => {
+            const threadRes = await apiClient.post<{ data: { id: string } }>('/api/chat/threads', {
+              participant_ids: [uid],
+              type: 'direct',
+            })
+            const directThreadId = threadRes?.data?.id
+            if (!directThreadId || directThreadId === threadId) return
+            await apiClient.post(`/api/chat/threads/${directThreadId}/call-sessions`, {
+              call_id: canonicalCallId,
+              call_type: type,
+              room_id: roomId,
+              target_user_id: uid,
+              is_group_call: true,
+              caller_name: currentUser?.name || 'Unknown',
+              caller_avatar_url: currentUser?.avatarUrl || '',
+              provider: media.provider,
+            })
+          }),
+        )
       }
     } catch (error) {
       if (isFriendsRequiredForCallError(error)) {
@@ -1463,7 +1500,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             st === 'failed' ||
             lsNorm === 'ended' ||
             lsNorm === 'missed' ||
-            lsNorm === 'failed'
+            lsNorm === 'failed' ||
+            lsRaw === 'invite_cancelled'
           ) {
             clearCallRequest(row.thread_id)
           }

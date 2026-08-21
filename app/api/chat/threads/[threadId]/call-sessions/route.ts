@@ -4,6 +4,8 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 import { deleteLiveKitRoom, listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
+import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
+import type { CallInvitation, CallInviteStatus } from '@/shared/types/callInvite'
 
 /** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
 function pushRequestHeaders(request: NextRequest): Record<string, string> {
@@ -34,6 +36,7 @@ const PATCH_EVENTS = [
   'request_video',
   'accept_video',
   'decline_video',
+  'cancel_invite',
 ] as const
 type PatchEvent = (typeof PATCH_EVENTS)[number]
 type ServiceClient = ReturnType<typeof createServiceClient>
@@ -44,6 +47,182 @@ function isGroupSession(row: { metadata: unknown; participants: unknown }): bool
   if (meta.isGroupCall === true) return true
   const parts = row.participants
   return Array.isArray(parts) && parts.length > 2
+}
+
+function isInviteSidecar(row: { metadata?: unknown }): boolean {
+  const meta = mergeSessionMetadata(row.metadata, {})
+  return meta.isCallInvite === true
+}
+
+function invitationStatusFromRow(row: { status?: unknown; metadata?: unknown }): CallInviteStatus {
+  const st = String(row.status || '')
+  const meta = mergeSessionMetadata(row.metadata, {})
+  const ls = typeof meta.last_signal === 'string' ? meta.last_signal : ''
+  if (st === 'ringing' || st === 'initiated') return 'pending'
+  if (st === 'active') return 'accepted'
+  if (st === 'declined') return 'declined'
+  if (ls === 'invite_cancelled') return 'cancelled'
+  return 'expired'
+}
+
+async function listSessionsByCallId(serviceClient: ServiceClient, callId: string) {
+  const { data, error } = await serviceClient.from('call_sessions').select('*').eq('call_id', callId)
+  if (error) throw new Error(error.message)
+  return (data || []) as Array<Record<string, unknown>>
+}
+
+async function usersAreFriends(
+  serviceClient: ServiceClient,
+  userA: string,
+  userB: string,
+): Promise<boolean> {
+  const { data } = await serviceClient
+    .from('friend_requests')
+    .select('id')
+    .eq('status', 'accepted')
+    .or(
+      `and(sender_id.eq.${userA},receiver_id.eq.${userB}),and(sender_id.eq.${userB},receiver_id.eq.${userA})`,
+    )
+    .limit(1)
+  return Boolean(data?.length)
+}
+
+async function addInviteeToOriginSession(
+  serviceClient: ServiceClient,
+  callId: string,
+  inviteeId: string,
+) {
+  const rows = await listSessionsByCallId(serviceClient, callId)
+  const origin = rows.find((s) => !isInviteSidecar(s) && ACTIVE_STATUSES.includes(String(s.status)))
+  if (!origin || typeof origin.id !== 'string') return
+  const parts = Array.isArray(origin.participants) ? [...(origin.participants as string[])] : []
+  if (!parts.includes(inviteeId)) parts.push(inviteeId)
+  const now = new Date().toISOString()
+  await serviceClient
+    .from('call_sessions')
+    .update({
+      participants: parts,
+      metadata: mergeSessionMetadata(origin.metadata, {
+        isGroupCall: true,
+        callParticipantIds: parts,
+        last_signal: 'participant_joined',
+        joinedBy: inviteeId,
+        joinedAt: now,
+        activeParticipantCount: parts.length,
+      }),
+      updated_at: now,
+    })
+    .eq('id', origin.id)
+
+  await Promise.all(
+    rows
+      .filter((s) => s.id !== origin.id && ACTIVE_STATUSES.includes(String(s.status)))
+      .map((s) =>
+        serviceClient
+          .from('call_sessions')
+          .update({
+            metadata: mergeSessionMetadata(s.metadata, {
+              isGroupCall: true,
+              callParticipantIds: parts,
+            }),
+            updated_at: now,
+          })
+          .eq('id', s.id),
+      ),
+  )
+}
+
+async function endPendingInviteSidecars(
+  serviceClient: ServiceClient,
+  callId: string,
+  exceptId: unknown,
+  signal: 'invite_cancelled' | 'ended',
+) {
+  const rows = await listSessionsByCallId(serviceClient, callId)
+  const now = new Date().toISOString()
+  await Promise.all(
+    rows
+      .filter(
+        (s) =>
+          isInviteSidecar(s) &&
+          s.id !== exceptId &&
+          ACTIVE_STATUSES.includes(String(s.status)) &&
+          String(s.status) !== 'active',
+      )
+      .map((s) =>
+        serviceClient
+          .from('call_sessions')
+          .update({
+            status: 'ended',
+            ended_at: now,
+            updated_at: now,
+            metadata: mergeSessionMetadata(s.metadata, { last_signal: signal, endedAt: now }),
+          })
+          .eq('id', s.id),
+      ),
+  )
+}
+
+async function endAllSiblingSessions(
+  serviceClient: ServiceClient,
+  callId: string,
+  exceptId: unknown,
+) {
+  const rows = await listSessionsByCallId(serviceClient, callId)
+  const now = new Date().toISOString()
+  await Promise.all(
+    rows
+      .filter((s) => s.id !== exceptId && ACTIVE_STATUSES.includes(String(s.status)))
+      .map((s) =>
+        serviceClient
+          .from('call_sessions')
+          .update({
+            status: 'ended',
+            ended_at: now,
+            updated_at: now,
+            metadata: mergeSessionMetadata(s.metadata, { last_signal: 'ended', endedAt: now }),
+          })
+          .eq('id', s.id),
+      ),
+  )
+}
+
+async function buildInvitations(
+  serviceClient: ServiceClient,
+  callId: string,
+): Promise<CallInvitation[]> {
+  const rows = await listSessionsByCallId(serviceClient, callId)
+  const sidecars = rows.filter((s) => isInviteSidecar(s))
+  if (sidecars.length === 0) return []
+  const userIds = sidecars
+    .map((s) => {
+      const meta = mergeSessionMetadata(s.metadata, {})
+      return typeof meta.targetUserId === 'string' ? meta.targetUserId : ''
+    })
+    .filter(Boolean)
+  const { data: profiles } = userIds.length
+    ? await serviceClient
+        .from('profiles')
+        .select('id, full_name, username, avatar_url, status')
+        .in('id', userIds)
+    : { data: [] as Array<Record<string, unknown>> }
+  const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+  return sidecars.map((s) => {
+    const meta = mergeSessionMetadata(s.metadata, {})
+    const userId = typeof meta.targetUserId === 'string' ? meta.targetUserId : ''
+    const profile = profileMap.get(userId)
+    return {
+      user_id: userId,
+      thread_id: String(s.thread_id || ''),
+      session_id: String(s.id || ''),
+      status: invitationStatusFromRow(s),
+      invited_at: typeof s.created_at === 'string' ? s.created_at : new Date().toISOString(),
+      full_name: profile?.full_name ?? null,
+      username: profile?.username ?? null,
+      avatar_url: profile?.avatar_url ?? null,
+      presence_status: profile?.status ?? null,
+    }
+  })
 }
 
 const toPushDataRecord = (data: Record<string, unknown>): Record<string, string> => {
@@ -407,9 +586,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
       const row = Array.isArray(rows) && rows.length > 0 ? sanitizeCallSession(rows[0]) : null
 
       if (includeParticipants && row) {
-        const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
+        const callIdForExtras = typeof row.call_id === 'string' ? row.call_id : ''
+        const related = callIdForExtras ? await listSessionsByCallId(serviceClient, callIdForExtras) : [row]
+        const participantIds = Array.from(
+          new Set(
+            related.flatMap((s) => (Array.isArray(s.participants) ? (s.participants as string[]) : [])),
+          ),
+        )
         const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds)
-        return jsonResponse({ session: row, participant_profiles })
+        const invitations = callIdForExtras ? await buildInvitations(serviceClient, callIdForExtras) : []
+        return jsonResponse({ session: row, participant_profiles, invitations })
       }
 
       return jsonResponse({ session: row })
@@ -431,9 +617,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const row = Array.isArray(rows) && rows.length > 0 ? sanitizeCallSession(rows[0]) : null
 
     if (includeParticipants && row) {
-      const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
+      const callIdForExtras = typeof row.call_id === 'string' ? row.call_id : callId
+      const related = callIdForExtras ? await listSessionsByCallId(serviceClient, callIdForExtras) : [row]
+      const participantIds = Array.from(
+        new Set(
+          related.flatMap((s) => (Array.isArray(s.participants) ? (s.participants as string[]) : [])),
+        ),
+      )
       const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds)
-      return jsonResponse({ session: row, participant_profiles })
+      const invitations = callIdForExtras ? await buildInvitations(serviceClient, callIdForExtras) : []
+      return jsonResponse({ session: row, participant_profiles, invitations })
     }
 
     return jsonResponse({ session: row })
@@ -486,6 +679,154 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     if (!(await assertThreadMember(serviceClient, threadId, user.id))) {
       return errorResponse('Thread not found or access denied', 404)
+    }
+
+    const { data: liveSameCallRows } = await serviceClient
+      .from('call_sessions')
+      .select('*')
+      .eq('call_id', call_id)
+      .in('status', ACTIVE_STATUSES)
+    const liveSameCall = (liveSameCallRows || []) as Array<Record<string, unknown>>
+    const originForInvite =
+      liveSameCall.find((s) => !isInviteSidecar(s)) || liveSameCall[0] || null
+    const isMidCallInvite = Boolean(target_user_id) && Boolean(originForInvite)
+
+    if (isMidCallInvite && target_user_id && originForInvite) {
+      if (target_user_id === user.id) {
+        return errorResponse('You cannot invite yourself to the call.', 400)
+      }
+      const originRoom = typeof originForInvite.room_id === 'string' ? originForInvite.room_id : ''
+      if (originRoom && originRoom !== room_id) {
+        return errorResponse('Invite must use the existing call room.', 400)
+      }
+      const originParts = Array.isArray(originForInvite.participants)
+        ? (originForInvite.participants as string[])
+        : []
+      if (originParts.some((id) => idsEqual(id, target_user_id))) {
+        return errorResponse('This person is already in the call.', 409)
+      }
+      const pendingDup = liveSameCall.find((s) => {
+        if (!isInviteSidecar(s)) return false
+        if (!ACTIVE_STATUSES.includes(String(s.status)) || String(s.status) === 'active') return false
+        const meta = mergeSessionMetadata(s.metadata, {})
+        return typeof meta.targetUserId === 'string' && idsEqual(meta.targetUserId, target_user_id)
+      })
+      if (pendingDup) {
+        return errorResponse('This person has already been invited to this call.', 409)
+      }
+      const friends = await usersAreFriends(serviceClient, user.id, target_user_id)
+      if (!friends) {
+        return errorResponse('You need to be friends to add this person to the call.', 403)
+      }
+      try {
+        const busy = await getBusyMapForUserIds(serviceClient, [target_user_id], call_id)
+        if (busy[target_user_id]) {
+          return errorResponse('This person is already in another call.', 409)
+        }
+      } catch {
+        /* busy map is advisory; still create the invite */
+      }
+
+      const inviteMetadata = mergeSessionMetadata(null, {
+        targetUserId: target_user_id,
+        isGroupCall: true,
+        isCallInvite: true,
+        inviteStatus: 'pending',
+        originThreadId: originForInvite.thread_id,
+        callParticipantIds: Array.from(new Set([...originParts, user.id, target_user_id])),
+        callerName: caller_name,
+        callerAvatarUrl: caller_avatar_url,
+        callType: call_type,
+        roomId: room_id,
+        callId: call_id,
+        timestamp: new Date().toISOString(),
+        last_signal: 'ringing',
+        ...(provider ? { provider } : {}),
+      })
+      const now = new Date().toISOString()
+      const { data: session, error: insertError } = await serviceClient
+        .from('call_sessions')
+        .insert({
+          thread_id: threadId,
+          call_type,
+          status: 'ringing',
+          started_at: now,
+          created_by: user.id,
+          participants: [user.id],
+          room_id,
+          call_id,
+          metadata: inviteMetadata,
+          created_at: now,
+          updated_at: now,
+        })
+        .select('*')
+        .single()
+
+      if (insertError || !session) {
+        return errorResponse(insertError?.message || 'Failed to create call invitation', 400)
+      }
+
+      await touchThreadPreview(
+        serviceClient,
+        threadId,
+        `Incoming ${call_type === 'video' ? 'video' : 'audio'} call`,
+      )
+
+      const sentAt = new Date().toISOString()
+      const pushData = toPushDataRecord({
+        type: 'ringing',
+        call_type: call_type,
+        room_id,
+        thread_id: threadId,
+        actor_name: caller_name,
+        call_id,
+        callId: call_id,
+        caller_id: user.id,
+        caller_name,
+        caller_avatar_url: caller_avatar_url || '',
+        is_group_call: 'true',
+        isGroupCall: 'true',
+        is_call_invite: 'true',
+        sent_at: sentAt,
+        url: `/call/${room_id}`,
+      })
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/push-notifications`, {
+          method: 'POST',
+          headers: pushRequestHeaders(request),
+          body: JSON.stringify({
+            user_id: target_user_id,
+            title: `Incoming ${call_type === 'video' ? 'Video' : 'Audio'} Call`,
+            body: `${caller_name} is adding you to a call...`,
+            notification_type: 'call',
+            skip_db: true,
+            tag: `incoming-call-${threadId}`,
+            requireInteraction: true,
+            silent: false,
+            vibrate: [200, 100, 200, 100, 200, 100, 200],
+            data: pushData,
+          }),
+          cache: 'no-store',
+        })
+        if (!response.ok) {
+          const message = await response.text().catch(() => '')
+          console.error('Failed to send invite ringing push', {
+            status: response.status,
+            body: message,
+            user_id: target_user_id,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to call /api/push-notifications for invite', {
+          error: error instanceof Error ? error.message : String(error),
+          user_id: target_user_id,
+        })
+      }
+
+      return jsonResponse({
+        session: sanitizeCallSession(session),
+        invitations: await buildInvitations(serviceClient, call_id),
+      })
     }
 
     const live = await listLiveSessionsForThread(serviceClient, threadId)
@@ -658,7 +999,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (!call_id) return errorResponse('call_id is required', 400)
     if (!PATCH_EVENTS.includes(event as PatchEvent)) {
       return errorResponse(
-        'event must be accept | declined | end | missed | join | leave | heartbeat | switch_to_video | switch_to_audio | request_video | accept_video | decline_video',
+        'event must be accept | declined | end | missed | join | leave | heartbeat | switch_to_video | switch_to_audio | request_video | accept_video | decline_video | cancel_invite',
         400,
       )
     }
@@ -740,8 +1081,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     let nextHeartbeatAt: string | null = row.last_heartbeat_at ?? null
     let metaPatch: Record<string, unknown> = {}
     const groupCall = isGroupSession(row)
+    const inviteSidecar = isInviteSidecar(row)
 
-    if (event === 'accept') {
+    if (event === 'cancel_invite') {
+      if (!inviteSidecar) {
+        return errorResponse('This session is not a call invitation', 400)
+      }
+      if (!idsEqual(row.created_by, user.id)) {
+        return errorResponse('Only the person who sent the invitation can cancel it', 403)
+      }
+      if (!['initiated', 'ringing'].includes(String(row.status))) {
+        return errorResponse('Invitation is no longer pending', 409)
+      }
+      nextStatus = 'ended'
+      nextEndedAt = now
+      metaPatch = {
+        cancelledBy: user.id,
+        cancelledAt: now,
+        last_signal: 'invite_cancelled',
+        endedAt: now,
+        inviteStatus: 'cancelled',
+      }
+    } else if (event === 'accept') {
       nextStatus = 'active'
       nextHeartbeatAt = now
       if (!nextParticipants.includes(user.id)) nextParticipants.push(user.id)
@@ -749,6 +1110,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         acceptedBy: user.id,
         acceptedAt: now,
         last_signal: 'active',
+        ...(inviteSidecar ? { inviteStatus: 'accepted', isGroupCall: true } : {}),
       }
     } else if (event === 'join') {
       if (!['active', 'ringing', 'initiated'].includes(String(row.status))) {
@@ -801,7 +1163,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         nextStatus = 'active'
       }
     } else if (event === 'declined') {
-      if (groupCall) {
+      if (inviteSidecar) {
+        nextStatus = 'declined'
+        nextEndedAt = now
+        const declinedList = Array.isArray(baseMeta.declinedUserIds)
+          ? [...(baseMeta.declinedUserIds as string[])]
+          : []
+        if (!declinedList.includes(user.id)) declinedList.push(user.id)
+        metaPatch = {
+          rejectedBy: user.id,
+          rejectedAt: now,
+          last_signal: 'declined',
+          declinedUserIds: declinedList,
+          inviteStatus: 'declined',
+        }
+      } else if (groupCall) {
         nextParticipants = nextParticipants.filter((id) => id !== user.id)
         const declinedList = Array.isArray(baseMeta.declinedUserIds)
           ? [...(baseMeta.declinedUserIds as string[])]
@@ -932,7 +1308,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
     } else if (event === 'missed') {
       const extra = body.extra_metadata && typeof body.extra_metadata === 'object' ? body.extra_metadata : {}
-      if (row.status === 'active') {
+      if (inviteSidecar && String(row.status) !== 'active') {
+        nextStatus = 'missed'
+        nextEndedAt = now
+        metaPatch = {
+          missedBy: user.id,
+          missedAt: now,
+          last_signal: 'missed',
+          inviteStatus: 'expired',
+          ...extra,
+        }
+      } else if (row.status === 'active') {
         if (groupCall) {
           nextStatus = 'active'
           metaPatch = {
@@ -1009,6 +1395,30 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse(updateError?.message || 'Failed to update call session', 400)
     }
 
+    const callIdForSync = String(updated.call_id || call_id || '').trim()
+    if (event === 'accept' && inviteSidecar && nextStatus === 'active' && callIdForSync) {
+      try {
+        await addInviteeToOriginSession(serviceClient, callIdForSync, user.id)
+      } catch (err) {
+        console.error('Failed to attach invitee to origin call session', err)
+      }
+    }
+    if (
+      !inviteSidecar &&
+      callIdForSync &&
+      ['ended', 'missed', 'declined', 'failed'].includes(nextStatus)
+    ) {
+      try {
+        if (event === 'end') {
+          await endAllSiblingSessions(serviceClient, callIdForSync, row.id)
+        } else {
+          await endPendingInviteSidecars(serviceClient, callIdForSync, row.id, 'ended')
+        }
+      } catch (err) {
+        console.error('Failed to close related call invitations', err)
+      }
+    }
+
     if (['ended', 'missed', 'declined', 'failed'].includes(nextStatus)) {
       void deleteLiveKitRoomIfEmpty(updated)
     }
@@ -1044,8 +1454,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const shouldSendTerminalStatusPush =
       event === 'accept' ||
       event === 'end' ||
-      (event === 'declined' && !groupCall) ||
-      (event === 'missed' && !groupCall)
+      event === 'cancel_invite' ||
+      (event === 'declined' && (!groupCall || inviteSidecar)) ||
+      (event === 'missed' && (!groupCall || inviteSidecar))
 
     if (
       shouldSendTerminalStatusPush &&

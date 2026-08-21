@@ -134,7 +134,7 @@ export function useIncomingCallTerminalSignals({
 
       if (t === 'declined' || last === 'declined') fireTerminal('declined');
       else if (t === 'missed' || last === 'missed') fireTerminal('missed');
-      else if (t === 'ended' || last === 'ended') fireTerminal('ended');
+      else if (t === 'ended' || last === 'ended' || last === 'invite_cancelled') fireTerminal('ended');
       else if (t === 'failed' || last === 'failed') fireTerminal('failed');
     };
 

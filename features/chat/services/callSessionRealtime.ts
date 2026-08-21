@@ -101,6 +101,7 @@ export function resolveSessionStatusFromRow(row: Record<string, unknown>): strin
 /** Normalize chat message_type or signal string to call_sessions.status vocabulary. */
 export function toCallSessionStatusMessageType(mt: string): string {
   if (!mt) return mt
+  if (mt === 'invite_cancelled' || mt === 'ring_timeout') return 'ended'
   return mt
 }
 
@@ -335,6 +336,7 @@ export async function patchCallSessionWithRetry(
       | 'request_video'
       | 'accept_video'
       | 'decline_video'
+      | 'cancel_invite'
     duration_seconds?: number
     force_end?: boolean
     device_session_id?: string

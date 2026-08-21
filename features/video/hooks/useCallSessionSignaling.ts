@@ -369,6 +369,14 @@ export function useCallSessionSignaling({
               include_participants: '1',
             });
             if (res?.participant_profiles) setParticipantProfiles(res.participant_profiles);
+            const sessionMeta =
+              res?.session?.metadata && typeof res.session.metadata === 'object'
+                ? (res.session.metadata as Record<string, unknown>)
+                : {};
+            if (sessionMeta.isGroupCall === true) {
+              isGroupCallSessionRef.current = true;
+              setIsGroupCallSession(true);
+            }
             const sessionStatus = String(res?.session?.status || '');
             if (
               sessionStatus === 'ended' ||
@@ -581,7 +589,8 @@ export function useCallSessionSignaling({
         | 'switch_to_audio'
         | 'request_video'
         | 'accept_video'
-        | 'decline_video',
+        | 'decline_video'
+        | 'cancel_invite',
     ) => {
       const activeCallId = (callIdHint || '').trim();
       if (!threadId || !activeCallId) return false;

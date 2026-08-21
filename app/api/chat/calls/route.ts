@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const { data: sessionRows, error } = await serviceClient
       .from('call_sessions')
       .select(
-        'id, thread_id, status, call_type, metadata, started_at, ended_at, updated_at, created_at, created_by, call_id'
+        'id, thread_id, status, call_type, metadata, started_at, ended_at, updated_at, created_at, created_by, call_id, participants'
       )
       .in('thread_id', threadIds)
       .order('updated_at', { ascending: false })
@@ -80,7 +80,28 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const threadIdsToFetch = [...new Set(pageRows.map((r: { thread_id: string }) => r.thread_id))]
+    const pageCallIds = [
+      ...new Set(pageRows.map((r: { call_id?: string }) => (typeof r.call_id === 'string' ? r.call_id : '')).filter(Boolean)),
+    ]
+    const { data: relatedRows } = pageCallIds.length
+      ? await serviceClient
+          .from('call_sessions')
+          .select('id, thread_id, status, call_type, metadata, started_at, ended_at, updated_at, created_at, created_by, call_id, participants')
+          .in('call_id', pageCallIds)
+          .in('thread_id', threadIds)
+      : { data: [] as any[] }
+
+    const relatedByCallId = new Map<string, any[]>()
+    for (const s of relatedRows || []) {
+      const cid = typeof s.call_id === 'string' ? s.call_id : ''
+      if (!cid) continue
+      const arr = relatedByCallId.get(cid) || []
+      arr.push(s)
+      relatedByCallId.set(cid, arr)
+    }
+
+    const allRelated = [...pageRows, ...(relatedRows || [])]
+    const threadIdsToFetch = [...new Set(allRelated.map((r: { thread_id: string }) => r.thread_id))]
     const { data: threadsRaw } = await serviceClient
       .from('chat_threads')
       .select(
@@ -108,7 +129,21 @@ export async function GET(request: NextRequest) {
       .select('thread_id, user_id')
       .in('thread_id', threadIdsToFetch)
 
-    const participantUserIds = [...new Set((participants || []).map((p: any) => p.user_id))]
+    const callUserIds = new Set<string>()
+    for (const s of allRelated) {
+      if (typeof s.created_by === 'string') callUserIds.add(s.created_by)
+      if (Array.isArray(s.participants)) {
+        for (const id of s.participants) if (typeof id === 'string') callUserIds.add(id)
+      }
+      const meta = s.metadata && typeof s.metadata === 'object' ? (s.metadata as Record<string, unknown>) : {}
+      if (typeof meta.targetUserId === 'string') callUserIds.add(meta.targetUserId)
+      if (typeof meta.target_user_id === 'string') callUserIds.add(meta.target_user_id)
+      const extraIds = Array.isArray(meta.callParticipantIds) ? meta.callParticipantIds : []
+      for (const id of extraIds) if (typeof id === 'string') callUserIds.add(id)
+    }
+    const participantUserIds = [
+      ...new Set([...(participants || []).map((p: any) => p.user_id), ...callUserIds]),
+    ]
     const { data: profiles } = participantUserIds.length
       ? await serviceClient
           .from('profiles')
@@ -125,30 +160,84 @@ export async function GET(request: NextRequest) {
     }
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
-    const result = pageRows.map((r: any) => {
-      const thread = threadMap.get(r.thread_id)
-      const participantIds = participantsByThread.get(r.thread_id) || []
-      const otherId = participantIds.find((id: string) => id !== user.id) || null
+    function formatOtherNames(others: Array<{ name: string }>): string {
+      const names = others.map((o) => o.name).filter(Boolean)
+      if (names.length === 0) return 'Unknown'
+      if (names.length === 1) return names[0]
+      if (names.length === 2) return `${names[0]} & ${names[1]}`
+      if (names.length === 3) return `${names[0]}, ${names[1]} & ${names[2]}`
+      return `${names[0]}, ${names[1]} & ${names.length - 2} others`
+    }
+
+    const emittedCallIds = new Set<string>()
+    const result: any[] = []
+    for (const r of pageRows as any[]) {
+      const callKey = typeof r.call_id === 'string' && r.call_id ? r.call_id : r.id
+      if (emittedCallIds.has(callKey)) continue
+      emittedCallIds.add(callKey)
+
+      const group = relatedByCallId.get(callKey) || [r]
+      const primary =
+        group.find((s) => {
+          const meta = s.metadata && typeof s.metadata === 'object' ? (s.metadata as Record<string, unknown>) : {}
+          return meta.isCallInvite !== true
+        }) || group[0] || r
+
+      const otherIds = new Set<string>()
+      let isGroupCall = false
+      for (const s of group) {
+        const meta = (s.metadata && typeof s.metadata === 'object' ? s.metadata : {}) as Record<string, unknown>
+        if (meta.isGroupCall === true || meta.isCallInvite === true) isGroupCall = true
+        if (typeof s.created_by === 'string' && s.created_by !== user.id) otherIds.add(s.created_by)
+        if (Array.isArray(s.participants)) {
+          for (const id of s.participants) if (typeof id === 'string' && id !== user.id) otherIds.add(id)
+        }
+        if (typeof meta.targetUserId === 'string' && meta.targetUserId !== user.id) otherIds.add(meta.targetUserId)
+        if (typeof meta.target_user_id === 'string' && meta.target_user_id !== user.id) otherIds.add(meta.target_user_id)
+        const extraIds = Array.isArray(meta.callParticipantIds) ? meta.callParticipantIds : []
+        for (const id of extraIds) if (typeof id === 'string' && id !== user.id) otherIds.add(id)
+      }
+      const thread = threadMap.get(primary.thread_id)
+      const threadParticipantIds = participantsByThread.get(primary.thread_id) || []
+      for (const id of threadParticipantIds) if (id !== user.id) otherIds.add(id)
+
+      const otherParticipants = Array.from(otherIds).map((id) => {
+        const profile = profileMap.get(id)
+        return {
+          id,
+          name: profile?.full_name || profile?.username || 'Unknown',
+          avatar_url: profile?.avatar_url || null,
+        }
+      })
+      if (otherParticipants.length > 1) isGroupCall = true
+
+      const otherId = otherParticipants[0]?.id || null
       const otherProfile = otherId ? profileMap.get(otherId) : null
-      const contactName =
-        otherProfile?.full_name ||
-        otherProfile?.username ||
-        thread?.title ||
-        thread?.name ||
-        'Unknown'
+      const contactName = isGroupCall
+        ? (thread?.type === 'group' ? thread?.title || thread?.name : null) || formatOtherNames(otherParticipants)
+        : otherProfile?.full_name ||
+          otherProfile?.username ||
+          thread?.title ||
+          thread?.name ||
+          'Unknown'
 
-      const meta = (r.metadata && typeof r.metadata === 'object' ? r.metadata : {}) as Record<string, unknown>
-      const displayAt = r.ended_at || r.updated_at || r.created_at
-      const sessionId = typeof r.id === 'string' ? r.id : r.call_id ? `${r.thread_id}:${r.call_id}` : `${r.thread_id}:${displayAt}`
+      const meta = (primary.metadata && typeof primary.metadata === 'object' ? primary.metadata : {}) as Record<string, unknown>
+      const displayAt = primary.ended_at || primary.updated_at || primary.created_at
+      const sessionId =
+        typeof primary.call_id === 'string' && primary.call_id
+          ? primary.call_id
+          : typeof primary.id === 'string'
+            ? primary.id
+            : `${primary.thread_id}:${displayAt}`
 
-      return {
+      result.push({
         session_id: sessionId,
-        thread_id: r.thread_id,
+        thread_id: primary.thread_id,
         created_at: displayAt,
-        message_type: statusToMessageType(r.status),
-        call_direction: resolveCallDirection(user.id, r.created_by, r.status),
-        call_type: r.call_type === 'video' ? 'video' : 'audio',
-        metadata: { ...meta, callType: r.call_type || meta.callType },
+        message_type: statusToMessageType(primary.status),
+        call_direction: resolveCallDirection(user.id, primary.created_by, primary.status),
+        call_type: primary.call_type === 'video' ? 'video' : 'audio',
+        metadata: { ...meta, callType: primary.call_type || meta.callType, isGroupCall },
         thread_name: thread?.title || thread?.name || null,
         thread_type: thread?.type ?? null,
         contact_id: otherId,
@@ -157,9 +246,11 @@ export async function GET(request: NextRequest) {
         contact_status: otherProfile?.status || 'offline',
         contact_last_seen: otherProfile?.last_seen || null,
         banner_url: thread?.banner_url ?? null,
-        created_by: r.created_by ?? null,
-      }
-    })
+        created_by: primary.created_by ?? null,
+        is_group_call: isGroupCall,
+        other_participants: otherParticipants,
+      })
+    }
     result.sort((a, b) => toTime(b.created_at) - toTime(a.created_at))
 
     return jsonResponse({

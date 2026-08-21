@@ -48,6 +48,7 @@ import type { NormalizedParticipant } from '@/features/video/core/models';
 import CallControls from '@/features/video/ui/CallControls';
 import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
 import AddPeoplePanel from '@/features/video/ui/AddPeoplePanel';
+import { useCallInvite } from '@/features/video/hooks/useCallInvite';
 import MessageInput from '@/features/video/ui/MessageInput';
 import GroupCallParticipantsStrip from '@/features/video/ui/GroupCallParticipantsStrip';
 import type { CallParticipantProfile } from '@/features/video/ui/GroupCallParticipantsStrip';
@@ -140,10 +141,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const [showMessageInput, setShowMessageInput] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [showAddPeople, setShowAddPeople] = useState(false);
-  const [addPeopleSearch, setAddPeopleSearch] = useState('');
-  const [addPeopleResults, setAddPeopleResults] = useState<any[]>([]);
-  const [addPeopleBusyById, setAddPeopleBusyById] = useState<Record<string, boolean>>({});
-  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(0);
   const [presenterName, setPresenterName] = useState('');
   /** Runtime call type — can switch audio ↔ video mid-call. */
@@ -808,6 +805,14 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               include_participants: '1',
             });
             if (res?.participant_profiles) setParticipantProfiles(res.participant_profiles);
+            const sessionMeta =
+              res?.session?.metadata && typeof res.session.metadata === 'object'
+                ? (res.session.metadata as Record<string, unknown>)
+                : {};
+            if (sessionMeta.isGroupCall === true) {
+              isGroupCallSessionRef.current = true;
+              setIsGroupCallSession(true);
+            }
             const sessionStatus = String(res?.session?.status || '');
             if (sessionStatus === 'ended' || sessionStatus === 'declined' || sessionStatus === 'missed') {
               closeCall(1000);
@@ -882,55 +887,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     const initial = setTimeout(poll, 4000);
     return () => { cancelled = true; clearInterval(interval); clearTimeout(initial); };
   }, [isOpen, threadId, callStatus, shouldHandleSignal, closeCall, callIdHint]);
-
-  // --------------------------------------------------------------------------
-  // Add-people search (debounced 300ms)
-  // --------------------------------------------------------------------------
-  useEffect(() => {
-    if (!showAddPeople || !addPeopleSearch.trim() || addPeopleSearch.length < 2) {
-      setAddPeopleResults([]);
-      return;
-    }
-    const t = setTimeout(async () => {
-      try {
-        const res = await apiClient.get<{ data: any[] }>('/api/users/search', {
-          q: addPeopleSearch, limit: 10,
-        });
-        if (isMountedRef.current) {
-          setAddPeopleResults((res?.data || []).filter((u: any) => u.id !== currentUserId));
-        }
-      } catch { setAddPeopleResults([]); }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [addPeopleSearch, showAddPeople, currentUserId]);
-
-  // Who is in another call (call_sessions), excluding this meeting's call_id
-  useEffect(() => {
-    if (!showAddPeople || addPeopleResults.length === 0) {
-      setAddPeopleBusyById({});
-      return;
-    }
-    let cancelled = false;
-    const ids = addPeopleResults.map((u: any) => u.id).filter(Boolean);
-    const run = async () => {
-      try {
-        const exclude = (callIdRef.current || callIdHint || '').trim();
-        const res = await apiClient.post<{ busy: Record<string, boolean> }>(
-          '/api/videosdk/room',
-          {
-            busy_check: true,
-            user_ids: ids,
-            ...(exclude ? { exclude_call_id: exclude } : {}),
-          },
-        );
-        if (!cancelled && res?.busy) setAddPeopleBusyById(res.busy);
-      } catch {
-        if (!cancelled) setAddPeopleBusyById({});
-      }
-    };
-    void run();
-    return () => { cancelled = true; };
-  }, [showAddPeople, addPeopleResults, callIdHint]);
 
   // --------------------------------------------------------------------------
   // Handlers
@@ -1106,55 +1062,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     } catch { /* ignore */ }
   }, [messageText, threadId, currentUserId, user]);
 
-  const handleInviteToCall = useCallback(
-    async (targetUser: { id: string; full_name: string; username: string }) => {
-      if (!currentUserId || invitingUserId) return;
-      const exclude = (callIdRef.current || callIdHint || '').trim();
-      try {
-        const busyRes = await apiClient.post<{ busy: Record<string, boolean> }>(
-          '/api/videosdk/room',
-          {
-            busy_check: true,
-            user_ids: [targetUser.id],
-            ...(exclude ? { exclude_call_id: exclude } : {}),
-          },
-        );
-        if (busyRes.busy?.[targetUser.id]) {
-          toast.error('This person is already in another call.');
-          return;
-        }
-      } catch {
-        /* proceed; server invite may still be authoritative */
-      }
-      setInvitingUserId(targetUser.id);
-      try {
-        const threadRes = await apiClient.post<{ data: { id: string } }>(
-          '/api/chat/threads', { participant_ids: [targetUser.id], type: 'direct' },
-        );
-        const directThreadId = threadRes?.data?.id;
-        if (!directThreadId) throw new Error('Thread not found');
-        await apiClient.post(`/api/chat/threads/${directThreadId}/call-sessions`, {
-          call_id: callIdRef.current || callIdHint || '',
-          call_type: effectiveCallType,
-          room_id: roomIdHint || meetingId,
-          target_user_id: targetUser.id,
-          is_group_call: true,
-          caller_name: resolvedCallerName,
-          provider: 'videosdk',
-        });
-        setShowAddPeople(false);
-        setAddPeopleSearch('');
-        setAddPeopleResults([]);
-      } catch (err: any) {
-        console.error('[MeetingContainer] Failed to invite:', err);
-        toast.error(err?.message || 'Could not add this person to the call.');
-      } finally {
-        setInvitingUserId(null);
-      }
-    },
-    [currentUserId, invitingUserId, callIdHint, effectiveCallType, roomIdHint, meetingId, resolvedCallerName],
-  );
-
   // --------------------------------------------------------------------------
   // Derived participant state
   //
@@ -1178,6 +1085,19 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     remoteParticipantIds.forEach((id) => s.add(id));
     return Array.from(s);
   }, [localId, remoteParticipantIds]);
+
+  const callInvite = useCallInvite({
+    enabled: showAddPeople,
+    currentUserId,
+    originThreadId: threadId,
+    callId: callIdHint || '',
+    callIdRef,
+    roomId: roomIdHint || meetingId,
+    callType: effectiveCallType,
+    callerName: resolvedCallerName,
+    provider: 'videosdk',
+    inCallUserIds,
+  });
 
   const participantCount = remoteParticipantIds.length + 1; // +1 for local
   const isGroupCall = remoteParticipantIds.length > 1;
@@ -1492,12 +1412,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             </div>
           )}
 
-        {/* {(isGroupCall || isGroupCallSession) && callStatus === 'connected' && !remotePresenter && !isLocalPresenting && (
+        {(isGroupCall || isGroupCallSession) && callStatus === 'connected' && !remotePresenter && !isLocalPresenting && (
           <GroupCallParticipantsStrip
             profiles={participantProfiles}
             totalCount={participantCount}
           />
-        )} */}
+        )}
 
         {/* ── Participant count badge ───────────────────────────────────── */}
         {/* {callStatus === 'connected' &&
@@ -1600,21 +1520,27 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
       {/* ── Add-people slide-over panel ───────────────────────────────────── */}
       {showAddPeople && (
         <AddPeoplePanel
-          addPeopleSearch={addPeopleSearch}
-          addPeopleResults={addPeopleResults}
+          addPeopleSearch={callInvite.search}
+          addPeopleResults={callInvite.visiblePeople}
           participants={Array.from(participants.values()).filter(
             (p: any) => p.id !== localId,
           )}
           inCallUserIds={inCallUserIds}
-          busyByUserId={addPeopleBusyById}
-          invitingUserId={invitingUserId}
-          onSearchChange={setAddPeopleSearch}
+          busyByUserId={callInvite.busyByUserId}
+          invitingUserId={callInvite.invitingUserId}
+          cancellingUserId={callInvite.cancellingUserId}
+          invitations={callInvite.invitations}
+          selectedIds={callInvite.selectedIds}
+          friendsLoading={callInvite.friendsLoading}
+          onSearchChange={callInvite.setSearch}
           onClose={() => {
             setShowAddPeople(false);
-            setAddPeopleSearch('');
-            setAddPeopleBusyById({});
+            callInvite.reset();
           }}
-          onInvite={handleInviteToCall}
+          onInvite={callInvite.inviteOne}
+          onInviteSelected={callInvite.inviteSelected}
+          onToggleSelected={callInvite.toggleSelected}
+          onCancelInvite={callInvite.cancelInvite}
         />
       )}
 

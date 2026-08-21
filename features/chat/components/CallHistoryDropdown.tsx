@@ -148,24 +148,43 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
           ? thread.participants.filter((p: ChatParticipant) => p.id !== currentUser?.id)
           : []
         const primary = otherParticipants[0] ?? (thread ? thread.participants[0] : null)
-        const isGroup = thread
-          ? thread.type === 'group' ||
-            Boolean(thread.group_id) ||
-            otherParticipants.length > 1 ||
-            Boolean((thread as any).isGroup)
-          : entry.thread_type === 'group'
+        const isGroup = Boolean(
+          entry.is_group_call ||
+          (entry.other_participants && entry.other_participants.length > 1) ||
+          thread?.type === 'group' ||
+          Boolean(thread?.group_id) ||
+          otherParticipants.length > 1 ||
+          Boolean((thread as any).isGroup)
+        )
+        const historyOthers =
+          entry.other_participants && entry.other_participants.length > 0
+            ? entry.other_participants
+            : otherParticipants.map((p: ChatParticipant) => ({
+                id: p.id,
+                name: p.name,
+                avatar_url: p.avatarUrl || null,
+              }))
         const fallbackName = entry.contact_name || entry.thread_name || 'Unknown'
         const fallbackId = entry.contact_id || entry.thread_id
         const groupBanner = isGroup ? thread?.banner_url || entry.banner_url || undefined : undefined
+        const stackedAvatars = isGroup ? historyOthers.slice(0, 2) : []
         return {
           ...entry,
           name:
-            isGroup && (thread?.name || entry.thread_name)
+            isGroup && historyOthers.length > 0
+              ? entry.contact_name ||
+                (historyOthers.length === 1
+                  ? historyOthers[0].name
+                  : historyOthers.length === 2
+                    ? `${historyOthers[0].name} & ${historyOthers[1].name}`
+                    : `${historyOthers[0].name}, ${historyOthers[1].name} & ${historyOthers.length - 2} others`)
+              : isGroup && (thread?.name || entry.thread_name)
               ? thread?.name || entry.thread_name || fallbackName
               : primary?.name || thread?.name || fallbackName,
           avatarUrl: isGroup
-            ? groupBanner
+            ? stackedAvatars[0]?.avatar_url || groupBanner || entry.contact_avatar_url || undefined
             : primary?.avatarUrl || entry.contact_avatar_url || undefined,
+          stackedAvatars,
           id: primary?.id || fallbackId,
         }
       })
@@ -177,10 +196,11 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    participantIds?: string[],
   ) => {
     try {
-      await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl)
+      await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl, participantIds)
       onClose()
     } catch {
       /* startCall shows toast */
@@ -232,7 +252,28 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                   >
                     <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
                       <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
-                        {call.avatarUrl ? (
+                        {call.stackedAvatars && call.stackedAvatars.length > 1 ? (
+                          <>
+                            {call.stackedAvatars.slice(0, 2).map((person, index) => (
+                              <div
+                                key={person.id || index}
+                                className={`absolute top-0 rounded-full overflow-hidden border-2 border-surface bg-primary-100 ${
+                                  index === 0
+                                    ? 'left-0 z-10 w-6 h-6 sm:w-7 sm:h-7'
+                                    : 'left-2.5 sm:left-3 z-0 w-6 h-6 sm:w-7 sm:h-7'
+                                }`}
+                              >
+                                {person.avatar_url ? (
+                                  <img src={person.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-primary-700">
+                                    {(person.name || '?').charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </>
+                        ) : call.avatarUrl ? (
                           <img
                             src={call.avatarUrl}
                             alt={call.name}
@@ -257,9 +298,26 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
-                        onClick={() => handleStartCall(call.thread_id, call.call_type, call.id, call.name, call.avatarUrl)}
+                        onClick={() =>
+                          handleStartCall(
+                            call.thread_id,
+                            call.call_type,
+                            call.id,
+                            call.name,
+                            call.avatarUrl,
+                            call.is_group_call || (call.other_participants?.length ?? 0) > 1
+                              ? (call.other_participants || [])
+                                  .map((p) => p.id)
+                                  .filter((id): id is string => Boolean(id))
+                              : undefined,
+                          )
+                        }
                         className="w-8 h-8 flex items-center justify-center bg-surface-secondary text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                        title="Start voice call"
+                        title={
+                          call.is_group_call || (call.other_participants?.length ?? 0) > 1
+                            ? 'Start group call'
+                            : 'Start voice call'
+                        }
                       >
                      {call.call_type === 'video' ? (
                           <Video className="w-4 h-4" />
