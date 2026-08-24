@@ -568,12 +568,16 @@ body {
 .bg-primary-600 {
   background-color: var(--african-orange);
 }
+
 .hover\:bg-primary-600:hover {
   background-color: var(--african-orange-dark);
 }
 
 .hover\:bg-primary-200:hover {
   background-color: var(--primary-200);
+}
+.hover\:bg-primary-50:hover {
+  background-color: var(--primary-50);
 }
 
 .from-primary-50 {

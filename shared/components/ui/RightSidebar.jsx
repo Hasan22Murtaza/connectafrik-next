@@ -34,7 +34,7 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
       <div className="h-px bg-border-subtle w-full my-4"></div>
 
       <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-4 text-content-secondary ps-1">Birthdays</h2>
+        <h2 className="text-lg font-semibold mb-4 text-content ps-1">Birthdays</h2>
         <ul className="space-y-2">
           {birthdays.length > 0 ? (
             birthdays.map((birthday) => {

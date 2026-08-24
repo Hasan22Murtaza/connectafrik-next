@@ -553,9 +553,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
-                  className={`p-3 sm:p-4 hover:bg-surface-hover cursor-pointer transition-colors ${
-                    !notification.is_read ? 'bg-primary-50' : ''
-                  }`}
+                  className={`p-3 sm:p-4 hover:bg-primary-50 cursor-pointer transition-colors`}
                 >
                   <div className="flex items-start space-x-2 sm:space-x-3">
                     <div className="flex-shrink-0 mt-1">

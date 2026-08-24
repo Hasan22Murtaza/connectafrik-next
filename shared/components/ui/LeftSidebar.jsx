@@ -29,7 +29,7 @@ const LeftSidebar = () => {
 
   return (
     <aside className="hidden lg:block shrink-0 h-full overflow-y-auto py-6  w-65 xl:w-80 2xl:w-[24rem]">
-      <h2 className="text-md font-semibold text-content-secondary uppercase tracking-wide mb-3 px-2">
+      <h2 className="text-md font-semibold text-content uppercase tracking-wide mb-3 px-2">
   Your Space
 </h2>
      <ul className="space-y-3">
@@ -46,7 +46,7 @@ const LeftSidebar = () => {
           ${
             isActive
               ? "bg-primary-100 text-primary-600"
-              : "text-content-secondary hover:bg-surface-hover"
+              : "text-content-secondary hover:bg-primary-50 hover:text-orange-700"
           } 
          `}
         >
