@@ -220,9 +220,9 @@ const SavedPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-6 mx-auto py-6">
       <div className="sticky top-0 z-20  bg-white/80 backdrop-blur-md">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
+        <div className="mb-10">
           <div className="flex items-center gap-3 pb-4 pt-6">
            
             <div>
@@ -234,7 +234,7 @@ const SavedPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
+      <div className="">
         {loading ? (
           <div className="flex justify-center py-16">
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-gray-200 border-t-primary-600" />
