@@ -431,7 +431,7 @@ const NotificationsPage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-surface-canvas flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="text-center">
           <p className="text-content-secondary">Please sign in to view your notifications</p>
         </div>
@@ -440,7 +440,7 @@ const NotificationsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
       <div className="max-w-4xl mx-auto px-2 sm:px-4 py-3 sm:py-8">
         {/* Header card */}
         <div className="bg-surface rounded-xl sm:rounded-lg shadow-sm border border-border p-3 sm:p-6 mb-3 sm:mb-6">
@@ -516,12 +516,12 @@ const NotificationsPage: React.FC = () => {
                   key={notification.id}
                   className={`bg-surface rounded-xl sm:rounded-lg shadow-sm border ${
                     !notification.is_read ? 'border-orange-200 bg-orange-50' : 'border-border'
-                  } p-3 sm:p-4 hover:shadow-md active:bg-surface-canvas transition-all cursor-pointer`}
+                  } p-3 sm:p-4 hover:shadow-md active: transition-all cursor-pointer`}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex items-start space-x-3 sm:space-x-4">
                     <div className="flex-shrink-0 mt-0.5">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface-canvas flex items-center justify-center">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full  flex items-center justify-center">
                         <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600" aria-hidden />
                       </div>
                     </div>

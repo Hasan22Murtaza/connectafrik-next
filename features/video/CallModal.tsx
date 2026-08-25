@@ -569,7 +569,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   if (isIncoming && !token) {
     return (
       <div
-        className="fixed inset-0 z-[9999] animate-fadeIn bg-surface-canvas"
+        className="fixed inset-0 z-[9999] animate-fadeIn "
       >
         <CallStatusOverlay
           callStatus="ringing"
@@ -597,7 +597,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   if (!token || !meetingId) {
     return (
       <div
-        className="fixed inset-0 z-[9999] bg-surface-canvas"
+        className="fixed inset-0 z-[9999] "
       >
         {prePhase === 'error' ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-content p-8 text-center">
@@ -658,7 +658,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     const serverUrl = resolveLiveKitWsUrl(wsUrl);
     if (!serverUrl || livekitPrepError) {
       return (
-        <div className="fixed inset-0 z-[9999] bg-surface-canvas">
+        <div className="fixed inset-0 z-[9999] ">
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-content p-8 text-center">
             <div className="text-lg font-semibold">Connection Failed</div>
             <div className="text-sm text-content-secondary">
@@ -678,7 +678,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
 
     if (!livekitRoom) {
       return (
-        <div className="fixed inset-0 z-[9999] bg-surface-canvas">
+        <div className="fixed inset-0 z-[9999] ">
           <CallStatusOverlay
             callStatus="connecting"
             callType={callType}

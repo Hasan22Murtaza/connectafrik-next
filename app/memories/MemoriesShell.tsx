@@ -14,7 +14,7 @@ export function MemoriesShell({ children }: { children: React.ReactNode }) {
   }, [])
 
   return (
-    <div className="flex w-full flex-col bg-surface-canvas lg:min-h-[calc(100dvh-4.5rem)] lg:flex-row">
+    <div className="flex w-full flex-col  lg:min-h-[calc(100dvh-4.5rem)] lg:flex-row">
       {showDesktopSidebar && (
         <aside className="z-10 w-[220px] shrink-0 border-r border-border-subtle bg-surface xl:w-56">
           <div className="sticky top-[4.5rem] max-h-[calc(100dvh-4.5rem)] overflow-y-auto py-3">
@@ -22,7 +22,7 @@ export function MemoriesShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
       )}
-      <div className="relative min-h-0 min-w-0 flex-1 bg-surface-canvas">
+      <div className="relative min-h-0 min-w-0 flex-1 ">
         {children}
       </div>
     </div>

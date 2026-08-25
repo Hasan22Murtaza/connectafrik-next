@@ -89,7 +89,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({
     return (
       <div
         className={`mb-1.5 w-[min(100%,280px)] overflow-hidden rounded-xl ${
-          isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas"
+          isOwnMessage ? "chat-bubble-own-file" : ""
         }`}
       >
         <div className="h-[132px] animate-pulse bg-surface-secondary" />
@@ -108,7 +108,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({
         type="button"
         onClick={openPost}
         className={`mb-1.5 flex w-[min(100%,280px)] items-center gap-2.5 rounded-xl p-2.5 text-left transition hover:opacity-95 ${
-          isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas"
+          isOwnMessage ? "chat-bubble-own-file" : ""
         }`}
       >
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary-500/15 text-primary-600">
@@ -127,7 +127,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({
       type="button"
       onClick={openPost}
       className={`mb-1.5 block w-[min(100%,280px)] overflow-hidden rounded-xl text-left transition hover:opacity-95 ${
-        isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas ring-1 ring-border-subtle"
+        isOwnMessage ? "chat-bubble-own-file" : " ring-1 ring-border-subtle"
       }`}
       aria-label={`Open post by ${authorName}`}
     >

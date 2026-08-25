@@ -269,7 +269,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             <div
               key={att.id}
               className={`flex w-full min-w-0 items-center gap-2 rounded-xl p-2 ${
-                isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas"
+                isOwnMessage ? "chat-bubble-own-file" : ""
               }`}
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-500/15 text-orange-600">
@@ -293,7 +293,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             <div
               key={att.id}
               className={`flex items-center gap-2.5 rounded-xl p-2.5 ${
-                isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas"
+                isOwnMessage ? "chat-bubble-own-file" : ""
               }`}
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-500/15 text-sky-600">
@@ -318,7 +318,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className={`flex items-center gap-2.5 rounded-xl p-2.5 transition hover:opacity-90 ${
-                isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas"
+                isOwnMessage ? "chat-bubble-own-file" : ""
               }`}
               onClick={(e) => e.stopPropagation()}
             >
@@ -344,7 +344,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             className={`flex items-center gap-2.5 rounded-xl p-2.5 transition-colors ${
               isOwnMessage
                 ? "chat-bubble-own-file hover:opacity-95"
-                : "bg-surface-canvas hover:bg-surface-hover"
+                : " hover:bg-surface-hover"
             }`}
           >
             <span

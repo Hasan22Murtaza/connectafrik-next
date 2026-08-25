@@ -180,7 +180,7 @@ export function DetailsForm({
                       key={tag}
                       type="button"
                       onClick={() => onInsertHashtag(tag)}
-                      className="rounded-full bg-surface-canvas px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:bg-[color-mix(in_srgb,var(--african-orange)_12%,var(--surface-canvas))] hover:text-content"
+                      className="rounded-full  px-2.5 py-1 text-xs font-medium text-content-secondary transition-colors hover:bg-[color-mix(in_srgb,var(--african-orange)_12%,var(--surface-canvas))] hover:text-content"
                     >
                       #{tag}
                     </button>
@@ -196,7 +196,7 @@ export function DetailsForm({
                 className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-center transition-all ${
                   isPublic
                     ? 'border-[var(--african-orange)] bg-[color-mix(in_srgb,var(--african-orange)_8%,var(--surface))]'
-                    : 'border-border hover:bg-surface-canvas'
+                    : 'border-border hover:'
                 }`}
               >
                 <input
@@ -214,7 +214,7 @@ export function DetailsForm({
                 className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-center transition-all ${
                   !isPublic
                     ? 'border-[var(--african-orange)] bg-[color-mix(in_srgb,var(--african-orange)_8%,var(--surface))]'
-                    : 'border-border hover:bg-surface-canvas'
+                    : 'border-border hover:'
                 }`}
               >
                 <input
@@ -339,7 +339,7 @@ export function DetailsForm({
                     className={`rounded-xl border p-2.5 text-left text-xs font-medium transition-all sm:text-sm ${
                       aspectRatio === ratio.value
                         ? 'border-[var(--african-orange)] bg-[color-mix(in_srgb,var(--african-orange)_10%,var(--surface))] text-[var(--african-orange-dark)] ring-1 ring-[color-mix(in_srgb,var(--african-orange)_30%,transparent)]'
-                        : 'border-border text-content-secondary hover:border-border-subtle hover:bg-surface-canvas'
+                        : 'border-border text-content-secondary hover:border-border-subtle hover:'
                     }`}
                     aria-pressed={aspectRatio === ratio.value}
                   >
@@ -351,7 +351,7 @@ export function DetailsForm({
             </div>
 
             {videoFile && (
-              <div className="rounded-xl bg-surface-canvas p-3 sm:p-4">
+              <div className="rounded-xl  p-3 sm:p-4">
                 <h3 className="mb-2 text-sm font-medium text-content">File information</h3>
                 <dl className="space-y-1.5 text-xs text-content-secondary sm:text-sm">
                   <div className="flex justify-between gap-3">

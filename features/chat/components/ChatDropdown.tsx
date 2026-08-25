@@ -371,7 +371,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
-            className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+            className="w-full rounded-lg border border-border  py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
             aria-label={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
           />
         </div>

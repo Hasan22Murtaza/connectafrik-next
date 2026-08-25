@@ -266,7 +266,7 @@ function CommentRow({
               if (e.key === 'Escape') setReplyingTo(null)
             }}
             placeholder={`Reply to ${displayName}...`}
-            className="flex-1 rounded-2xl border border-border bg-surface-canvas px-4 py-2.5 text-sm text-content placeholder:text-content-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+            className="flex-1 rounded-2xl border border-border  px-4 py-2.5 text-sm text-content placeholder:text-content-tertiary focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
             autoFocus
           />
           <button
@@ -386,7 +386,7 @@ function CommentComposer({ logic }: { logic: CommentsLogic }) {
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Add comment..."
             maxLength={500}
-            className="w-full rounded-2xl border border-border bg-surface-canvas py-2.5 pl-4 pr-[4.5rem] text-sm text-content placeholder:text-content-tertiary transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
+            className="w-full rounded-2xl border border-border  py-2.5 pl-4 pr-[4.5rem] text-sm text-content placeholder:text-content-tertiary transition focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/30"
           />
           <div className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
             <AtSign className="h-4 w-4 text-content-tertiary" aria-hidden />

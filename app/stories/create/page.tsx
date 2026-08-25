@@ -233,7 +233,7 @@ export default function CreateStoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
       <div className="sticky top-0 z-50 bg-surface border-b border-border">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
@@ -325,7 +325,7 @@ export default function CreateStoryPage() {
                     onChange={(e) => setCaption(e.target.value)}
                     placeholder="Write something..."
                     maxLength={MAX_CAPTION_LENGTH}
-                    className="w-full h-16 sm:h-20 bg-surface-canvas border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:py-2.5 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                    className="w-full h-16 sm:h-20  border border-border rounded-lg sm:rounded-xl px-3 py-2 sm:py-2.5 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                   />
                   <p className="text-[10px] sm:text-xs text-content-tertiary mt-1 text-right">{caption.length}/{MAX_CAPTION_LENGTH}</p>
                 </div>

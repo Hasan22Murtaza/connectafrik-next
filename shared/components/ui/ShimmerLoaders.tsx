@@ -483,7 +483,7 @@ export function MyOrdersListShimmer({ count }: { count: number }) {
 /** Full-page shimmer for order detail loading. */
 export function OrderDetailPageShimmer() {
   return (
-    <div className="min-h-screen bg-surface-canvas w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen  w-full min-w-0 overflow-x-hidden">
       <div className="w-full max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         <div className="h-4 w-28 animate-shimmer rounded mb-4" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">

@@ -154,7 +154,7 @@ export function MediaSection({
           <div
             role="tablist"
             aria-label="Video source"
-            className="grid grid-cols-2 gap-2 rounded-xl bg-surface-canvas p-1"
+            className="grid grid-cols-2 gap-2 rounded-xl  p-1"
           >
             <button
               type="button"
@@ -199,7 +199,7 @@ export function MediaSection({
             className={`group cursor-pointer rounded-2xl border-2 border-dashed p-6 text-center transition-all sm:p-10 ${
               isDragging
                 ? 'border-[var(--african-orange)] bg-[color-mix(in_srgb,var(--african-orange)_10%,var(--surface))] scale-[1.01]'
-                : 'border-border hover:border-[color-mix(in_srgb,var(--african-orange)_45%,var(--border))] hover:bg-surface-canvas'
+                : 'border-border hover:border-[color-mix(in_srgb,var(--african-orange)_45%,var(--border))] hover:'
             }`}
           >
             <div
@@ -425,7 +425,7 @@ export function MediaSection({
           </div>
 
           {videoFile && (
-            <div className="rounded-xl border border-border bg-surface-canvas p-3 sm:p-4">
+            <div className="rounded-xl border border-border  p-3 sm:p-4">
               <div className="flex items-start gap-3">
                 {thumbnailUrl ? (
                   <img

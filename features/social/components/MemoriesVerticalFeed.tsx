@@ -354,7 +354,7 @@ export function MemoriesVerticalFeed({
         ? 'Sign in to see memories from creators you follow.'
         : 'Sign in to manage and watch your own memories.'
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-4 bg-surface-canvas px-6 text-center lg:min-h-[calc(100dvh-4.5rem)]">
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center gap-4  px-6 text-center lg:min-h-[calc(100dvh-4.5rem)]">
         <h2 className="text-lg font-semibold text-content">{title}</h2>
         <p className="max-w-sm text-sm text-content-secondary">{subtitle}</p>
         <Link href="/signin" className="btn-primary inline-flex rounded-full px-8 py-2.5 text-sm font-semibold">
@@ -366,7 +366,7 @@ export function MemoriesVerticalFeed({
 
   if (loading && reels.length === 0) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black text-white lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas lg:text-content">
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black text-white lg:min-h-[calc(100dvh-4.5rem)] lg: lg:text-content">
         <div
           className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white lg:border-border lg:border-t-primary-600"
           aria-hidden
@@ -378,7 +378,7 @@ export function MemoriesVerticalFeed({
 
   if (error) {
     return (
-      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black px-6 text-center text-white lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas lg:text-content">
+      <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col items-center justify-center bg-black px-6 text-center text-white lg:min-h-[calc(100dvh-4.5rem)] lg: lg:text-content">
         <Clock className="mb-4 h-14 w-14 text-white/40 lg:text-content-tertiary" />
         <h2 className="text-lg font-semibold">Couldn’t load memories</h2>
         <p className="mt-2 text-sm text-white/65 lg:text-content-secondary">{error}</p>
@@ -391,7 +391,7 @@ export function MemoriesVerticalFeed({
 
   if (reels.length === 0) {
     return (
-      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black px-6 pb-10 pt-16 text-center text-white lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas lg:pb-6 lg:pt-0 lg:text-content">
+      <div className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-black px-6 pb-10 pt-16 text-center text-white lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg: lg:pb-6 lg:pt-0 lg:text-content">
         <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-white/10 bg-black/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 text-white lg:hidden">
           <div className="mx-auto max-w-lg">
             <MemoriesNav variant="video-bottom" />
@@ -410,7 +410,7 @@ export function MemoriesVerticalFeed({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas">
+      <div className="fixed inset-0 z-40 bg-black lg:static lg:z-auto lg:min-h-[calc(100dvh-4.5rem)] lg:">
         <div className="fixed bottom-0 left-0 right-0 z-[46] border-t border-white/10 bg-black/90 px-2 pb-[calc(0.4rem+env(safe-area-inset-bottom))] pt-1 text-white lg:hidden">
           <div className="mx-auto max-w-lg">
             <MemoriesNav variant="video-bottom" />
@@ -468,7 +468,7 @@ export function MemoriesVerticalFeed({
               {hasMore && (
                 <div
                   ref={sentinelRef}
-                  className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-black lg:bg-surface-canvas"
+                  className="flex h-24 w-full shrink-0 snap-start items-center justify-center bg-black lg:"
                   aria-hidden
                 >
                   {loading && (

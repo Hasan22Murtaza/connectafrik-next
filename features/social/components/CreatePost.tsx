@@ -528,7 +528,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   if (!user) {
     return (
-      <div className="rounded-xl bg-surface-canvas border border-border px-6 py-8 text-center">
+      <div className="rounded-xl  border border-border px-6 py-8 text-center">
         <p className="text-content-secondary text-sm">Please sign in to create a post.</p>
       </div>
     )
@@ -826,7 +826,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
         {showVideoUploader && (
           <div className="px-3 sm:px-4 mt-2">
-            <div className="rounded-lg border border-border bg-surface-canvas p-2.5">
+            <div className="rounded-lg border border-border  p-2.5">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-semibold text-content uppercase tracking-wide">Upload Video</h4>
                 <button type="button" onClick={() => setShowVideoUploader(false)} className="p-1 rounded-full hover:bg-surface-hover text-content-tertiary hover:text-content-secondary transition-colors">
@@ -1024,7 +1024,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 placeholder="Where are you?"
                 value={locationQuery}
                 onChange={(e) => setLocationQuery(e.target.value)}
-                className="w-full pl-9 pr-10 py-2.5 text-sm rounded-full border border-border bg-surface-canvas focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 focus:bg-surface placeholder-gray-400 transition-all"
+                className="w-full pl-9 pr-10 py-2.5 text-sm rounded-full border border-border  focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 focus:bg-surface placeholder-gray-400 transition-all"
               />
               {loadingPlaces && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary animate-spin" />}
               {locationQuery && !loadingPlaces && (

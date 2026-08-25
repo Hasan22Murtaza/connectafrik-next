@@ -92,7 +92,7 @@ const OpenDisputeModal: React.FC<OpenDisputeModalProps> = ({
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="bg-surface-canvas rounded-lg p-4 text-sm">
+          <div className=" rounded-lg p-4 text-sm">
             <p><span className="text-content-secondary">Order #</span> <span className="font-medium">{orderNumber}</span></p>
             <p className="mt-1"><span className="text-content-secondary">Product:</span> <span className="font-medium">{productTitle}</span></p>
           </div>

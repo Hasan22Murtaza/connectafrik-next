@@ -37,7 +37,7 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <button
@@ -97,7 +97,7 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
 
               <div className="mt-5 flex items-center justify-between">
                 <span className="text-sm text-content-secondary">Quantity</span>
-                <div className="inline-flex items-center rounded-xl border border-border bg-surface-canvas">
+                <div className="inline-flex items-center rounded-xl border border-border ">
                   <button
                     type="button"
                     onClick={decreaseQuantity}

@@ -604,7 +604,7 @@ const UserProfilePage: React.FC = () => {
   if (loading) return <ProfileSkeleton />
 
   if (!profile) return (
-    <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
+    <div className="min-h-screen  flex items-center justify-center p-4">
       <div className="bg-surface rounded-2xl shadow-header p-8 max-w-md text-center">
         <div className="w-20 h-20 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-5">
           <Users className="w-10 h-10 text-content-tertiary" />
@@ -625,7 +625,7 @@ const UserProfilePage: React.FC = () => {
   const canCommentOnPost = (authorId: string) => isOwnProfile || canComment(viewerId, authorId, profile.allow_comments ?? 'everyone', isMutual)
 
   if (!canView) return (
-    <div className="min-h-screen bg-surface-canvas flex items-center justify-center p-4">
+    <div className="min-h-screen  flex items-center justify-center p-4">
       <div className="bg-surface rounded-2xl shadow-header  p-8 max-w-md text-center">
         <div className="w-20 h-20 rounded-full bg-surface-tertiary flex items-center justify-center mx-auto mb-6">
           <span className="text-4xl font-bold text-content-tertiary">{profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}</span>

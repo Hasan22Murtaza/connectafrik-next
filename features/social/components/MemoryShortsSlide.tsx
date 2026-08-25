@@ -335,7 +335,7 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
 
   return (
     <section
-      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-black lg:h-[calc(100dvh-4.5rem)] lg:bg-surface-canvas"
+      className="relative h-[100dvh] w-full shrink-0 snap-start snap-always overflow-hidden bg-black lg:h-[calc(100dvh-4.5rem)] lg:"
       data-memory-slide
       data-reel-id={reel.id}
       aria-label={`Memory: ${reel.title}`}

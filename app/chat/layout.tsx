@@ -11,7 +11,7 @@ export default function ChatLayout({ children }: { children: ReactNode }) {
     parts[0] === "chat" && parts[1] ? decodeURIComponent(parts[1]) : undefined;
 
   return (
-    <div className="bg-surface-canvas">
+    <div className="">
       <ChatPageView selectedThreadId={selectedThreadId} />
       {children}
     </div>

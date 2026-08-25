@@ -420,7 +420,7 @@ const OrderDetailPage: React.FC = () => {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-surface-canvas flex items-center justify-center px-4">
+      <div className="min-h-screen  flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-content-secondary mb-4">Order not found</p>
           <button
@@ -483,7 +483,7 @@ const OrderDetailPage: React.FC = () => {
       : [];
 
   return (
-    <div className="min-h-screen bg-surface-canvas pb-24 sm:pb-8">
+    <div className="min-h-screen  pb-24 sm:pb-8">
       <div className="w-full max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         <button
           type="button"

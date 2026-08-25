@@ -69,7 +69,7 @@ export function ReviewStep({
         </div>
       </div>
 
-      <dl className="mt-4 space-y-2 rounded-xl bg-surface-canvas p-3 text-sm sm:p-4">
+      <dl className="mt-4 space-y-2 rounded-xl  p-3 text-sm sm:p-4">
         <div className="flex items-center justify-between gap-3">
           <dt className="text-content-secondary">Audience</dt>
           <dd className="flex items-center gap-1.5 font-medium text-content">

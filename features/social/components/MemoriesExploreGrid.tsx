@@ -58,7 +58,7 @@ function ExploreGridBody() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-4.5rem)] bg-surface-canvas pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-6">
+    <div className="min-h-[calc(100dvh-4.5rem)]  pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-6">
       <div className="sticky top-[4.5rem] z-20 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur-sm lg:top-0">
         <div className="flex gap-2 overflow-x-auto pb-1 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button

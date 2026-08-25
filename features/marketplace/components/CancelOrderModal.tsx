@@ -85,7 +85,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
         </div>
 
         <div className="p-6">
-          <div className="bg-surface-canvas rounded-lg p-4 mb-4 text-sm space-y-1">
+          <div className=" rounded-lg p-4 mb-4 text-sm space-y-1">
             <p>
               <span className="text-content-secondary">Order #</span>{' '}
               <span className="font-medium">{orderNumber}</span>

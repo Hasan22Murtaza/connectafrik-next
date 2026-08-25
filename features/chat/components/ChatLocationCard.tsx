@@ -40,7 +40,7 @@ const ChatLocationCard: React.FC<ChatLocationCardProps> = ({
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
       className={`mb-1 block w-[min(100%,280px)] overflow-hidden rounded-xl transition hover:opacity-95 ${
-        isOwnMessage ? "chat-bubble-own-file" : "bg-surface-canvas"
+        isOwnMessage ? "chat-bubble-own-file" : ""
       }`}
     >
       {staticMap ? (

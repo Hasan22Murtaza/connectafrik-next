@@ -701,7 +701,7 @@ const CreateMemoryPage: React.FC = () => {
   )
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface-canvas">
+    <div className="flex min-h-screen flex-col ">
       <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-2xl items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-6">
           <button

@@ -540,7 +540,7 @@ const GroupsPage: React.FC = () => {
     border border-gray-300
     rounded-full
     text-base
-    bg-surface-canvas
+    
     text-content
     transition-all duration-200
     focus:outline-none

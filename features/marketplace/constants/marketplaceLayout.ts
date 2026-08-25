@@ -1,6 +1,6 @@
 /** Shared layout and spacing tokens for consistent marketplace UI. */
 export const MP = {
-  page: "min-h-screen bg-surface-canvas px-0 sm:px-0 ",
+  page: "min-h-screen  px-0 sm:px-0 ",
   shell: "flex gap-0 min-w-0 w-full",
 
   sidebar:

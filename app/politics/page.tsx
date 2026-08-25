@@ -90,7 +90,7 @@ const PoliticsPage: React.FC = () => {
   const commentSheetPost = showCommentsFor != null ? posts.find((p) => p.id === showCommentsFor) : undefined
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
 
       <div className="max-w-full  px-4 sm:px-6 py-6">
         {/* Header Section */}

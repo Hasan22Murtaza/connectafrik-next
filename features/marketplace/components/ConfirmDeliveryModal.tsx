@@ -89,7 +89,7 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
           {!confirmed ? (
             <>
               {/* Order Info */}
-              <div className="bg-surface-canvas rounded-lg p-4 mb-6">
+              <div className=" rounded-lg p-4 mb-6">
                 <div className="space-y-2 text-sm">
                   <div>
                     <span className="text-content-secondary">Order #</span>

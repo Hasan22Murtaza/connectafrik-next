@@ -425,20 +425,13 @@ const FriendsPageContent: React.FC = () => {
                     key={item.key}
                     onClick={() => selectSection(item.key as Section)}
                     className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg
-                    transition-all duration-300 ease-in-out
+                    transition-all duration-300
                     ${isActive
                         ? "bg-orange-50 text-primary-600"
-                        : "text-content hover:bg-orange-50 hover:text-primary-600"
+                        : "text-gray-900 hover:bg-gray-50 hover:text-gray-700"
                       }`}
                   >
-                    <span
-                      className={`absolute left-0 top-0 h-full w-[3px] rounded-r
-          transition-all duration-300 ease-in-out
-          ${isActive
-                          ? "bg-primary-600 opacity-100 scale-y-100"
-                          : "bg-primary-600 opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
-                        }`}
-                    />
+                
 
                     <div className="flex items-center gap-3">
                       <Icon
