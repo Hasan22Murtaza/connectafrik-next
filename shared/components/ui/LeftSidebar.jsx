@@ -41,12 +41,12 @@ const LeftSidebar = () => {
       <li key={item.name}>
         <Link
           href={item.to}
-          className={`group relative flex items-center space-x-3 px-3 py-2 rounded-md 
+          className={`group relative flex items-center space-x-3 px-3 py-2 rounded-lg 
           transition-all duration-300 ease-in-out
           ${
             isActive
               ? "bg-primary-100 text-primary-600"
-              : "text-content-secondary hover:bg-primary-50 hover:text-orange-700"
+              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
           } 
          `}
         >

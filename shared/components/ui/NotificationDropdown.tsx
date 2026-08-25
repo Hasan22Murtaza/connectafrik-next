@@ -553,7 +553,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
-                  className={`p-3 sm:p-4 hover:bg-primary-50 cursor-pointer transition-colors`}
+                  className={`p-3 sm:p-4 hover:bg-gray-50 cursor-pointer transition-colors`}
                 >
                   <div className="flex items-start space-x-2 sm:space-x-3">
                     <div className="flex-shrink-0 mt-1">
@@ -561,7 +561,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-content truncate">
+                        <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900 truncate cursor-pointer">
                           {stripLeadingEmoji(notification.title)}
                         </p>
                         {!notification.is_read && (

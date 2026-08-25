@@ -60,7 +60,7 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
     <button
       type="button"
       onClick={() => onOpen(thread.id)}
-      className={`group rounded-lg flex w-full items-start gap-3 px-1 py-2.5 text-left transition-colors hover:bg-primary-50  ${
+      className={`group rounded-lg flex w-full items-start gap-3 px-2 py-2.5 text-left transition-colors hover:bg-gray-50  ${
         subdued ? 'opacity-70' : ''
       }`}
     >
@@ -80,7 +80,7 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
 
       <div className="min-w-0 flex-1 py-0.5">
         <div className="flex items-start justify-between gap-2">
-          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-content group-hover:text-orange-700">
+          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">
             {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden /> : null}
             <span className="truncate">{threadDisplayName}</span>
           </p>
@@ -384,13 +384,13 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             setView('marketplace')
             setSearch('')
           }}
-          className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-primary-50 "
+          className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100 "
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
             <Store className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium leading-tight text-content group-hover:text-orange-700">TradeHub messages</p>
+            <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">TradeHub messages</p>
             <p className="mt-0.5 truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
           </div>
           {marketplaceUnread > 0 ? (
@@ -432,7 +432,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
                     key={thread.id}
                     type="button"
                     onClick={() => handleOpenThread(thread.id)}
-                    className="flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-primary-50"
+                    className="flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100"
                   >
                     <div className="h-12 w-12 shrink-0">
                       {avatarUrl ? (
@@ -503,7 +503,6 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
 
               {filteredActive.map((thread, index) => (
                 <div key={thread.id}>
-                  {index > 0 && <hr className="border-border-subtle my-1" />}
 
                   <ChatDropdownThreadRow
                     thread={thread}
