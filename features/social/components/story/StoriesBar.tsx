@@ -513,7 +513,7 @@ const StoriesBar: React.FC = () => {
 
   return (
     <>
-      <div className="bg-surface rounded-xl shadow-header p-3 sm:p-4 relative">
+      <div className="bg-surface rounded-xl shadow-card p-3 sm:p-4 relative">
         {showLeftArrow && (
           <button
             onClick={() => scroll('left')}

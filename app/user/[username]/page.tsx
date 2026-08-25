@@ -605,7 +605,7 @@ const UserProfilePage: React.FC = () => {
 
   if (!profile) return (
     <div className="min-h-screen  flex items-center justify-center p-4">
-      <div className="bg-surface rounded-2xl shadow-header p-8 max-w-md text-center">
+      <div className="bg-surface rounded-2xl shadow-card p-8 max-w-md text-center">
         <div className="w-20 h-20 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-5">
           <Users className="w-10 h-10 text-content-tertiary" />
         </div>
@@ -626,7 +626,7 @@ const UserProfilePage: React.FC = () => {
 
   if (!canView) return (
     <div className="min-h-screen  flex items-center justify-center p-4">
-      <div className="bg-surface rounded-2xl shadow-header  p-8 max-w-md text-center">
+      <div className="bg-surface rounded-2xl shadow-card  p-8 max-w-md text-center">
         <div className="w-20 h-20 rounded-full bg-surface-tertiary flex items-center justify-center mx-auto mb-6">
           <span className="text-4xl font-bold text-content-tertiary">{profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}</span>
         </div>
@@ -652,7 +652,7 @@ const UserProfilePage: React.FC = () => {
     <div className="min-h-screen  pb-20 sm:pb-8 px-4">
       
       <div className=" mt-4">
-        <div className="bg-surface shadow-header rounded-2xl">
+        <div className="bg-surface shadow-card rounded-2xl">
         <div className="px-4 sm:px-6 pt-4 pb-3 sm:py-5">
           <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
             <div className="flex-shrink-0">
@@ -791,7 +791,7 @@ const UserProfilePage: React.FC = () => {
         <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
 
           <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
-            <div className="bg-surface sm:rounded-2xl shadow-header p-4">
+            <div className="bg-surface sm:rounded-2xl shadow-card p-4">
               <h2 className="text-base sm:text-lg font-semibold text-content-secondary mb-3">Personal details</h2>
               {profile.bio && <p className="text-sm text-content text-center leading-relaxed mb-3 pb-3 border-b border-border">{profile.bio}</p>}
               <div className="space-y-2.5">
@@ -808,7 +808,7 @@ const UserProfilePage: React.FC = () => {
             </div>
 
             {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-              <div className="bg-surface sm:rounded-2xl shadow-header p-4">
+              <div className="bg-surface sm:rounded-2xl shadow-card p-4">
                 <h2 className="text-base sm:text-lg font-semibold text-content-secondary">Friends</h2>
                 <p className="text-[13px] text-content-secondary mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
                 <div className="grid grid-cols-3 gap-2">
@@ -829,7 +829,7 @@ const UserProfilePage: React.FC = () => {
             )}
 
             {sidebarPhotos.length > 0 && (
-              <div className="bg-surface sm:rounded-2xl shadow-header p-4">
+              <div className="bg-surface sm:rounded-2xl shadow-card p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-base sm:text-lg font-semibold text-content-secondary">Photos</h2>
                   <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
@@ -848,7 +848,7 @@ const UserProfilePage: React.FC = () => {
           <div className="flex-1 min-w-0">
             {activeTab === 'posts' && (
               postsTabLoading && !postsTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (
@@ -877,7 +877,7 @@ const UserProfilePage: React.FC = () => {
 
             {activeTab === 'photos' && (
               photosTabLoading && !photosTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (
@@ -887,7 +887,7 @@ const UserProfilePage: React.FC = () => {
 
             {activeTab === 'friends' && (
               friendsTabLoading && !friendsTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (
@@ -897,7 +897,7 @@ const UserProfilePage: React.FC = () => {
 
             {activeTab === 'reels' && (
               reelsTabLoading && !reelsTabFetched ? (
-                <div className="bg-surface sm:rounded-2xl shadow-header py-20 flex justify-center">
+                <div className="bg-surface sm:rounded-2xl shadow-card py-20 flex justify-center">
                   <Spinner className="w-8 h-8 text-[#F97316]" />
                 </div>
               ) : (

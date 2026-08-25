@@ -159,7 +159,7 @@ export function ChatDropdownShimmer({
 export function GroupsFeedShimmer() {
   const count = useFeedShimmerCount();
   return (
-    <div className="space-y-3 sm:space-y-4 w-full min-w-0">
+    <div className="space-y-2.5 w-full min-w-0">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
@@ -321,7 +321,7 @@ export function MarketplacePageShimmer() {
 /** Friend/request/suggestion card grid shimmer. Pass count (e.g. useShimmerCount() * 2 for 4/8/12). */
 export function FriendsGridShimmer({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 w-full min-w-0">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-4 w-full min-w-0">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
@@ -332,8 +332,8 @@ export function FriendsGridShimmer({ count = 8 }: { count?: number }) {
             <div className="h-4 w-3/4 max-w-full animate-shimmer rounded" />
             <div className="h-3 w-1/2 max-w-full animate-shimmer rounded" />
             <div className="flex gap-2 pt-2">
-              <div className="h-8 w-full max-w-full animate-shimmer rounded flex-shrink-0" />
-              <div className="h-8 w-full max-w-full animate-shimmer rounded flex-shrink-0" />
+              <div className="h-8 w-1/2 max-w-full animate-shimmer rounded flex-shrink-0" />
+              <div className="h-8 w-1/2 max-w-full animate-shimmer rounded flex-shrink-0" />
             </div>
           </div>
         </div>

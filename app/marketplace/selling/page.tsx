@@ -528,7 +528,7 @@ const SellerDashboardPage: React.FC = () => {
                   placeholder="Search your listings"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2  border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:outline-none"
+                  className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-md focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                 />
               </div>
 

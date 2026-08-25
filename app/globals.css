@@ -426,8 +426,8 @@
   --color-primary-hover: var(--interactive-primary-hover);
   --color-accent: var(--interactive-accent);
 
-  --shadow-card: var(--shadow-md);
-  --shadow-header: var(--shadow-lg);
+  --shadow-card: var(--shadow-lg);
+  --shadow-header: var(--shadow-sm);
   --shadow-dropdown: var(--shadow-dropdown);
 
   --font-sans: var(--font-geist-sans);

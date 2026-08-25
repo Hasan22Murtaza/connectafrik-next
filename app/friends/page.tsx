@@ -411,11 +411,11 @@ const FriendsPageContent: React.FC = () => {
       <div className="flex gap-6">
         {/* Left Sidebar */}
         <div className="hidden md:block w-64 shrink-0">
-          <div className="sticky top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
-            <h2 className="text-xl font-semibold text-content-secondary mb-6">Friends</h2>
+          <div className="fixed top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
+            <h2 className="text-xl font-semibold text-content mb-6">Friends</h2>
 
 
-            <nav className="space-y-4">
+            <nav className="space-y-2">
               {menu.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeSection === item.key;
@@ -424,7 +424,7 @@ const FriendsPageContent: React.FC = () => {
                   <button
                     key={item.key}
                     onClick={() => selectSection(item.key as Section)}
-                    className={`group relative w-full flex items-center justify-between px-3 py-2.5 rounded-lg
+                    className={`group relative w-56 flex items-center justify-between px-3 py-2.5 rounded-lg
                     transition-all duration-300
                     ${isActive
                         ? "bg-orange-50 text-primary-600"
@@ -433,15 +433,15 @@ const FriendsPageContent: React.FC = () => {
                   >
                 
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <Icon
                         className={`text-md transition-all duration-300 ease-in-out
-            ${isActive
+                         ${isActive
                             ? "text-primary-600 scale-110"
-                            : "text-content-secondary group-hover:text-primary-600 group-hover:scale-110"
+                            : "text-content-secondary group-hover:text-gray-600 "
                           }`}
                       />
-                      <span className="font-medium transition-all duration-300 ease-in-out group-hover:translate-x-1">
+                      <span className="transition-all duration-300  ">
                         {item.label}
                       </span>
                     </div>
@@ -507,7 +507,7 @@ const FriendsPageContent: React.FC = () => {
               {(loading || requests.length > 0) && (
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-content-secondary">Friend Requests</h2>
+                  <h2 className="text-2xl font-semibold text-content">Friend Requests</h2>
                   <button
                     onClick={() => selectSection("requests")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
@@ -521,11 +521,11 @@ const FriendsPageContent: React.FC = () => {
                   <FriendsGridShimmer count={shimmerCount * 2} />
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
                       {requests.slice(0, requestsDisplayLimit).map((request) => (
                         <div
                           key={request.id}
-                          className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
+                          className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
                           <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
@@ -545,7 +545,7 @@ const FriendsPageContent: React.FC = () => {
                           </Link>
 
                           {/* Content */}
-                          <div className="p-4">
+                          <div className="p-3">
                             <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
                               <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {request.requester?.full_name || "Unknown User"}
@@ -554,23 +554,23 @@ const FriendsPageContent: React.FC = () => {
 
                             {/* Mutual Friends */}
                             {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                              <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
+                              <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-1">
                                
                                 <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                               </div>
                             )}
 
                             {/* Action Buttons */}
-                            <div className="space-y-2">
+                            <div className="flex gap-2 items-center flex-wrap">
                               <button
                                 onClick={() => handleAcceptRequest(request.id)}
-                                className="w-full btn-sm-primary text-sm"
+                                className="flex-1 btn-sm-primary text-sm"
                               >
                                 Confirm
                               </button>
                               <button
                                 onClick={() => handleDeclineRequest(request.id)}
-                                className="w-full btn-secondary text-sm"
+                                className="flex-1 btn-secondary text-sm"
                               >
                                 Delete
                               </button>
@@ -598,7 +598,7 @@ const FriendsPageContent: React.FC = () => {
               {/* People You May Know Section */}
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-content-secondary">People You May Know</h2>
+                  <h2 className="text-2xl font-semibold text-content">People You May Know</h2>
                   <button
                     onClick={() => selectSection("suggestions")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
@@ -616,7 +616,7 @@ const FriendsPageContent: React.FC = () => {
                       {suggestions.slice(0, suggestionsDisplayLimit).map((suggestion) => (
                         <div
                           key={suggestion.user_id}
-                          className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
+                          className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
                         >
                           {/* Profile Image */}
                           <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
@@ -692,7 +692,7 @@ const FriendsPageContent: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold text-content-secondary">Friend Requests</h2>
+                <h2 className="text-2xl font-semibold text-content">Friend Requests</h2>
                 <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => selectSection("home")}>
                   See all
                 </button>
@@ -702,11 +702,11 @@ const FriendsPageContent: React.FC = () => {
               {loading ? (
                 <FriendsGridShimmer count={shimmerCount * 2} />
               ) : requests.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
                   {requests.map((request) => (
                     <div
                       key={request.id}
-                      className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
+                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
@@ -726,7 +726,7 @@ const FriendsPageContent: React.FC = () => {
                       </Link>
 
                       {/* Content */}
-                      <div className="p-4">
+                      <div className="p-3">
                         <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
                           <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
                             {request.requester?.full_name || "Unknown User"}
@@ -735,14 +735,14 @@ const FriendsPageContent: React.FC = () => {
 
                         {/* Mutual Friends */}
                         {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                          <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-4">
+                          <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-1">
                          
                             <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                           </div>
                         )}
 
                         {/* Action Buttons */}
-                        <div className="space-y-2">
+                        <div className="flex gap-2 items-center">
                           <button
                             onClick={() => handleAcceptRequest(request.id)}
                             className="w-full btn-sm-primary text-sm"
@@ -774,15 +774,15 @@ const FriendsPageContent: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-                <h2 className="text-2xl font-semibold text-content-secondary">All Friends</h2>
-                <div className="relative max-w-full w-md">
+                <h2 className="text-2xl font-semibold text-content">All Friends</h2>
+                <div className="relative max-w-full w-sm ">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Search friends..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-4 py-3 pl-10 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-surface-input text-content transition-colors"
+                    className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                   />
                 </div>
               </div>
@@ -795,7 +795,7 @@ const FriendsPageContent: React.FC = () => {
                   {filteredFriends.map((friend) => (
                     <div
                       key={friend.id}
-                      className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
+                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${friend.id || ''}`} className="block cursor-pointer">
@@ -859,15 +859,15 @@ const FriendsPageContent: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2 ">
-                <h2 className="text-2xl font-semibold text-content-secondary">Suggestions</h2>
-                <div className="relative max-w-full w-md">
+                <h2 className="text-2xl font-semibold text-content">Suggestions</h2>
+                <div className="relative max-w-full w-sm">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search suggestions..."
                     value={suggestionsSearchTerm}
                     onChange={(e) => setSuggestionsSearchTerm(e.target.value)}
-                    className="w-full px-4 py-3 pl-10 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-surface-input text-content transition-colors"
+                    className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                   />
                 </div>
               </div>
@@ -880,7 +880,7 @@ const FriendsPageContent: React.FC = () => {
                   {filteredSuggestions.map((suggestion) => (
                     <div
                       key={suggestion.user_id}
-                      className="bg-surface rounded-lg shadow-header overflow-hidden hover:shadow-md transition-shadow"
+                      className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow"
                     >
                       {/* Profile Image */}
                       <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
@@ -943,7 +943,7 @@ const FriendsPageContent: React.FC = () => {
             </div>
           ) : activeSection === "birthdays" ? (
             <div>
-              <h2 className="text-2xl font-semibold text-content-secondary mb-6">Birthdays</h2>
+              <h2 className="text-2xl font-semibold text-content mb-6">Birthdays</h2>
 
               {birthdaysLoading ? (
                 <FriendsGridShimmer count={shimmerCount} />

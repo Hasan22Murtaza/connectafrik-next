@@ -288,39 +288,28 @@ const GroupsPage: React.FC = () => {
     <div className="space-y-4 ">
       {/* Groups Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold text-content-secondary">Groups</h2>
+        <h2 className="text-2xl font-semibold text-content">Groups</h2>
 
       </div>
 
 
       {/* Navigation */}
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* FEED */}
         <button
           onClick={() => handleViewChange("feed")}
-          className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
+          className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
     transition-all duration-300 ease-in-out
     ${view === "feed"
               ? "bg-orange-50 text-primary-600"
-              : "text-content-secondary hover:bg-orange-50 hover:text-primary-600"
+              : "text-content-secondary hover:bg-gray-50 hover:text-gray-700"
             }
     `}
         >
-          {/* LEFT LINE */}
-          <span
-            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
-      transition-all duration-300 ease-in-out
-      ${view === "feed"
-                ? "opacity-100 scale-y-100"
-                : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
-              }`}
-          ></span>
-
           <FileText
-            className={`w-5 h-5 transition-all duration-300 group-hover:scale-110 ${view === "feed" ? "scale-110" : ""
-              }`}
+            className={`w-5 h-5 transition-all duration-300`}
           />
-          <span className="font-medium transition-all duration-300 group-hover:translate-x-1">
+          <span className="font-medium transition-all duration-300 ">
             Your feed
           </span>
         </button>
@@ -328,28 +317,20 @@ const GroupsPage: React.FC = () => {
         {/* DISCOVER */}
         <button
           onClick={() => handleViewChange("discover")}
-          className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
+          className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
     transition-all duration-300 ease-in-out
     ${view === "discover"
               ? "bg-orange-50 text-primary-600"
-              : "text-content-secondary hover:bg-orange-50 hover:text-primary-600"
+              : "text-content-secondary hover:bg-gray-50 hover:text-gray-700"
             }
     `}
         >
-          <span
-            className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
-      transition-all duration-300 ease-in-out
-      ${view === "discover"
-                ? "opacity-100 scale-y-100"
-                : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
-              }`}
-          ></span>
+          
 
           <Compass
-            className={`w-5 h-5 transition-all duration-300 group-hover:scale-110 ${view === "discover" ? "scale-110" : ""
-              }`}
+            className={`w-5 h-5 transition-all duration-300 `}
           />
-          <span className="font-medium transition-all duration-300 group-hover:translate-x-1">
+          <span className="font-medium transition-all duration-300 ">
             Discover
           </span>
         </button>
@@ -358,28 +339,19 @@ const GroupsPage: React.FC = () => {
         {user && (
           <button
             onClick={() => handleViewChange("my-groups")}
-            className={`group relative w-full flex items-center gap-3 px-3 py-2 rounded-md
+            className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
       transition-all duration-300 ease-in-out
       ${view === "my-groups"
                 ? "bg-orange-50 text-primary-600"
-                : "text-content-secondary hover:bg-orange-50 hover:text-primary-600"
+                : "text-content-secondary hover:bg-gray-50 hover:text-gray-700"
               }
       `}
           >
-            <span
-              className={`absolute left-0 top-0 h-full w-[3px] rounded-r bg-primary-600
-        transition-all duration-300 ease-in-out
-        ${view === "my-groups"
-                  ? "opacity-100 scale-y-100"
-                  : "opacity-0 scale-y-0 group-hover:opacity-100 group-hover:scale-y-100"
-                }`}
-            ></span>
 
             <Users
-              className={`w-5 h-5 transition-all duration-300 group-hover:scale-110 ${view === "my-groups" ? "scale-110" : ""
-                }`}
+              className={`w-5 h-5 transition-all duration-300 `}
             />
-            <span className="font-medium transition-all duration-300 group-hover:translate-x-1">
+            <span className="font-medium transition-all duration-300 ">
               Your groups
             </span>
           </button>
@@ -594,7 +566,7 @@ const GroupsPage: React.FC = () => {
           <div className="flex-1  ">
             {view === "feed" && (
               <div className="">
-                <h2 className="text-xl sm:text-2xl font-semibold text-content-secondary mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-semibold text-content mb-4 sm:mb-6">
                   Recent activity
                 </h2>
                 {activityLoading ? (
@@ -617,11 +589,11 @@ const GroupsPage: React.FC = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-3 sm:space-y-4">
+                  <div className="space-y-2.5">
                     {recentActivity.map((post: any) => (
                       <div
                         key={post.id}
-                        className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] overflow-hidden"
+                        className="bg-white rounded-2xl shadow-card overflow-hidden"
                       >
                         <div className="p-2 sm:p-3 border-b border-gray-200">
                           <button
@@ -670,7 +642,7 @@ const GroupsPage: React.FC = () => {
             {view === "discover" && (
               <div className="">
                 <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-content-secondary">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-content">
                     Discover Groups
                   </h2>
                   {/* Search Bar */}
@@ -729,7 +701,7 @@ const GroupsPage: React.FC = () => {
             {view === "my-groups" && (
               <div className="">
                 <div className="hidden sm:flex sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-content-secondary ">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-content ">
                     Your Groups
                   </h2>
                   {/* Search Bar */}
