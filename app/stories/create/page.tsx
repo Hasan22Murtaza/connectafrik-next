@@ -214,7 +214,7 @@ export default function CreateStoryPage() {
 
   if (!storyType) {
     return (
-      <div className="min-h-screen bg-surface sm:bg-gradient-to-br sm:from-surface-canvas sm:to-surface-secondary">
+      <div className="min-h-screen bg-surface ">
         <div className="sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-border">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center h-14 sm:h-16 gap-3 sm:gap-4">
