@@ -377,7 +377,7 @@ const GroupDetailPage: React.FC = () => {
   const categoryInfo = getCategoryInfoLarge(group.category)
 
   return (
-    <div className="min-h-screen bg-gray-100  max-w-full 2xl:max-w-screen-2xl mx-auto">
+    <div className="min-h-screen max-w-full 2xl:max-w-screen-2xl mx-auto">
       {/* Banner */}
       <div className="relative">
         {group.banner_url ? (
@@ -561,7 +561,7 @@ const GroupDetailPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="py-6">
+      <div className="py-6 px-4">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
        
           {/* Center Content */}

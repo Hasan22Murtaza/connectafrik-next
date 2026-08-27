@@ -57,7 +57,7 @@
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-lg: rgba(99, 99, 99, 0.2) 0px 2px 4px 0px;;
+  --shadow-lg:   0 2px 8px rgba(0, 0, 0, 0.06);
   --shadow-dropdown: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
 
   /* Interactive */
@@ -533,7 +533,7 @@ body {
   background: var(--surface-primary);
   border-radius: 0.75rem;
   padding: 1rem;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 

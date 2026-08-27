@@ -135,7 +135,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
   }
 
   return (
-    <div className="rounded-xl overflow-hidden hover:shadow-lg transition-shadow bg-white">
+    <div className="rounded-xl overflow-hidden shadow-card hover:shadow-lg transition-shadow bg-white">
       {/* Banner */}
       <div className="relative group">
   {group.banner_url ? (

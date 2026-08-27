@@ -572,7 +572,7 @@ const GroupsPage: React.FC = () => {
                 {activityLoading ? (
                   <GroupsFeedShimmer />
                 ) : recentActivity.length === 0 ? (
-                  <div className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)] p-6 sm:p-12 text-center">
+                  <div className="bg-white rounded-2xl shadow-card p-6 sm:p-12 text-center">
                     <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-base sm:text-lg font-medium text-content mb-2">
                       No recent activity
@@ -654,7 +654,7 @@ const GroupsPage: React.FC = () => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                      className=" w-full px-4 py-3 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                      className=" w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                     />
                   </div>
                 </div>
@@ -713,7 +713,7 @@ const GroupsPage: React.FC = () => {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                      className=" w-full px-4 py-3 pl-10 bg-[#EEF1F4] hover:bg-[#DDE2E6] focus-visible:bg-[#DDE2E6] border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-[#EEF1F4] transition-colors"
+                      className=" w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                     />
                   </div>
 

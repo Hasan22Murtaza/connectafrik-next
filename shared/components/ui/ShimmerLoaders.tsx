@@ -226,7 +226,7 @@ export function GroupPostsFeedShimmer({ count }: { count: number }) {
 export function GroupDetailPageShimmer() {
   const feedCount = useFeedShimmerCount();
   return (
-    <div className="min-h-screen bg-gray-100 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen  max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
       <div className="relative w-full">
         <div className="w-full h-40 sm:h-80 animate-shimmer" />
       </div>

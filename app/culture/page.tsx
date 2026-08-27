@@ -115,21 +115,21 @@ const CulturePage: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-3 md:grid-cols-3 sm:gap-4 gap-2">
-            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+            <div className="bg-surface rounded-2xl shadow-card p-4 text-center">
               <Heart className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
               <div className="sm:text-2xl text-lg font-bold text-content">
                 {statsLoading ? '—' : formatStat(totalPosts)}
               </div>
               <div className="text-sm text-content-secondary">Cultural Shares</div>
             </div>
-            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+            <div className="bg-surface rounded-2xl shadow-card p-4 text-center">
               <Users className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
               <div className="sm:text-2xl text-lg font-bold text-content">
                 {statsLoading ? '—' : formatStat(enthusiastsCount)}
               </div>
               <div className="text-sm text-content-secondary">Culture Enthusiasts</div>
             </div>
-            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center">
+            <div className="bg-surface rounded-2xl shadow-card p-4 text-center">
               <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mb-2" />
               <div className="sm:text-2xl text-lg font-bold text-content">
                 {statsLoading ? '—' : (totalPosts >= 1000 ? '1000+' : formatStat(totalPosts))}
@@ -144,7 +144,7 @@ const CulturePage: React.FC = () => {
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 space-y-6">
               {/* Cultural Categories */}
-              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <h3 className="font-semibold text-content mb-4">Cultural Categories</h3>
                 <div className="space-y-1 mb-2">
                   <button
@@ -190,7 +190,7 @@ const CulturePage: React.FC = () => {
               </div>
 
               {/* Featured This Week */}
-              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <h3 className="font-semibold text-content mb-4">Featured This Week</h3>
                 <div className="space-y-3">
                   {statsLoading ? (
@@ -212,7 +212,7 @@ const CulturePage: React.FC = () => {
               </div>
 
               {/* Cultural Tips */}
-              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <h3 className="font-semibold text-content mb-4">Sharing Tips</h3>
                 <div className="space-y-2 text-sm text-content-secondary">
                   <div className="flex items-start space-x-2">
@@ -240,7 +240,7 @@ const CulturePage: React.FC = () => {
           <div className="lg:col-span-3">
             {/* Create Post Button */}
             {!showCreatePost && (
-              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] sm:p-4 p-2  mb-6">
+              <div className="bg-surface rounded-2xl shadow-card sm:p-4 p-2  mb-6">
                 <button
                   onClick={() => setShowCreatePost(true)}
                   className="w-full flex items-center space-x-3  text-left hover:bg-surface-hover rounded-lg transition-colors duration-200"
@@ -274,7 +274,7 @@ const CulturePage: React.FC = () => {
               {postsLoading ? (
                 <div className="space-y-6">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
+                    <div key={i} className="bg-surface rounded-2xl shadow-card p-4 animate-pulse">
                       <div className="flex space-x-3 mb-4">
                         <div className="w-10 h-10 bg-surface-tertiary rounded-full"></div>
                         <div className="flex-1">
@@ -296,7 +296,7 @@ const CulturePage: React.FC = () => {
                   ))}
                 </div>
               ) : posts.length === 0 && !postsLoading ? (
-                <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 text-center py-12">
+                <div className="bg-surface rounded-2xl shadow-card p-4 text-center py-12">
                   <Users className="w-16 h-16 text-green-200 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-content mb-2">No cultural shares yet</h3>
                   <p className="text-content-secondary mb-6">Be the first to share a piece of African culture!</p>
@@ -341,7 +341,7 @@ const CulturePage: React.FC = () => {
                   {loadingMore && (
                     <div className="space-y-6">
                       {Array.from({ length: 2 }).map((_, idx) => (
-                        <div key={idx} className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4 animate-pulse">
+                        <div key={idx} className="bg-surface rounded-2xl shadow-card p-4 animate-pulse">
                           <div className="flex space-x-3 mb-4">
                             <div className="w-10 h-10 bg-surface-tertiary rounded-full" />
                             <div className="flex-1">
