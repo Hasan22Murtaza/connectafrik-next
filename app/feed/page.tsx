@@ -351,7 +351,7 @@ const FeedPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsComposerOpen(true)}
-                className="flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface px-4 py-3 text-left shadow-header transition-all hover:shadow hover:border-border"
+                className="flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface px-4 py-3 text-left shadow-card transition-all hover:shadow hover:border-border"
               >
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.full_name} className="h-10 w-10 rounded-full object-cover shrink-0" />
@@ -367,7 +367,7 @@ const FeedPage: React.FC = () => {
             )}
           </section>
 
-          <section className="rounded-2xl shadow-header bg-surface p-4">
+          <section className="rounded-2xl shadow-card bg-surface p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-content">Browse by category</h2>
               <button

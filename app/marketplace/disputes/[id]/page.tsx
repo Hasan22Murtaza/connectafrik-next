@@ -57,7 +57,7 @@ const DisputeDetailPage: React.FC = () => {
 
   if (loading || !detail) {
     return (
-      <div className="min-h-screen bg-surface-canvas flex items-center justify-center">
+      <div className="min-h-screen  flex items-center justify-center">
         <div className="animate-pulse text-content-secondary">Loading dispute...</div>
       </div>
     );
@@ -138,7 +138,7 @@ const DisputeDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
       <div className="max-w-3xl mx-auto px-4 py-6">
         <button
           onClick={() => router.push(`/my-orders/${dispute.order_id}`)}
@@ -183,7 +183,7 @@ const DisputeDetailPage: React.FC = () => {
             )}
           </div>
 
-          <p className="mt-4 text-content bg-surface-canvas rounded-lg p-4 text-sm">{dispute.description}</p>
+          <p className="mt-4 text-content  rounded-lg p-4 text-sm">{dispute.description}</p>
 
           {dispute.seller_response && (
             <div className="mt-4 border-t pt-4">
@@ -212,7 +212,7 @@ const DisputeDetailPage: React.FC = () => {
             </h2>
             <ul className="space-y-2">
               {evidence.map((e: any) => (
-                <li key={e.id} className="text-sm bg-surface-canvas rounded-lg p-3">
+                <li key={e.id} className="text-sm  rounded-lg p-3">
                   <span className="capitalize text-content-secondary">{e.submitter_role}</span>
                   {e.file_url && (
                     <a
@@ -266,7 +266,7 @@ const DisputeDetailPage: React.FC = () => {
             {messages?.map((m: any) => (
               <div
                 key={m.id}
-                className={`text-sm rounded-lg p-3 ${m.sender_role === "buyer" ? "bg-blue-50 ml-0 mr-8" : "bg-surface-canvas ml-8 mr-0"
+                className={`text-sm rounded-lg p-3 ${m.sender_role === "buyer" ? "bg-blue-50 ml-0 mr-8" : " ml-8 mr-0"
                   }`}
               >
                 <p className="text-xs text-content-secondary capitalize mb-1">{m.sender_role}</p>

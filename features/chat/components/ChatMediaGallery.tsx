@@ -594,7 +594,7 @@ export default function ChatMediaGallery({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas px-3 py-3">
+          <div className="min-h-0 flex-1 overflow-y-auto  px-3 py-3">
             {infoLoading ? (
               <div className="flex flex-col items-center justify-center gap-2 py-14 text-content-secondary">
                 <Loader2 className="h-7 w-7 animate-spin text-primary-600" />

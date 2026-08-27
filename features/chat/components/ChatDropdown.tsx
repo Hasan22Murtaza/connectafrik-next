@@ -60,11 +60,11 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
     <button
       type="button"
       onClick={() => onOpen(thread.id)}
-      className={`flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-surface-hover ${
+      className={`group rounded-lg flex w-full items-start gap-3 px-2 py-2.5 text-left transition-colors hover:bg-gray-50  ${
         subdued ? 'opacity-70' : ''
       }`}
     >
-      <div className="relative h-12 w-12 shrink-0">
+      <div className="relative h-12 w-12 shrink-0 ">
         {listAvatarUrl ? (
           <img
             src={listAvatarUrl}
@@ -80,7 +80,7 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
 
       <div className="min-w-0 flex-1 py-0.5">
         <div className="flex items-start justify-between gap-2">
-          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-content">
+          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">
             {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden /> : null}
             <span className="truncate">{threadDisplayName}</span>
           </p>
@@ -337,7 +337,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   return (
     <div
       ref={dropdownRef}
-      className="absolute sm:right-0 -right-6 z-[120] mt-3 w-65 max-w-[90vw] translate-x-0 transform rounded-xl border border-border bg-surface p-3 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-4"
+      className="absolute sm:right-0 -right-6 z-[120] mt-3 w-65 max-w-[90vw] translate-x-0 transform rounded-xl border border-border bg-surface p-2 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-3"
     >
       <div className="border-b border-border-subtle pb-3">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -371,7 +371,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
-            className="w-full rounded-lg border border-border bg-surface-canvas py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
+            className="w-full rounded-lg border border-border  py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
             aria-label={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
           />
         </div>
@@ -384,13 +384,13 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             setView('marketplace')
             setSearch('')
           }}
-          className="mt-2 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-surface-hover"
+          className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100 "
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
             <Store className="h-5 w-5" aria-hidden />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium leading-tight text-content">TradeHub messages</p>
+            <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">TradeHub messages</p>
             <p className="mt-0.5 truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
           </div>
           {marketplaceUnread > 0 ? (
@@ -404,7 +404,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
       ) : null}
 
       {view === 'marketplace' ? (
-        <div className="custom-scrollbar max-h-[min(70vh,24rem)] overflow-y-auto pt-2">
+        <div className="custom-scrollbar max-h-[min(70vh,24rem)] overflow-y-auto pt-2 ">
           {mpLoading && marketplaceThreads.length === 0 ? (
             <ChatDropdownShimmer mode="chat" count={4} />
           ) : marketplaceThreads.length === 0 ? (
@@ -432,7 +432,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
                     key={thread.id}
                     type="button"
                     onClick={() => handleOpenThread(thread.id)}
-                    className="flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-surface-hover"
+                    className="flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100"
                   >
                     <div className="h-12 w-12 shrink-0">
                       {avatarUrl ? (
@@ -498,16 +498,20 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
               No active chats — open <span className="font-medium text-content">Archived</span> below.
             </p>
           )}
-          <div className="divide-y divide-border-subtle">
-            {filteredActive.map((thread) => (
-              <ChatDropdownThreadRow
-                key={thread.id}
-                thread={thread}
-                currentUser={currentUser}
-                onOpen={handleOpenThread}
-              />
-            ))}
-          </div>
+          <div>
+              <hr className="border-border-subtle mb-1" />
+
+              {filteredActive.map((thread, index) => (
+                <div key={thread.id}>
+
+                  <ChatDropdownThreadRow
+                    thread={thread}
+                    currentUser={currentUser}
+                    onOpen={handleOpenThread}
+                  />
+                </div>
+              ))}
+            </div>
           {blockedThreads.length > 0 && (
             <div className="mt-1 border-t border-border-subtle pt-2">
               <button

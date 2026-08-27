@@ -18,7 +18,7 @@ export type LocationSearchProps = {
 }
 
 const defaultFieldClass =
-  'w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-surface-canvas focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]'
+  'w-full px-3 py-2 border border-gray-300 rounded-md text-sm  focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]'
 
 /**
  * Single visible search field. Choosing a suggestion loads Place Details and calls `onChange`

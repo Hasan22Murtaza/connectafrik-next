@@ -139,7 +139,7 @@ export const FeedReelsStrip: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-md shadow-gray-200/60">
+      <div className="rounded-xl border border-border  overflow-hidden shadow-md shadow-gray-200/60">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
             <div className="h-5 w-5 rounded bg-primary-100 animate-pulse" />

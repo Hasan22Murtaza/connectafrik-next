@@ -2331,7 +2331,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className={`relative ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
       <div
         ref={messagesScrollRef}
-        className={`flex flex-col space-y-1 overflow-y-auto overflow-x-hidden bg-surface-canvas px-2 py-2 sm:space-y-1.5 sm:px-4 sm:py-3 scroll-smooth ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
+        className={`flex flex-col space-y-1 overflow-y-auto overflow-x-hidden  px-2 py-2 sm:space-y-1.5 sm:px-4 sm:py-3 scroll-smooth ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
           }`}
       >
         {isLoadingOlderMessages && (
@@ -2990,10 +2990,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           onClick={cancelForwardPicker}
         >
           <div
-            className="flex h-[min(88vh,640px)] w-full max-w-md flex-col rounded-t-2xl border border-border bg-surface-canvas shadow-2xl sm:h-[min(560px,85vh)] sm:rounded-2xl"
+            className="flex h-[min(88vh,640px)] w-full max-w-md flex-col rounded-t-2xl border border-border  shadow-2xl sm:h-[min(560px,85vh)] sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center gap-1 border-b border-border/80 bg-surface-canvas px-1 py-2">
+            <div className="flex shrink-0 items-center gap-1 border-b border-border/80  px-1 py-2">
               <button
                 type="button"
                 onClick={cancelForwardPicker}
@@ -3007,7 +3007,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </h2>
             </div>
 
-            <div className="shrink-0 border-b border-border/80 bg-surface-canvas px-3 pb-3 pt-1">
+            <div className="shrink-0 border-b border-border/80  px-3 pb-3 pt-1">
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary"

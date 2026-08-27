@@ -37,7 +37,7 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
   }
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
       <header className="sticky top-0 z-20 border-b border-border bg-surface/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <button
@@ -55,8 +55,8 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <div className="mb-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-content">Checkout</h1>
           <p className="text-sm text-content-secondary mt-1">
             Review your order and complete payment in a few steps.
@@ -97,7 +97,7 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
 
               <div className="mt-5 flex items-center justify-between">
                 <span className="text-sm text-content-secondary">Quantity</span>
-                <div className="inline-flex items-center rounded-xl border border-border bg-surface-canvas">
+                <div className="inline-flex items-center rounded-xl border border-border ">
                   <button
                     type="button"
                     onClick={decreaseQuantity}

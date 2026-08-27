@@ -29,7 +29,7 @@ const LeftSidebar = () => {
 
   return (
     <aside className="hidden lg:block shrink-0 h-full overflow-y-auto py-6  w-65 xl:w-80 2xl:w-[24rem]">
-      <h2 className="text-md font-semibold text-content-secondary uppercase tracking-wide mb-3 px-2">
+      <h2 className="text-md font-semibold text-content uppercase tracking-wide mb-3 px-2">
   Your Space
 </h2>
      <ul className="space-y-3">
@@ -41,12 +41,12 @@ const LeftSidebar = () => {
       <li key={item.name}>
         <Link
           href={item.to}
-          className={`group relative flex items-center space-x-3 px-3 py-2 rounded-md 
+          className={`group relative flex items-center space-x-3 px-3 py-2 rounded-lg 
           transition-all duration-300 ease-in-out
           ${
             isActive
               ? "bg-primary-100 text-primary-600"
-              : "text-content-secondary hover:bg-surface-hover"
+              : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
           } 
          `}
         >

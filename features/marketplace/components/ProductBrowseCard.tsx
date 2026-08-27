@@ -1,5 +1,11 @@
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/lib/api-client";
+import {
+  Heart
+} from "@/shared/icons";
 import { Product } from "@/shared/types";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { hasTag, URGENT_TAG } from "../utils/listingTags";
 import {
   formatProductLocation,
@@ -19,6 +25,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   product,
   onView,
 }) => {
+  const [isSaved, setIsSaved] = useState<boolean>(Boolean(product.is_saved));
   const mainImage = product.images?.[0] || FALLBACK_IMAGE;
   const location = formatProductLocation(product);
   const isOutOfStock = product.stock_quantity === 0;
@@ -26,6 +33,29 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   const justListed = isJustListed(product.created_at);
   const isUrgent = hasTag(product.tags, URGENT_TAG);
   const showStatusOverlay = isOutOfStock || isUnavailable;
+  const { user } = useAuth();
+
+  useEffect(() => {
+    setIsSaved(Boolean(product.is_saved));
+  }, [product.id, product.is_saved]);
+
+
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("Please sign in to save products");
+      return;
+    }
+
+    try {
+      const res = await apiClient.post<{ saved: boolean }>(
+        `/api/marketplace/${product.id}/save`
+      );
+      setIsSaved(res.saved);
+      toast.success(res.saved ? "Added to saved items" : "Removed from saved items");
+    } catch {
+      toast.error("Failed to update saved status");
+    }
+  };
 
   return (
     <article
@@ -43,6 +73,20 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
           }}
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-200"
         />
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            void handleSave();
+          }}
+          className={`p-2.5 rounded-full backdrop-blur-sm shadow-sm transition-all active:scale-95 absolute top-2 right-2 ${isSaved
+              ? "bg-primary-600 text-white"
+              : "bg-surface/90 text-content hover:bg-surface"
+            }`}
+          aria-label={isSaved ? "Unsave" : "Save"}
+        >
+          <Heart className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+        </button>
 
         {!showStatusOverlay && (
           <div className="absolute top-2 left-2 flex flex-col items-start gap-1 z-10">

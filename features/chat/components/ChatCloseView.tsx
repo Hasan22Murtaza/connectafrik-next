@@ -51,7 +51,7 @@ export default function ChatCloseView({ onFocusSearch }: ChatCloseViewProps) {
   };
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-surface-canvas px-6">
+    <div className="flex h-full w-full flex-col items-center justify-center  px-6">
       <div className="flex flex-wrap items-start justify-center gap-10 sm:gap-14">
         <ActionTile
           icon={<FileText className="h-9 w-9 text-content-secondary" strokeWidth={1.5} />}

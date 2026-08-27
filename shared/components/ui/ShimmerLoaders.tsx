@@ -159,7 +159,7 @@ export function ChatDropdownShimmer({
 export function GroupsFeedShimmer() {
   const count = useFeedShimmerCount();
   return (
-    <div className="space-y-3 sm:space-y-4 w-full min-w-0">
+    <div className="space-y-2.5 w-full min-w-0">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
@@ -226,7 +226,7 @@ export function GroupPostsFeedShimmer({ count }: { count: number }) {
 export function GroupDetailPageShimmer() {
   const feedCount = useFeedShimmerCount();
   return (
-    <div className="min-h-screen bg-gray-100 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen  max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden">
       <div className="relative w-full">
         <div className="w-full h-40 sm:h-80 animate-shimmer" />
       </div>
@@ -321,7 +321,7 @@ export function MarketplacePageShimmer() {
 /** Friend/request/suggestion card grid shimmer. Pass count (e.g. useShimmerCount() * 2 for 4/8/12). */
 export function FriendsGridShimmer({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 w-full min-w-0">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-4 w-full min-w-0">
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
@@ -332,8 +332,8 @@ export function FriendsGridShimmer({ count = 8 }: { count?: number }) {
             <div className="h-4 w-3/4 max-w-full animate-shimmer rounded" />
             <div className="h-3 w-1/2 max-w-full animate-shimmer rounded" />
             <div className="flex gap-2 pt-2">
-              <div className="h-8 w-full max-w-full animate-shimmer rounded flex-shrink-0" />
-              <div className="h-8 w-full max-w-full animate-shimmer rounded flex-shrink-0" />
+              <div className="h-8 w-1/2 max-w-full animate-shimmer rounded flex-shrink-0" />
+              <div className="h-8 w-1/2 max-w-full animate-shimmer rounded flex-shrink-0" />
             </div>
           </div>
         </div>
@@ -483,7 +483,7 @@ export function MyOrdersListShimmer({ count }: { count: number }) {
 /** Full-page shimmer for order detail loading. */
 export function OrderDetailPageShimmer() {
   return (
-    <div className="min-h-screen bg-surface-canvas w-full min-w-0 overflow-x-hidden">
+    <div className="min-h-screen  w-full min-w-0 overflow-x-hidden">
       <div className="w-full max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         <div className="h-4 w-28 animate-shimmer rounded mb-4" />
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">

@@ -91,7 +91,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
   return (
     <div className="mb-6">
       <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-lg font-semibold text-content-secondary">
+        <h2 className="text-lg font-semibold text-content">
           {title || (showAddFriendButton ? 'People You May Know' : 'Online Contacts')}
         </h2>
       </div>
@@ -100,7 +100,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
         {contacts.map((contact) => (
           <div
             key={contact.id}
-            className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-surface-hover cursor-pointer"
+            className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50  cursor-pointer"
           >
             <div className="flex flex-1 items-center space-x-3 min-w-0">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-tertiary">
@@ -118,7 +118,7 @@ const OnlineContactsSection: React.FC<OnlineContactsSectionProps> = ({
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-content">{contact.name}</p>
+                <p className="truncate text-sm text-gray-700 group-hover:text-gray-900">{contact.name}</p>
               </div>
             </div>
 

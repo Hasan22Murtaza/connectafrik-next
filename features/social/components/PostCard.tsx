@@ -748,7 +748,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     <article
       ref={postRef}
       onClick={handlePostClick}
-      className="bg-surface shadow-header mb-3 duration-200 rounded-2xl  p-3 sm:p-4 cursor-pointer"
+      className="bg-surface shadow-card mb-3 duration-200 rounded-2xl  p-3 sm:p-4 cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-2">

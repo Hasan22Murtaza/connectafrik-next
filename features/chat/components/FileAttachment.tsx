@@ -32,7 +32,7 @@ const FileAttachment: React.FC<FileAttachmentProps> = ({ isOpen, onClose, onFile
         <h3 className="text-lg font-semibold text-content">Attach files</h3>
         <p className="mt-2 text-sm text-content-secondary">Images and videos upload best under 10 MB.</p>
 
-        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-surface-canvas p-6 text-center">
+        <div className="mt-6 flex flex-col items-center justify-center rounded-xl border border-dashed border-border  p-6 text-center">
           <svg
             aria-hidden
             className="h-10 w-10 text-primary-500"

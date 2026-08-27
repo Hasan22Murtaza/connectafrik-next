@@ -472,7 +472,7 @@ export default function ChatSidebar({
 
   return (
     <aside
-      className={`flex h-full w-full flex-col border-r border-border bg-surface-canvas sm:w-[360px] sm:shrink-0 lg:w-[400px] ${
+      className={`flex h-full w-full flex-col border-r border-border  sm:w-[360px] sm:shrink-0 lg:w-[400px] ${
         selectedThreadId ? "hidden sm:flex" : "flex"
       }`}
     >
@@ -569,7 +569,7 @@ export default function ChatSidebar({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={view === "marketplace" ? "Search marketplace" : "Search or start a new chat"}
-              className="w-full rounded-full border border-transparent bg-surface-canvas py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
+              className="w-full rounded-full border border-transparent  py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
             />
             {search ? (
               <button
@@ -614,7 +614,7 @@ export default function ChatSidebar({
             setView("marketplace");
             setSearch("");
           }}
-          className="relative flex w-full shrink-0 items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover"
+          className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
             <Store className="h-5 w-5" aria-hidden />
@@ -769,7 +769,7 @@ export default function ChatSidebar({
                 }}
                 role="button"
                 tabIndex={0}
-                className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover ${
+                className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${
                   selected ? "bg-surface-hover" : "bg-transparent"
                 }`}
               >
@@ -869,7 +869,7 @@ export default function ChatSidebar({
                     </div>
                   ) : null}
                 </div>
-                <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+                {/* <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" /> */}
               </div>
             );
           })}

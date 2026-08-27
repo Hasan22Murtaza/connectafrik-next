@@ -228,7 +228,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                 return (
                   <div
                     key={call.session_id}
-                    className="flex items-center justify-between rounded-lg border border-transparent hover:border-border py-2 transition-colors"
+                    className="group flex items-center justify-between rounded-lg hover:bg-gray-50 p-2 transition-colors"
                   >
                     <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
                       <div className="relative w-8 h-8 sm:w-10 sm:h-10 shrink-0">
@@ -245,7 +245,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm font-semibold truncate ${missed ? 'text-red-600' : 'text-content'}`}>
+                        <p className={`text-sm font-semibold text-gray-700 group-hover:text-gray-900 ${missed ? 'text-red-600' : 'text-content'}`}>
                           {call.name}
                         </p>
                         <p className="text-xs text-content-secondary flex items-center gap-1.5 min-w-0">

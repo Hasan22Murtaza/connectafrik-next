@@ -117,7 +117,7 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-surface shadow-header">
+      <header className="sticky top-0 z-50 bg-surface shadow-header ">
         <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 overflow-visible">
           <div className="flex items-center h-14 sm:h-16 justify-between gap-2 w-full">
             <div className="flex items-center ">
@@ -134,7 +134,7 @@ const Header: React.FC<HeaderProps> = ({
                   <input
                     type="text"
                     placeholder="Search connectAfrik..."
-                    className="w-full px-4 py-2.5 pl-10 bg-surface-input border-0 rounded-full focus:ring-0 focus:outline-none focus:bg-surface-input text-content placeholder:text-content-tertiary transition-colors"
+                    className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     onFocus={() => {
@@ -188,12 +188,12 @@ const Header: React.FC<HeaderProps> = ({
                           <Home className="w-12" />
                           <span className="text-sm font-medium">Feed</span>
 
-                          <span
+                          {/* <span
                             className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/feed"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                               }`}
-                          />
+                          /> */}
                         </Link>
                       </li>
 
@@ -209,12 +209,12 @@ const Header: React.FC<HeaderProps> = ({
                           <Video className="w-12" />
                           <span className="text-sm font-medium">Reels</span>
 
-                          <span
+                          {/* <span
                             className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname.startsWith("/memories")
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                               }`}
-                          />
+                          /> */}
                         </Link>
                       </li>
 
@@ -230,12 +230,12 @@ const Header: React.FC<HeaderProps> = ({
                           <Landmark className="w-12" />
                           <span className="text-sm font-medium">Politics</span>
 
-                          <span
+                          {/* <span
                             className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/politics"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                               }`}
-                          />
+                          /> */}
                         </Link>
                       </li>
 
@@ -251,12 +251,12 @@ const Header: React.FC<HeaderProps> = ({
                           <Palette className="w-12" />
                           <span className="text-sm font-medium">Culture</span>
 
-                          <span
+                          {/* <span
                             className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/culture"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                               }`}
-                          />
+                          /> */}
                         </Link>
                       </li>
 
@@ -272,12 +272,12 @@ const Header: React.FC<HeaderProps> = ({
                           <Users className="w-12" />
                           <span className="text-sm font-medium">Groups</span>
 
-                          <span
+                          {/* <span
                             className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/groups"
                               ? "w-full"
                               : "w-0 group-hover:w-full"
                               }`}
-                          />
+                          /> */}
                         </Link>
                       </li>
 
@@ -298,7 +298,7 @@ const Header: React.FC<HeaderProps> = ({
                       >
                         <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         {unreadMessages > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
                             {unreadMessages > 99 ? "99+" : unreadMessages}
                           </span>
                         )}

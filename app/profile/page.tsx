@@ -437,7 +437,7 @@ const ProfileSettings: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 sm:gap-6 gap-4">
           <div className="lg:col-span-1">
-            <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+            <div className="bg-surface rounded-2xl shadow-card p-4">
               <nav className=" md:flex-col flex gap-2 sm:gap-3  items-center overflow-x-auto  scrollbar-hide ">
                 {tabs.map(tab => {
                   const IconComponent = tab.icon
@@ -447,8 +447,8 @@ const ProfileSettings: React.FC = () => {
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full rounded-full border flex items-center sm:space-x-3 space-x-1 px-3 py-2 rounded-lg text-left transition-colors duration-200 ${
                         activeTab === tab.id
-                          ? ' bg-primary-600 text-white'
-                          : ' hover:bg-surface-hover border-border bg-surface-secondary text-content-secondary  hover:text-white hover:bg-primary-600'
+                          ? ' bg-primary-50 text-primary-600 border-primary-300'
+                          : ' hover:bg-surface-hover border border-gray-100 bg-gray-50 text-gray-700  hover:bg-gray-50'
                       }`}
                     >
                       <IconComponent className="w-5 h-5" />
@@ -462,7 +462,7 @@ const ProfileSettings: React.FC = () => {
 
           <div className="lg:col-span-3">
             {activeTab === 'profile' && (
-              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <div className="sm:p-6 p-4  border-b border-border">
                   <h2 className="text-xl font-semibold text-content">Profile Information</h2>
                   <p className="text-content-secondary">Update your profile details and avatar</p>
@@ -604,7 +604,7 @@ const ProfileSettings: React.FC = () => {
             )}
 
             {activeTab === 'privacy' && (
-              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <div className="sm:p-6 p-4 border-b border-border">
                   <h2 className="text-xl font-semibold text-content">Privacy Settings</h2>
                   <p className="text-content-secondary">Control who can see your content and interact with you</p>
@@ -621,21 +621,35 @@ const ProfileSettings: React.FC = () => {
                       ].map(option => {
                         const IconComponent = option.icon
                         return (
-                          <label key={option.value} className="flex items-center space-x-3 p-3 border border-border rounded-lg cursor-pointer hover:bg-surface-hover">
-                            <input
-                              type="radio"
-                              name="profile_visibility"
-                              value={option.value}
-                              checked={privacySettings.profile_visibility === option.value}
-                              onChange={(e) => setPrivacySettings({ ...privacySettings, profile_visibility: e.target.value as ProfileVisibilityLevel })}
-                              className="text-primary-600"
-                            />
+                          <label
+                        key={option.value}
+                        className="flex items-center justify-between gap-4 p-4 border border-border rounded-xl cursor-pointer bg-surface transition-all duration-200 hover:bg-surface-hover hover:border-primary-300"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-surface-hover">
                             <IconComponent className="w-5 h-5 text-content-secondary" />
-                            <div>
-                              <div className="font-medium text-content">{option.label}</div>
-                              <div className="text-sm text-content-secondary">{option.desc}</div>
+                          </div>
+
+                          <div className="space-y-0.5">
+                            <div className="font-medium text-content">
+                              {option.label}
                             </div>
-                          </label>
+
+                            <div className="text-sm text-content-secondary">
+                              {option.desc}
+                            </div>
+                          </div>
+                        </div>
+
+                        <input
+                          type="radio"
+                          name="profile_visibility"
+                          value={option.value}
+                          checked={privacySettings.profile_visibility === option.value}
+                          onChange={(e) => setPrivacySettings({ ...privacySettings, profile_visibility: e.target.value as ProfileVisibilityLevel })}
+                          className="w-5 h-5 text-primary-600 focus:ring-primary-500"
+                        />
+                      </label>
                         )
                       })}
                     </div>
@@ -774,7 +788,7 @@ const ProfileSettings: React.FC = () => {
             )}
 
             {activeTab === 'notifications' && (
-              <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <div className="sm:p-6 p-4 border-b border-border">
                   <h2 className="text-xl font-semibold text-content">Notification Preferences</h2>
                   <p className="text-content-secondary">Choose what notifications you want to receive</p>
@@ -789,7 +803,7 @@ const ProfileSettings: React.FC = () => {
                       </div>
                       <button
                         onClick={() => setShowNotificationManager(true)}
-                        className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                        className="btn-primary flex gap-2"
                       >
                         <Settings className="w-4 h-4" />
                         <span>Configure</span>
@@ -843,7 +857,7 @@ const ProfileSettings: React.FC = () => {
 
             {activeTab === 'security' && (
               <div className="space-y-6">
-                <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <div className="bg-surface rounded-2xl shadow-card p-4">
                   <div className="sm:p-6 p-4 border-b border-border">
                     <h2 className="text-xl font-semibold text-content">Account Security</h2>
                     <p className="text-content-secondary">Manage your account security settings</p>
@@ -997,7 +1011,7 @@ const ProfileSettings: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-surface rounded-2xl shadow-[0_8px_32px_rgba(72,187,120,0.04)] p-4">
+                <div className="bg-surface rounded-2xl shadow-card p-4">
                   <div className="sm:p-6 p-4 border-b border-border">
                     <h2 className="text-xl font-semibold text-content">Data & Privacy</h2>
                     <p className="text-content-secondary">Download your data or delete your account</p>

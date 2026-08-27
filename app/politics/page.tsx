@@ -90,9 +90,9 @@ const PoliticsPage: React.FC = () => {
   const commentSheetPost = showCommentsFor != null ? posts.find((p) => p.id === showCommentsFor) : undefined
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
 
-      <div className="max-w-full  px-4 sm:px-6 py-6">
+      <div className="max-w-full  px-4 sm:px-6 py-8">
         {/* Header Section */}
         <div className="mb-8">
           <div className="flex sm:items-center items-start justify-between space-x-3 mb-4">
@@ -122,21 +122,21 @@ const PoliticsPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-3 md:grid-cols-3 gap-2 sm:gap-4">
-            <div className="bg-surface rounded-2xl shadow-header p-2 sm:p-4  text-center">
+            <div className="bg-surface rounded-2xl shadow-card p-2 sm:p-4  text-center">
               <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 mx-auto mb-2" />
               <div className="text-xl sm:text-2xl font-bold text-content">
                 {statsLoading ? '—' : formatStat(totalPosts)}
               </div>
               <div className="text-sm text-content-secondary">Active Discussions</div>
             </div>
-            <div className="bg-surface rounded-2xl shadow-header p-2 sm:p-4  text-center">
+            <div className="bg-surface rounded-2xl shadow-card p-2 sm:p-4  text-center">
               <Users className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 mx-auto mb-2" />
               <div className="text-xl sm:text-2xl font-bold text-content">
                 {statsLoading ? '—' : formatStat(enthusiastsCount)}
               </div>
               <div className="text-sm text-content-secondary">Political Enthusiasts</div>
             </div>
-            <div className="bg-surface rounded-2xl shadow-header p-2 sm:p-4  text-center">
+            <div className="bg-surface rounded-2xl shadow-card p-2 sm:p-4  text-center">
               <Globe className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 mx-auto mb-2" />
               <div className="text-xl sm:text-2xl font-bold text-content">
                 {statsLoading ? '—' : countriesRepresented}
@@ -151,7 +151,7 @@ const PoliticsPage: React.FC = () => {
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 space-y-6">
               {/* Trending Topics */}
-              <div className="bg-surface rounded-2xl shadow-header p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <h3 className="font-semibold text-content mb-4">Trending Topics</h3>
                 <div className="space-y-1 mb-2">
                   <button
@@ -197,7 +197,7 @@ const PoliticsPage: React.FC = () => {
               </div>
 
               {/* Featured This Week */}
-              <div className="bg-surface rounded-2xl shadow-header p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <h3 className="font-semibold text-content mb-4">Active This Week</h3>
                 <div className="space-y-3">
                   {statsLoading ? (
@@ -222,7 +222,7 @@ const PoliticsPage: React.FC = () => {
               </div>
 
               {/* Discussion Guidelines */}
-              <div className="bg-surface rounded-2xl shadow-header p-4">
+              <div className="bg-surface rounded-2xl shadow-card p-4">
                 <h3 className="font-semibold text-content mb-4">Discussion Guidelines</h3>
                 <div className="space-y-2 text-sm text-content-secondary">
                   <div className="flex items-start space-x-2">
@@ -254,7 +254,7 @@ const PoliticsPage: React.FC = () => {
           <div className="lg:col-span-3">
             {/* Create Post Button */}
             {!showCreatePost && (
-              <div className="bg-surface rounded-2xl shadow-header sm:p-4 p-2 mb-6">
+              <div className="bg-surface rounded-2xl shadow-card sm:p-4 p-2 mb-6">
                 <button
                   onClick={() => setShowCreatePost(true)}
                   className="w-full flex items-center space-x-3 text-left hover:bg-surface-hover rounded-lg transition-colors duration-200"
@@ -288,7 +288,7 @@ const PoliticsPage: React.FC = () => {
               {postsLoading ? (
                 <div className="space-y-6">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="bg-surface rounded-2xl shadow-header p-4 animate-pulse">
+                    <div key={i} className="bg-surface rounded-2xl shadow-card p-4 animate-pulse">
                       <div className="flex space-x-3 mb-4">
                         <div className="w-10 h-10 bg-surface-tertiary rounded-full" />
                         <div className="flex-1">
@@ -309,7 +309,7 @@ const PoliticsPage: React.FC = () => {
                   ))}
                 </div>
               ) : posts.length === 0 && !postsLoading ? (
-                <div className="bg-surface rounded-2xl shadow-header text-center py-12">
+                <div className="bg-surface rounded-2xl shadow-card text-center py-12">
                   <TrendingUp className="w-16 h-16 text-red-200 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-content mb-2">No political discussions yet</h3>
                   <p className="text-content-secondary mb-6">
@@ -353,7 +353,7 @@ const PoliticsPage: React.FC = () => {
                   {loadingMore && (
                     <div className="space-y-6">
                       {Array.from({ length: 2 }).map((_, idx) => (
-                        <div key={idx} className="bg-surface rounded-2xl shadow-header p-4 animate-pulse">
+                        <div key={idx} className="bg-surface rounded-2xl shadow-card p-4 animate-pulse">
                           <div className="flex space-x-3 mb-4">
                             <div className="w-10 h-10 bg-surface-tertiary rounded-full" />
                             <div className="flex-1">

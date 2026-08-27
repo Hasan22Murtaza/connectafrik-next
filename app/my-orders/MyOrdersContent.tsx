@@ -563,7 +563,7 @@ export function MyOrdersContent() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-canvas">
+    <div className="min-h-screen ">
       <div className="w-full max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         {/* Header */}
         <header className="mb-5 sm:mb-6">
@@ -583,7 +583,7 @@ export function MyOrdersContent() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search orders, products, or people…"
-                className="w-full pl-10 pr-10 py-3 sm:py-2.5 bg-surface border border-border-subtle rounded-2xl sm:rounded-xl text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-primary-200 focus:border-primary-400 transition-shadow"
+                className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
               />
               {searchQuery && (
                 <button
@@ -618,7 +618,7 @@ export function MyOrdersContent() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="w-full appearance-none pl-3.5 pr-9 py-2.5 min-h-[44px] sm:min-h-0 rounded-xl text-sm font-medium bg-surface border border-border-subtle text-content hover:bg-surface-hover focus:outline-none focus:ring-2 focus:ring-primary-200 cursor-pointer"
+                  className="w-full appearance-none px-6 py-2.5 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content"
                   aria-label="Sort orders"
                 >
                   {SORT_OPTIONS.map((opt) => (

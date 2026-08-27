@@ -85,7 +85,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
 
   return (
     <div
-      className="bg-surface rounded-2xl shadow-header overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer group focus-within:ring-2 focus-within:ring-primary-500"
+      className="bg-surface rounded-2xl shadow-card overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer group focus-within:ring-2 focus-within:ring-primary-500"
       onClick={() => onView(product.id)}
       role="article"
       aria-label={`${product.title} - ${getCurrencySymbol(product.currency)}${product.price.toLocaleString()}`}

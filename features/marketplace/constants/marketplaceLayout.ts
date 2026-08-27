@@ -1,6 +1,6 @@
 /** Shared layout and spacing tokens for consistent marketplace UI. */
 export const MP = {
-  page: "min-h-screen bg-surface-canvas px-0 sm:px-0 ",
+  page: "min-h-screen  px-0 sm:px-0 ",
   shell: "flex gap-0 min-w-0 w-full",
 
   sidebar:
@@ -11,7 +11,7 @@ export const MP = {
   sidebarRight:
     "w-[280px] shrink-0 py-4 px-4 lg:sticky lg:top-18 lg:self-start lg:max-h-screen lg:overflow-y-auto",
   sidebarBrowse:
-    "hidden md:block sticky md:relative inset-y-0 left-0 z-20 w-[280px] shrink-0 py-3 px-4 bg-surface sm:top-0 top-20 md:h-screen md:self-start md:overflow-y-auto scrollbar-hover",
+    "hidden md:block sticky md:relative inset-y-0 left-0 z-20 w-[280px] shrink-0 py-3 px-4  sm:top-0 top-20 md:h-screen md:self-start md:overflow-y-auto scrollbar-hover",
   filterDrawer:
     "fixed inset-y-0 left-0 z-50 w-[min(100vw-48px,360px)] max-w-[360px] bg-surface shadow-2xl flex flex-col transform transition-transform duration-300 ease-out",
   filterDrawerOpen: "translate-x-0",
@@ -32,11 +32,11 @@ export const MP = {
     "w-full flex items-center gap-2 p-2 bg-surface rounded-lg border border-border-subtle hover:bg-surface-hover transition-colors text-left shadow-sm",
   listThumb: "w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-surface-secondary shrink-0",
 
-  navList: "space-y-0.5",
+  navList: "space-y-2",
   navItem:
     "group w-full flex items-center gap-2.5 px-2 py-2 rounded-lg transition-colors duration-150 text-[15px] font-medium cursor-pointer",
-  navItemActive: "bg-primary-50 text-primary-700 dark:text-primary-400",
-  navItemInactive: "text-content hover:bg-surface-hover",
+  navItemActive: "bg-primary-50 text-primary-600 dark:text-primary-400",
+  navItemInactive: "text-content hover:bg-gray-50",
   navIcon: "w-5 h-5 shrink-0",
   navIconActive: "text-primary-600 dark:text-primary-400",
   navIconInactive: "text-content-secondary",
@@ -68,9 +68,9 @@ export const MP = {
   sidebarRightPadding: "p-3",
 
   searchInput:
-    "w-full px-3 py-2 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary",
+    "w-full px-3 py-2 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary",
   selectInput:
-    "w-full px-2.5 py-2 bg-surface-input hover:bg-surface-hover border-0 rounded-lg text-sm text-content focus:ring-2 focus:ring-primary-500 focus:outline-none cursor-pointer",
+    "w-full px-2.5 py-2 bg-surface-input hover:bg-surface-hover border-0 rounded-lg text-sm text-content focus:ring-2 focus:ring-orange-500 focus:outline-none cursor-pointer",
 
   backLink: "flex items-center gap-1.5 text-content-secondary hover:text-content text-sm",
   pageTitle: "text-xl font-bold text-content",

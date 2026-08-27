@@ -62,7 +62,7 @@ const PostsTab: React.FC<PostsTabProps> = ({
 }) => {
   if (posts.length === 0) {
     return (
-      <div className="bg-white sm:rounded-2xl shadow-[0_8px_32px_rgba(255,88,20,0.04)]">
+      <div className="bg-white sm:rounded-2xl shadow-card">
         <EmptyState
           icon={MessageSquare}
           title="No posts yet"

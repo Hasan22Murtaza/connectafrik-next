@@ -9,7 +9,7 @@
   color-scheme: light;
 
   /* Legacy aliases */
-  --background: #f2f4f7;
+  --background: #FFFFFF;
   --foreground: #050505;
 
   /* Brand — unchanged across themes */
@@ -57,7 +57,7 @@
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 8px 32px rgba(255, 88, 20, 0.04);
+  --shadow-lg:   0 2px 8px rgba(0, 0, 0, 0.06);
   --shadow-dropdown: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
 
   /* Interactive */
@@ -426,8 +426,8 @@
   --color-primary-hover: var(--interactive-primary-hover);
   --color-accent: var(--interactive-accent);
 
-  --shadow-card: var(--shadow-md);
-  --shadow-header: var(--shadow-lg);
+  --shadow-card: var(--shadow-lg);
+  --shadow-header: var(--shadow-sm);
   --shadow-dropdown: var(--shadow-dropdown);
 
   --font-sans: var(--font-geist-sans);
@@ -443,7 +443,7 @@
 body {
   font-family: var(--font-poppins), sans-serif;
   color: var(--content-primary);
-  background-color: var(--surface-canvas);
+  background-color: var(--background);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
@@ -533,7 +533,7 @@ body {
   background: var(--surface-primary);
   border-radius: 0.75rem;
   padding: 1rem;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -568,12 +568,16 @@ body {
 .bg-primary-600 {
   background-color: var(--african-orange);
 }
+
 .hover\:bg-primary-600:hover {
   background-color: var(--african-orange-dark);
 }
 
 .hover\:bg-primary-200:hover {
   background-color: var(--primary-200);
+}
+.hover\:bg-primary-50:hover {
+  background-color: var(--primary-50);
 }
 
 .from-primary-50 {

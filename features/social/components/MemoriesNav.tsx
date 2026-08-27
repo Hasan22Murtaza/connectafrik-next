@@ -23,7 +23,7 @@ const items: { id: MemoriesTabId; label: string; icon: ReactNode }[] = [
 
 const itemBase =
   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-content transition-colors hover:bg-surface-hover'
-const itemActive = 'bg-primary-50 text-primary-700 dark:bg-primary-50/15 dark:text-primary-400'
+const itemActive = 'bg-primary-50 text-primary-600 dark:bg-primary-50/15 dark:text-primary-400'
 
 function isExplorePath(pathname: string) {
   return pathname === '/memories/explore' || pathname.startsWith('/memories/explore/')

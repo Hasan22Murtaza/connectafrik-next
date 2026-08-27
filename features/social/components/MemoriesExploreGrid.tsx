@@ -58,14 +58,14 @@ function ExploreGridBody() {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-4.5rem)] bg-surface-canvas pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-6">
+    <div className="min-h-[calc(100dvh-4.5rem)]  pb-[calc(5.25rem+env(safe-area-inset-bottom))] lg:pb-6">
       <div className="sticky top-[4.5rem] z-20 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur-sm lg:top-0">
         <div className="flex gap-2 overflow-x-auto pb-1 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             onClick={() => setCategory(null)}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-              !exploreCategory ? 'bg-content text-content-inverse' : 'bg-surface-secondary text-content hover:bg-surface-hover'
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm  transition-colors ${
+              !exploreCategory ? 'bg-primary-50 text-primary-600 border border-orange-200' : 'bg-surface-secondary text-content hover:bg-surface-hover'
             }`}
           >
             All
@@ -75,8 +75,8 @@ function ExploreGridBody() {
               key={c.value}
               type="button"
               onClick={() => setCategory(c.value)}
-              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-                exploreCategory === c.value ? 'bg-content text-content-inverse' : 'bg-surface-secondary text-content hover:bg-surface-hover'
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm  transition-colors ${
+                exploreCategory === c.value ? 'bg-primary-50 text-primary-600 border  border-orange-200' : 'bg-surface-secondary text-content hover:bg-surface-hover'
               }`}
             >
               {c.label}
