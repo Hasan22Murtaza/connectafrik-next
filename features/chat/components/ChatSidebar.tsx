@@ -614,7 +614,7 @@ export default function ChatSidebar({
             setView("marketplace");
             setSearch("");
           }}
-          className="relative flex w-full shrink-0 items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover"
+          className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
             <Store className="h-5 w-5" aria-hidden />
@@ -769,7 +769,7 @@ export default function ChatSidebar({
                 }}
                 role="button"
                 tabIndex={0}
-                className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover ${
+                className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${
                   selected ? "bg-surface-hover" : "bg-transparent"
                 }`}
               >
@@ -869,7 +869,7 @@ export default function ChatSidebar({
                     </div>
                   ) : null}
                 </div>
-                <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+                {/* <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" /> */}
               </div>
             );
           })}

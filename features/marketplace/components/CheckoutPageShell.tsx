@@ -55,8 +55,8 @@ const CheckoutPageShell: React.FC<CheckoutPageShellProps> = ({
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <div className="mb-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-content">Checkout</h1>
           <p className="text-sm text-content-secondary mt-1">
             Review your order and complete payment in a few steps.

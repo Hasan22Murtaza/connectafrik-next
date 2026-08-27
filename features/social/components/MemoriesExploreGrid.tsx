@@ -64,8 +64,8 @@ function ExploreGridBody() {
           <button
             type="button"
             onClick={() => setCategory(null)}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-              !exploreCategory ? 'bg-content text-content-inverse' : 'bg-surface-secondary text-content hover:bg-surface-hover'
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm  transition-colors ${
+              !exploreCategory ? 'bg-primary-50 text-primary-600 border border-orange-200' : 'bg-surface-secondary text-content hover:bg-surface-hover'
             }`}
           >
             All
@@ -75,8 +75,8 @@ function ExploreGridBody() {
               key={c.value}
               type="button"
               onClick={() => setCategory(c.value)}
-              className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition-colors ${
-                exploreCategory === c.value ? 'bg-content text-content-inverse' : 'bg-surface-secondary text-content hover:bg-surface-hover'
+              className={`shrink-0 rounded-full px-4 py-1.5 text-sm  transition-colors ${
+                exploreCategory === c.value ? 'bg-primary-50 text-primary-600 border  border-orange-200' : 'bg-surface-secondary text-content hover:bg-surface-hover'
               }`}
             >
               {c.label}

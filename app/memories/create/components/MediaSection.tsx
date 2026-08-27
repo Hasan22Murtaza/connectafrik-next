@@ -120,7 +120,7 @@ export function MediaSection({
   onVolumeChange,
   onVideoEnded,
 }: MediaSectionProps) {
-  const previewFrameClass = `relative overflow-hidden rounded-2xl bg-black shadow-lg ring-1 ring-black/10 transition-all duration-300 ${previewStyle.containerClass}`
+  const previewFrameClass = `relative overflow-hidden rounded-2xl  shadow-lg ring-1 ring-black/10 transition-all duration-300 ${previewStyle.containerClass}`
 
   return (
     <section
