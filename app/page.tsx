@@ -171,17 +171,20 @@ const settings: Settings = {
   autoplay: true,
   autoplaySpeed: 3000,
   arrows: false,
+
   responsive: [
     {
       breakpoint: 1024,
       settings: {
         slidesToShow: 2,
+        slidesToScroll: 1,
       },
     },
     {
       breakpoint: 768,
       settings: {
         slidesToShow: 1,
+        slidesToScroll: 1,
       },
     },
   ],
@@ -242,23 +245,23 @@ const Home: React.FC = () => {
       {/* ============================== HERO ============================== */}
       <section className="relative isolate overflow-hidden">
 
-        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-10  2xl:px-6 mx-auto py-18 ">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 2xl:px-6 py-8 sm:py-12 lg:py-18 ">
+          <div className="grid items-center gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-2">
             {/* Left: copy */}
             <div className="text-center lg:text-left">
               <Reveal>
-                <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/70 px-4 py-1.5 text-sm font-medium text-orange-700 shadow-sm backdrop-blur dark:border-border dark:bg-surface dark:text-orange-300">
-                  <Sparkles className="h-4 w-4" />
+                <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/70 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium text-orange-700 shadow-sm backdrop-blur dark:border-border dark:bg-surface dark:text-orange-300">
+                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Connecting people for a better world
                 </span>
               </Reveal>
-              <div className="max-w-2xl">
-                <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+              <div className="max-w-2xl mx-auto lg:mx-0">
+                <h1 className="mt-4 sm:mt-6 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-extrabold leading-tight sm:leading-[1.1] tracking-tight text-gray-900">
                   The social home for the world
                 </h1>
               </div>
               <Reveal delay={2}>
-                <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-600 lg:mx-0">
+                <p className="mx-auto mt-4 sm:mt-6 max-w-xl text-sm sm:text-base lg:text-lg leading-relaxed text-gray-600 lg:mx-0">
                   Share your story, join vibrant communities, message in
                   real time and discover the culture, ideas and people shaping
                   our world. One platform, endless connection.
@@ -266,19 +269,19 @@ const Home: React.FC = () => {
               </Reveal>
 
               <Reveal delay={3}>
-                <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start justify-center">
+                <div className="mt-6 sm:mt-8 flex flex-col items-center gap-2 sm:gap-3 sm:flex-row lg:justify-start justify-center">
                   {!user ? (
                     <>
                       <Link
                         href="/signup"
-                        className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/40 sm:w-auto"
+                        className="group inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/40"
                       >
                         Join the Community
-                        <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                        <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
                       </Link>
                       <Link
                         href="/signin"
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/80 px-7 py-3.5 text-base font-semibold text-gray-800 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-md sm:w-auto dark:border-border dark:bg-surface dark:text-content"
+                        className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/80 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm sm:text-base font-semibold text-gray-800 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-md sm:w-auto dark:border-border dark:bg-surface dark:text-content"
                       >
                         Sign In
                       </Link>
@@ -286,10 +289,10 @@ const Home: React.FC = () => {
                   ) : (
                     <Link
                       href="/feed"
-                      className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-7 py-3.5 text-base font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
+                      className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
                     >
                       Go to your feed
-                      <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                      <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
                     </Link>
                   )}
                 </div>
@@ -297,12 +300,12 @@ const Home: React.FC = () => {
 
               {/* Trust row */}
               <Reveal delay={4}>
-                <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row lg:justify-start justify-center">
+                <div className="mt-6 sm:mt-8 flex flex-col items-center gap-3 sm:gap-4 sm:flex-row lg:justify-start justify-center">
                   <div className="flex -space-x-3">
                     {users.map((user, i) => (
                       <div
                         key={i}
-                        className="h-10 w-10 rounded-full border-2 border-white overflow-hidden dark:border-surface"
+                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-white overflow-hidden dark:border-surface"
                       >
                         <img
                           src={user.avatarUrl}
@@ -311,16 +314,16 @@ const Home: React.FC = () => {
                         />
                       </div>
                     ))}
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-white bg-gray-900 text-xs font-semibold text-white dark:border-surface">
+                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border-2 border-white bg-gray-900 text-xs font-semibold text-white dark:border-surface">
                       10k+
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600">
+                  <div className="text-xs sm:text-sm text-gray-600">
                     <div className="flex items-center justify-center gap-1 lg:justify-start">
                       {[...Array(5)].map((_, i) => (
                         <Star
                           key={i}
-                          className="h-4 w-4 fill-amber-400 text-amber-400"
+                          className="h-3 w-3 sm:h-4 sm:w-4 fill-amber-400 text-amber-400"
                         />
                       ))}
                     </div>
@@ -331,7 +334,7 @@ const Home: React.FC = () => {
             </div>
 
             {/* Right: floating feed preview mockup */}
-            <Reveal delay={2} className="relative mx-auto w-full max-w-md lg:max-w-none">
+            <Reveal delay={2} className="relative mx-auto w-full max-w-xs sm:max-w-sm lg:max-w-none">
               <div className="relative">
                 {/* Glow */}
                 <div className="absolute -inset-4 -z-10 rounded-[2rem] bg-gradient-to-tr from-orange-500/20 via-transparent to-emerald-500/20 blur-2xl" />
@@ -413,22 +416,22 @@ const Home: React.FC = () => {
 
 
       {/* =========================== FEATURES =========================== */}
-      <section className="py-12 sm:py-12">
+      <section className="py-8 sm:py-12 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Reveal className="mx-auto mb-14 max-w-2xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-4 py-1.5 text-sm font-semibold text-orange-700 dark:bg-surface-secondary dark:text-orange-300">
-              <Zap className="h-4 w-4" /> Everything in one place
+          <Reveal className="mx-auto mb-10 sm:mb-14 max-w-2xl text-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-orange-700 dark:bg-surface-secondary dark:text-orange-300">
+              <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Everything in one place
             </span>
-            <h2 className="mt-5 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
               Built for the way the world connects
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
               From real-time chat to thriving communities and a trusted
               marketplace — every tool you need to share, connect and grow.
             </p>
           </Reveal>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, i) => {
               const Icon = feature.icon;
               return (
@@ -437,19 +440,19 @@ const Home: React.FC = () => {
                   delay={((i % 3) + 1) as 1 | 2 | 3}
                   className="h-full"
                 >
-                  <div className="group relative h-full overflow-hidden rounded-2xl border border-gray-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-xl dark:border-border dark:bg-surface">
+                  <div className="group relative h-full overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-xl dark:border-border dark:bg-surface">
                     <div
                       className={`absolute inset-x-0 -top-px h-1 scale-x-0 bg-gradient-to-r ${feature.accent} transition-transform duration-300 group-hover:scale-x-100`}
                     />
                     <div
-                      className={`mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
+                      className={`mb-4 sm:mb-5 inline-flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
                     >
-                      <Icon className="h-7 w-7" />
+                      <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
                       {feature.title}
                     </h3>
-                    <p className="mt-3 leading-relaxed text-gray-600">
+                    <p className="mt-2 sm:mt-3 text-sm sm:text-base leading-relaxed text-gray-600">
                       {feature.description}
                     </p>
                   </div>
@@ -462,25 +465,25 @@ const Home: React.FC = () => {
       </section>
 
       {/* ====================== FEED SHOWCASE / SPLIT ==================== */}
-      <section className="relative overflow-hidden py-12 sm:py-10">
+      <section className="relative overflow-hidden py-8 sm:py-12 lg:py-16">
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-orange-50/40 to-transparent dark:via-surface-secondary/30" />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-2">
+          <div className="grid items-center gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-2">
             {/* Copy */}
             <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-semibold text-emerald-700 dark:bg-surface-secondary dark:text-emerald-300">
-                <Play className="h-4 w-4" /> A feed that feels alive
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:bg-surface-secondary dark:text-emerald-300">
+                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> A feed that feels alive
               </span>
-              <h2 className="mt-5 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+              <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
                 See what your community is talking about
               </h2>
-              <p className="mt-4 text-lg text-gray-600">
+              <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
                 A rich, fast feed packed with photos, videos and real
                 conversations from every time zone. React, comment and share —
                 engagement that actually means something.
               </p>
 
-              <ul className="my-8 space-y-4">
+              <ul className="my-6 sm:my-8 space-y-3 sm:space-y-4">
                 {[
                   {
                     icon: Heart,
@@ -499,7 +502,7 @@ const Home: React.FC = () => {
                     <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-surface-secondary">
                       <Icon className="h-4 w-4" />
                     </span>
-                    <span className="text-gray-700">{text}</span>
+                    <span className="text-sm sm:text-base text-gray-700">{text}</span>
                   </li>
                 ))}
               </ul>
@@ -507,37 +510,37 @@ const Home: React.FC = () => {
               {!user && (
                 <Link
                   href="/signup"
-                  className="btn-primary"
+                  className="btn-primary text-sm sm:text-base"
                 >
                   Start exploring
-                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               )}
             </Reveal>
 
             {/* Mock feed cards */}
-            <Reveal delay={2} className="space-y-5">
+            <Reveal delay={2} className="space-y-4 sm:space-y-5">
               {/* Politics card */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-lg dark:border-border dark:bg-surface">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg dark:border-border dark:bg-surface">
                 <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
-                    <TrendingUp className="h-5 w-5" />
+                  <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-red-100 text-red-600 flex-shrink-0">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
                       🏛️ Politics
                     </span>
                     <p className="mt-0.5 text-xs text-gray-500">2 hours ago</p>
                   </div>
                 </div>
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                   The Role of Youth in Global Democracy
                 </h3>
-                <p className="mt-1.5 text-sm text-gray-600">
+                <p className="mt-1.5 text-xs sm:text-sm text-gray-600">
                   Young people everywhere are driving democratic change —
                   from the streets to the ballot box.
                 </p>
-                <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
+                <div className="mt-4 flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
                   <span className="flex items-center gap-1.5">
                     <Heart className="h-4 w-4" /> 234
                   </span>
@@ -551,26 +554,26 @@ const Home: React.FC = () => {
               </div>
 
               {/* Culture card */}
-              <div className="ml-auto w-[92%] rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-lg dark:border-border dark:bg-surface">
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg dark:border-border dark:bg-surface">
                 <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
-                    <Users className="h-5 w-5" />
+                  <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-green-100 text-green-600 flex-shrink-0">
+                    <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
                       🎭 Culture
                     </span>
                     <p className="mt-0.5 text-xs text-gray-500">4 hours ago</p>
                   </div>
                 </div>
-                <h3 className="font-semibold text-gray-900">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                   Celebrating Cultures That Connect the World
                 </h3>
-                <p className="mt-1.5 text-sm text-gray-600">
+                <p className="mt-1.5 text-xs sm:text-sm text-gray-600">
                   From festivals to family traditions — discover the stories,
                   art and heritage people share across borders.
                 </p>
-                <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
+                <div className="mt-4 flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
                   <span className="flex items-center gap-1.5">
                     <Heart className="h-4 w-4" /> 189
                   </span>
@@ -584,16 +587,16 @@ const Home: React.FC = () => {
               </div>
 
               {/* Quick comment composer */}
-              <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-border dark:bg-surface">
+              <div className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-gray-100 bg-white p-2 sm:p-3 shadow-sm dark:border-border dark:bg-surface">
                 {/* <div className="h-9 w-9 flex-none rounded-full bg-gradient-to-br from-violet-400 to-purple-500" /> */}
-                <button type="button" className="flex h-8 w-8 items-center justify-center pointer-events-none rounded-full bg-transparent text-content-secondary hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40 ring-1 ring-[#25d366] text-[#128c7e]" aria-label="Attach" aria-expanded="true">
-                  <Plus className="h-4 w-4" />
+                <button type="button" className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center pointer-events-none rounded-full bg-transparent text-content-secondary hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40 ring-1 ring-[#25d366] text-[#128c7e] flex-shrink-0" aria-label="Attach" aria-expanded="true">
+                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </button>
-                <div className="flex-1 truncate rounded-full bg-gray-100 px-4 py-2 text-sm text-gray-400 dark:bg-surface-secondary">
-                  Share something with your community…
+                <div className="flex-1 truncate rounded-full bg-gray-100 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 dark:bg-surface-secondary">
+                  Share something...
                 </div>
-                <button className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-orange-500 text-white">
-                  <Send className="h-4 w-4" />
+                <button className="flex h-7 w-7 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-full bg-orange-500 text-white flex-shrink-0 hover:bg-orange-600 transition-colors">
+                  <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </button>
               </div>
             </Reveal>
@@ -602,20 +605,20 @@ const Home: React.FC = () => {
       </section>
 
       {/* =========================== BENEFITS =========================== */}
-      <section className="py-12 sm:py-10">
+      <section className="py-8 sm:py-12 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-8 sm:p-12 lg:p-16">
-            <div className="absolute -right-16 -top-16 h-64 w-64 rounded-full bg-orange-500/30 blur-3xl" />
-            <div className="absolute -bottom-16 -left-16 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl" />
-            <div className="relative grid items-center gap-10 lg:grid-cols-2">
+          <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-6 sm:p-8 lg:p-12 xl:p-16">
+            <div className="absolute -right-16 -top-16 h-48 sm:h-64 w-48 sm:w-64 rounded-full bg-orange-500/30 blur-3xl" />
+            <div className="absolute -bottom-16 -left-16 h-48 sm:h-64 w-48 sm:w-64 rounded-full bg-emerald-500/20 blur-3xl" />
+            <div className="relative grid items-center gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-2">
               <Reveal>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white backdrop-blur">
-                  <ShieldCheck className="h-4 w-4" /> Why ConnectAfrik
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-white backdrop-blur">
+                  <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Why ConnectAfrik
                 </span>
-                <h2 className="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">
                   Connecting people for a better world
                 </h2>
-                <p className="mt-4 text-lg text-gray-300">
+                <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-300">
                   We're not just another social network. We're a global home
                   built with care for every voice — fast, private and genuinely
                   yours.
@@ -623,16 +626,16 @@ const Home: React.FC = () => {
               </Reveal>
 
               <Reveal delay={2}>
-                <ul className="grid gap-4 sm:grid-cols-2">
+                <ul className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                   {benefits.map((b) => (
                     <li
                       key={b}
-                      className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur transition-colors hover:bg-white/10"
+                      className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 backdrop-blur transition-colors hover:bg-white/10"
                     >
-                      <span className="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-emerald-500 text-white">
-                        <Check className="h-4 w-4" />
+                      <span className="mt-0.5 flex h-5 w-5 sm:h-6 sm:w-6 flex-none items-center justify-center rounded-full bg-emerald-500 text-white flex-shrink-0">
+                        <Check className="h-3 w-3 sm:h-4 sm:w-4" />
                       </span>
-                      <span className="text-sm text-gray-100">{b}</span>
+                      <span className="text-xs sm:text-sm text-gray-100">{b}</span>
                     </li>
                   ))}
                 </ul>
@@ -643,16 +646,16 @@ const Home: React.FC = () => {
       </section>
 
       {/* ========================= TESTIMONIALS ========================= */}
-      <section className="py-12 sm:py-10">
+      <section className="py-8 sm:py-12 lg:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Reveal className="mx-auto mb-14 max-w-2xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1.5 text-sm font-semibold text-emerald-700 dark:bg-surface-secondary dark:text-emerald-300">
-              <Heart className="h-4 w-4" /> Loved by the community
+          <Reveal className="mx-auto mb-10 sm:mb-14 max-w-2xl text-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:bg-surface-secondary dark:text-emerald-300">
+              <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Loved by the community
             </span>
-            <h2 className="mt-5 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
               Real stories from real members
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
               Thousands of people around the world are already building
               their home here.
             </p>
@@ -688,34 +691,34 @@ const Home: React.FC = () => {
           </div> */}
           <Slider {...settings}>
             {testimonials.map((t, i) => (
-              <div key={t.name} className="px-3 py-4">
+              <div key={t.name} className="px-2 sm:px-3 py-4">
                 <Reveal delay={((i % 3) + 1) as 1 | 2 | 3}>
-                  <figure className="flex min-h-[300px] flex-col rounded-2xl border border-gray-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
-                    <Quote className="h-8 w-8 text-orange-300" />
+                  <figure className="flex min-h-[280px] sm:min-h-[300px] flex-col rounded-2xl border border-gray-100 bg-white p-5 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
+                    <Quote className="h-7 w-7 sm:h-8 sm:w-8 text-orange-300" />
 
-                    <blockquote className="mt-4 flex-1 text-gray-700">
+                    <blockquote className="mt-3 sm:mt-4 flex-1 text-xs sm:text-sm lg:text-base text-gray-700">
                       "{t.quote}"
                     </blockquote>
 
-                    <div className="mt-5 flex items-center gap-1 text-amber-400">
+                    <div className="mt-4 sm:mt-5 flex items-center gap-1 text-amber-400">
                       {[...Array(5)].map((_, s) => (
-                        <Star key={s} className="h-4 w-4 fill-amber-400" />
+                        <Star key={s} className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-amber-400" />
                       ))}
                     </div>
 
-                    <figcaption className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-border">
+                    <figcaption className="mt-4 sm:mt-5 flex items-center gap-3 border-t border-gray-100 pt-4 sm:pt-5 dark:border-border">
                       {/* <div
                         className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-sm font-bold text-white`}
                       >
                         {t.initials}
                       </div> */}
-                      <img src={t.image_url} alt={t.name} className="h-11 w-11 rounded-full border-2 border-orange-500" />
+                      <img src={t.image_url} alt={t.name} className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border-2 border-orange-500 flex-shrink-0" />
 
-                      <div>
-                        <div className="font-semibold text-gray-900">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900">
                           {t.name}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-xs sm:text-sm text-gray-500">
                           {t.role}
                         </div>
                       </div>
@@ -729,13 +732,13 @@ const Home: React.FC = () => {
       </section>
 
       {/* ============================== FAQ ============================= */}
-      <section className="py-12 sm:py-10">
+      <section className="py-8 sm:py-12 lg:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <Reveal className="mb-12 text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+          <Reveal className="mb-10 sm:mb-12 text-center">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
               Frequently asked questions
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
               Everything you need to know before joining the global community.
             </p>
           </Reveal>
@@ -750,20 +753,20 @@ const Home: React.FC = () => {
                 >
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : i)}
-                    className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+                    className="flex w-full items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 text-left"
                     aria-expanded={isOpen}
                   >
-                    <span className="font-semibold text-gray-900">{faq.q}</span>
+                    <span className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900">{faq.q}</span>
                     <span
-                      className={`flex h-8 w-8 flex-none items-center justify-center rounded-full transition-colors ${isOpen
+                      className={`flex h-7 w-7 sm:h-8 sm:w-8 flex-none items-center justify-center rounded-full transition-colors flex-shrink-0 ${isOpen
                         ? "bg-orange-500 text-white"
                         : "bg-orange-100 text-orange-600 dark:bg-surface-secondary"
                         }`}
                     >
                       {isOpen ? (
-                        <Minus className="h-4 w-4" />
+                        <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       ) : (
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       )}
                     </span>
                   </button>
@@ -774,7 +777,7 @@ const Home: React.FC = () => {
                       }`}
                   >
                     <div className="overflow-hidden">
-                      <p className="px-6 pb-5 text-gray-600">{faq.a}</p>
+                      <p className="px-4 sm:px-6 pb-4 sm:pb-5 text-xs sm:text-sm lg:text-base text-gray-600">{faq.a}</p>
                     </div>
                   </div>
                 </div>
@@ -785,31 +788,31 @@ const Home: React.FC = () => {
       </section>
 
       {/* ============================== CTA ============================= */}
-      <section className="px-4 pb-20 sm:px-6 lg:px-8">
+      <section className="px-4 pb-12 sm:pb-16 lg:pb-20 sm:px-6 lg:px-8">
         <Reveal className="mx-auto max-w-7xl">
-          <div className="relative isolate overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 px-6 py-16 text-center  sm:px-12 sm:py-20 lp-animate-gradient">
-            <div className="absolute -left-10 -top-10 -z-10 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
-            <div className="absolute -bottom-10 -right-10 -z-10 h-48 w-48 rounded-full bg-emerald-300/30 blur-3xl" />
-            <h2 className="mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-primary-600 sm:text-4xl lg:text-5xl">
+          <div className="relative isolate overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-[2rem] bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 px-5 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 text-center lp-animate-gradient">
+            <div className="absolute -left-10 -top-10 -z-10 h-32 w-32 sm:h-48 sm:w-48 rounded-full bg-white/20 blur-3xl" />
+            <div className="absolute -bottom-10 -right-10 -z-10 h-32 w-32 sm:h-48 sm:w-48 rounded-full bg-emerald-300/30 blur-3xl" />
+            <h2 className="mx-auto max-w-2xl text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-extrabold tracking-tight text-primary-600">
               Ready to connect with the world?
             </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-lg text-gray-600 ">
+            <p className="mx-auto mt-4 sm:mt-5 max-w-2xl text-sm sm:text-base lg:text-lg text-gray-600 ">
               Connect with people everywhere sharing their stories, ideas
               and culture. Your voice matters in shaping a better world.
             </p>
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-7 sm:mt-8 lg:mt-9 flex flex-col items-center justify-center gap-2.5 sm:gap-3 sm:flex-row">
               {!user ? (
                 <>
                   <Link
                     href="/signup"
-                    className="btn-primary"
+                    className="btn-primary text-xs sm:text-sm lg:text-base px-4 sm:px-8 py-2.5 sm:py-3.5"
                   >
                     Get Started — it's free
-                    <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                    <ArrowRight className="h-3.5 w-3.5 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
                   </Link>
                   <Link
                     href="/signin"
-                    className="btn-secondary"
+                    className="btn-secondary text-xs sm:text-sm lg:text-base px-4 sm:px-8 py-2.5 sm:py-3.5"
                   >
                     Sign In
                   </Link>
@@ -817,10 +820,10 @@ const Home: React.FC = () => {
               ) : (
                 <Link
                   href="/feed"
-                  className="group inline-flex items-center justify-center gap-2 rounded-xl bg-white px-8 py-3.5 text-base font-semibold text-orange-600 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
+                  className="group inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 sm:px-8 py-2.5 sm:py-3.5 text-xs sm:text-sm lg:text-base font-semibold text-orange-600 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
                 >
                   Go to your feed
-                  <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                  <ArrowRight className="h-3.5 w-3.5 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               )}
             </div>

@@ -94,7 +94,7 @@ const PoliticsPage: React.FC = () => {
 
       <div className="max-w-full  px-4 sm:px-6 py-8">
         {/* Header Section */}
-        <div className="mb-8">
+        <div className="mb-4">
           <div className="flex sm:items-center items-start justify-between space-x-3 mb-4">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-red-100 rounded-full  items-center justify-center shrink-0 hidden sm:flex">
@@ -146,7 +146,7 @@ const PoliticsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* Sidebar */}
           <div className="hidden lg:block lg:col-span-1">
             <div className="sticky top-20 space-y-6">
@@ -254,10 +254,10 @@ const PoliticsPage: React.FC = () => {
           <div className="lg:col-span-3">
             {/* Create Post Button */}
             {!showCreatePost && (
-              <div className="bg-surface rounded-2xl shadow-card sm:p-4 p-2 mb-6">
+              <div className="bg-surface rounded-2xl shadow-card p-2 mb-4">
                 <button
                   onClick={() => setShowCreatePost(true)}
-                  className="w-full flex items-center space-x-3 text-left hover:bg-surface-hover rounded-lg transition-colors duration-200"
+                  className="w-full flex items-center space-x-3 text-left hover:bg-gray-50 rounded-lg transition-colors duration-200 p-2"
                 >
                   <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
                     <Plus className="w-5 h-5 text-red-600" />
