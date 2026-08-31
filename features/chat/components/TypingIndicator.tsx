@@ -19,7 +19,7 @@ const TypingIndicator: React.FC<TypingIndicatorProps> = ({ isTyping }) => {
       aria-live="polite"
       aria-label="Typing"
     >
-      <div className="flex items-center gap-[4px] rounded-2xl rounded-bl-md bg-surface px-3.5 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+      <div className="flex items-center gap-[4px] rounded-2xl rounded-bl-md bg-white px-3.5 py-2.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ring-1 ring-black/[0.04] dark:bg-surface">
         <span className="chat-typing-dot chat-typing-dot-1" />
         <span className="chat-typing-dot chat-typing-dot-2" />
         <span className="chat-typing-dot chat-typing-dot-3" />

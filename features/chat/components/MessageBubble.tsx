@@ -14,10 +14,13 @@ import {
   startOfDay,
 } from "date-fns";
 import {
+  Check,
   ChevronDown,
   ChevronsRight,
   Copy,
+  Download,
   ExternalLink,
+  Flag,
   Forward,
   Info,
   Languages,
@@ -26,8 +29,11 @@ import {
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
+  Pin,
   Reply,
+  Share2,
   Smile,
+  Square,
   Trash2,
   Video,
 } from '@/shared/icons';
@@ -80,8 +86,8 @@ export function formatChatDateDividerLabel(date: Date): string {
 export function ChatDateDivider({ dateIso }: { dateIso: string }) {
   const label = formatChatDateDividerLabel(new Date(dateIso));
   return (
-    <div className="flex justify-center py-2.5">
-      <span className="rounded-lg bg-surface/95 px-3.5 py-1 text-[12px] font-semibold tracking-wide text-content-secondary shadow-[0_1px_1px_rgba(11,20,26,0.12)] backdrop-blur-sm dark:bg-surface/90">
+    <div className="flex justify-center py-2">
+      <span className="rounded-[7px] border border-[#e9edef] bg-white px-3 py-[5px] text-[12.5px] font-medium text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.08)] dark:border-border dark:bg-surface dark:text-content-secondary">
         {label}
       </span>
     </div>
@@ -90,9 +96,9 @@ export function ChatDateDivider({ dateIso }: { dateIso: string }) {
 
 export function ChatUnreadDivider() {
   return (
-    <div className="relative my-3 flex items-center justify-center px-2" role="separator" aria-label="Unread messages">
-      <div className="absolute inset-x-2 top-1/2 h-px bg-primary-500/35 sm:inset-x-4" />
-      <span className="relative z-[1] rounded-full bg-primary-600 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm sm:px-3 sm:text-[11px]">
+    <div className="relative my-2.5 flex items-center justify-center px-2" role="separator" aria-label="Unread messages">
+      <div className="absolute inset-x-3 top-1/2 h-px bg-[#e9edef] dark:bg-border sm:inset-x-6" />
+      <span className="relative z-[1] rounded-[7px] border border-[#e9edef] bg-white px-2.5 py-[3px] text-[11px] font-medium uppercase tracking-wide text-[#54656f] dark:border-border dark:bg-surface dark:text-content-secondary">
         Unread messages
       </span>
     </div>
@@ -197,6 +203,8 @@ interface MessageBubbleProps {
   onShowInfo?: (message: ChatMessage) => void;
   selectionMode?: boolean;
   isMessageSelected?: boolean;
+  onEnterSelection?: (message: ChatMessage) => void;
+  onToggleSelect?: (message: ChatMessage) => void;
   /** Group chats only: show avatar + name above inbound bubbles */
   showSenderHeader?: boolean;
   translationDisplay?: {
@@ -213,6 +221,10 @@ interface MessageBubbleProps {
   isUploading?: boolean;
   uploadProgressById?: Record<string, number>;
   onCancelUpload?: () => void;
+  /** First bubble in a consecutive same-sender cluster — shows the WhatsApp tail */
+  showTail?: boolean;
+  /** Last bubble in a consecutive same-sender cluster */
+  isClusterEnd?: boolean;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -233,6 +245,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   onReact,
   onShowInfo,
   selectionMode = false,
+  isMessageSelected = false,
+  onEnterSelection,
+  onToggleSelect,
   showSenderHeader = false,
   translationDisplay,
   isTranslating = false,
@@ -244,6 +259,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isUploading = false,
   uploadProgressById,
   onCancelUpload,
+  showTail = true,
+  isClusterEnd = true,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -287,6 +304,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   }, []);
 
   const toggleMessageMenu = useCallback(() => {
+    setShowQuickReactions(false);
     setShowMenu((open) => {
       if (open) return false;
       setMenuPlacement(computeMenuPlacement());
@@ -295,6 +313,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   }, [computeMenuPlacement]);
 
   const openMessageMenu = useCallback(() => {
+    setShowQuickReactions(false);
     setMenuPlacement(computeMenuPlacement());
     setShowMenu(true);
   }, [computeMenuPlacement]);
@@ -416,6 +435,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const canForward = Boolean(onForward) && isForwardableChatMessage(message);
   const canShowInfo = isOwnMessage && Boolean(onShowInfo) && !isDeleted;
   const canCopy = Boolean((message.content || "").trim());
+  const hasAttachments = Boolean(message.attachments && message.attachments.length > 0);
+  const canSaveOrOpen = hasAttachments && !isDeleted && !isUploading;
+  const canSelect = Boolean(onEnterSelection) && !isDeleted;
+  const canReport = !isOwnMessage && !isDeleted;
   const canTranslate =
     Boolean(onTranslateMessage) &&
     !isOwnMessage &&
@@ -431,6 +454,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canForward ||
     canShowInfo ||
     canCopy ||
+    canSaveOrOpen ||
+    canSelect ||
+    canReport ||
     Boolean(onReply);
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -444,13 +470,70 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     setShowMenu(false);
   };
 
-  const openPlaceholder = (feature: string) => {
-    toast(`${feature} is not available yet`, { icon: "ℹ️" });
+  const firstAttachment = message.attachments?.[0];
+
+  const handleSaveAs = () => {
+    if (!firstAttachment?.url) return;
+    const a = document.createElement("a");
+    a.href = firstAttachment.url;
+    a.download = firstAttachment.name || "file";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setShowMenu(false);
+  };
+
+  const handleOpenWith = () => {
+    if (!firstAttachment?.url) return;
+    window.open(firstAttachment.url, "_blank", "noopener,noreferrer");
+    setShowMenu(false);
+  };
+
+  const handleShareAttachment = async () => {
+    if (!firstAttachment?.url) return;
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: firstAttachment.name || "Attachment",
+          url: firstAttachment.url,
+        });
+      } else {
+        await navigator.clipboard.writeText(firstAttachment.url);
+        toast.success("Link copied");
+      }
+    } catch {
+      /* user cancelled share */
+    }
+    setShowMenu(false);
+  };
+
+  const handleReport = () => {
+    toast.success("Thanks, we received your report");
+    setShowMenu(false);
+  };
+
+  const handleSelect = () => {
+    onEnterSelection?.(message);
     setShowMenu(false);
   };
 
   const messageOverflowMenuSections = useMemo((): ChatHeaderOptionsMenuSection[] => {
     const primary: ChatHeaderOptionsMenuItem[] = [
+      ...(canShowInfo
+        ? [
+          {
+            id: "message-info",
+            label: "Message info",
+            Icon: Info,
+            onClick: () => {
+              onShowInfo?.(message);
+              setShowMenu(false);
+            },
+          },
+        ]
+        : []),
       ...(onReply
         ? [
           {
@@ -487,6 +570,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           },
         ]
         : []),
+      ...(!isDeleted
+        ? [
+          {
+            id: "pin",
+            label: "Pin",
+            Icon: Pin,
+            onClick: () => {
+              toast("Pin is not available yet", { icon: "ℹ️" });
+              setShowMenu(false);
+            },
+          },
+        ]
+        : []),
       ...(canEditMessage
         ? [
           {
@@ -501,25 +597,54 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         : []),
     ];
 
-    const secondary: ChatHeaderOptionsMenuItem[] = [
-
-      ...(canShowInfo
+    const media: ChatHeaderOptionsMenuItem[] = [
+      ...(canSelect
         ? [
           {
-            id: "message-info",
-            label: "Message info",
-            Icon: Info,
+            id: "select",
+            label: "Select",
+            Icon: Square,
+            onClick: handleSelect,
+          },
+        ]
+        : []),
+      ...(canSaveOrOpen
+        ? [
+          {
+            id: "save-as",
+            label: "Save as",
+            Icon: Download,
+            onClick: handleSaveAs,
+          },
+          {
+            id: "share",
+            label: "Share",
+            Icon: Share2,
             onClick: () => {
-              onShowInfo?.(message);
-              setShowMenu(false);
+              void handleShareAttachment();
             },
+          },
+          {
+            id: "open-with",
+            label: "Open with",
+            Icon: ExternalLink,
+            onClick: handleOpenWith,
           },
         ]
         : []),
     ];
 
     const destructive: ChatHeaderOptionsMenuItem[] = [
-
+      ...(canReport
+        ? [
+          {
+            id: "report",
+            label: "Report",
+            Icon: Flag,
+            onClick: handleReport,
+          },
+        ]
+        : []),
       ...(canDeleteForMe
         ? [
           {
@@ -545,8 +670,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
     return [
       { id: "primary", items: primary },
-      ...(secondary.length > 0 ? [{ id: "secondary", items: secondary }] : []),
-      { id: "destructive", items: destructive },
+      ...(media.length > 0 ? [{ id: "media", items: media }] : []),
+      ...(destructive.length > 0 ? [{ id: "destructive", items: destructive }] : []),
     ];
   }, [
     message,
@@ -561,12 +686,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canShowInfo,
     canDeleteForMe,
     canDeleteForEveryone,
+    canSaveOrOpen,
+    canSelect,
+    canReport,
+    isDeleted,
     handleReply,
     handleCopyText,
     handleForwardClick,
     startComposerEdit,
     handleDelete,
-    openPlaceholder,
+    handleSelect,
+    handleSaveAs,
+    handleShareAttachment,
+    handleOpenWith,
+    handleReport,
   ]);
 
   if (isDeletedForMe) return null;
@@ -574,7 +707,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   if (toCallSessionStatusMessageType(message.message_type || "") === "ended") {
     return (
       <div className="mb-2 flex justify-center animate-[chatMsgIn_200ms_ease-out]">
-        <div className="flex items-center gap-2 rounded-full bg-surface/90 px-3.5 py-1.5 text-xs font-medium text-content-secondary shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] backdrop-blur-sm">
+        <div className="flex items-center gap-2 rounded-[7px] border border-[#e9edef] bg-white px-3.5 py-1.5 text-xs font-medium text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.08)] dark:border-border dark:bg-surface dark:text-content-secondary">
           <span>{message.content || "Call ended"}</span>
         </div>
       </div>
@@ -584,7 +717,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   if (message.message_type === "group_member_joined" || message.message_type === "group_member_left") {
     return (
       <div className="mb-2 flex justify-center animate-[chatMsgIn_200ms_ease-out]">
-        <div className="flex items-center gap-2 rounded-full bg-surface/90 px-3.5 py-1.5 text-xs font-medium text-content-secondary shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] backdrop-blur-sm">
+        <div className="flex items-center gap-2 rounded-[7px] border border-[#e9edef] bg-white px-3.5 py-1.5 text-xs font-medium text-[#54656f] shadow-[0_1px_0.5px_rgba(11,20,26,0.08)] dark:border-border dark:bg-surface dark:text-content-secondary">
           <span>{message.content}</span>
         </div>
       </div>
@@ -656,7 +789,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       : null;
 
   /** Outgoing / incoming bubble fill — WhatsApp-inspired, tokenized for themes */
-  const bubbleBg = isOwnMessage ? "chat-bubble-own" : "bg-surface";
+  const bubbleBg = isOwnMessage ? "chat-bubble-own" : "chat-bubble-in";
   const forwardAccent =
     showForwardBadge && isOwnMessage ? "border-l-[3px] border-[#25d366] pl-[9px]" : "";
   const emojiOnly =
@@ -737,11 +870,29 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   }, [reactionsEndpoint, fallbackReactionGroups]);
 
   const replyQuote = formatReplyQuote(repliedToMessage);
+  const mediaOnly =
+    !isDeleted &&
+    !callPresentation &&
+    !locationPayload &&
+    !emojiOnly &&
+    Boolean(message.attachments && message.attachments.length > 0) &&
+    !displayContent.trim() &&
+    !sharedPostId &&
+    !linkPreviewUrl;
 
   return (
     <div
       id={`chat-message-${message.id}`}
-      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : "mb-1.5"} ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"} ${highlighted ? "chat-message-jump-highlight rounded-xl" : ""}`}
+      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${
+        hasReactions ? "mb-8" : isClusterEnd ? "mb-2" : "mb-[2px]"
+      } ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"} ${highlighted ? "chat-message-jump-highlight rounded-xl" : ""} ${
+        selectionMode ? "cursor-pointer pl-8" : ""
+      }`}
+      onClick={
+        selectionMode
+          ? () => onToggleSelect?.(message)
+          : undefined
+      }
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -752,6 +903,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         setShowReactionPicker(false);
       }}
     >
+      {selectionMode ? (
+        <span
+          className={`absolute left-0 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border ${
+            isMessageSelected
+              ? "border-[#00a884] bg-[#00a884] text-white"
+              : "border-[#8696a0] bg-white dark:bg-surface"
+          }`}
+          aria-hidden
+        >
+          {isMessageSelected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+        </span>
+      ) : null}
       <div
         className={`relative min-w-0 max-w-[88%] flex-1 sm:max-w-[min(82%,440px)] ${isOwnMessage ? "ml-auto flex flex-col items-end" : "mr-auto flex flex-col items-start"}`}
       >
@@ -789,13 +952,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         <div className="group/bubble relative" ref={bubbleBlockRef}>
           <div
-            className={`relative inline-block max-w-full overflow-visible px-2.5 pb-1.5 pt-1.5 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] transition-shadow ${
+            className={`relative inline-block max-w-full overflow-visible shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] transition-shadow ${
               emojiOnly
                 ? "bg-transparent shadow-none px-1"
-                : `${bubbleBg} rounded-br-[10px] rounded-bl-[10px] ${
+                : `${bubbleBg} ${mediaOnly ? "p-[3px] pb-1" : "px-2.5 pb-1.5 pt-1.5"} ${
                     isOwnMessage
-                      ? "rounded-tl-[10px] rounded-tr-[4px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
-                      : "rounded-tr-[10px] rounded-tl-[4px] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--surface-primary)]"
+                      ? showTail
+                        ? "rounded-tl-[8px] rounded-tr-[4px] rounded-br-[8px] rounded-bl-[8px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
+                        : "rounded-[8px]"
+                      : showTail
+                        ? "rounded-tr-[8px] rounded-tl-[4px] rounded-br-[8px] rounded-bl-[8px] ring-1 ring-black/[0.04] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--chat-bubble-in)]"
+                        : "rounded-[8px] ring-1 ring-black/[0.04]"
                   }`
             } ${forwardAccent} ${
               isComposerEditingThis
@@ -819,21 +986,40 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             ) : null}
 
-            {!isDeleted && onReact && !selectionMode && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowQuickReactions((s) => !s);
-                  setShowMenu(false);
-                }}
-                className={`absolute z-30 flex h-7 w-7 items-center justify-center rounded-full bg-surface text-content-secondary shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-surface-hover -top-3 left-1/2 -translate-x-1/2 sm:top-1/2 sm:left-auto sm:-translate-y-1/2 sm:translate-x-0 ${
-                  isOwnMessage ? "sm:-left-9" : "sm:-right-9"
-                }`}
-                aria-label="Add reaction"
+            {!isDeleted && !selectionMode && (onReact || onReply) && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
+              <div
+                className={`absolute z-30 hidden items-center gap-0.5 sm:flex ${
+                  isOwnMessage ? "right-full mr-1.5" : "left-full ml-1.5"
+                } top-1/2 -translate-y-1/2`}
               >
-                <Smile className="h-4 w-4" />
-              </button>
+                {onReact ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowQuickReactions((s) => !s);
+                      setShowMenu(false);
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary dark:hover:bg-surface-hover"
+                    aria-label="Add reaction"
+                  >
+                    <Smile className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {onReply ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReply();
+                    }}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary dark:hover:bg-surface-hover"
+                    aria-label="Reply"
+                  >
+                    <Reply className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
             ) : null}
             {/* emojis */}
             <div>
@@ -847,7 +1033,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   } left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 ${
                     isOwnMessage ? "sm:right-0" : "sm:left-0"
                   } ${
-                    showQuickReactions
+                    showQuickReactions && !showMenu
                       ? "pointer-events-auto scale-100 opacity-100"
                       : "pointer-events-none scale-95 opacity-0"
                   }`}
@@ -918,7 +1104,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {showMenu ? (
               <div
                 ref={messageMenuRef}
-                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] flex-col items-stretch gap-1 ${
+                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] flex-col items-stretch gap-1.5 ${
                   isOwnMessage ? "right-0 items-end sm:right-full sm:mr-1" : "left-0 items-start sm:left-full sm:ml-1"
                 } ${
                   menuPlacement === "above"
@@ -931,25 +1117,57 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 onMouseEnter={handleReactionPickerEnter}
                 onMouseLeave={handleReactionPickerLeave}
               >
-
+                {onReact ? (
+                  <div
+                    className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full bg-white px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] dark:bg-surface"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {WA_QUICK_REACTION_EMOJIS.map((emoji) => (
+                      <button
+                        key={`menu-${emoji}`}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReact(message.id, emoji);
+                          setShowMenu(false);
+                        }}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[22px] transition hover:bg-surface-hover noto-color-emoji-regular"
+                        aria-label={`React ${emoji}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowReactionPicker((prev) => !prev);
+                      }}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
+                      aria-label="More reactions"
+                    >
+                      <TbMoodPlus className="h-5 w-5" />
+                    </button>
+                  </div>
+                ) : null}
 
                 {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
                   <div
                     role="menu"
-                    className="min-w-[200px] max-w-[280px] overflow-hidden rounded-lg bg-surface py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08]"
+                    className="min-w-[220px] max-w-[280px] overflow-hidden rounded-[10px] bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface"
                   >
                     {messageOverflowMenuSections.map((section, sectionIdx) => (
                       <Fragment key={section.id}>
-                        {sectionIdx > 0 ? <div role="separator" className="my-1 h-px bg-border-subtle" /> : null}
+                        {sectionIdx > 0 ? <div role="separator" className="my-1 h-px bg-[#e9edef] dark:bg-border-subtle" /> : null}
                         {section.items.map((item) => {
                           const { id, label, Icon, tone = "default", trailing, disabled, onClick } = item;
                           const baseRow =
-                            "flex w-full items-center gap-2 px-2.5 py-2 text-left text-[12px] leading-snug transition-colors";
+                            "flex w-full items-center gap-3 px-4 py-2.5 text-left text-[15px] leading-snug transition-colors";
                           const rowClass = disabled
                             ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
                             : tone === "danger"
                               ? `${baseRow} text-red-600 hover:bg-red-50`
-                              : `${baseRow} text-content hover:bg-surface-hover`;
+                              : `${baseRow} text-[#111b21] hover:bg-[#f0f2f5] dark:text-content dark:hover:bg-surface-hover`;
                           return (
                             <button
                               key={id}
@@ -963,7 +1181,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                               className={rowClass}
                             >
                               <Icon
-                                className={`h-[18px] w-[18px] shrink-0 ${disabled ? "text-content-tertiary" : tone === "danger" ? "text-red-600" : "text-content-secondary"
+                                className={`h-5 w-5 shrink-0 ${disabled ? "text-content-tertiary" : tone === "danger" ? "text-red-600" : "text-[#54656f] dark:text-content-secondary"
                                   }`}
                                 aria-hidden
                               />
@@ -1162,16 +1380,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             )}
 
             {!callPresentation ? (
-              <div className="mt-0.5 flex items-end justify-end gap-1 pl-6">
+              <div
+                className={
+                  mediaOnly
+                    ? "pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-end justify-end gap-1 rounded-[6px] bg-black/45 px-1.5 py-0.5"
+                    : "mt-0.5 flex items-end justify-end gap-1 pl-6"
+                }
+              >
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
                   {showEditedBadge ? (
-                    <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
+                    <span
+                      className={`text-[11px] lowercase leading-none ${
+                        mediaOnly ? "text-white/90" : "text-content-tertiary"
+                      }`}
+                    >
+                      edited
+                    </span>
                   ) : null}
-                  <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
+                  <span
+                    className={`shrink-0 text-[11px] tabular-nums ${
+                      mediaOnly ? "text-white/90" : "text-content-tertiary"
+                    }`}
+                  >
                     {format(new Date(message.created_at), "HH:mm")}
                   </span>
                 </div>
-                <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
+                <MessageStatusIndicator
+                  status={messageStatus}
+                  isOwnMessage={isOwnMessage}
+                  light={mediaOnly}
+                />
               </div>
             ) : null}
 

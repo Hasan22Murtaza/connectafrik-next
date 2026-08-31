@@ -43,14 +43,15 @@ import {
   Mic,
   MinusCircle,
   MoreVertical,
+  Paperclip,
   Pencil,
   Phone,
   Ban,
   Pin,
   PinOff,
-  Plus,
   Search,
   Send,
+  Smile,
   Square,
   Trash2,
   Video,
@@ -59,10 +60,12 @@ import {
   ChevronDown,
 } from '@/shared/icons';
 import { usePathname, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import React, {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState
@@ -266,6 +269,10 @@ function sortChatWindowMessages(msgs: ChatMessage[]): ChatMessage[] {
 }
 
 const MESSAGES_PAGE_SIZE = 50;
+
+const ComposerEmojiPicker = dynamic(() => import("emoji-picker-react"), {
+  ssr: false,
+});
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
   threadId,
@@ -587,6 +594,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceElapsedSec, setVoiceElapsedSec] = useState(0);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const attachMenuRef = useRef<HTMLFormElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaChunksRef = useRef<Blob[]>([]);
@@ -605,6 +613,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const draftBeforeComposerEditRef = useRef("");
   const composerEditorRef = useRef<ChatRichTextEditorHandle>(null);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [showMediaGallery, setShowMediaGallery] = useState(false);
   const [showParticipantsList, setShowParticipantsList] = useState(false);
   const [participantRolesById, setParticipantRolesById] = useState<
@@ -622,7 +632,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const userInitiatedCall = useRef(false);
   const lastIncomingCallSyncKeyRef = useRef<string>("");
   const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const messagesTopSentinelRef = useRef<HTMLDivElement>(null);
   const isPrependingHistoryRef = useRef(false);
+  const isLoadingOlderRef = useRef(false);
+  const historyAnchorRef = useRef<{ id: string; top: number; threadId: string } | null>(null);
+  const forceScrollToBottomRef = useRef(false);
+  const prevScrollThreadRef = useRef(threadId);
   const [historyPage, setHistoryPage] = useState(0);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
@@ -653,6 +668,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setHasOlderMessages(true);
     setIsLoadingOlderMessages(false);
     isPrependingHistoryRef.current = false;
+    isLoadingOlderRef.current = false;
     setHighlightedMessageId(null);
     setShowMessageSearch(false);
     setMessageSearchDraft("");
@@ -678,9 +694,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return [];
     });
     setAttachmentMenuOpen(false);
+    setEmojiPickerOpen(false);
+    historyAnchorRef.current = null;
+    forceScrollToBottomRef.current = true;
     uploadAbortByMessageRef.current.forEach((controller) => controller.abort());
     uploadAbortByMessageRef.current.clear();
     setUploadProgressByMessage({});
+    setSelectionMode(false);
+    setSelectedMessageIds([]);
   }, [threadId]);
 
   useEffect(() => {
@@ -759,7 +780,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [threadId, messageSearchKeyword]);
 
   const loadOlderMessages = useCallback(async () => {
-    if (!threadId || isLoadingOlderMessages) return;
+    if (!threadId || isLoadingOlderRef.current) return;
     const scrollEl = messagesScrollRef.current;
     if (!scrollEl) return;
 
@@ -770,9 +791,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return;
     }
 
+    isLoadingOlderRef.current = true;
     setIsLoadingOlderMessages(true);
-    const prevScrollHeight = scrollEl.scrollHeight;
-    const prevScrollTop = scrollEl.scrollTop;
+    const firstBubble = scrollEl.querySelector<HTMLElement>("[id^='chat-message-']");
+    historyAnchorRef.current = firstBubble
+      ? {
+          id: firstBubble.id.replace(/^chat-message-/, ""),
+          top: firstBubble.getBoundingClientRect().top,
+          threadId,
+        }
+      : null;
+    isPrependingHistoryRef.current = true;
+
+    const unlockWithoutRestore = () => {
+      historyAnchorRef.current = null;
+      isPrependingHistoryRef.current = false;
+      isLoadingOlderRef.current = false;
+      setIsLoadingOlderMessages(false);
+    };
 
     try {
       if (keyword) {
@@ -785,13 +821,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         if (!olderMessages.length) {
           setSearchHasOlder(false);
+          unlockWithoutRestore();
           return;
         }
         if (!hasMore) {
           setSearchHasOlder(false);
         }
 
-        isPrependingHistoryRef.current = true;
         setSearchMessages((prev) => {
           const mergedMap = new Map<string, ChatMessage>();
           prev.forEach((msg) => mergedMap.set(msg.id, msg));
@@ -801,14 +837,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           );
         });
         setSearchPage(nextPage);
-
-        requestAnimationFrame(() => {
-          const node = messagesScrollRef.current;
-          if (!node) return;
-          const heightDiff = node.scrollHeight - prevScrollHeight;
-          node.scrollTop = prevScrollTop + heightDiff;
-          isPrependingHistoryRef.current = false;
-        });
       } else {
         const nextPage = historyPage + 1;
         const { messages: olderMessages, hasMore } = await supabaseMessagingService.getThreadMessages(threadId, {
@@ -818,6 +846,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         if (!olderMessages.length) {
           setHasOlderMessages(false);
+          unlockWithoutRestore();
           return;
         }
         if (!hasMore) {
@@ -832,26 +861,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
 
-        isPrependingHistoryRef.current = true;
         setMessagesForThread(threadId, merged);
         setHistoryPage(nextPage);
-
-        requestAnimationFrame(() => {
-          const node = messagesScrollRef.current;
-          if (!node) return;
-          const heightDiff = node.scrollHeight - prevScrollHeight;
-          node.scrollTop = prevScrollTop + heightDiff;
-          isPrependingHistoryRef.current = false;
-        });
       }
     } catch (error) {
       console.error("Error loading older messages:", error);
-    } finally {
-      setIsLoadingOlderMessages(false);
+      unlockWithoutRestore();
     }
   }, [
     threadId,
-    isLoadingOlderMessages,
     hasOlderMessages,
     historyPage,
     messageSearchKeyword,
@@ -1019,10 +1037,53 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     initialUnreadCountRef.current = Math.max(0, Number(thread?.unread_count) || 0);
   }
 
+  useLayoutEffect(() => {
+    const anchor = historyAnchorRef.current;
+    if (!anchor || anchor.threadId !== threadId) return;
+    const container = messagesScrollRef.current;
+    const el = document.getElementById(`chat-message-${anchor.id}`);
+    if (container && el) {
+      const newTop = el.getBoundingClientRect().top;
+      container.scrollTop += newTop - anchor.top;
+      historyAnchorRef.current = {
+        id: anchor.id,
+        top: el.getBoundingClientRect().top,
+        threadId: anchor.threadId,
+      };
+    }
+    requestAnimationFrame(() => {
+      const nextAnchor = historyAnchorRef.current;
+      const node = messagesScrollRef.current;
+      const bubble = nextAnchor
+        ? document.getElementById(`chat-message-${nextAnchor.id}`)
+        : null;
+      if (node && bubble && nextAnchor && nextAnchor.threadId === threadId) {
+        const newTop = bubble.getBoundingClientRect().top;
+        node.scrollTop += newTop - nextAnchor.top;
+      }
+      if (historyAnchorRef.current?.threadId === threadId) {
+        historyAnchorRef.current = null;
+        isPrependingHistoryRef.current = false;
+        isLoadingOlderRef.current = false;
+        setIsLoadingOlderMessages(false);
+      }
+    });
+  }, [displayMessages.length, historyPage, searchPage, threadId]);
+
   useEffect(() => {
     const el = messagesScrollRef.current;
     if (!el || displayMessages.length === 0) return;
-    if (isPrependingHistoryRef.current) return;
+    if (isPrependingHistoryRef.current || historyAnchorRef.current) return;
+
+    const threadChanged = prevScrollThreadRef.current !== threadId;
+    prevScrollThreadRef.current = threadId;
+
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const shouldStickToBottom =
+      threadChanged || forceScrollToBottomRef.current || distanceFromBottom < 160;
+    if (!shouldStickToBottom) return;
+
+    forceScrollToBottomRef.current = false;
     const scrollToBottom = () => {
       el.scrollTop = el.scrollHeight;
     };
@@ -1036,18 +1097,52 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!el) return;
 
     const handleScroll = () => {
-      if (el.scrollTop <= 32) {
+      if (!isLoadingOlderRef.current && el.scrollTop <= 80) {
         void loadOlderMessages();
       }
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       setShowScrollToBottom(distanceFromBottom > 120);
     };
 
-    el.addEventListener("scroll", handleScroll);
+    el.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       el.removeEventListener("scroll", handleScroll);
     };
   }, [loadOlderMessages]);
+
+  useEffect(() => {
+    const root = messagesScrollRef.current;
+    const target = messagesTopSentinelRef.current;
+    if (!root || !target) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isLoadingOlderRef.current || isPrependingHistoryRef.current) return;
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadOlderMessages();
+        }
+      },
+      { root, rootMargin: "120px 0px 0px 0px", threshold: 0 }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadOlderMessages, displayMessages.length]);
+
+  useEffect(() => {
+    const el = messagesScrollRef.current;
+    if (!el || isLoadingOlderMessages || displayMessages.length === 0) return;
+    const canLoad = messageSearchKeyword.trim() ? searchHasOlder : hasOlderMessages;
+    if (!canLoad) return;
+    if (el.scrollHeight <= el.clientHeight + 12) {
+      void loadOlderMessages();
+    }
+  }, [
+    displayMessages.length,
+    isLoadingOlderMessages,
+    hasOlderMessages,
+    searchHasOlder,
+    messageSearchKeyword,
+    loadOlderMessages,
+  ]);
 
   useEffect(() => {
     if (!voiceRecording) {
@@ -1075,15 +1170,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [displayMessages.length, messageSearchKeyword, threadId]);
 
   useEffect(() => {
-    if (!attachmentMenuOpen) return;
+    if (!attachmentMenuOpen && !emojiPickerOpen) return;
     const onDoc = (e: MouseEvent) => {
       if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
         setAttachmentMenuOpen(false);
+        setEmojiPickerOpen(false);
       }
     };
     document.addEventListener("click", onDoc);
     return () => document.removeEventListener("click", onDoc);
-  }, [attachmentMenuOpen]);
+  }, [attachmentMenuOpen, emojiPickerOpen]);
 
   useEffect(() => {
     return () => {
@@ -1231,6 +1327,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     const text = draft.trim();
     if (richTextIsEmpty(text) && pendingFiles.length === 0) return;
+    forceScrollToBottomRef.current = true;
+    setEmojiPickerOpen(false);
 
     const filesSnapshot = [...pendingFiles];
     const replyTarget = replyingTo;
@@ -1758,6 +1856,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             if (blob.size > 0) toast.error("Voice message too short");
             return;
           }
+          forceScrollToBottomRef.current = true;
           const ext = mimeType.includes("webm") ? "webm" : mimeType.includes("mp4") ? "m4a" : "webm";
           const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
           setIsSending(true);
@@ -2165,7 +2264,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`pointer-events-auto relative flex max-w-full flex-col ${
+      className={`pointer-events-auto relative flex max-w-full flex-col bg-white dark:bg-surface ${
         attachmentMenuOpen ? "overflow-visible" : "overflow-hidden"
       } ${isPageVariant
           ? "h-full w-full"
@@ -2173,7 +2272,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }`}
     >
       <div
-        className={`flex items-center justify-between gap-2 border-b border-border/80 bg-surface px-2.5 py-2 sm:px-4 ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+        className={`flex items-center justify-between gap-1 border-b border-[#e9edef] bg-[#f0f2f5] px-2 py-1.5 sm:gap-2 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
       >
         <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
@@ -2204,7 +2303,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               handleOpenThreadDetailPage();
             }}
           >
-            <div className="truncate text-sm font-semibold text-content">
+            <div className="truncate text-[16px] font-medium leading-tight text-[#111b21] dark:text-content">
               {displayThreadName}
             </div>
             {(canJoin || isInCall || threadActiveCall) && (
@@ -2279,24 +2378,32 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <>
               <button
                 type="button"
-                onClick={() => handleStartCall("audio")}
-                disabled={messagingBlocked}
-                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Voice call"
-              >
-                <Phone className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
                 onClick={() => handleStartCall("video")}
                 disabled={messagingBlocked}
-                className="hidden h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-40 min-[380px]:flex"
+                className="hidden h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] disabled:cursor-not-allowed disabled:opacity-40 min-[380px]:flex dark:text-content-secondary dark:hover:bg-surface-hover"
                 aria-label="Video call"
               >
                 <Video className="h-5 w-5" />
               </button>
+              <button
+                type="button"
+                onClick={() => handleStartCall("audio")}
+                disabled={messagingBlocked}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover"
+                aria-label="Voice call"
+              >
+                <Phone className="h-5 w-5" />
+              </button>
             </>
           )}
+          <button
+            type="button"
+            onClick={openMessageSearchFromMenu}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] dark:text-content-secondary dark:hover:bg-surface-hover"
+            aria-label="Search messages"
+          >
+            <Search className="h-5 w-5" />
+          </button>
 
           <div className="relative">
             <button
@@ -2305,7 +2412,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 event.stopPropagation();
                 setShowOptionsMenu((open) => !open);
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full text-content-tertiary transition hover:bg-surface-hover hover:text-content-secondary"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] dark:text-content-tertiary dark:hover:bg-surface-hover"
               aria-expanded={showOptionsMenu}
               aria-haspopup="menu"
               aria-label="More options"
@@ -2372,7 +2479,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
 
       {showMessageSearch && (
-        <div className="flex items-center gap-1 border-b border-border-subtle bg-surface-secondary px-1.5 py-1.5">
+        <div className="flex items-center gap-1 border-b border-[#e9edef] bg-[#f0f2f5] px-1.5 py-1.5 dark:border-border dark:bg-surface">
           <button
             type="button"
             onClick={closeMessageSearch}
@@ -2416,18 +2523,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      <div className={`relative ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
+      <div className={`relative bg-white ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
       <div
         ref={messagesScrollRef}
-        className={`flex flex-col space-y-1 overflow-y-auto overflow-x-hidden  px-2 py-2 sm:space-y-1.5 sm:px-4 sm:py-3 scroll-smooth ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"
-          }`}
+        className={`chat-messages-pane flex flex-col space-y-0 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${
+          typingUserIds.length > 0 ? "pb-12" : ""
+        }`}
       >
+        <div ref={messagesTopSentinelRef} className="h-1 w-full shrink-0" aria-hidden />
         {isLoadingOlderMessages && (
           <div className="flex justify-center py-2">
-            <div className="flex items-center gap-2 rounded-full bg-surface/90 px-3 py-1.5 text-xs text-content-secondary shadow-sm backdrop-blur-sm">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary-600" />
-              {messageSearchKeyword.trim() ? "Loading older matches…" : "Loading older messages…"}
-            </div>
+            <Loader2 className="h-5 w-5 animate-spin text-[#00a884]" aria-label="Loading older messages" />
           </div>
         )}
         {searchLoading && messageSearchKeyword.trim() ? (
@@ -2470,6 +2576,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 new Date(prev.created_at),
                 new Date(message.created_at)
               );
+            const next = displayMessages[index + 1];
             const showSenderHeader =
               isGroupThread &&
               !isOwn &&
@@ -2479,6 +2586,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   getChatMessageAuthorId(prev),
                   getChatMessageAuthorId(message)
                 ));
+            const sameSenderPrev =
+              Boolean(prev) &&
+              !showDateDivider &&
+              chatUserIdsEqual(
+                getChatMessageAuthorId(prev),
+                getChatMessageAuthorId(message)
+              );
+            const sameSenderNext =
+              Boolean(next) &&
+              isSameDay(new Date(next.created_at), new Date(message.created_at)) &&
+              chatUserIdsEqual(
+                getChatMessageAuthorId(next),
+                getChatMessageAuthorId(message)
+              );
 
             return (
               <Fragment key={message.id}>
@@ -2496,6 +2617,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   }
                   participantPresence={participantPresenceById}
                   showSenderHeader={showSenderHeader}
+                  showTail={!sameSenderPrev}
+                  isClusterEnd={!sameSenderNext}
                   onReply={handleReply}
                   onForward={openForwardPicker}
                   onDelete={handleDelete}
@@ -2503,6 +2626,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   composerEditingMessageId={editingMessage?.id ?? null}
                   onReact={handleMessageReaction}
                   onShowInfo={(msg) => void openMessageInfo(msg)}
+                  selectionMode={selectionMode}
+                  isMessageSelected={selectedMessageIds.includes(message.id)}
+                  onEnterSelection={(msg) => {
+                    setSelectionMode(true);
+                    setSelectedMessageIds([msg.id]);
+                  }}
+                  onToggleSelect={(msg) => {
+                    setSelectedMessageIds((prev) =>
+                      prev.includes(msg.id)
+                        ? prev.filter((id) => id !== msg.id)
+                        : [...prev, msg.id]
+                    );
+                  }}
                   onScrollToMessage={(messageId) => void scrollToMessage(messageId)}
                   repliedToMessage={
                     message.reply_to_id ? messagesById.get(message.reply_to_id) ?? null : null
@@ -2538,15 +2674,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <button
           type="button"
           onClick={scrollMessagesToBottom}
-          className="absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-content-secondary shadow-[0_2px_8px_rgba(11,20,26,0.2)] ring-1 ring-border transition hover:bg-surface-hover hover:text-content animate-[chatFadeIn_160ms_ease-out]"
+          className="absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_2px_8px_rgba(11,20,26,0.18)] ring-1 ring-[#e9edef] transition hover:bg-[#f0f2f5] hover:text-[#111b21] animate-[chatFadeIn_160ms_ease-out] dark:bg-surface dark:text-content-secondary dark:ring-border"
           aria-label="Scroll to bottom"
         >
           <ChevronDown className="h-5 w-5" />
         </button>
       ) : null}
+      <div className="pointer-events-none absolute bottom-0 left-0 right-10 z-10">
+        <TypingIndicator isTyping={typingUserIds.length > 0} />
       </div>
-
-      <TypingIndicator isTyping={typingUserIds.length > 0} />
+      </div>
 
       {messagingBlocked ? (
         <div className="border-t border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">
@@ -2569,7 +2706,42 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       ) : null}
 
-      {pendingFiles.length > 0 && !editingMessage && (
+      {selectionMode ? (
+        <div className="flex items-center gap-2 border-t border-[#e9edef] bg-[#f0f2f5] px-3 py-2 dark:border-border dark:bg-surface">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectionMode(false);
+              setSelectedMessageIds([]);
+            }}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] hover:bg-white dark:text-content-secondary dark:hover:bg-surface-hover"
+            aria-label="Cancel selection"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <span className="min-w-0 flex-1 text-[15px] font-medium text-[#111b21] dark:text-content">
+            {selectedMessageIds.length} selected
+          </span>
+          <button
+            type="button"
+            disabled={selectedMessageIds.length === 0}
+            onClick={() => {
+              const ids = [...selectedMessageIds];
+              setSelectionMode(false);
+              setSelectedMessageIds([]);
+              ids.forEach((id) => {
+                void handleDelete(id, false);
+              });
+            }}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] hover:bg-white disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover"
+            aria-label="Delete selected"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        </div>
+      ) : null}
+
+      {pendingFiles.length > 0 && !editingMessage && !selectionMode && (
         <div className="border-t border-border-subtle px-2.5 pb-2 sm:px-4 sm:pb-3">
           <FilePreview files={pendingFiles} onRemove={removePendingFile} />
         </div>
@@ -2578,8 +2750,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <form
         id={`chat-composer-${threadId}`}
         onSubmit={handleSend}
-        className={`relative overflow-visible border-t border-border/60 bg-surface px-2.5 py-2 sm:px-3 sm:py-2.5 ${isPageVariant ? "pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "rounded-bl-2xl rounded-br-2xl"
-          } ${messagingBlocked ? "pointer-events-none opacity-60" : ""}`}
+        className={`relative overflow-visible border-t border-[#e9edef] bg-[#f0f2f5] px-2 py-1.5 sm:px-2.5 sm:py-2 dark:border-border dark:bg-surface ${isPageVariant ? "pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "rounded-bl-2xl rounded-br-2xl"
+          } ${messagingBlocked ? "pointer-events-none opacity-60" : ""} ${selectionMode ? "hidden" : ""}`}
         ref={attachMenuRef}
       >
         <ChatAttachmentMenu
@@ -2589,6 +2761,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           onOpenCamera={() => setWebcamOpen(true)}
           onOpenLocation={() => setLocationPickerOpen(true)}
         />
+
+        {emojiPickerOpen ? (
+          <div className="absolute bottom-full left-2 z-[80] mb-2 overflow-hidden rounded-xl border border-[#e9edef] bg-white shadow-[0_8px_28px_rgba(11,20,26,0.18)] dark:border-border dark:bg-surface">
+            <ComposerEmojiPicker
+              onEmojiClick={(emojiData) => {
+                composerEditorRef.current?.insertText(emojiData.emoji);
+                composerEditorRef.current?.focus();
+              }}
+              width={Math.min(320, typeof window !== "undefined" ? window.innerWidth - 24 : 320)}
+              height={360}
+              searchPlaceHolder="Search emoji"
+              previewConfig={{ showPreview: false }}
+            />
+          </div>
+        ) : null}
 
         {editingMessage ? (
           <div className="mb-2 flex items-start gap-2 rounded-xl border border-border bg-surface-secondary px-2.5 py-2 border-l-[3px] border-l-[#128c7e]">
@@ -2664,28 +2851,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         )}
 
         <div className="flex items-end gap-1.5 sm:gap-2">
-          <div className="relative flex-shrink-0 self-end">
-            <button
-              type="button"
-              onClick={() => {
-                !editingMessage && setAttachmentMenuOpen((o) => !o);
-              }}
-              disabled={!!editingMessage}
-              className={`mb-0.5 flex h-10 w-10 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content disabled:pointer-events-none disabled:opacity-40 ${
-                attachmentMenuOpen ? "bg-surface-hover text-[#128c7e]" : ""
-              }`}
-              aria-label="Attach"
-              aria-expanded={attachmentMenuOpen}
-              title={
-                editingMessage
-                  ? "Finish editing before attaching files"
-                  : undefined
-              }
-            >
-              <Plus className={`h-[22px] w-[22px] transition-transform duration-200 ${attachmentMenuOpen ? "rotate-45" : ""}`} strokeWidth={1.75} />
-            </button>
-          </div>
-
           <ChatRichTextEditor
             ref={composerEditorRef}
             value={draft}
@@ -2708,14 +2873,53 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   : "Type a message"
             }
             showToolbar
+            leadingSlot={
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (editingMessage) return;
+                    setEmojiPickerOpen(false);
+                    setAttachmentMenuOpen((o) => !o);
+                  }}
+                  disabled={!!editingMessage}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] disabled:pointer-events-none disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover ${
+                    attachmentMenuOpen ? "text-[#00a884]" : ""
+                  }`}
+                  aria-label="Attach"
+                  aria-expanded={attachmentMenuOpen}
+                  title={
+                    editingMessage
+                      ? "Finish editing before attaching files"
+                      : undefined
+                  }
+                >
+                  <Paperclip className="h-5 w-5" strokeWidth={1.75} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAttachmentMenuOpen(false);
+                    setEmojiPickerOpen((open) => !open);
+                  }}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] dark:text-content-secondary dark:hover:bg-surface-hover ${
+                    emojiPickerOpen ? "text-[#00a884]" : ""
+                  }`}
+                  aria-label="Emoji"
+                  aria-expanded={emojiPickerOpen}
+                >
+                  <Smile className="h-5 w-5" strokeWidth={1.75} />
+                </button>
+              </>
+            }
           />
 
-          <div className="relative mb-0.5 h-10 w-10 flex-shrink-0 self-end">
+          <div className="relative mb-0.5 h-11 w-11 flex-shrink-0 self-end">
             {showSendButton ? (
               <button
                 type="submit"
                 disabled={isSending || composerSendDisabled}
-                className="absolute inset-0 flex items-center justify-center rounded-full bg-primary-600 text-white transition hover:bg-primary-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 animate-[chatFadeIn_140ms_ease-out]"
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-[#00a884] text-white transition hover:bg-[#008f72] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 animate-[chatFadeIn_140ms_ease-out]"
                 aria-label={
                   editingMessage ? "Done editing — save changes" : "Send message"
                 }
@@ -2734,10 +2938,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type="button"
                 onClick={toggleVoiceRecording}
                 disabled={isSending || !!editingMessage}
-                className={`absolute inset-0 flex items-center justify-center rounded-full text-white transition active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 animate-[chatFadeIn_140ms_ease-out] ${
+                className={`absolute inset-0 flex items-center justify-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 animate-[chatFadeIn_140ms_ease-out] ${
                   voiceRecording
-                    ? "bg-red-500 hover:bg-red-600"
-                    : "bg-primary-600 hover:bg-primary-700"
+                    ? "bg-red-500 text-white hover:bg-red-600"
+                    : "bg-transparent text-[#111b21] hover:bg-[#f0f2f5] dark:text-content dark:hover:bg-surface-hover"
                 }`}
                 aria-label={voiceRecording ? "Stop recording" : "Voice message"}
                 title={
@@ -2751,7 +2955,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 {voiceRecording ? (
                   <Square className="h-4 w-4 fill-current" />
                 ) : (
-                  <Mic className="h-5 w-5" strokeWidth={1.75} />
+                  <Mic className="h-6 w-6" strokeWidth={1.75} />
                 )}
               </button>
             )}

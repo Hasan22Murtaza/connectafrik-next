@@ -63,6 +63,7 @@ export function fileExtensionLabel(
   const mime = (mimeType || "").toLowerCase();
   if (mime === "application/pdf") return "PDF";
   if (mime.includes("zip")) return "ZIP";
+  if (mime.includes("android") || base.toLowerCase().endsWith(".apk")) return "APK";
   if (mime.includes("word")) return "DOC";
   if (mime.includes("sheet") || mime.includes("excel")) return "XLS";
   if (mime.includes("presentation") || mime.includes("powerpoint")) return "PPT";

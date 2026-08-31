@@ -29,6 +29,7 @@ export interface ChatRichTextEditorHandle {
   clear: () => void;
   getMarkdown: () => string;
   setMarkdown: (md: string) => void;
+  insertText: (text: string) => void;
 }
 
 interface ChatRichTextEditorProps {
@@ -46,6 +47,8 @@ interface ChatRichTextEditorProps {
   minRows?: number;
   showToolbar?: boolean;
   toolbarAlwaysVisible?: boolean;
+  leadingSlot?: React.ReactNode;
+  trailingSlot?: React.ReactNode;
 }
 
 function saveSelection(root: HTMLElement): Range | null {
@@ -127,6 +130,8 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
       minRows = 1,
       showToolbar = true,
       toolbarAlwaysVisible = false,
+      leadingSlot,
+      trailingSlot,
     },
     ref
   ) {
@@ -219,8 +224,19 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
           lastExternalValue.current = md;
           onChange(md);
         },
+        insertText: (text: string) => {
+          const el = editorRef.current;
+          if (!el || disabled) return;
+          el.focus();
+          restoreSelection(savedRangeRef.current);
+          insertTextAtCursor(text);
+          const md = htmlToMarkdown(el);
+          lastExternalValue.current = md;
+          onChange(md);
+          onTyping?.();
+        },
       }),
-      [onChange, setEditorMarkdown, value, hideToolbar]
+      [onChange, onTyping, setEditorMarkdown, value, hideToolbar, disabled]
     );
 
     // Sync external value (e.g. edit message / cancel edit)
@@ -498,10 +514,13 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
           </div>
         ) : null}
 
-        <div className="relative flex min-w-0 items-end gap-0.5 rounded-2xl border-0 bg-surface-secondary pl-2 pr-2 py-1 transition focus-within:bg-surface-tertiary/35">
+        <div className="relative flex min-w-0 items-end gap-0.5 rounded-[24px] border border-[#e9edef] bg-white py-0.5 pl-1 pr-1.5 transition focus-within:border-[#d1d7db] dark:border-border dark:bg-surface">
+          {leadingSlot ? (
+            <div className="mb-0.5 flex shrink-0 items-center self-end">{leadingSlot}</div>
+          ) : null}
           <div className="relative min-w-0 flex-1">
             {empty && !focused ? (
-              <div className="pointer-events-none absolute left-1 top-2 text-[15px] text-content-tertiary">
+              <div className="pointer-events-none absolute left-1.5 top-2 text-[15px] text-[#667781] dark:text-content-tertiary">
                 {placeholder}
               </div>
             ) : null}
@@ -561,6 +580,9 @@ const ChatRichTextEditor = forwardRef<ChatRichTextEditorHandle, ChatRichTextEdit
               }}
             />
           </div>
+          {trailingSlot ? (
+            <div className="mb-0.5 flex shrink-0 items-center self-end">{trailingSlot}</div>
+          ) : null}
         </div>
 
         {mentionOpen && filteredMentions.length > 0 ? (

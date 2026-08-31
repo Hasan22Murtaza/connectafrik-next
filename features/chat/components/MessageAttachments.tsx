@@ -34,19 +34,18 @@ interface MessageAttachmentsProps {
 function CircularUploadProgress({
   percent,
   onCancel,
-  tone = "default",
+  size = 48,
 }: {
   percent: number;
   onCancel?: () => void;
-  tone?: "default" | "light";
+  size?: number;
 }) {
-  const size = 40;
-  const stroke = 3;
+  const stroke = 2.75;
   const radius = (size - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.min(100, Math.max(0, percent));
   const offset = circumference * (1 - clamped / 100);
-  const colorClass = tone === "light" ? "text-white" : "text-content-secondary";
+  const pending = clamped < 2;
 
   return (
     <button
@@ -56,39 +55,42 @@ function CircularUploadProgress({
         e.stopPropagation();
         onCancel?.();
       }}
-      className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colorClass}`}
+      className="relative flex shrink-0 items-center justify-center rounded-full bg-black/55 text-white shadow-[0_1px_4px_rgba(0,0,0,0.28)]"
+      style={{ width: size, height: size }}
       aria-label="Cancel upload"
     >
-      <svg
-        className="absolute inset-0 -rotate-90"
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        aria-hidden
-      >
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          className="opacity-25"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-150"
-        />
-      </svg>
-      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+      <span className={pending ? "absolute inset-0 animate-spin" : "absolute inset-0"}>
+        <svg
+          className="-rotate-90"
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          aria-hidden
+        >
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={stroke}
+            className="opacity-30"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={pending ? circumference * 0.72 : offset}
+            className="transition-[stroke-dashoffset] duration-150"
+          />
+        </svg>
+      </span>
+      <X className="relative h-4 w-4" strokeWidth={2.6} />
     </button>
   );
 }
@@ -101,10 +103,25 @@ function UploadMediaOverlay({
   onCancel?: () => void;
 }) {
   return (
-    <span className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
-      <CircularUploadProgress percent={percent} onCancel={onCancel} tone="light" />
+    <span className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-black/45">
+      <CircularUploadProgress percent={percent} onCancel={onCancel} size={52} />
     </span>
   );
+}
+
+function saveAttachment(att: ChatAttachment) {
+  const a = document.createElement("a");
+  a.href = att.url;
+  a.download = att.name || "file";
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+function openAttachment(att: ChatAttachment) {
+  window.open(att.url, "_blank", "noopener,noreferrer");
 }
 
 function WaveBars({ active }: { active?: boolean }) {
@@ -267,7 +284,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   const multiImage = images.length > 1;
 
   return (
-    <div className="mb-1 w-full max-w-[min(100%,280px)] space-y-2 sm:max-w-[min(100%,320px)]">
+    <div className="mb-0.5 w-full max-w-[min(100%,280px)] space-y-2 sm:max-w-[min(100%,320px)]">
       {multiImage ? (
         <div
           className={`grid gap-0.5 overflow-hidden rounded-xl ${
@@ -375,14 +392,24 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         }
 
         if (isVoiceNoteAttachment(att)) {
-          return <VoiceNotePlayer key={att.id} att={att} isOwnMessage={isOwnMessage} />;
+          return (
+            <div key={att.id} className="relative overflow-hidden rounded-2xl">
+              <VoiceNotePlayer att={att} isOwnMessage={isOwnMessage} />
+              {isUploading ? (
+                <UploadMediaOverlay
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
+              ) : null}
+            </div>
+          );
         }
 
         if (isAudioAttachment(att)) {
           return (
             <div
               key={att.id}
-              className={`flex w-full min-w-0 items-center gap-2 rounded-xl p-2 ${
+              className={`relative flex w-full min-w-0 items-center gap-2 overflow-hidden rounded-xl p-2 ${
                 isOwnMessage ? "chat-bubble-own-file" : ""
               }`}
             >
@@ -398,6 +425,12 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                   className="mt-1 h-8 w-full max-w-full"
                 />
               </div>
+              {isUploading ? (
+                <UploadMediaOverlay
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
+              ) : null}
             </div>
           );
         }
@@ -406,7 +439,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
           return (
             <div
               key={att.id}
-              className={`flex items-center gap-2.5 rounded-xl p-2.5 ${
+              className={`relative flex items-center gap-2.5 overflow-hidden rounded-xl p-2.5 ${
                 isOwnMessage ? "chat-bubble-own-file" : ""
               }`}
             >
@@ -417,6 +450,12 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 <p className="text-sm font-medium text-content truncate">{att.name.replace(/\.vcf$/i, "")}</p>
                 <p className="text-[11px] text-content-tertiary">Contact card</p>
               </div>
+              {isUploading ? (
+                <UploadMediaOverlay
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
+              ) : null}
             </div>
           );
         }
@@ -431,10 +470,13 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               href={att.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-2.5 rounded-xl p-2.5 transition hover:opacity-90 ${
+              className={`relative flex items-center gap-2.5 overflow-hidden rounded-xl p-2.5 transition hover:opacity-90 ${
                 isOwnMessage ? "chat-bubble-own-file" : ""
               }`}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isUploading) e.preventDefault();
+              }}
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
                 <MapPin className="h-5 w-5" />
@@ -443,16 +485,36 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 <p className="text-sm font-medium text-content">Location</p>
                 <p className="truncate text-[11px] text-content-tertiary">{att.name}</p>
               </div>
+              {isUploading ? (
+                <UploadMediaOverlay
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
+              ) : null}
             </a>
           );
         }
 
         const pdf = isPdfAttachment(att);
         const ext = fileExtensionLabel(att.name, att.mimeType);
-        const fileIcon = (
+        const sizeLabel = formatAttachmentSize(att.size);
+        const fileMetaLine = [ext, sizeLabel].filter(Boolean).join(" • ");
+        const fileIcon = isUploading ? (
+          <CircularUploadProgress
+            percent={progressFor(att.id)}
+            onCancel={onCancelUpload}
+            size={44}
+          />
+        ) : (
           <span
             className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-white ${
-              pdf ? "bg-red-500" : ext === "ZIP" ? "bg-slate-600" : "bg-violet-500"
+              pdf
+                ? "bg-[#e53935]"
+                : ext === "ZIP"
+                  ? "bg-slate-600"
+                  : ext === "APK"
+                    ? "bg-[#54656f]"
+                    : "bg-[#7b68ee]"
             }`}
           >
             <FileText className="h-4 w-4" />
@@ -461,54 +523,54 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             </span>
           </span>
         );
-        const fileMeta = (
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-content">{att.name}</p>
-            <p className="text-[11px] text-content-tertiary">
-              {formatAttachmentSize(att.size)}
-            </p>
-          </div>
-        );
-
-        if (isUploading) {
-          return (
-            <div
-              key={att.id}
-              className={`overflow-hidden rounded-xl ${
-                isOwnMessage ? "chat-bubble-own-file" : "bg-surface-secondary/80"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 p-2.5">
-                {fileIcon}
-                {fileMeta}
-                <CircularUploadProgress
-                  percent={progressFor(att.id)}
-                  onCancel={onCancelUpload}
-                />
-              </div>
-              <div className="border-t border-black/10 px-2.5 py-1.5 text-center text-[12px] text-content-tertiary dark:border-white/10">
-                Uploading...
-              </div>
-            </div>
-          );
-        }
 
         return (
-          <a
+          <div
             key={att.id}
-            href={att.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className={`flex items-center gap-2.5 rounded-xl p-2.5 transition-colors ${
-              isOwnMessage
-                ? "chat-bubble-own-file hover:opacity-95"
-                : " hover:bg-surface-hover"
+            className={`overflow-hidden rounded-lg ${
+              isOwnMessage ? "chat-bubble-own-file" : "bg-[#f5f6f6] dark:bg-surface-secondary/80"
             }`}
           >
-            {fileIcon}
-            {fileMeta}
-          </a>
+            <div className="flex items-center gap-2.5 px-2.5 pb-2 pt-2.5">
+              {fileIcon}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-medium leading-snug text-content">
+                  {att.name}
+                </p>
+                <p className="mt-0.5 text-[12px] leading-snug text-[#667781] dark:text-content-tertiary">
+                  {fileMetaLine}
+                </p>
+              </div>
+            </div>
+            {isUploading ? (
+              <div className="border-t border-black/[0.08] py-1.5 text-center text-[13px] text-[#667781] dark:border-white/10 dark:text-content-tertiary">
+                Uploading...
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 border-t border-black/[0.08] dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openAttachment(att);
+                  }}
+                  className="py-1.5 text-center text-[13.5px] font-medium text-[#027eb5] transition hover:bg-black/[0.04] dark:text-sky-400"
+                >
+                  Open
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    saveAttachment(att);
+                  }}
+                  className="border-l border-black/[0.08] py-1.5 text-center text-[13.5px] font-medium text-[#027eb5] transition hover:bg-black/[0.04] dark:border-white/10 dark:text-sky-400"
+                >
+                  Save as...
+                </button>
+              </div>
+            )}
+          </div>
         );
       })}
     </div>

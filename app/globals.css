@@ -77,10 +77,11 @@
   --scrollbar-thumb: #bdbfc0;
   --scrollbar-thumb-hover: #d1d5dc;
 
-  /* Chat bubbles */
+  /* Chat bubbles (WhatsApp-style, light) */
   --chat-bubble-own: #dcf8c6;
   --chat-bubble-own-file: #c5e8bc;
   --chat-bubble-own-file-hover: #b8e0ad;
+  --chat-bubble-in: #ffffff;
 }
 
 
@@ -130,6 +131,7 @@
   --chat-bubble-own: #005c4b;
   --chat-bubble-own-file: #0a4a3d;
   --chat-bubble-own-file-hover: #0d5c4a;
+  --chat-bubble-in: #1e293b;
 }
 
 /* ─── Dark mode: bridge legacy Tailwind gray utilities ──────────────────── */
@@ -210,11 +212,20 @@
 .chat-bubble-own {
   background-color: var(--chat-bubble-own);
 }
+.chat-bubble-in {
+  background-color: var(--chat-bubble-in);
+}
 .chat-bubble-own-file {
   background-color: var(--chat-bubble-own-file);
 }
 .chat-bubble-own-file:hover {
   background-color: var(--chat-bubble-own-file-hover);
+}
+
+.chat-messages-pane {
+  overflow-anchor: none;
+  scroll-behavior: auto;
+  background-color: #ffffff;
 }
 
 /* ─── Chat rich text ────────────────────────────────────────────────────── */
