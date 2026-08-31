@@ -18,6 +18,12 @@ interface CommentsSectionProps {
   initialComments?: any[] | null
   /** Post `comments_count` — drives "Load more" before the comments API is hit. */
   totalCommentsCount?: number
+  /** Scroll this comment into view after load (e.g. notification deep link). */
+  highlightCommentId?: string | null
+  /** Pin the composer to the bottom of the viewport (post-detail page). */
+  stickyComposer?: boolean
+  composerInputId?: string
+  onCommentCountChange?: (delta: number) => void
 }
 
 type ComposerAttachment =
@@ -61,10 +67,13 @@ const getUserInitial = (user: User | null): string => {
 const CommentsSection: React.FC<CommentsSectionProps> = ({
   postId,
   isOpen,
-  onClose,
   canComment = true,
   initialComments,
   totalCommentsCount,
+  highlightCommentId = null,
+  stickyComposer = false,
+  composerInputId,
+  onCommentCountChange,
 }) => {
   const { user } = useAuth()
   const {
@@ -77,7 +86,9 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
     toggleCommentLike,
     toggleCommentReaction,
     deleteComment,
-    updateComment
+    updateComment,
+    error: commentsError,
+    refetch: refetchComments,
   } = useComments(postId, { initialComments, totalCommentsCount })
 
   const [newComment, setNewComment] = useState('')
@@ -91,6 +102,14 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   const draftAttachmentsRef = useRef<ComposerAttachment[]>([])
 
   const commenterInitial = useMemo(() => getUserInitial(user), [user])
+  const commenterAvatarUrl = useMemo(() => {
+    const meta = user?.user_metadata as Record<string, unknown> | undefined
+    const fromMeta =
+      (typeof meta?.avatar_url === 'string' && meta.avatar_url) ||
+      (typeof meta?.picture === 'string' && meta.picture) ||
+      null
+    return fromMeta
+  }, [user])
 
   const composerHasContent = newComment.trim().length > 0 || draftAttachments.length > 0
 
@@ -114,6 +133,16 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   useEffect(() => () => {
     draftAttachmentsRef.current.forEach(revokePreview)
   }, [revokePreview])
+
+  useEffect(() => {
+    if (!highlightCommentId || loading) return
+    const frame = window.requestAnimationFrame(() => {
+      const el = document.getElementById(`comment-${highlightCommentId}`)
+      if (!el) return
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [highlightCommentId, loading, comments])
 
   useEffect(() => {
     if (!isOpen) {
@@ -185,6 +214,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
         toast.error(error)
       } else {
         resetComposer()
+        onCommentCountChange?.(1)
       }
     } catch {
       toast.error('Failed to post comment.')
@@ -216,6 +246,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
       } else {
         setReplyContent('')
         setReplyingTo(null)
+        onCommentCountChange?.(1)
       }
     } catch {
       toast.error('Failed to post reply.')
@@ -228,6 +259,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
     const { error } = await deleteComment(commentId)
     if (error) {
       toast.error(error)
+    } else {
+      onCommentCountChange?.(-1)
     }
   }
 
@@ -238,10 +271,29 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
       {/* Comments list */}
       <div className="space-y-1 px-3 pt-2 pb-1">
         {loading ? (
-          <div className="py-4 text-center">
-            <div className="mx-auto h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+          <div className="space-y-3 py-2">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <div key={idx} className="flex gap-2 animate-pulse">
+                <div className="h-8 w-8 shrink-0 rounded-full bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-10 w-4/5 rounded-2xl bg-gray-200" />
+                  <div className="h-3 w-24 rounded bg-gray-100" />
+                </div>
+              </div>
+            ))}
           </div>
-        ) : comments.length === 0 && !canComment ? (
+        ) : commentsError ? (
+          <div className="py-4 text-center">
+            <p className="text-sm text-content-secondary mb-2">Couldn&apos;t load comments.</p>
+            <button
+              type="button"
+              onClick={() => void refetchComments()}
+              className="text-sm font-semibold text-primary-600 hover:underline"
+            >
+              Try again
+            </button>
+          </div>
+        ) : comments.length === 0 && !canComment && user ? (
           <p className="py-3 text-center text-xs text-gray-400">Comments are turned off for this post.</p>
         ) : comments.length === 0 ? (
           <p className="py-3 text-center text-xs text-gray-400">Be the first to comment</p>
@@ -262,6 +314,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
                 onSubmitReply={handleSubmitReply}
                 isReplySubmitting={isReplySubmitting}
                 currentUser={user}
+                highlightCommentId={highlightCommentId}
               />
             ))}
             {hasNextPage && (
@@ -283,15 +336,30 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
 
       {/* Comment composer - Facebook style */}
       {user && canComment && (
-        <div className="flex items-center gap-2 px-3 py-2">
+        <div
+          className={`flex items-center gap-2 px-3 py-2 ${
+            stickyComposer
+              ? 'sticky bottom-0 z-10 border-t border-border-subtle bg-surface'
+              : ''
+          }`}
+        >
           {/* Avatar */}
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 flex-shrink-0">
-            {commenterInitial}
-          </div>
+          {commenterAvatarUrl ? (
+            <img
+              src={commenterAvatarUrl}
+              alt=""
+              className="h-8 w-8 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-semibold text-gray-600 flex-shrink-0">
+              {commenterInitial}
+            </div>
+          )}
 
           {/* Input bubble */}
           <form onSubmit={handleSubmitComment} className="relative flex flex-1 items-center">
             <input
+              id={composerInputId}
               type="text"
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
@@ -344,6 +412,13 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
       {user && !canComment && (
         <p className="px-3 py-2 text-center text-xs text-gray-400">Comments are turned off for this post.</p>
       )}
+
+      {!user && (
+        <p className="px-3 py-2 text-center text-xs text-gray-400">
+          <a href="/signin" className="font-semibold text-primary-600 hover:underline">Sign in</a>
+          {' '}to comment.
+        </p>
+      )}
     </div>
   )
 }
@@ -366,6 +441,7 @@ interface FBCommentItemProps {
   isReplySubmitting: boolean
   currentUser: User | null
   depth?: number
+  highlightCommentId?: string | null
 }
 
 const FBCommentItem: React.FC<FBCommentItemProps> = ({
@@ -381,7 +457,8 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
   onSubmitReply,
   isReplySubmitting,
   currentUser,
-  depth = 0
+  depth = 0,
+  highlightCommentId = null,
 }) => {
   const [showMenu, setShowMenu] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -445,7 +522,12 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
   const totalReactions = reactionEmojis.reduce((sum, r) => sum + r.count, 0)
 
   return (
-    <div className={depth > 0 ? 'ml-2 mt-2' : 'mt-1'}>
+    <div
+      id={`comment-${comment.id}`}
+      className={`${depth > 0 ? 'ml-2 mt-2' : 'mt-1'} ${
+        highlightCommentId === comment.id ? 'rounded-xl ring-2 ring-primary-300 bg-primary-50/40 px-1 py-0.5' : ''
+      }`}
+    >
       <div className="flex gap-2">
         {/* Avatar */}
         <div className="flex-shrink-0 pt-0.5">
@@ -634,6 +716,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                   isReplySubmitting={isReplySubmitting}
                   currentUser={currentUser}
                   depth={depth + 1}
+                  highlightCommentId={highlightCommentId}
                 />
               ))}
             </div>

@@ -3,14 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
-
-const POST_SELECT = `
-  *,
-  author:profiles!posts_author_id_fkey(
-    id, username, full_name, avatar_url, country
-  ),
-  comments(count)
-`
+import { POST_SELECT, formatPostsForClient } from '../format-posts-response'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -42,79 +35,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return errorResponse('Post not found', 404)
     }
 
-    let isLiked = false
-    let is_saved = false
-    let isShare = false
-    if (userId) {
-      const { data: reactionData } = await supabase
-        .from('post_reactions')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', userId)
-        .maybeSingle()
-
-      isLiked = !!reactionData
-
-      const { data: saveRow } = await supabase
-        .from('post_saves')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', userId)
-        .maybeSingle()
-      is_saved = !!saveRow
-
-      const { data: shareRow } = await supabase
-        .from('shares')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', userId)
-        .maybeSingle()
-      isShare = !!shareRow
+    const formatted = await formatPostsForClient(supabase, userId, [post])
+    const postData = formatted[0]
+    if (!postData) {
+      return errorResponse('Post not found', 404)
     }
-
-    const reactionsByType: Record<string, { type: string; count: number; users: any[]; currentUserReacted: boolean }> = {}
-    let reactionsTotalCount = 0
-
-    const { data: reactionsData } = await supabase
-      .from('post_reactions')
-      .select('user_id, reaction_type')
-      .eq('post_id', postId)
-
-    if (reactionsData && reactionsData.length > 0) {
-      const reactingUserIds = [...new Set(reactionsData.map((r: any) => r.user_id))]
-      let profileMap = new Map<string, any>()
-      if (reactingUserIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, avatar_url')
-          .in('id', reactingUserIds)
-        if (profiles) {
-          profileMap = new Map(profiles.map((p: any) => [p.id, p]))
-        }
-      }
-
-      for (const r of reactionsData) {
-        if (!reactionsByType[r.reaction_type]) {
-          reactionsByType[r.reaction_type] = { type: r.reaction_type, count: 0, users: [], currentUserReacted: false }
-        }
-        const group = reactionsByType[r.reaction_type]
-        group.count++
-        reactionsTotalCount++
-        const profile = profileMap.get(r.user_id)
-        if (profile && !group.users.find((u: any) => u.id === profile.id)) {
-          group.users.push(profile)
-        }
-        if (userId && r.user_id === userId) {
-          group.currentUserReacted = true
-        }
-      }
-    }
-
-    const reactions = Object.values(reactionsByType).sort((a, b) => b.count - a.count)
 
     // Increment view count once per user. Skip the post author, and skip if the
-    // same user has already been counted as a viewer before (e.g. re-watching the
-    // same video) so repeat views don't inflate views_count.
+    // same user has already been counted as a viewer before so repeat views
+    // don't inflate views_count.
     let countedNewView = false
     if (userId && userId !== post.author_id) {
       const svc = createServiceClient()
@@ -139,34 +68,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return jsonResponse({
       data: {
-        id: post.id,
-        author_id: post.author_id,
-        content: post.content,
-        category: post.category,
-        tags: post.tags,
-        media_urls: post.media_urls,
-        media_type: post.media_type,
-        likes_count: post.likes_count,
-        comments_count: Array.isArray(post.comments) && post.comments.length > 0
-          ? post.comments[0].count
-          : post.comments_count,
-        shares_count: post.shares_count,
-        views_count: post.views_count + (countedNewView ? 1 : 0),
-        location: post.location,
-        background_id: post.background_id ?? null,
-        created_at: post.created_at,
-        author: post.author ? {
-          id: post.author.id,
-          username: post.author.username,
-          full_name: post.author.full_name,
-          avatar_url: post.author.avatar_url,
-          country: post.author.country,
-        } : null,
-        isLiked,
-        is_saved,
-        isShare,
-        reactions,
-        reactions_total_count: reactionsTotalCount,
+        ...postData,
+        views_count: (postData.views_count || 0) + (countedNewView ? 1 : 0),
       },
     })
   } catch (error: any) {

@@ -23,6 +23,10 @@ export default function ConditionalFooter() {
   if (pathname?.startsWith('/call/')) {
     return null
   }
+
+  if (pathname?.startsWith('/post/')) {
+    return null
+  }
   
   if (hideFooterPaths.includes(pathname)) {
     return null
