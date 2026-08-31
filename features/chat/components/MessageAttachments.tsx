@@ -8,10 +8,12 @@ import {
   Pause,
   Play,
   UserRound,
+  X,
 } from '@/shared/icons';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatMediaViewerItem } from "./ChatMediaViewer";
 import {
+  fileExtensionLabel,
   formatAttachmentSize,
   formatMediaDuration,
   isAudioAttachment,
@@ -24,6 +26,85 @@ interface MessageAttachmentsProps {
   attachments: ChatAttachment[];
   isOwnMessage: boolean;
   onOpenMedia?: (items: ChatMediaViewerItem[], index: number) => void;
+  isUploading?: boolean;
+  uploadProgressById?: Record<string, number>;
+  onCancelUpload?: () => void;
+}
+
+function CircularUploadProgress({
+  percent,
+  onCancel,
+  tone = "default",
+}: {
+  percent: number;
+  onCancel?: () => void;
+  tone?: "default" | "light";
+}) {
+  const size = 40;
+  const stroke = 3;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(100, Math.max(0, percent));
+  const offset = circumference * (1 - clamped / 100);
+  const colorClass = tone === "light" ? "text-white" : "text-content-secondary";
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel?.();
+      }}
+      className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colorClass}`}
+      aria-label="Cancel upload"
+    >
+      <svg
+        className="absolute inset-0 -rotate-90"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          className="opacity-25"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-[stroke-dashoffset] duration-150"
+        />
+      </svg>
+      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+    </button>
+  );
+}
+
+function UploadMediaOverlay({
+  percent,
+  onCancel,
+}: {
+  percent: number;
+  onCancel?: () => void;
+}) {
+  return (
+    <span className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
+      <CircularUploadProgress percent={percent} onCancel={onCancel} tone="light" />
+    </span>
+  );
 }
 
 function WaveBars({ active }: { active?: boolean }) {
@@ -159,8 +240,13 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
   isOwnMessage,
   onOpenMedia,
+  isUploading = false,
+  uploadProgressById,
+  onCancelUpload,
 }) => {
   if (!attachments.length) return null;
+
+  const progressFor = (id: string) => uploadProgressById?.[id] ?? 0;
 
   const mediaItems: ChatMediaViewerItem[] = attachments
     .filter((a) => a.type === "image" || a.type === "video")
@@ -194,6 +280,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
+                if (isUploading) return;
                 openMediaFor(att);
               }}
               className={`relative overflow-hidden bg-black/10 ${
@@ -210,7 +297,12 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 }`}
                 loading="lazy"
               />
-              {images.length > 4 && i === 3 ? (
+              {isUploading ? (
+                <UploadMediaOverlay
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
+              ) : images.length > 4 && i === 3 ? (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/45 text-xl font-semibold text-white">
                   +{images.length - 4}
                 </span>
@@ -226,37 +318,59 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         if (att.type === "image") {
           const gif = isGifAttachment(att);
           return (
-            <button
-              key={att.id}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                openMediaFor(att);
-              }}
-              className={`block max-w-full overflow-hidden ${
-                gif ? "rounded-lg" : "rounded-xl"
-              } focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
-            >
-              <img
-                src={att.url}
-                alt={att.name}
-                className={`max-h-56 w-auto max-w-full cursor-pointer object-contain transition-opacity hover:opacity-95 sm:max-h-80 ${
+            <div key={att.id} className="relative max-w-full overflow-hidden rounded-xl">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isUploading) return;
+                  openMediaFor(att);
+                }}
+                className={`block max-w-full overflow-hidden ${
                   gif ? "rounded-lg" : "rounded-xl"
-                }`}
-                loading="lazy"
-              />
-              {gif ? (
-                <span className="mt-0.5 inline-block rounded bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                  GIF
-                </span>
+                } focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500`}
+              >
+                <img
+                  src={att.url}
+                  alt={att.name}
+                  className={`max-h-56 w-auto max-w-full cursor-pointer object-contain transition-opacity hover:opacity-95 sm:max-h-80 ${
+                    gif ? "rounded-lg" : "rounded-xl"
+                  }`}
+                  loading="lazy"
+                />
+                {gif ? (
+                  <span className="mt-0.5 inline-block rounded bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                    GIF
+                  </span>
+                ) : null}
+              </button>
+              {isUploading ? (
+                <UploadMediaOverlay
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
               ) : null}
-            </button>
+            </div>
           );
         }
 
         if (att.type === "video") {
           return (
-            <VideoThumb key={att.id} att={att} onOpen={() => openMediaFor(att)} />
+            <div key={att.id} className="relative max-w-full overflow-hidden rounded-xl">
+              <VideoThumb
+                att={att}
+                onOpen={() => {
+                  if (isUploading) return;
+                  openMediaFor(att);
+                }}
+              />
+              {isUploading ? (
+                <UploadMediaOverlay
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
+              ) : null}
+            </div>
           );
         }
 
@@ -334,6 +448,51 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         }
 
         const pdf = isPdfAttachment(att);
+        const ext = fileExtensionLabel(att.name, att.mimeType);
+        const fileIcon = (
+          <span
+            className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg text-white ${
+              pdf ? "bg-red-500" : ext === "ZIP" ? "bg-slate-600" : "bg-violet-500"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            <span className="mt-0.5 text-[8px] font-bold leading-none tracking-wide">
+              {ext}
+            </span>
+          </span>
+        );
+        const fileMeta = (
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-content">{att.name}</p>
+            <p className="text-[11px] text-content-tertiary">
+              {formatAttachmentSize(att.size)}
+            </p>
+          </div>
+        );
+
+        if (isUploading) {
+          return (
+            <div
+              key={att.id}
+              className={`overflow-hidden rounded-xl ${
+                isOwnMessage ? "chat-bubble-own-file" : "bg-surface-secondary/80"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 p-2.5">
+                {fileIcon}
+                {fileMeta}
+                <CircularUploadProgress
+                  percent={progressFor(att.id)}
+                  onCancel={onCancelUpload}
+                />
+              </div>
+              <div className="border-t border-black/10 px-2.5 py-1.5 text-center text-[12px] text-content-tertiary dark:border-white/10">
+                Uploading...
+              </div>
+            </div>
+          );
+        }
+
         return (
           <a
             key={att.id}
@@ -347,20 +506,8 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 : " hover:bg-surface-hover"
             }`}
           >
-            <span
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-white ${
-                pdf ? "bg-red-500" : "bg-violet-500"
-              }`}
-            >
-              <FileText className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-content">{att.name}</p>
-              <p className="text-[11px] text-content-tertiary">
-                {pdf ? "PDF · " : ""}
-                {formatAttachmentSize(att.size)}
-              </p>
-            </div>
+            {fileIcon}
+            {fileMeta}
           </a>
         );
       })}

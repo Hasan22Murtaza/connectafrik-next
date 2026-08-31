@@ -210,6 +210,9 @@ interface MessageBubbleProps {
   defaultTranslateLanguage?: MessageTranslationTargetCode;
   onTranslateMessage?: (language: MessageTranslationTargetCode) => void;
   onToggleShowOriginal?: () => void;
+  isUploading?: boolean;
+  uploadProgressById?: Record<string, number>;
+  onCancelUpload?: () => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
@@ -238,6 +241,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   defaultTranslateLanguage = "en",
   onTranslateMessage,
   onToggleShowOriginal,
+  isUploading = false,
+  uploadProgressById,
+  onCancelUpload,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -1053,6 +1059,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     attachments={message.attachments}
                     isOwnMessage={isOwnMessage}
                     onOpenMedia={(items, index) => setMediaViewer({ items, index })}
+                    isUploading={isUploading}
+                    uploadProgressById={uploadProgressById}
+                    onCancelUpload={onCancelUpload}
                   />
                 ) : null}
 

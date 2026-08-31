@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
+import { uploadFileToBunny } from '@/shared/lib/uploadClient'
 
 
 export type CommentAttachmentType = 'image' | 'gif' | 'sticker'
@@ -85,7 +86,7 @@ interface CommentsApiResponse {
   hasMore?: boolean
 }
 
-const COMMENT_MEDIA_BUCKET = 'post-images'
+const COMMENT_MEDIA_FOLDER = 'comments'
 const COMMENTS_PAGE_SIZE = 20
 
 /** Matches server preview cap in `format-posts-response.ts` (used when `totalCommentsCount` is omitted). */
@@ -182,31 +183,18 @@ const normalizeUpdateCommentPayload = (input: string | UpdateCommentPayload): Up
   }
 }
 
-const uploadCommentImage = async (file: File, userId: string): Promise<string> => {
-  const extension = file.name.split('.').pop() || 'jpg'
-  const safeFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '').toLowerCase() || `image.${extension}`
-  const filePath = `comments/${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeFileName}`
-
-  const { error } = await supabase.storage.from(COMMENT_MEDIA_BUCKET).upload(filePath, file, {
-    cacheControl: '3600',
-    upsert: false
-  })
-
-  if (error) {
-    throw error
-  }
-
-  const { data } = supabase.storage.from(COMMENT_MEDIA_BUCKET).getPublicUrl(filePath)
-  return data.publicUrl
+const uploadCommentImage = async (file: File): Promise<string> => {
+  const { publicUrl } = await uploadFileToBunny(file, { folder: COMMENT_MEDIA_FOLDER })
+  return publicUrl
 }
 
-const processNewAttachments = async (attachments: CommentAttachmentInput[] = [], userId: string): Promise<SerializedCommentAttachment[]> => {
+const processNewAttachments = async (attachments: CommentAttachmentInput[] = []): Promise<SerializedCommentAttachment[]> => {
   const results: SerializedCommentAttachment[] = []
 
   for (const attachment of attachments) {
     if (attachment.type === 'image') {
       if (attachment.file) {
-        const publicUrl = await uploadCommentImage(attachment.file, userId)
+        const publicUrl = await uploadCommentImage(attachment.file)
         results.push({ type: 'image', url: publicUrl })
       } else if (attachment.url) {
         results.push({ type: 'image', url: attachment.url })
@@ -423,15 +411,27 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
 
       const normalized = normalizeNewCommentPayload(input)
       const textContent = sanitizeCommentText(normalized.text)
+      const uploadedAttachments = await processNewAttachments(normalized.attachments)
 
-      if (!textContent) {
+      if (!textContent && uploadedAttachments.length === 0) {
         throw new Error('Comment cannot be empty')
       }
+
+      const storedContent =
+        uploadedAttachments.length > 0
+          ? serializeCommentContent({
+              text: textContent,
+              attachments: uploadedAttachments.map((attachment) => ({
+                id: generateLocalId(),
+                ...attachment,
+              })),
+            })
+          : textContent
 
       const response = await apiClient.post<{ data: any }>(
         `/api/posts/${postId}/comments`,
         {
-          content: textContent,
+          content: storedContent,
           parent_id: parentId || null
         }
       )
@@ -444,7 +444,7 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
         ...data,
         content: parsed.text,
         raw_content: data.content,
-        attachments: [],
+        attachments: parsed.attachments ?? [],
         isLiked: false,
         reactions: [],
         replies: []

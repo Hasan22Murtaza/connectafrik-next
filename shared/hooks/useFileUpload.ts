@@ -35,8 +35,8 @@ export const useFileUpload = () => {
         throw new Error('User must be authenticated to upload files')
       }
 
-      const maxSize = options.maxSize || getDefaultMaxSize(options.bucket)
-      if (file.size > maxSize) {
+      const maxSize = options.maxSize ?? getDefaultMaxSize(options.bucket)
+      if (maxSize && file.size > maxSize) {
         throw new Error(`File size must be less than ${formatFileSize(maxSize)}`)
       }
 
@@ -102,14 +102,14 @@ export const useFileUpload = () => {
   }
 }
 
-const getDefaultMaxSize = (bucket: string): number => {
+const getDefaultMaxSize = (bucket: string): number | undefined => {
   switch (bucket) {
     case 'user-avatars':
       return 5 * 1024 * 1024
     case 'post-images':
       return 10 * 1024 * 1024
     case 'post-videos':
-      return 500 * 1024 * 1024
+      return undefined
     case 'post-audio':
       return 50 * 1024 * 1024
     default:

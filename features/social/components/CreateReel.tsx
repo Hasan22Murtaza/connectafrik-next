@@ -78,13 +78,6 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
       return
     }
 
-    // Validate file size (max 100MB)
-    const maxSize = 100 * 1024 * 1024 // 100MB
-    if (file.size > maxSize) {
-      toast.error('Video file size must be less than 100MB')
-      return
-    }
-
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop())
       mediaStreamRef.current = null
@@ -585,7 +578,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                   <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
                   <p className="text-sm text-gray-500 mb-4">
-                    MP4, MOV, AVI up to 100MB • Max {MAX_REEL_DURATION / 60} minutes
+                    MP4, MOV, AVI • Max {MAX_REEL_DURATION / 60} minutes
                   </p>
                   <button
                     type="button"

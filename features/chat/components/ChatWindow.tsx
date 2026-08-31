@@ -28,6 +28,7 @@ import {
   FileUploadResult,
   fileUploadService,
 } from "@/shared/services/fileUploadService";
+import { isUploadCancelledError } from "@/shared/lib/uploadClient";
 import type { ChatParticipant, PresenceStatus } from "@/shared/types/chat";
 import { shouldShowAcceptedOnAnotherDeviceMessage } from "@/shared/types/callPush";
 import { getSessionIdFromAccessToken } from "@/shared/utils/sessionDeviceLabel";
@@ -626,6 +627,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [uploadProgressByMessage, setUploadProgressByMessage] = useState<
+    Record<string, Record<string, number>>
+  >({});
+  const uploadAbortByMessageRef = useRef<Map<string, AbortController>>(new Map());
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const scrollHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -673,6 +678,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return [];
     });
     setAttachmentMenuOpen(false);
+    uploadAbortByMessageRef.current.forEach((controller) => controller.abort());
+    uploadAbortByMessageRef.current.clear();
+    setUploadProgressByMessage({});
   }, [threadId]);
 
   useEffect(() => {
@@ -1125,6 +1133,58 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const clearMessageUpload = useCallback((messageId: string) => {
+    uploadAbortByMessageRef.current.delete(messageId);
+    setUploadProgressByMessage((prev) => {
+      if (!(messageId in prev)) return prev;
+      const next = { ...prev };
+      delete next[messageId];
+      return next;
+    });
+  }, []);
+
+  const beginMessageUpload = useCallback(
+    (messageId: string, files: FileUploadResult[]) => {
+      const controller = new AbortController();
+      uploadAbortByMessageRef.current.set(messageId, controller);
+      setUploadProgressByMessage((prev) => ({
+        ...prev,
+        [messageId]: Object.fromEntries(files.map((f) => [f.id, 0])),
+      }));
+      return controller;
+    },
+    []
+  );
+
+  const updateAttachmentProgress = useCallback(
+    (messageId: string, fileId: string, percent: number) => {
+      setUploadProgressByMessage((prev) => {
+        const current = prev[messageId]?.[fileId];
+        if (current === percent) return prev;
+        return {
+          ...prev,
+          [messageId]: {
+            ...prev[messageId],
+            [fileId]: percent,
+          },
+        };
+      });
+    },
+    []
+  );
+
+  const cancelMessageUpload = useCallback(
+    (messageId: string) => {
+      uploadAbortByMessageRef.current.get(messageId)?.abort();
+      setMessagesForThread(
+        threadId,
+        getMessagesForThread(threadId).filter((m) => m.id !== messageId)
+      );
+      clearMessageUpload(messageId);
+    },
+    [threadId, getMessagesForThread, setMessagesForThread, clearMessageUpload]
+  );
+
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isSending) return;
@@ -1175,10 +1235,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const filesSnapshot = [...pendingFiles];
     const replyTarget = replyingTo;
     let prependSendId: string | undefined;
+    let optimisticId: string | undefined;
 
     if (filesSnapshot.length > 0 && currentUser) {
       prependSendId = newChatClientSendId();
-      const optimisticId = `optimistic:${prependSendId}`;
+      optimisticId = `optimistic:${prependSendId}`;
       const optimisticAttachments = filesSnapshot.map((f) => ({
         id: f.id,
         name: f.name,
@@ -1212,6 +1273,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         threadId,
         sortChatWindowMessages([...getMessagesForThread(threadId), optimisticMessage])
       );
+      beginMessageUpload(optimisticId, filesSnapshot);
     }
 
     setDraft("");
@@ -1226,9 +1288,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       if (filesSnapshot.length > 0) {
         try {
-          uploadedAttachments = await fileUploadService.uploadFiles(filesSnapshot);
+          uploadedAttachments = await fileUploadService.uploadFiles(filesSnapshot, {
+            signal: optimisticId
+              ? uploadAbortByMessageRef.current.get(optimisticId)?.signal
+              : undefined,
+            onProgress: (fileId, progress) => {
+              if (!optimisticId) return;
+              updateAttachmentProgress(optimisticId, fileId, progress.percent);
+            },
+          });
         } catch (uploadError: any) {
-          toast.error(uploadError.message || "Failed to upload files");
+          if (!isUploadCancelledError(uploadError)) {
+            toast.error(uploadError.message || "Failed to upload files");
+          }
           if (prependSendId) {
             const msgs = getMessagesForThread(threadId).filter(
               (m) =>
@@ -1267,11 +1339,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       fileUploadService.revokePreviews(filesSnapshot);
     } catch (error: any) {
-      const msg =
-        typeof error?.message === "string" && error.message.length > 0
-          ? error.message
-          : "Failed to send message";
-      toast.error(msg);
+      if (!isUploadCancelledError(error)) {
+        const msg =
+          typeof error?.message === "string" && error.message.length > 0
+            ? error.message
+            : "Failed to send message";
+        toast.error(msg);
+      }
       if (prependSendId) {
         const msgs = getMessagesForThread(threadId).filter(
           (m) =>
@@ -1285,6 +1359,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       }
       fileUploadService.revokePreviews(filesSnapshot);
     } finally {
+      if (optimisticId) clearMessageUpload(optimisticId);
       setIsSending(false);
     }
   };
@@ -1687,12 +1762,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           const file = new File([blob], `voice-${Date.now()}.${ext}`, { type: mimeType });
           setIsSending(true);
           let prependSendId: string | undefined;
+          let optimisticId: string | undefined;
           let results: FileUploadResult[] = [];
           try {
             results = await fileUploadService.fromFiles([file]);
             if (currentUser) {
               prependSendId = newChatClientSendId();
-              const optimisticId = `optimistic:${prependSendId}`;
+              optimisticId = `optimistic:${prependSendId}`;
               const optimisticAttachments = results.map((f) => ({
                 id: f.id,
                 name: f.name,
@@ -1725,8 +1801,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 threadId,
                 sortChatWindowMessages([...getMessagesForThread(threadId), optimisticMessage])
               );
+              beginMessageUpload(optimisticId, results);
             }
-            const uploaded = await fileUploadService.uploadFiles(results);
+            const uploaded = await fileUploadService.uploadFiles(results, {
+              signal: optimisticId
+                ? uploadAbortByMessageRef.current.get(optimisticId)?.signal
+                : undefined,
+              onProgress: (fileId, progress) => {
+                if (!optimisticId) return;
+                updateAttachmentProgress(optimisticId, fileId, progress.percent);
+              },
+            });
             await sendMessage(threadId, "", {
               content: "",
               attachments: uploaded.map((f) => ({
@@ -1747,7 +1832,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             fileUploadService.revokePreviews(results);
             stopTyping();
           } catch (err: any) {
-            toast.error(err?.message || "Failed to send voice message");
+            if (!isUploadCancelledError(err)) {
+              toast.error(err?.message || "Failed to send voice message");
+            }
             if (prependSendId) {
               const msgs = getMessagesForThread(threadId).filter(
                 (m) =>
@@ -1767,6 +1854,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               }
             }
           } finally {
+            if (optimisticId) clearMessageUpload(optimisticId);
             setIsSending(false);
           }
         })();
@@ -2430,6 +2518,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   }
                   onToggleShowOriginal={() =>
                     showOriginalForMessage(message.id, isOwn)
+                  }
+                  isUploading={Boolean(uploadProgressByMessage[message.id])}
+                  uploadProgressById={uploadProgressByMessage[message.id]}
+                  onCancelUpload={
+                    uploadProgressByMessage[message.id]
+                      ? () => cancelMessageUpload(message.id)
+                      : undefined
                   }
                 />
               </Fragment>

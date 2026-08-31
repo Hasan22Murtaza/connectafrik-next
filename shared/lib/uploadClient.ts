@@ -17,6 +17,21 @@ export interface UploadResponse {
   path: string
 }
 
+export function isUploadCancelledError(error: unknown): boolean {
+  if (error == null || typeof error !== 'object') return false
+  const err = error as { name?: unknown; message?: unknown }
+  if (err.name === 'AbortError') return true
+  const message = typeof err.message === 'string' ? err.message : ''
+  return /upload cancelled|aborted/i.test(message)
+}
+
+type AuthorizePayload = {
+  uploadUrl: string
+  headers: Record<string, string>
+  path: string
+  publicUrl: string
+}
+
 async function getAccessToken(): Promise<string> {
   const { data, error } = await supabase.auth.getSession()
   if (error || !data.session) {
@@ -30,17 +45,40 @@ export async function uploadFileToBunny(
   options: UploadOptions
 ): Promise<UploadResponse> {
   const token = await getAccessToken()
+  const contentType = file.type || 'application/octet-stream'
 
-  const query = new URLSearchParams({
-    folder: options.folder,
-    filename: file.name || 'file',
+  const authorizeResponse = await fetch('/api/upload/authorize', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      folder: options.folder,
+      filename: file.name || 'file',
+      contentType,
+      size: file.size,
+    }),
+    signal: options.signal,
   })
 
-  return new Promise<UploadResponse>((resolve, reject) => {
+  const payload = await authorizeResponse.json().catch(() => ({}))
+  if (!authorizeResponse.ok || payload?.success === false) {
+    throw new Error(payload?.message || `Authorize failed (HTTP ${authorizeResponse.status})`)
+  }
+
+  const auth = (payload?.data ?? payload) as AuthorizePayload
+  if (!auth?.uploadUrl || !auth?.publicUrl) {
+    throw new Error('Upload authorization did not return an upload URL')
+  }
+
+  await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', `/api/upload?${query.toString()}`)
-    xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
+    xhr.open('PUT', auth.uploadUrl)
+
+    Object.entries(auth.headers || {}).forEach(([key, value]) => {
+      if (value) xhr.setRequestHeader(key, value)
+    })
 
     if (options.onProgress) {
       xhr.upload.onprogress = (event) => {
@@ -55,23 +93,10 @@ export async function uploadFileToBunny(
     }
 
     xhr.onload = () => {
-      let payload: any = {}
-      try {
-        payload = JSON.parse(xhr.responseText)
-      } catch {
-      }
-
-      if (xhr.status >= 200 && xhr.status < 300 && payload?.data?.publicUrl) {
-        resolve({
-          publicUrl: payload.data.publicUrl,
-          path: payload.data.path,
-        })
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve()
       } else {
-        reject(
-          new Error(
-            payload?.message || `Upload failed (HTTP ${xhr.status})`
-          )
-        )
+        reject(new Error(`Direct upload failed (HTTP ${xhr.status})`))
       }
     }
 
@@ -88,6 +113,11 @@ export async function uploadFileToBunny(
 
     xhr.send(file)
   })
+
+  return {
+    publicUrl: auth.publicUrl,
+    path: auth.path,
+  }
 }
 
 export async function deleteFileFromBunny(urlOrPath: string): Promise<boolean> {

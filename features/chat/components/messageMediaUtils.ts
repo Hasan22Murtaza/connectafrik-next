@@ -51,6 +51,25 @@ export function isPdfAttachment(att: ChatAttachment): boolean {
   return mime === "application/pdf" || name.endsWith(".pdf");
 }
 
+export function fileExtensionLabel(
+  name?: string | null,
+  mimeType?: string | null
+): string {
+  const base = (name || "").trim();
+  const fromName = base.includes(".") ? base.split(".").pop() || "" : "";
+  if (fromName && fromName.length <= 5 && fromName.toLowerCase() !== base.toLowerCase()) {
+    return fromName.toUpperCase();
+  }
+  const mime = (mimeType || "").toLowerCase();
+  if (mime === "application/pdf") return "PDF";
+  if (mime.includes("zip")) return "ZIP";
+  if (mime.includes("word")) return "DOC";
+  if (mime.includes("sheet") || mime.includes("excel")) return "XLS";
+  if (mime.includes("presentation") || mime.includes("powerpoint")) return "PPT";
+  if (mime.startsWith("text/")) return "TXT";
+  return "FILE";
+}
+
 /** Stable pastel color for group participant names */
 const PARTICIPANT_COLORS = [
   "#e17076",

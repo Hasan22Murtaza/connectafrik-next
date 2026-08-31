@@ -1,5 +1,15 @@
 import type { ChatAttachment } from "@/features/chat/services/supabaseMessagingService"
-import { uploadFileToBunny } from '@/shared/lib/uploadClient'
+import {
+  uploadFileToBunny,
+  type UploadProgress,
+} from '@/shared/lib/uploadClient'
+
+export type { UploadProgress }
+
+export interface UploadFilesOptions {
+  onProgress?: (fileId: string, progress: UploadProgress) => void
+  signal?: AbortSignal
+}
 
 export interface FileUploadResult extends ChatAttachment {
   id: string
@@ -50,10 +60,17 @@ export const fileUploadService = {
     })
   },
 
-  async uploadFiles(results: FileUploadResult[]): Promise<FileUploadResult[]> {
+  async uploadFiles(
+    results: FileUploadResult[],
+    options?: UploadFilesOptions
+  ): Promise<FileUploadResult[]> {
     const uploaded: FileUploadResult[] = []
 
     for (const result of results) {
+      if (options?.signal?.aborted) {
+        throw new DOMException('Upload cancelled', 'AbortError')
+      }
+
       if (!result.file) {
         uploaded.push(result)
         continue
@@ -61,6 +78,10 @@ export const fileUploadService = {
 
       const { publicUrl } = await uploadFileToBunny(result.file, {
         folder: 'chat-media',
+        signal: options?.signal,
+        onProgress: options?.onProgress
+          ? (progress) => options.onProgress!(result.id, progress)
+          : undefined,
       })
 
       uploaded.push({

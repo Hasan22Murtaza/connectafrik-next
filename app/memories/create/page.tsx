@@ -158,14 +158,6 @@ const CreateMemoryPage: React.FC = () => {
         return
       }
 
-      const maxSize = 100 * 1024 * 1024
-      if (file.size > maxSize) {
-        const message = 'Video file size must be less than 100MB'
-        setValidationError(message)
-        toast.error(message)
-        return
-      }
-
       setVideoFile(file)
       if (videoUrl) revokeVideoUrl(videoUrl)
       const url = URL.createObjectURL(file)

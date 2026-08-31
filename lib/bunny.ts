@@ -11,11 +11,31 @@ const REGION_HOSTS: Record<string, string> = {
   syd: 'syd.storage.bunnycdn.com',
 }
 
+export const ALLOWED_UPLOAD_FOLDERS = [
+  'profiles',
+  'posts',
+  'reels',
+  'uploads',
+  'chat-media',
+  'products',
+  'feedback',
+  'stories',
+  'memories',
+  'groups',
+  'comments',
+] as const
+
+export type AllowedUploadFolder = (typeof ALLOWED_UPLOAD_FOLDERS)[number]
+
+export const PRESIGN_EXPIRES_SECONDS = 3600
+
 interface BunnyConfig {
   storageZone: string
   accessKey: string
   storageHost: string
   cdnUrl: string
+  s3Region: string
+  s3Endpoint: string
 }
 
 function getBunnyConfig(): BunnyConfig {
@@ -50,16 +70,31 @@ function getBunnyConfig(): BunnyConfig {
     REGION_HOSTS[region] ||
     REGION_HOSTS['']
 
+  const s3Region = region || 'de'
+  const s3Endpoint =
+    process.env.BUNNY_S3_ENDPOINT?.trim().replace(/\/+$/, '') ||
+    `https://${s3Region}-s3.storage.bunnycdn.com`
+
   return {
     accessKey: accessKey!,
     storageZone: storageZone!,
     storageHost,
     cdnUrl: cdnUrl!.replace(/\/+$/, ''),
+    s3Region,
+    s3Endpoint,
   }
 }
 
-function normalizePath(path: string): string {
+export function getBunnyStorageConfig(): BunnyConfig {
+  return getBunnyConfig()
+}
+
+export function normalizePath(path: string): string {
   return path.replace(/^\/+/, '')
+}
+
+export function isAllowedUploadFolder(folder: string): folder is AllowedUploadFolder {
+  return (ALLOWED_UPLOAD_FOLDERS as readonly string[]).includes(folder)
 }
 
 function sanitizeSegment(value: string): string {

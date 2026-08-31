@@ -218,7 +218,7 @@ export function MediaSection({
               {isDragging ? 'Drop your video here' : 'Drag & drop or click to upload'}
             </p>
             <p className="mt-1.5 text-xs text-content-secondary sm:text-sm">
-              MP4, MOV, WebM up to 100MB · Max {MAX_REEL_DURATION / 60} minutes
+              MP4, MOV, WebM · Max {MAX_REEL_DURATION / 60} minutes
             </p>
             <button
               type="button"

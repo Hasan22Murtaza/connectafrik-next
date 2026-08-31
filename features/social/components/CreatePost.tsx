@@ -73,7 +73,6 @@ const splitGroupPostBody = (text: string): { title: string; content: string } =>
 const VIDEO_REGEX = /\.(mp4|webm|ogg|mov)(\?|$)/i
 const MAX_FILES = 4
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-const MAX_VIDEO_SIZE = 500 * 1024 * 1024
 
 const CATEGORIES = [
   { value: 'general' as const, label: 'General', icon: '💬', active: 'bg-orange-50 border-orange-400 text-orange-700' },
@@ -514,10 +513,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    const oversized = files.find((f) => f.size > (f.type.startsWith('video/') ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE))
-    if (oversized) {
-      const limit = oversized.type.startsWith('video/') ? 500 : 10
-      return toast.error(`File exceeds the ${limit}MB limit (${Math.round(oversized.size / 1024 / 1024)}MB)`)
+    const oversizedImage = files.find((f) => !f.type.startsWith('video/') && f.size > MAX_IMAGE_SIZE)
+    if (oversizedImage) {
+      return toast.error(`File exceeds the 10MB limit (${Math.round(oversizedImage.size / 1024 / 1024)}MB)`)
     }
     setMediaFiles((prev) => [...prev, ...files].slice(0, MAX_FILES - existingImageUrls.length))
   }
@@ -836,7 +834,6 @@ const CreatePost: React.FC<CreatePostProps> = ({
               <VideoUploader
                 onUploadComplete={(url, key) => { setVideoUrl(url); setVideoKey(key); setShowVideoUploader(false); toast.success('Video uploaded!') }}
                 onUploadError={(err) => toast.error(err)}
-                maxSizeMB={500}
               />
             </div>
           </div>

@@ -15,7 +15,7 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
   onUploadComplete,
   onUploadStart,
   onUploadError,
-  maxSizeMB = 500,
+  maxSizeMB,
   className = ''
 }) => {
   const { uploadFile, uploading } = useFileUpload()
@@ -56,8 +56,7 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
       return 'Please upload a valid video file (MP4, WebM, OGG, MOV, AVI)'
     }
 
-    const maxSizeBytes = maxSizeMB * 1024 * 1024
-    if (file.size > maxSizeBytes) {
+    if (maxSizeMB && file.size > maxSizeMB * 1024 * 1024) {
       return `File size exceeds ${maxSizeMB}MB limit. Your file is ${formatFileSize(file.size)}`
     }
 
@@ -119,7 +118,7 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
       const result = await uploadFile(selectedFile, {
         bucket: 'post-videos',
         compress: false,
-        maxSize: maxSizeMB * 1024 * 1024,
+        ...(maxSizeMB ? { maxSize: maxSizeMB * 1024 * 1024 } : {}),
         onProgress: ({ percent }) => setProgress(percent),
       })
 
@@ -209,7 +208,6 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
 
             <div className="text-xs text-gray-500 space-y-1">
               <p>Supported formats: MP4, WebM, OGG, MOV, AVI</p>
-              <p>Maximum size: {maxSizeMB}MB</p>
             </div>
           </div>
         </div>
