@@ -4,6 +4,7 @@ import type {
   ChatHeaderOptionsMenuSection,
 } from "@/features/chat/types/chatHeaderOptionsMenu";
 import type { ChatMessage } from "@/features/chat/services/supabaseMessagingService";
+import { getChatMessageAuthorId } from "@/features/chat/services/supabaseMessagingService";
 import { toCallSessionStatusMessageType } from "@/features/chat/services/callSessionRealtime";
 import {
   differenceInCalendarDays,
@@ -35,7 +36,9 @@ import {
   Smile,
   Square,
   Trash2,
+  UserPlus,
   Video,
+  MessageSquare,
 } from '@/shared/icons';
 import React, { Fragment, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -205,6 +208,10 @@ interface MessageBubbleProps {
   isMessageSelected?: boolean;
   onEnterSelection?: (message: ChatMessage) => void;
   onToggleSelect?: (message: ChatMessage) => void;
+  /** Group chats: start a 1:1 reply quoting this message */
+  onReplyPrivately?: (message: ChatMessage) => void;
+  /** Group chats: open a 1:1 chat with the sender */
+  onMessageSender?: (message: ChatMessage) => void;
   /** Group chats only: show avatar + name above inbound bubbles */
   showSenderHeader?: boolean;
   translationDisplay?: {
@@ -248,6 +255,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isMessageSelected = false,
   onEnterSelection,
   onToggleSelect,
+  onReplyPrivately,
+  onMessageSender,
   showSenderHeader = false,
   translationDisplay,
   isTranslating = false,
@@ -439,6 +448,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const canSaveOrOpen = hasAttachments && !isDeleted && !isUploading;
   const canSelect = Boolean(onEnterSelection) && !isDeleted;
   const canReport = !isOwnMessage && !isDeleted;
+  const senderId = getChatMessageAuthorId(message);
+  const senderName = (message.sender?.name || "User").trim() || "User";
+  const canReplyPrivately =
+    Boolean(onReplyPrivately) && !isOwnMessage && !isDeleted && Boolean(senderId);
+  const canMessageSender =
+    Boolean(onMessageSender) && !isOwnMessage && !isDeleted && Boolean(senderId);
+  const messageSenderLabel =
+    senderName.length > 28 ? `Message ${senderName.slice(0, 26)}...` : `Message ${senderName}`;
   const canTranslate =
     Boolean(onTranslateMessage) &&
     !isOwnMessage &&
@@ -457,6 +474,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canSaveOrOpen ||
     canSelect ||
     canReport ||
+    canReplyPrivately ||
+    canMessageSender ||
     Boolean(onReply);
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -542,6 +561,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             Icon: Reply,
             onClick: () => {
               handleReply();
+            },
+          },
+        ]
+        : []),
+      ...(canReplyPrivately
+        ? [
+          {
+            id: "reply-privately",
+            label: "Reply privately",
+            Icon: UserPlus,
+            onClick: () => {
+              onReplyPrivately?.(message);
+              setShowMenu(false);
+            },
+          },
+        ]
+        : []),
+      ...(canMessageSender
+        ? [
+          {
+            id: "message-sender",
+            label: messageSenderLabel,
+            Icon: MessageSquare,
+            onClick: () => {
+              onMessageSender?.(message);
+              setShowMenu(false);
             },
           },
         ]
@@ -680,6 +725,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     onBeginEdit,
     onDelete,
     onShowInfo,
+    onReplyPrivately,
+    onMessageSender,
+    canReplyPrivately,
+    canMessageSender,
+    messageSenderLabel,
     canCopy,
     canForward,
     canEditMessage,
@@ -1185,7 +1235,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                                   }`}
                                 aria-hidden
                               />
-                              <span className="min-w-0 flex-1">{label}</span>
+                              <span className="min-w-0 flex-1 truncate">{label}</span>
                               {trailing ? <span className="shrink-0">{trailing}</span> : null}
                             </button>
                           );

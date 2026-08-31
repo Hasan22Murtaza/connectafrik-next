@@ -269,6 +269,7 @@ function sortChatWindowMessages(msgs: ChatMessage[]): ChatMessage[] {
 }
 
 const MESSAGES_PAGE_SIZE = 50;
+const PRIVATE_REPLY_STORAGE_KEY = "connectafrik.chat.privateReply";
 
 const ComposerEmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ssr: false,
@@ -683,6 +684,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setLeavingGroup(false);
     setEditingMessage(null);
     draftBeforeComposerEditRef.current = "";
+    setReplyingTo(null);
     setForwardingMessage(null);
     setForwardSearch("");
     setInfoMessage(null);
@@ -702,6 +704,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setUploadProgressByMessage({});
     setSelectionMode(false);
     setSelectedMessageIds([]);
+  }, [threadId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = sessionStorage.getItem(PRIVATE_REPLY_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { targetThreadId?: string; message?: ChatMessage };
+      if (parsed?.targetThreadId !== threadId || !parsed.message) return;
+      sessionStorage.removeItem(PRIVATE_REPLY_STORAGE_KEY);
+      setReplyingTo(parsed.message);
+    } catch {
+      sessionStorage.removeItem(PRIVATE_REPLY_STORAGE_KEY);
+    }
   }, [threadId]);
 
   useEffect(() => {
@@ -1364,7 +1380,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           name: currentUser.name || "You",
           avatarUrl: currentUser.avatarUrl,
         },
-        reply_to_id: replyTarget?.id,
+        reply_to_id: replyTarget?.thread_id === threadId ? replyTarget.id : undefined,
         reactions: [],
       };
       setMessagesForThread(
@@ -1426,7 +1442,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           size: f.size,
           mimeType: f.mimeType,
         })),
-        reply_to_id: replyTarget?.id,
+        reply_to_id: replyTarget?.thread_id === threadId ? replyTarget.id : undefined,
         ...(prependSendId
           ? {
               metadata: { __clientSendId: prependSendId },
@@ -1521,6 +1537,41 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setForwardingMessage(null);
     setReplyingTo(message);
   };
+
+  const openDirectChatWithSender = useCallback(
+    async (message: ChatMessage, withPrivateReply: boolean) => {
+      const authorId = getChatMessageAuthorId(message);
+      if (!authorId || chatUserIdsEqual(authorId, currentUser?.id)) return;
+      try {
+        const participant: ChatParticipant = {
+          id: authorId,
+          name: message.sender?.name || "User",
+          avatarUrl: message.sender?.avatarUrl,
+        };
+        const newThreadId = await startChatWithMembers([participant], {
+          participant_ids: [authorId],
+          type: "direct",
+          openInDock: variant !== "page",
+        });
+        if (!newThreadId) throw new Error("no thread");
+        if (withPrivateReply && typeof window !== "undefined") {
+          sessionStorage.setItem(
+            PRIVATE_REPLY_STORAGE_KEY,
+            JSON.stringify({ targetThreadId: newThreadId, message })
+          );
+        }
+        void openThread(newThreadId);
+        if (variant === "page") {
+          router.push(`/chat/${encodeURIComponent(newThreadId)}`);
+        }
+      } catch {
+        toast.error(
+          withPrivateReply ? "Could not open private reply" : "Could not open chat"
+        );
+      }
+    },
+    [currentUser?.id, startChatWithMembers, variant, openThread, router]
+  );
 
   const openForwardPicker = useCallback((message: ChatMessage) => {
     if (editingMessage) {
@@ -2620,6 +2671,16 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   showTail={!sameSenderPrev}
                   isClusterEnd={!sameSenderNext}
                   onReply={handleReply}
+                  onReplyPrivately={
+                    isGroupThread
+                      ? (msg) => void openDirectChatWithSender(msg, true)
+                      : undefined
+                  }
+                  onMessageSender={
+                    isGroupThread
+                      ? (msg) => void openDirectChatWithSender(msg, false)
+                      : undefined
+                  }
                   onForward={openForwardPicker}
                   onDelete={handleDelete}
                   onBeginEdit={beginComposerEdit}
