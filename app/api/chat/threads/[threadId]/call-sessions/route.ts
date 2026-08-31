@@ -276,11 +276,29 @@ const MID_CALL_PUSH_EVENTS = new Set<string>([
   'decline_video',
 ])
 
+/** Missed-call toast depends on who timed out, not a single "tried to call you" line. */
+function missedCallPushBody(
+  actorId: string,
+  actorName: string,
+  callType: 'audio' | 'video',
+  callerId: string,
+  targetUserId: string | null,
+): string {
+  const actorIsOriginalCaller = callerId
+    ? idsEqual(actorId, callerId)
+    : !(targetUserId && idsEqual(actorId, targetUserId))
+  // Caller timeout → tell the callee they missed an incoming call.
+  // Callee timeout → tell the caller the other person missed their outgoing call.
+  return actorIsOriginalCaller
+    ? `${actorName} tried to ${callType} call you`
+    : `${actorName} missed your ${callType} call`
+}
+
 function midCallPushCopy(
   signal: string,
   actorName: string,
   callType: 'audio' | 'video',
-): { title: string; body: string } {
+): { title: string; body: string } | null {
   switch (signal) {
     case 'participant_joined':
       return { title: 'Call update', body: `${actorName} joined the call` }
@@ -298,10 +316,8 @@ function midCallPushCopy(
       return { title: 'Video request', body: `${actorName} wants to switch to video` }
     case 'video_accepted':
       return { title: 'Video call', body: `${actorName} accepted video` }
-    case 'video_declined':
-      return { title: 'Call update', body: `${actorName} declined video` }
     default:
-      return { title: 'Call update', body: `${actorName} updated the call` }
+      return null
   }
 }
 
@@ -320,7 +336,9 @@ async function sendMidCallPushNotifications(
   },
 ) {
   if (recipients.length === 0) return
-  const { title, body } = midCallPushCopy(payload.signal, payload.actorName, payload.callType)
+  const copy = midCallPushCopy(payload.signal, payload.actorName, payload.callType)
+  if (!copy) return
+  const { title, body } = copy
   const pushData = toPushDataRecord({
     type: payload.signal,
     call_type: payload.callType,
@@ -1094,7 +1112,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               ? 'Call ended'
               : status === 'active'
                 ? `${actorName} accepted your ${callType} call`
-                : `${actorName} tried to ${callType} call you`
+                : missedCallPushBody(
+                    user.id,
+                    actorName,
+                    callType,
+                    String(updated.created_by || ''),
+                    targetUserId,
+                  )
 
         const pushData = toPushDataRecord({
           type: status,

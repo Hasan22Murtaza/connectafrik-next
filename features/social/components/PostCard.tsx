@@ -11,6 +11,8 @@ import {
   Repeat2,
   Globe,
   Play,
+  Flag,
+  EyeOff,
 } from '@/shared/icons';
 import { formatDistanceToNow } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -24,12 +26,12 @@ import toast from "react-hot-toast";
 import dynamic from "next/dynamic";
 import { apiClient, ApiError } from "@/lib/api-client";
 import ImageViewer from "@/shared/components/ui/ImageViewer";
-import VideoViewer from "@/shared/components/ui/VideoViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
 import { getPostBackgroundPreset, legacyGradientForPostId } from "@/features/social/constants/postBackgrounds";
 import { FeedPostVideo } from "@/features/social/components/FeedPostVideo";
+import { PostDetailVideo } from "@/features/social/components/PostDetailVideo";
 import { PostLocationCheckIn } from "@/features/social/components/PostLocationCheckIn";
 import { parsePostLocation } from "@/features/social/utils/postLocation";
 interface Post {
@@ -122,6 +124,15 @@ interface PostCardProps {
   onRepost?: (postId: string) => Promise<void>;
   /** Facebook-style muted autoplay when scrolled into view (requires FeedVideoAutoplayProvider). */
   feedVideoAutoplay?: boolean;
+  /** Dedicated permalink page: full caption, always-open comments, larger uncropped media. */
+  variant?: "feed" | "detail" | "theater";
+  /** When true, media is omitted (e.g. theater layout renders it in a separate pane). */
+  hideMedia?: boolean;
+  className?: string;
+  /** Scroll a nested comment into view (e.g. `/post/[id]?comment=`). */
+  highlightCommentId?: string | null;
+  onHide?: (postId: string) => void;
+  onReport?: (postId: string) => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = React.memo(({
@@ -140,6 +151,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   onSaveStateChange,
   onRepost,
   feedVideoAutoplay = false,
+  variant = "feed",
+  highlightCommentId = null,
+  onHide,
+  onReport,
+  hideMedia = false,
+  className = "",
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -154,10 +171,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerIndex, setImageViewerIndex] = useState(0);
-  const [videoViewerSrc, setVideoViewerSrc] = useState<string | null>(null);
   const [postSaved, setPostSaved] = useState(post.is_saved ?? false);
   const [isShared, setIsShared] = useState(post.isShare ?? false);
-  const [isContentExpanded, setIsContentExpanded] = useState(false);
+  const isTheater = variant === "theater";
+  const isDetail = variant === "detail" || isTheater;
+  const [isContentExpanded, setIsContentExpanded] = useState(isDetail);
+  const [isHidden, setIsHidden] = useState(false);
+  const [showReportConfirm, setShowReportConfirm] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
   const closeTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -169,8 +190,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   }, [post.id, post.isShare]);
 
   useEffect(() => {
-    setIsContentExpanded(false);
-  }, [post.id, post.content]);
+    setIsContentExpanded(isDetail);
+  }, [post.id, post.content, isDetail]);
+
+  useEffect(() => {
+    setCommentsCount(post.comments_count || 0);
+  }, [post.id, post.comments_count]);
   const menuRef = useRef<HTMLDivElement>(null);
   const postRef = useRef<HTMLElement>(null);
   const postOptionsMenuId = useId();
@@ -183,7 +208,13 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     return Math.abs(hash) % 3 === 0; // ~33% of eligible posts
   })();
 
-  const [showInlineComments, setShowInlineComments] = useState(shouldAutoOpenComments);
+  const [showInlineComments, setShowInlineComments] = useState(
+    isDetail || shouldAutoOpenComments
+  );
+
+  useEffect(() => {
+    if (isDetail) setShowInlineComments(true);
+  }, [isDetail, post.id]);
 
   const [reactions, setReactions] = useState<{
     groups: Array<{
@@ -512,12 +543,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     setImageViewerOpen(true);
   };
 
-  // Open video viewer (big/fullscreen player) on video click
-  const handleVideoExpand = (url: string) => {
-    setVideoViewerSrc(url);
-  };
-
-  // Get only image URLs for the viewer (exclude videos)
   const isImageFile = (url: string): boolean => {
     return /\.(jpg|jpeg|png|gif|webp|bmp|svg|jfif|avif)(\?|#|$)/i.test(url);
   };
@@ -570,6 +595,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   };
 
   const renderMedia = (url: string, index: number, layout: PostMediaLayout) => {
+    const openLightbox = isDetail;
     if (isImageFile(url)) {
       // Find the index of this image within imageUrls (excluding videos)
       const imageIndex = imageUrls.indexOf(url);
@@ -577,15 +603,21 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         return (
           <div
             className="relative w-full cursor-pointer group"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleImageClick(imageIndex >= 0 ? imageIndex : 0);
-            }}
+            onClick={
+              openLightbox
+                ? (e) => {
+                    e.stopPropagation();
+                    handleImageClick(imageIndex >= 0 ? imageIndex : 0);
+                  }
+                : undefined
+            }
           >
             <img
               src={url}
               alt={`Post media ${index + 1}`}
-              className="block w-full h-auto max-h-[560px] object-contain bg-neutral-100 transition-transform duration-200 group-hover:brightness-95"
+              className={`block w-full h-auto object-contain bg-neutral-100 transition-transform duration-200 group-hover:brightness-95 ${
+                isDetail ? "max-h-[min(80dvh,720px)]" : "max-h-[560px]"
+              }`}
               loading="lazy"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -598,10 +630,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       return (
         <div
           className="relative h-full w-full min-h-0 cursor-pointer group"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleImageClick(imageIndex >= 0 ? imageIndex : 0);
-          }}
+          onClick={
+            openLightbox
+              ? (e) => {
+                  e.stopPropagation();
+                  handleImageClick(imageIndex >= 0 ? imageIndex : 0);
+                }
+              : undefined
+          }
         >
           <img
             src={url}
@@ -618,6 +654,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     }
 
     if (isVideoFile(url)) {
+      if (isDetail && layout === "single") {
+        return <PostDetailVideo src={url} altIndex={index} />;
+      }
       if (feedVideoAutoplay) {
         return (
           <FeedPostVideo
@@ -625,19 +664,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             src={url}
             layout={layout}
             altIndex={index}
-            onExpand={handleVideoExpand}
           />
         );
       }
       if (layout === "grid") {
         return (
-          <div
-            className="relative h-full w-full min-h-0 bg-black cursor-pointer group"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleVideoExpand(url);
-            }}
-          >
+          <div className="relative h-full w-full min-h-0 bg-black cursor-pointer group">
             <video
               src={url}
               muted
@@ -660,18 +692,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         );
       }
       return (
-        <div
-          className="relative w-full bg-black cursor-pointer group"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleVideoExpand(url);
-          }}
-        >
+        <div className="relative w-full bg-black cursor-pointer group">
           <video
             src={url}
             muted
             playsInline
-            className="block w-full h-auto max-h-[min(70dvh,560px)] bg-black pointer-events-none"
+            className={`block w-full h-auto bg-black pointer-events-none ${
+              isDetail ? "max-h-[min(80dvh,720px)]" : "max-h-[min(70dvh,560px)]"
+            }`}
             preload="metadata"
             onError={(e) => {
               const target = e.target as HTMLVideoElement;
@@ -711,6 +739,10 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     ) {
       return
     }
+    const hasVisualMedia = (post.media_urls || []).some(
+      (url) => isImageFile(url) || isVideoFile(url)
+    )
+    if (!hasVisualMedia) return
     router.push(`/post/${post.id}`)
   }
 
@@ -718,9 +750,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     const plainContent = (post.content || "").trim();
     if (!plainContent) return null;
     const plainPreviewLen = 300;
-    const showPlainReadToggle = plainContent.length > plainPreviewLen;
+    const showPlainReadToggle = !isDetail && plainContent.length > plainPreviewLen;
     const plainVisibleContent =
-      isContentExpanded || !showPlainReadToggle
+      isDetail || isContentExpanded || !showPlainReadToggle
         ? post.content
         : `${plainContent.slice(0, plainPreviewLen).trimEnd()}…`;
     return (
@@ -744,14 +776,50 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
     );
   };
 
+  if (isHidden) {
+    return (
+      <div
+        className={
+          isTheater
+            ? "flex h-full items-center justify-center bg-surface p-6"
+            : isDetail
+            ? "bg-surface rounded-none sm:rounded-2xl p-4"
+            : "bg-surface shadow-card mb-3 rounded-2xl p-4"
+        }
+      >
+        <p className="text-sm text-content">Post hidden.</p>
+        <p className="mt-1 text-sm text-content-secondary">
+          You won&apos;t see this post in this view.
+        </p>
+        <button
+          type="button"
+          onClick={() => setIsHidden(false)}
+          className="mt-3 text-sm font-semibold text-primary-600 hover:underline"
+        >
+          Undo
+        </button>
+      </div>
+    );
+  }
+
   return (
     <article
       ref={postRef}
       onClick={handlePostClick}
-      className="bg-surface shadow-card mb-3 duration-200 rounded-2xl  p-3 sm:p-4 cursor-pointer"
+      className={
+        isTheater
+          ? `flex h-full min-h-0 flex-col overflow-hidden bg-surface p-3 sm:p-4 ${className}`
+          : isDetail
+          ? `bg-surface rounded-none sm:rounded-2xl p-3 sm:p-4 ${className}`
+          : `bg-surface shadow-card mb-3 duration-200 rounded-2xl p-3 sm:p-4 ${
+              (post.media_urls || []).some((url) => isImageFile(url) || isVideoFile(url))
+                ? "cursor-pointer"
+                : ""
+            } ${className}`
+      }
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-2">
+      <div className={`flex items-start justify-between mb-2 ${isTheater ? "shrink-0" : ""}`}>
         <div className="flex items-center space-x-3 flex-1 min-w-0">
           <button
             onClick={handleUserProfileClick}
@@ -840,6 +908,17 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         addSuffix: true,
                       })}
                     </time>
+                    {isDetail && (
+                      <>
+                        <span aria-hidden className="text-content-tertiary">
+                          ·
+                        </span>
+                        <Globe
+                          className="w-3.5 h-3.5 shrink-0 text-content-secondary"
+                          aria-label="Public"
+                        />
+                      </>
+                    )}
                     {parsedLocation && hasPostMedia && (
                       <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parsedLocation.display_name)}`}
@@ -1062,12 +1141,59 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       </span>
                     </button>
                   </li>
+                  <li role="none" className="list-none border-t border-border-subtle">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        setIsHidden(true);
+                        onHide?.(post.id);
+                      }}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                    >
+                      <EyeOff
+                        className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-content">
+                          Hide post
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                  <li role="none" className="list-none border-t border-border-subtle">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        setShowReportConfirm(true);
+                      }}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                    >
+                      <Flag
+                        className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
+                        aria-hidden
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-content">
+                          Report post
+                        </span>
+                      </span>
+                    </button>
+                  </li>
                 </>
               )}
             </ul>
           )}
         </div>
       </div>
+
+      <div className={isTheater ? "min-h-0 flex-1 overflow-y-auto" : undefined}>
 
       {/* Caption above location check-in map */}
       {!isEditing && showLocationCheckIn && renderPlainCaption()}
@@ -1100,9 +1226,9 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
             const blockBg = preset ? preset.css : legacyGradientForPostId(post.id);
             const contentText = (post.content || "").trim();
             const longBody = contentText.length > 150;
-            const showStyledReadToggle = longBody;
+            const showStyledReadToggle = !isDetail && longBody;
             const styledVisibleContent =
-              isContentExpanded || !showStyledReadToggle
+              isDetail || isContentExpanded || !showStyledReadToggle
                 ? post.content
                 : `${contentText.slice(0, 150).trimEnd()}…`;
             const minH = preset ? (longBody ? "min-h-[120px]" : "min-h-[220px]") : "min-h-[250px]";
@@ -1205,7 +1331,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       )}
 
       {/* Media - style grid */}
-      {!post.reposted_post && post.media_urls && post.media_urls.length > 0 && (
+      {!hideMedia && !post.reposted_post && post.media_urls && post.media_urls.length > 0 && (
         <div className="mb-2 -mx-3 sm:-mx-4">
           {(() => {
             const mediaCount = post.media_urls!.length;
@@ -1266,10 +1392,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                     {index === visibleMedia.length - 1 && extraCount > 0 && (
                       <div
                         className="absolute inset-0 bg-black/50 flex items-center justify-center cursor-pointer"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleImageClick(index);
-                        }}
+                        aria-hidden
                       >
                         <span className="text-white text-3xl font-bold">
                           +{extraCount}
@@ -1288,13 +1411,30 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       <PostEngagement
         reactionGroups={getReactionGroups()}
         totalReactionCount={reactions.totalCount}
-        commentsCount={post.comments_count}
+        commentsCount={commentsCount}
         sharesCount={post.shares_count}
         viewsCount={post.views_count}
         showViews={!!(post.media_urls && post.media_urls.some((url) => isVideoFile(url)))}
         isShared={isShared}
-        onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
-        onComment={() => setShowInlineComments(prev => !prev)}
+        onLike={(emoji) => {
+          if (onEmojiReaction) {
+            onEmojiReaction(post.id, emoji || "👍");
+          } else {
+            onLike(post.id);
+          }
+        }}
+        onComment={() => {
+          if (isDetail) {
+            const composer = document.getElementById(`post-${post.id}-comment-input`);
+            document.getElementById(`post-${post.id}-comments`)?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+            composer?.focus();
+            return;
+          }
+          setShowInlineComments((prev) => !prev);
+        }}
         onShare={() => {
           setIsShared(true);
           onShare(post.id);
@@ -1332,6 +1472,44 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         </div>
       )}
 
+      {/* Report Confirmation Dialog */}
+      {showReportConfirm && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="bg-surface rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-content mb-2">
+              Report Post
+            </h3>
+            <p className="text-content-secondary mb-6">
+              We&apos;ll review this post against ConnectAfrik community guidelines.
+              Thanks for helping keep the community safe.
+            </p>
+            <div className="flex space-x-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowReportConfirm(false)}
+                className="px-4 py-2 text-content-secondary hover:text-gray-800 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReportConfirm(false);
+                  onReport?.(post.id);
+                  toast.success("Thanks for your report. We'll take a look.");
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
+              >
+                Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Image Viewer - Facebook style lightbox */}
       {imageUrls.length > 0 && (
         <ImageViewer
@@ -1342,26 +1520,33 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         />
       )}
 
-      {/* Video Viewer - big/fullscreen player */}
-      <VideoViewer
-        src={videoViewerSrc}
-        isOpen={!!videoViewerSrc}
-        onClose={() => setVideoViewerSrc(null)}
-      />
-
       {/* Inline Comments Section - Facebook style */}
       {showInlineComments && (
-        <div className="border-t border-border-subtle mt-1" onClick={(e) => e.stopPropagation()}>
+        <div
+          id={`post-${post.id}-comments`}
+          className={`border-t border-border-subtle mt-1 ${isTheater ? "flex-1 min-h-0" : ""}`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <CommentsSection
             postId={post.id}
             isOpen={true}
-            onClose={() => setShowInlineComments(false)}
+            onClose={() => {
+              if (!isDetail) setShowInlineComments(false);
+            }}
             canComment={canComment}
-            initialComments={post.comments}
+            initialComments={isDetail ? undefined : post.comments}
             totalCommentsCount={post.comments_count}
+            highlightCommentId={highlightCommentId}
+            stickyComposer={isDetail}
+            composerInputId={`post-${post.id}-comment-input`}
+            onCommentCountChange={(delta) => {
+              setCommentsCount((prev) => Math.max(0, prev + delta));
+            }}
           />
         </div>
       )}
+
+      </div>
 
     </article>
   );
