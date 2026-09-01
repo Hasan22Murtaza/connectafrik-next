@@ -21,6 +21,16 @@ const ACTIVE_STATUSES = ['initiated', 'ringing', 'active']
 const LIVE_DEDUPE_WINDOW_MS = 15_000
 /** Allow heartbeats while the client is still connecting to LiveKit after accept/join. */
 const HEARTBEAT_CONNECT_GRACE_MS = 45_000
+/**
+ * How long the room must *continuously* report a single participant before we
+ * accept that the other side has really gone.
+ *
+ * One `ListParticipants` reading is not evidence a call is over: a client that
+ * is renegotiating ICE, or that has only just published, can be absent from a
+ * single response while being perfectly connected. Acting on one reading ended
+ * live calls at almost exactly HEARTBEAT_CONNECT_GRACE_MS + one heartbeat tick.
+ */
+const SOLO_CONFIRM_MS = 20_000
 const PATCH_EVENTS = [
   'accept',
   'declined',
@@ -707,22 +717,43 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
       const identities = await mediaIdentitiesForSession(row)
       const inGrace = Date.now() - sessionActivatedAtMs(row) < HEARTBEAT_CONNECT_GRACE_MS
+      // Set to a timestamp while the room looks solo, or null to clear the
+      // marker once it does not. Written with the heartbeat below.
+      let soloSince: string | null = null
+
       if (identities && !inGrace) {
-        const present = identities.some((id) => idsEqual(id, user.id))
         if (identities.length === 0) {
           const ended = await markSessionEnded(serviceClient, row, 'empty_room')
           void deleteLiveKitRoomIfEmpty(row)
           return jsonResponse({ session: sanitizeCallSession(ended || row) })
         }
+
         // A live call with only one person left is over — keep the remaining
         // client from sitting in an empty LiveKit room ("In call · 1").
+        //
+        // But require the room to STAY solo before acting. Ending on a single
+        // reading killed healthy calls: both parties connected and publishing
+        // audio, zero reconnects, zero ICE renegotiation, and the session was
+        // ended by the first heartbeat after the connect grace lapsed.
         if (identities.length === 1) {
-          const ended = await markSessionEnded(serviceClient, row, 'ended')
-          return jsonResponse({ session: sanitizeCallSession(ended || row) })
+          const meta = mergeSessionMetadata(row.metadata, {})
+          const firstSeen = typeof meta.solo_since === 'string' ? Date.parse(meta.solo_since) : NaN
+          const seenAt = Number.isFinite(firstSeen) ? firstSeen : Date.now()
+          if (Date.now() - seenAt >= SOLO_CONFIRM_MS) {
+            const ended = await markSessionEnded(serviceClient, row, 'ended')
+            return jsonResponse({ session: sanitizeCallSession(ended || row) })
+          }
+          soloSince = new Date(seenAt).toISOString()
         }
-        if (!present) {
-          return jsonResponse({ session: sanitizeCallSession(row) })
-        }
+
+        // Two or more participants: the call is demonstrably alive, so fall
+        // through and record the heartbeat even when this particular caller is
+        // missing from the list.
+        //
+        // The previous `if (!present) return` returned 200 OK *without*
+        // writing last_heartbeat_at. The client saw a successful heartbeat
+        // while the row silently went stale, and the 90s reaper then ended a
+        // working call — a failure disguised as success.
       }
 
       const heartbeatNow = new Date().toISOString()
@@ -730,6 +761,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         last_signal: 'heartbeat',
         last_heartbeat_by: user.id,
         last_heartbeat_at: heartbeatNow,
+        // Carried while the room reads solo, cleared as soon as it does not,
+        // so a brief blip can never accumulate toward SOLO_CONFIRM_MS.
+        solo_since: soloSince,
       })
       const { data: heartbeatRow, error: heartbeatError } = await serviceClient
         .from('call_sessions')
