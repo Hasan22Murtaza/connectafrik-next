@@ -282,9 +282,18 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 
   const images = attachments.filter((a) => a.type === "image");
   const multiImage = images.length > 1;
+  const onlyVisualMedia = attachments.every(
+    (a) => a.type === "image" || a.type === "video"
+  );
 
   return (
-    <div className="mb-0.5 w-full max-w-[min(100%,280px)] space-y-2 sm:max-w-[min(100%,320px)]">
+    <div
+      className={
+        onlyVisualMedia
+          ? "mb-0.5 max-w-full space-y-2"
+          : "mb-0.5 w-[21rem] max-w-full space-y-2"
+      }
+    >
       {multiImage ? (
         <div
           className={`grid gap-0.5 overflow-hidden rounded-xl ${
@@ -527,7 +536,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         return (
           <div
             key={att.id}
-            className={`overflow-hidden rounded-lg ${
+            className={`w-full overflow-hidden rounded-[6px] ${
               isOwnMessage ? "chat-bubble-own-file" : "bg-[#f5f6f6] dark:bg-surface-secondary/80"
             }`}
           >

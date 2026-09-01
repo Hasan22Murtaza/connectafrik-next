@@ -840,6 +840,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   /** Outgoing / incoming bubble fill — WhatsApp-inspired, tokenized for themes */
   const bubbleBg = isOwnMessage ? "chat-bubble-own" : "chat-bubble-in";
+  const bubbleShape = isOwnMessage
+    ? showTail
+      ? "rounded-tl-[8px] rounded-tr-[4px] rounded-br-[8px] rounded-bl-[8px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
+      : "rounded-[8px]"
+    : showTail
+      ? "rounded-tr-[8px] rounded-tl-[4px] rounded-br-[8px] rounded-bl-[8px] ring-1 ring-black/[0.04] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--chat-bubble-in)]"
+      : "rounded-[8px] ring-1 ring-black/[0.04]";
   const forwardAccent =
     showForwardBadge && isOwnMessage ? "border-l-[3px] border-[#25d366] pl-[9px]" : "";
   const emojiOnly =
@@ -929,6 +936,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     !displayContent.trim() &&
     !sharedPostId &&
     !linkPreviewUrl;
+  /** Images/videos can overlay the timestamp; file cards have Open/Save and need it below. */
+  const visualMediaOnly =
+    mediaOnly &&
+    (message.attachments ?? []).every(
+      (att) => att.type === "image" || att.type === "video"
+    );
 
   return (
     <div
@@ -1002,17 +1015,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         <div className="group/bubble relative" ref={bubbleBlockRef}>
           <div
-            className={`relative inline-block max-w-full overflow-visible shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] transition-shadow ${
+            className={`relative inline-block max-w-full overflow-visible transition-shadow ${
               emojiOnly
                 ? "bg-transparent shadow-none px-1"
-                : `${bubbleBg} ${mediaOnly ? "p-[3px] pb-1" : "px-2.5 pb-1.5 pt-1.5"} ${
-                    isOwnMessage
-                      ? showTail
-                        ? "rounded-tl-[8px] rounded-tr-[4px] rounded-br-[8px] rounded-bl-[8px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
-                        : "rounded-[8px]"
-                      : showTail
-                        ? "rounded-tr-[8px] rounded-tl-[4px] rounded-br-[8px] rounded-bl-[8px] ring-1 ring-black/[0.04] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--chat-bubble-in)]"
-                        : "rounded-[8px] ring-1 ring-black/[0.04]"
+                : `shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${bubbleShape} ${
+                    visualMediaOnly
+                      ? "w-fit p-[3px] pb-1"
+                      : mediaOnly
+                        ? "w-fit p-1 pb-0.5"
+                        : hasAttachments
+                          ? "w-fit px-2.5 pb-1.5 pt-1.5"
+                          : "px-2.5 pb-1.5 pt-1.5"
                   }`
             } ${forwardAccent} ${
               isComposerEditingThis
@@ -1204,7 +1217,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
                   <div
                     role="menu"
-                    className="min-w-[220px] max-w-[280px] overflow-hidden rounded-[10px] bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface"
+                    className="w-[180px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface"
                   >
                     {messageOverflowMenuSections.map((section, sectionIdx) => (
                       <Fragment key={section.id}>
@@ -1212,7 +1225,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         {section.items.map((item) => {
                           const { id, label, Icon, tone = "default", trailing, disabled, onClick } = item;
                           const baseRow =
-                            "flex w-full items-center gap-3 px-4 py-2.5 text-left text-[15px] leading-snug transition-colors";
+                            "flex w-full items-center gap-2.5 px-3 py-2 text-left text-[14.5px] leading-snug transition-colors";
                           const rowClass = disabled
                             ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
                             : tone === "danger"
@@ -1432,16 +1445,18 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {!callPresentation ? (
               <div
                 className={
-                  mediaOnly
+                  visualMediaOnly
                     ? "pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-end justify-end gap-1 rounded-[6px] bg-black/45 px-1.5 py-0.5"
-                    : "mt-0.5 flex items-end justify-end gap-1 pl-6"
+                    : mediaOnly
+                      ? "mt-0.5 flex items-end justify-end gap-1 px-0.5"
+                      : "mt-0.5 flex items-end justify-end gap-1 pl-6"
                 }
               >
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
                   {showEditedBadge ? (
                     <span
                       className={`text-[11px] lowercase leading-none ${
-                        mediaOnly ? "text-white/90" : "text-content-tertiary"
+                        visualMediaOnly ? "text-white/90" : "text-content-tertiary"
                       }`}
                     >
                       edited
@@ -1449,7 +1464,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   ) : null}
                   <span
                     className={`shrink-0 text-[11px] tabular-nums ${
-                      mediaOnly ? "text-white/90" : "text-content-tertiary"
+                      visualMediaOnly ? "text-white/90" : "text-content-tertiary"
                     }`}
                   >
                     {format(new Date(message.created_at), "HH:mm")}
@@ -1458,7 +1473,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <MessageStatusIndicator
                   status={messageStatus}
                   isOwnMessage={isOwnMessage}
-                  light={mediaOnly}
+                  light={visualMediaOnly}
                 />
               </div>
             ) : null}
