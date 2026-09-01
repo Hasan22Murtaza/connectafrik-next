@@ -5,9 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1",
     "lint": "eslint",
-    "dev-start": "next start -p 5005",
+    "dev-start": "next start -H 127.0.0.1 -p 5005",
     "vercel:ignore-build": "exit 1"
   },
   "dependencies": {
