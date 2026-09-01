@@ -561,7 +561,7 @@ export default function ChatSidebar({
           ) : null}
         </div>
 
-        <div className="px-4 py-1">
+        <div className="px-4 pt-1">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
             <input
@@ -569,7 +569,7 @@ export default function ChatSidebar({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={view === "marketplace" ? "Search marketplace" : "Search or start a new chat"}
-              className="w-full rounded-full border border-transparent  py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
+              className="w-full rounded-full border border-gray-300  py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
             />
             {search ? (
               <button
@@ -585,7 +585,7 @@ export default function ChatSidebar({
         </div>
 
         {view === "chats" ? (
-          <div className="flex items-center gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {filterChips.map((chip) => {
               const active = filter === chip.key;
               return (
