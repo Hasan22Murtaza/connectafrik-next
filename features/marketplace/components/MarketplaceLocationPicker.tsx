@@ -181,14 +181,11 @@ const MarketplaceLocationPicker: React.FC<MarketplaceLocationPickerProps> = ({
           type="button"
           onClick={() => !disabled && setOpen(true)}
           disabled={disabled}
-          className={`w-full text-left px-4 py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content hover:bg-surface focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all disabled:opacity-50 ${className}`}
+          className={`w-full text-left px-4 py-3 bg-surface-input border border-gray-200 rounded-lg text-sm text-content hover:bg-surface-hover focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all disabled:opacity-50 ${className}`}
         >
           <div className="flex items-center gap-3">
             <MapPin className="w-4 h-4 text-primary-600 shrink-0" />
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] text-content-secondary leading-none mb-1">
-                Location
-              </p>
               <p className="truncate font-medium">
                 {fieldLabel || "Search by city, neighborhood or ZIP code"}
               </p>

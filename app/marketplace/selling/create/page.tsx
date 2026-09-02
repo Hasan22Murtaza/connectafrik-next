@@ -78,7 +78,7 @@ const CreateListingPageContent: React.FC = () => {
         </main>
 
         <aside className="hidden xl:block w-[280px] shrink-0 py-6">
-          <div className="sticky top-6 space-y-4">
+          <div className="sticky top-20 space-y-4">
             <div className="bg-surface rounded-2xl border border-border-subtle p-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <Lightbulb className="w-5 h-5 text-primary-600 shrink-0 mt-0.5" />

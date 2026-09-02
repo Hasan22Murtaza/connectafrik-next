@@ -114,7 +114,7 @@ interface CreateProductFormProps {
 }
 
 const fieldClassName =
-  "w-full px-4 py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all";
+  "input-field";
 
 const labelClassName = "block text-sm font-semibold text-content mb-2";
 
@@ -368,7 +368,8 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {profileLoading ? (
+      <div className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-6">
+         {profileLoading ? (
         <div className="bg-surface rounded-2xl border border-border-subtle p-6 text-sm text-content-secondary">
           Loading your profile…
         </div>
@@ -382,28 +383,28 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
         </div>
       ) : null}
 
-      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
-            <Camera className="w-4 h-4 text-primary-600" />
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
+              <Camera className="w-4 h-4 text-primary-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-content">Images</h2>
+              <p className="text-xs text-content-secondary">Add up to 5 photos. The first photo is your cover.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-content">Images</h2>
-            <p className="text-xs text-content-secondary">Add up to 5 photos. The first photo is your cover.</p>
-          </div>
-        </div>
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          multiple
-          onChange={handleImageSelect}
-          className="hidden"
-        />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            multiple
+            onChange={handleImageSelect}
+            className="hidden"
+          />
 
-        {previewImages.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-4">
+          {previewImages.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
             {previewImages.map((preview, index) => (
               <div key={index} className="relative group aspect-square">
                 <img
@@ -437,379 +438,382 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
                 <span className="text-xs text-content-secondary">Add more</span>
               </button>
             )}
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            className="w-full py-10 sm:py-12 rounded-2xl border-2 border-dashed border-border bg-surface-input hover:border-primary-400 hover:bg-primary-50/40 transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
-                <span className="text-sm font-medium text-content">
-                  Uploading… {Math.round(uploadProgress.progress)}%
-                </span>
-              </>
-            ) : (
-              <>
-                <Upload className="w-8 h-8 text-content-tertiary" />
-                <span className="text-sm font-semibold text-content">
-                  Click to upload listing images
-                </span>
-                <span className="text-xs text-content-secondary">
-                  Maximum 5 images · Up to 10MB each
-                </span>
-                <span className="text-xs text-content-tertiary">JPG, PNG, GIF, WebP</span>
-              </>
-            )}
-          </button>
-        )}
-      </section>
-
-      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-primary-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-content">Listing details</h2>
-            <p className="text-xs text-content-secondary">Help buyers understand what you&apos;re selling.</p>
-          </div>
-        </div>
-
-        <div>
-          <label className={labelClassName} htmlFor="title">
-            Listing title <span className="text-primary-600">*</span>
-          </label>
-          <input
-            id="title"
-            type="text"
-            required
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            placeholder="e.g., Solid wood dining table, seats 6"
-            className={fieldClassName}
-            maxLength={120}
-          />
-          <p className="text-xs text-content-tertiary mt-1.5">{formData.title.length}/120 characters</p>
-        </div>
-
-        <div>
-          <label className={labelClassName} htmlFor="description">
-            Description <span className="text-primary-600">*</span>
-          </label>
-          <textarea
-            id="description"
-            required
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Describe your listing — materials, size, condition, and anything buyers should know."
-            rows={5}
-            className={`${fieldClassName} resize-y min-h-[120px]`}
-          />
-        </div>
-      </section>
-
-      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
-            <DollarSign className="w-4 h-4 text-primary-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-content">Price</h2>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <label className={labelClassName} htmlFor="price">
-                Price <span className="text-primary-600">*</span>
-              </label>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary-50 text-primary-600 shrink-0">
-                {listingCurrency.label}
-              </span>
             </div>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-content-secondary">
-                {listingCurrency.symbol}
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="w-full py-10 sm:py-12 rounded-2xl border-2 border-dashed border-border bg-surface-input hover:border-primary-400 hover:bg-primary-50/40 transition-colors flex flex-col items-center justify-center gap-2 disabled:opacity-50"
+            >
+          {isUploading ? (
+            <>
+              <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+              <span className="text-sm font-medium text-content">
+                Uploading… {Math.round(uploadProgress.progress)}%
               </span>
-              <input
-                id="price"
-                type="number"
-                required
-                step="0.01"
-                min="0"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                placeholder="0.00"
-                className={`${fieldClassName} pl-10`}
-                disabled={!hasSignupCountry}
-              />
-            </div>
-          </div>
-          <div>
-            <label className={labelClassName} htmlFor="stock">
-              Stock quantity <span className="text-primary-600">*</span>
+            </>
+          ) : (
+            <>
+              <Upload className="w-8 h-8 text-content-tertiary" />
+              <span className="text-sm font-semibold text-content">
+                Click to upload listing images
+              </span>
+              <span className="text-xs text-content-secondary">
+                Maximum 5 images · Up to 10MB each
+              </span>
+              <span className="text-xs text-content-tertiary">JPG, PNG, GIF, WebP</span>
+            </>
+          )}
+        </button>
+      )}
+    </div>
+
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
+          <Sparkles className="w-4 h-4 text-primary-600" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-content">Listing details</h2>
+          <p className="text-xs text-content-secondary">Help buyers understand what you&apos;re selling.</p>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClassName} htmlFor="title">
+          Listing title <span className="text-primary-600">*</span>
+        </label>
+        <input
+          id="title"
+          type="text"
+          required
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          placeholder="e.g., Solid wood dining table, seats 6"
+          className={fieldClassName}
+          maxLength={120}
+        />
+        <p className="text-xs text-content-tertiary mt-1.5">{formData.title.length}/120 characters</p>
+      </div>
+
+      <div>
+        <label className={labelClassName} htmlFor="description">
+          Description <span className="text-primary-600">*</span>
+        </label>
+        <textarea
+          id="description"
+          required
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Describe your listing — materials, size, condition, and anything buyers should know."
+          rows={5}
+          className={`${fieldClassName} resize-y min-h-[120px]`}
+        />
+      </div>
+    </div>
+
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
+          <DollarSign className="w-4 h-4 text-primary-600" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-content">Price</h2>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <label className={labelClassName} htmlFor="price">
+              Price <span className="text-primary-600">*</span>
             </label>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-primary-600 shrink-0">
+              {listingCurrency.label}
+            </span>
+          </div>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium text-content-secondary">
+              {listingCurrency.symbol}
+            </span>
             <input
-              id="stock"
+              id="price"
               type="number"
               required
-              min="1"
-              value={formData.stock_quantity}
-              onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-              className={fieldClassName}
+              step="0.01"
+              min="0"
+              value={formData.price}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+              placeholder="0.00"
+              className={`${fieldClassName} !pl-8`}
               disabled={!hasSignupCountry}
             />
           </div>
         </div>
-      </section>
-
-      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
-            <Tag className="w-4 h-4 text-primary-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-content">Category & condition</h2>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelClassName} htmlFor="category">
-              Category <span className="text-primary-600">*</span>
-            </label>
-            <select
-              id="category"
-              required
-              value={formData.category}
-              onChange={(e) =>
-                setFormData({ ...formData, category: e.target.value, subcategory: "" })
-              }
-              className={fieldClassName}
-            >
-              {PRODUCT_CATEGORIES.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={labelClassName} htmlFor="subcategory">
-              Subcategory <span className="text-primary-600">*</span>
-            </label>
-            <select
-              id="subcategory"
-              required
-              value={formData.subcategory}
-              onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
-              className={fieldClassName}
-            >
-              {subcategoryOptions.length === 0 ? (
-                <option value="">No subcategories</option>
-              ) : (
-                subcategoryOptions.map((sub) => (
-                  <option key={sub.value} value={sub.value}>
-                    {sub.label}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-          <div className="sm:col-span-2">
-            <label className={labelClassName} htmlFor="condition">
-              Condition <span className="text-primary-600">*</span>
-            </label>
-            <select
-              id="condition"
-              required
-              value={formData.condition}
-              onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-              className={fieldClassName}
-            >
-              {PRODUCT_CONDITIONS.map((cond) => (
-                <option key={cond.value} value={cond.value}>
-                  {cond.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-surface rounded-2xl border border-border-subtle shadow-sm p-4 sm:p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
-            <MapPin className="w-4 h-4 text-primary-600" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-content">Location & fulfillment</h2>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelClassName}>Location</label>
-            <MarketplaceLocationPicker
-              location={listingLocation}
-              onLocationChange={setListingLocation}
-              showRadius={false}
-              triggerVariant="field"
-              disabled={!hasSignupCountry}
-            />
-          </div>
-          <div>
-            <label className={labelClassName}>Country</label>
-            <div className="px-4 py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content">
-              {profile?.country || "—"}
-            </div>
-            <p className="text-xs text-content-secondary mt-1.5">From your signup profile</p>
-          </div>
-        </div>
-
         <div>
-          <p className={labelClassName}>Pickup / delivery <span className="text-primary-600">*</span></p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.pickupOnly}
-                onChange={(e) => setFormData({ ...formData, pickupOnly: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
-              />
-              Pickup only
-            </label>
-            <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.deliveryAvailable}
-                onChange={(e) =>
-                  setFormData({ ...formData, deliveryAvailable: e.target.checked })
-                }
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
-              />
-              Delivery available
-            </label>
-          </div>
+          <label className={labelClassName} htmlFor="stock">
+            Stock quantity <span className="text-primary-600">*</span>
+          </label>
+          <input
+            id="stock"
+            type="number"
+            required
+            min="1"
+            value={formData.stock_quantity}
+            onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
+            className={fieldClassName}
+            disabled={!hasSignupCountry}
+          />
         </div>
+      </div>
+    </div>
 
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
+          <Tag className="w-4 h-4 text-primary-600" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-content">Category & condition</h2>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClassName} htmlFor="category">
+            Category <span className="text-primary-600">*</span>
+          </label>
+          <select
+            id="category"
+            required
+            value={formData.category}
+            onChange={(e) =>
+              setFormData({ ...formData, category: e.target.value, subcategory: "" })
+            }
+            className={fieldClassName}
+          >
+            {PRODUCT_CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.value}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelClassName} htmlFor="subcategory">
+            Subcategory <span className="text-primary-600">*</span>
+          </label>
+          <select
+            id="subcategory"
+            required
+            value={formData.subcategory}
+            onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
+            className={fieldClassName}
+          >
+            {subcategoryOptions.length === 0 ? (
+              <option value="">No subcategories</option>
+            ) : (
+              subcategoryOptions.map((sub) => (
+                <option key={sub.value} value={sub.value}>
+                  {sub.label}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+        <div className="sm:col-span-2">
+          <label className={labelClassName} htmlFor="condition">
+            Condition <span className="text-primary-600">*</span>
+          </label>
+          <select
+            id="condition"
+            required
+            value={formData.condition}
+            onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+            className={fieldClassName}
+          >
+            {PRODUCT_CONDITIONS.map((cond) => (
+              <option key={cond.value} value={cond.value}>
+                {cond.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-full bg-primary-50 flex items-center justify-center">
+          <MapPin className="w-4 h-4 text-primary-600" />
+        </div>
+        <div>
+          <h2 className="text-base font-bold text-content">Location & fulfillment</h2>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClassName}>Location</label>
+          <MarketplaceLocationPicker
+            location={listingLocation}
+            onLocationChange={setListingLocation}
+            showRadius={false}
+            triggerVariant="field"
+            disabled={!hasSignupCountry}
+          />
+        </div>
+        <div>
+          <label className={labelClassName}>Country</label>
+          <div className="px-4 py-3 bg-surface-input border border-gray-200 rounded-lg text-sm text-content">
+            {profile?.country || "—"}
+          </div>
+          <p className="text-xs text-content-secondary mt-1.5">From your signup profile</p>
+        </div>
+      </div>
+
+      <div>
+        <p className={labelClassName}>
+          Pickup / delivery <span className="text-primary-600">*</span>
+        </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
             <input
               type="checkbox"
-              checked={formData.urgentSale}
-              onChange={(e) => setFormData({ ...formData, urgentSale: e.target.checked })}
+              checked={formData.pickupOnly}
+              onChange={(e) => setFormData({ ...formData, pickupOnly: e.target.checked })}
               className="rounded border-border text-primary-600 focus:ring-primary-500"
             />
-            Urgent sale
+            Pickup only
           </label>
           <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
             <input
               type="checkbox"
-              checked={formData.featuredListing}
+              checked={formData.deliveryAvailable}
               onChange={(e) =>
-                setFormData({ ...formData, featuredListing: e.target.checked })
+                setFormData({ ...formData, deliveryAvailable: e.target.checked })
               }
               className="rounded border-border text-primary-600 focus:ring-primary-500"
             />
-            Featured listing
+            Delivery available
           </label>
-        </div>
-
-        <div>
-          <p className={labelClassName}>Contact preferences</p>
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.contactChat}
-                onChange={(e) => setFormData({ ...formData, contactChat: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
-              />
-              In-app chat
-            </label>
-            <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.contactEmail}
-                onChange={(e) => setFormData({ ...formData, contactEmail: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
-              />
-              Email
-            </label>
-            <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.contactPhone}
-                onChange={(e) => setFormData({ ...formData, contactPhone: e.target.checked })}
-                className="rounded border-border text-primary-600 focus:ring-primary-500"
-              />
-              Phone
-            </label>
-          </div>
-          {formData.contactPhone && (
-            <input
-              type="tel"
-              value={formData.contactPhoneNumber}
-              onChange={(e) =>
-                setFormData({ ...formData, contactPhoneNumber: e.target.value })
-              }
-              placeholder="Phone number"
-              className={`${fieldClassName} mt-3`}
-            />
-          )}
-        </div>
-
-        <div>
-          <label className={labelClassName} htmlFor="tags">
-            Tags
-          </label>
-          <input
-            id="tags"
-            type="text"
-            value={formData.tags}
-            onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-            placeholder="handmade, local, vintage (comma-separated)"
-            className={fieldClassName}
-          />
-        </div>
-      </section>
-
-      <div className="sticky bottom-0 z-10 -mx-4 px-4 py-4 bg-surface/95 backdrop-blur border-t border-border-subtle sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0 sm:backdrop-blur-none">
-        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-3 rounded-xl border border-border text-content font-semibold text-sm hover:bg-surface-hover transition-colors"
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="px-8 py-3 rounded-xl bg-primary-600 text-white font-semibold text-sm hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {isEditMode ? "Saving…" : "Publishing…"}
-              </>
-            ) : isEditMode ? (
-              "Save changes"
-            ) : (
-              "Publish listing"
-            )}
-          </button>
         </div>
       </div>
-    </form>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.urgentSale}
+            onChange={(e) => setFormData({ ...formData, urgentSale: e.target.checked })}
+            className="rounded border-border text-primary-600 focus:ring-primary-500"
+          />
+          Urgent sale
+        </label>
+        <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
+          <input
+            type="checkbox"
+            checked={formData.featuredListing}
+            onChange={(e) =>
+              setFormData({ ...formData, featuredListing: e.target.checked })
+            }
+            className="rounded border-border text-primary-600 focus:ring-primary-500"
+          />
+          Featured listing
+        </label>
+      </div>
+
+      <div>
+        <p className={labelClassName}>Contact preferences</p>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.contactChat}
+              onChange={(e) => setFormData({ ...formData, contactChat: e.target.checked })}
+              className="rounded border-border text-primary-600 focus:ring-primary-500"
+            />
+            In-app chat
+          </label>
+          <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.contactEmail}
+              onChange={(e) => setFormData({ ...formData, contactEmail: e.target.checked })}
+              className="rounded border-border text-primary-600 focus:ring-primary-500"
+            />
+            Email
+          </label>
+          <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.contactPhone}
+              onChange={(e) => setFormData({ ...formData, contactPhone: e.target.checked })}
+              className="rounded border-border text-primary-600 focus:ring-primary-500"
+            />
+            Phone
+          </label>
+        </div>
+        {formData.contactPhone && (
+          <input
+            type="tel"
+            value={formData.contactPhoneNumber}
+            onChange={(e) =>
+              setFormData({ ...formData, contactPhoneNumber: e.target.value })
+            }
+            placeholder="Phone number"
+            className={`${fieldClassName} mt-3`}
+          />
+        )}
+      </div>
+
+      <div>
+        <label className={labelClassName} htmlFor="tags">
+          Tags
+        </label>
+        <input
+          id="tags"
+          type="text"
+          value={formData.tags}
+          onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+          placeholder="handmade, local, vintage (comma-separated)"
+          className={fieldClassName}
+        />
+      </div>
+    </div>
+
+    <div className="sticky bottom-0 z-10 -mx-4 px-4 py-4 bg-surface/95 backdrop-blur border-t border-border-subtle sm:static sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0 sm:backdrop-blur-none">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-6 py-3 rounded-xl border border-border text-content font-semibold text-sm hover:bg-surface-hover transition-colors"
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className="px-8 py-3 rounded-xl bg-primary-600 text-white font-semibold text-sm hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {isEditMode ? "Saving…" : "Publishing…"}
+            </>
+          ) : isEditMode ? (
+            "Save changes"
+          ) : (
+            "Publish listing"
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
   );
 };
 
