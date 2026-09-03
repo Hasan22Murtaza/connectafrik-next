@@ -42,11 +42,122 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
   };
 }
 type Section = "home" | "requests" | "suggestions" | "all" | "birthdays";
+type RequestsView = "received" | "pending";
 const FRIENDS_SECTIONS: Section[] = ["home", "requests", "suggestions", "all", "birthdays"];
+
+type SentFriendRequest = {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  status: string;
+  receiver?: {
+    id: string;
+    username: string;
+    full_name: string;
+    avatar_url?: string | null;
+  } | null;
+};
 
 function parseFriendsSection(tab: string | null): Section | null {
   if (tab && FRIENDS_SECTIONS.includes(tab as Section)) return tab as Section
   return null
+}
+
+function RequestsViewTabs({
+  view,
+  onChange,
+  receivedCount,
+  pendingCount,
+}: {
+  view: RequestsView;
+  onChange: (view: RequestsView) => void;
+  receivedCount: number;
+  pendingCount: number;
+}) {
+  return (
+    <div className="mb-6 border-b border-border">
+      <div className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide">
+        {([
+          { key: "received", label: "Received", count: receivedCount },
+          { key: "pending", label: "Pending", count: pendingCount },
+        ] as const).map((tab) => {
+          const isActive = view === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => onChange(tab.key)}
+              className={`relative shrink-0 px-4 py-2.5 text-sm font-semibold transition-colors ${
+                isActive ? "text-primary-600" : "text-content-secondary hover:text-content"
+              }`}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span
+                  className={`ml-1.5 tabular-nums ${
+                    isActive ? "text-primary-600" : "text-content-tertiary"
+                  }`}
+                >
+                  ({tab.count})
+                </span>
+              )}
+              {isActive && (
+                <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary-600" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SentRequestCard({
+  request,
+  cancelling,
+  onCancel,
+}: {
+  request: SentFriendRequest;
+  cancelling: boolean;
+  onCancel: () => void;
+}) {
+  const profile = request.receiver;
+  const userId = request.receiver_id || profile?.id || "";
+
+  return (
+    <div className="bg-surface rounded-lg shadow-card overflow-hidden hover:shadow-md transition-shadow">
+      <Link href={`/user/${userId}`} className="block cursor-pointer">
+        <div className="w-full aspect-square bg-surface-secondary relative">
+          {profile?.avatar_url ? (
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-primary-600 bg-primary-100">
+              {profile?.full_name?.charAt(0) || "U"}
+            </div>
+          )}
+        </div>
+      </Link>
+      <div className="p-3">
+        <Link href={`/user/${userId}`} className="block cursor-pointer">
+          <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+            {profile?.full_name || "Unknown User"}
+          </h3>
+        </Link>
+        <p className="text-xs text-content-secondary mb-3">Request sent</p>
+        <button
+          onClick={onCancel}
+          disabled={cancelling}
+          className="w-full btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {cancelling ? "Cancelling..." : "Cancel request"}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 const FriendsPageContent: React.FC = () => {
@@ -56,6 +167,10 @@ const FriendsPageContent: React.FC = () => {
   const { startChatWithMembers, openThread } = useProductionChat();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [requests, setRequests] = useState<(FriendRequest & { mutualFriendsCount?: number })[]>([]);
+  const [sentRequests, setSentRequests] = useState<SentFriendRequest[]>([]);
+  const [sentLoading, setSentLoading] = useState(false);
+  const [requestsView, setRequestsView] = useState<RequestsView>("received");
+  const [cancellingRequests, setCancellingRequests] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<Array<{
     user_id: string;
     username: string;
@@ -191,11 +306,13 @@ const FriendsPageContent: React.FC = () => {
     if (activeSection === "home") {
       fetchFriends();
       fetchFriendRequests();
+      fetchSentRequests();
       fetchSuggestions();
     } else if (activeSection === "all") {
       fetchFriends();
     } else if (activeSection === "requests") {
       fetchFriendRequests();
+      fetchSentRequests();
     } else if (activeSection === "suggestions") {
       fetchSuggestions();
     }
@@ -205,6 +322,7 @@ const FriendsPageContent: React.FC = () => {
     if (!user) return;
     setFriends([]);
     setRequests([]);
+    setSentRequests([]);
     setSuggestions([]);
     setBirthdayTabFriends([]);
     setLoading(false);
@@ -248,6 +366,10 @@ const FriendsPageContent: React.FC = () => {
       setSuggestionsDisplayLimit(20);
     }
   }, [activeSection]);
+
+  useEffect(() => {
+    setRequestsDisplayLimit(20);
+  }, [requestsView]);
 
   const fetchAllPages = async <T,>(
     endpoint: string,
@@ -303,6 +425,19 @@ const FriendsPageContent: React.FC = () => {
     }
   };
 
+  const fetchSentRequests = async () => {
+    try {
+      if (!user?.id) return;
+      setSentLoading(true);
+      const allSent = await fetchAllPages<SentFriendRequest>("/api/friends/requests/sent", 20);
+      setSentRequests(allSent);
+    } catch (error) {
+      console.error("Error fetching sent friend requests:", error);
+    } finally {
+      setSentLoading(false);
+    }
+  };
+
   const handleAcceptRequest = async (requestId: string) => {
     try {
       await apiClient.patch(`/api/friends/requests/${requestId}`, { status: "accepted" });
@@ -323,6 +458,24 @@ const FriendsPageContent: React.FC = () => {
     } catch (error: any) {
       console.error("Error declining request:", error);
       toast.error("Failed to decline request");
+    }
+  };
+
+  const handleCancelSentRequest = async (requestId: string) => {
+    try {
+      setCancellingRequests((prev) => new Set(prev).add(requestId));
+      await apiClient.delete(`/api/friends/requests/${requestId}`);
+      setSentRequests((prev) => prev.filter((request) => request.id !== requestId));
+      toast.success("Friend request cancelled");
+    } catch (error) {
+      console.error("Error cancelling friend request:", error);
+      toast.error("Failed to cancel request");
+    } finally {
+      setCancellingRequests((prev) => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
     }
   };
 
@@ -374,6 +527,7 @@ const FriendsPageContent: React.FC = () => {
 
       setSuggestions(prev => prev.filter(rec => rec.user_id !== userId));
       toast.success('Friend request sent!');
+      fetchSentRequests();
     } catch (error: any) {
       console.error('Error sending friend request:', error);
       toast.error(error.message || 'Failed to send friend request');
@@ -478,7 +632,7 @@ const FriendsPageContent: React.FC = () => {
               Friend suggestions
             </button>
 
-            {(loading || requests.length > 0) && (
+            {(loading || sentLoading || requests.length > 0 || sentRequests.length > 0) && (
               <button
                 onClick={() => selectSection("requests")}
                 className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-content"
@@ -504,9 +658,9 @@ const FriendsPageContent: React.FC = () => {
           {activeSection === "home" ? (
             <div className="space-y-8">
               {/* Friend Requests Section — only shown when loading or there are requests */}
-              {(loading || requests.length > 0) && (
+              {(loading || sentLoading || requests.length > 0 || sentRequests.length > 0) && (
               <div>
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-2">
                   <h2 className="text-2xl font-semibold text-content">Friend Requests</h2>
                   <button
                     onClick={() => selectSection("requests")}
@@ -516,10 +670,54 @@ const FriendsPageContent: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Friend Requests Grid */}
-                {loading ? (
+                <RequestsViewTabs
+                  view={requestsView}
+                  onChange={setRequestsView}
+                  receivedCount={requests.length}
+                  pendingCount={sentRequests.length}
+                />
+
+                {requestsView === "pending" ? (
+                  sentLoading ? (
+                    <FriendsGridShimmer count={shimmerCount * 2} />
+                  ) : sentRequests.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                        {sentRequests.slice(0, requestsDisplayLimit).map((request) => (
+                          <SentRequestCard
+                            key={request.id}
+                            request={request}
+                            cancelling={cancellingRequests.has(request.id)}
+                            onCancel={() => handleCancelSentRequest(request.id)}
+                          />
+                        ))}
+                      </div>
+                      {sentRequests.length > requestsDisplayLimit && (
+                        <div className="flex justify-center mt-6">
+                          <button
+                            onClick={() => setRequestsDisplayLimit(prev => prev + 20)}
+                            className="flex items-center space-x-1 text-primary-600 hover:text-orange-700 font-medium"
+                          >
+                            <span>See more</span>
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-12 bg-surface rounded-lg">
+                      <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-content mb-2">
+                        No pending requests
+                      </h3>
+                      <p className="text-content-secondary">
+                        Friend requests you send will appear here.
+                      </p>
+                    </div>
+                  )
+                ) : loading ? (
                   <FriendsGridShimmer count={shimmerCount * 2} />
-                ) : (
+                ) : requests.length > 0 ? (
                   <>
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
                       {requests.slice(0, requestsDisplayLimit).map((request) => (
@@ -591,6 +789,14 @@ const FriendsPageContent: React.FC = () => {
                       </div>
                     )}
                   </>
+                ) : (
+                  <div className="text-center py-12 bg-surface rounded-lg">
+                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-content mb-2">
+                      No friend requests
+                    </h3>
+                    <p className="text-content-secondary">You&apos;re all caught up!</p>
+                  </div>
                 )}
               </div>
               )}
@@ -691,15 +897,46 @@ const FriendsPageContent: React.FC = () => {
           ) : activeSection === "requests" ? (
             <div>
               {/* Header */}
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-2">
                 <h2 className="text-2xl font-semibold text-content">Friend Requests</h2>
                 <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => selectSection("home")}>
                   See all
                 </button>
               </div>
 
-              {/* Friend Requests Grid */}
-              {loading ? (
+              <RequestsViewTabs
+                view={requestsView}
+                onChange={setRequestsView}
+                receivedCount={requests.length}
+                pendingCount={sentRequests.length}
+              />
+
+              {requestsView === "pending" ? (
+                sentLoading ? (
+                  <FriendsGridShimmer count={shimmerCount * 2} />
+                ) : sentRequests.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
+                    {sentRequests.map((request) => (
+                      <SentRequestCard
+                        key={request.id}
+                        request={request}
+                        cancelling={cancellingRequests.has(request.id)}
+                        onCancel={() => handleCancelSentRequest(request.id)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-surface rounded-lg">
+                    <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-content mb-2">
+                      No pending requests
+                    </h3>
+                    <p className="text-content-secondary">
+                      Friend requests you send will appear here.
+                    </p>
+                  </div>
+                )
+              ) : loading ? (
                 <FriendsGridShimmer count={shimmerCount * 2} />
               ) : requests.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
@@ -764,9 +1001,9 @@ const FriendsPageContent: React.FC = () => {
                 <div className="text-center py-12 bg-surface rounded-lg">
                   <Clock className="w-16 h-16 text-content-tertiary mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-content mb-2">
-                    No pending requests
+                    No friend requests
                   </h3>
-                  <p className="text-content-secondary">You're all caught up!</p>
+                  <p className="text-content-secondary">You&apos;re all caught up!</p>
                 </div>
               )}
             </div>

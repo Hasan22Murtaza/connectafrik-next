@@ -3,7 +3,7 @@ import { apiClient } from '@/lib/api-client'
 import { GroupMembership } from '@/shared/types'
 import toast from 'react-hot-toast'
 
-export interface GroupJoinRequest extends GroupMembership {
+export interface GroupJoinRequest extends Omit<GroupMembership, 'user'> {
   user: {
     id: string
     username: string
