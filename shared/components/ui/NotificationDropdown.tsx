@@ -130,6 +130,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       friend_request_accepted: 'Friend Request Accepted',
       friend_request_confirmed: 'Friend Request Confirmed',
       friend_request_declined: 'Friend Request Declined',
+      group_join_request: 'Group Join Request',
+      group_join_approved: 'Join Request Approved',
+      group_join_rejected: 'Join Request Declined',
       chat_message: 'New Message',
       missed: 'Missed Call',
       ringing: 'Incoming call',
@@ -168,6 +171,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
       friend_request_accepted: `${actorName} accepted your friend request`,
       friend_request_confirmed: `${actorName} confirmed your friend request`,
       friend_request_declined: `${actorName} declined your friend request`,
+      group_join_request: `${actorName} requested to join ${payload?.group_name || 'your group'}.`,
+      group_join_approved: `Your request to join ${payload?.group_name || 'the group'} was approved.`,
+      group_join_rejected: `Your request to join ${payload?.group_name || 'the group'} was declined.`,
       chat_message: `${actorName} sent you a message`,
       missed: `You missed a call from ${actorName}`,
       ringing: `${actorName} is calling you`,
@@ -422,6 +428,21 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
           } else if (actorId) {
             router.push(`/user/${actorId}`)
           }
+          onClose()
+          break
+        }
+
+        case 'group_join_request': {
+          const groupId = data.group_id
+          router.push(fallbackUrl || (groupId ? `/groups/${groupId}?tab=requests` : '/groups'))
+          onClose()
+          break
+        }
+
+        case 'group_join_approved':
+        case 'group_join_rejected': {
+          const groupId = data.group_id
+          router.push(fallbackUrl || (groupId ? `/groups/${groupId}` : '/groups'))
           onClose()
           break
         }

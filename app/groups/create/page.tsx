@@ -484,7 +484,7 @@ const CreateGroupPage: React.FC = () => {
                   <Lock className="w-5 h-5 text-gray-400" />
                   <div>
                     <div className="font-medium">Private</div>
-                    <div className="text-sm text-gray-500">Members must be invited to join</div>
+                    <div className="text-sm text-gray-500">People request to join; admins approve members</div>
                   </div>
                 </label>
               </div>

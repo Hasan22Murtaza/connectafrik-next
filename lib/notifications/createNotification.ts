@@ -21,12 +21,25 @@ export async function createNotification(input: {
       ? friendRequestIdValue.trim()
       : ''
 
-  if (friendRequestId) {
+  const groupJoinRequestIdValue = data['group_join_request_id']
+  const groupJoinRequestId =
+    input.type === 'group_join_request' && typeof groupJoinRequestIdValue === 'string'
+      ? groupJoinRequestIdValue.trim()
+      : ''
+
+  const dedupeColumn = friendRequestId
+    ? 'friend_request_id'
+    : groupJoinRequestId
+      ? 'group_join_request_id'
+      : ''
+  const dedupeValue = friendRequestId || groupJoinRequestId
+
+  if (dedupeValue) {
     const { data: existing, error: lookupError } = await serviceSupabase
       .from('notifications')
       .select('id')
       .eq('user_id', input.user_id)
-      .filter('data->>friend_request_id', 'eq', friendRequestId)
+      .filter(`data->>${dedupeColumn}`, 'eq', dedupeValue)
       .filter('data->>type', 'eq', input.type)
       .limit(1)
       .maybeSingle()

@@ -49,10 +49,25 @@ export interface NotificationConfig {
 export interface SendNotificationOptions {
   /** User JWT (preferred for session callers). Server routes should pass this from the request. */
   accessToken?: string | null
+  /** Absolute origin for server-side fetch (e.g. `new URL(request.url).origin`). */
+  baseUrl?: string | null
 }
 
 let config: NotificationConfig = {
   baseUrl: ''
+}
+
+function resolvePushNotificationsUrl(options?: SendNotificationOptions): string {
+  const fromOptions = typeof options?.baseUrl === 'string' ? options.baseUrl.trim() : ''
+  const fromConfig = typeof config.baseUrl === 'string' ? config.baseUrl.trim() : ''
+  const fromEnv = typeof process.env.NEXT_PUBLIC_APP_URL === 'string' ? process.env.NEXT_PUBLIC_APP_URL.trim() : ''
+  const origin = (fromOptions || fromConfig || fromEnv).replace(/\/$/, '')
+
+  if (origin) return `${origin}/api/push-notifications`
+  if (typeof window !== 'undefined') return '/api/push-notifications'
+
+  const port = process.env.PORT || '3000'
+  return `http://127.0.0.1:${port}/api/push-notifications`
 }
 
 async function resolvePushAuthHeaders(
@@ -122,10 +137,7 @@ export async function sendNotification(
       skip_db: notificationData.skip_db || false
     })
 
-    // Determine API URL
-    const apiUrl = config.baseUrl 
-      ? `${config.baseUrl}/api/push-notifications`
-      : '/api/push-notifications'
+    const apiUrl = resolvePushNotificationsUrl(options)
 
     // Set defaults
     const payload: NotificationData = {

@@ -136,14 +136,29 @@ export const useGroups = () => {
 
     try {
       const res = await apiClient.post<{
-        data: { membership: GroupMembership; member_count: number; alreadyMember?: boolean }
+        data: {
+          membership: GroupMembership
+          member_count: number
+          alreadyMember?: boolean
+          alreadyPending?: boolean
+          pending?: boolean
+        }
       }>(`/api/groups/${groupId}/join`)
 
-      const { membership, member_count, alreadyMember } = res.data
+      const { membership, member_count, alreadyMember, alreadyPending, pending } = res.data
+      const isPending = Boolean(pending || alreadyPending || membership?.status === 'pending')
 
       if (alreadyMember) {
         toast.success('You are already a member of this group')
-        return
+        return membership
+      }
+
+      if (alreadyPending) {
+        toast.success('Your request is waiting for approval')
+      } else if (isPending) {
+        toast.success('Join request sent. Waiting for approval.')
+      } else {
+        toast.success('Joined group successfully!')
       }
 
       setGroups(prev =>
@@ -151,14 +166,14 @@ export const useGroups = () => {
           group.id === groupId
             ? {
                 ...group,
-                member_count,
+                member_count: isPending ? group.member_count : member_count,
                 membership: membership
                   ? {
                       id: membership.id,
                       group_id: groupId,
                       user_id: user.id,
                       role: membership.role || 'member',
-                      status: membership.status || 'active',
+                      status: membership.status || (isPending ? 'pending' : 'active'),
                       joined_at: membership.joined_at || new Date().toISOString(),
                       updated_at: membership.updated_at || new Date().toISOString(),
                     }
@@ -167,7 +182,7 @@ export const useGroups = () => {
                       group_id: groupId,
                       user_id: user.id,
                       role: 'member',
-                      status: 'active',
+                      status: isPending ? 'pending' : 'active',
                       joined_at: new Date().toISOString(),
                       updated_at: new Date().toISOString(),
                     },
@@ -176,7 +191,7 @@ export const useGroups = () => {
         )
       )
 
-      toast.success('Joined group successfully!')
+      return membership
     } catch (err: any) {
       console.error('Join group error:', err)
       if (err.message?.includes('unique constraint') || err.message?.toLowerCase().includes('already')) {

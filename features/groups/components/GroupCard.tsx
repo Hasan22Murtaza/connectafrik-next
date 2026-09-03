@@ -10,6 +10,7 @@ import {
   MoreVertical,
   Eye,
   LogOut,
+  Clock,
 } from '@/shared/icons';
 import { formatDistanceToNow } from "date-fns";
 import { Group } from "@/shared/types";
@@ -39,10 +40,11 @@ const GroupCard: React.FC<GroupCardProps> = ({
 
   const handleJoinGroup = async () => {
     if (!user || !group) return;
+    if (group.membership?.status === "pending") return;
 
     setIsJoining(true);
     try {
-      if (group.membership) {
+      if (group.membership?.status === "active") {
         await leaveGroup(group.id);
       } else {
         await joinGroup(group.id);
@@ -61,6 +63,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
 
   const categoryInfo = getCategoryInfo(group.category);
   const isMember = group.membership?.status === "active";
+  const isPending = group.membership?.status === "pending";
   const membershipCount = `${group.member_count}${
     group.member_count >= 1000 ? "K" : ""
   }`;
@@ -259,6 +262,14 @@ const GroupCard: React.FC<GroupCardProps> = ({
               <MessageCircle className="w-4 h-4 " />
               Open Group Chat
             </button>
+          ) : isPending ? (
+            <button
+              disabled
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 cursor-default"
+            >
+              <Clock className="w-4 h-4" />
+              Waiting for Approval
+            </button>
           ) : user ? (
             <button
               onClick={handleJoinGroup}
@@ -268,7 +279,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
               {isJoining ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Joining...
+                  {group.is_public === false ? 'Requesting...' : 'Joining...'}
                 </>
               ) : (
                 <>

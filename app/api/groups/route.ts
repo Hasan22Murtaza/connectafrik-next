@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { lookupGroupChatThreadId, lookupGroupChatThreadIds } from '@/lib/chat/chatThreadLookup'
+import { pickViewerMembership } from '@/lib/groups/viewerMembership'
 
 const GROUP_SELECT = `
   *,
@@ -62,25 +63,28 @@ export async function GET(request: NextRequest) {
     }
 
     const groups = groupsData || []
+    const groupIds = groups.map((group: { id: string }) => group.id)
+    const viewerMembershipsByGroup = new Map<string, any[]>()
+    if (userId && groupIds.length > 0) {
+      const { data: myMemberships } = await supabase
+        .from('group_memberships')
+        .select('id, group_id, user_id, role, status, joined_at, updated_at')
+        .eq('user_id', userId)
+        .in('group_id', groupIds)
+      for (const row of myMemberships || []) {
+        const existing = viewerMembershipsByGroup.get(row.group_id) || []
+        existing.push(row)
+        viewerMembershipsByGroup.set(row.group_id, existing)
+      }
+    }
+
     const processed = groups.map((group: any) => {
       const activeMemberships = (group.memberships || []).filter((m: any) => m.status === 'active')
-      const userMembership = userId
-        ? activeMemberships.find((m: any) => m.user_id === userId)
-        : undefined
+      const viewerRows = viewerMembershipsByGroup.get(group.id) || group.memberships || []
       return {
         ...group,
         member_count: activeMemberships.length,
-        membership: userMembership
-          ? {
-              id: userMembership.id,
-              group_id: group.id,
-              user_id: userMembership.user_id,
-              role: userMembership.role,
-              status: userMembership.status,
-              joined_at: userMembership.joined_at,
-              updated_at: userMembership.updated_at,
-            }
-          : undefined,
+        membership: pickViewerMembership(group.id, viewerRows, userId),
         memberships: undefined,
       }
     })

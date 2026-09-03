@@ -40,10 +40,7 @@ export interface NotificationPayload {
   device_session_id?: string
   /** User id that owns the row in `auth_session_device_labels` (e.g. callee who accepted/declined). */
   device_session_actor_id?: string
-  /**
-   * When true, the callee accepted on another device — other sessions of the same user
-   * should dismiss ringing UI. Set automatically for cross-device accept; omit otherwise.
-   */
+ 
   acceptedOnAnotherDevice?: boolean
   /** Chat (or other) message id; merged into stored `data` and FCM `data` for deep-linking. */
   message_id?: string
@@ -335,6 +332,9 @@ export async function POST(request: NextRequest) {
               'friend_request',
               'friend_request_accepted',
               'friend_request_declined',
+              'group_join_request',
+              'group_join_approved',
+              'group_join_rejected',
               'chat_message',
               'call',
               'birthday',

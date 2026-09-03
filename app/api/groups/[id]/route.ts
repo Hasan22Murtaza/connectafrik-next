@@ -1,8 +1,13 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { lookupGroupChatThreadId } from '@/lib/chat/chatThreadLookup'
+import {
+  countPendingJoinRequests,
+  isGroupManagerRole,
+  pickViewerMembership,
+} from '@/lib/groups/viewerMembership'
 
 const GROUP_SELECT = `
   *,
@@ -53,25 +58,45 @@ export async function GET(request: NextRequest, context: RouteContext) {
         })
     }
 
-    const userMembership = userId
-      ? activeMemberships.find((m: any) => m.user_id === userId)
-      : undefined
+    let ownMembership = null
+    if (userId) {
+      const { data: ownRow } = await supabase
+        .from('group_memberships')
+        .select('id, user_id, role, status, joined_at, updated_at')
+        .eq('group_id', groupId)
+        .eq('user_id', userId)
+        .maybeSingle()
+      ownMembership = ownRow
+    }
+    const viewerMembership = pickViewerMembership(
+      groupId,
+      ownMembership ? [ownMembership] : data.memberships || [],
+      userId
+    )
+    const canManageJoinRequests =
+      viewerMembership?.status === 'active' && isGroupManagerRole(viewerMembership.role)
+
+    let pendingJoinCount: number | undefined
+    if (canManageJoinRequests) {
+      try {
+        const serviceClient = createServiceClient()
+        const { count } = await serviceClient
+          .from('group_memberships')
+          .select('id', { count: 'exact', head: true })
+          .eq('group_id', groupId)
+          .eq('status', 'pending')
+        pendingJoinCount = count ?? 0
+      } catch {
+        pendingJoinCount = countPendingJoinRequests(data.memberships || [])
+      }
+    }
 
     const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
     const result = {
       ...data,
       member_count: actualMemberCount,
-      membership: userMembership
-        ? {
-            id: userMembership.id,
-            group_id: groupId,
-            user_id: userMembership.user_id,
-            role: userMembership.role,
-            status: userMembership.status,
-            joined_at: userMembership.joined_at,
-            updated_at: userMembership.updated_at,
-          }
-        : undefined,
+      membership: viewerMembership,
+      pending_join_count: pendingJoinCount,
       memberships: undefined,
       threadId,
     }

@@ -10,7 +10,7 @@ export type PersistAcceptedOnAnotherDeviceParams = {
 }
 
 /**
- * Inserts a WhatsApp-style "Accepted on another device" row into `chat_messages`.
+ *  "Accepted on another device" row into `chat_messages`.
  * Visible only to the callee's other sessions (client filters via metadata).
  */
 export async function persistAcceptedOnAnotherDeviceChatMessage(

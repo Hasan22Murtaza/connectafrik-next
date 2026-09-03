@@ -162,7 +162,7 @@ function getCallBubblePresentation(
         ? message.metadata.call_type.toLowerCase()
         : "audio";
 
-  if (mt === "accepted_on_another_device" || contentLower === "accepted on another device") {
+  if (mt === "accepted_on_another_device") {
     return {
       variant: callType === "video" ? "video" : "voice",
       title: callType === "video" ? "Video call" : "Voice call",

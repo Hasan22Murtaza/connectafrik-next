@@ -179,6 +179,7 @@ export interface Group {
   }
   membership?: GroupMembership
   threadId?: string | null
+  pending_join_count?: number
 }
 
 export interface GroupMembership {
@@ -186,7 +187,7 @@ export interface GroupMembership {
   group_id: string
   user_id: string
   role: 'admin' | 'moderator' | 'member'
-  status: 'active' | 'pending' | 'banned' | 'left'
+  status: 'active' | 'pending' | 'banned' | 'left' | 'rejected'
   joined_at: string
   updated_at: string
   user?: {

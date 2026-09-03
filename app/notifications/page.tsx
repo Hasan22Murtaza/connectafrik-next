@@ -112,6 +112,9 @@ const NotificationsPage: React.FC = () => {
       mention: 'You were mentioned',
       friend_request: 'Friend Request',
       friend_request_accepted: 'Friend Request Accepted',
+      group_join_request: 'Group Join Request',
+      group_join_approved: 'Join Request Approved',
+      group_join_rejected: 'Join Request Declined',
       chat_message: 'New Message',
       birthday: 'Birthday Reminder',
       system: 'System Notification',
@@ -144,6 +147,9 @@ const NotificationsPage: React.FC = () => {
       mention: `${actorName} mentioned you`,
       friend_request: `${actorName} sent you a friend request.`,
       friend_request_accepted: `${actorName} accepted your friend request`,
+      group_join_request: `${actorName} requested to join ${payload?.group_name || 'your group'}.`,
+      group_join_approved: `Your request to join ${payload?.group_name || 'the group'} was approved.`,
+      group_join_rejected: `Your request to join ${payload?.group_name || 'the group'} was declined.`,
       chat_message: `${actorName} sent you a message`,
       birthday: `It's ${actorName}'s birthday today!`,
       system: payload?.message || 'You have a new notification',
@@ -283,6 +289,19 @@ const NotificationsPage: React.FC = () => {
           } else if (actorId) {
             router.push(`/user/${actorId}`)
           }
+          break
+        }
+
+        case 'group_join_request': {
+          const groupId = data.group_id
+          router.push(fallbackUrl || (groupId ? `/groups/${groupId}?tab=requests` : '/groups'))
+          break
+        }
+
+        case 'group_join_approved':
+        case 'group_join_rejected': {
+          const groupId = data.group_id
+          router.push(fallbackUrl || (groupId ? `/groups/${groupId}` : '/groups'))
           break
         }
 

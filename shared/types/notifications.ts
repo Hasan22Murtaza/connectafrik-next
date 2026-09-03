@@ -42,6 +42,10 @@ export type NotificationType =
   | 'friend_request_accepted'
   | 'friend_request_confirmed'
   | 'friend_request_declined'
+  // Group join requests
+  | 'group_join_request'
+  | 'group_join_approved'
+  | 'group_join_rejected'
   // Communication
   | 'chat_message'
   | 'call'
@@ -79,6 +83,9 @@ export const CANONICAL_NOTIFICATION_TYPES = [
   'friend_request',
   'friend_request_accepted',
   'friend_request_declined',
+  'group_join_request',
+  'group_join_approved',
+  'group_join_rejected',
   'chat_message',
   'call',
   'birthday',

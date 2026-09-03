@@ -19,6 +19,7 @@ import {
   Images,
   Folder,
   User,
+  Clock,
 } from '@/shared/icons'
 import { IoMdShareAlt } from "react-icons/io";
 import { useAuth } from '@/contexts/AuthContext'
@@ -31,6 +32,7 @@ import toast from 'react-hot-toast'
 import { apiClient } from '@/lib/api-client'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import GroupMembersList from '@/features/groups/components/GroupMembersList'
+import GroupJoinRequestsList from '@/features/groups/components/GroupJoinRequestsList'
 import InviteFriendsModal from '@/features/groups/components/InviteFriendsModal'
 import CreateGroupPost from '@/features/groups/components/CreateGroupPost'
 import GroupPostCard from '@/features/groups/components/GroupPostCard'
@@ -87,6 +89,7 @@ const GroupDetailPage: React.FC = () => {
   const searchParams = useSearchParams()
   const groupId = params?.id as string
   const postQueryParam = searchParams?.get('post')
+  const tabQueryParam = searchParams?.get('tab')
   const { user, loading: authLoading } = useAuth()
   const { fetchGroupById, joinGroup, leaveGroup } = useGroups()
   const { openGroupChat } = useGroupChat()
@@ -104,7 +107,7 @@ const GroupDetailPage: React.FC = () => {
   const [group, setGroup] = useState<Group | null>(null)
   const [loading, setLoading] = useState(true)
   const [isJoining, setIsJoining] = useState(false)
-  const [activeTab, setActiveTab] = useState<'posts' | 'events' | 'media' | 'files' | 'about' | 'members'>('posts')
+  const [activeTab, setActiveTab] = useState<'posts' | 'events' | 'media' | 'files' | 'about' | 'members' | 'requests'>('posts')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
@@ -140,6 +143,14 @@ const GroupDetailPage: React.FC = () => {
       setActiveTab('posts')
     }
   }, [postQueryParam, postsLoading, groupPosts.length])
+
+  useEffect(() => {
+    if (tabQueryParam === 'requests') {
+      setActiveTab('requests')
+    } else if (tabQueryParam === 'members') {
+      setActiveTab('members')
+    }
+  }, [tabQueryParam])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -342,7 +353,7 @@ const GroupDetailPage: React.FC = () => {
     }
   }
 
-  const handleTabChange = useCallback((tab: 'posts' | 'events' | 'media' | 'files' | 'about' | 'members') => {
+  const handleTabChange = useCallback((tab: 'posts' | 'events' | 'media' | 'files' | 'about' | 'members' | 'requests') => {
     setActiveTab(tab)
 
     if (tab === 'posts') {
@@ -373,7 +384,10 @@ const GroupDetailPage: React.FC = () => {
   }
 
   const isMember = group.membership?.status === 'active'
-  const isAdmin = group.membership?.role === 'admin'
+  const isPending = group.membership?.status === 'pending'
+  const isAdmin = isMember && group.membership?.role === 'admin'
+  const canManageJoinRequests = isMember && (group.membership?.role === 'admin' || group.membership?.role === 'moderator')
+  const pendingJoinCount = group.pending_join_count ?? 0
   const categoryInfo = getCategoryInfoLarge(group.category)
 
   return (
@@ -451,6 +465,14 @@ const GroupDetailPage: React.FC = () => {
                     </button>
                   )}
                 </>
+              ) : isPending ? (
+                <button
+                  disabled
+                  className="px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg cursor-default flex items-center gap-2"
+                >
+                  <Clock className="w-4 h-4" />
+                  <span>Waiting for Approval</span>
+                </button>
               ) : user ? (
                 <button
                   onClick={handleJoinGroup}
@@ -460,7 +482,7 @@ const GroupDetailPage: React.FC = () => {
                   {isJoining ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Joining...
+                      {group.is_public === false ? 'Requesting...' : 'Joining...'}
                     </>
                   ) : (
                     <>
@@ -514,6 +536,26 @@ const GroupDetailPage: React.FC = () => {
             >
               Members ({group.member_count})
             </button>
+
+            {canManageJoinRequests && (group.is_public === false || pendingJoinCount > 0) && (
+              <button
+                onClick={() => handleTabChange('requests')}
+                className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
+                  activeTab === 'requests'
+                    ? 'text-primary-600 border-primary-600'
+                    : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  Requests
+                  {pendingJoinCount > 0 && (
+                    <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-primary-600 text-white text-xs flex items-center justify-center">
+                      {pendingJoinCount}
+                    </span>
+                  )}
+                </span>
+              </button>
+            )}
 
             <button
               onClick={() => handleTabChange('events')}
@@ -771,12 +813,50 @@ const GroupDetailPage: React.FC = () => {
             )}
 
             {activeTab === 'members' && (
+              <div className="space-y-4">
+                {canManageJoinRequests && (group.is_public === false || pendingJoinCount > 0) && (
+                  <div className="bg-white rounded-lg shadow-sm p-6">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-amber-600" />
+                      Pending Join Requests
+                      {pendingJoinCount > 0 && (
+                        <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center">
+                          {pendingJoinCount}
+                        </span>
+                      )}
+                    </h3>
+                    <GroupJoinRequestsList
+                      groupId={group.id}
+                      enabled={activeTab === 'members' || activeTab === 'requests'}
+                      onChanged={() => {
+                        fetchGroup()
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <GroupMembersList
+                    groupId={group.id}
+                    currentUserId={user?.id}
+                    canManageMembers={isAdmin}
+                    onMembersChanged={() => {
+                      fetchGroup()
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'requests' && canManageJoinRequests && (
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <GroupMembersList
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                  Pending Join Requests
+                </h3>
+                <GroupJoinRequestsList
                   groupId={group.id}
-                  currentUserId={user?.id}
-                  canManageMembers={isAdmin}
-                  onMembersChanged={() => {
+                  enabled
+                  onChanged={() => {
                     fetchGroup()
                   }}
                 />
