@@ -157,6 +157,7 @@ export async function middleware(request: NextRequest) {
   const isProtectedRoute =
     protectedRoutes.some((route) => pathname.startsWith(route)) ||
     pathname.startsWith('/user/') ||
+    pathname.startsWith('/admin') ||
     isMarketplaceHubRoute
 
   // Check if the current path is a public route

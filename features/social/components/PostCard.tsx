@@ -29,6 +29,7 @@ import ImageViewer from "@/shared/components/ui/ImageViewer";
 import CommentsSection from "./CommentsSection";
 import PostEngagement from "@/shared/components/PostEngagement";
 import CreatePost, { type PostSubmitData } from "./CreatePost";
+import { ReportPostModal } from "./ReportPostModal";
 import { getPostBackgroundPreset, legacyGradientForPostId } from "@/features/social/constants/postBackgrounds";
 import { FeedPostVideo } from "@/features/social/components/FeedPostVideo";
 import { PostDetailVideo } from "@/features/social/components/PostDetailVideo";
@@ -1171,6 +1172,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
+                        if (!requireSignedIn()) return;
                         setShowReportConfirm(true);
                       }}
                       className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
@@ -1472,43 +1474,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         </div>
       )}
 
-      {/* Report Confirmation Dialog */}
-      {showReportConfirm && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="bg-surface rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-content mb-2">
-              Report Post
-            </h3>
-            <p className="text-content-secondary mb-6">
-              We&apos;ll review this post against ConnectAfrik community guidelines.
-              Thanks for helping keep the community safe.
-            </p>
-            <div className="flex space-x-3 justify-end">
-              <button
-                type="button"
-                onClick={() => setShowReportConfirm(false)}
-                className="px-4 py-2 text-content-secondary hover:text-gray-800 transition-colors duration-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowReportConfirm(false);
-                  onReport?.(post.id);
-                  toast.success("Thanks for your report. We'll take a look.");
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
-              >
-                Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReportPostModal
+        postId={post.id}
+        isOpen={showReportConfirm}
+        onClose={() => setShowReportConfirm(false)}
+        onSubmitted={() => onReport?.(post.id)}
+      />
 
       {/* Image Viewer - Facebook style lightbox */}
       {imageUrls.length > 0 && (

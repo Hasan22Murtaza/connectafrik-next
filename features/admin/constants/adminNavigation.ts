@@ -1,4 +1,5 @@
 import {
+  Flag,
   LayoutDashboard,
   MessageSquare,
   Package,
@@ -32,6 +33,11 @@ export const ADMIN_NAV_LINKS = [
     href: "/admin/disputes",
     label: "Disputes",
     icon: Shield,
+  },
+  {
+    href: "/admin/reports",
+    label: "Reports",
+    icon: Flag,
   },
   {
     href: "/admin/feedback",

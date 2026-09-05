@@ -1,5 +1,8 @@
 const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700",
+  under_review: "bg-orange-50 text-orange-700",
+  resolved: "bg-green-50 text-green-700",
+  dismissed: "bg-gray-100 text-gray-600",
   pending_payment: "bg-amber-50 text-amber-700",
   paid: "bg-blue-50 text-blue-700",
   to_be_shipped: "bg-purple-50 text-purple-700",

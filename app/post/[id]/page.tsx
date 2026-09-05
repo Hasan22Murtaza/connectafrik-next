@@ -12,7 +12,6 @@ import ShareModal from '@/features/social/components/ShareModal'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { sendNotification } from '@/shared/services/notificationService'
-import { submitFeedback } from '@/features/feedback/services/feedbackService'
 import { sharePost } from '@/features/social/services/sharesService'
 
 type PostDetail = Parameters<typeof PostCard>[0]['post']
@@ -232,19 +231,6 @@ const PostDetailPage: React.FC = () => {
     setPost((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev))
   }
 
-  const handleReport = async () => {
-    if (!post) return
-    try {
-      await submitFeedback({
-        feedback_type: 'other',
-        title: 'Reported post',
-        message: `User reported post ${post.id}${post.author?.username ? ` by @${post.author.username}` : ''}.`,
-      })
-    } catch {
-      // Toast already shown from PostCard
-    }
-  }
-
   const shareUrl = useMemo(() => {
     if (!post) return ''
     if (typeof window === 'undefined') return `/post/${post.id}`
@@ -275,7 +261,6 @@ const PostDetailPage: React.FC = () => {
       variant={theater ? 'theater' : 'detail'}
       hideMedia={theater}
       highlightCommentId={highlightCommentId}
-      onReport={handleReport}
     />
   ) : null
 
