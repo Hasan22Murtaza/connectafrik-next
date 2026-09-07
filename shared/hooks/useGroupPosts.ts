@@ -3,6 +3,7 @@ import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
 import { GroupReactionGroup } from '@/shared/hooks/useGroupPostReactions'
+import type { GroupPostModerationAction } from '@/lib/groups/roles'
 
 export interface GroupPost {
   id: string
@@ -18,6 +19,9 @@ export interface GroupPost {
   shares_count: number
   is_pinned: boolean
   is_deleted: boolean
+  moderation_status?: 'pending' | 'approved' | 'rejected'
+  is_hidden?: boolean
+  is_restricted?: boolean
   created_at: string
   updated_at: string
   author?: {
@@ -44,9 +48,9 @@ export const useGroupPosts = (groupId: string) => {
     }
   }, [groupId, user?.id])
 
-  const fetchGroupPosts = async () => {
+  const fetchGroupPosts = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true)
+      if (!opts?.silent) setLoading(true)
       setError(null)
 
       const allPosts: GroupPost[] = []
@@ -123,7 +127,11 @@ export const useGroupPosts = (groupId: string) => {
       }
 
       setPosts(prev => [newPost, ...prev])
-      toast.success('Post created successfully!')
+      if (newPost.moderation_status === 'pending') {
+        toast.success('Post submitted for approval')
+      } else {
+        toast.success('Post created successfully!')
+      }
       return newPost
     } catch (err: any) {
       console.error('Error creating group post:', err)
@@ -256,6 +264,37 @@ export const useGroupPosts = (groupId: string) => {
     }
   }
 
+  const moderatePost = async (postId: string, action: GroupPostModerationAction) => {
+    if (!user) return
+
+    try {
+      const res = await apiClient.patch<{ data: GroupPost; action: GroupPostModerationAction }>(
+        `/api/groups/${groupId}/posts/${postId}/moderate`,
+        { action }
+      )
+      const updated = res.data
+      setPosts((prev) => {
+        if (action === 'reject') {
+          return prev.filter((post) => post.id !== postId)
+        }
+        return prev.map((post) => (post.id === postId ? { ...post, ...updated } : post))
+      })
+      const messages: Record<GroupPostModerationAction, string> = {
+        hide: 'Post hidden',
+        unhide: 'Post is visible again',
+        restrict: 'Post restricted',
+        unrestrict: 'Post unrestricted',
+        approve: 'Post approved',
+        reject: 'Post rejected',
+      }
+      toast.success(messages[action])
+    } catch (err: any) {
+      console.error('Error moderating group post:', err)
+      toast.error(err.message || 'Failed to moderate post')
+      throw err
+    }
+  }
+
   return {
     posts,
     loading,
@@ -265,6 +304,7 @@ export const useGroupPosts = (groupId: string) => {
     recordShare,
     deletePost,
     updatePost,
+    moderatePost,
     refetch: fetchGroupPosts
   }
 }

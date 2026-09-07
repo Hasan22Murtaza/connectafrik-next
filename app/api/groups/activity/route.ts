@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
       `)
       .in('group_id', groupIds)
       .eq('is_deleted', false)
+      .eq('is_hidden', false)
+      .eq('moderation_status', 'approved')
       .order('created_at', { ascending: false })
       .range(from, to)
 

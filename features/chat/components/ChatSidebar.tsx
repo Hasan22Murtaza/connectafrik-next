@@ -11,6 +11,7 @@ import { CHAT_THREAD_MARKED_READ_EVENT } from "@/features/chat/threadReadEvents"
 import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 import { ChatRichTextPreview } from "@/features/chat/richtext";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 
 const PAGE_SIZE = 10;
 
@@ -79,6 +80,7 @@ export default function ChatSidebar({
   const [mpLoading, setMpLoading] = useState(true);
   const [filterThreads, setFilterThreads] = useState<ChatThread[]>([]);
   const [filterLoading, setFilterLoading] = useState(false);
+  const { confirm, dialog } = useConfirmDialog();
 
   const loadGeneral = useCallback(async () => {
     if (!currentUser?.id) {
@@ -389,9 +391,11 @@ export default function ChatSidebar({
           thread.participants.find((p) => p.id !== currentUser.id)?.name ||
           thread.name ||
           "this contact";
-        const confirmed = window.confirm(
-          `Block ${name}? They will not be able to call or message you in this chat.`
-        );
+        const confirmed = await confirm({
+          title: "Block contact",
+          message: `Block ${name}? They will not be able to call or message you in this chat.`,
+          confirmLabel: "Block",
+        });
         if (!confirmed) {
           setMenuThreadId(null);
           return;
@@ -411,7 +415,7 @@ export default function ChatSidebar({
         setMenuThreadId(null);
       }
     },
-    [currentUser?.id, updateThreadState]
+    [currentUser?.id, updateThreadState, confirm]
   );
 
   const handleTogglePin = useCallback(
@@ -967,6 +971,7 @@ export default function ChatSidebar({
         ) : null}
       </div>
       )}
+      {dialog}
     </aside>
   );
 }

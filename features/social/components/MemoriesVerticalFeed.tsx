@@ -32,6 +32,7 @@ import {
 } from '@/shared/types/reels'
 import { Reel, ReelCategory, ReelFeedType } from '@/shared/types/reels'
 import toast from 'react-hot-toast'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 
 type Props = {
   feed: ReelFeedType
@@ -101,6 +102,7 @@ export function MemoriesVerticalFeed({
   const { deleteReel, loading: deleting } = useDeleteReel()
   const { members } = useMembers()
   const memoizedMembers = useMemo(() => members, [members])
+  const { confirm, dialog } = useConfirmDialog()
 
   const activeShareReel = useMemo(
     () => (shareModalState.reelId ? reels.find((reel) => reel.id === shareModalState.reelId) : null),
@@ -204,7 +206,12 @@ export function MemoriesVerticalFeed({
 
   const handleDelete = useCallback(
     async (reelId: string) => {
-      if (!window.confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
+      const confirmed = await confirm({
+        title: 'Delete Memory',
+        message: 'Are you sure you want to delete this memory? This action cannot be undone.',
+        confirmLabel: 'Delete',
+      })
+      if (!confirmed) {
         return
       }
       const { success, error: deleteError } = await deleteReel(reelId)
@@ -215,7 +222,7 @@ export function MemoriesVerticalFeed({
         toast.error(deleteError || 'Failed to delete memory')
       }
     },
-    [deleteReel, refresh]
+    [deleteReel, refresh, confirm]
   )
 
   const openEditModal = useCallback((reel: Reel) => {
@@ -660,17 +667,22 @@ export function MemoriesVerticalFeed({
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm('Are you sure you want to delete this memory? This action cannot be undone.')) {
-                      void deleteReel(editingReel.id).then(({ success }) => {
-                        if (success) {
-                          toast.success('Memory deleted successfully')
-                          closeEditModal()
-                          refresh()
-                        } else {
-                          toast.error('Failed to delete memory')
-                        }
+                    void (async () => {
+                      const confirmed = await confirm({
+                        title: 'Delete Memory',
+                        message: 'Are you sure you want to delete this memory? This action cannot be undone.',
+                        confirmLabel: 'Delete',
                       })
-                    }
+                      if (!confirmed) return
+                      const { success } = await deleteReel(editingReel.id)
+                      if (success) {
+                        toast.success('Memory deleted successfully')
+                        closeEditModal()
+                        refresh()
+                      } else {
+                        toast.error('Failed to delete memory')
+                      }
+                    })()
                   }}
                   disabled={deleting}
                   className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
@@ -699,6 +711,7 @@ export function MemoriesVerticalFeed({
           </div>
         </div>
       )}
+      {dialog}
     </>
   )
 }

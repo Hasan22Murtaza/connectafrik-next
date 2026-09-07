@@ -1,3 +1,9 @@
+import {
+  GROUP_STAFF_ROLES,
+  isGroupStaffRole,
+  normalizeGroupRole,
+} from '@/lib/groups/roles'
+
 type MembershipRow = {
   id: string
   user_id: string
@@ -5,12 +11,13 @@ type MembershipRow = {
   status: string
   joined_at: string
   updated_at: string
+  posting_restricted?: boolean | null
 }
 
-export const GROUP_MANAGER_ROLES = ['admin', 'moderator'] as const
+export const GROUP_MANAGER_ROLES = GROUP_STAFF_ROLES
 
 export function isGroupManagerRole(role: string | null | undefined): boolean {
-  return role === 'admin' || role === 'moderator'
+  return isGroupStaffRole(role)
 }
 
 export function formatMembership(groupId: string, row: MembershipRow) {
@@ -18,14 +25,15 @@ export function formatMembership(groupId: string, row: MembershipRow) {
     id: row.id,
     group_id: groupId,
     user_id: row.user_id,
-    role: row.role,
+    role: normalizeGroupRole(row.role),
     status: row.status,
     joined_at: row.joined_at,
     updated_at: row.updated_at,
+    posting_restricted: Boolean(row.posting_restricted),
   }
 }
 
-/** Surface active membership and a pending join request to the current viewer. */
+/** Surface active membership, pending join request, or pending invite to the current viewer. */
 export function pickViewerMembership(
   groupId: string,
   memberships: MembershipRow[] | null | undefined,
@@ -34,7 +42,7 @@ export function pickViewerMembership(
   if (!userId) return undefined
   const row = (memberships || []).find((m) => m.user_id === userId)
   if (!row) return undefined
-  if (row.status !== 'active' && row.status !== 'pending') return undefined
+  if (row.status !== 'active' && row.status !== 'pending' && row.status !== 'invited') return undefined
   return formatMembership(groupId, row)
 }
 

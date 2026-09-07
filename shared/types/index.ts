@@ -169,6 +169,7 @@ export interface Group {
   country?: string
   tags: string[]
   rules: string[]
+  require_post_approval?: boolean
   created_at: string
   updated_at: string
   creator?: {
@@ -180,14 +181,16 @@ export interface Group {
   membership?: GroupMembership
   threadId?: string | null
   pending_join_count?: number
+  pending_report_count?: number
 }
 
 export interface GroupMembership {
   id: string
   group_id: string
   user_id: string
-  role: 'admin' | 'moderator' | 'member'
-  status: 'active' | 'pending' | 'banned' | 'left' | 'rejected'
+  role: 'admin' | 'co_admin' | 'manager' | 'member'
+  status: 'active' | 'pending' | 'invited' | 'banned' | 'left' | 'rejected'
+  posting_restricted?: boolean
   joined_at: string
   updated_at: string
   user?: {
@@ -210,6 +213,9 @@ export interface GroupPost {
   comments_count: number
   is_pinned: boolean
   is_deleted: boolean
+  moderation_status?: 'pending' | 'approved' | 'rejected'
+  is_hidden?: boolean
+  is_restricted?: boolean
   created_at: string
   updated_at: string
   author?: {

@@ -71,6 +71,7 @@ import React, {
   useState
 } from "react";
 import { toast } from "react-hot-toast";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
 import ChatLocationPicker, {
   type ChatLocationSelection,
@@ -312,6 +313,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const router = useRouter();
   const pathname = usePathname();
+  const { confirm, dialog } = useConfirmDialog();
 
   const { members } = useMembers();
 
@@ -737,7 +739,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           if (row.user_id) map[row.user_id] = (row.role || "member").toLowerCase();
         }
 
-        // Social groups store admin/moderator on group_memberships
+        // Social groups store admin/co_admin/manager on group_memberships
         if (thread?.group_id) {
           const groupMembers =
             await supabaseMessagingService.getGroupMembers(thread.group_id);
@@ -1785,9 +1787,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!thread || !canBlockContact) return;
     const nextBlocked = !thread.is_block;
     if (nextBlocked) {
-      const confirmed = window.confirm(
-        `Block ${displayThreadName}? They will not be able to call or message you in this chat.`
-      );
+      const confirmed = await confirm({
+        title: "Block contact",
+        message: `Block ${displayThreadName}? They will not be able to call or message you in this chat.`,
+        confirmLabel: "Block",
+      });
       if (!confirmed) return;
     }
     try {
@@ -1803,9 +1807,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!currentUser) return;
     if (clearChatInFlightRef.current) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to clear all messages in this chat? This will only clear them for you."
-    );
+    const confirmed = await confirm({
+      title: "Clear messages",
+      message:
+        "Are you sure you want to clear all messages in this chat? This will only clear them for you.",
+      confirmLabel: "Clear",
+    });
 
     if (!confirmed) return;
 
@@ -2136,11 +2143,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleLeaveGroup = useCallback(async () => {
     if (!isGroupThread || leavingGroup) return;
-    if (
-      !window.confirm(
-        "Leave this group? You will no longer receive messages from this chat."
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Leave group",
+      message: "Leave this group? You will no longer receive messages from this chat.",
+      confirmLabel: "Leave",
+    });
+    if (!confirmed) {
       return;
     }
     setLeavingGroup(true);
@@ -2182,15 +2190,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     threadId,
     variant,
     router,
+    confirm,
   ]);
 
   const handleDeleteChatFromMenu = useCallback(async () => {
     if (!currentUser) return;
-    if (
-      !window.confirm(
-        "Delete this chat? It will be removed from your chats list and your message history will be cleared. The other person will not be affected."
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Delete chat",
+      message:
+        "Delete this chat? It will be removed from your chats list and your message history will be cleared. The other person will not be affected.",
+      confirmLabel: "Delete",
+    });
+    if (!confirmed) {
       return;
     }
     setShowOptionsMenu(false);
@@ -2221,6 +2232,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     variant,
     router,
     setMessagesForThread,
+    confirm,
   ]);
 
 
@@ -3514,6 +3526,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
       ) : null}
+      {dialog}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { MoreHorizontal, Trash2, Edit } from '@/shared/icons'
+import { MoreHorizontal, Trash2, Edit, EyeOff, Eye, Ban, Flag, CheckCircle } from '@/shared/icons'
 import { formatDistanceToNow } from 'date-fns'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,6 +11,10 @@ import { useGroupPostReactions, GroupReactionGroup, GroupPostReactionsData } fro
 import PostEngagement from '@/shared/components/PostEngagement'
 import CreatePost, { type PostSubmitData } from '@/features/social/components/CreatePost'
 import { getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
+import { canModerateGroupContent, type GroupPostModerationAction } from '@/lib/groups/roles'
+import { POST_REPORT_REASON_OPTIONS, type PostReportReason } from '@/lib/reports/types'
+import { apiClient } from '@/lib/api-client'
+import toast from 'react-hot-toast'
 
 interface GroupPostCardProps {
   post: GroupPost
@@ -27,6 +31,8 @@ interface GroupPostCardProps {
   prefetchedReactions?: GroupPostReactionsData
   prefetchedReactionGroups?: GroupReactionGroup[]
   prefetchedTotalReactionCount?: number
+  viewerRole?: string
+  onModerate?: (action: GroupPostModerationAction) => void | Promise<void>
 }
 
 const POST_TYPE_LABELS = {
@@ -61,12 +67,17 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   onToggleComments,
   prefetchedReactions,
   prefetchedReactionGroups,
-  prefetchedTotalReactionCount
+  prefetchedTotalReactionCount,
+  viewerRole,
+  onModerate,
 }) => {
   const { user } = useAuth()
   const router = useRouter()
   const [showMenu, setShowMenu] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportReason, setReportReason] = useState<PostReportReason>('spam_or_misleading')
+  const [isReporting, setIsReporting] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const postOptionsMenuId = React.useId()
   const menuRef = React.useRef<HTMLDivElement>(null)
@@ -116,6 +127,34 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
   const handleEditClick = () => {
     setIsEditing(true)
     setShowMenu(false)
+  }
+
+  const canModerate = canModerateGroupContent(viewerRole)
+  const isPending = post.moderation_status === 'pending'
+  const isRejected = post.moderation_status === 'rejected'
+  const engagementLocked = Boolean(post.is_restricted || isPending || isRejected)
+  const canReport = Boolean(user && !isAuthor)
+  const showMenuButton = Boolean((isAuthor && (onEdit || onDelete)) || (canModerate && onModerate) || canReport)
+
+  const handleModerate = async (action: GroupPostModerationAction) => {
+    setShowMenu(false)
+    await onModerate?.(action)
+  }
+
+  const handleReportSubmit = async () => {
+    if (!user) return
+    setIsReporting(true)
+    try {
+      await apiClient.post(`/api/groups/${post.group_id}/posts/${post.id}/report`, {
+        reason: reportReason,
+      })
+      toast.success('Complaint submitted')
+      setShowReportModal(false)
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to report post')
+    } finally {
+      setIsReporting(false)
+    }
   }
 
   useEffect(() => {
@@ -178,6 +217,18 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
               {post.is_pinned && (
                 <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">Pinned</span>
               )}
+              {isPending && (
+                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Pending approval</span>
+              )}
+              {isRejected && (
+                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Rejected</span>
+              )}
+              {post.is_hidden && (
+                <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">Hidden</span>
+              )}
+              {post.is_restricted && (
+                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">Restricted</span>
+              )}
               <span className={`text-xs px-2 py-0.5 rounded ${POST_TYPE_COLORS[post.post_type]}`}>
                 {POST_TYPE_LABELS[post.post_type]}
               </span>
@@ -189,7 +240,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         </div>
 
         {/* Menu */}
-        {isAuthor && (onEdit || onDelete) && (
+        {showMenuButton && (
           <div className="relative flex-shrink-0" ref={menuRef}>
             <button
               type="button"
@@ -206,10 +257,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
               <ul
                 id={postOptionsMenuId}
                 role="menu"
-                aria-label="Your post actions"
+                aria-label="Post actions"
                 className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,20rem)] list-none rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
               >
-                {onEdit && (
+                {isAuthor && onEdit && (
                   <li role="none" className="list-none">
                     <button
                       type="button"
@@ -225,17 +276,90 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                         <span className="block text-sm font-semibold text-gray-900">
                           Edit post
                         </span>
-                        <span className="mt-0.5 block text-xs text-gray-500">
-                          Change text, media, or details
-                        </span>
                       </span>
                     </button>
                   </li>
                 )}
-                {onDelete && (
+                {canModerate && onModerate && isPending && (
+                  <li role="none" className="list-none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleModerate('approve')}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                    >
+                      <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-600" aria-hidden />
+                      <span className="block text-sm font-semibold text-gray-900">Approve post</span>
+                    </button>
+                  </li>
+                )}
+                {canModerate && onModerate && isPending && (
+                  <li role="none" className="list-none">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => handleModerate('reject')}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-red-50"
+                    >
+                      <Ban className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden />
+                      <span className="block text-sm font-semibold text-red-600">Reject post</span>
+                    </button>
+                  </li>
+                )}
+                {canModerate && onModerate && !isAuthor && (
+                  <>
+                    <li role="none" className="list-none border-t border-gray-100">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleModerate(post.is_hidden ? 'unhide' : 'hide')}
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                      >
+                        {post.is_hidden ? (
+                          <Eye className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
+                        ) : (
+                          <EyeOff className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
+                        )}
+                        <span className="block text-sm font-semibold text-gray-900">
+                          {post.is_hidden ? 'Unhide post' : 'Hide post'}
+                        </span>
+                      </button>
+                    </li>
+                    <li role="none" className="list-none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => handleModerate(post.is_restricted ? 'unrestrict' : 'restrict')}
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                      >
+                        <Ban className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
+                        <span className="block text-sm font-semibold text-gray-900">
+                          {post.is_restricted ? 'Unrestrict post' : 'Restrict post'}
+                        </span>
+                      </button>
+                    </li>
+                  </>
+                )}
+                {canReport && (
+                  <li role="none" className={`list-none ${isAuthor && onEdit ? 'border-t border-gray-100' : ''}`}>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowMenu(false)
+                        setShowReportModal(true)
+                      }}
+                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                    >
+                      <Flag className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
+                      <span className="block text-sm font-semibold text-gray-900">Report post</span>
+                    </button>
+                  </li>
+                )}
+                {isAuthor && onDelete && (
                   <li
                     role="none"
-                    className={`list-none ${onEdit ? 'border-t border-gray-100' : ''}`}
+                    className="list-none border-t border-gray-100"
                   >
                     <button
                       type="button"
@@ -250,9 +374,6 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                       <span className="min-w-0">
                         <span className="block text-sm font-semibold text-red-600">
                           Delete post
-                        </span>
-                        <span className="mt-0.5 block text-xs text-red-500/90">
-                          Remove this group post permanently
                         </span>
                       </span>
                     </button>
@@ -309,6 +430,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         For activity feed posts, reactions are prefetched from /api/groups/activity
         in post-like shape (reactions + reactions_total_count), so no extra call.
       */}
+      {!engagementLocked && (
       <PostEngagement
         reactionGroups={getReactionGroups()}
         totalReactionCount={prefetchedReactionGroups ? (prefetchedTotalReactionCount ?? 0) : reactions.totalCount}
@@ -321,6 +443,16 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         postId={post.id}
         reactionsEndpoint={`/api/groups/${post.group_id}/posts/${post.id}/reactions`}
       />
+      )}
+      {engagementLocked && (
+        <p className="mt-2 text-sm text-gray-500">
+          {isPending
+            ? 'This post is waiting for approval.'
+            : isRejected
+              ? 'This post was not approved.'
+              : 'Engagement on this post is restricted.'}
+        </p>
+      )}
 
       {/* Delete Confirmation Dialog */}
       {/* Edit — same CreatePost modal as home feed */}
@@ -369,8 +501,47 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         </div>
       )}
 
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Report post</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Co-admins and admins will review this complaint.
+            </p>
+            <select
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value as PostReportReason)}
+              className="w-full mb-4 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            >
+              {POST_REPORT_REASON_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleReportSubmit}
+                disabled={isReporting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {isReporting ? 'Submitting...' : 'Submit complaint'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Comments Section */}
-      {showCommentsFor && (
+      {showCommentsFor && !engagementLocked && (
         <GroupPostCommentsSection
           groupId={post.group_id}
           groupPostId={post.id}

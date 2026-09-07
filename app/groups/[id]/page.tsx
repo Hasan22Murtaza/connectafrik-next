@@ -20,6 +20,7 @@ import {
   Folder,
   User,
   Clock,
+  Flag,
 } from '@/shared/icons'
 import { IoMdShareAlt } from "react-icons/io";
 import { useAuth } from '@/contexts/AuthContext'
@@ -33,7 +34,8 @@ import { apiClient } from '@/lib/api-client'
 import { useEmojiReaction } from '@/shared/hooks/useEmojiReaction'
 import GroupMembersList from '@/features/groups/components/GroupMembersList'
 import GroupJoinRequestsList from '@/features/groups/components/GroupJoinRequestsList'
-import InviteFriendsModal from '@/features/groups/components/InviteFriendsModal'
+import GroupComplaintsList from '@/features/groups/components/GroupComplaintsList'
+import InviteFriendsModal, { InviteSentResult } from '@/features/groups/components/InviteFriendsModal'
 import CreateGroupPost from '@/features/groups/components/CreateGroupPost'
 import GroupPostCard from '@/features/groups/components/GroupPostCard'
 import CreateGroupEventModal from '@/features/groups/components/CreateGroupEventModal'
@@ -45,12 +47,20 @@ import { useMembers } from '@/shared/hooks/useMembers'
 import { sendNotification } from '@/shared/services/notificationService'
 import { useGroupEvents } from '@/shared/hooks/useGroupEvents'
 import { getCategoryInfoLarge } from '@/shared/utils/groupUtils'
+import {
+  canApproveGroupJoinRequests,
+  canEditGroupSettings,
+  canModerateGroupContent,
+  canViewGroupComplaints,
+  isGroupStaffRole,
+} from '@/lib/groups/roles'
 import { CiViewTable } from "react-icons/ci";
 import {
   useFeedShimmerCount,
   GroupPostsFeedShimmer,
   GroupDetailPageShimmer,
 } from '@/shared/components/ui/ShimmerLoaders'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 
 type GroupFileItem = {
   id: string
@@ -83,6 +93,8 @@ type GroupMediaItem = {
   } | null
 }
 
+type GroupTab = 'posts' | 'events' | 'media' | 'files' | 'about' | 'members' | 'requests' | 'complaints'
+
 const GroupDetailPage: React.FC = () => {
   const params = useParams()
   const router = useRouter()
@@ -91,6 +103,7 @@ const GroupDetailPage: React.FC = () => {
   const postQueryParam = searchParams?.get('post')
   const tabQueryParam = searchParams?.get('tab')
   const { user, loading: authLoading } = useAuth()
+  const { confirm, dialog } = useConfirmDialog()
   const { fetchGroupById, joinGroup, leaveGroup } = useGroups()
   const { openGroupChat } = useGroupChat()
   const { 
@@ -100,14 +113,18 @@ const GroupDetailPage: React.FC = () => {
     toggleLike, 
     recordShare,
     deletePost, 
-    updatePost, 
-    refetch: refetchGroupPosts,
+    updatePost,
+    moderatePost,
   } = useGroupPosts(groupId || '')
   
   const [group, setGroup] = useState<Group | null>(null)
   const [loading, setLoading] = useState(true)
   const [isJoining, setIsJoining] = useState(false)
-  const [activeTab, setActiveTab] = useState<'posts' | 'events' | 'media' | 'files' | 'about' | 'members' | 'requests'>('posts')
+  const [activeTab, setActiveTab] = useState<GroupTab>(() => {
+    if (tabQueryParam === 'requests' || tabQueryParam === 'members' || tabQueryParam === 'complaints') return tabQueryParam
+    return 'posts'
+  })
+  const [visitedTabs, setVisitedTabs] = useState<Set<GroupTab>>(() => new Set(['posts', activeTab]))
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showCreateEventModal, setShowCreateEventModal] = useState(false)
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null)
@@ -116,6 +133,7 @@ const GroupDetailPage: React.FC = () => {
   const [files, setFiles] = useState<GroupFileItem[]>([])
   const [mediaLoading, setMediaLoading] = useState(false)
   const [filesLoading, setFilesLoading] = useState(false)
+  const [membersRefreshKey, setMembersRefreshKey] = useState(0)
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const { members } = useMembers(shareModalState.open)
   const feedShimmerCount = useFeedShimmerCount()
@@ -126,8 +144,7 @@ const GroupDetailPage: React.FC = () => {
     createEvent,
     toggleAttendance,
     deleteEvent,
-    refetch: refetchGroupEvents,
-  } = useGroupEvents(groupId || '', activeTab === 'events')
+  } = useGroupEvents(groupId || '', visitedTabs.has('events'))
 
   useEffect(() => {
     // Wait for auth to finish loading before fetching group
@@ -145,10 +162,14 @@ const GroupDetailPage: React.FC = () => {
   }, [postQueryParam, postsLoading, groupPosts.length])
 
   useEffect(() => {
-    if (tabQueryParam === 'requests') {
-      setActiveTab('requests')
-    } else if (tabQueryParam === 'members') {
-      setActiveTab('members')
+    if (tabQueryParam === 'requests' || tabQueryParam === 'members') {
+      setActiveTab(tabQueryParam)
+      setVisitedTabs((prev) => {
+        if (prev.has(tabQueryParam)) return prev
+        const next = new Set(prev)
+        next.add(tabQueryParam)
+        return next
+      })
     }
   }, [tabQueryParam])
 
@@ -162,17 +183,17 @@ const GroupDetailPage: React.FC = () => {
 
   useEffect(() => {
     if (!groupId || activeTab !== 'media') return
-    fetchGroupMedia()
+    fetchGroupMedia({ silent: mediaItems.length > 0 })
   }, [groupId, activeTab, user?.id])
 
   useEffect(() => {
     if (!groupId || activeTab !== 'files') return
-    fetchGroupFiles()
+    fetchGroupFiles({ silent: files.length > 0 })
   }, [groupId, activeTab, user?.id])
 
-  const fetchGroup = async () => {
+  const fetchGroup = async (opts?: { silent?: boolean }) => {
     try {
-      setLoading(true)
+      if (!opts?.silent) setLoading(true)
       const groupData = await fetchGroupById(groupId)
       if (!groupData) {
         toast.error('Group not found')
@@ -183,48 +204,92 @@ const GroupDetailPage: React.FC = () => {
     } catch (error) {
       console.error('Error fetching group:', error)
       toast.error('Failed to load group')
-      router.push('/groups')
+      if (!opts?.silent) router.push('/groups')
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }
 
-  const fetchGroupMedia = async () => {
+  const fetchGroupMedia = async (opts?: { silent?: boolean }) => {
     try {
-      setMediaLoading(true)
+      if (!opts?.silent) setMediaLoading(true)
       const res = await apiClient.get<{ data: GroupMediaItem[] }>(`/api/groups/${groupId}/media`)
       setMediaItems(res.data || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching group media:', error)
-      setMediaItems([])
-      toast.error(error?.message || 'Failed to load group media')
+      if (!opts?.silent) {
+        setMediaItems([])
+        const message = error instanceof Error ? error.message : 'Failed to load group media'
+        toast.error(message)
+      }
     } finally {
       setMediaLoading(false)
     }
   }
 
-  const fetchGroupFiles = async () => {
+  const fetchGroupFiles = async (opts?: { silent?: boolean }) => {
     try {
-      setFilesLoading(true)
+      if (!opts?.silent) setFilesLoading(true)
       const res = await apiClient.get<{ data: GroupFileItem[] }>(`/api/groups/${groupId}/files`)
       setFiles(res.data || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching group files:', error)
-      setFiles([])
-      toast.error(error?.message || 'Failed to load group files')
+      if (!opts?.silent) {
+        setFiles([])
+        const message = error instanceof Error ? error.message : 'Failed to load group files'
+        toast.error(message)
+      }
     } finally {
       setFilesLoading(false)
     }
   }
+
+  const refreshMediaAndFiles = useCallback(() => {
+    if (visitedTabs.has('media')) {
+      fetchGroupMedia({ silent: true })
+    }
+    if (visitedTabs.has('files')) {
+      fetchGroupFiles({ silent: true })
+    }
+  }, [visitedTabs, groupId])
+
+  const patchGroup = useCallback((updates: Partial<Group>) => {
+    setGroup((prev) => (prev ? { ...prev, ...updates } : prev))
+  }, [])
 
   const handleJoinGroup = async () => {
     if (!user || !group) return
 
     setIsJoining(true)
     try {
-      await joinGroup(group.id)
-      await fetchGroup()
-    } catch (error) {
+      const result = await joinGroup(group.id)
+      const isPending = Boolean(result?.pending || result?.membership?.status === 'pending')
+      patchGroup({
+        member_count: isPending ? group.member_count : (result?.member_count ?? group.member_count + 1),
+        membership: result?.membership
+          ? {
+              id: result.membership.id,
+              group_id: group.id,
+              user_id: user.id,
+              role: result.membership.role || 'member',
+              status: result.membership.status || (isPending ? 'pending' : 'active'),
+              joined_at: result.membership.joined_at || new Date().toISOString(),
+              updated_at: result.membership.updated_at || new Date().toISOString(),
+            }
+          : {
+              id: 'temp',
+              group_id: group.id,
+              user_id: user.id,
+              role: 'member',
+              status: isPending ? 'pending' : 'active',
+              joined_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+      })
+      if (!isPending) {
+        setMembersRefreshKey((key) => key + 1)
+      }
+    } catch {
       // Error handling is done in the hook
     } finally {
       setIsJoining(false)
@@ -234,13 +299,25 @@ const GroupDetailPage: React.FC = () => {
   const handleLeaveGroup = async () => {
     if (!user || !group) return
 
-    if (!confirm('Are you sure you want to leave this group?')) return
+    const confirmed = await confirm({
+      title: 'Leave group',
+      message: 'Are you sure you want to leave this group?',
+      confirmLabel: 'Leave',
+    })
+    if (!confirmed) return
 
     setIsJoining(true)
     try {
-      await leaveGroup(group.id)
-      await fetchGroup()
-    } catch (error) {
+      const result = await leaveGroup(group.id)
+      patchGroup({
+        member_count: result?.member_count ?? Math.max(0, group.member_count - 1),
+        membership: undefined,
+      })
+      setMembersRefreshKey((key) => key + 1)
+      if (activeTab === 'requests' || activeTab === 'complaints') {
+        setActiveTab('about')
+      }
+    } catch {
       // Error handling is done in the hook
     } finally {
       setIsJoining(false)
@@ -258,13 +335,57 @@ const GroupDetailPage: React.FC = () => {
 
     try {
       await createGroupPost(postData)
-    } catch (error) {
+      if (postData.media_urls && postData.media_urls.length > 0) {
+        refreshMediaAndFiles()
+      }
+    } catch {
       // Error handling is done in the hook
     }
   }
 
-  const handleToggleLike = (postId: string) => {
-    toggleLike(postId)
+  const handleDeletePost = async (postId: string) => {
+    try {
+      await deletePost(postId)
+      refreshMediaAndFiles()
+    } catch {
+      // Error handling is done in the hook
+    }
+  }
+
+  const handleInviteSent = (result: InviteSentResult) => {
+    if (typeof result.member_count === 'number') {
+      patchGroup({ member_count: result.member_count })
+    }
+    if (result.added_count > 0 || (result.approved_count ?? 0) > 0) {
+      setMembersRefreshKey((key) => key + 1)
+    }
+  }
+
+  const handleJoinRequestsChanged = (info: { member_count?: number; approved: boolean }) => {
+    setGroup((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        pending_join_count: Math.max(0, (prev.pending_join_count ?? 1) - 1),
+        member_count:
+          typeof info.member_count === 'number'
+            ? info.member_count
+            : info.approved
+              ? prev.member_count + 1
+              : prev.member_count,
+      }
+    })
+    if (info.approved) {
+      setMembersRefreshKey((key) => key + 1)
+    }
+  }
+
+  const handleMembersChanged = (info: { member_count?: number }) => {
+    if (typeof info.member_count === 'number') {
+      patchGroup({ member_count: info.member_count })
+    } else {
+      patchGroup({ member_count: Math.max(0, (group?.member_count ?? 1) - 1) })
+    }
   }
 
   const handleComment = (postId: string) => {
@@ -353,18 +474,15 @@ const GroupDetailPage: React.FC = () => {
     }
   }
 
-  const handleTabChange = useCallback((tab: 'posts' | 'events' | 'media' | 'files' | 'about' | 'members' | 'requests') => {
+  const handleTabChange = useCallback((tab: GroupTab) => {
     setActiveTab(tab)
-
-    if (tab === 'posts') {
-      refetchGroupPosts()
-      return
-    }
-
-    if (tab === 'about') {
-      fetchGroup()
-    }
-  }, [refetchGroupPosts, fetchGroup])
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev
+      const next = new Set(prev)
+      next.add(tab)
+      return next
+    })
+  }, [])
 
   if (authLoading || loading) {
     return <GroupDetailPageShimmer />
@@ -385,9 +503,21 @@ const GroupDetailPage: React.FC = () => {
 
   const isMember = group.membership?.status === 'active'
   const isPending = group.membership?.status === 'pending'
-  const isAdmin = isMember && group.membership?.role === 'admin'
-  const canManageJoinRequests = isMember && (group.membership?.role === 'admin' || group.membership?.role === 'moderator')
+  const isInvited = group.membership?.status === 'invited'
+  const viewerRole = group.membership?.role
+  const isAdmin = isMember && canEditGroupSettings(viewerRole)
+  const canManageJoinRequests = isMember && canApproveGroupJoinRequests(viewerRole)
+  const canModerateContent = isMember && canModerateGroupContent(viewerRole)
+  const canViewComplaints = isMember && canViewGroupComplaints(viewerRole)
+  const isPostingRestricted = Boolean(group.membership?.posting_restricted) && !isGroupStaffRole(viewerRole)
   const pendingJoinCount = group.pending_join_count ?? 0
+  const pendingReportCount = group.pending_report_count ?? 0
+  const pendingPosts = canModerateContent
+    ? groupPosts.filter((post) => post.moderation_status === 'pending')
+    : []
+  const feedPosts = canModerateContent
+    ? groupPosts.filter((post) => post.moderation_status !== 'pending' && post.moderation_status !== 'rejected')
+    : groupPosts.filter((post) => post.moderation_status !== 'rejected')
   const categoryInfo = getCategoryInfoLarge(group.category)
 
   return (
@@ -465,6 +595,24 @@ const GroupDetailPage: React.FC = () => {
                     </button>
                   )}
                 </>
+              ) : isInvited ? (
+                <button
+                  onClick={handleJoinGroup}
+                  disabled={isJoining}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                >
+                  {isJoining ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Accepting...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-4 h-4" />
+                      <span>Accept Invitation</span>
+                    </>
+                  )}
+                </button>
               ) : isPending ? (
                 <button
                   disabled
@@ -557,6 +705,26 @@ const GroupDetailPage: React.FC = () => {
               </button>
             )}
 
+            {canViewComplaints && (
+              <button
+                onClick={() => handleTabChange('complaints')}
+                className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
+                  activeTab === 'complaints'
+                    ? 'text-primary-600 border-primary-600'
+                    : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  Complaints
+                  {pendingReportCount > 0 && (
+                    <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center">
+                      {pendingReportCount}
+                    </span>
+                  )}
+                </span>
+              </button>
+            )}
+
             <button
               onClick={() => handleTabChange('events')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
@@ -607,39 +775,34 @@ const GroupDetailPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
        
           {/* Center Content */}
-          <div className="lg:col-span-7 space-y-4">
-            {activeTab === 'posts' && (
-              <>
+          <div className="lg:col-span-7">
+            {visitedTabs.has('posts') && (
+              <div className={activeTab === 'posts' ? 'space-y-4' : 'hidden'}>
                 {/* Create Post */}
-                {isMember && (
+                {isMember && !isPostingRestricted && (
                   <div className="bg-white rounded-lg shadow-sm p-4">
                     <CreateGroupPost
                       onSubmit={handleCreatePost}
                     />
                   </div>
                 )}
-
-                {/* Posts Feed */}
-                {postsLoading ? (
-                  <GroupPostsFeedShimmer count={feedShimmerCount} />
-                ) : groupPosts.length === 0 ? (
-                  <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
-                    <p className="text-gray-500">
-                      {isMember ? 'Be the first to share something with the group!' : 'Join the group to see posts'}
-                    </p>
+                {isMember && isPostingRestricted && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-4 text-sm">
+                    You are restricted from posting in this group.
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {groupPosts.map((post) => (
+                )}
+
+                {canModerateContent && pendingPosts.length > 0 && (
+                  <div className="bg-white rounded-lg shadow-sm p-4 space-y-3">
+                    <h3 className="font-semibold text-gray-900">Posts awaiting approval</h3>
+                    {pendingPosts.map((post) => (
                       <GroupPostCard
-                        key={post.id}
+                        key={`pending-${post.id}`}
                         post={post}
                         onLike={() => toggleLike(post.id)}
                         onComment={() => handleComment(post.id)}
                         onShare={() => handleShare(post.id)}
-                        onDelete={() => deletePost(post.id)}
+                        onDelete={() => handleDeletePost(post.id)}
                         onEdit={(data) =>
                           updatePost(post.id, {
                             title: data.title,
@@ -650,6 +813,8 @@ const GroupDetailPage: React.FC = () => {
                         }
                         onEmojiReaction={handleEmojiReaction}
                         isPostLiked={post.isLiked}
+                        viewerRole={viewerRole}
+                        onModerate={(action) => moderatePost(post.id, action)}
                         prefetchedReactionGroups={(post.reactions ?? []) as any}
                         prefetchedTotalReactionCount={post.reactions_total_count ?? 0}
                         showCommentsFor={showCommentsFor === post.id}
@@ -658,11 +823,53 @@ const GroupDetailPage: React.FC = () => {
                     ))}
                   </div>
                 )}
-              </>
+
+                {/* Posts Feed */}
+                {postsLoading ? (
+                  <GroupPostsFeedShimmer count={feedShimmerCount} />
+                ) : feedPosts.length === 0 ? (
+                  <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No posts yet</h3>
+                    <p className="text-gray-500">
+                      {isMember ? 'Be the first to share something with the group!' : 'Join the group to see posts'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {feedPosts.map((post) => (
+                      <GroupPostCard
+                        key={post.id}
+                        post={post}
+                        onLike={() => toggleLike(post.id)}
+                        onComment={() => handleComment(post.id)}
+                        onShare={() => handleShare(post.id)}
+                        onDelete={() => handleDeletePost(post.id)}
+                        onEdit={(data) =>
+                          updatePost(post.id, {
+                            title: data.title,
+                            content: data.content,
+                            media_urls: data.media_urls ?? [],
+                            background_id: data.background_id ?? null,
+                          })
+                        }
+                        onEmojiReaction={handleEmojiReaction}
+                        isPostLiked={post.isLiked}
+                        viewerRole={viewerRole}
+                        onModerate={(action) => moderatePost(post.id, action)}
+                        prefetchedReactionGroups={(post.reactions ?? []) as any}
+                        prefetchedTotalReactionCount={post.reactions_total_count ?? 0}
+                        showCommentsFor={showCommentsFor === post.id}
+                        onToggleComments={() => setShowCommentsFor(showCommentsFor === post.id ? null : post.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
 
-            {activeTab === 'about' && (
-              <>
+            {visitedTabs.has('about') && (
+              <div className={activeTab === 'about' ? 'space-y-4' : 'hidden'}>
               <div className="bg-white rounded-lg shadow-sm p-4">
               <h3 className="font-semibold text-gray-900 mb-3">Description</h3>
               <p className="text-md text-gray-700 mb-4">{group.description}</p>
@@ -757,11 +964,11 @@ const GroupDetailPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              </>
+              </div>
             )}
 
-            {activeTab === 'events' && (
-              <div className="space-y-4">
+            {visitedTabs.has('events') && (
+              <div className={activeTab === 'events' ? 'space-y-4' : 'hidden'}>
                 {/* Create Event Button */}
                 {(isMember || isAdmin) && (
                   <div className="bg-white rounded-lg shadow-sm p-4">
@@ -794,26 +1001,30 @@ const GroupDetailPage: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'media' && (
+            {visitedTabs.has('media') && (
+              <div className={activeTab === 'media' ? '' : 'hidden'}>
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <GroupMediaGallery
                   items={mediaItems}
                   loading={mediaLoading}
                 />
               </div>
+              </div>
             )}
 
-            {activeTab === 'files' && (
+            {visitedTabs.has('files') && (
+              <div className={activeTab === 'files' ? '' : 'hidden'}>
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <GroupFilesList
                   files={files}
                   loading={filesLoading}
                 />
               </div>
+              </div>
             )}
 
-            {activeTab === 'members' && (
-              <div className="space-y-4">
+            {visitedTabs.has('members') && (
+              <div className={activeTab === 'members' ? 'space-y-4' : 'hidden'}>
                 {canManageJoinRequests && (group.is_public === false || pendingJoinCount > 0) && (
                   <div className="bg-white rounded-lg shadow-sm p-6">
                     <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -827,10 +1038,8 @@ const GroupDetailPage: React.FC = () => {
                     </h3>
                     <GroupJoinRequestsList
                       groupId={group.id}
-                      enabled={activeTab === 'members' || activeTab === 'requests'}
-                      onChanged={() => {
-                        fetchGroup()
-                      }}
+                      enabled={activeTab === 'members'}
+                      onChanged={handleJoinRequestsChanged}
                     />
                   </div>
                 )}
@@ -838,10 +1047,9 @@ const GroupDetailPage: React.FC = () => {
                   <GroupMembersList
                     groupId={group.id}
                     currentUserId={user?.id}
-                    canManageMembers={isAdmin}
-                    onMembersChanged={() => {
-                      fetchGroup()
-                    }}
+                    viewerRole={viewerRole}
+                    refreshToken={membersRefreshKey}
+                    onMembersChanged={handleMembersChanged}
                   />
                 </div>
               </div>
@@ -855,10 +1063,31 @@ const GroupDetailPage: React.FC = () => {
                 </h3>
                 <GroupJoinRequestsList
                   groupId={group.id}
-                  enabled
-                  onChanged={() => {
-                    fetchGroup()
-                  }}
+                  enabled={activeTab === 'requests'}
+                  onChanged={handleJoinRequestsChanged}
+                />
+              </div>
+            )}
+
+            {activeTab === 'complaints' && canViewComplaints && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Flag className="w-5 h-5 text-red-600" />
+                  User complaints
+                </h3>
+                <GroupComplaintsList
+                  groupId={group.id}
+                  enabled={activeTab === 'complaints'}
+                  onChanged={() =>
+                    setGroup((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            pending_report_count: Math.max(0, (prev.pending_report_count ?? 1) - 1),
+                          }
+                        : prev
+                    )
+                  }
                 />
               </div>
             )}
@@ -916,9 +1145,7 @@ const GroupDetailPage: React.FC = () => {
           onClose={() => setShowInviteModal(false)}
           groupId={group.id}
           groupName={group.name}
-          onInviteSent={() => {
-            fetchGroup()
-          }}
+          onInviteSent={handleInviteSent}
         />
       )}
 
@@ -933,7 +1160,8 @@ const GroupDetailPage: React.FC = () => {
         />
       )}
 
-      {/* Share Modal */}
+      {dialog}
+
       {shareModalState.postId && (
         <ShareModal
           isOpen={shareModalState.open}

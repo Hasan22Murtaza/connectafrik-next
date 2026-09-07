@@ -6,7 +6,7 @@ import {
 } from '@/lib/groupChatSystemMessages'
 import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
-import { isGroupManagerRole } from '@/lib/groups/viewerMembership'
+import { canApproveGroupJoinRequests } from '@/lib/groups/roles'
 
 export async function syncGroupMemberCount(
   serviceClient: SupabaseClient,
@@ -71,7 +71,7 @@ export async function listGroupManagerUserIds(
   return Array.from(
     new Set(
       (data || [])
-        .filter((row: { user_id: string; role: string }) => isGroupManagerRole(row.role))
+        .filter((row: { user_id: string; role: string }) => canApproveGroupJoinRequests(row.role))
         .map((row: { user_id: string }) => row.user_id)
         .filter(Boolean)
     )

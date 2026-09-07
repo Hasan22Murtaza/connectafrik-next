@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
+import { canModerateGroupContent, isGroupStaffRole } from '@/lib/groups/roles'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -15,11 +16,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const from = page * limit
     const to = from + limit - 1
 
-    const { data: postsData, error: postsError } = await supabase
+    const { data: actorMembership } = await supabase
+      .from('group_memberships')
+      .select('role, status')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    const isStaff = canModerateGroupContent(actorMembership?.role)
+
+    let postsQuery = supabase
       .from('group_posts')
       .select('*, group_post_comments(count)')
       .eq('group_id', groupId)
       .eq('is_deleted', false)
+
+    if (!isStaff) {
+      postsQuery = postsQuery.or(
+        `and(moderation_status.eq.approved,is_hidden.eq.false),author_id.eq.${user.id}`
+      )
+    }
+
+    const { data: postsData, error: postsError } = await postsQuery
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to)
@@ -147,12 +166,40 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Content is required', 400)
     }
 
+    const serviceClient = createServiceClient()
+    const [{ data: actorMembership }, { data: group }] = await Promise.all([
+      serviceClient
+        .from('group_memberships')
+        .select('role, status, posting_restricted')
+        .eq('group_id', groupId)
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle(),
+      serviceClient
+        .from('groups')
+        .select('id, require_post_approval')
+        .eq('id', groupId)
+        .maybeSingle(),
+    ])
+
+    if (!actorMembership) {
+      return errorResponse('Only group members can post', 403)
+    }
+
+    const isStaff = isGroupStaffRole(actorMembership.role)
+    if (actorMembership.posting_restricted && !isStaff) {
+      return errorResponse('You are restricted from posting in this group', 403)
+    }
+
+    const requiresApproval = Boolean(group?.require_post_approval) && !isStaff
+    const moderationStatus = requiresApproval ? 'pending' : 'approved'
+
     const normalizedMedia = Array.isArray(media_urls) ? media_urls : []
     // Decorative backgrounds only apply to text-only posts.
     const background_id =
       normalizedMedia.length > 0 ? null : sanitizePostBackgroundId(body.background_id)
 
-    const { data: post, error: insertError } = await supabase
+    const { data: post, error: insertError } = await serviceClient
       .from('group_posts')
       .insert({
         group_id: groupId,
@@ -166,6 +213,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         comments_count: 0,
         is_pinned: false,
         is_deleted: false,
+        moderation_status: moderationStatus,
+        is_hidden: false,
+        is_restricted: false,
       })
       .select()
       .single()

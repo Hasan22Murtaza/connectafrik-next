@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import toast from 'react-hot-toast'
@@ -34,12 +34,13 @@ export const useGroupEvents = (groupId: string, enabled: boolean = true) => {
   const [events, setEvents] = useState<GroupEvent[]>([])
   const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<string | null>(null)
+  const hasLoadedRef = useRef(false)
 
   const fetchEvents = useCallback(async () => {
     if (!groupId || !enabled) return
 
     try {
-      setLoading(true)
+      if (!hasLoadedRef.current) setLoading(true)
       setError(null)
 
       const allEvents: GroupEvent[] = []
@@ -71,6 +72,7 @@ export const useGroupEvents = (groupId: string, enabled: boolean = true) => {
           isAttending: e.isAttending ?? false
         }))
       )
+      hasLoadedRef.current = true
     } catch (err: any) {
       console.error('Error fetching group events:', err)
       setError(err.message)
@@ -81,12 +83,7 @@ export const useGroupEvents = (groupId: string, enabled: boolean = true) => {
   }, [groupId, user?.id, enabled])
 
   useEffect(() => {
-    if (!enabled) {
-      setEvents([])
-      setError(null)
-      setLoading(false)
-      return
-    }
+    if (!enabled) return
     fetchEvents()
   }, [fetchEvents, enabled])
 

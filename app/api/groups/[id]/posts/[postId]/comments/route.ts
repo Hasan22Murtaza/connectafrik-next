@@ -112,6 +112,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Content is required', 400)
     }
 
+    const { data: postRow } = await supabase
+      .from('group_posts')
+      .select('id, is_restricted, is_hidden, is_deleted, moderation_status')
+      .eq('id', postId)
+      .maybeSingle()
+
+    if (!postRow || postRow.is_deleted) {
+      return errorResponse('Post not found', 404)
+    }
+    if (postRow.is_restricted) {
+      return errorResponse('Comments are restricted on this post', 403)
+    }
+    if (postRow.is_hidden || postRow.moderation_status !== 'approved') {
+      return errorResponse('This post is not open for comments', 403)
+    }
+
     const { data: comment, error: insertError } = await supabase
       .from('group_post_comments')
       .insert({

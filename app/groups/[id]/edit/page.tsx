@@ -33,6 +33,7 @@ const EditGroupPage: React.FC = () => {
     country: string
     avatar_url: string
     banner_url: string
+    require_post_approval: boolean
   }>({
     name: '',
     description: '',
@@ -43,6 +44,7 @@ const EditGroupPage: React.FC = () => {
     country: '',
     avatar_url: '',
     banner_url: '',
+    require_post_approval: false,
   })
   
   const [goals, setGoals] = useState<string[]>([''])
@@ -104,6 +106,7 @@ const EditGroupPage: React.FC = () => {
         country: groupData.country || '',
         avatar_url: groupData.avatar_url || '',
         banner_url: groupData.banner_url || '',
+        require_post_approval: Boolean(groupData.require_post_approval),
       })
       setGoals(groupData.goals && groupData.goals.length > 0 ? groupData.goals : [''])
       setTags(groupData.tags && groupData.tags.length > 0 ? groupData.tags : [''])
@@ -551,11 +554,27 @@ const EditGroupPage: React.FC = () => {
                   <Lock className="w-5 h-5 text-gray-400" />
                   <div>
                     <div className="font-medium">Private</div>
-                    <div className="text-sm text-gray-500">People request to join; admins approve members</div>
+                    <div className="text-sm text-gray-500">People request to join; co-admins and admins approve members</div>
                   </div>
                 </label>
               </div>
             </div>
+
+            {/* Post approval */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.require_post_approval}
+                onChange={(e) => handleInputChange('require_post_approval', e.target.checked)}
+                className="mt-1 text-primary-600"
+              />
+              <div>
+                <div className="font-medium">Approve posts before they appear</div>
+                <div className="text-sm text-gray-500">
+                  Managers, co-admins, and admins review member posts before they are published
+                </div>
+              </div>
+            </label>
 
             {/* Max Members */}
             <div>

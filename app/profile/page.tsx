@@ -19,6 +19,7 @@ import {
 } from '@/shared/utils/sessionDeviceLabel'
 import toast from 'react-hot-toast'
 import { LocationSearch } from '@/shared/components/ui/LocationSearch'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { profileLocationFromDb } from '@/shared/types/location'
 
 type ListedAuthSession = {
@@ -107,6 +108,7 @@ const ProfileSettings: React.FC = () => {
   const [authSessions, setAuthSessions] = useState<ListedAuthSession[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
+  const { confirm, dialog } = useConfirmDialog()
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
     current: '',
@@ -373,7 +375,12 @@ const ProfileSettings: React.FC = () => {
   }
 
   const handleDeleteAccount = async () => {
-    if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+    const confirmed = await confirm({
+      title: 'Delete account',
+      message: 'Are you sure you want to delete your account? This action cannot be undone.',
+      confirmLabel: 'Delete',
+    })
+    if (!confirmed) {
       return
     }
 
@@ -984,15 +991,16 @@ const ProfileSettings: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            if (
-                              typeof window !== 'undefined' &&
-                              !window.confirm(
-                                'Sign out on every device? You will need to sign in again on each one.'
-                              )
-                            ) {
-                              return
-                            }
-                            void signOutAllDevices()
+                            void (async () => {
+                              const confirmed = await confirm({
+                                title: 'Sign out all devices',
+                                message:
+                                  'Sign out on every device? You will need to sign in again on each one.',
+                                confirmLabel: 'Sign out all',
+                              })
+                              if (!confirmed) return
+                              void signOutAllDevices()
+                            })()
                           }}
                           className="btn-secondary w-full sm:w-auto"
                         >
@@ -1193,6 +1201,7 @@ const ProfileSettings: React.FC = () => {
           </div>
         </div>
       )}
+      {dialog}
     </div>
   )
 }

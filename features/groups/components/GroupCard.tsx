@@ -64,6 +64,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
   const categoryInfo = getCategoryInfo(group.category);
   const isMember = group.membership?.status === "active";
   const isPending = group.membership?.status === "pending";
+  const isInvited = group.membership?.status === "invited";
   const membershipCount = `${group.member_count}${
     group.member_count >= 1000 ? "K" : ""
   }`;
@@ -261,6 +262,24 @@ const GroupCard: React.FC<GroupCardProps> = ({
             >
               <MessageCircle className="w-4 h-4 " />
               Open Group Chat
+            </button>
+          ) : isInvited ? (
+            <button
+              onClick={handleJoinGroup}
+              disabled={isJoining}
+              className="btn-primary w-full flex items-center justify-center gap-2"
+            >
+              {isJoining ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Accepting...
+                </>
+              ) : (
+                <>
+                  <Users className="w-4 h-4" />
+                  Accept Invitation
+                </>
+              )}
             </button>
           ) : isPending ? (
             <button

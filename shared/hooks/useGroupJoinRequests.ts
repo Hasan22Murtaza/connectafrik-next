@@ -18,14 +18,13 @@ export function useGroupJoinRequests(groupId: string, enabled: boolean = true) {
   const [loading, setLoading] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (opts?: { silent?: boolean }) => {
     if (!groupId || !enabled) {
-      setRequests([])
       return
     }
 
     try {
-      setLoading(true)
+      if (!opts?.silent) setLoading(true)
       const allRequests: GroupJoinRequest[] = []
       let page = 0
       let hasMore = true
@@ -45,7 +44,7 @@ export function useGroupJoinRequests(groupId: string, enabled: boolean = true) {
       setRequests(allRequests)
     } catch (error) {
       console.error('Error fetching join requests:', error)
-      setRequests([])
+      if (!opts?.silent) setRequests([])
     } finally {
       setLoading(false)
     }
@@ -58,9 +57,17 @@ export function useGroupJoinRequests(groupId: string, enabled: boolean = true) {
   const respondToRequest = async (requestId: string, status: 'approved' | 'rejected') => {
     setUpdatingId(requestId)
     try {
-      await apiClient.patch(`/api/groups/${groupId}/join-requests/${requestId}`, { status })
+      const res = await apiClient.patch<{
+        data?: {
+          member_count?: number
+          status?: string
+        }
+        member_count?: number
+      }>(`/api/groups/${groupId}/join-requests/${requestId}`, { status })
+      const memberCount = res?.data?.member_count ?? res?.member_count
       setRequests((prev) => prev.filter((request) => request.id !== requestId))
       toast.success(status === 'approved' ? 'Join request approved' : 'Join request declined')
+      return { member_count: memberCount, approved: status === 'approved' }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to update join request'
       toast.error(message)

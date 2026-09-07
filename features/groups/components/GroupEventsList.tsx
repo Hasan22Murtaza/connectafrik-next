@@ -5,6 +5,7 @@ import { Calendar, MapPin, Users, Clock, Video, Building, Trash2, UserPlus, User
 import { GroupEvent } from '@/shared/hooks/useGroupEvents'
 import { formatDistanceToNow, format } from 'date-fns'
 import { useAuth } from '@/contexts/AuthContext'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 
 interface GroupEventsListProps {
   events: GroupEvent[]
@@ -152,6 +153,7 @@ const EventCard: React.FC<EventCardProps> = ({
   const isCreator = currentUserId === event.creator_id
   const startDate = new Date(event.start_time)
   const endDate = event.end_time ? new Date(event.end_time) : null
+  const { confirm, dialog } = useConfirmDialog()
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 sm:p-6 p-4 hover:shadow-md transition-shadow">
@@ -170,10 +172,13 @@ const EventCard: React.FC<EventCardProps> = ({
         </div>
         {isCreator && onDelete && (
           <button
-            onClick={() => {
-              if (confirm('Are you sure you want to delete this event?')) {
-                onDelete(event.id)
-              }
+            onClick={async () => {
+              const confirmed = await confirm({
+                title: 'Delete Event',
+                message: 'Are you sure you want to delete this event? This action cannot be undone.',
+                confirmLabel: 'Delete',
+              })
+              if (confirmed) onDelete(event.id)
             }}
             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
@@ -256,6 +261,7 @@ const EventCard: React.FC<EventCardProps> = ({
           </span>
         )}
       </div>
+      {dialog}
     </div>
   )
 }

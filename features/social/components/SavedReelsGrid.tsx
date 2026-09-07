@@ -13,6 +13,7 @@ import MemoryShortsSlide from './MemoryShortsSlide'
 import ReelComments from './ReelComments'
 import ShareModal from './ShareModal'
 import toast from 'react-hot-toast'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 
 type Props = {
   reels: Reel[]
@@ -41,6 +42,7 @@ const SavedReelsFeedOverlay: React.FC<{
     open: false,
     reelId: null,
   })
+  const { confirm, dialog } = useConfirmDialog()
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -106,7 +108,12 @@ const SavedReelsFeedOverlay: React.FC<{
 
   const handleDelete = useCallback(
     async (reelId: string) => {
-      if (!window.confirm('Delete this memory? This action cannot be undone.')) return
+      const confirmed = await confirm({
+        title: 'Delete Memory',
+        message: 'Delete this memory? This action cannot be undone.',
+        confirmLabel: 'Delete',
+      })
+      if (!confirmed) return
       const { success, error } = await deleteReel(reelId)
       if (success) {
         toast.success('Memory deleted')
@@ -115,7 +122,7 @@ const SavedReelsFeedOverlay: React.FC<{
         toast.error(error || 'Failed to delete memory')
       }
     },
-    [deleteReel, onReelDeleted]
+    [deleteReel, onReelDeleted, confirm]
   )
 
   const shareUrl = useMemo(() => {
@@ -208,6 +215,7 @@ const SavedReelsFeedOverlay: React.FC<{
           onSendToMembers={handleSendToMembers}
         />
       )}
+      {dialog}
     </div>
   )
 }

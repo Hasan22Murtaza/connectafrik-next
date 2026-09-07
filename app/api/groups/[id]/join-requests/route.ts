@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse, forbiddenResponse } from '@/lib/api-utils'
-import { isGroupManagerRole } from '@/lib/groups/viewerMembership'
+import { canApproveGroupJoinRequests } from '@/lib/groups/roles'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -32,8 +32,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .maybeSingle()
 
     if (actorError) return errorResponse(actorError.message, 400)
-    if (!actorMembership || !isGroupManagerRole(actorMembership.role)) {
-      return forbiddenResponse('Only group admins can view join requests')
+    if (!actorMembership || !canApproveGroupJoinRequests(actorMembership.role)) {
+      return forbiddenResponse('Only co-admins and admins can view join requests')
     }
 
     const { searchParams } = new URL(request.url)

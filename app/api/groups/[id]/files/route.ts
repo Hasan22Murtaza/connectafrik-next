@@ -32,6 +32,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .select('id, title, created_at, author_id, media_urls')
       .eq('group_id', groupId)
       .eq('is_deleted', false)
+      .eq('is_hidden', false)
+      .eq('moderation_status', 'approved')
       .order('created_at', { ascending: false })
 
     if (postsError) {

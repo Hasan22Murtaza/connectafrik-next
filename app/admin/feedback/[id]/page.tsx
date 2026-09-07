@@ -27,6 +27,7 @@ import {
   updateAdminFeedback,
 } from '@/features/feedback/services/feedbackService'
 import type { FeedbackStatus, FeedbackType, FeedbackWithUser } from '@/lib/feedback/types'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 
 function DetailRow({
   label,
@@ -95,6 +96,7 @@ export default function AdminFeedbackDetailPage() {
   const [adminResponse, setAdminResponse] = useState('')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const { confirm, dialog } = useConfirmDialog()
 
   const loadFeedback = useCallback(async () => {
     if (!feedbackId) return
@@ -161,7 +163,12 @@ export default function AdminFeedbackDetailPage() {
 
   const handleDelete = async () => {
     if (!feedbackId) return
-    if (!window.confirm('Delete this feedback permanently? This cannot be undone.')) return
+    const confirmed = await confirm({
+      title: 'Delete feedback',
+      message: 'Delete this feedback permanently? This cannot be undone.',
+      confirmLabel: 'Delete',
+    })
+    if (!confirmed) return
     setDeleting(true)
     try {
       await deleteAdminFeedback(feedbackId)
@@ -416,6 +423,7 @@ export default function AdminFeedbackDetailPage() {
           </div>
         </AdminMotion>
       </div>
+      {dialog}
     </div>
   )
 }

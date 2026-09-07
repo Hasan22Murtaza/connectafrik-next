@@ -115,6 +115,7 @@ const NotificationsPage: React.FC = () => {
       group_join_request: 'Group Join Request',
       group_join_approved: 'Join Request Approved',
       group_join_rejected: 'Join Request Declined',
+      group_invite: 'Group Invitation',
       chat_message: 'New Message',
       birthday: 'Birthday Reminder',
       system: 'System Notification',
@@ -150,6 +151,7 @@ const NotificationsPage: React.FC = () => {
       group_join_request: `${actorName} requested to join ${payload?.group_name || 'your group'}.`,
       group_join_approved: `Your request to join ${payload?.group_name || 'the group'} was approved.`,
       group_join_rejected: `Your request to join ${payload?.group_name || 'the group'} was declined.`,
+      group_invite: `${actorName} invited you to join ${payload?.group_name || 'a group'}.`,
       chat_message: `${actorName} sent you a message`,
       birthday: `It's ${actorName}'s birthday today!`,
       system: payload?.message || 'You have a new notification',
@@ -299,7 +301,8 @@ const NotificationsPage: React.FC = () => {
         }
 
         case 'group_join_approved':
-        case 'group_join_rejected': {
+        case 'group_join_rejected':
+        case 'group_invite': {
           const groupId = data.group_id
           router.push(fallbackUrl || (groupId ? `/groups/${groupId}` : '/groups'))
           break

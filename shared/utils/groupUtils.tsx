@@ -9,8 +9,10 @@ import {
   Building2,
   Crown,
   Shield,
+  ShieldCheck,
   UserCheck,
 } from '@/shared/icons'
+import { normalizeGroupRole } from '@/lib/groups/roles'
 
 export interface CategoryInfo {
   icon: React.ReactNode
@@ -76,10 +78,12 @@ export const getCategoryInfoLarge = (category: string): CategoryInfo => {
 
 // Get role icon for group memberships
 export const getRoleIcon = (role?: string): React.ReactNode => {
-  switch (role) {
+  switch (normalizeGroupRole(role)) {
     case 'admin':
       return <Crown className="w-4 h-4 text-yellow-500" />
-    case 'moderator':
+    case 'co_admin':
+      return <ShieldCheck className="w-4 h-4 text-orange-500" />
+    case 'manager':
       return <Shield className="w-4 h-4 text-blue-500" />
     case 'member':
       return <UserCheck className="w-4 h-4 text-green-500" />

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, getAccessTokenFromRequest, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse, forbiddenResponse } from '@/lib/api-utils'
-import { isGroupManagerRole } from '@/lib/groups/viewerMembership'
+import { canApproveGroupJoinRequests } from '@/lib/groups/roles'
 import {
   activateMembershipChat,
   notifyJoinRequestDecision,
@@ -36,8 +36,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .maybeSingle()
 
     if (actorError) return errorResponse(actorError.message, 400)
-    if (!actorMembership || !isGroupManagerRole(actorMembership.role)) {
-      return forbiddenResponse('Only group admins can respond to join requests')
+    if (!actorMembership || !canApproveGroupJoinRequests(actorMembership.role)) {
+      return forbiddenResponse('Only co-admins and admins can respond to join requests')
     }
 
     const { data: joinRequest, error: requestError } = await serviceClient

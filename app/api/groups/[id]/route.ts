@@ -3,16 +3,13 @@ import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { lookupGroupChatThreadId } from '@/lib/chat/chatThreadLookup'
-import {
-  countPendingJoinRequests,
-  isGroupManagerRole,
-  pickViewerMembership,
-} from '@/lib/groups/viewerMembership'
+import { canApproveGroupJoinRequests, canEditGroupSettings, canViewGroupComplaints } from '@/lib/groups/roles'
+import { countPendingJoinRequests, pickViewerMembership } from '@/lib/groups/viewerMembership'
 
 const GROUP_SELECT = `
   *,
   creator:profiles!creator_id(id, username, full_name, avatar_url),
-  memberships:group_memberships(id, user_id, role, status, joined_at, updated_at)
+  memberships:group_memberships(id, user_id, role, status, joined_at, updated_at, posting_restricted)
 `
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -62,7 +59,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (userId) {
       const { data: ownRow } = await supabase
         .from('group_memberships')
-        .select('id, user_id, role, status, joined_at, updated_at')
+        .select('id, user_id, role, status, joined_at, updated_at, posting_restricted')
         .eq('group_id', groupId)
         .eq('user_id', userId)
         .maybeSingle()
@@ -74,9 +71,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
       userId
     )
     const canManageJoinRequests =
-      viewerMembership?.status === 'active' && isGroupManagerRole(viewerMembership.role)
+      viewerMembership?.status === 'active' && canApproveGroupJoinRequests(viewerMembership.role)
 
     let pendingJoinCount: number | undefined
+    let pendingReportCount: number | undefined
     if (canManageJoinRequests) {
       try {
         const serviceClient = createServiceClient()
@@ -91,12 +89,27 @@ export async function GET(request: NextRequest, context: RouteContext) {
       }
     }
 
+    if (viewerMembership?.status === 'active' && canViewGroupComplaints(viewerMembership.role)) {
+      try {
+        const serviceClient = createServiceClient()
+        const { count } = await serviceClient
+          .from('group_post_reports')
+          .select('id', { count: 'exact', head: true })
+          .eq('group_id', groupId)
+          .eq('status', 'pending')
+        pendingReportCount = count ?? 0
+      } catch {
+        pendingReportCount = 0
+      }
+    }
+
     const threadId = (await lookupGroupChatThreadId(groupId)) ?? null
     const result = {
       ...data,
       member_count: actualMemberCount,
       membership: viewerMembership,
       pending_join_count: pendingJoinCount,
+      pending_report_count: pendingReportCount,
       memberships: undefined,
       threadId,
     }
@@ -126,6 +139,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       'rules',
       'avatar_url',
       'banner_url',
+      'require_post_approval',
     ]
     const updates: Record<string, unknown> = {}
     for (const key of allowedFields) {
@@ -138,11 +152,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('No valid fields to update', 400)
     }
 
+    const { data: actorMembership } = await supabase
+      .from('group_memberships')
+      .select('role, status')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
+    const { data: existingGroup } = await supabase
+      .from('groups')
+      .select('id, creator_id')
+      .eq('id', groupId)
+      .maybeSingle()
+
+    if (!existingGroup) {
+      return errorResponse('Group not found', 404)
+    }
+
+    const isCreator = existingGroup.creator_id === user.id
+    if (!isCreator && !canEditGroupSettings(actorMembership?.role)) {
+      return errorResponse('Only group admins can update this group', 403)
+    }
+
     const { data: group, error } = await supabase
       .from('groups')
       .update(updates)
       .eq('id', groupId)
-      .eq('creator_id', user.id)
       .select(`*, creator:profiles!creator_id(id, username, full_name, avatar_url)`)
       .single()
 
@@ -151,7 +187,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     if (!group) {
-      return errorResponse('Group not found or you are not the creator', 404)
+      return errorResponse('Group not found', 404)
     }
 
     const threadId = (await lookupGroupChatThreadId(groupId)) ?? null

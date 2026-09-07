@@ -142,18 +142,22 @@ export const useGroups = () => {
           alreadyMember?: boolean
           alreadyPending?: boolean
           pending?: boolean
+          acceptedInvite?: boolean
         }
       }>(`/api/groups/${groupId}/join`)
 
-      const { membership, member_count, alreadyMember, alreadyPending, pending } = res.data
+      const { membership, member_count, alreadyMember, alreadyPending, pending, acceptedInvite } = res.data
+
       const isPending = Boolean(pending || alreadyPending || membership?.status === 'pending')
 
       if (alreadyMember) {
         toast.success('You are already a member of this group')
-        return membership
+        return { membership, member_count, alreadyMember, alreadyPending, pending: isPending }
       }
 
-      if (alreadyPending) {
+      if (acceptedInvite) {
+        toast.success('Invitation accepted')
+      } else if (alreadyPending) {
         toast.success('Your request is waiting for approval')
       } else if (isPending) {
         toast.success('Join request sent. Waiting for approval.')
@@ -191,7 +195,7 @@ export const useGroups = () => {
         )
       )
 
-      return membership
+      return { membership, member_count, alreadyMember, alreadyPending, pending: isPending }
     } catch (err: any) {
       console.error('Join group error:', err)
       if (err.message?.includes('unique constraint') || err.message?.toLowerCase().includes('already')) {
@@ -210,11 +214,18 @@ export const useGroups = () => {
       const data = await apiClient.post<{
         thread_id: string | null
         receives_group_messages?: boolean
+        member_count?: number
       }>(`/api/groups/${groupId}/leave`)
 
       setGroups(prev =>
         prev.map(group =>
-          group.id === groupId ? { ...group, member_count: Math.max(0, (group.member_count ?? 0) - 1), membership: undefined } : group
+          group.id === groupId
+            ? {
+                ...group,
+                member_count: data.member_count ?? Math.max(0, (group.member_count ?? 0) - 1),
+                membership: undefined,
+              }
+            : group
         )
       )
 
@@ -223,6 +234,7 @@ export const useGroups = () => {
       }
 
       toast.success('Left group successfully!')
+      return data
     } catch (err: any) {
       toast.error(err.message || 'Failed to leave group')
       throw err

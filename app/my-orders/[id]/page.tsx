@@ -23,6 +23,7 @@ import {
   getSellerTransitionLabel,
 } from "@/lib/marketplace/orderStatus";
 import { OrderDetailPageShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import {
   ArrowLeft,
   CheckCircle,
@@ -218,6 +219,7 @@ const OrderDetailPage: React.FC = () => {
   const [showOpenDispute, setShowOpenDispute] = useState(false);
   const [refunds, setRefunds] = useState<RefundTransaction[]>([]);
   const [dispute, setDispute] = useState<Dispute | null>(null);
+  const { confirm, dialog } = useConfirmDialog();
 
   useEffect(() => {
     if (user && orderId) {
@@ -332,9 +334,12 @@ const OrderDetailPage: React.FC = () => {
     if (!order || !user || !isSeller) return;
 
     if (newStatus === "cancelled") {
-      const confirmed = window.confirm(
-        "Cancel this order? The buyer will receive a full refund if payment was completed."
-      );
+      const confirmed = await confirm({
+        title: "Cancel order",
+        message:
+          "Cancel this order? The buyer will receive a full refund if payment was completed.",
+        confirmLabel: "Cancel order",
+      });
       if (!confirmed) return;
     }
 
@@ -1132,6 +1137,7 @@ const OrderDetailPage: React.FC = () => {
           }}
         />
       )}
+      {dialog}
     </div>
   );
 };

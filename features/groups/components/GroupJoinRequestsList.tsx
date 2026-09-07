@@ -6,7 +6,7 @@ import { useGroupJoinRequests } from '@/shared/hooks/useGroupJoinRequests'
 interface GroupJoinRequestsListProps {
   groupId: string
   enabled?: boolean
-  onChanged?: () => void
+  onChanged?: (info: { member_count?: number; approved: boolean }) => void
 }
 
 const GroupJoinRequestsList: React.FC<GroupJoinRequestsListProps> = ({
@@ -21,8 +21,8 @@ const GroupJoinRequestsList: React.FC<GroupJoinRequestsListProps> = ({
 
   const handleApprove = async (requestId: string) => {
     try {
-      await approveRequest(requestId)
-      onChanged?.()
+      const result = await approveRequest(requestId)
+      onChanged?.({ member_count: result?.member_count, approved: true })
     } catch {
       // toast handled in hook
     }
@@ -30,8 +30,8 @@ const GroupJoinRequestsList: React.FC<GroupJoinRequestsListProps> = ({
 
   const handleReject = async (requestId: string) => {
     try {
-      await rejectRequest(requestId)
-      onChanged?.()
+      const result = await rejectRequest(requestId)
+      onChanged?.({ member_count: result?.member_count, approved: false })
     } catch {
       // toast handled in hook
     }

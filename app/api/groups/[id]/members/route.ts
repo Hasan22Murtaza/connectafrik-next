@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
+import { normalizeGroupRole } from '@/lib/groups/roles'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const mergedMembers = members.map((member: any) => ({
       ...member,
+      role: normalizeGroupRole(member.role),
       user: profileMap.get(member.user_id) || {
         id: member.user_id,
         username: 'Unknown',

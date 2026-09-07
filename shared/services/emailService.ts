@@ -14,6 +14,10 @@ import {
 } from '@/lib/emails/postCreatedEmail'
 import { getWelcomeEmailHtml, getWelcomeEmailText } from '@/lib/emails/welcomeEmail'
 import {
+  getGroupInviteEmailHtml,
+  getGroupInviteEmailText,
+} from '@/lib/emails/groupInviteEmail'
+import {
   getSignupConfirmationEmailHtml,
   getSignupConfirmationEmailText,
 } from '@/lib/emails/signupConfirmationEmail'
@@ -248,6 +252,32 @@ export const sendSignupConfirmationEmail = async (
     htmlBody,
     textBody,
   })
+  return r.ok
+}
+
+/**
+ * Send a group invitation email to a user.
+ */
+export const sendGroupInviteEmail = async (
+  to: string,
+  params: {
+    groupName: string
+    inviterName: string
+    groupImageUrl?: string | null
+    invitationMessage?: string | null
+    groupId: string
+  }
+): Promise<boolean> => {
+  const subject = `${params.inviterName} invited you to ${params.groupName}`
+  const innerHtml = getGroupInviteEmailHtml(params)
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
+    preheader: `Join ${params.groupName} on ConnectAfrik.`,
+    headerTitle: "You're invited!",
+    headerSubtitle: params.groupName,
+  })
+  const textBody = getGroupInviteEmailText(params)
+
+  const r = await sendEmail({ to, subject, htmlBody, textBody })
   return r.ok
 }
 

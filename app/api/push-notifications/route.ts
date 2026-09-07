@@ -335,6 +335,7 @@ export async function POST(request: NextRequest) {
               'group_join_request',
               'group_join_approved',
               'group_join_rejected',
+              'group_invite',
               'chat_message',
               'call',
               'birthday',

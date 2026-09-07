@@ -70,6 +70,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       membership_status: 'left' as const,
       left_group_chat: Boolean(threadId),
       thread_id: threadId,
+      member_count: memberCount,
       /** Caller / client can rely on this to stop subscribing to group chat for this thread */
       receives_group_messages: false,
     })

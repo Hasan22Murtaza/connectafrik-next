@@ -13,6 +13,7 @@ import { formatProductPrice } from "@/features/marketplace/utils/productFormatti
 import { DRAFT_TAG, hasTag } from "@/features/marketplace/utils/listingTags";
 import { apiClient } from "@/lib/api-client";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Product } from "@/shared/types";
 import { format } from "date-fns";
 import {
@@ -92,6 +93,7 @@ const SellerDashboardPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<ListingSort>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [markingSoldId, setMarkingSoldId] = useState<string | null>(null);
+  const { confirm, dialog } = useConfirmDialog();
   const [sortExpanded, setSortExpanded] = useState(true);
   const [statusExpanded, setStatusExpanded] = useState(true);
 
@@ -297,9 +299,12 @@ const SellerDashboardPage: React.FC = () => {
   };
 
   const handleDeleteListing = async (productId: string) => {
-    if (!window.confirm("Delete this listing? It will be removed from TradeHub.")) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Delete listing",
+      message: "Delete this listing? It will be removed from TradeHub.",
+      confirmLabel: "Delete",
+    });
+    if (!confirmed) return;
 
     try {
       await apiClient.delete(`/api/marketplace/${productId}`);
@@ -692,7 +697,7 @@ const SellerDashboardPage: React.FC = () => {
         </main>
 
       </div>
-
+      {dialog}
     </div>
   );
 };

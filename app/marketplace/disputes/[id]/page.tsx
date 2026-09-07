@@ -21,6 +21,7 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 
 const ACTIVE_STATUSES = new Set(["open", "awaiting_seller", "under_review"]);
 
@@ -36,6 +37,7 @@ const DisputeDetailPage: React.FC = () => {
   const [sellerResponse, setSellerResponse] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { confirm, dialog } = useConfirmDialog();
 
   const load = useCallback(async () => {
     if (!disputeId) return;
@@ -106,7 +108,12 @@ const DisputeDetailPage: React.FC = () => {
   };
 
   const handleWithdraw = async () => {
-    if (!window.confirm("Withdraw this dispute? Seller payout hold will be released.")) return;
+    const confirmed = await confirm({
+      title: "Withdraw dispute",
+      message: "Withdraw this dispute? Seller payout hold will be released.",
+      confirmLabel: "Withdraw",
+    });
+    if (!confirmed) return;
     setSubmitting(true);
     try {
       await withdrawDispute(disputeId);
@@ -335,6 +342,7 @@ const DisputeDetailPage: React.FC = () => {
           </button>
         )}
       </div>
+      {dialog}
     </div>
   );
 };

@@ -1,5 +1,26 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import type { NotificationType } from '@/shared/types/notifications'
+import { isCanonicalNotificationType } from '@/shared/types/notifications'
+
+function persistableType(type: NotificationType): NotificationType {
+  if (isCanonicalNotificationType(type)) return type
+  if (type === 'friend_request_confirmed') return 'friend_request_accepted'
+  if (type === 'like') return 'post_like'
+  if (type === 'comment') return 'post_comment'
+  if (type === 'comment_like') return 'post_comment_like'
+  if (
+    type === 'initiated' ||
+    type === 'ringing' ||
+    type === 'active' ||
+    type === 'ended' ||
+    type === 'declined' ||
+    type === 'missed' ||
+    type === 'failed'
+  ) {
+    return 'call'
+  }
+  return type
+}
 
 export async function createNotification(input: {
   user_id: string
@@ -10,20 +31,21 @@ export async function createNotification(input: {
   reactivate?: boolean
 }): Promise<string | null> {
   const serviceSupabase = createServiceClient()
+  const type = persistableType(input.type)
   const data: Record<string, unknown> = {
     ...(input.data || {}),
-    type: input.type,
+    type: input.data?.type || type,
   }
 
   const friendRequestIdValue = data['friend_request_id']
   const friendRequestId =
-    input.type === 'friend_request' && typeof friendRequestIdValue === 'string'
+    type === 'friend_request' && typeof friendRequestIdValue === 'string'
       ? friendRequestIdValue.trim()
       : ''
 
   const groupJoinRequestIdValue = data['group_join_request_id']
   const groupJoinRequestId =
-    input.type === 'group_join_request' && typeof groupJoinRequestIdValue === 'string'
+    type === 'group_join_request' && typeof groupJoinRequestIdValue === 'string'
       ? groupJoinRequestIdValue.trim()
       : ''
 
@@ -40,7 +62,7 @@ export async function createNotification(input: {
       .select('id')
       .eq('user_id', input.user_id)
       .filter(`data->>${dedupeColumn}`, 'eq', dedupeValue)
-      .filter('data->>type', 'eq', input.type)
+      .filter('data->>type', 'eq', type)
       .limit(1)
       .maybeSingle()
 
@@ -64,7 +86,7 @@ export async function createNotification(input: {
 
   const row = {
     user_id: input.user_id,
-    type: input.type,
+    type,
     title: input.title,
     message: input.message,
     data,
@@ -81,21 +103,21 @@ export async function createNotification(input: {
     return inserted.id
   }
 
-  console.error('Notification insert failed (same path as posts):', error)
-
-  if (error && input.type !== 'system') {
+  // `system` is not allowed by notifications_type_check. `group_invite` may not be yet.
+  if (error && type === 'group_invite') {
     const { data: fallback, error: fallbackError } = await serviceSupabase
       .from('notifications')
-      .insert({ ...row, type: 'system' })
+      .insert({ ...row, type: 'group_join_approved', data: { ...data, type: 'group_invite' } })
       .select('id')
       .single()
 
-    if (fallbackError) {
-      console.error('Notification insert fallback failed:', fallbackError)
-      return null
+    if (!fallbackError && fallback?.id) {
+      return fallback.id
     }
-    return fallback?.id ?? null
+    console.error('Notification insert fallback failed:', fallbackError)
+    return null
   }
 
+  console.error('Notification insert failed (same path as posts):', error)
   return inserted?.id ?? null
 }

@@ -96,6 +96,37 @@ export async function POST(request: NextRequest, context: RouteContext) {
       })
     }
 
+    if (existingMembership?.status === 'invited') {
+      const now = new Date().toISOString()
+      const { data: updated, error: updateErr } = await serviceClient
+        .from('group_memberships')
+        .update({
+          status: 'active',
+          role: existingMembership.role || 'member',
+          joined_at: now,
+          updated_at: now,
+        })
+        .eq('id', existingMembership.id)
+        .select()
+        .single()
+      if (updateErr) return errorResponse(updateErr.message, 400)
+
+      const memberCount = await syncGroupMemberCount(serviceClient, groupId)
+      const threadId = await activateMembershipChat(serviceClient, groupId, user.id)
+      return jsonResponse({
+        data: {
+          membership: updated,
+          member_count: memberCount,
+          alreadyMember: false,
+          alreadyPending: false,
+          pending: false,
+          acceptedInvite: true,
+          threadId,
+          group_chat_notified: Boolean(threadId),
+        },
+      })
+    }
+
     if (existingMembership?.status === 'active') {
       const { data: m } = await serviceClient
         .from('group_memberships')

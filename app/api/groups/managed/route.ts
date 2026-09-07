@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       .eq('is_active', true)
       .eq('memberships.user_id', user.id)
       .eq('memberships.status', 'active')
-      .in('memberships.role', ['admin', 'moderator'])
+      .in('memberships.role', ['admin', 'co_admin', 'manager'])
       .order('created_at', { ascending: false })
       .range(from, to)
 

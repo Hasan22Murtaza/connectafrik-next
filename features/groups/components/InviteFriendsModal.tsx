@@ -14,12 +14,23 @@ interface Friend {
   avatar_url?: string
 }
 
+export type InviteSentResult = {
+  added_count: number
+  already_member_count: number
+  added_user_ids: string[]
+  already_member_user_ids: string[]
+  already_invited_user_ids?: string[]
+  approved_count?: number
+  member_count?: number
+  emails_sent?: number
+}
+
 interface InviteFriendsModalProps {
   isOpen: boolean
   onClose: () => void
   groupId: string
   groupName: string
-  onInviteSent?: () => void
+  onInviteSent?: (result: InviteSentResult) => void
 }
 
 const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
@@ -34,13 +45,18 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
   const [filteredFriends, setFilteredFriends] = useState<Friend[]>([])
   const [selectedFriends, setSelectedFriends] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
+  const [inviteMessage, setInviteMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [existingMembers, setExistingMembers] = useState<Set<string>>(new Set())
+  const [invitedUserIds, setInvitedUserIds] = useState<Set<string>>(new Set())
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('')
 
   useEffect(() => {
     if (isOpen && user) {
+      setSelectedFriends(new Set())
+      setSearchTerm('')
+      setInviteMessage('')
       fetchFriends()
       fetchExistingMembers()
       generateQRCode()
@@ -94,21 +110,49 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
       }
 
       setExistingMembers(memberIds)
+
+      try {
+        const invitedIds = new Set<string>()
+        let invitePage = 0
+        let inviteHasMore = true
+        while (inviteHasMore) {
+          const inviteRes = await apiClient.get<{ data: Array<{ user_id: string }>; hasMore?: boolean }>(
+            `/api/groups/${groupId}/invite`,
+            { page: invitePage, limit: 100 }
+          )
+          const inviteRows = inviteRes.data || []
+          inviteRows.forEach((row) => {
+            if (row.user_id) invitedIds.add(row.user_id)
+          })
+          inviteHasMore = Boolean(inviteRes.hasMore)
+          invitePage += 1
+          if (inviteRows.length === 0) break
+        }
+        setInvitedUserIds(invitedIds)
+      } catch (inviteError) {
+        console.error('Error fetching pending invitations:', inviteError)
+      }
     } catch (error) {
       console.error('Error fetching existing members:', error)
     }
   }
 
   const generateQRCode = () => {
-    // Generate QR code URL using a QR code service
     const inviteUrl = `${window.location.origin}/groups/${groupId}?invite=true`
     const qrCodeServiceUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(inviteUrl)}`
     setQrCodeUrl(qrCodeServiceUrl)
   }
 
+  const isUnavailable = (friendId: string) =>
+    existingMembers.has(friendId) || invitedUserIds.has(friendId)
+
   const toggleFriendSelection = (friendId: string) => {
     if (existingMembers.has(friendId)) {
       toast.error('This friend is already a member of the group')
+      return
+    }
+    if (invitedUserIds.has(friendId)) {
+      toast.error('This friend has already been invited')
       return
     }
 
@@ -134,23 +178,44 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
       return
     }
 
+    const targetUserIds = Array.from(selectedFriends).filter((id) => !isUnavailable(id))
+    if (targetUserIds.length === 0) {
+      toast.error('Selected friends are already members or have already been invited')
+      setSelectedFriends(new Set())
+      return
+    }
+
     setSending(true)
     try {
-      const targetUserIds = Array.from(selectedFriends)
       const response = await apiClient.post<{
-        data?: {
-          added_count?: number
-          already_member_count?: number
-          added_user_ids?: string[]
-        }
-      }>(`/api/groups/${groupId}/invite`, { user_ids: targetUserIds })
+        added_count?: number
+        already_member_count?: number
+        added_user_ids?: string[]
+        already_member_user_ids?: string[]
+        already_invited_user_ids?: string[]
+        approved_count?: number
+        member_count?: number
+        emails_sent?: number
+      }>(`/api/groups/${groupId}/invite`, {
+        user_ids: targetUserIds,
+        message: inviteMessage.trim() || undefined,
+      })
 
-      const addedCount = response?.data?.added_count ?? 0
-      const alreadyCount = response?.data?.already_member_count ?? 0
-      const addedUserIds = response?.data?.added_user_ids ?? []
+      const addedCount = response?.added_count ?? 0
+      const alreadyCount = response?.already_member_count ?? 0
+      const alreadyInvitedCount = response?.already_invited_user_ids?.length ?? 0
+      const approvedCount = response?.approved_count ?? 0
+      const addedUserIds = response?.added_user_ids ?? []
+      const alreadyMemberIds = response?.already_member_user_ids ?? []
+
+      setExistingMembers((prev) => {
+        const next = new Set(prev)
+        alreadyMemberIds.forEach((id) => next.add(id))
+        return next
+      })
 
       if (addedUserIds.length > 0) {
-        setExistingMembers((prev) => {
+        setInvitedUserIds((prev) => {
           const next = new Set(prev)
           addedUserIds.forEach((id) => next.add(id))
           return next
@@ -158,18 +223,34 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
       }
 
       if (addedCount > 0 && alreadyCount > 0) {
-        toast.success(`Added ${addedCount} friend${addedCount > 1 ? 's' : ''}. ${alreadyCount} already in group.`)
+        toast.success(`Invitation sent to ${addedCount} friend${addedCount > 1 ? 's' : ''}. ${alreadyCount} already in the group.`)
       } else if (addedCount > 0) {
-        toast.success(`Added ${addedCount} friend${addedCount > 1 ? 's' : ''} to the group!`)
+        toast.success(`Invitation sent to ${addedCount} friend${addedCount > 1 ? 's' : ''}`)
+      } else if (alreadyInvitedCount > 0) {
+        toast.error('Selected friends have already been invited.')
       } else {
-        toast.success('Selected friends are already in this group.')
+        toast.error('Selected friends are already in this group.')
       }
+
       setSelectedFriends(new Set())
-      onInviteSent?.()
-      onClose()
-    } catch (error: any) {
+      onInviteSent?.({
+        added_count: addedCount,
+        already_member_count: alreadyCount,
+        added_user_ids: addedUserIds,
+        already_member_user_ids: alreadyMemberIds,
+        already_invited_user_ids: response?.already_invited_user_ids,
+        approved_count: approvedCount,
+        member_count: response?.member_count,
+        emails_sent: response?.emails_sent,
+      })
+
+      if (addedCount > 0 || approvedCount > 0) {
+        onClose()
+      }
+    } catch (error: unknown) {
       console.error('Error sending invites:', error)
-      toast.error(error.message || 'Failed to send invitations')
+      const message = error instanceof Error ? error.message : 'Failed to send invitations'
+      toast.error(message)
     } finally {
       setSending(false)
     }
@@ -188,25 +269,26 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
 
   if (!isOpen) return null
 
-  const availableFriends = filteredFriends.filter(f => !existingMembers.has(f.id))
+  const availableFriends = filteredFriends.filter((f) => !isUnavailable(f.id))
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Invite friends to this group</h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Invite friends to this group</h2>
+            <p className="text-sm text-gray-500 mt-0.5">{groupName}</p>
+          </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            disabled={sending}
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* Search */}
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -223,7 +305,21 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
             </div>
           </div>
 
-          {/* Friends List */}
+          <div className="mb-4">
+            <label htmlFor="invite-message" className="block text-sm font-medium text-gray-700 mb-2">
+              Invitation message (optional)
+            </label>
+            <textarea
+              id="invite-message"
+              value={inviteMessage}
+              onChange={(e) => setInviteMessage(e.target.value.slice(0, 500))}
+              rows={3}
+              placeholder={`Write a short note to include in the invitation email`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm resize-none"
+            />
+            <p className="text-xs text-gray-400 mt-1 text-right">{inviteMessage.length}/500</p>
+          </div>
+
           <div className="mb-6">
             <h3 className="text-sm font-medium text-gray-700 mb-3">Suggested</h3>
             {loading ? (
@@ -241,21 +337,17 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {availableFriends.map((friend) => {
                   const isSelected = selectedFriends.has(friend.id)
-                  const isMember = existingMembers.has(friend.id)
 
                   return (
                     <div
                       key={friend.id}
-                      onClick={() => !isMember && toggleFriendSelection(friend.id)}
+                      onClick={() => toggleFriendSelection(friend.id)}
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                        isMember
-                          ? 'bg-gray-50 opacity-50 cursor-not-allowed'
-                          : isSelected
+                        isSelected
                           ? 'bg-primary-50 border-2 border-primary-500'
                           : 'hover:bg-gray-50 border-2 border-transparent'
                       }`}
                     >
-                      {/* Avatar */}
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
                         {friend.avatar_url ? (
                           <img
@@ -270,28 +362,21 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
                         )}
                       </div>
 
-                      {/* Name */}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 truncate">
                           {friend.full_name || friend.username}
                         </p>
-                        {isMember && (
-                          <p className="text-xs text-gray-500">Already a member</p>
-                        )}
                       </div>
 
-                      {/* Checkbox */}
-                      {!isMember && (
-                        <div
-                          className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                            isSelected
-                              ? 'bg-primary-500 border-primary-500'
-                              : 'border-gray-300'
-                          }`}
-                        >
-                          {isSelected && <Check className="w-4 h-4 text-white" />}
-                        </div>
-                      )}
+                      <div
+                        className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                          isSelected
+                            ? 'bg-primary-500 border-primary-500'
+                            : 'border-gray-300'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-4 h-4 text-white" />}
+                      </div>
                     </div>
                   )
                 })}
@@ -299,7 +384,6 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
             )}
           </div>
 
-          {/* QR Code Section */}
           <div className="border-t border-gray-200 pt-4">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -332,7 +416,6 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
           <button
             onClick={onClose}
@@ -359,4 +442,3 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
 }
 
 export default InviteFriendsModal
-
