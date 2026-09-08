@@ -40,6 +40,31 @@ const sendNewOrderNotificationEmail = async (sellerEmail: string, orderDetails: 
   }
 }
 
+const sendPaymentStatusEmail = async (
+  buyerEmail: string,
+  status: 'successful' | 'failed' | 'pending',
+  paymentDetails: {
+    buyerName: string
+    amount: number
+    currency: string
+    productTitle?: string | null
+    orderNumber?: string | null
+    orderId?: string | null
+  }
+) => {
+  try {
+    const response = await fetch('/api/email/payment-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ buyerEmail, status, paymentDetails }),
+    })
+    return response.ok
+  } catch (error) {
+    console.error('Error sending payment status email:', error)
+    return false
+  }
+}
+
 interface StripeCheckoutProps {
   product: Product
   onCancel: () => void
@@ -94,6 +119,16 @@ const CheckoutForm: React.FC<{
       })
 
       if (stripeError) {
+        const buyerEmail = user?.user_metadata?.email || user?.email
+        const buyerName = user?.user_metadata?.full_name || 'there'
+        if (buyerEmail) {
+          sendPaymentStatusEmail(buyerEmail, 'failed', {
+            buyerName,
+            amount: totalAmount,
+            currency: product.currency || 'USD',
+            productTitle: product.title,
+          }).catch(() => {})
+        }
         toast.error(stripeError.message || 'Payment failed')
         setIsProcessing(false)
         return
@@ -143,6 +178,30 @@ const CheckoutForm: React.FC<{
 
         toast.success('Payment successful! Order created.')
         onSuccess()
+      } else if (
+        paymentIntent?.status === 'processing' ||
+        paymentIntent?.status === 'requires_action' ||
+        paymentIntent?.status === 'requires_payment_method'
+      ) {
+        const buyerEmail = user?.user_metadata?.email || user?.email
+        const buyerName = user?.user_metadata?.full_name || 'there'
+        if (buyerEmail) {
+          sendPaymentStatusEmail(
+            buyerEmail,
+            paymentIntent.status === 'requires_payment_method' ? 'failed' : 'pending',
+            {
+              buyerName,
+              amount: totalAmount,
+              currency: product.currency || 'USD',
+              productTitle: product.title,
+            }
+          ).catch(() => {})
+        }
+        toast.error(
+          paymentIntent.status === 'requires_payment_method'
+            ? 'Payment failed'
+            : 'Payment is still pending. We’ll email you when it completes.'
+        )
       } else {
         toast.error('Payment incomplete')
       }

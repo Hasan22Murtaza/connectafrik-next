@@ -3,6 +3,8 @@ import { getAuthenticatedUser, getAccessTokenFromRequest, createServiceClient } 
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
+import { sendFriendRequestAcceptedEmail } from '@/shared/services/emailService'
+import { lookupUserContact } from '@/lib/emails/recipients'
 
 export async function GET(
   request: NextRequest,
@@ -150,6 +152,22 @@ export async function PATCH(
         )
       } catch (error) {
         console.error('Failed to send friend request response push:', error)
+      }
+
+      if (isAccepted) {
+        try {
+          const serviceSupabase = createServiceClient()
+          const recipient = await lookupUserContact(serviceSupabase, row.sender_id)
+          if (recipient) {
+            await sendFriendRequestAcceptedEmail(recipient.email, {
+              recipientName: recipient.name,
+              actorName: receiverName,
+              actorId: user.id,
+            })
+          }
+        } catch (error) {
+          console.error('Failed to send friend request accepted email:', error)
+        }
       }
     }
 

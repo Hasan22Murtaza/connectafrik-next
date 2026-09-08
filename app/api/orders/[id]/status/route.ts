@@ -8,6 +8,10 @@ import {
   ORDER_STATUS_TRANSITIONS,
   type OrderStatus,
 } from '@/lib/marketplace/orderStatus'
+import {
+  notifyBuyerOfOrderStatusChange,
+  ORDER_STATUS_EMAIL_SELECT,
+} from '@/lib/marketplace/notifyBuyerOrderStatus'
 
 export async function PATCH(
   request: NextRequest,
@@ -25,7 +29,7 @@ export async function PATCH(
 
     const { data: order } = await supabase
       .from('orders')
-      .select('seller_id, buyer_id, status, payment_status, payment_method')
+      .select(ORDER_STATUS_EMAIL_SELECT)
       .eq('id', id)
       .single()
 
@@ -56,6 +60,8 @@ export async function PATCH(
         'seller'
       )
 
+      notifyBuyerOfOrderStatusChange(order, 'cancelled', id).catch(() => {})
+
       return jsonResponse({
         success: true,
         status: 'cancelled',
@@ -76,6 +82,8 @@ export async function PATCH(
       .eq('id', id)
 
     if (error) throw error
+
+    notifyBuyerOfOrderStatusChange(order, newStatus, id).catch(() => {})
 
     return jsonResponse({
       success: true,

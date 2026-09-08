@@ -8,6 +8,13 @@ import {
   getOrderConfirmationEmailText,
 } from '@/lib/emails/orderConfirmationEmail'
 import {
+  getOrderStatusChangeEmailHtml,
+  getOrderStatusChangeEmailMeta,
+  getOrderStatusChangeEmailSubject,
+  getOrderStatusChangeEmailText,
+  type OrderStatusChangeDetails,
+} from '@/lib/emails/orderStatusChangeEmail'
+import {
   getPostCreatedEmailHtml,
   getPostCreatedEmailText,
   type PostCreatedEmailVariant,
@@ -22,6 +29,77 @@ import {
   getSignupConfirmationEmailText,
 } from '@/lib/emails/signupConfirmationEmail'
 import { getOtpEmailHtml, getOtpEmailText } from '@/lib/emails/otpEmail'
+import {
+  getPasswordChangedEmailHtml,
+  getPasswordChangedEmailText,
+} from '@/lib/emails/passwordChangedEmail'
+import {
+  getNewLoginAlertEmailHtml,
+  getNewLoginAlertEmailText,
+  type NewLoginAlertDetails,
+} from '@/lib/emails/newLoginAlertEmail'
+import {
+  getFriendRequestAcceptedEmailHtml,
+  getFriendRequestAcceptedEmailText,
+  getFriendRequestReceivedEmailHtml,
+  getFriendRequestReceivedEmailText,
+  type FriendRequestEmailDetails,
+} from '@/lib/emails/friendRequestEmail'
+import {
+  getGroupJoinRequestEmailHtml,
+  getGroupJoinRequestEmailText,
+  getGroupRequestApprovedEmailHtml,
+  getGroupRequestApprovedEmailText,
+  getGroupRequestRejectedEmailHtml,
+  getGroupRequestRejectedEmailText,
+  type GroupJoinEmailDetails,
+} from '@/lib/emails/groupMembershipEmail'
+import {
+  getReportReceivedEmailHtml,
+  getReportReceivedEmailText,
+  type ReportReceivedDetails,
+} from '@/lib/emails/reportReceivedEmail'
+import {
+  getAccountReactivatedEmailHtml,
+  getAccountReactivatedEmailText,
+  getAccountSuspendedEmailHtml,
+  getAccountSuspendedEmailText,
+} from '@/lib/emails/accountModerationEmail'
+import {
+  getPaymentEmailCopy,
+  getPaymentEmailHtml,
+  getPaymentEmailText,
+  type PaymentEmailDetails,
+  type PaymentStatus,
+} from '@/lib/emails/paymentStatusEmail'
+import {
+  getOrderRefundCompletedEmailHtml,
+  getOrderRefundCompletedEmailText,
+  getOrderRefundInitiatedEmailHtml,
+  getOrderRefundInitiatedEmailText,
+  type OrderRefundEmailDetails,
+} from '@/lib/emails/orderRefundEmail'
+import {
+  getSellerPayoutEmailHtml,
+  getSellerPayoutEmailText,
+  getSellerPayoutFailedEmailHtml,
+  getSellerPayoutFailedEmailText,
+  type SellerPayoutEmailDetails,
+} from '@/lib/emails/sellerPayoutEmail'
+import {
+  getNewReviewReceivedEmailHtml,
+  getNewReviewReceivedEmailText,
+  getOrderReviewRequestEmailHtml,
+  getOrderReviewRequestEmailText,
+  type NewReviewEmailDetails,
+  type OrderReviewRequestDetails,
+} from '@/lib/emails/reviewEmail'
+import {
+  getPlatformAnnouncementEmailHtml,
+  getPlatformAnnouncementEmailText,
+  type PlatformAnnouncementDetails,
+} from '@/lib/emails/announcementEmail'
+import { getEmailCopy, getEmailMeta, t } from '@/lib/emails/content'
 import type { OtpPurpose } from '@/lib/auth/otpTypes'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 
@@ -96,11 +174,11 @@ export const sendEmail = async (options: SendEmailOptions): Promise<SendEmailRes
   }
 }
 
-/** Wrap inner HTML with brand shell (gradient banner header, card, footer) and optional inbox preheader. */
+/** Wrap inner HTML with brand shell (navy wordmark, card, footer) and optional inbox preheader. */
 export function renderBrandEmailHtml(
   subject: string,
   innerContentHtml: string,
-  options?: { preheader?: string; headerTitle?: string; headerSubtitle?: string }
+  options?: { preheader?: string; headerTitle?: string; headerSubtitle?: string; badge?: string }
 ): string {
   return EmailTemplate({
     content: innerContentHtml,
@@ -108,7 +186,20 @@ export function renderBrandEmailHtml(
     preheader: options?.preheader,
     headerTitle: options?.headerTitle,
     headerSubtitle: options?.headerSubtitle,
+    badge: options?.badge,
   })
+}
+
+async function sendBrandedEmail(
+  to: string | string[],
+  subject: string,
+  innerHtml: string,
+  textBody: string,
+  meta: { preheader: string; headerTitle: string; headerSubtitle: string; badge?: string }
+): Promise<boolean> {
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, meta)
+  const r = await sendEmail({ to, subject, htmlBody, textBody })
+  return r.ok
 }
 
 /** Email when a feed post is created: confirmation to author or alert to a friend. */
@@ -118,28 +209,12 @@ export const sendPostCreatedEmail = async (
   params: { authorName: string; postPreview: string; postId: string }
 ): Promise<boolean> => {
   const { authorName, postPreview, postId } = params
-
-  const subject =
-    variant === 'author'
-      ? 'Your post is live'
-      : `${authorName} shared a new post`
-
-  const preheader =
-    variant === 'author'
-      ? 'Tap to view your post and share it with your network.'
-      : `See what ${authorName} posted on ConnectAfrik.`
-
-  const headerTitle = variant === 'author' ? 'Your post is live!' : 'New on ConnectAfrik'
-  const headerSubtitle =
-    variant === 'author'
-      ? 'Your update is now in the feed'
-      : `${authorName} just shared something new`
-
+  const meta = getEmailMeta(`postCreated.${variant}`, { authorName })
   const innerHtml = getPostCreatedEmailHtml({ variant, authorName, postPreview, postId })
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml, { preheader, headerTitle, headerSubtitle })
+  const htmlBody = renderBrandEmailHtml(meta.subject, innerHtml, meta)
   const textBody = getPostCreatedEmailText({ variant, authorName, postPreview, postId })
 
-  const r = await sendEmail({ to, subject, htmlBody, textBody })
+  const r = await sendEmail({ to, subject: meta.subject, htmlBody, textBody })
   return r.ok
 }
 
@@ -157,18 +232,14 @@ export const sendOrderConfirmationEmail = async (
     buyerName: string
   }
 ): Promise<boolean> => {
-  const subject = `Payment received · Order ${orderDetails.orderNumber}`
+  const meta = getEmailMeta('orderConfirmation', orderDetails)
   const innerHtml = getOrderConfirmationEmailHtml(orderDetails)
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
-    preheader: `We’ve got your order ${orderDetails.orderNumber}. The seller has been notified.`,
-    headerTitle: 'Payment Received!',
-    headerSubtitle: 'Thank you for your purchase',
-  })
+  const htmlBody = renderBrandEmailHtml(meta.subject, innerHtml, meta)
   const textBody = getOrderConfirmationEmailText(orderDetails)
 
   const r = await sendEmail({
     to: buyerEmail,
-    subject,
+    subject: meta.subject,
     htmlBody,
     textBody,
   })
@@ -190,17 +261,40 @@ export const sendNewOrderNotificationEmail = async (
     sellerName: string
   }
 ): Promise<boolean> => {
-  const subject = `New sale · Order ${orderDetails.orderNumber}`
+  const meta = getEmailMeta('orderReceived', orderDetails)
   const innerHtml = getNewOrderNotificationEmailHtml(orderDetails)
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
-    preheader: `${orderDetails.buyerName} purchased ${orderDetails.productTitle}. Open your dashboard to fulfill it.`,
-    headerTitle: 'You Made a Sale!',
-    headerSubtitle: 'A new order is waiting for you',
-  })
+  const htmlBody = renderBrandEmailHtml(meta.subject, innerHtml, meta)
   const textBody = getNewOrderNotificationEmailText(orderDetails)
 
   const r = await sendEmail({
     to: sellerEmail,
+    subject: meta.subject,
+    htmlBody,
+    textBody,
+  })
+  return r.ok
+}
+
+/**
+ * Notify the buyer when their order status changes.
+ */
+export const sendOrderStatusChangeEmail = async (
+  buyerEmail: string,
+  orderDetails: OrderStatusChangeDetails
+): Promise<boolean> => {
+  const subject = getOrderStatusChangeEmailSubject(orderDetails)
+  const meta = getOrderStatusChangeEmailMeta(orderDetails)
+  const innerHtml = getOrderStatusChangeEmailHtml(orderDetails)
+  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
+    preheader: meta.preheader,
+    headerTitle: meta.headerTitle,
+    headerSubtitle: meta.headerSubtitle,
+    badge: meta.badge,
+  })
+  const textBody = getOrderStatusChangeEmailText(orderDetails)
+
+  const r = await sendEmail({
+    to: buyerEmail,
     subject,
     htmlBody,
     textBody,
@@ -216,13 +310,7 @@ export const sendOtpEmail = async (
   code: string,
   purpose: OtpPurpose
 ): Promise<boolean> => {
-  const purposeCopy: Record<OtpPurpose, string> = {
-    signup: 'Your ConnectAfrik verification code',
-    login: 'Your ConnectAfrik sign-in code',
-    recovery: 'Your ConnectAfrik password reset code',
-  }
-
-  const subject = purposeCopy[purpose]
+  const subject = t(getEmailCopy(`otp.${purpose}`).subject)
   const htmlBody = getOtpEmailHtml(code, purpose)
   const textBody = getOtpEmailText(code, purpose)
 
@@ -242,7 +330,7 @@ export const sendSignupConfirmationEmail = async (
   userEmail: string,
   confirmationUrl: string
 ): Promise<boolean> => {
-  const subject = 'Confirm your ConnectAfrik account'
+  const subject = t(getEmailCopy('verifyEmail').subject)
   const htmlBody = getSignupConfirmationEmailHtml(confirmationUrl)
   const textBody = getSignupConfirmationEmailText(confirmationUrl)
 
@@ -268,16 +356,12 @@ export const sendGroupInviteEmail = async (
     groupId: string
   }
 ): Promise<boolean> => {
-  const subject = `${params.inviterName} invited you to ${params.groupName}`
+  const meta = getEmailMeta('groupInvite', params)
   const innerHtml = getGroupInviteEmailHtml(params)
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
-    preheader: `Join ${params.groupName} on ConnectAfrik.`,
-    headerTitle: "You're invited!",
-    headerSubtitle: params.groupName,
-  })
+  const htmlBody = renderBrandEmailHtml(meta.subject, innerHtml, meta)
   const textBody = getGroupInviteEmailText(params)
 
-  const r = await sendEmail({ to, subject, htmlBody, textBody })
+  const r = await sendEmail({ to, subject: meta.subject, htmlBody, textBody })
   return r.ok
 }
 
@@ -285,20 +369,281 @@ export const sendGroupInviteEmail = async (
  * Send welcome email to new users
  */
 export const sendWelcomeEmail = async (userEmail: string, userName: string): Promise<boolean> => {
-  const subject = 'Welcome to ConnectAfrik'
+  const meta = getEmailMeta('welcome', { userName })
   const innerHtml = getWelcomeEmailHtml(userName)
-  const htmlBody = renderBrandEmailHtml(subject, innerHtml, {
-    preheader: 'Your account is ready. Open the app to finish your profile and explore the feed.',
-    headerTitle: 'Welcome to ConnectAfrik!',
-    headerSubtitle: 'Your journey with the African diaspora starts here',
-  })
+  const htmlBody = renderBrandEmailHtml(meta.subject, innerHtml, meta)
   const textBody = getWelcomeEmailText(userName)
 
   const r = await sendEmail({
     to: userEmail,
-    subject,
+    subject: meta.subject,
     htmlBody,
     textBody,
   })
   return r.ok
+}
+
+export const sendPasswordChangedEmail = async (
+  userEmail: string,
+  userName: string
+): Promise<boolean> => {
+  const meta = getEmailMeta('passwordChanged', { userName })
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getPasswordChangedEmailHtml(userName),
+    getPasswordChangedEmailText(userName),
+    meta
+  )
+}
+
+export const sendNewLoginAlertEmail = async (
+  userEmail: string,
+  details: NewLoginAlertDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('newLoginAlert', details)
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getNewLoginAlertEmailHtml(details),
+    getNewLoginAlertEmailText(details),
+    meta
+  )
+}
+
+export const sendFriendRequestReceivedEmail = async (
+  userEmail: string,
+  details: FriendRequestEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('friendRequestReceived', details)
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getFriendRequestReceivedEmailHtml(details),
+    getFriendRequestReceivedEmailText(details),
+    meta
+  )
+}
+
+export const sendFriendRequestAcceptedEmail = async (
+  userEmail: string,
+  details: FriendRequestEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('friendRequestAccepted', details)
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getFriendRequestAcceptedEmailHtml(details),
+    getFriendRequestAcceptedEmailText(details),
+    meta
+  )
+}
+
+export const sendGroupJoinRequestEmail = async (
+  userEmail: string,
+  details: GroupJoinEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('groupJoinRequest', details)
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getGroupJoinRequestEmailHtml(details),
+    getGroupJoinRequestEmailText(details),
+    meta
+  )
+}
+
+export const sendGroupRequestApprovedEmail = async (
+  userEmail: string,
+  details: GroupJoinEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('groupRequestApproved', details)
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getGroupRequestApprovedEmailHtml(details),
+    getGroupRequestApprovedEmailText(details),
+    meta
+  )
+}
+
+export const sendGroupRequestRejectedEmail = async (
+  userEmail: string,
+  details: GroupJoinEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('groupRequestRejected', details)
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getGroupRequestRejectedEmailHtml(details),
+    getGroupRequestRejectedEmailText(details),
+    meta
+  )
+}
+
+export const sendReportReceivedEmail = async (
+  adminEmail: string,
+  details: ReportReceivedDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('reportReceived', details)
+  return sendBrandedEmail(
+    adminEmail,
+    meta.subject,
+    getReportReceivedEmailHtml(details),
+    getReportReceivedEmailText(details),
+    meta
+  )
+}
+
+export const sendAccountSuspendedEmail = async (
+  userEmail: string,
+  userName: string,
+  reason?: string | null
+): Promise<boolean> => {
+  const meta = getEmailMeta('accountSuspended', { userName })
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getAccountSuspendedEmailHtml(userName, reason),
+    getAccountSuspendedEmailText(userName, reason),
+    meta
+  )
+}
+
+export const sendAccountReactivatedEmail = async (
+  userEmail: string,
+  userName: string
+): Promise<boolean> => {
+  const meta = getEmailMeta('accountReactivated', { userName })
+  return sendBrandedEmail(
+    userEmail,
+    meta.subject,
+    getAccountReactivatedEmailHtml(userName),
+    getAccountReactivatedEmailText(userName),
+    meta
+  )
+}
+
+export const sendPaymentStatusEmail = async (
+  buyerEmail: string,
+  status: PaymentStatus,
+  details: PaymentEmailDetails
+): Promise<boolean> => {
+  const copy = getPaymentEmailCopy(status, details)
+  return sendBrandedEmail(
+    buyerEmail,
+    copy.subject,
+    getPaymentEmailHtml(status, details),
+    getPaymentEmailText(status, details),
+    {
+      preheader: copy.preheader,
+      headerTitle: copy.headerTitle,
+      headerSubtitle: copy.headerSubtitle,
+      badge: copy.badge,
+    }
+  )
+}
+
+export const sendOrderRefundInitiatedEmail = async (
+  buyerEmail: string,
+  details: OrderRefundEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('refundInitiated', details)
+  return sendBrandedEmail(
+    buyerEmail,
+    meta.subject,
+    getOrderRefundInitiatedEmailHtml(details),
+    getOrderRefundInitiatedEmailText(details),
+    meta
+  )
+}
+
+export const sendOrderRefundCompletedEmail = async (
+  buyerEmail: string,
+  details: OrderRefundEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('refundCompleted', details)
+  return sendBrandedEmail(
+    buyerEmail,
+    meta.subject,
+    getOrderRefundCompletedEmailHtml(details),
+    getOrderRefundCompletedEmailText(details),
+    meta
+  )
+}
+
+export const sendSellerPayoutEmail = async (
+  sellerEmail: string,
+  details: SellerPayoutEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('sellerPayout', details)
+  return sendBrandedEmail(
+    sellerEmail,
+    meta.subject,
+    getSellerPayoutEmailHtml(details),
+    getSellerPayoutEmailText(details),
+    meta
+  )
+}
+
+export const sendSellerPayoutFailedEmail = async (
+  sellerEmail: string,
+  details: SellerPayoutEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('sellerPayoutFailed', details)
+  return sendBrandedEmail(
+    sellerEmail,
+    meta.subject,
+    getSellerPayoutFailedEmailHtml(details),
+    getSellerPayoutFailedEmailText(details),
+    meta
+  )
+}
+
+export const sendNewReviewReceivedEmail = async (
+  sellerEmail: string,
+  details: NewReviewEmailDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('newReviewReceived', details)
+  return sendBrandedEmail(
+    sellerEmail,
+    meta.subject,
+    getNewReviewReceivedEmailHtml(details),
+    getNewReviewReceivedEmailText(details),
+    meta
+  )
+}
+
+export const sendOrderReviewRequestEmail = async (
+  buyerEmail: string,
+  details: OrderReviewRequestDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('orderReviewRequest', details)
+  return sendBrandedEmail(
+    buyerEmail,
+    meta.subject,
+    getOrderReviewRequestEmailHtml(details),
+    getOrderReviewRequestEmailText(details),
+    meta
+  )
+}
+
+export const sendPlatformAnnouncementEmail = async (
+  to: string | string[],
+  details: PlatformAnnouncementDetails
+): Promise<boolean> => {
+  const meta = getEmailMeta('announcement', {
+    recipientName: details.recipientName,
+    title: details.title,
+  })
+  return sendBrandedEmail(
+    to,
+    details.title,
+    getPlatformAnnouncementEmailHtml(details),
+    getPlatformAnnouncementEmailText(details),
+    {
+      ...meta,
+      preheader: details.body.replace(/\s+/g, ' ').trim().slice(0, 140),
+    }
+  )
 }

@@ -1,7 +1,9 @@
 import { NextRequest } from 'next/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { sendNewReviewReceivedEmail } from '@/shared/services/emailService'
+import { lookupUserContact } from '@/lib/emails/recipients'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -153,7 +155,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const { data: product } = await supabase
       .from('products')
-      .select('seller_id')
+      .select('seller_id, title')
       .eq('id', productId)
       .single()
 
@@ -188,6 +190,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (error) throw error
     await syncProductRatingAggregates(supabase, productId)
+
+    try {
+      const serviceClient = createServiceClient()
+      const seller = product?.seller_id
+        ? await lookupUserContact(serviceClient, product.seller_id)
+        : null
+      if (seller) {
+        const reviewer = await lookupUserContact(serviceClient, user.id)
+        await sendNewReviewReceivedEmail(seller.email, {
+          sellerName: seller.name,
+          reviewerName: reviewer?.name || 'A customer',
+          productTitle: product?.title || 'your product',
+          productId,
+          rating,
+          reviewText,
+        })
+      }
+    } catch (emailError) {
+      console.error('Failed to send new review email:', emailError)
+    }
+
     return jsonResponse({ success: true, created: true }, 201)
   } catch (err: any) {
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {

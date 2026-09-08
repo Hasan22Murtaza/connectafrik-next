@@ -3,6 +3,8 @@ import { getAuthenticatedUser, getAccessTokenFromRequest, createServiceClient } 
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
+import { sendFriendRequestReceivedEmail } from '@/shared/services/emailService'
+import { lookupUserContact } from '@/lib/emails/recipients'
 
 async function notifyFriendRequestReceived(params: {
   senderId: string
@@ -56,6 +58,20 @@ async function notifyFriendRequestReceived(params: {
     )
   } catch (error) {
     console.error('Failed to send friend request push:', error)
+  }
+
+  try {
+    const serviceClient = createServiceClient()
+    const recipient = await lookupUserContact(serviceClient, params.receiverId)
+    if (recipient) {
+      await sendFriendRequestReceivedEmail(recipient.email, {
+        recipientName: recipient.name,
+        actorName: params.senderName,
+        actorId: params.senderId,
+      })
+    }
+  } catch (error) {
+    console.error('Failed to send friend request email:', error)
   }
 }
 

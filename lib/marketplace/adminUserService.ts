@@ -1,4 +1,5 @@
 import { SupabaseClient, User as AuthUser } from '@supabase/supabase-js'
+import { sendAccountReactivatedEmail, sendAccountSuspendedEmail } from '@/shared/services/emailService'
 
 export type AdminUserAccountType = 'buyer' | 'seller' | 'both' | 'none'
 export type AdminUserAccountStatus = 'active' | 'suspended'
@@ -640,7 +641,14 @@ export async function suspendAdminUser(
   })
 
   if (error) throw new Error(error.message)
-  return getAdminUserDetail(serviceClient, targetUserId)
+  const detail = await getAdminUserDetail(serviceClient, targetUserId)
+  if (detail.email?.includes('@')) {
+    sendAccountSuspendedEmail(
+      detail.email,
+      detail.full_name || detail.username || 'there'
+    ).catch(() => {})
+  }
+  return detail
 }
 
 export async function unsuspendAdminUser(
@@ -655,7 +663,14 @@ export async function unsuspendAdminUser(
   })
 
   if (error) throw new Error(error.message)
-  return getAdminUserDetail(serviceClient, targetUserId)
+  const detail = await getAdminUserDetail(serviceClient, targetUserId)
+  if (detail.email?.includes('@')) {
+    sendAccountReactivatedEmail(
+      detail.email,
+      detail.full_name || detail.username || 'there'
+    ).catch(() => {})
+  }
+  return detail
 }
 
 export async function deleteAdminUser(

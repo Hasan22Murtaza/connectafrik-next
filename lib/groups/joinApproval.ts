@@ -7,6 +7,13 @@ import {
 import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
 import { canApproveGroupJoinRequests } from '@/lib/groups/roles'
+import { createServiceClient } from '@/lib/supabase-server'
+import {
+  sendGroupJoinRequestEmail,
+  sendGroupRequestApprovedEmail,
+  sendGroupRequestRejectedEmail,
+} from '@/shared/services/emailService'
+import { lookupUserContact } from '@/lib/emails/recipients'
 
 export async function syncGroupMemberCount(
   serviceClient: SupabaseClient,
@@ -169,6 +176,23 @@ export async function notifyAdminsOfJoinRequest(params: {
       })
     )
   )
+
+  await Promise.all(
+    managerIds.map(async (userId) => {
+      try {
+        const recipient = await lookupUserContact(params.serviceClient, userId)
+        if (!recipient) return
+        await sendGroupJoinRequestEmail(recipient.email, {
+          recipientName: recipient.name,
+          groupName: params.groupName,
+          groupId: params.groupId,
+          actorName: params.requesterName,
+        })
+      } catch (error) {
+        console.error('Failed to send group join request email:', error)
+      }
+    })
+  )
 }
 
 export async function notifyJoinRequestDecision(params: {
@@ -211,4 +235,24 @@ export async function notifyJoinRequestDecision(params: {
     origin: params.origin,
     tag: `group-join-${params.approved ? 'approved' : 'rejected'}-${params.membershipId}`,
   })
+
+  try {
+    const serviceClient = createServiceClient()
+    const recipient = await lookupUserContact(serviceClient, params.requesterId)
+    if (recipient) {
+      const payload = {
+        recipientName: recipient.name,
+        groupName: params.groupName,
+        groupId: params.groupId,
+        actorName: params.actorName,
+      }
+      if (params.approved) {
+        await sendGroupRequestApprovedEmail(recipient.email, payload)
+      } else {
+        await sendGroupRequestRejectedEmail(recipient.email, payload)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to send group join decision email:', error)
+  }
 }

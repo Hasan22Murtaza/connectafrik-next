@@ -1,42 +1,30 @@
 import { EmailTemplate } from './EmailTemplate'
-import { EMAIL_THEME, emailButtonHtml, emailHeadlineHtml } from './emailTheme'
+import { EMAIL_THEME, emailButtonHtml, emailHeadlineHtml, emailHintHtml, emailLeadHtml } from './emailTheme'
 import { escapeHtml } from './utils'
+import { getEmailCopy, t } from './content'
 
 export function getSignupConfirmationEmailHtml(confirmationUrl: string): string {
+  const copy = getEmailCopy('verifyEmail')
   const safeUrl = escapeHtml(confirmationUrl)
 
   const content = `
-    ${emailHeadlineHtml('Confirm Your Account')}
-    <p style="font-size:16px;color:${EMAIL_THEME.text};margin:0 0 25px;font-weight:500;text-align:center;">
-      Click the button below to verify your email address and activate your account:
-    </p>
-    ${emailButtonHtml(safeUrl, 'Confirm Your Email')}
-    <div style="margin-top:20px;padding-top:20px;border-top:1px solid ${EMAIL_THEME.border};text-align:center;">
-      <p style="font-size:12px;color:${EMAIL_THEME.textMuted};margin-bottom:10px;">
-        If the button doesn't work, copy and paste this link into your browser:
-      </p>
-      <a href="${safeUrl}" style="color:${EMAIL_THEME.link};text-decoration:none;word-break:break-all;font-size:11px;">${safeUrl}</a>
-    </div>`
+    ${emailHeadlineHtml(t(copy.headline))}
+    ${emailLeadHtml(t(copy.lead))}
+    ${emailButtonHtml(safeUrl, t(copy.buttonLabel))}
+    ${emailHintHtml(t(copy.footerFallbackLink))}
+    <p style="margin:0;font-family:${EMAIL_THEME.fontSans};font-size:12px;line-height:1.5;color:${EMAIL_THEME.textMuted};word-break:break-all;text-align:center;">
+      <a href="${safeUrl}" style="color:${EMAIL_THEME.link};text-decoration:underline;">${safeUrl}</a>
+    </p>`
 
   return EmailTemplate({
     content,
-    subject: 'Confirm your ConnectAfrik account',
-    headerTitle: 'Welcome to ConnectAfrik!',
-    headerSubtitle: 'Your journey to connect with the African diaspora starts here',
-    preheader: 'Confirm your email to activate your ConnectAfrik account.',
+    subject: t(copy.subject),
+    badge: t(copy.badge),
+    preheader: t(copy.preheader),
   })
 }
 
 export function getSignupConfirmationEmailText(confirmationUrl: string): string {
-  return `Welcome to ConnectAfrik!
-
-Confirm Your Account
-
-Click the link below to verify your email address and activate your account:
-
-${confirmationUrl}
-
-ConnectAfrik — Uniting Africans and the diaspora worldwide
-
-This is an automated email. Please do not reply to this message.`
+  const copy = getEmailCopy('verifyEmail')
+  return t(copy.text, { confirmationUrl })
 }

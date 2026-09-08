@@ -1,6 +1,11 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { appendOrderLedgerEntry } from './orderLedger'
 import { processGatewayRefund, RefundGateway } from './gatewayRefund'
+import {
+  sendOrderRefundCompletedEmail,
+  sendOrderRefundInitiatedEmail,
+} from '@/shared/services/emailService'
+import { lookupUserContact } from '@/lib/emails/recipients'
 
 export type RefundInitiatorRole = 'buyer' | 'seller' | 'admin' | 'system'
 
@@ -9,6 +14,9 @@ interface RefundableOrder {
   buyer_id: string
   seller_id: string
   product_id: string | null
+  product_title?: string | null
+  order_number?: string | null
+  buyer_email?: string | null
   quantity: number | null
   total_amount: number
   currency: string
@@ -33,6 +41,47 @@ export function getRefundableAmount(order: RefundableOrder): number {
   const total = Number(order.total_amount)
   const alreadyRefunded = Number(order.refunded_amount ?? 0)
   return Math.max(0, Math.round((total - alreadyRefunded) * 100) / 100)
+}
+
+async function notifyBuyerRefund(
+  serviceClient: SupabaseClient,
+  order: RefundableOrder,
+  amount: number,
+  reason: string,
+  stage: 'initiated' | 'completed'
+): Promise<void> {
+  try {
+    let buyerEmail = typeof order.buyer_email === 'string' ? order.buyer_email : ''
+    let buyerName = 'there'
+
+    if (!buyerEmail.includes('@')) {
+      const contact = await lookupUserContact(serviceClient, order.buyer_id)
+      if (!contact) return
+      buyerEmail = contact.email
+      buyerName = contact.name
+    } else {
+      const contact = await lookupUserContact(serviceClient, order.buyer_id)
+      buyerName = contact?.name || buyerEmail.split('@')[0] || 'there'
+    }
+
+    const details = {
+      buyerName,
+      orderNumber: order.order_number || order.id,
+      productTitle: order.product_title || 'Your order',
+      amount,
+      currency: order.currency,
+      orderId: order.id,
+      reason,
+    }
+
+    if (stage === 'initiated') {
+      await sendOrderRefundInitiatedEmail(buyerEmail, details)
+    } else {
+      await sendOrderRefundCompletedEmail(buyerEmail, details)
+    }
+  } catch (error) {
+    console.error('Order refund email failed:', error)
+  }
 }
 
 function resolveGateway(_order: RefundableOrder): RefundGateway {
@@ -155,6 +204,14 @@ export async function issueOrderRefund(
     throw new Error(refundInsertError?.message || 'Failed to create refund record')
   }
 
+  notifyBuyerRefund(
+    serviceClient,
+    typedOrder,
+    refundAmount,
+    options.reason,
+    'initiated'
+  ).catch(() => {})
+
   const gatewayResult = await processGatewayRefund(
     gateway,
     typedOrder.payment_reference,
@@ -233,6 +290,14 @@ export async function issueOrderRefund(
     },
     created_by: options.initiatedBy,
   })
+
+  notifyBuyerRefund(
+    serviceClient,
+    typedOrder,
+    refundAmount,
+    options.reason,
+    'completed'
+  ).catch(() => {})
 
   return {
     success: true,

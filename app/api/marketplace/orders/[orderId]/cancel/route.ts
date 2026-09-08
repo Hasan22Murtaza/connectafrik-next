@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { cancelOrderWithRefund } from '@/lib/marketplace/refundService'
+import { notifyBuyerOfOrderStatusChange } from '@/lib/marketplace/notifyBuyerOrderStatus'
 
 export async function POST(
   request: NextRequest,
@@ -17,7 +18,9 @@ export async function POST(
 
     const { data: order } = await serviceClient
       .from('orders')
-      .select('buyer_id, seller_id')
+      .select(
+        'buyer_id, seller_id, buyer_email, order_number, product_title, quantity, total_amount, currency'
+      )
       .eq('id', orderId)
       .single()
 
@@ -41,6 +44,10 @@ export async function POST(
       reason,
       role
     )
+
+    if (role === 'seller') {
+      notifyBuyerOfOrderStatusChange(order, 'cancelled', orderId).catch(() => {})
+    }
 
     return jsonResponse({ data: result })
   } catch (error: unknown) {

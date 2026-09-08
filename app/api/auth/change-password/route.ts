@@ -6,6 +6,7 @@ import {
   updateUserPasswordViaGotrue,
 } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { sendPasswordChangedEmail } from '@/shared/services/emailService'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -62,6 +63,12 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       return errorResponse(updateError, 400)
     }
+
+    const userName =
+      (typeof user.user_metadata?.full_name === 'string' && user.user_metadata.full_name) ||
+      email.split('@')[0] ||
+      'there'
+    sendPasswordChangedEmail(email, userName).catch(() => {})
 
     return jsonResponse({ updated: true })
   } catch (err: unknown) {

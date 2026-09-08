@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAuthClient } from '@/app/api/auth/_shared'
-import { sendWelcomeEmail } from '@/shared/services/emailService'
+import { sendWelcomeEmail, sendPasswordChangedEmail } from '@/shared/services/emailService'
 import type { SignupProfileMetadata } from './otpTypes'
 
 type SessionTokens = {
@@ -147,6 +147,8 @@ export async function completePasswordReset(params: {
   if (updateError) {
     throw new Error(updateError.message)
   }
+
+  sendPasswordChangedEmail(email, email.split('@')[0] || 'there').catch(() => {})
 
   return signInAndBuildResponse(serviceClient, email, password)
 }

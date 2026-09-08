@@ -3,11 +3,13 @@ import {
   emailAccentBoxHtml,
   emailButtonHtml,
   emailHeadlineHtml,
+  emailHintHtml,
   emailLeadHtml,
   emailSignOffHtml,
   supportEmailPlain,
 } from './emailTheme'
 import { escapeHtml, getAppBaseUrl } from './utils'
+import { getEmailCopy, t } from './content'
 
 export function getGroupInviteEmailHtml(params: {
   groupName: string
@@ -16,45 +18,38 @@ export function getGroupInviteEmailHtml(params: {
   invitationMessage?: string | null
   groupId: string
 }): string {
+  const copy = getEmailCopy('groupInvite')
   const { groupName, inviterName, groupImageUrl, invitationMessage, groupId } = params
-  const safeGroup = escapeHtml(groupName)
-  const safeInviter = escapeHtml(inviterName)
-  const base = getAppBaseUrl()
-  const groupUrl = `${base}/groups/${groupId}`
-  const supportPlain = supportEmailPlain()
+  const vars = { groupName, inviterName }
+  const groupUrl = `${getAppBaseUrl()}/groups/${groupId}`
   const trimmedMessage = invitationMessage?.trim() || ''
 
   const imageHtml = groupImageUrl
-    ? `<div style="text-align:center;margin:0 0 24px;">
-        <img src="${escapeHtml(groupImageUrl)}" alt="${safeGroup}" width="120" height="120" style="width:120px;height:120px;border-radius:16px;object-fit:cover;border:1px solid ${EMAIL_THEME.border};" />
-      </div>`
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+        <tr>
+          <td>
+            <img src="${escapeHtml(groupImageUrl)}" alt="${escapeHtml(groupName)}" width="120" height="120" style="width:120px;height:120px;border-radius:16px;object-fit:cover;border:1px solid ${EMAIL_THEME.border};display:block;" />
+          </td>
+        </tr>
+      </table>`
     : ''
 
   const messageHtml = trimmedMessage
     ? emailAccentBoxHtml({
         variant: 'info',
-        eyebrow: 'Invitation message',
+        eyebrow: t(copy.eyebrow),
         bodyHtml: `<p style="margin:0;font-size:15px;line-height:1.5;color:${EMAIL_THEME.heading};">${escapeHtml(trimmedMessage)}</p>`,
       })
     : ''
 
-  const supportBlock = supportPlain
-    ? `<p style="margin:24px 0 0;font-size:14px;line-height:1.55;color:${EMAIL_THEME.text};text-align:center;">
-        Questions? Reach us at <a href="mailto:${escapeHtml(supportPlain)}" style="color:${EMAIL_THEME.link};">${escapeHtml(supportPlain)}</a>.
-      </p>`
-    : ''
-
   return `
     ${imageHtml}
-    ${emailHeadlineHtml(`You're invited to ${safeGroup}`)}
-    ${emailLeadHtml(`${safeInviter} invited you to join ${safeGroup} on ConnectAfrik.`)}
+    ${emailHeadlineHtml(t(copy.headline, vars, true))}
+    ${emailLeadHtml(t(copy.lead, vars, true))}
     ${messageHtml}
-    ${emailButtonHtml(groupUrl, 'Accept invitation')}
-    <p style="text-align:center;margin:0;font-size:14px;color:${EMAIL_THEME.text};">
-      Open the group to accept the invitation and see posts, members, and upcoming events.
-    </p>
-    ${supportBlock}
-    ${emailSignOffHtml('See you in the group,')}
+    ${emailButtonHtml(groupUrl, t(copy.buttonLabel))}
+    ${emailHintHtml(t(copy.hint))}
+    ${emailSignOffHtml(t(copy.signOff))}
   `
 }
 
@@ -64,21 +59,19 @@ export function getGroupInviteEmailText(params: {
   invitationMessage?: string | null
   groupId: string
 }): string {
+  const copy = getEmailCopy('groupInvite')
   const { groupName, inviterName, invitationMessage, groupId } = params
   const base = getAppBaseUrl()
-  const groupUrl = `${base}/groups/${groupId}`
   const support = supportEmailPlain()
-  const supportLine = support ? `\nHelp: ${support}\n` : ''
   const messageBlock = invitationMessage?.trim()
     ? `\nMessage from ${inviterName}:\n${invitationMessage.trim()}\n`
     : ''
 
-  return `You're invited to ${groupName}
-
-${inviterName} invited you to join ${groupName} on ConnectAfrik.
-${messageBlock}
-Accept the invitation: ${groupUrl}
-${supportLine}
-— The ConnectAfrik team
-`
+  return t(copy.text, {
+    groupName,
+    inviterName,
+    messageBlock,
+    groupUrl: `${base}/groups/${groupId}`,
+    supportLine: support ? `\nHelp: ${support}\n` : '',
+  })
 }

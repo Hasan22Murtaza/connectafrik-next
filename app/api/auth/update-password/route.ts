@@ -5,10 +5,11 @@ import {
   getAccessTokenFromRequest,
   updateUserPasswordViaGotrue,
 } from '@/lib/supabase-server'
+import { sendPasswordChangedEmail } from '@/shared/services/emailService'
 
 export async function POST(request: NextRequest) {
   try {
-    await getAuthenticatedUser(request)
+    const { user } = await getAuthenticatedUser(request)
 
     const body = await request.json()
     const password = typeof body?.password === 'string' ? body.password : ''
@@ -26,6 +27,15 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return errorResponse(error, 400)
+    }
+
+    const email = user.email?.trim()
+    if (email?.includes('@')) {
+      const userName =
+        (typeof user.user_metadata?.full_name === 'string' && user.user_metadata.full_name) ||
+        email.split('@')[0] ||
+        'there'
+      sendPasswordChangedEmail(email, userName).catch(() => {})
     }
 
     return jsonResponse({ updated: true })

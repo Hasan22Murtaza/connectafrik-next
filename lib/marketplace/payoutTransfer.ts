@@ -1,6 +1,49 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { appendOrderLedgerEntry } from './orderLedger'
 import { createConnectTransfer, isStripeConnectEnabled } from './stripeConnect'
+import { sendSellerPayoutEmail, sendSellerPayoutFailedEmail } from '@/shared/services/emailService'
+import { lookupUserContact } from '@/lib/emails/recipients'
+
+async function notifySellerPayout(
+  serviceClient: SupabaseClient,
+  params: {
+    sellerId: string
+    amount: number
+    currency: string
+    orderId: string
+    reference?: string
+    failureReason?: string
+    success: boolean
+  }
+): Promise<void> {
+  try {
+    const contact = await lookupUserContact(serviceClient, params.sellerId)
+    if (!contact) return
+
+    const { data: order } = await serviceClient
+      .from('orders')
+      .select('order_number')
+      .eq('id', params.orderId)
+      .maybeSingle()
+
+    const details = {
+      sellerName: contact.name,
+      amount: params.amount,
+      currency: params.currency,
+      orderNumber: order?.order_number || params.orderId,
+      reference: params.reference,
+      failureReason: params.failureReason,
+    }
+
+    if (params.success) {
+      await sendSellerPayoutEmail(contact.email, details)
+    } else {
+      await sendSellerPayoutFailedEmail(contact.email, details)
+    }
+  } catch (error) {
+    console.error('Seller payout email failed:', error)
+  }
+}
 
 export interface PayoutTransferResult {
   success: boolean
@@ -71,6 +114,15 @@ export async function finalizeSuccessfulPayout(
     reference_id: payout_id,
     metadata: { reference, method },
   })
+
+  notifySellerPayout(serviceClient, {
+    sellerId: params.seller_id,
+    amount,
+    currency,
+    orderId: order_id,
+    reference,
+    success: true,
+  }).catch(() => {})
 }
 
 async function markPayoutFailed(
@@ -192,6 +244,14 @@ export async function executeStripeConnectPayout(
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Stripe Connect transfer failed'
     await markPayoutFailed(serviceClient, payout_id, message)
+    notifySellerPayout(serviceClient, {
+      sellerId: seller_id,
+      amount,
+      currency,
+      orderId: order_id,
+      failureReason: message,
+      success: false,
+    }).catch(() => {})
     return { success: false, status: 'failed', error: message }
   }
 }

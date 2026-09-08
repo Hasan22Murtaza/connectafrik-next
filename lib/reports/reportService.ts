@@ -1,9 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createNotification } from '@/lib/notifications/createNotification'
 import { suspendAdminUser } from '@/lib/marketplace/adminUserService'
+import { sendReportReceivedEmail } from '@/shared/services/emailService'
+import { lookupAdminContacts, lookupUserContact } from '@/lib/emails/recipients'
 import {
   POST_REPORT_ACTIONS,
   POST_REPORT_REASONS,
+  POST_REPORT_REASON_LABELS,
   POST_REPORT_STATUSES,
   type ApplyReportActionInput,
   type CreatePostReportInput,
@@ -192,7 +195,29 @@ export async function createPostReport(
     throw new Error(error.message || 'Failed to submit report')
   }
 
-  return data as PostReportRow
+  const report = data as PostReportRow
+
+  try {
+    const [admins, reporter] = await Promise.all([
+      lookupAdminContacts(client),
+      lookupUserContact(client, input.reported_by),
+    ])
+    const reasonLabel = POST_REPORT_REASON_LABELS[input.reason]
+    await Promise.all(
+      admins.map((admin) =>
+        sendReportReceivedEmail(admin.email, {
+          adminName: admin.name,
+          reasonLabel,
+          postId: input.post_id,
+          reporterName: reporter?.name,
+        })
+      )
+    )
+  } catch (emailError) {
+    console.error('Failed to send report received email:', emailError)
+  }
+
+  return report
 }
 
 export async function getReportStats(client: SupabaseClient): Promise<PostReportStats> {
