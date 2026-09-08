@@ -2,7 +2,6 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
-import { sendPostCreatedEmail } from '@/shared/services/emailService'
 import { POST_SELECT, formatPostsForClient } from './format-posts-response'
 import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
 
@@ -161,9 +160,6 @@ async function notifyFollowersAndFriends(supabase: any, user: any, post: any) {
     const serviceSupabase = createServiceClient()
     const authorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone'
     const postTitle = post.content?.substring(0, 80) || 'a new post'
-    const postPreview =
-      (post.content ? String(post.content).replace(/\s+/g, ' ').trim().slice(0, 120) : '') ||
-      'New post'
 
     const { data: friendsData } = await serviceSupabase
       .from('friend_requests')
@@ -196,34 +192,6 @@ async function notifyFollowersAndFriends(supabase: any, user: any, post: any) {
     if (notifications.length > 0) {
       await serviceSupabase.from('notifications').insert(notifications)
     }
-
-    const emailParams = { authorName, postPreview, postId: post.id as string }
-
-    const emailTasks: Promise<unknown>[] = []
-
-    if (typeof user.email === 'string' && user.email.includes('@')) {
-      emailTasks.push(
-        sendPostCreatedEmail(user.email, 'author', emailParams).catch((err) =>
-          console.error('Post create author email failed:', err)
-        )
-      )
-    }
-
-    for (const friendId of recipientIds) {
-      emailTasks.push(
-        (async () => {
-          const { data: authData, error: authErr } =
-            await serviceSupabase.auth.admin.getUserById(friendId)
-          const friendEmail = authData?.user?.email
-          if (authErr || !friendEmail?.includes('@')) return
-          await sendPostCreatedEmail(friendEmail, 'friend', emailParams).catch((err) =>
-            console.error('Post create friend email failed:', err)
-          )
-        })()
-      )
-    }
-
-    await Promise.allSettled(emailTasks)
   } catch (error) {
     // Notifications are best-effort
     console.error('Post create notification failed:', error)
