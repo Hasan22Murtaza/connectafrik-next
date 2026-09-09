@@ -73,11 +73,11 @@ export function viewOncePushBody(kind: ViewOnceKind): string {
 
 export function stripViewOnceAttachmentUrls<T extends Record<string, unknown>>(attachments: T[]): T[] {
   return attachments.map((a) => {
-    const next = { ...a }
+    const next: Record<string, unknown> = { ...a }
     if ('file_url' in next) next.file_url = ''
     if ('url' in next) next.url = ''
     if ('thumbnail_url' in next) next.thumbnail_url = ''
-    return next
+    return next as T
   })
 }
 

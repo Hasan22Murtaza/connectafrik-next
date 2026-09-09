@@ -217,19 +217,24 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
   const handleCopy = async () => {
     if (!current || !previewSrc) return;
     try {
-      const blob =
-        current.file ??
-        (await fetch(previewSrc).then((res) => {
-          if (!res.ok) throw new Error("copy");
-          return res.blob();
-        }));
+      let copyBlob: Blob;
+      if (current.file instanceof Blob) {
+        copyBlob = current.file;
+      } else {
+        const res = await fetch(previewSrc);
+        if (!res.ok) throw new Error("copy");
+        copyBlob = await res.blob();
+      }
       if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
         await navigator.clipboard.writeText(previewSrc);
         toast.success("Copied");
         return;
       }
+      const mimeType = copyBlob.type && copyBlob.type.length > 0 ? copyBlob.type : "image/png";
       await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type || "image/png"]: blob }),
+        new ClipboardItem({
+          [mimeType]: copyBlob,
+        } as ConstructorParameters<typeof ClipboardItem>[0]),
       ]);
       toast.success("Copied");
     } catch {
