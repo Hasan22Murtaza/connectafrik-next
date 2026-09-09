@@ -4,7 +4,7 @@ import { filterThreadIdsAccessibleToUser } from '@/lib/chat/chatThreadAccess'
 import { getBlockStatesForThreads } from '@/lib/chat/chatThreadBlock'
 
 export type ThreadCategory = 'general' | 'marketplace'
-export type ThreadListFilter = 'all' | 'unread' | 'groups'
+export type ThreadListFilter = 'all' | 'unread' | 'groups' | 'locked'
 
 export interface ThreadQueryOptions {
   /** Restrict results by conversation category. Ignored when `filter` is `groups`. */
@@ -30,6 +30,8 @@ type ThreadPrefs = {
   pinned_at: string | null
   archived: boolean
   is_block: boolean
+  is_locked: boolean
+  locked_at: string | null
   blocked_by_other: boolean
 }
 
@@ -96,7 +98,7 @@ async function getParticipantPrefsForThreads(
   const [{ data }, blockStates] = await Promise.all([
     serviceClient
       .from('chat_participants')
-      .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
+      .select('thread_id, unread_count, pinned, pinned_at, archived, is_block, is_locked, locked_at')
       .eq('user_id', userId)
       .is('deleted_at', null)
       .in('thread_id', threadIds),
@@ -112,6 +114,8 @@ async function getParticipantPrefsForThreads(
       pinned_at: typeof row.pinned_at === 'string' ? row.pinned_at : null,
       archived: Boolean(row.archived),
       is_block: block?.blockedByMe ?? Boolean(row.is_block),
+      is_locked: Boolean(row.is_locked),
+      locked_at: typeof row.locked_at === 'string' ? row.locked_at : null,
       blocked_by_other: block?.blockedByOther ?? false,
     })
   }
@@ -161,6 +165,13 @@ const deduplicateThreadsByParticipants = (threads: any[]) => {
 const isGroupRow = (thread: { type?: string; group_id?: string | null }) =>
   thread?.type === 'group' || Boolean(thread?.group_id)
 
+function applyLockListFilter(threadIds: string[], prefs: Map<string, ThreadPrefs>, filter: ThreadListFilter) {
+  return threadIds.filter((id) => {
+    const locked = Boolean(prefs.get(id)?.is_locked)
+    return filter === 'locked' ? locked : !locked
+  })
+}
+
 /**
  * Shared loader for the authenticated user's chat thread list.
  *
@@ -200,7 +211,10 @@ export async function queryUserThreads(
     rawCategoryParam === 'general' || rawCategoryParam === 'marketplace' ? rawCategoryParam : undefined
   const rawFilterParam = searchParams.get('filter') || undefined
   const filterFromQuery: ThreadListFilter | undefined =
-    rawFilterParam === 'unread' || rawFilterParam === 'groups' || rawFilterParam === 'all'
+    rawFilterParam === 'unread' ||
+    rawFilterParam === 'groups' ||
+    rawFilterParam === 'all' ||
+    rawFilterParam === 'locked'
       ? rawFilterParam
       : undefined
 
@@ -219,7 +233,7 @@ export async function queryUserThreads(
 
   const { data: participantRows, error: partError } = await serviceClient
     .from('chat_participants')
-    .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
+    .select('thread_id, unread_count, pinned, pinned_at, archived, is_block, is_locked, locked_at')
     .eq('user_id', user.id)
     .is('deleted_at', null)
 
@@ -261,13 +275,25 @@ export async function queryUserThreads(
       t.pinned_at = pref?.pinned_at ?? null
       t.archived = pref?.archived ?? false
       t.is_block = pref?.is_block ?? false
+      t.is_locked = pref?.is_locked ?? false
+      t.locked_at = pref?.locked_at ?? null
       t.blocked_by_other = pref?.blocked_by_other ?? false
     }
+    visibleDeduped = visibleDeduped.filter((t: { id?: string; is_locked?: boolean }) => {
+      const id = typeof t?.id === 'string' ? t.id : ''
+      const locked = Boolean(id && rpcPrefs.get(id)?.is_locked)
+      return filter === 'locked' ? locked : !locked
+    })
     if (filter === 'unread') {
       visibleDeduped = visibleDeduped.filter(
-        (t: { unread_count?: number; archived?: boolean; is_block?: boolean }) =>
-          (t.unread_count ?? 0) > 0 && !t.archived && !t.is_block
+        (t: { unread_count?: number; archived?: boolean; is_block?: boolean; is_locked?: boolean }) =>
+          (t.unread_count ?? 0) > 0 && !t.archived && !t.is_block && !t.is_locked
       )
+    }
+    if (filter === 'locked') {
+      for (const t of visibleDeduped) {
+        t.last_message_preview = null
+      }
     }
     return {
       data: visibleDeduped.slice(from, to + 1),
@@ -291,6 +317,8 @@ export async function queryUserThreads(
         pinned_at?: string | null
         archived?: boolean | null
         is_block?: boolean | null
+        is_locked?: boolean | null
+        locked_at?: string | null
       }) => {
         const block = blockStates.get(p.thread_id)
         return [
@@ -301,6 +329,8 @@ export async function queryUserThreads(
             pinned_at: typeof p.pinned_at === 'string' ? p.pinned_at : null,
             archived: Boolean(p.archived),
             is_block: block?.blockedByMe ?? Boolean(p.is_block),
+            is_locked: Boolean(p.is_locked),
+            locked_at: typeof p.locked_at === 'string' ? p.locked_at : null,
             blocked_by_other: block?.blockedByOther ?? false,
           },
         ] as [string, ThreadPrefs]
@@ -308,15 +338,17 @@ export async function queryUserThreads(
     )
   )
 
+  const lockFilteredIds = applyLockListFilter(rawThreadIds, myPrefsByThreadId, filter)
+
   // For the `unread` filter, narrow to threads this user has not read and that
-  // are still active (not archived / blocked) before touching chat_threads.
+  // are still active (not archived / blocked / locked) before touching chat_threads.
   const workingThreadIds =
     filter === 'unread'
-      ? rawThreadIds.filter((id) => {
+      ? lockFilteredIds.filter((id) => {
           const pref = myPrefsByThreadId.get(id)
-          return Boolean(pref && pref.unread_count > 0 && !pref.archived && !pref.is_block)
+          return Boolean(pref && pref.unread_count > 0 && !pref.archived && !pref.is_block && !pref.is_locked)
         })
-      : rawThreadIds
+      : lockFilteredIds
 
   if (workingThreadIds.length === 0) {
     return emptyResult()
@@ -380,12 +412,15 @@ export async function queryUserThreads(
     const pref = myPrefsByThreadId.get(t.id)
     return {
       ...rest,
+      last_message_preview: filter === 'locked' ? null : rest.last_message_preview,
       banner_url: group_banner?.banner_url ?? null,
       unread_count: pref?.unread_count ?? 0,
       pinned: pref?.pinned ?? false,
       pinned_at: pref?.pinned_at ?? null,
       archived: pref?.archived ?? false,
       is_block: pref?.is_block ?? false,
+      is_locked: pref?.is_locked ?? false,
+      locked_at: pref?.locked_at ?? null,
       blocked_by_other: pref?.blocked_by_other ?? false,
     }
   })

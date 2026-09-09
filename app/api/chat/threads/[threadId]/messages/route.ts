@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
+import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
 import { blockStateErrorMessage, getThreadBlockState } from '@/lib/chat/chatThreadBlock'
 
 const MESSAGE_SELECT = `
@@ -85,6 +86,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (!allowed) {
       return errorResponse('Thread not found or access denied', 404)
     }
+
+    const lockedDenial = await requireUnlockedLockedThread(request, serviceClient, user.id, threadId)
+    if (lockedDenial) return lockedDenial
 
     const { searchParams } = new URL(request.url)
     const parsedLimit = parseInt(searchParams.get('limit') || '50', 10)

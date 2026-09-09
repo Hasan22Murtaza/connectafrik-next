@@ -3,11 +3,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, isThisYear, isToday, isYesterday } from "date-fns";
-import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, UserPlus, Users, X } from '@/shared/icons';
+import { Archive, ArrowLeft, Ban, ChevronDown, ChevronRight, Loader2, Lock, MoreVertical, Pin, PinOff, Search, SquarePen, Store, Trash2, Unlock, UserPlus, Users, X } from '@/shared/icons';
 import { isDirectBlockableThread } from "@/features/chat/utils/threadHelpers";
 import { useProductionChat } from "@/contexts/ProductionChatContext";
+import { useChatLock } from "@/contexts/ChatLockContext";
 import { ChatThread, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";
 import { CHAT_THREAD_MARKED_READ_EVENT } from "@/features/chat/threadReadEvents";
+import { CHAT_LOCK_CHANGED_EVENT } from "@/features/chat/chatLockEvents";
 import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 import { ChatRichTextPreview } from "@/features/chat/richtext";
@@ -65,6 +67,18 @@ export default function ChatSidebar({
 }: ChatSidebarProps) {
   const router = useRouter();
   const { currentUser, threads: contextThreads, activeCallsByThread } = useProductionChat();
+  const {
+    lockedCount,
+    lockedUnread,
+    folderOpen,
+    openLockedFolder,
+    closeLockedFolder,
+    isThreadUnlocked,
+    unlockChat,
+    changePin,
+    lockThread,
+    unlockThread,
+  } = useChatLock();
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -73,11 +87,13 @@ export default function ChatSidebar({
   const [search, setSearch] = useState("");
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
   const [blockedExpanded, setBlockedExpanded] = useState(false);
-  const [view, setView] = useState<"chats" | "marketplace">("chats");
+  const [view, setView] = useState<"chats" | "marketplace" | "locked">("chats");
   const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
   const [mpLoading, setMpLoading] = useState(true);
+  const [lockedThreads, setLockedThreads] = useState<ChatThread[]>([]);
+  const [lockedLoading, setLockedLoading] = useState(false);
   const [filterThreads, setFilterThreads] = useState<ChatThread[]>([]);
   const [filterLoading, setFilterLoading] = useState(false);
   const { confirm, dialog } = useConfirmDialog();
@@ -130,6 +146,70 @@ export default function ChatSidebar({
   useEffect(() => {
     void loadMarketplace();
   }, [loadMarketplace]);
+
+  useEffect(() => {
+    if (folderOpen) setView("locked");
+    else if (view === "locked") setView("chats");
+  }, [folderOpen, view]);
+
+  const loadLocked = useCallback(async () => {
+    if (!currentUser?.id) {
+      setLockedThreads([]);
+      setLockedLoading(false);
+      return;
+    }
+    setLockedLoading(true);
+    try {
+      const { threads: rows } = await supabaseMessagingService.getLockedThreads(
+        { id: currentUser.id, name: currentUser.name || "" },
+        { limit: 50, page: 0 }
+      );
+      setLockedThreads(rows);
+    } catch {
+      setLockedThreads([]);
+    } finally {
+      setLockedLoading(false);
+    }
+  }, [currentUser?.id, currentUser?.name]);
+
+  useEffect(() => {
+    if (view === "locked") void loadLocked();
+  }, [view, loadLocked]);
+
+  useEffect(() => {
+    const onLockChanged = (event: Event) => {
+      const updated = (event as CustomEvent<{ thread?: ChatThread }>).detail?.thread;
+      if (!updated?.id) return;
+      const apply = (prev: ChatThread[]) => {
+        const idx = prev.findIndex((t) => t.id === updated.id);
+        if (updated.is_locked) {
+          return prev.filter((t) => t.id !== updated.id);
+        }
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = updated;
+          return next;
+        }
+        return [updated, ...prev];
+      };
+      setThreads(apply);
+      setMpThreads((prev) => prev.filter((t) => t.id !== updated.id || !updated.is_locked));
+      setLockedThreads((prev) => {
+        if (updated.is_locked) {
+          const idx = prev.findIndex((t) => t.id === updated.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = updated;
+            return next;
+          }
+          return [updated, ...prev];
+        }
+        return prev.filter((t) => t.id !== updated.id);
+      });
+    };
+    window.addEventListener(CHAT_LOCK_CHANGED_EVENT, onLockChanged as EventListener);
+    return () => window.removeEventListener(CHAT_LOCK_CHANGED_EVENT, onLockChanged as EventListener);
+  }, []);
 
   useEffect(() => {
     if (filter === "all") {
@@ -278,7 +358,7 @@ export default function ChatSidebar({
     const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
     return mpThreads
       .map((t) => ctxById.get(t.id) ?? t)
-      .filter((t) => !t.archived && !t.is_block)
+      .filter((t) => !t.archived && !t.is_block && !t.is_locked)
       .sort((a, b) => {
         const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
         const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
@@ -310,12 +390,12 @@ export default function ChatSidebar({
   );
 
   const activeThreads = useMemo(
-    () => mergedThreads.filter((t) => !t.archived && !t.is_block),
+    () => mergedThreads.filter((t) => !t.archived && !t.is_block && !t.is_locked),
     [mergedThreads]
   );
 
   const blockedThreads = useMemo(
-    () => mergedThreads.filter((t) => !t.archived && t.is_block === true),
+    () => mergedThreads.filter((t) => !t.archived && t.is_block === true && !t.is_locked),
     [mergedThreads]
   );
 
@@ -336,7 +416,7 @@ export default function ChatSidebar({
     const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
     return filterThreads
       .map((t) => ctxById.get(t.id) ?? t)
-      .filter((t) => !t.archived && !t.is_block)
+      .filter((t) => !t.archived && !t.is_block && !t.is_locked)
       .filter((t) => (filter === "unread" ? (t.unread_count ?? 0) > 0 : true))
       .filter(matchesSearch)
       .sort(sortThreadsByPinnedRecency);
@@ -357,6 +437,21 @@ export default function ChatSidebar({
       }),
     [marketplaceThreads, query, currentUser?.id]
   );
+
+  const visibleLockedThreads = useMemo(() => {
+    const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
+    return lockedThreads
+      .map((t) => {
+        const merged = ctxById.get(t.id) ?? t;
+        if (!isThreadUnlocked(t.id)) {
+          return { ...merged, last_message_preview: null };
+        }
+        return merged;
+      })
+      .filter((t) => t.is_locked !== false)
+      .filter(matchesSearch)
+      .sort(sortThreadsByPinnedRecency);
+  }, [lockedThreads, contextThreads, matchesSearch, isThreadUnlocked]);
 
   const updateThreadState = useCallback((updated: ChatThread) => {
     setThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
@@ -438,6 +533,70 @@ export default function ChatSidebar({
     [currentUser?.id, updateThreadState]
   );
 
+  const handleLockChat = useCallback(
+    async (thread: ChatThread) => {
+      setMenuThreadId(null);
+      const confirmed = await confirm({
+        title: "Lock chat",
+        message:
+          "This conversation will move to Locked Chats and get its own PIN. Other chats can use a different PIN.",
+        confirmLabel: "Lock",
+        variant: "primary",
+      });
+      if (!confirmed) return;
+      try {
+        const updated = await lockThread(thread.id, thread.name || undefined);
+        if (updated) toast.success("Chat locked");
+      } catch {
+        toast.error("Could not lock chat");
+      }
+    },
+    [confirm, lockThread]
+  );
+
+  const handleUnlockChat = useCallback(
+    async (thread: ChatThread) => {
+      setMenuThreadId(null);
+      const confirmed = await confirm({
+        title: "Unlock chat",
+        message: "This conversation will return to your regular chat list. You will need this chat’s PIN.",
+        confirmLabel: "Unlock",
+        variant: "primary",
+      });
+      if (!confirmed) return;
+      try {
+        await unlockThread(thread.id, thread.name || undefined);
+        toast.success("Chat unlocked");
+      } catch {
+        toast.error("Could not unlock chat");
+      }
+    },
+    [confirm, unlockThread]
+  );
+
+  const openLockedConversation = useCallback(
+    async (thread: ChatThread, displayName: string) => {
+      const ok = await unlockChat(thread.id, displayName);
+      if (!ok) return;
+      let seed = thread;
+      if (currentUser?.id) {
+        try {
+          const detail = await supabaseMessagingService.fetchThreadDetail(currentUser.id, thread.id);
+          if (detail) {
+            seed = detail;
+            setLockedThreads((prev) =>
+              prev.map((row) => (row.id === detail.id ? { ...row, ...detail } : row))
+            );
+          }
+        } catch {
+          /* names stay; messages load in the chat window */
+        }
+      }
+      onOpenThread(thread.id, seed);
+    },
+    [currentUser?.id, onOpenThread, unlockChat]
+  );
+
   const handleClear = useCallback(
     async (thread: ChatThread) => {
       if (!currentUser?.id) return;
@@ -457,15 +616,23 @@ export default function ChatSidebar({
     (
       event: React.MouseEvent<HTMLButtonElement>,
       thread: ChatThread,
-      action: "toggle-pin" | "toggle-archive" | "toggle-block" | "clear"
+      action: "toggle-pin" | "toggle-archive" | "toggle-block" | "clear" | "lock" | "unlock" | "change-pin"
     ) => {
       event.stopPropagation();
       if (action === "toggle-pin") void handleTogglePin(thread);
       if (action === "toggle-archive") void handleToggleArchive(thread);
       if (action === "toggle-block") void handleToggleBlock(thread);
       if (action === "clear") void handleClear(thread);
+      if (action === "lock") void handleLockChat(thread);
+      if (action === "unlock") void handleUnlockChat(thread);
+      if (action === "change-pin") {
+        setMenuThreadId(null);
+        void changePin(thread.id, thread.name || undefined).then((ok) => {
+          if (ok) toast.success("PIN updated for this chat");
+        });
+      }
     },
-    [handleClear, handleToggleArchive, handleToggleBlock, handleTogglePin]
+    [handleClear, handleLockChat, handleToggleArchive, handleToggleBlock, handleTogglePin, handleUnlockChat, changePin]
   );
 
   const filterChips: { key: "all" | "unread" | "groups"; label: string }[] = [
@@ -493,6 +660,19 @@ export default function ChatSidebar({
             >
               <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
               TradeHub
+            </button>
+          ) : view === "locked" ? (
+            <button
+              type="button"
+              onClick={() => {
+                closeLockedFolder();
+                setView("chats");
+                setSearch("");
+              }}
+              className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
+            >
+              <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+              Locked Chats
             </button>
           ) : (
             <h1 className="text-xl font-semibold text-content">Chats</h1>
@@ -572,7 +752,13 @@ export default function ChatSidebar({
               ref={searchInputRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={view === "marketplace" ? "Search marketplace" : "Search or start a new chat"}
+              placeholder={
+                view === "marketplace"
+                  ? "Search marketplace"
+                  : view === "locked"
+                    ? "Search locked chats"
+                    : "Search or start a new chat"
+              }
               className="w-full rounded-full border border-gray-300  py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
             />
             {search ? (
@@ -612,6 +798,35 @@ export default function ChatSidebar({
       </header>
 
       {view === "chats" ? (
+        <>
+        {lockedCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSearch("");
+              void openLockedFolder();
+            }}
+            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white dark:bg-surface-secondary">
+              <Lock className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-medium text-content">Locked Chats</p>
+              <p className="truncate text-sm text-content-secondary">
+                {lockedCount} locked conversation{lockedCount === 1 ? "" : "s"}
+              </p>
+            </div>
+            {lockedUnread > 0 ? (
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                {lockedUnread > 99 ? "99+" : lockedUnread}
+              </span>
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+            )}
+            <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -636,9 +851,126 @@ export default function ChatSidebar({
           )}
           <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
         </button>
+        </>
       ) : null}
 
-      {view === "marketplace" ? (
+      {view === "locked" ? (
+        <div className="flex-1 overflow-y-auto">
+          {lockedLoading && visibleLockedThreads.length === 0 ? (
+            <div className="p-4 text-sm text-content-secondary">Loading locked chats…</div>
+          ) : visibleLockedThreads.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <Lock className="mx-auto mb-3 h-10 w-10 text-content-tertiary" aria-hidden />
+              <p className="text-sm font-semibold text-content">No locked chats</p>
+              <p className="mt-1 text-sm text-content-secondary">
+                Lock a conversation from its menu to move it here. Each chat has its own PIN.
+              </p>
+            </div>
+          ) : (
+            visibleLockedThreads.map((thread) => {
+              const others = thread.participants.filter(
+                (participant: ChatParticipant) => participant.id !== currentUser?.id
+              );
+              const primary = others[0] ?? thread.participants[0];
+              const isGroup = isGroupThread(thread, currentUser?.id);
+              const displayName = isGroup && thread.name ? thread.name : primary?.name || thread.name || "Chat";
+              const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
+              const selected = selectedThreadId === thread.id;
+              const sessionUnlocked = isThreadUnlocked(thread.id);
+              return (
+                <div
+                  key={thread.id}
+                  onClick={() => void openLockedConversation(thread, displayName)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      void openLockedConversation(thread, displayName);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${
+                    selected ? "bg-surface-hover" : "bg-transparent"
+                  }`}
+                >
+                  <div className="h-12 w-12 shrink-0">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-content-tertiary">
+                        {formatThreadListTime(thread.last_message_at)}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p className="truncate text-sm text-content-secondary">
+                        {sessionUnlocked && thread.last_message_preview ? (
+                          <ChatRichTextPreview content={thread.last_message_preview} />
+                        ) : (
+                          "Locked chat"
+                        )}
+                      </p>
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        <Lock className="h-3.5 w-3.5 text-content-tertiary" aria-hidden />
+                        {thread.unread_count > 0 ? (
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                            {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                          </span>
+                        ) : null}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="relative self-center">
+                    <button
+                      type="button"
+                      data-chat-menu-trigger
+                      aria-label="Chat actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                      }}
+                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                    {menuThreadId === thread.id ? (
+                      <div
+                        data-chat-menu
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "change-pin")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          <Lock className="h-4 w-4" />
+                          <span>Change PIN</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "unlock")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          <Unlock className="h-4 w-4" />
+                          <span>Unlock chat</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : view === "marketplace" ? (
         <div className="flex-1 overflow-y-auto">
           {mpLoading && marketplaceThreads.length === 0 ? (
             <div className="p-4 text-sm text-content-secondary">Loading marketplace…</div>
@@ -862,6 +1194,14 @@ export default function ChatSidebar({
                           <span>{thread.is_block ? "Unblock contact" : "Block contact"}</span>
                         </button>
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={(e) => onMenuAction(e, thread, "lock")}
+                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                      >
+                        <Lock className="h-4 w-4" />
+                        <span>Lock chat</span>
+                      </button>
                       <button
                         type="button"
                         onClick={(e) => onMenuAction(e, thread, "clear")}

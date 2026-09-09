@@ -273,6 +273,7 @@ export {
   Loader,
   Loader2,
   Lock,
+  Unlock,
   LogOut,
   Mail,
   Maximize,

@@ -39,6 +39,8 @@ import {
   ChevronLeft,
   Info,
   Loader2,
+  Lock,
+  Unlock,
   LogOut,
   Mic,
   MinusCircle,
@@ -72,6 +74,7 @@ import React, {
 } from "react";
 import { toast } from "react-hot-toast";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
+import { useChatLock } from "@/contexts/ChatLockContext";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
 import ChatLocationPicker, {
   type ChatLocationSelection,
@@ -304,6 +307,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     startChatWithMembers,
     closeThread,
   } = useProductionChat();
+
+  const { isThreadUnlocked, unlockedThreadKey, unlockChat, lockThread, unlockThread, changePin } = useChatLock();
 
   const { session } = useAuth();
   const localAuthSessionId = React.useMemo(
@@ -1803,6 +1808,45 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const handleLockToggle = async () => {
+    if (!thread) return;
+    if (thread.is_locked) {
+      const confirmed = await confirm({
+        title: "Unlock chat",
+        message: "This conversation will return to your regular chat list. You will need this chat’s PIN.",
+        confirmLabel: "Unlock",
+        variant: "primary",
+      });
+      if (!confirmed) return;
+      try {
+        await unlockThread(threadId, thread.name || undefined);
+        toast.success("Chat unlocked");
+        setShowOptionsMenu(false);
+      } catch {
+        toast.error("Could not unlock chat");
+      }
+      return;
+    }
+    const confirmed = await confirm({
+      title: "Lock chat",
+      message:
+      "This conversation will move to Locked Chats and get its own PIN. Other chats can use a different PIN.",
+      confirmLabel: "Lock",
+      variant: "primary",
+    });
+    if (!confirmed) return;
+    try {
+      const updated = await lockThread(threadId, thread.name || undefined);
+      if (!updated) return;
+      toast.success("Chat locked");
+      setShowOptionsMenu(false);
+      closeThread(threadId);
+      if (variant === "page") router.push("/chat");
+    } catch {
+      toast.error("Could not lock chat");
+    }
+  };
+
   const handleClearAllMessages = async () => {
     if (!currentUser) return;
     if (clearChatInFlightRef.current) return;
@@ -2267,6 +2311,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         Icon: thread?.pinned ? PinOff : Pin,
         onClick: () => void handlePinToggle(),
       },
+      {
+        id: "lock",
+        label: thread?.is_locked ? "Unlock chat" : "Lock chat",
+        Icon: thread?.is_locked ? Unlock : Lock,
+        onClick: () => void handleLockToggle(),
+      },
+      ...(thread?.is_locked
+        ? [
+            {
+              id: "change-pin",
+              label: "Change PIN",
+              Icon: Lock,
+              onClick: () => {
+                setShowOptionsMenu(false);
+                void changePin(threadId, thread.name || undefined).then((ok) => {
+                  if (ok) toast.success("PIN updated for this chat");
+                });
+              },
+            } satisfies ChatHeaderOptionsMenuItem,
+          ]
+        : []),
       ...(canBlockContact
         ? [
             {
@@ -2311,6 +2376,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [
     thread?.pinned,
     thread?.is_block,
+    thread?.is_locked,
     canBlockContact,
     isGroupThread,
     visibleMessages.length,
@@ -2318,12 +2384,76 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     handleOpenThreadDetailPage,
     handlePinToggle,
     handleBlockToggle,
+    handleLockToggle,
     handleClearAllMessages,
     handleCloseChatFromMenu,
     handleDeleteChatFromMenu,
+    changePin,
+    threadId,
+    thread?.name,
   ]);
 
   const isPageVariant = variant === "page";
+  const chatLocked = Boolean(thread?.is_locked && !isThreadUnlocked(threadId));
+
+  if (chatLocked) {
+    return (
+      <div
+        className={`pointer-events-auto relative flex max-w-full flex-col bg-white dark:bg-surface ${
+          isPageVariant
+            ? "h-full w-full"
+            : "w-72 rounded-2xl sm:w-80 sm:max-w-full shadow-[0_8px_28px_rgba(11,20,26,0.14)]"
+        }`}
+      >
+        <div
+          className={`flex items-center gap-2 border-b border-[#e9edef] bg-[#f0f2f5] px-2 py-1.5 sm:px-3 dark:border-border dark:bg-surface ${
+            isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+          }`}
+        >
+          {isPageVariant ? (
+            <button
+              type="button"
+              onClick={() => router.push("/chat")}
+              className="rounded-full p-1.5 text-content-secondary hover:bg-surface-hover"
+              aria-label="Back"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          ) : onClose ? (
+            <button
+              type="button"
+              onClick={() => onClose(threadId)}
+              className="rounded-full p-1.5 text-content-secondary hover:bg-surface-hover"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          ) : null}
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#111b21] text-white">
+            <Lock className="h-5 w-5" aria-hidden />
+          </div>
+          <p className="min-w-0 truncate text-[16px] font-medium text-[#111b21] dark:text-content">
+            {thread?.name || "Locked chat"}
+          </p>
+        </div>
+        <div className={`flex flex-col items-center justify-center gap-3 px-6 text-center ${isPageVariant ? "min-h-0 flex-1" : "h-[320px]"}`}>
+          <Lock className="h-10 w-10 text-content-tertiary" aria-hidden />
+          <p className="text-sm font-medium text-content">This chat is locked</p>
+          <p className="max-w-[240px] text-xs text-content-secondary">
+            Enter this chat’s PIN to view the conversation.
+          </p>
+          <button
+            type="button"
+            onClick={() => void unlockChat(threadId, thread?.name || undefined)}
+            className="mt-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            Unlock
+          </button>
+        </div>
+        {dialog}
+      </div>
+    );
+  }
 
   return (
     <div

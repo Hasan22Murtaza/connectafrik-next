@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { CHAT_LOCKED_CODE } from '@/features/chat/chatLockEvents'
 
 export class ApiError extends Error {
   constructor(
@@ -11,10 +12,23 @@ export class ApiError extends Error {
   }
 }
 
-async function getAuthHeaders(): Promise<Record<string, string>> {
+export function isChatLockedError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false
+  const details = error.details as { code?: string } | undefined
+  return error.status === 403 && details?.code === CHAT_LOCKED_CODE
+}
+
+let extraHeaderProvider: (endpoint?: string) => Record<string, string> = () => ({})
+
+export function setApiClientExtraHeaders(provider: (endpoint?: string) => Record<string, string>) {
+  extraHeaderProvider = provider
+}
+
+async function getAuthHeaders(endpoint?: string): Promise<Record<string, string>> {
   const { data: { session } } = await supabase.auth.getSession()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...extraHeaderProvider(endpoint),
   }
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`
@@ -58,14 +72,14 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export const apiClient = {
   async get<T>(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
-    const headers = await getAuthHeaders()
+    const headers = await getAuthHeaders(endpoint)
     const url = buildUrl(endpoint, params)
     const response = await fetch(url, { headers, cache: 'no-store' })
     return handleResponse<T>(response)
   },
 
   async post<T>(endpoint: string, body?: unknown): Promise<T> {
-    const headers = await getAuthHeaders()
+    const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'POST',
       headers,
@@ -75,7 +89,7 @@ export const apiClient = {
   },
 
   async patch<T>(endpoint: string, body: unknown, options?: { keepalive?: boolean }): Promise<T> {
-    const headers = await getAuthHeaders()
+    const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'PATCH',
       headers,
@@ -86,7 +100,7 @@ export const apiClient = {
   },
 
   async put<T>(endpoint: string, body: unknown): Promise<T> {
-    const headers = await getAuthHeaders()
+    const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'PUT',
       headers,
@@ -96,7 +110,7 @@ export const apiClient = {
   },
 
   async delete<T>(endpoint: string, body?: unknown): Promise<T> {
-    const headers = await getAuthHeaders()
+    const headers = await getAuthHeaders(endpoint)
     const response = await fetch(endpoint, {
       method: 'DELETE',
       headers,

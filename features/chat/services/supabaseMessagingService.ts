@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { apiClient } from '@/lib/api-client'
+import { apiClient, isChatLockedError } from '@/lib/api-client'
 import type { ChatParticipant as BaseParticipant } from "@/shared/types/chat"
 import { notificationService } from '@/shared/services/notificationService'
 import {
@@ -91,6 +91,9 @@ export interface ChatThread {
   /** From current user's `chat_participants.pinned` */
   pinned?: boolean
   pinned_at?: string | null
+  /** From current user's `chat_participants.is_locked` */
+  is_locked?: boolean
+  locked_at?: string | null
   created_at: string
   updated_at: string
   /** Set when this thread is the canonical chat for a group */
@@ -642,6 +645,8 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
       typeof thread.blocked_by_other === 'boolean' ? thread.blocked_by_other : false,
     pinned: typeof thread.pinned === 'boolean' ? thread.pinned : false,
     pinned_at: typeof thread.pinned_at === 'string' ? thread.pinned_at : null,
+    is_locked: typeof thread.is_locked === 'boolean' ? thread.is_locked : false,
+    locked_at: typeof thread.locked_at === 'string' ? thread.locked_at : null,
     created_at: thread.created_at,
     updated_at: thread.updated_at || lastMessageAt,
     group_id: thread.group_id ?? null,
@@ -670,6 +675,8 @@ type RpcThreadBootstrap = {
   unread_count: number
   pinned: boolean
   pinned_at: string | null
+  is_locked: boolean
+  locked_at: string | null
   participants: unknown[]
 }
 
@@ -705,6 +712,8 @@ const loadThreadsViaRpc = async (
         unread_count: typeof thread.unread_count === 'number' ? thread.unread_count : 0,
         pinned: typeof thread.pinned === 'boolean' ? thread.pinned : false,
         pinned_at: typeof thread.pinned_at === 'string' ? thread.pinned_at : null,
+        is_locked: false,
+        locked_at: null,
         participants: Array.isArray(thread.participants)
           ? thread.participants.map((participant: any) => ({
               user_id: participant.id,
@@ -723,7 +732,7 @@ const loadThreadsViaRpc = async (
     if (threadIds.length > 0) {
       const { data: prefRows } = await supabase
         .from('chat_participants')
-        .select('thread_id, unread_count, pinned, pinned_at, archived, is_block')
+        .select('thread_id, unread_count, pinned, pinned_at, archived, is_block, is_locked, locked_at')
         .eq('user_id', currentUserId)
         .in('thread_id', threadIds)
 
@@ -736,6 +745,8 @@ const loadThreadsViaRpc = async (
             pinned_at: typeof r.pinned_at === 'string' ? r.pinned_at : null,
             archived: Boolean(r.archived),
             is_block: Boolean(r.is_block),
+            is_locked: Boolean(r.is_locked),
+            locked_at: typeof r.locked_at === 'string' ? r.locked_at : null,
             blocked_by_other: false,
           },
         ])
@@ -778,6 +789,8 @@ const loadThreadsViaRpc = async (
           t.pinned = p.pinned
           t.pinned_at = p.pinned_at
           t.archived = p.archived
+          t.is_locked = p.is_locked
+          t.locked_at = p.locked_at
           if (!t.is_block) t.is_block = p.is_block
         }
       }
@@ -963,10 +976,11 @@ export const supabaseMessagingService = {
           : category === 'general'
             ? list.filter((t) => t.type !== 'marketplace')
             : list
-      if (filter === 'groups') return byCategory.filter(isGroupThread)
+      const visible = byCategory.filter((t) => !t.is_locked)
+      if (filter === 'groups') return visible.filter(isGroupThread)
       if (filter === 'unread')
-        return byCategory.filter((t) => (t.unread_count ?? 0) > 0 && !t.archived && !t.is_block)
-      return byCategory
+        return visible.filter((t) => (t.unread_count ?? 0) > 0 && !t.archived && !t.is_block)
+      return visible
     }
 
     const endpoint =
@@ -1038,6 +1052,20 @@ export const supabaseMessagingService = {
       if (!raw?.id) return null
       return formatThread(raw, currentUserId)
     } catch (error) {
+      if (isChatLockedError(error)) {
+        return {
+          id: threadId,
+          name: 'Locked chat',
+          type: 'direct',
+          participants: [],
+          last_message_preview: null,
+          last_message_at: new Date().toISOString(),
+          unread_count: 0,
+          is_locked: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      }
       console.error('fetchThreadDetail:', error)
       return null
     }
@@ -1120,6 +1148,81 @@ export const supabaseMessagingService = {
       console.error('setThreadPinned:', error)
       throw error
     }
+  },
+
+  async setThreadLocked(
+    threadId: string,
+    currentUserId: string,
+    locked: boolean,
+    credentials?: { pin?: string; password?: string }
+  ): Promise<ChatThread | null> {
+    if (!threadId?.trim() || !currentUserId) return null
+    try {
+      const res = await apiClient.post<{ data: any; meta?: unknown }>(
+        `/api/chat/threads/${threadId}/lock`,
+        { locked, ...(credentials || {}) }
+      )
+      const raw = (res as any)?.data
+      if (!raw?.id) return null
+      return formatThread(raw, currentUserId)
+    } catch (error) {
+      console.error('setThreadLocked:', error)
+      throw error
+    }
+  },
+
+  async getLockedThreads(
+    currentUser?: ChatParticipant | null,
+    options?: { limit?: number; page?: number }
+  ): Promise<GetUserThreadsResult> {
+    if (!currentUser) return { threads: [], hasMore: false }
+    const limit = options?.limit ?? 50
+    const page = options?.page ?? 0
+    try {
+      const res = await apiClient.get<{ data: any[]; meta?: { hasMore?: boolean } }>(
+        '/api/chat/threads/locked',
+        { limit, page }
+      )
+      const threads = res?.data ?? []
+      const formattedThreads = await Promise.all(
+        threads.map((thread: any) => formatThread(thread, currentUser.id))
+      )
+      formattedThreads.sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
+      const hasMore = typeof res?.meta?.hasMore === 'boolean' ? res.meta.hasMore : formattedThreads.length >= limit
+      return { threads: formattedThreads, hasMore }
+    } catch (error) {
+      console.error('getLockedThreads:', error)
+      throw error
+    }
+  },
+
+  async getChatLockStatus(): Promise<{ locked_count: number; locked_unread: number }> {
+    const res = await apiClient.get<{ locked_count: number; locked_unread: number }>('/api/chat/lock/status')
+    return {
+      locked_count: typeof res?.locked_count === 'number' ? res.locked_count : 0,
+      locked_unread: typeof res?.locked_unread === 'number' ? res.locked_unread : 0,
+    }
+  },
+
+  async verifyChatLock(credentials: {
+    thread_id: string
+    pin?: string
+    password?: string
+  }): Promise<{ token: string; expires_at: string; thread_id: string }> {
+    const res = await apiClient.post<{ token: string; expires_at: string; thread_id: string }>(
+      '/api/chat/lock/verify',
+      credentials
+    )
+    if (!res?.token) throw new Error('Failed to unlock this chat')
+    return res
+  },
+
+  async setChatLockPin(
+    threadId: string,
+    pin: string,
+    credentials?: { current_pin?: string; password?: string }
+  ): Promise<void> {
+    await apiClient.post('/api/chat/lock/pin', { thread_id: threadId, pin, ...(credentials || {}) })
   },
 
   async getThreadMessages(

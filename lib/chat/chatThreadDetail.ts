@@ -29,6 +29,8 @@ export type ThreadParticipantPrefs = {
   pinned_at: string | null
   archived: boolean
   is_block: boolean
+  is_locked: boolean
+  locked_at: string | null
   blocked_by_other: boolean
 }
 
@@ -39,7 +41,7 @@ export async function getMyThreadParticipantPrefs(
 ): Promise<ThreadParticipantPrefs> {
   const { data: row } = await serviceClient
     .from('chat_participants')
-    .select('unread_count, pinned, pinned_at, archived, is_block')
+    .select('unread_count, pinned, pinned_at, archived, is_block, is_locked, locked_at')
     .eq('thread_id', threadId)
     .eq('user_id', userId)
     .maybeSingle()
@@ -50,6 +52,8 @@ export async function getMyThreadParticipantPrefs(
     pinned_at: typeof row?.pinned_at === 'string' ? row.pinned_at : null,
     archived: Boolean(row?.archived),
     is_block: blockState.blockedByMe,
+    is_locked: Boolean(row?.is_locked),
+    locked_at: typeof row?.locked_at === 'string' ? row.locked_at : null,
     blocked_by_other: blockState.blockedByOther,
   }
 }
@@ -83,6 +87,8 @@ export function threadToResponseBody(thread: Record<string, unknown>, prefs: Thr
       pinned_at: prefs.pinned_at,
       archived: prefs.archived,
       is_block: prefs.is_block,
+      is_locked: prefs.is_locked,
+      locked_at: prefs.locked_at,
       blocked_by_other: prefs.blocked_by_other,
     },
     meta: {

@@ -1,8 +1,9 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { format, isToday, isYesterday, isThisYear } from 'date-fns'
-import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Pin, Search, Store } from '@/shared/icons'
+import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Lock, Pin, Search, Store } from '@/shared/icons'
 import { useRouter } from 'next/navigation'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
+import { useChatLock } from '@/contexts/ChatLockContext'
 import { ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread } from '@/features/chat/services/supabaseMessagingService'
 import { CHAT_THREAD_MARKED_READ_EVENT } from '@/features/chat/threadReadEvents'
@@ -117,6 +118,7 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const router = useRouter()
   const { openThread, currentUser, threads: contextThreads } = useProductionChat()
+  const { lockedCount, lockedUnread, openLockedFolder } = useChatLock()
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [threadsLoading, setThreadsLoading] = useState(true)
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false)
@@ -237,7 +239,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     const ctxById = new Map(contextThreads.map((t) => [t.id, t]))
     return mpThreads
       .map((t) => ctxById.get(t.id) ?? t)
-      .filter((t) => !t.archived && !t.is_block)
+      .filter((t) => !t.archived && !t.is_block && !t.is_locked)
       .sort((a, b) => {
         const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
         const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
@@ -271,17 +273,17 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   }, [mergedThreads])
 
   const activeThreads = useMemo(
-    () => sortedThreads.filter((t) => !t.archived && !t.is_block),
+    () => sortedThreads.filter((t) => !t.archived && !t.is_block && !t.is_locked),
     [sortedThreads]
   )
 
   const archivedThreads = useMemo(
-    () => sortedThreads.filter((t) => t.archived === true),
+    () => sortedThreads.filter((t) => t.archived === true && !t.is_locked),
     [sortedThreads]
   )
 
   const blockedThreads = useMemo(
-    () => sortedThreads.filter((t) => !t.archived && t.is_block === true),
+    () => sortedThreads.filter((t) => !t.archived && t.is_block === true && !t.is_locked),
     [sortedThreads]
   )
 
@@ -378,6 +380,35 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
       </div>
 
       {view === 'chats' ? (
+        <>
+        {lockedCount > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              onClose()
+              router.push('/chat')
+              void openLockedFolder()
+            }}
+            className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white">
+              <Lock className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">Locked Chats</p>
+              <p className="mt-0.5 truncate text-sm text-content-secondary">
+                {lockedCount} locked conversation{lockedCount === 1 ? '' : 's'}
+              </p>
+            </div>
+            {lockedUnread > 0 ? (
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                {lockedUnread > 99 ? '99+' : lockedUnread}
+              </span>
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+            )}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => {
@@ -401,6 +432,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
           )}
         </button>
+        </>
       ) : null}
 
       {view === 'marketplace' ? (

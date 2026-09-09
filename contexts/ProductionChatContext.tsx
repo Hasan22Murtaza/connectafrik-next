@@ -11,7 +11,12 @@ import { CHAT_THREAD_MARKED_READ_EVENT } from '@/features/chat/threadReadEvents'
 import { toCallSessionStatusMessageType } from '@/features/chat/services/callSessionRealtime'
 import { useAuth } from './AuthContext'
 import { supabase } from '@/lib/supabase'
-import { apiClient, ApiError } from '@/lib/api-client'
+import { apiClient, ApiError, isChatLockedError } from '@/lib/api-client'
+import { useChatLock } from '@/contexts/ChatLockContext'
+import {
+  CHAT_LOCK_CHANGED_EVENT,
+  CHAT_LOCK_SESSION_ENDED_EVENT,
+} from '@/features/chat/chatLockEvents'
 import toast from 'react-hot-toast'
 import { usePresence } from '@/shared/hooks/usePresence'
 import { openCallWindow, buildCallUrl } from '@/shared/utils/callWindow'
@@ -155,6 +160,7 @@ export const useProductionChat = () => {
 
 export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth()
+  const { isThreadUnlocked, unlockedThreadKey } = useChatLock()
   usePresence()
   const [callRequests, setCallRequests] = useState<Record<string, CallRequest>>({})
   const [activeCallsByThread, setActiveCallsByThread] = useState<Record<string, ActiveCallInfo>>({})
@@ -162,6 +168,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
   const messagesRef = useRef<Record<string, ChatMessage[]>>({})
+  const threadsRef = useRef<ChatThread[]>([])
   const callRequestsRef = useRef<Record<string, CallRequest>>({})
   const callStartInFlightRef = useRef<Set<string>>(new Set())
   /** Dedupes poll + Realtime so we do not open two modals for the same call_id. */
@@ -190,6 +197,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  useEffect(() => {
+    threadsRef.current = threads
+  }, [threads])
 
   // Preload call-related chunks/sdk during idle time so call startup is faster.
   useEffect(() => {
@@ -317,6 +328,82 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     window.addEventListener('chatThreadDeleted', handler)
     return () => window.removeEventListener('chatThreadDeleted', handler)
   }, [handleChatThreadDeleted])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onLockChanged = (event: Event) => {
+      const thread = (event as CustomEvent<{ thread?: ChatThread }>).detail?.thread
+      if (!thread?.id) return
+      setThreads((prev) => {
+        const idx = prev.findIndex((t) => t.id === thread.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = { ...next[idx], ...thread }
+          return next
+        }
+        return [...prev, thread]
+      })
+      if (thread.is_locked && !isThreadUnlocked(thread.id)) {
+        closeThread(thread.id)
+        setMessages((prev) => {
+          if (!Object.prototype.hasOwnProperty.call(prev, thread.id)) return prev
+          const { [thread.id]: _removed, ...rest } = prev
+          return rest
+        })
+      }
+    }
+    const onSessionEnded = () => {
+      const lockedIds = new Set(
+        threadsRef.current.filter((t) => t.is_locked).map((t) => t.id)
+      )
+      if (lockedIds.size === 0) return
+      setOpenThreads((prev) => prev.filter((id) => !lockedIds.has(id)))
+      setMessages((prev) => {
+        let changed = false
+        const next = { ...prev }
+        for (const id of lockedIds) {
+          if (Object.prototype.hasOwnProperty.call(next, id)) {
+            delete next[id]
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    }
+    window.addEventListener(CHAT_LOCK_CHANGED_EVENT, onLockChanged as EventListener)
+    window.addEventListener(CHAT_LOCK_SESSION_ENDED_EVENT, onSessionEnded)
+    return () => {
+      window.removeEventListener(CHAT_LOCK_CHANGED_EVENT, onLockChanged as EventListener)
+      window.removeEventListener(CHAT_LOCK_SESSION_ENDED_EVENT, onSessionEnded)
+    }
+  }, [closeThread, isThreadUnlocked])
+
+  useEffect(() => {
+    if (!currentUser) return
+    const lockedOpen = openThreads.filter((id) =>
+      Boolean(threadsRef.current.find((t) => t.id === id && t.is_locked && isThreadUnlocked(id)))
+    )
+    if (lockedOpen.length === 0) return
+    let cancelled = false
+    void Promise.all(
+      lockedOpen.map(async (threadId) => {
+        const detail = await supabaseMessagingService.fetchThreadDetail(currentUser.id, threadId)
+        if (!detail || cancelled) return
+        setThreads((prev) => {
+          const idx = prev.findIndex((t) => t.id === threadId)
+          if (idx >= 0) {
+            const next = [...prev]
+            next[idx] = { ...next[idx], ...detail }
+            return next
+          }
+          return [...prev, detail]
+        })
+      })
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [unlockedThreadKey, isThreadUnlocked, currentUser, openThreads])
 
   const getThreadById = useCallback((threadId: string) => {
     return threads.find(t => t.id === threadId)
@@ -1272,6 +1359,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (!currentUser || openThreads.length === 0) return
 
       for (const threadId of openThreads) {
+        const listed = threadsRef.current.find((t) => t.id === threadId)
+        if (!listed || (listed.is_locked && !isThreadUnlocked(threadId))) {
+          continue
+        }
         try {
           const { messages: threadMessages } = await supabaseMessagingService.getThreadMessages(threadId)
           setMessages(prev => {
@@ -1297,6 +1388,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             }
           })
         } catch (error) {
+          if (isChatLockedError(error)) {
+            continue
+          }
           console.error(`Error loading messages for thread ${threadId}:`, error)
           // Mark as loaded so the UI does not spin forever on failure.
           setMessages((prev) => {
@@ -1309,7 +1403,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
     loadMessagesForThreads()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id, openThreads.join(',')])
+  }, [currentUser?.id, openThreads.join(','), unlockedThreadKey, threads.map((t) => `${t.id}:${t.is_locked ? 1 : 0}`).join('|')])
 
   useEffect(() => {
     if (!currentUser) return
@@ -1317,6 +1411,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     const unsubscribeCallbacks: (() => void)[] = []
 
     openThreads.forEach(threadId => {
+      const listed = threadsRef.current.find((t) => t.id === threadId)
+      if (!listed || (listed.is_locked && !isThreadUnlocked(threadId))) {
+        return
+      }
       const unsubscribe = supabaseMessagingService.subscribeToThread(threadId, (message) => {
         setMessages(prev => {
           const current = prev[threadId] || []
@@ -1370,7 +1468,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       unsubscribeCallbacks.forEach(unsubscribe => unsubscribe())
     }
-  }, [currentUser, openThreads, clearCallRequest])
+  }, [currentUser, openThreads, clearCallRequest, isThreadUnlocked, unlockedThreadKey, threads])
 
   useEffect(() => {
     if (!currentUser) return

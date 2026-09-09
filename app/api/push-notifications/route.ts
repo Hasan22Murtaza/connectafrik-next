@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json() as NotificationPayload
-    const { user_id, title, body: notificationBody, notification_type, skip_db } = body
+    let { user_id, title, body: notificationBody, notification_type, skip_db } = body
 
     if (!user_id || !title || !notificationBody) {
       return NextResponse.json(
@@ -349,6 +349,27 @@ export async function POST(request: NextRequest) {
       body.data && typeof body.data === 'object' && !Array.isArray(body.data)
         ? { ...(body.data as Record<string, unknown>) }
         : {}
+
+    if (canonicalType === 'chat_message') {
+      const lockedThreadId = pickNonEmptyString(rawPushData.thread_id, rawPushData.threadId)
+      if (lockedThreadId) {
+        const { data: lockRow } = await supabase
+          .from('chat_participants')
+          .select('is_locked')
+          .eq('user_id', user_id)
+          .eq('thread_id', lockedThreadId)
+          .maybeSingle()
+        if (lockRow?.is_locked) {
+          title = 'ConnectAfrik'
+          notificationBody = 'You have a new message'
+          body.title = title
+          body.body = notificationBody
+          rawPushData.locked_chat = 'true'
+          delete rawPushData.sender_name
+          delete rawPushData.sender_image
+        }
+      }
+    }
 
     let profileImage = pickProfileImageUrl(
       body.sender_image,

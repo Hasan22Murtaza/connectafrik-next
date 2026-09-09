@@ -5,6 +5,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
+import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
 
 import {
 
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     }
 
-
+    const lockedDenial = await requireUnlockedLockedThread(request, serviceClient, user.id, threadId)
+    if (lockedDenial) return lockedDenial
 
     const { data: thread, error } = await serviceClient
 

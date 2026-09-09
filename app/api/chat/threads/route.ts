@@ -2,19 +2,24 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { queryUserThreads } from '@/lib/chat/chatThreadsQuery'
+import { ChatLockAuthError } from '@/lib/chat/chatLock'
 
 /**
  * GET /api/chat/threads
  *
  * Returns the authenticated user's chat threads. Supports `limit`, `page`,
  * `category` (`general` | `marketplace`), `group_id`, and `filter`
- * (`all` | `unread` | `groups`) query params. See `lib/chatThreadsQuery.ts`.
+ * (`all` | `unread` | `groups` | `locked`) query params. See `lib/chatThreadsQuery.ts`.
+ * Locked conversations are omitted from normal lists.
  */
 export async function GET(request: NextRequest) {
   try {
     const result = await queryUserThreads(request)
     return jsonResponse(result)
   } catch (error: any) {
+    if (error instanceof ChatLockAuthError) {
+      return errorResponse(error.message, error.status, { code: error.code })
+    }
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }

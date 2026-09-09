@@ -14,6 +14,7 @@ export async function getTotalUnreadMessageCount(
     .gt('unread_count', 0)
     .eq('archived', false)
     .eq('is_block', false)
+    .eq('is_locked', false)
     .is('deleted_at', null)
 
   if (error) throw error
