@@ -896,84 +896,37 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-const loadMessageAttachments = async (messageId: string, retry: boolean): Promise<any[]> => {
-  const delays = retry ? [0, 200, 500, 1000] : [0]
-  let rows: any[] = []
+const unwrapApiMessage = (res: unknown): Record<string, unknown> | null => {
+  if (!res || typeof res !== 'object') return null
+  const obj = res as Record<string, unknown>
+  const nested = obj.data
+  if (nested && typeof nested === 'object' && !Array.isArray(nested) && 'id' in nested) {
+    return nested as Record<string, unknown>
+  }
+  if ('id' in obj) return obj
+  return null
+}
+
+const fetchHydratedThreadMessage = async (
+  threadId: string,
+  messageId: string,
+  options?: { retryAttachments?: boolean }
+): Promise<Record<string, unknown> | null> => {
+  const delays = options?.retryAttachments ? [0, 200, 500, 1000] : [0]
+  let raw: Record<string, unknown> | null = null
   for (const delay of delays) {
     if (delay) await sleep(delay)
-    const { data } = await supabase
-      .from('message_attachments')
-      .select('*')
-      .eq('message_id', messageId)
-    rows = data || []
-    if (rows.length) break
+    const res = await apiClient.get<Record<string, unknown>>(
+      `/api/chat/threads/${threadId}/messages/${messageId}`
+    )
+    raw = unwrapApiMessage(res)
+    if (!raw) continue
+    const attachments = raw.attachments
+    if (Array.isArray(attachments) && attachments.length > 0) break
+    if (!options?.retryAttachments) break
   }
-  return rows
+  return raw
 }
-
-// Format message data from Supabase
-const formatMessage = async (message: any): Promise<ChatMessage> => {
-  // Get read receipts
-  const { data: reads } = await supabase
-    .from('message_reads')
-    .select('user_id')
-    .eq('message_id', message.id)
-
-  const viewOnce = Boolean(message.view_once) || Boolean(message.metadata?.view_once)
-  const attachments = await loadMessageAttachments(message.id, viewOnce)
-
-  const resolvedSenderId =
-    (message.sender_id != null && String(message.sender_id)) ||
-    (message.sender?.id != null && String(message.sender.id)) ||
-    (message.profiles?.id != null && String(message.profiles.id)) ||
-    ''
-
-  return {
-    id: message.id,
-    thread_id: message.thread_id,
-    sender_id: resolvedSenderId,
-    content: message.content,
-    created_at: message.created_at,
-    updated_at: message.updated_at,
-    message_type: message.message_type,
-    metadata: message.metadata,
-    read_by: reads?.map(r => r.user_id) || [],
-    is_deleted: message.is_deleted,
-    is_edited: Boolean(message.is_edited),
-    is_forward: Boolean(message.is_forward),
-    deleted_for: message.deleted_for || [],
-    deleted_at: message.deleted_at,
-    view_once: viewOnce,
-    view_once_opened: Boolean(message.view_once_opened),
-    view_once_opened_at: message.view_once_opened_at ?? null,
-    view_once_opened_by: message.view_once_opened_by ?? null,
-    attachments: attachments?.map(att => ({
-      id: att.id,
-      name: att.file_name,
-      url: viewOnce ? '' : att.file_url,
-      type: att.file_type.startsWith('image/') ? 'image' :
-            att.file_type.startsWith('video/') ? 'video' : 'file',
-      size: att.file_size,
-      mimeType: att.file_type
-    })),
-    sender: message.sender ? {
-      id: message.sender.id,
-      name: message.sender.full_name || message.sender.username || 'Loading...',
-      avatarUrl: message.sender.avatar_url
-    } : (message.profiles ? {
-      id: message.profiles.id,
-      name: message.profiles.full_name || message.profiles.username || 'Loading...',
-      avatarUrl: message.profiles.avatar_url
-    } : {
-      id: resolvedSenderId,
-      name: 'Loading...',
-      avatarUrl: null
-    }),
-    reply_to_id: message.reply_to_id,
-    reactions: [],
-  }
-}
-
 
 export type GetUserThreadsResult = {
   threads: ChatThread[]
@@ -1818,17 +1771,16 @@ export const supabaseMessagingService = {
       const hydrateThreadMessageInsert = async (row: Record<string, unknown>): Promise<void> => {
         if (deniedRealtimeThreadIds.has(threadId)) return
         try {
-          const { data: fullMessage } = await supabase
-            .from('chat_messages')
-            .select(`
-              *,
-              sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
-            `)
-            .eq('id', row.id as string)
-            .single()
+          const meta = row.metadata && typeof row.metadata === 'object'
+            ? (row.metadata as Record<string, unknown>)
+            : null
+          const viewOnce = row.view_once === true || meta?.view_once === true
+          const fullMessage = await fetchHydratedThreadMessage(threadId, String(row.id), {
+            retryAttachments: Boolean(viewOnce),
+          })
 
           const formattedMessage = fullMessage
-            ? await formatMessage(fullMessage)
+            ? mapApiMessageToChatMessage(fullMessage)
             : mapApiMessageToChatMessage(row)
 
           notifyMessageSubscribers(formattedMessage, { skipPush: true })
@@ -1940,20 +1892,11 @@ export const supabaseMessagingService = {
     }
   },
 
-  async updateMessageSenderInfo(messageId: string): Promise<ChatMessage | null> {
+  async updateMessageSenderInfo(messageId: string, threadId?: string): Promise<ChatMessage | null> {
+    if (!threadId) return null
     try {
-      const { data: message, error } = await supabase
-        .from('chat_messages')
-        .select(`
-          *,
-          sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
-        `)
-        .eq('id', messageId)
-        .single()
-
-      if (error) throw error
-
-      return formatMessage(message)
+      const message = await fetchHydratedThreadMessage(threadId, messageId)
+      return message ? mapApiMessageToChatMessage(message) : null
     } catch (error) {
       console.error('Error updating message sender info:', error)
       return null

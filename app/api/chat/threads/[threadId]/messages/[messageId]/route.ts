@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
+import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
 import { sanitizeViewOnceMessage } from '@/lib/chat/chatViewOnce'
 
 const MESSAGE_SELECT = `
@@ -36,24 +37,26 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found or access denied', 404)
     }
 
-    const { data: msg, error: msgError } = await serviceClient
+    const lockedDenial = await requireUnlockedLockedThread(request, serviceClient, user.id, threadId)
+    if (lockedDenial) return lockedDenial
+
+    const { data: message, error: msgError } = await serviceClient
       .from('chat_messages')
-      .select('sender_id, is_deleted')
+      .select(MESSAGE_SELECT)
       .eq('id', messageId)
       .eq('thread_id', threadId)
       .maybeSingle()
 
     if (msgError) return errorResponse(msgError.message, 400)
-    if (!msg) return errorResponse('Message not found', 404)
+    if (!message) return errorResponse('Message not found', 404)
 
-    const canDelete =
-      msg.sender_id === user.id && !Boolean((msg as { is_deleted?: boolean }).is_deleted)
-    return jsonResponse({ data: { can_delete_for_everyone: canDelete } })
+    const data = await enrichMessageResponse(serviceClient, message, user.id)
+    return jsonResponse({ data })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }
-    return errorResponse(error.message || 'Failed to check delete permission', 500)
+    return errorResponse(error.message || 'Failed to load message', 500)
   }
 }
 
