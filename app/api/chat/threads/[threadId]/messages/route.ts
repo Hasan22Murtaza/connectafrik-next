@@ -4,6 +4,12 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
 import { blockStateErrorMessage, getThreadBlockState } from '@/lib/chat/chatThreadBlock'
+import {
+  attachmentsAreViewOnceEligible,
+  detectViewOnceKind,
+  sanitizeViewOnceMessage,
+  viewOnceThreadPreview,
+} from '@/lib/chat/chatViewOnce'
 
 const MESSAGE_SELECT = `
   *,
@@ -61,12 +67,12 @@ const enrichMessageResponse = async (serviceClient: any, message: any, fallbackR
     serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
   ])
   const readBy = (readsRes.data || []).map((r: any) => r.user_id)
-  return {
+  return sanitizeViewOnceMessage({
     ...message,
     read_by: readBy.length ? readBy : [fallbackReaderId],
     attachments: attachmentsRes.data || [],
     reactions: [],
-  }
+  })
 }
 
 const findMatchingCallSignal = (messages: any[], incomingIdentity: CallIdentity) => {
@@ -185,12 +191,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
           user_reacted: details.user_reacted,
         }))
         .sort((a, b) => b.count - a.count)
-      return {
+      return sanitizeViewOnceMessage({
         ...m,
         read_by: readByMessage.get(m.id) || [],
         attachments: attachmentsByMessage.get(m.id) || [],
         reactions,
-      }
+      })
     })
     // Preserve natural chat display (oldest -> newest) inside the fetched page.
     const chronological = [...formatted].reverse()
@@ -223,6 +229,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const attachments = body.attachments as { name: string; size: number; mimeType: string; url: string }[] | undefined
     const reply_to_id = body.reply_to_id as string | undefined
     const is_forward = body.is_forward as boolean | undefined
+    const wantsViewOnce = body.view_once === true
 
     const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
     if (!allowed) {
@@ -236,8 +243,28 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const safeContent = typeof content === 'string' ? content : ''
-    const hasAttachments = attachments && attachments.length > 0
-    const preview = safeContent.length > 100 ? safeContent.slice(0, 97) + '...' : (safeContent || (hasAttachments ? 'Shared an attachment' : ''))
+    const hasAttachments = Boolean(attachments && attachments.length > 0)
+    if (wantsViewOnce) {
+      if (!hasAttachments || !attachmentsAreViewOnceEligible(attachments || [])) {
+        return errorResponse('View Once can only be used with photos or videos', 400)
+      }
+      if (is_forward) {
+        return errorResponse('View Once messages cannot be forwarded', 400)
+      }
+    }
+    const viewOnceKind = wantsViewOnce ? detectViewOnceKind(attachments || []) : null
+    const mergedMetadata = wantsViewOnce
+      ? {
+          ...(metadata && typeof metadata === 'object' ? metadata : {}),
+          view_once: true,
+          view_once_kind: viewOnceKind,
+        }
+      : metadata || null
+    const preview = wantsViewOnce && viewOnceKind
+      ? viewOnceThreadPreview(viewOnceKind, false)
+      : safeContent.length > 100
+        ? safeContent.slice(0, 97) + '...'
+        : (safeContent || (hasAttachments ? 'Shared an attachment' : ''))
     const now = new Date().toISOString()
     const normalizedMessageType = message_type || 'text'
     const incomingIdentity = extractCallIdentity(metadata)
@@ -344,9 +371,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         sender_id: user.id,
         content: safeContent,
         message_type: normalizedMessageType,
-        metadata: metadata || null,
+        metadata: mergedMetadata,
         reply_to_id: reply_to_id || null,
         ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
+        ...(wantsViewOnce ? { view_once: true } : {}),
       })
       .select(MESSAGE_SELECT)
       .single()
@@ -387,6 +415,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
           file_url: a.url,
         }))
       )
+      if (wantsViewOnce) {
+        await serviceClient
+          .from('chat_messages')
+          .update({ updated_at: now })
+          .eq('id', message.id)
+      }
     }
 
     const { data: attData } = await serviceClient
@@ -394,12 +428,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .select('*')
       .eq('message_id', message.id)
 
-    const result = {
+    const result = sanitizeViewOnceMessage({
       ...message,
       read_by: [user.id],
       attachments: attData || [],
       reactions: [],
-    }
+    })
 
     return jsonResponse({ data: result }, 201)
   } catch (error: any) {

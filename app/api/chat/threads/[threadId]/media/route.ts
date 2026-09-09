@@ -82,6 +82,7 @@ const ATTACHMENT_SELECT = `
     content,
     is_deleted,
     deleted_for,
+    view_once,
     sender:profiles!chat_messages_sender_id_fkey(id, username, full_name, avatar_url)
   )
 `
@@ -226,6 +227,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       const msg = embeddedChatMessage(row as Record<string, unknown>)
       if (!msg) continue
       if (isDeletedForUser(msg.deleted_for, user.id)) continue
+      if (Boolean(msg.view_once)) continue
 
       const fileType = String(row.file_type || '')
       const kind = attachmentKind(fileType)

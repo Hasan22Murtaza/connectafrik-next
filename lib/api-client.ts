@@ -118,4 +118,29 @@ export const apiClient = {
     })
     return handleResponse<T>(response)
   },
+
+  async getBlob(
+    endpoint: string,
+    params?: Record<string, string | number | boolean | undefined>,
+    extraHeaders?: Record<string, string>
+  ): Promise<Blob> {
+    const headers = await getAuthHeaders(endpoint)
+    delete headers['Content-Type']
+    const response = await fetch(buildUrl(endpoint, params), {
+      headers: { ...headers, ...extraHeaders },
+      cache: 'no-store',
+    })
+    if (!response.ok) {
+      let message = `${response.status} ${response.statusText}`
+      try {
+        const body = await response.json()
+        if (body?.message) message = body.message
+        throw new ApiError(message, response.status, body)
+      } catch (error) {
+        if (error instanceof ApiError) throw error
+        throw new ApiError(message, response.status)
+      }
+    }
+    return response.blob()
+  },
 }

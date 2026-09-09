@@ -4,7 +4,12 @@ import type {
   ChatHeaderOptionsMenuSection,
 } from "@/features/chat/types/chatHeaderOptionsMenu";
 import type { ChatMessage } from "@/features/chat/services/supabaseMessagingService";
-import { getChatMessageAuthorId } from "@/features/chat/services/supabaseMessagingService";
+import { getChatMessageAuthorId, supabaseMessagingService } from "@/features/chat/services/supabaseMessagingService";
+import { ApiError } from "@/lib/api-client";
+import {
+  isViewOnceMessage,
+  viewOnceKindFromMessage,
+} from "@/features/chat/viewOnce";
 import { toCallSessionStatusMessageType } from "@/features/chat/services/callSessionRealtime";
 import {
   differenceInCalendarDays,
@@ -57,6 +62,7 @@ import {
 } from "@/features/chat/constants/messageTranslationLanguages";
 import { shouldOfferMessageTranslate } from "@/features/chat/utils/detectMessageLanguage";
 import MessageAttachments from "./MessageAttachments";
+import ViewOncePlaceholder from "./ViewOncePlaceholder";
 import ChatMediaViewer, { type ChatMediaViewerItem } from "./ChatMediaViewer";
 import {
   extractConnectAfrikPostId,
@@ -110,12 +116,14 @@ export function ChatUnreadDivider() {
 
 function isEditableTextMessage(m: ChatMessage): boolean {
   if (m.is_deleted) return false;
+  if (isViewOnceMessage(m)) return false;
   const t = m.message_type || "text";
   return t === "text";
 }
 
 function isForwardableChatMessage(m: ChatMessage): boolean {
   if (m.is_deleted) return false;
+  if (isViewOnceMessage(m)) return false;
   const hasText = Boolean(m.content?.trim());
   const hasAtt = Boolean(m.attachments && m.attachments.length > 0);
   return hasText || hasAtt;
@@ -132,6 +140,13 @@ function formatReplyQuote(message: ChatMessage | null | undefined): {
   const senderName = message.sender?.name || "Unknown";
   if (message.is_deleted) {
     return { senderName, preview: "This message was deleted" };
+  }
+  if (isViewOnceMessage(message)) {
+    const kind = viewOnceKindFromMessage(message);
+    if (message.view_once_opened) {
+      return { senderName, preview: kind === "video" ? "Opened video" : "Opened photo" };
+    }
+    return { senderName, preview: kind === "video" ? "Video · View once" : "Photo · View once" };
   }
   if (message.attachments?.length) {
     const att = message.attachments[0];
@@ -288,7 +303,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [mediaViewer, setMediaViewer] = useState<{
     items: ChatMediaViewerItem[];
     index: number;
+    viewOnce?: boolean;
+    messageId?: string;
   } | null>(null);
+  const [viewOnceOpening, setViewOnceOpening] = useState(false);
+  const [viewOnceOpenedLocal, setViewOnceOpenedLocal] = useState(false);
+  const viewOnceBlobUrlsRef = useRef<string[]>([]);
 
   const router = useRouter();
   const MENU_VIEWPORT_GAP = 8;
@@ -445,7 +465,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const canShowInfo = isOwnMessage && Boolean(onShowInfo) && !isDeleted;
   const canCopy = Boolean((message.content || "").trim());
   const hasAttachments = Boolean(message.attachments && message.attachments.length > 0);
-  const canSaveOrOpen = hasAttachments && !isDeleted && !isUploading;
+  const isViewOnce = isViewOnceMessage(message);
+  const viewOnceOpened = Boolean(message.view_once_opened) || viewOnceOpenedLocal;
+  const viewOnceKind = viewOnceKindFromMessage(message);
+  const canSaveOrOpen = hasAttachments && !isDeleted && !isUploading && !isViewOnce;
   const canSelect = Boolean(onEnterSelection) && !isDeleted;
   const canReport = !isOwnMessage && !isDeleted;
   const senderId = getChatMessageAuthorId(message);
@@ -492,7 +515,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const firstAttachment = message.attachments?.[0];
 
   const handleSaveAs = () => {
-    if (!firstAttachment?.url) return;
+    if (isViewOnceMessage(message) || !firstAttachment?.url) return;
     const a = document.createElement("a");
     a.href = firstAttachment.url;
     a.download = firstAttachment.name || "file";
@@ -505,13 +528,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   const handleOpenWith = () => {
-    if (!firstAttachment?.url) return;
+    if (isViewOnceMessage(message) || !firstAttachment?.url) return;
     window.open(firstAttachment.url, "_blank", "noopener,noreferrer");
     setShowMenu(false);
   };
 
   const handleShareAttachment = async () => {
-    if (!firstAttachment?.url) return;
+    if (isViewOnceMessage(message) || !firstAttachment?.url) return;
     try {
       if (typeof navigator.share === "function") {
         await navigator.share({
@@ -527,6 +550,93 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     }
     setShowMenu(false);
   };
+
+  const revokeViewOnceBlobs = useCallback(() => {
+    viewOnceBlobUrlsRef.current.forEach((url) => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        /* ignore */
+      }
+    });
+    viewOnceBlobUrlsRef.current = [];
+  }, []);
+
+  const closeMediaViewer = useCallback(() => {
+    const wasViewOnce = Boolean(mediaViewer?.viewOnce);
+    const viewOnceMessageId = mediaViewer?.messageId;
+    revokeViewOnceBlobs();
+    setMediaViewer(null);
+    if (wasViewOnce && viewOnceMessageId) {
+      void supabaseMessagingService.completeViewOnce(threadId, viewOnceMessageId);
+    }
+  }, [mediaViewer, revokeViewOnceBlobs, threadId]);
+
+  const handleOpenViewOnce = useCallback(async () => {
+    if (!isViewOnceMessage(message) || isOwnMessage || viewOnceOpening) return;
+    if (message.view_once_opened || viewOnceOpenedLocal) {
+      toast.error("This message is no longer available");
+      return;
+    }
+    setViewOnceOpening(true);
+    try {
+      const claimed = await supabaseMessagingService.claimViewOnce(threadId, message.id);
+      setViewOnceOpenedLocal(true);
+      const items: ChatMediaViewerItem[] = [];
+      for (const att of claimed.attachments) {
+        if (att.type !== "image" && att.type !== "video") continue;
+        const blob = await supabaseMessagingService.fetchViewOnceMedia(
+          threadId,
+          message.id,
+          att.id,
+          claimed.token
+        );
+        const objectUrl = URL.createObjectURL(blob);
+        viewOnceBlobUrlsRef.current.push(objectUrl);
+        items.push({
+          id: att.id,
+          url: objectUrl,
+          name: att.name,
+          type: att.type,
+          mimeType: att.mimeType,
+        });
+      }
+      if (!items.length) {
+        toast.error("This message is no longer available");
+        void supabaseMessagingService.completeViewOnce(threadId, message.id);
+        return;
+      }
+      setMediaViewer({ items, index: 0, viewOnce: true, messageId: message.id });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      if (status === 409 || status === 410) {
+        setViewOnceOpenedLocal(true);
+        toast.error("This message is no longer available");
+      } else if (status === 403) {
+        toast.error("You cannot open this View Once message");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Could not open View Once message");
+      }
+    } finally {
+      setViewOnceOpening(false);
+    }
+  }, [isOwnMessage, message, threadId, viewOnceOpenedLocal, viewOnceOpening]);
+
+  React.useEffect(() => {
+    setViewOnceOpenedLocal(false);
+  }, [message.id]);
+
+  React.useEffect(() => {
+    return () => {
+      viewOnceBlobUrlsRef.current.forEach((url) => {
+        try {
+          URL.revokeObjectURL(url);
+        } catch {
+          /* ignore */
+        }
+      });
+    };
+  }, []);
 
   const handleReport = () => {
     toast.success("Thanks, we received your report");
@@ -1335,7 +1445,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             ) : (
               <>
-                {message.attachments && message.attachments.length > 0 ? (
+                {isViewOnce && !isUploading ? (
+                    <ViewOncePlaceholder
+                      kind={viewOnceKind}
+                      opened={viewOnceOpened}
+                      isOwnMessage={isOwnMessage}
+                      loading={viewOnceOpening}
+                      onOpen={handleOpenViewOnce}
+                    />
+                  ) : message.attachments && message.attachments.length > 0 ? (
                   <MessageAttachments
                     attachments={message.attachments}
                     isOwnMessage={isOwnMessage}
@@ -1528,7 +1646,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         open={Boolean(mediaViewer)}
         items={mediaViewer?.items ?? []}
         initialIndex={mediaViewer?.index ?? 0}
-        onClose={() => setMediaViewer(null)}
+        restrictActions={Boolean(mediaViewer?.viewOnce)}
+        onClose={closeMediaViewer}
       />
     </div>
   );

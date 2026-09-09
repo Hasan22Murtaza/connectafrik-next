@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
+import { sanitizeViewOnceMessage } from '@/lib/chat/chatViewOnce'
 
 const MESSAGE_SELECT = `
   *,
@@ -215,7 +216,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       }
     }
 
-    return jsonResponse({
+    return jsonResponse(sanitizeViewOnceMessage({
       ...message,
       read_by: readBy,
       attachments: attachmentsRes.data || [],
@@ -230,7 +231,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       delivered_count: delivered_receipts.length,
       receipt_total: read_receipts.length + delivered_receipts.length,
       can_delete_for_everyone: canDelete,
-    })
+    }))
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

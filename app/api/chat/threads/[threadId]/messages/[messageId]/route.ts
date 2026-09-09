@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
+import { sanitizeViewOnceMessage } from '@/lib/chat/chatViewOnce'
 
 const MESSAGE_SELECT = `
   *,
@@ -16,12 +17,12 @@ const enrichMessageResponse = async (serviceClient: any, message: any, fallbackR
     serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
   ])
   const readBy = (readsRes.data || []).map((r: any) => r.user_id)
-  return {
+  return sanitizeViewOnceMessage({
     ...message,
     read_by: readBy.length ? readBy : [fallbackReaderId],
     attachments: attachmentsRes.data || [],
     reactions: [],
-  }
+  })
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -80,7 +81,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const { data: existing, error: fetchError } = await serviceClient
       .from('chat_messages')
-      .select('id, sender_id, thread_id, message_type, is_deleted')
+      .select('id, sender_id, thread_id, message_type, is_deleted, view_once')
       .eq('id', messageId)
       .eq('thread_id', threadId)
       .maybeSingle()
@@ -96,6 +97,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const type = existing.message_type || 'text'
     if (type !== 'text') {
       return errorResponse('Only text messages can be edited', 400)
+    }
+    if ((existing as { view_once?: boolean }).view_once) {
+      return errorResponse('View Once messages cannot be edited', 400)
     }
 
     const now = new Date().toISOString()

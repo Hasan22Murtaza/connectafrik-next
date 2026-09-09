@@ -24,6 +24,7 @@ interface ChatMediaViewerProps {
   initialIndex?: number;
   open: boolean;
   onClose: () => void;
+  restrictActions?: boolean;
 }
 
 const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
@@ -31,6 +32,7 @@ const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
   initialIndex = 0,
   open,
   onClose,
+  restrictActions = false,
 }) => {
   const [index, setIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
@@ -139,6 +141,10 @@ const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
               </button>
             </>
           ) : null}
+          {restrictActions ? (
+            <span className="hidden text-[11px] text-white/70 sm:inline">View once</span>
+          ) : (
+            <>
           <button
             type="button"
             onClick={() => void handleShare()}
@@ -155,6 +161,8 @@ const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
           >
             <Download className="h-5 w-5" />
           </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -177,6 +185,9 @@ const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
             controls
             autoPlay
             playsInline
+            controlsList={restrictActions ? "nodownload noplaybackrate noremoteplayback" : undefined}
+            disablePictureInPicture={restrictActions}
+            onContextMenu={restrictActions ? (e) => e.preventDefault() : undefined}
             className="max-h-full max-w-full rounded-lg object-contain shadow-2xl animate-[chatMediaIn_220ms_ease-out]"
           />
         ) : (
@@ -186,7 +197,8 @@ const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
             alt={current.name}
             className="max-h-full max-w-full select-none object-contain transition-transform duration-200 ease-out animate-[chatMediaIn_220ms_ease-out] touch-pan-y"
             style={{ transform: `scale(${scale})` }}
-            draggable={false}
+            draggable={!restrictActions}
+            onContextMenu={restrictActions ? (e) => e.preventDefault() : undefined}
           />
         )}
 

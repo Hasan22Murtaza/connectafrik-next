@@ -58,6 +58,10 @@ export interface ChatMessage {
   sender?: ChatParticipant
   reply_to_id?: string
   reactions?: MessageReactionSummary[]
+  view_once?: boolean
+  view_once_opened?: boolean
+  view_once_opened_at?: string | null
+  view_once_opened_by?: string | null
 }
 
 export function getChatMessageAuthorId(message: Pick<ChatMessage, 'sender_id' | 'sender'>): string {
@@ -125,6 +129,7 @@ export interface SendMessageOptions {
   message_type?: string
   reply_to_id?: string
   is_forward?: boolean
+  view_once?: boolean
 }
 
 /** Outbound call signal / system inserts — do not render optimistic “pending” bubbles for these. */
@@ -211,11 +216,16 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
           (message as any).profiles?.avatar_url ||
           ''
         
-        // Prepare message preview
-        const messagePreview = message.content || 
-                              (message.attachments && message.attachments.length > 0 
-                                ? 'Shared an attachment' 
-                                : 'Sent a message')
+        const isViewOnce = Boolean(message.view_once)
+        const viewOnceVideo = (message.attachments || []).some(
+          (a) => a.type === 'video' || (a.mimeType || '').startsWith('video/')
+        )
+        const messagePreview = isViewOnce
+          ? (viewOnceVideo ? 'New video' : 'New photo')
+          : (message.content ||
+            (message.attachments && message.attachments.length > 0
+              ? 'Shared an attachment'
+              : 'Sent a message'))
 
         // Send ONE push notification per unique participant (saves 1 DB record + pushes to all their devices)
         for (const userId of uniqueUserIds) {
@@ -401,6 +411,8 @@ const createLocalMessage = (
     is_deleted: false,
     is_edited: false,
     is_forward: Boolean(payload.is_forward),
+    view_once: Boolean(payload.view_once),
+    view_once_opened: false,
     attachments: payload.attachments,
     sender: currentUser,
   }
@@ -411,7 +423,9 @@ const createLocalMessage = (
   const thread = localThreads.get(threadId)
   if (thread) {
     const preview =
-      content.trim().length > 0
+      payload.view_once
+        ? ((payload.attachments || []).some((a) => a.type === 'video') ? '🎥 Video' : '📷 Photo')
+        : content.trim().length > 0
         ? content
         : hasAttachments
         ? 'Shared an attachment'
@@ -828,11 +842,12 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
   const sender = message.sender ?? message.sender_id
   const senderProfile = typeof sender === 'object' ? sender : null
   const attachmentsRaw = message.attachments ?? []
+  const viewOnce = Boolean(message.view_once) || Boolean(message.metadata?.view_once)
   const attachments: ChatAttachment[] = Array.isArray(attachmentsRaw)
     ? attachmentsRaw.map((att: any) => ({
         id: att.id,
         name: att.file_name ?? att.name,
-        url: att.file_url ?? att.url,
+        url: viewOnce ? '' : (att.file_url ?? att.url ?? ''),
         type: (att.file_type ?? att.mimeType ?? '').startsWith('image/') ? 'image' as const :
               (att.file_type ?? att.mimeType ?? '').startsWith('video/') ? 'video' as const : 'file' as const,
         size: att.file_size ?? att.size ?? 0,
@@ -861,6 +876,10 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
     deleted_for: coerceDeletedFor(message.deleted_for),
     deleted_at: message.deleted_at,
     attachments,
+    view_once: viewOnce,
+    view_once_opened: Boolean(message.view_once_opened),
+    view_once_opened_at: message.view_once_opened_at ?? null,
+    view_once_opened_by: message.view_once_opened_by ?? null,
     sender: senderProfile ? {
       id: senderProfile.id,
       name: senderProfile.full_name || senderProfile.username || 'Loading...',
@@ -875,6 +894,23 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
   }
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const loadMessageAttachments = async (messageId: string, retry: boolean): Promise<any[]> => {
+  const delays = retry ? [0, 200, 500, 1000] : [0]
+  let rows: any[] = []
+  for (const delay of delays) {
+    if (delay) await sleep(delay)
+    const { data } = await supabase
+      .from('message_attachments')
+      .select('*')
+      .eq('message_id', messageId)
+    rows = data || []
+    if (rows.length) break
+  }
+  return rows
+}
+
 // Format message data from Supabase
 const formatMessage = async (message: any): Promise<ChatMessage> => {
   // Get read receipts
@@ -883,11 +919,8 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
     .select('user_id')
     .eq('message_id', message.id)
 
-  // Get attachments
-  const { data: attachments } = await supabase
-    .from('message_attachments')
-    .select('*')
-    .eq('message_id', message.id)
+  const viewOnce = Boolean(message.view_once) || Boolean(message.metadata?.view_once)
+  const attachments = await loadMessageAttachments(message.id, viewOnce)
 
   const resolvedSenderId =
     (message.sender_id != null && String(message.sender_id)) ||
@@ -910,10 +943,14 @@ const formatMessage = async (message: any): Promise<ChatMessage> => {
     is_forward: Boolean(message.is_forward),
     deleted_for: message.deleted_for || [],
     deleted_at: message.deleted_at,
+    view_once: viewOnce,
+    view_once_opened: Boolean(message.view_once_opened),
+    view_once_opened_at: message.view_once_opened_at ?? null,
+    view_once_opened_by: message.view_once_opened_by ?? null,
     attachments: attachments?.map(att => ({
       id: att.id,
       name: att.file_name,
-      url: att.file_url,
+      url: viewOnce ? '' : att.file_url,
       type: att.file_type.startsWith('image/') ? 'image' :
             att.file_type.startsWith('video/') ? 'video' : 'file',
       size: att.file_size,
@@ -1341,6 +1378,7 @@ export const supabaseMessagingService = {
           attachments: payload.attachments,
           reply_to_id: payload.reply_to_id,
           ...(payload.is_forward === true ? { is_forward: true } : {}),
+          ...(payload.view_once === true ? { view_once: true } : {}),
         }
       )
       const rawMessage = (res as any)?.data
@@ -1472,6 +1510,64 @@ export const supabaseMessagingService = {
       console.error('Error sending message:', error)
       activateFallback(error)
       return createLocalMessage(threadId, payload, currentUser)
+    }
+  },
+
+  async claimViewOnce(
+    threadId: string,
+    messageId: string
+  ): Promise<{
+    token: string
+    attachments: ChatAttachment[]
+    view_once_opened: boolean
+    view_once_opened_at?: string | null
+    view_once_opened_by?: string | null
+  }> {
+    const res = await apiClient.post<{
+      data?: {
+        token: string
+        attachments: { id: string; name: string; size: number; mimeType: string; type: 'image' | 'video' | 'file' }[]
+        view_once_opened?: boolean
+        view_once_opened_at?: string | null
+        view_once_opened_by?: string | null
+      }
+    }>(`/api/chat/threads/${threadId}/messages/${messageId}/view-once`)
+    const payload = (res as any)?.data ?? res
+    if (!payload?.token) throw new Error('Could not open View Once message')
+    return {
+      token: payload.token,
+      attachments: (payload.attachments || []).map((att: any) => ({
+        id: att.id,
+        name: att.name,
+        url: '',
+        type: att.type === 'video' ? 'video' : att.type === 'image' ? 'image' : 'file',
+        size: att.size || 0,
+        mimeType: att.mimeType || '',
+      })),
+      view_once_opened: Boolean(payload.view_once_opened),
+      view_once_opened_at: payload.view_once_opened_at ?? null,
+      view_once_opened_by: payload.view_once_opened_by ?? null,
+    }
+  },
+
+  async fetchViewOnceMedia(
+    threadId: string,
+    messageId: string,
+    attachmentId: string,
+    token: string
+  ): Promise<Blob> {
+    return apiClient.getBlob(
+      `/api/chat/threads/${threadId}/messages/${messageId}/view-once/media`,
+      { attachmentId },
+      { 'x-view-once-token': token }
+    )
+  },
+
+  async completeViewOnce(threadId: string, messageId: string): Promise<void> {
+    try {
+      await apiClient.post(`/api/chat/threads/${threadId}/messages/${messageId}/view-once/complete`)
+    } catch (error) {
+      console.error('Error completing View Once session:', error)
     }
   },
 
@@ -1744,6 +1840,11 @@ export const supabaseMessagingService = {
 
       const relayThreadMessageUpdate = async (row: Record<string, unknown>): Promise<void> => {
         if (deniedRealtimeThreadIds.has(threadId)) return
+        const meta = row.metadata && typeof row.metadata === 'object' ? (row.metadata as Record<string, unknown>) : null
+        if (row.view_once === true || meta?.view_once === true) {
+          await hydrateThreadMessageInsert(row)
+          return
+        }
         notifyMessageSubscribers(mapApiMessageToChatMessage(row), { skipPush: true })
       }
 

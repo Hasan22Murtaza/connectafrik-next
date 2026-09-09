@@ -5,9 +5,18 @@ import { FileText, X } from '@/shared/icons';
 interface FilePreviewProps {
   files: FileUploadResult[];
   onRemove: (index: number) => void;
+  viewOnceAvailable?: boolean;
+  viewOnceEnabled?: boolean;
+  onViewOnceChange?: (enabled: boolean) => void;
 }
 
-const FilePreview: React.FC<FilePreviewProps> = ({ files, onRemove }) => {
+const FilePreview: React.FC<FilePreviewProps> = ({
+  files,
+  onRemove,
+  viewOnceAvailable = false,
+  viewOnceEnabled = false,
+  onViewOnceChange,
+}) => {
   if (!files.length) return null;
 
   return (
@@ -87,6 +96,30 @@ const FilePreview: React.FC<FilePreviewProps> = ({ files, onRemove }) => {
           </div>
         );
       })}
+      {viewOnceAvailable ? (
+        <button
+          type="button"
+          onClick={() => onViewOnceChange?.(!viewOnceEnabled)}
+          className={`flex h-[72px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-3 transition ${
+            viewOnceEnabled
+              ? "bg-primary-600 text-white shadow-sm"
+              : "border border-border bg-surface text-content hover:bg-surface-hover"
+          }`}
+          aria-pressed={viewOnceEnabled}
+          aria-label={viewOnceEnabled ? "View once on" : "View once off"}
+        >
+          <span
+            className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[12px] font-bold ${
+              viewOnceEnabled ? "border-white" : "border-current"
+            }`}
+          >
+            1
+          </span>
+          <span className="text-[10px] font-semibold leading-none">
+            {viewOnceEnabled ? "View once: ON" : "View once"}
+          </span>
+        </button>
+      ) : null}
     </div>
   );
 };

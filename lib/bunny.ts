@@ -196,6 +196,39 @@ export async function uploadToBunny({
   return { url: getBunnyCdnUrl(storagePath), path: storagePath }
 }
 
+export async function fetchFromBunny(
+  urlOrPath: string
+): Promise<{ body: Buffer; contentType: string; path: string }> {
+  const { accessKey, storageZone, storageHost } = getBunnyConfig()
+  const storagePath = extractBunnyPath(urlOrPath)
+
+  if (!storagePath) {
+    throw new Error('Unable to determine Bunny storage path from the provided value')
+  }
+
+  const endpoint = `https://${storageHost}/${storageZone}/${storagePath}`
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: { AccessKey: accessKey },
+  })
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '')
+    throw new Error(
+      `Bunny fetch failed (${response.status} ${response.statusText})${
+        detail ? `: ${detail}` : ''
+      }`
+    )
+  }
+
+  const arrayBuffer = await response.arrayBuffer()
+  return {
+    body: Buffer.from(arrayBuffer),
+    contentType: response.headers.get('content-type') || 'application/octet-stream',
+    path: storagePath,
+  }
+}
+
 export async function deleteFromBunny(urlOrPath: string): Promise<void> {
   const { accessKey, storageZone, storageHost } = getBunnyConfig()
   const storagePath = extractBunnyPath(urlOrPath)

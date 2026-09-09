@@ -28,6 +28,7 @@ import {
   FileUploadResult,
   fileUploadService,
 } from "@/shared/services/fileUploadService";
+import { canEnableViewOnce } from "@/features/chat/viewOnce";
 import { isUploadCancelledError } from "@/shared/lib/uploadClient";
 import type { ChatParticipant, PresenceStatus } from "@/shared/types/chat";
 import { shouldShowAcceptedOnAnotherDeviceMessage } from "@/shared/types/callPush";
@@ -83,7 +84,7 @@ import ChatMediaGallery from "./ChatMediaGallery";
 import ChatMediaViewer, { type ChatMediaViewerItem } from "./ChatMediaViewer";
 import ChatTranslationMenu from "./ChatTranslationMenu";
 import ChatWebcamCapture from "./ChatWebcamCapture";
-import FilePreview from "./FilePreview";
+import ChatMediaComposer from "./ChatMediaComposer";
 import MessageAttachments from "./MessageAttachments";
 import { ChatDateDivider, ChatUnreadDivider, MessageBubble } from "./MessageBubble";
 import TypingIndicator from "./TypingIndicator";
@@ -609,6 +610,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const initialUnreadCountRef = useRef(0);
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
+  const [viewOnceEnabled, setViewOnceEnabled] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(
     null
@@ -702,6 +704,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       fileUploadService.revokePreviews(prev);
       return [];
     });
+    setViewOnceEnabled(false);
     setAttachmentMenuOpen(false);
     setEmojiPickerOpen(false);
     historyAnchorRef.current = null;
@@ -1304,8 +1307,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     [threadId, getMessagesForThread, setMessagesForThread, clearMessageUpload]
   );
 
-  const handleSend = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSend = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     if (isSending) return;
     if (messagingBlocked) {
       toast.error(
@@ -1354,6 +1357,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setEmojiPickerOpen(false);
 
     const filesSnapshot = [...pendingFiles];
+    const sendAsViewOnce = viewOnceEnabled && canEnableViewOnce(filesSnapshot);
     const replyTarget = replyingTo;
     let prependSendId: string | undefined;
     let optimisticId: string | undefined;
@@ -1377,10 +1381,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         message_type: "text",
-        metadata: { __clientSendId: prependSendId },
+        metadata: { __clientSendId: prependSendId, ...(sendAsViewOnce ? { view_once: true } : {}) },
         read_by: [currentUser.id],
         is_deleted: false,
         is_edited: false,
+        view_once: sendAsViewOnce,
+        view_once_opened: false,
         attachments: optimisticAttachments,
         sender: {
           id: currentUser.id,
@@ -1400,6 +1406,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setDraft("");
     composerEditorRef.current?.clear();
     setPendingFiles([]);
+    setViewOnceEnabled(false);
     setReplyingTo(null);
     stopTyping();
 
@@ -1450,6 +1457,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           mimeType: f.mimeType,
         })),
         reply_to_id: replyTarget?.thread_id === threadId ? replyTarget.id : undefined,
+        ...(sendAsViewOnce ? { view_once: true } : {}),
         ...(prependSendId
           ? {
               metadata: { __clientSendId: prependSendId },
@@ -1500,6 +1508,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setForwardingMessage(null);
     fileUploadService.revokePreviews(pendingFiles);
     setPendingFiles([]);
+    setViewOnceEnabled(false);
     setAttachmentMenuOpen(false);
     const next = message.content ?? "";
     setDraft(next);
@@ -1581,6 +1590,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   );
 
   const openForwardPicker = useCallback((message: ChatMessage) => {
+    if (message.view_once) {
+      toast.error("View Once messages can't be forwarded");
+      return;
+    }
     if (editingMessage) {
       const restore = draftBeforeComposerEditRef.current;
       draftBeforeComposerEditRef.current = "";
@@ -1600,6 +1613,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const sendForwardedToThread = useCallback(
     async (targetThreadId: string) => {
       if (!forwardingMessage) return;
+      if (forwardingMessage.view_once) {
+        toast.error("View Once messages can't be forwarded");
+        setForwardingMessage(null);
+        return;
+      }
       const payload = buildForwardPayload(forwardingMessage);
       setForwardingMessage(null);
       setForwardSearch("");
@@ -1664,6 +1682,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const forwardToMember = useCallback(
     async (member: Member) => {
       if (!forwardingMessage) return;
+      if (forwardingMessage.view_once) {
+        toast.error("View Once messages can't be forwarded");
+        setForwardingMessage(null);
+        return;
+      }
       const payload = buildForwardPayload(forwardingMessage);
       setForwardingMessage(null);
       setForwardSearch("");
@@ -2121,6 +2144,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       ? true
       : !richTextIsEmpty(draft) || pendingFiles.length > 0;
 
+  const mediaComposerOpen =
+    pendingFiles.length > 0 && !editingMessage && !selectionMode;
+
   const composerSendDisabled =
     messagingBlocked || (editingMessage !== null && richTextIsEmpty(draft));
 
@@ -2146,6 +2172,30 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       return prev.filter((_, i) => i !== index);
     });
   };
+
+  const discardPendingMedia = useCallback(() => {
+    fileUploadService.revokePreviews(pendingFiles);
+    setPendingFiles([]);
+    setViewOnceEnabled(false);
+    setAttachmentMenuOpen(false);
+    setEmojiPickerOpen(false);
+  }, [pendingFiles]);
+
+  const replacePendingFile = useCallback((index: number, next: FileUploadResult) => {
+    setPendingFiles((prev) => {
+      const current = prev[index];
+      if (current && current !== next) {
+        fileUploadService.revokePreviews([current]);
+      }
+      return prev.map((file, i) => (i === index ? next : file));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (viewOnceEnabled && !canEnableViewOnce(pendingFiles)) {
+      setViewOnceEnabled(false);
+    }
+  }, [pendingFiles, viewOnceEnabled]);
 
   const handleOpenThreadDetailPage = useCallback(() => {
     if (!threadId?.trim()) return;
@@ -2716,7 +2766,35 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      <div className={`relative bg-white ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
+      {mediaComposerOpen ? (
+        <div
+          className={`flex min-h-0 flex-col ${
+            isPageVariant
+              ? "min-h-0 flex-1 overflow-hidden"
+              : "h-[318px] overflow-hidden rounded-bl-2xl rounded-br-2xl sm:h-[358px]"
+          }`}
+        >
+          <ChatMediaComposer
+            files={pendingFiles}
+            caption={draft}
+            onCaptionChange={setDraft}
+            onTyping={handleTyping}
+            onClose={discardPendingMedia}
+            onRemove={removePendingFile}
+            onReplaceFile={replacePendingFile}
+            onAddFiles={handleFilesSelected}
+            onSend={() => void handleSend()}
+            viewOnceAvailable={canEnableViewOnce(pendingFiles)}
+            viewOnceEnabled={viewOnceEnabled}
+            onViewOnceChange={setViewOnceEnabled}
+            sending={isSending}
+            disabled={messagingBlocked}
+            compact={!isPageVariant}
+          />
+        </div>
+      ) : null}
+
+      <div className={`relative bg-white ${mediaComposerOpen ? "hidden" : ""} ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
       <div
         ref={messagesScrollRef}
         className={`chat-messages-pane flex flex-col space-y-0 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${
@@ -2888,7 +2966,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
       </div>
 
-      {messagingBlocked ? (
+      {messagingBlocked && !mediaComposerOpen ? (
         <div className="border-t border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-950">
           {blockedByMe ? (
             <p>
@@ -2944,17 +3022,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       ) : null}
 
-      {pendingFiles.length > 0 && !editingMessage && !selectionMode && (
-        <div className="border-t border-border-subtle px-2.5 pb-2 sm:px-4 sm:pb-3">
-          <FilePreview files={pendingFiles} onRemove={removePendingFile} />
-        </div>
-      )}
-
       <form
         id={`chat-composer-${threadId}`}
         onSubmit={handleSend}
         className={`relative overflow-visible border-t border-[#e9edef] bg-[#f0f2f5] px-2 py-1.5 sm:px-2.5 sm:py-2 dark:border-border dark:bg-surface ${isPageVariant ? "pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "rounded-bl-2xl rounded-br-2xl"
-          } ${messagingBlocked ? "pointer-events-none opacity-60" : ""} ${selectionMode ? "hidden" : ""}`}
+          } ${messagingBlocked ? "pointer-events-none opacity-60" : ""} ${selectionMode || mediaComposerOpen ? "hidden" : ""}`}
         ref={attachMenuRef}
       >
         <ChatAttachmentMenu

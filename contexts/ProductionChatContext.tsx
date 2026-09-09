@@ -42,6 +42,12 @@ function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): Cha
     attachments: incomingEmptyAttachments ? prev.attachments : incoming.attachments,
     reactions: incomingEmptyReactions ? prev.reactions : incoming.reactions,
     sender: senderLooksStub ? prev.sender : incoming.sender,
+    view_once: Boolean(incoming.view_once || prev.view_once),
+    view_once_opened: Boolean(incoming.view_once_opened || prev.view_once_opened),
+    view_once_opened_at:
+      incoming.view_once_opened_at !== undefined ? incoming.view_once_opened_at : prev.view_once_opened_at,
+    view_once_opened_by:
+      incoming.view_once_opened_by !== undefined ? incoming.view_once_opened_by : prev.view_once_opened_by,
   }
 }
 
@@ -469,6 +475,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         is_deleted: false,
         is_edited: false,
         is_forward: payload?.is_forward === true,
+        view_once: payload?.view_once === true,
+        view_once_opened: false,
         attachments: payload?.attachments,
         sender: {
           id: currentUser.id,
@@ -503,6 +511,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           message_type: payload?.message_type,
           metadata: metadataForApi,
           is_forward: payload?.is_forward === true,
+          view_once: payload?.view_once === true,
         },
         currentUser
       )
