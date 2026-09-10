@@ -1836,7 +1836,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (thread.is_locked) {
       const confirmed = await confirm({
         title: "Unlock chat",
-        message: "This conversation will return to your regular chat list. You will need this chat’s PIN.",
+        message: "This conversation will return to your regular chat list. You will need your chat lock PIN to open locked chats.",
         confirmLabel: "Unlock",
         variant: "primary",
       });
@@ -1853,7 +1853,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const confirmed = await confirm({
       title: "Lock chat",
       message:
-      "This conversation will move to Locked Chats and get its own PIN. Other chats can use a different PIN.",
+      "This conversation will move to Locked Chats. All locked chats use the same PIN.",
       confirmLabel: "Lock",
       variant: "primary",
     });
@@ -2376,7 +2376,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               onClick: () => {
                 setShowOptionsMenu(false);
                 void changePin(threadId, thread.name || undefined).then((ok) => {
-                  if (ok) toast.success("PIN updated for this chat");
+                  if (ok) toast.success("Chat lock PIN updated");
                 });
               },
             } satisfies ChatHeaderOptionsMenuItem,
@@ -2490,7 +2490,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <Lock className="h-10 w-10 text-content-tertiary" aria-hidden />
           <p className="text-sm font-medium text-content">This chat is locked</p>
           <p className="max-w-[240px] text-xs text-content-secondary">
-            Enter this chat’s PIN to view the conversation.
+            Enter your chat lock PIN to view the conversation.
           </p>
           <button
             type="button"

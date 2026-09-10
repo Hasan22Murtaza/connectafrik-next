@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { errorResponse, jsonResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
-import { authenticateThreadChatLock, createChatLockToken } from '@/lib/chat/chatLock'
+import { authenticateUserChatLock, createChatLockToken } from '@/lib/chat/chatLock'
 
-/** POST /api/chat/lock/verify — unlock one locked chat. */
+/** POST /api/chat/lock/verify — unlock locked chats for this session. */
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser(request)
@@ -12,19 +12,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const threadId = typeof body.thread_id === 'string' ? body.thread_id.trim() : ''
 
-    if (!threadId) {
-      return errorResponse('thread_id is required', 400)
+    if (threadId) {
+      const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
+      if (!allowed) {
+        return errorResponse('Thread not found or access denied', 404)
+      }
     }
 
-    const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
-    if (!allowed) {
-      return errorResponse('Thread not found or access denied', 404)
-    }
-
-    const auth = await authenticateThreadChatLock(serviceClient, user, threadId, body)
+    const auth = await authenticateUserChatLock(serviceClient, user, body)
     if (!auth.ok) return auth.response
 
-    return jsonResponse(createChatLockToken(user.id, threadId))
+    return jsonResponse(createChatLockToken(user.id))
   } catch (error: unknown) {
     const err = error as { message?: string }
     if (err.message === 'Unauthorized' || err.message === 'Missing Authorization header') {

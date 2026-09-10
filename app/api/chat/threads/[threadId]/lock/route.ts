@@ -8,10 +8,12 @@ import {
   threadToResponseBody,
 } from '@/lib/chat/chatThreadDetail'
 import {
-  authenticateThreadChatLock,
+  authenticateUserChatLock,
   isChatLockUnlockedForRequest,
   isValidChatLockPin,
   setThreadLockedForUser,
+  setUserChatLockPinHash,
+  userHasChatLockPin,
 } from '@/lib/chat/chatLock'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
@@ -35,14 +37,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     if (locked) {
-      if (!isValidChatLockPin(body.pin)) {
-        return errorResponse('A 4–6 digit PIN is required to lock this chat', 400)
+      const hasPin = await userHasChatLockPin(serviceClient, user.id)
+      if (!hasPin) {
+        if (!isValidChatLockPin(body.pin)) {
+          return errorResponse('A 4–6 digit PIN is required to lock chats', 400)
+        }
+        await setUserChatLockPinHash(serviceClient, user.id, body.pin)
       }
-      await setThreadLockedForUser(serviceClient, user.id, threadId, true, body.pin)
+      await setThreadLockedForUser(serviceClient, user.id, threadId, true)
     } else {
-      const sessionUnlocked = isChatLockUnlockedForRequest(request, user.id, threadId)
+      const sessionUnlocked = isChatLockUnlockedForRequest(request, user.id)
       if (!sessionUnlocked) {
-        const auth = await authenticateThreadChatLock(serviceClient, user, threadId, body)
+        const auth = await authenticateUserChatLock(serviceClient, user, body)
         if (!auth.ok) return auth.response
       }
       await setThreadLockedForUser(serviceClient, user.id, threadId, false)

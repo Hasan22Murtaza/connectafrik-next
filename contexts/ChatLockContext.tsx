@@ -21,7 +21,6 @@ import {
   CHAT_LOCK_SESSION_ENDED_EVENT,
   CHAT_LOCK_STATUS_CHANGED_EVENT,
   CHAT_LOCK_TOKEN_HEADER,
-  chatThreadIdFromApiEndpoint,
 } from '@/features/chat/chatLockEvents'
 
 type AuthTarget = { threadId: string; title?: string }
@@ -29,6 +28,7 @@ type AuthTarget = { threadId: string; title?: string }
 type ChatLockContextValue = {
   lockedCount: number
   lockedUnread: number
+  hasPin: boolean
   folderOpen: boolean
   unlockedThreadKey: string
   isThreadUnlocked: (threadId: string) => boolean
@@ -59,11 +59,12 @@ function dispatchThreadLockChanged(thread: ChatThread) {
 
 export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const tokensRef = useRef<Record<string, string>>({})
-  const [tokens, setTokens] = useState<Record<string, string>>({})
+  const tokenRef = useRef<string | null>(null)
+  const [unlockToken, setUnlockToken] = useState<string | null>(null)
   const [folderOpen, setFolderOpen] = useState(false)
   const [lockedCount, setLockedCount] = useState(0)
   const [lockedUnread, setLockedUnread] = useState(0)
+  const [hasPin, setHasPin] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<ChatLockAuthMode>('verify')
   const [authError, setAuthError] = useState<string | null>(null)
@@ -75,46 +76,47 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const hiddenSinceRef = useRef<number | null>(null)
 
   const clearUnlockSession = useCallback((keepFolder = false) => {
-    tokensRef.current = {}
-    setTokens({})
+    tokenRef.current = null
+    setUnlockToken(null)
     if (!keepFolder) setFolderOpen(false)
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(CHAT_LOCK_SESSION_ENDED_EVENT))
     }
   }, [])
 
-  const rememberToken = useCallback((threadId: string, token: string) => {
-    tokensRef.current = { ...tokensRef.current, [threadId]: token }
-    setTokens(tokensRef.current)
+  const rememberToken = useCallback((token: string) => {
+    tokenRef.current = token
+    setUnlockToken(token)
   }, [])
 
   const refreshStatus = useCallback(async () => {
     if (!user) {
       setLockedCount(0)
       setLockedUnread(0)
+      setHasPin(false)
       return
     }
     try {
       const status = await supabaseMessagingService.getChatLockStatus()
       setLockedCount(status.locked_count)
       setLockedUnread(status.locked_unread)
+      setHasPin(status.has_pin)
     } catch {
       /* keep last known */
     }
   }, [user])
 
   useEffect(() => {
-    tokensRef.current = tokens
+    tokenRef.current = unlockToken
     setApiClientExtraHeaders((endpoint) => {
       const headers: Record<string, string> = {}
-      const threadId = chatThreadIdFromApiEndpoint(endpoint)
-      if (!threadId) return headers
-      const token = tokensRef.current[threadId]
-      if (token) headers[CHAT_LOCK_TOKEN_HEADER] = token
+      if (tokenRef.current && endpoint?.startsWith('/api/chat/')) {
+        headers[CHAT_LOCK_TOKEN_HEADER] = tokenRef.current
+      }
       return headers
     })
     return () => setApiClientExtraHeaders(() => ({}))
-  }, [tokens])
+  }, [unlockToken])
 
   useEffect(() => {
     void refreshStatus()
@@ -136,6 +138,7 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
       clearUnlockSession()
       setLockedCount(0)
       setLockedUnread(0)
+      setHasPin(false)
     }
   }, [user, clearUnlockSession])
 
@@ -225,8 +228,8 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const isThreadUnlocked = useCallback(
-    (threadId: string) => Boolean(threadId && tokens[threadId]),
-    [tokens]
+    (threadId: string) => Boolean(threadId && unlockToken),
+    [unlockToken]
   )
 
   const openLockedFolder = useCallback(() => {
@@ -241,7 +244,7 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const unlockChat = useCallback(
     async (threadId: string, title?: string) => {
       if (!threadId) return false
-      if (tokensRef.current[threadId]) return true
+      if (tokenRef.current) return true
       return requestAuth('verify', { threadId, title })
     },
     [requestAuth]
@@ -258,26 +261,30 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const lockThread = useCallback(
     async (threadId: string, title?: string) => {
       if (!user || !threadId) return null
-      lockResultRef.current = null
-      const ok = await requestAuth('set-pin', { threadId, title })
-      return ok ? lockResultRef.current : null
+      if (!hasPin) {
+        lockResultRef.current = null
+        const ok = await requestAuth('set-pin', { threadId, title })
+        return ok ? lockResultRef.current : null
+      }
+      const updated = await supabaseMessagingService.setThreadLocked(threadId, user.id, true)
+      if (updated) {
+        dispatchThreadLockChanged(updated)
+        void refreshStatus()
+      }
+      return updated
     },
-    [requestAuth, user]
+    [hasPin, refreshStatus, requestAuth, user]
   )
 
   const unlockThread = useCallback(
     async (threadId: string, title?: string) => {
       if (!user || !threadId) return null
-      if (!tokensRef.current[threadId]) {
+      if (!tokenRef.current) {
         const ok = await requestAuth('verify', { threadId, title })
         if (!ok) return null
       }
       const updated = await supabaseMessagingService.setThreadLocked(threadId, user.id, false)
       if (updated) {
-        const next = { ...tokensRef.current }
-        delete next[threadId]
-        tokensRef.current = next
-        setTokens(next)
         dispatchThreadLockChanged(updated)
         void refreshStatus()
       }
@@ -303,18 +310,21 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
           })
           if (!updated) throw new Error('Could not lock this chat')
           lockResultRef.current = updated
+          const issued = await supabaseMessagingService.verifyChatLock({ pin })
+          rememberToken(issued.token)
           dispatchThreadLockChanged(updated)
+          setHasPin(true)
           void refreshStatus()
           closeAuth(true)
           return
         }
         if (authMode === 'change-pin') {
-          await supabaseMessagingService.setChatLockPin(target.threadId, pin, extras)
+          await supabaseMessagingService.setChatLockPin(pin, extras)
           closeAuth(true)
           return
         }
         const issued = await supabaseMessagingService.verifyChatLock({ thread_id: target.threadId, pin })
-        rememberToken(target.threadId, issued.token)
+        rememberToken(issued.token)
         closeAuth(true)
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Could not authenticate'
@@ -328,18 +338,14 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const handlePasswordSubmit = useCallback(
     async (password: string) => {
       const target = authTargetRef.current
-      if (!target?.threadId) {
-        setAuthError('Missing chat')
-        return
-      }
       setAuthSubmitting(true)
       setAuthError(null)
       try {
         const issued = await supabaseMessagingService.verifyChatLock({
-          thread_id: target.threadId,
+          thread_id: target?.threadId,
           password,
         })
-        rememberToken(target.threadId, issued.token)
+        rememberToken(issued.token)
         closeAuth(true)
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Could not authenticate'
@@ -350,15 +356,13 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
     [closeAuth, rememberToken]
   )
 
-  const unlockedThreadKey = useMemo(
-    () => Object.keys(tokens).sort().join(','),
-    [tokens]
-  )
+  const unlockedThreadKey = unlockToken ? 'unlocked' : ''
 
   const value = useMemo<ChatLockContextValue>(
     () => ({
       lockedCount,
       lockedUnread,
+      hasPin,
       folderOpen,
       unlockedThreadKey,
       isThreadUnlocked,
@@ -374,6 +378,7 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
       changePin,
       closeLockedFolder,
       folderOpen,
+      hasPin,
       isThreadUnlocked,
       lockThread,
       lockedCount,

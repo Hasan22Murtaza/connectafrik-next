@@ -59,16 +59,16 @@ export function ChatLockAuthModal({
   const chatLabel = chatTitle?.trim() ? chatTitle.trim() : 'this chat'
   const title =
     mode === 'set-pin'
-      ? `Set PIN for ${chatLabel}`
+      ? 'Set chat lock PIN'
       : mode === 'change-pin'
-        ? `Change PIN for ${chatLabel}`
+        ? 'Change chat lock PIN'
         : `Unlock ${chatLabel}`
   const description =
     mode === 'set-pin'
-      ? 'Choose a 4–6 digit PIN for this chat only. Other chats can use a different PIN.'
+      ? 'Choose a 4–6 digit PIN. The same PIN unlocks every chat in Locked Chats.'
       : mode === 'change-pin'
-        ? 'Enter the current PIN for this chat, then choose a new 4–6 digit PIN. This does not change other chats.'
-        : 'Enter the PIN for this chat. It is separate from the PIN on any other conversation.'
+        ? 'Enter your current PIN, then choose a new 4–6 digit PIN. This updates the PIN for all locked chats.'
+        : 'Enter your chat lock PIN. The same PIN unlocks every locked conversation.'
 
   const newPinReady =
     mode === 'verify' && usePassword
@@ -158,7 +158,7 @@ export function ChatLockAuthModal({
                 </label>
               ) : null}
               <label className="block text-sm text-content-secondary">
-                {mode === 'set-pin' ? 'PIN' : mode === 'change-pin' ? 'New PIN' : 'Chat PIN'}
+                {mode === 'set-pin' ? 'PIN' : mode === 'change-pin' ? 'New PIN' : 'Chat lock PIN'}
                 <input
                   ref={mode === 'change-pin' ? undefined : pinRef}
                   type="password"
@@ -201,7 +201,7 @@ export function ChatLockAuthModal({
               onClick={() => setUsePassword((v) => !v)}
               className="mt-3 text-sm font-medium text-primary-700 hover:underline"
             >
-              {usePassword ? 'Use this chat’s PIN' : 'Use account password instead'}
+              {usePassword ? 'Use chat lock PIN' : 'Use account password instead'}
             </button>
           ) : null}
 
