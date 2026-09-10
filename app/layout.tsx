@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Poppins } from "next/font/google";
 import "./globals.css";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -7,7 +7,15 @@ import { Providers } from "./providers";
 import ConditionalHeader from "./components/ConditionalHeader";
 import ConditionalFooter from "./components/ConditionalFooter";
 import GlobalComponents from "./components/GlobalComponents";
-import { Poppins } from "next/font/google";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  getSeoMetadataBase,
+  organizationJsonLd,
+  SEO_DEFAULT_DESCRIPTION,
+  SEO_DEFAULT_TITLE,
+  SEO_SITE_NAME,
+  websiteJsonLd,
+} from "@/lib/seo";
 
 
 
@@ -40,8 +48,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ConnectAfrik - African Community Platform",
-  description: "The premier platform for Africans worldwide to share political insights, celebrate cultural diversity, and build meaningful connections",
+  metadataBase: getSeoMetadataBase(),
+  title: {
+    default: SEO_DEFAULT_TITLE,
+    template: `%s | ${SEO_SITE_NAME}`,
+  },
+  description: SEO_DEFAULT_DESCRIPTION,
+  applicationName: SEO_SITE_NAME,
   icons: {
     icon: [
       { url: "/assets/favicon.ico" },
@@ -65,6 +78,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${poppins.variable} antialiased`}
       >
         <Providers>
+          <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
           <div className="min-h-screen  4xl:max-w-screen-2xl mx-auto">
             <ConditionalHeader />
             

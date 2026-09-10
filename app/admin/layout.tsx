@@ -2,6 +2,9 @@ import { AdminHeader } from "@/features/admin/components/AdminHeader";
 import { AdminMobileNav, AdminSidebar } from "@/features/admin/components/AdminSidebar";
 import { AdminShellProvider } from "@/features/admin/context/AdminShellContext";
 import { AP } from "@/features/admin/constants/adminLayout";
+import { getNoIndexMetadata } from "@/lib/seo";
+
+export const metadata = getNoIndexMetadata("Admin");
 
 export default function AdminLayout({
   children,

@@ -539,7 +539,7 @@ export default function ChatSidebar({
       const confirmed = await confirm({
         title: "Lock chat",
         message:
-          "This conversation will move to Locked Chats and get its own PIN. Other chats can use a different PIN.",
+          "This conversation will move to Locked Chats. All locked chats use the same PIN.",
         confirmLabel: "Lock",
         variant: "primary",
       });
@@ -559,7 +559,7 @@ export default function ChatSidebar({
       setMenuThreadId(null);
       const confirmed = await confirm({
         title: "Unlock chat",
-        message: "This conversation will return to your regular chat list. You will need this chat’s PIN.",
+        message: "This conversation will return to your regular chat list. You will need your chat lock PIN to open locked chats.",
         confirmLabel: "Unlock",
         variant: "primary",
       });
@@ -628,7 +628,7 @@ export default function ChatSidebar({
       if (action === "change-pin") {
         setMenuThreadId(null);
         void changePin(thread.id, thread.name || undefined).then((ok) => {
-          if (ok) toast.success("PIN updated for this chat");
+          if (ok) toast.success("Chat lock PIN updated");
         });
       }
     },
@@ -863,7 +863,7 @@ export default function ChatSidebar({
               <Lock className="mx-auto mb-3 h-10 w-10 text-content-tertiary" aria-hidden />
               <p className="text-sm font-semibold text-content">No locked chats</p>
               <p className="mt-1 text-sm text-content-secondary">
-                Lock a conversation from its menu to move it here. Each chat has its own PIN.
+                Lock a conversation from its menu to move it here. All locked chats use the same PIN.
               </p>
             </div>
           ) : (

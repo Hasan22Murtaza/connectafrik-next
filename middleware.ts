@@ -143,6 +143,16 @@ export async function middleware(request: NextRequest) {
     '/marketplace',
   ]
 
+  const memoryAppSegments = new Set(['foryou', 'explore', 'following', 'my-videos', 'create'])
+  const isPublicSeoContentPath =
+    /^\/post\/[^/]+\/?$/.test(pathname) ||
+    (/^\/groups\/[^/]+\/?$/.test(pathname) && !pathname.startsWith('/groups/create')) ||
+    /^\/groups\/[^/]+\/post\/[^/]+\/?$/.test(pathname) ||
+    (() => {
+      const match = pathname.match(/^\/memories\/([^/]+)\/?$/)
+      return Boolean(match && !memoryAppSegments.has(match[1]))
+    })()
+
   const isMarketplaceHubRoute =
     pathname.startsWith('/marketplace/selling') ||
     pathname.startsWith('/marketplace/buying')
@@ -155,10 +165,11 @@ export async function middleware(request: NextRequest) {
   
   // Check if the current path is a protected route
   const isProtectedRoute =
-    protectedRoutes.some((route) => pathname.startsWith(route)) ||
-    pathname.startsWith('/user/') ||
-    pathname.startsWith('/admin') ||
-    isMarketplaceHubRoute
+    !isPublicSeoContentPath &&
+    (protectedRoutes.some((route) => pathname.startsWith(route)) ||
+      pathname.startsWith('/user/') ||
+      pathname.startsWith('/admin') ||
+      isMarketplaceHubRoute)
 
   // Check if the current path is a public route
   const isPublicRoute =

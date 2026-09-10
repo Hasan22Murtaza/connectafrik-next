@@ -21,7 +21,6 @@ export const CHAT_LOCK_PIN_MAX = 6
 type ChatLockTokenPayload = {
   sub: string
   purpose: 'chat_lock'
-  thread_id: string
 }
 
 function getChatLockSecret(): string {
@@ -60,26 +59,22 @@ export function verifyChatLockPin(pin: string, stored: string): boolean {
   }
 }
 
-export function createChatLockToken(
-  userId: string,
-  threadId: string
-): { token: string; expires_at: string; thread_id: string } {
+export function createChatLockToken(userId: string): { token: string; expires_at: string } {
   const token = jwt.sign(
-    { sub: userId, purpose: 'chat_lock', thread_id: threadId } satisfies ChatLockTokenPayload,
+    { sub: userId, purpose: 'chat_lock' } satisfies ChatLockTokenPayload,
     getChatLockSecret(),
     { expiresIn: '15m' }
   )
   return {
     token,
-    thread_id: threadId,
     expires_at: new Date(Date.now() + CHAT_LOCK_TOKEN_TTL_SEC * 1000).toISOString(),
   }
 }
 
-export function verifyChatLockToken(token: string, userId: string, threadId: string): boolean {
+export function verifyChatLockToken(token: string, userId: string): boolean {
   try {
     const payload = jwt.verify(token, getChatLockSecret()) as ChatLockTokenPayload
-    return payload?.purpose === 'chat_lock' && payload.sub === userId && payload.thread_id === threadId
+    return payload?.purpose === 'chat_lock' && payload.sub === userId
   } catch {
     return false
   }
@@ -89,37 +84,42 @@ export function readChatLockTokenFromRequest(request: Request): string | null {
   return request.headers.get(CHAT_LOCK_TOKEN_HEADER)?.trim() || null
 }
 
-export function isChatLockUnlockedForRequest(request: Request, userId: string, threadId: string): boolean {
+export function isChatLockUnlockedForRequest(request: Request, userId: string): boolean {
   const token = readChatLockTokenFromRequest(request)
-  return Boolean(token && verifyChatLockToken(token, userId, threadId))
+  return Boolean(token && verifyChatLockToken(token, userId))
 }
 
-export async function getThreadLockPinHash(
+export async function getUserChatLockPinHash(
   serviceClient: SupabaseClient,
-  userId: string,
-  threadId: string
+  userId: string
 ): Promise<string | null> {
   const { data } = await serviceClient
-    .from('chat_participants')
-    .select('lock_pin_hash')
-    .eq('thread_id', threadId)
+    .from('user_chat_lock')
+    .select('pin_hash')
     .eq('user_id', userId)
     .maybeSingle()
-  const hash = typeof data?.lock_pin_hash === 'string' ? data.lock_pin_hash : ''
+  const hash = typeof data?.pin_hash === 'string' ? data.pin_hash : ''
   return hash || null
 }
 
-export async function setThreadLockPinHash(
+export async function userHasChatLockPin(serviceClient: SupabaseClient, userId: string): Promise<boolean> {
+  return Boolean(await getUserChatLockPinHash(serviceClient, userId))
+}
+
+export async function setUserChatLockPinHash(
   serviceClient: SupabaseClient,
   userId: string,
-  threadId: string,
   pin: string
 ): Promise<void> {
-  const { error } = await serviceClient
-    .from('chat_participants')
-    .update({ lock_pin_hash: hashChatLockPin(pin) })
-    .eq('thread_id', threadId)
-    .eq('user_id', userId)
+  const now = new Date().toISOString()
+  const { error } = await serviceClient.from('user_chat_lock').upsert(
+    {
+      user_id: userId,
+      pin_hash: hashChatLockPin(pin),
+      updated_at: now,
+    },
+    { onConflict: 'user_id' }
+  )
   if (error) throw new Error(error.message || 'Failed to save chat PIN')
 }
 
@@ -141,22 +141,14 @@ export async function setThreadLockedForUser(
   serviceClient: SupabaseClient,
   userId: string,
   threadId: string,
-  locked: boolean,
-  pin?: string
+  locked: boolean
 ): Promise<void> {
-  const patch: Record<string, unknown> = {
-    is_locked: locked,
-    locked_at: locked ? new Date().toISOString() : null,
-  }
-  if (locked && pin) {
-    patch.lock_pin_hash = hashChatLockPin(pin)
-  }
-  if (!locked) {
-    patch.lock_pin_hash = null
-  }
   const { error } = await serviceClient
     .from('chat_participants')
-    .update(patch)
+    .update({
+      is_locked: locked,
+      locked_at: locked ? new Date().toISOString() : null,
+    })
     .eq('thread_id', threadId)
     .eq('user_id', userId)
   if (error) throw new Error(error.message || 'Failed to update chat lock')
@@ -165,13 +157,16 @@ export async function setThreadLockedForUser(
 export async function getLockedChatSummary(
   serviceClient: SupabaseClient,
   userId: string
-): Promise<{ locked_count: number; locked_unread: number }> {
-  const { data: rows } = await serviceClient
-    .from('chat_participants')
-    .select('unread_count')
-    .eq('user_id', userId)
-    .eq('is_locked', true)
-    .is('deleted_at', null)
+): Promise<{ locked_count: number; locked_unread: number; has_pin: boolean }> {
+  const [{ data: rows }, hasPin] = await Promise.all([
+    serviceClient
+      .from('chat_participants')
+      .select('unread_count')
+      .eq('user_id', userId)
+      .eq('is_locked', true)
+      .is('deleted_at', null),
+    userHasChatLockPin(serviceClient, userId),
+  ])
   const locked = rows ?? []
   return {
     locked_count: locked.length,
@@ -179,6 +174,7 @@ export async function getLockedChatSummary(
       (sum, row) => sum + (typeof row.unread_count === 'number' ? row.unread_count : 0),
       0
     ),
+    has_pin: hasPin,
   }
 }
 
@@ -190,7 +186,7 @@ export async function requireUnlockedLockedThread(
 ): Promise<Response | null> {
   const locked = await getThreadLockedForUser(serviceClient, userId, threadId)
   if (!locked) return null
-  if (isChatLockUnlockedForRequest(request, userId, threadId)) return null
+  if (isChatLockUnlockedForRequest(request, userId)) return null
   return chatLockedResponse()
 }
 
@@ -212,22 +208,21 @@ export async function verifyAccountPassword(email: string | undefined, password:
   return res.ok
 }
 
-export async function authenticateThreadChatLock(
+export async function authenticateUserChatLock(
   serviceClient: SupabaseClient,
   user: { id: string; email?: string | null },
-  threadId: string,
   body: { pin?: unknown; password?: unknown }
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
-  const pinHash = await getThreadLockPinHash(serviceClient, user.id, threadId)
+  const pinHash = await getUserChatLockPinHash(serviceClient, user.id)
   const pin = typeof body.pin === 'string' ? body.pin.trim() : ''
   const password = typeof body.password === 'string' ? body.password : ''
 
   if (pin) {
     if (!pinHash) {
-      return { ok: false, response: forbiddenResponse('This chat does not have a PIN yet') }
+      return { ok: false, response: forbiddenResponse('No chat lock PIN is set yet') }
     }
     if (!isValidChatLockPin(pin) || !verifyChatLockPin(pin, pinHash)) {
-      return { ok: false, response: forbiddenResponse('Incorrect PIN for this chat') }
+      return { ok: false, response: forbiddenResponse('Incorrect PIN') }
     }
     return { ok: true }
   }

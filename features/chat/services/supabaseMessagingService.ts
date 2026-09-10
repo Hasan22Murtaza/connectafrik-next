@@ -1186,33 +1186,35 @@ export const supabaseMessagingService = {
     }
   },
 
-  async getChatLockStatus(): Promise<{ locked_count: number; locked_unread: number }> {
-    const res = await apiClient.get<{ locked_count: number; locked_unread: number }>('/api/chat/lock/status')
+  async getChatLockStatus(): Promise<{ locked_count: number; locked_unread: number; has_pin: boolean }> {
+    const res = await apiClient.get<{ locked_count: number; locked_unread: number; has_pin?: boolean }>(
+      '/api/chat/lock/status'
+    )
     return {
       locked_count: typeof res?.locked_count === 'number' ? res.locked_count : 0,
       locked_unread: typeof res?.locked_unread === 'number' ? res.locked_unread : 0,
+      has_pin: Boolean(res?.has_pin),
     }
   },
 
   async verifyChatLock(credentials: {
-    thread_id: string
+    thread_id?: string
     pin?: string
     password?: string
-  }): Promise<{ token: string; expires_at: string; thread_id: string }> {
-    const res = await apiClient.post<{ token: string; expires_at: string; thread_id: string }>(
+  }): Promise<{ token: string; expires_at: string }> {
+    const res = await apiClient.post<{ token: string; expires_at: string }>(
       '/api/chat/lock/verify',
       credentials
     )
-    if (!res?.token) throw new Error('Failed to unlock this chat')
+    if (!res?.token) throw new Error('Failed to unlock locked chats')
     return res
   },
 
   async setChatLockPin(
-    threadId: string,
     pin: string,
     credentials?: { current_pin?: string; password?: string }
   ): Promise<void> {
-    await apiClient.post('/api/chat/lock/pin', { thread_id: threadId, pin, ...(credentials || {}) })
+    await apiClient.post('/api/chat/lock/pin', { pin, ...(credentials || {}) })
   },
 
   async getThreadMessages(
