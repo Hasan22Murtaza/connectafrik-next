@@ -226,7 +226,7 @@ const SavedPage: React.FC = () => {
           <div className="flex items-center gap-3 pb-4 ">
            
             <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-content tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-semibold text-content">
             Saved
           </h1>
             </div>
