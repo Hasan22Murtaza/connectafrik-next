@@ -564,7 +564,7 @@ export function MyOrdersContent() {
 
   return (
     <div className="min-h-screen ">
-      <div className="w-full max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
+      <div className="w-full max-w-full 2xl:max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-5">
         {/* Header */}
         <header className="mb-5 sm:mb-6">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-content tracking-tight">

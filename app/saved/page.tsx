@@ -220,13 +220,15 @@ const SavedPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-6 mx-auto py-6">
+    <div className="min-h-screen max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-6 mx-auto py-5">
       <div className="sticky top-0 z-20  bg-white/80 backdrop-blur-md">
         <div className="mb-10">
-          <div className="flex items-center gap-3 pb-4 pt-6">
+          <div className="flex items-center gap-3 pb-4 ">
            
             <div>
-              <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Saved</h1>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-content tracking-tight">
+            Saved
+          </h1>
             </div>
           </div>
 
