@@ -1,18 +1,12 @@
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BsShop } from "react-icons/bs";
-import {
-  FaRegUser
-} from "react-icons/fa";
-import { FiBookmark, FiVideo } from "react-icons/fi";
-import { HiOutlineUserGroup } from "react-icons/hi";
-import { RiHandbagLine } from "react-icons/ri";
+"use client";
+import saved from "@/public/assets/icons/bookmark.png";
 import friend from "@/public/assets/icons/friend.png";
 import group from "@/public/assets/icons/groups.png";
 import marketplace from "@/public/assets/icons/market.png";
 import orders from "@/public/assets/icons/my-order.png";
-import saved from "@/public/assets/icons/bookmark.png";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 
 
