@@ -565,11 +565,17 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   // ── Early return: modal is closed ──────────────────────────────────────────
   if (!isOpen) return null;
 
+  // Match MeetingContainer call shell (pre-call must not show page `bg-black`).
+  const callShellBackground = {
+    background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
+  } as const;
+
   // ── Pre-call: incoming — ringing screen ────────────────────────────────────
   if (isIncoming && !token) {
     return (
       <div
-        className="fixed inset-0 z-[9999] animate-fadeIn "
+        className="fixed inset-0 z-[9999] animate-fadeIn"
+        style={callShellBackground}
       >
         <CallStatusOverlay
           callStatus="ringing"
@@ -597,7 +603,8 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   if (!token || !meetingId) {
     return (
       <div
-        className="fixed inset-0 z-[9999] "
+        className="fixed inset-0 z-[9999]"
+        style={callShellBackground}
       >
         {prePhase === 'error' ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-content p-8 text-center">
@@ -658,7 +665,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     const serverUrl = resolveLiveKitWsUrl(wsUrl);
     if (!serverUrl || livekitPrepError) {
       return (
-        <div className="fixed inset-0 z-[9999] ">
+        <div className="fixed inset-0 z-[9999]" style={callShellBackground}>
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-content p-8 text-center">
             <div className="text-lg font-semibold">Connection Failed</div>
             <div className="text-sm text-content-secondary">
@@ -678,7 +685,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
 
     if (!livekitRoom) {
       return (
-        <div className="fixed inset-0 z-[9999] ">
+        <div className="fixed inset-0 z-[9999]" style={callShellBackground}>
           <CallStatusOverlay
             callStatus="connecting"
             callType={callType}

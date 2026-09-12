@@ -98,6 +98,11 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
             callType === 'audio' && !showConnectedGroupGallery ? (
               <div className="flex flex-col items-center">
                 <div className="mb-3 sm:mb-4">
+                  <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words px-2">
+                    {activeName}
+                  </div>
+                </div>
+                <div className="mb-3 sm:mb-4">
                   {activeAvatarUrl ? (
                     <img
                       src={activeAvatarUrl}
