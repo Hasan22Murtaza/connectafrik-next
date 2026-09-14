@@ -6,11 +6,11 @@ function stripTrailingSlash(value: string): string {
   return value.endsWith('/') ? value.slice(0, -1) : value
 }
 
-export const SEO_SITE_NAME = 'ConnectAfrik'
-export const SEO_SITE_TAGLINE = 'African Community Platform'
+export const SEO_SITE_NAME = 'CribsTalk'
+export const SEO_SITE_TAGLINE = 'Global Social Platform'
 export const SEO_DEFAULT_TITLE = `${SEO_SITE_NAME} - ${SEO_SITE_TAGLINE}`
 export const SEO_DEFAULT_DESCRIPTION =
-  'The premier platform for Africans worldwide to share political insights, celebrate cultural diversity, and build meaningful connections'
+  'A global social platform for connecting, communicating, sharing, and building communities worldwide. Share stories, join groups, and meet people everywhere.'
 
 export const SEO_DEFAULT_OG_IMAGE_PATH = '/assets/images/hero.jpg'
 export const SEO_LOGO_PATH = '/assets/icons/icon-192x192.png'

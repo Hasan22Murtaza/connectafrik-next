@@ -6,7 +6,7 @@
 
   - android:autoVerify="true" makes Android verify /.well-known/assetlinks.json
     so https links open the app directly with no chooser dialog.
-  - The second filter registers the connectafrik:// custom scheme fallback.
+  - The second filter registers the cribstalk:// custom scheme fallback.
 
   Replace hosts as needed per environment (use product flavors for staging/prod).
 -->
@@ -17,8 +17,8 @@
   <category android:name="android.intent.category.DEFAULT" />
   <category android:name="android.intent.category.BROWSABLE" />
 
-  <data android:scheme="https" android:host="connectafrik.com" />
-  <data android:scheme="https" android:host="www.connectafrik.com" />
+  <data android:scheme="https" android:host="cribstalk.com" />
+  <data android:scheme="https" android:host="www.cribstalk.com" />
 
   <!-- Paths that should open the app. Mirror the AASA components. -->
   <data android:pathPrefix="/post" />
@@ -36,10 +36,10 @@
   <data android:pathPrefix="/auth/callback" />
 </intent-filter>
 
-<!-- Custom scheme fallback: connectafrik://post/123 -->
+<!-- Custom scheme fallback: cribstalk://post/123 -->
 <intent-filter>
   <action android:name="android.intent.action.VIEW" />
   <category android:name="android.intent.category.DEFAULT" />
   <category android:name="android.intent.category.BROWSABLE" />
-  <data android:scheme="connectafrik" />
+  <data android:scheme="cribstalk" />
 </intent-filter>

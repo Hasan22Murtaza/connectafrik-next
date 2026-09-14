@@ -42,7 +42,7 @@ const createLocalId = (): string => {
 }
 
 const getUserDisplayName = (user: User | null): string => {
-  if (!user) return 'ConnectAfrik member'
+  if (!user) return 'CribsTalk member'
 
   const fullName = typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : ''
   if (fullName.trim().length > 0) {
@@ -56,7 +56,7 @@ const getUserDisplayName = (user: User | null): string => {
     }
   }
 
-  return 'ConnectAfrik member'
+  return 'CribsTalk member'
 }
 
 const getUserInitial = (user: User | null): string => {

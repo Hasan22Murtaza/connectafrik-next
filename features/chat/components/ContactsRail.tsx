@@ -138,7 +138,7 @@ const ContactsRail: React.FC = () => {
       <div className="flex-1 space-y-3 overflow-y-auto pr-1">{renderContacts()}</div>
 
       <p className="text-xs text-content-tertiary">
-        Tip: Invite friends to ConnectAfrik to grow this list of quick contacts.
+        Tip: Invite friends to CribsTalk to grow this list of quick contacts.
       </p>
     </div>
   )

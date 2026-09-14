@@ -55,7 +55,7 @@ export interface SendMessageOptions {
 type ThreadSubscriber = (thread: ChatThread) => void
 type MessageSubscriber = (message: ChatMessage) => void
 
-const STORAGE_KEY = 'connectafrik.messaging.v1'
+const STORAGE_KEY = 'cribstalk.messaging.v1'
 
 interface StoredThread {
   id: string

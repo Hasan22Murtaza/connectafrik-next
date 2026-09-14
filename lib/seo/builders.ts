@@ -23,7 +23,7 @@ function authorPath(username: string | null | undefined): string | undefined {
 
 export function getPostMetadata(post: PublicPostSeo): Metadata {
   const authorName = displayName(post.author)
-  const snippet = truncatePlainText(post.content) || `A post by ${authorName} on ConnectAfrik`
+  const snippet = truncatePlainText(post.content) || `A post by ${authorName} on CribsTalk`
   const title = snippet.length > 55 ? `${snippet.slice(0, 52).trimEnd()}…` : snippet
   const indexable = isPublicPostVisibility(post.author?.post_visibility)
   const image = pickMediaImage(post.media_urls, post.media_type)
@@ -61,7 +61,7 @@ export function getGroupMetadata(group: PublicGroupSeo): Metadata {
   const indexable = isIndexableGroup(group)
   const description =
     truncatePlainText(group.description) ||
-    `${group.name} is a ${group.is_public ? 'public' : 'private'} ConnectAfrik group${group.category ? ` about ${group.category}` : ''}.`
+    `${group.name} is a ${group.is_public ? 'public' : 'private'} CribsTalk group${group.category ? ` about ${group.category}` : ''}.`
   const image = group.banner_url
     ? { url: group.banner_url, alt: group.name }
     : group.avatar_url
@@ -90,7 +90,7 @@ export function getGroupPostMetadata(post: PublicGroupPostSeo): Metadata {
   const headline = truncatePlainText(post.title, 70) || truncatePlainText(post.content, 70) || 'Group post'
   const description =
     truncatePlainText(post.content) ||
-    `${headline} in ${post.group.name} on ConnectAfrik`
+    `${headline} in ${post.group.name} on CribsTalk`
   return getPageMetadata({
     title: `${headline} | ${post.group.name}`,
     description,
@@ -120,7 +120,7 @@ export function getMemoryMetadata(memory: PublicMemorySeo): Metadata {
   const title = truncatePlainText(memory.title, 70) || `Memory by ${authorName}`
   const description =
     truncatePlainText(memory.description) ||
-    `${title} — a ConnectAfrik memory by ${authorName}`
+    `${title} — a CribsTalk memory by ${authorName}`
   return getPageMetadata({
     title,
     description,

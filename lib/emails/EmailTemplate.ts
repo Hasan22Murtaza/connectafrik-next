@@ -23,7 +23,7 @@ export type EmailTemplateOptions = {
 }
 
 /**
- * Standard ConnectAfrik email shell — light canvas, white rounded card,
+ * Standard CribsTalk email shell — light canvas, white rounded card,
  * navy wordmark header, and branded footer.
  */
 export function EmailTemplate(options: EmailTemplateOptions): string {

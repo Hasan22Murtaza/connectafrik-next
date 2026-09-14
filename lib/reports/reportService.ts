@@ -579,8 +579,8 @@ export async function applyReportAction(
       type: 'system',
       title: 'Community guidelines warning',
       message: removedPost
-        ? 'A post you shared was removed after a community guidelines review. Please follow ConnectAfrik guidelines going forward.'
-        : 'A post you shared was reported and reviewed. Please follow ConnectAfrik community guidelines. Further violations may lead to removal or account restrictions.',
+        ? 'A post you shared was removed after a community guidelines review. Please follow CribsTalk guidelines going forward.'
+        : 'A post you shared was reported and reviewed. Please follow CribsTalk community guidelines. Further violations may lead to removal or account restrictions.',
       data: {
         post_id: input.post_id,
         warning: true,

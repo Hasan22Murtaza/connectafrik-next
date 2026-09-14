@@ -305,7 +305,7 @@ const getLocalThreadsForUser = (userId: string): ChatThread[] => {
 
 const ensurePlaceholderParticipant = (participantId: string): ChatParticipant => ({
   id: participantId,
-  name: 'ConnectAfrik Member',
+  name: 'CribsTalk Member',
 })
 
 const isPolicyRecursionError = (error: unknown) => {

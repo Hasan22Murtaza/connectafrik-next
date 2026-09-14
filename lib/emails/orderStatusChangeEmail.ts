@@ -118,6 +118,6 @@ ${t(copy.next, vars)}
 
 ${t(layout.buttonLabel)}: ${ordersUrl}
 ${helpLine}
-— The ConnectAfrik team
+— The CribsTalk team
 `
 }

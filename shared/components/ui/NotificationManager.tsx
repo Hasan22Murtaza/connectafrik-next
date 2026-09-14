@@ -87,8 +87,8 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
   const handleTestNotification = async () => {
     try {
       const testPayload: NotificationPayload = {
-        title: 'ConnectAfrik Test',
-        body: 'This is a test notification from ConnectAfrik!',
+        title: 'CribsTalk Test',
+        body: 'This is a test notification from CribsTalk!',
         icon: '/assets/images/logo.png',
         tag: 'test-notification',
         data: { url: '/feed' }
@@ -143,7 +143,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                 <div className="flex items-center space-x-3">
                   <Settings className="w-5 h-5 text-gray-600" />
                   <div>
-                    <p className="font-medium text-gray-900">ConnectAfrik Notifications</p>
+                    <p className="font-medium text-gray-900">CribsTalk Notifications</p>
                     <p className="text-sm text-gray-500">
                       {isSubscribed ? 'Enabled' : 'Disabled'}
                     </p>
@@ -269,7 +269,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
               <div className="flex items-center space-x-3">
                 <Settings className="w-5 h-5 text-gray-600" />
                 <div>
-                  <p className="font-medium text-gray-900">ConnectAfrik Notifications</p>
+                  <p className="font-medium text-gray-900">CribsTalk Notifications</p>
                   <p className="text-sm text-gray-500">
                     {isSubscribed ? 'Enabled' : 'Disabled'}
                   </p>

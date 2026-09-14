@@ -1,5 +1,5 @@
 /**
- * ConnectAfrik icon set — Lucide-compatible API.
+ * CribsTalk icon set — Lucide-compatible API.
  * Mapped icons come from shared/icons/svg; remaining names re-export lucide-react.
  */
 export type { Icon as AppIcon, IconProps } from "./createIcon";

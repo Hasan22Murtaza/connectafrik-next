@@ -101,9 +101,9 @@ const PoliticsPage: React.FC = () => {
                 <TrendingUp className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <h1 className=" sm:text-3xl text-2xl font-bold text-content">African Politics</h1>
+                <h1 className=" sm:text-3xl text-2xl font-bold text-content">Politics</h1>
                 <p className="text-content-secondary hidden sm:block mt-1">
-                  Engaging discussions on governance, democracy, and political development across Africa
+                  Engaging discussions on governance, democracy, and political development worldwide
                 </p>
                 {statsError && (
                   <p className="text-sm text-amber-600 mt-2">Stats: {statsError}</p>
@@ -265,7 +265,7 @@ const PoliticsPage: React.FC = () => {
                   <div>
                     <div className="font-medium text-content">Share your political insights</div>
                     <span className="text-content-secondary text-sm">
-                      What's your take on African politics today?
+                      What's your take on politics today?
                     </span>
                   </div>
                 </button>
@@ -313,7 +313,7 @@ const PoliticsPage: React.FC = () => {
                   <TrendingUp className="w-16 h-16 text-red-200 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-content mb-2">No political discussions yet</h3>
                   <p className="text-content-secondary mb-6">
-                    Be the first to start a conversation about African politics!
+                    Be the first to start a conversation about politics!
                   </p>
                   <button onClick={() => setShowCreatePost(true)} className="btn-primary">
                     Start Political Discussion

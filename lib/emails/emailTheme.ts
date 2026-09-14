@@ -1,7 +1,7 @@
 /**
  * Email design tokens + reusable content helpers.
  *
- * Matches the ConnectAfrik transactional template: light grey canvas, white
+ * Matches the CribsTalk transactional template: light grey canvas, white
  * rounded card, navy wordmark, serif headline, and a full-width coral CTA.
  */
 import { escapeHtml, getAppBaseUrl } from './utils'
@@ -38,7 +38,7 @@ export const EMAIL_THEME = {
   fontSerif: "Georgia, 'Iowan Old Style', Palatino, 'Palatino Linotype', 'Times New Roman', serif",
 } as const
 
-/** ConnectAfrik text wordmark (navy, bold sans-serif) — header left and footer center. */
+/** CribsTalk text wordmark (navy, bold sans-serif) — header left and footer center. */
 export function emailWordmarkHtml(options?: { align?: 'left' | 'center'; size?: number }): string {
   const shared = getShared()
   const align = options?.align ?? 'left'
@@ -196,7 +196,7 @@ export function emailDetailTableHtml(rowsHtml: string): string {
     </table>`
 }
 
-/** Sign-off line, e.g. "Keep posting," + The ConnectAfrik team. */
+/** Sign-off line, e.g. "Keep posting," + The CribsTalk team. */
 export function emailSignOffHtml(lead: string): string {
   const team = getShared().teamName
   return `

@@ -260,7 +260,7 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
         row.author ?? {
           id: row.author_id ?? '',
           username: 'member',
-          full_name: 'ConnectAfrik member',
+          full_name: 'CribsTalk member',
           avatar_url: null,
           country: null,
           is_verified: false,

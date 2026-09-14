@@ -88,7 +88,7 @@ const MobileChatButton: React.FC = () => {
                       )}
                       <div className="flex-1 text-left">
                         <p className="font-medium text-content">{member.name || 'User'}</p>
-                        <p className="text-sm text-content-secondary">ConnectAfrik User</p>
+                        <p className="text-sm text-content-secondary">CribsTalk User</p>
                       </div>
                       <MessageCircle className="w-5 h-5 text-content-tertiary" />
                     </button>

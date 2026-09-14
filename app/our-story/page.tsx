@@ -10,55 +10,55 @@ const journeyItems = [
     color: 'bg-emerald-500',
     border: 'border-emerald-500',
     description:
-      'We identified the fragmentation of African voices online and began researching what African communities truly need from a social platform.',
+      'We saw how fragmented online communities had become and began researching what people everywhere need from a modern social platform: connection, belonging, and room to share real stories.',
   },
   {
     year: 'The Foundation (Early 2024)',
     color: 'bg-blue-500',
     border: 'border-blue-500',
     description:
-      'We brought together a diverse team of developers, cultural experts, journalists, linguists, and community leaders across Africa and the diaspora to design ConnectAfrik from the ground up.',
+      'We brought together a diverse team of developers, creators, journalists, and community builders from around the world to design CribsTalk from the ground up.',
   },
   {
     year: 'The Launch (Mid 2024)',
     color: 'bg-green-500',
     border: 'border-green-500',
     description:
-      'ConnectAfrik launched with a powerful set of core features: political discourse channels, cultural storytelling spaces, and tools for community collaboration.',
+      'CribsTalk launched with a powerful set of core features: conversation spaces, cultural storytelling, groups, messaging, and tools for community collaboration.',
   },
   {
     year: 'The Growth (Late 2024-Present)',
     color: 'bg-purple-500',
     border: 'border-purple-500',
     description:
-      'The platform continues to expand with enhanced features, mobile accessibility, creator tools, and unique innovations designed for African users worldwide.',
+      'The platform continues to expand with enhanced features, mobile accessibility, creator tools, marketplace commerce, and innovations built for a global audience.',
   },
 ]
 
 const values = [
   {
-    title: 'Ubuntu',
+    title: 'Belonging',
     accent: 'text-emerald-600 dark:text-emerald-400',
     description:
-      '"I am because we are." We honor African unity and collective progress across borders.',
+      'We believe everyone deserves a place to connect, be heard, and feel at home—wherever they are in the world.',
   },
   {
     title: 'Authenticity',
     accent: 'text-blue-600 dark:text-blue-400',
     description:
-      'We celebrate real stories, real identities, and real African experiences - without dilution.',
+      'We celebrate real stories, real identities, and real experiences—without dilution.',
   },
   {
     title: 'Diversity',
     accent: 'text-green-600 dark:text-green-400',
     description:
-      "Africa's strength is its diversity. We amplify voices from all 54 nations and the global Black diaspora.",
+      'Our strength is our diversity. We amplify voices from every culture, language, and community worldwide.',
   },
   {
     title: 'Innovation',
     accent: 'text-purple-600 dark:text-purple-400',
     description:
-      "We create technology tailored to the continent's realities and push boundaries to redefine what a social platform can be.",
+      'We build technology for people everywhere and push boundaries to redefine what a social platform can be.',
   },
   {
     title: 'Respect',
@@ -83,14 +83,14 @@ const OurStory = () => {
             <div className="max-w-3xl space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <Heart className="h-3.5 w-3.5" />
-                ConnectAfrik Journey
+                CribsTalk Journey
               </div>
               <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-4xl">
                 Our Story
               </h1>
               <p className="max-w-2xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
-                From vision to reality - building the premier digital home for
-                African voices worldwide.
+                From vision to reality — building a global social home for
+                connecting, communicating, and community worldwide.
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
@@ -112,20 +112,19 @@ const OurStory = () => {
             </div>
             <div className="space-y-4 text-[15px] leading-7 text-slate-700 dark:text-slate-300">
               <p className="text-lg leading-8">
-                ConnectAfrik was born from a simple truth: Africa, a continent
-                of over 1.4 billion people across 54 nations, holds some of the
-                richest cultures, histories, political ideas, and untold stories
-                in the world. Yet these voices often became scattered across
-                global platforms, stripped of context, misrepresented, or
-                overshadowed by the world&apos;s digital noise.
+                CribsTalk was born from a simple truth: people everywhere hold
+                rich cultures, ideas, and stories — yet those voices are often
+                scattered across platforms, stripped of context, or lost in the
+                noise. We wanted a place that feels like a social home for the
+                world.
               </p>
               <p>
-                In 2024, a coalition of African technologists, diaspora
-                innovators, cultural custodians, and community leaders united
-                around one mission: create a platform built by Africans, for
-                Africans, and about Africans. A digital space where political
-                dialogue thrives, culture is preserved, and the global African
-                family can connect without borders.
+                In 2024, technologists, creators, and community leaders came
+                together around one mission: build a global platform for
+                connecting, communicating, sharing, and building communities —
+                open to everyone, everywhere. A digital space where dialogue
+                thrives, culture is celebrated, and people can belong without
+                borders.
               </p>
             </div>
           </article>
@@ -139,11 +138,10 @@ const OurStory = () => {
                 </h2>
               </div>
               <p className="text-[15px] leading-7 text-slate-700 dark:text-slate-300">
-                To amplify African voices, enable meaningful political and civic
-                dialogue, preserve cultural identity, and build digital bridges
-                connecting Africans on the continent with Africans in the
-                diaspora - creating a global ecosystem where every African story
-                matters and every voice is heard.
+                To help people connect, communicate, and build communities
+                worldwide — amplifying diverse voices, enabling meaningful
+                dialogue, celebrating culture, and creating a global ecosystem
+                where every story matters and every voice is heard.
               </p>
             </article>
 
@@ -155,10 +153,10 @@ const OurStory = () => {
                 </h2>
               </div>
               <p className="text-[15px] leading-7 text-slate-700 dark:text-slate-300">
-                A world where African perspectives shape global conversations,
-                where African culture is celebrated and protected, and where the
-                diaspora remains deeply connected to its roots while actively
-                building Africa&apos;s future.
+                A world where people from every background shape global
+                conversations, where cultures are celebrated and protected, and
+                where communities stay deeply connected while building a better
+                future together.
               </p>
             </article>
           </div>
@@ -234,10 +232,10 @@ const OurStory = () => {
               </div>
               <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-800">
                 <div className="mb-1 text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  54
+                  100+
                 </div>
                 <p className="text-slate-700 dark:text-slate-300">
-                  African Countries Represented
+                  Countries Represented
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-800">
@@ -256,9 +254,8 @@ const OurStory = () => {
               Meet Our Team
             </h2>
             <p className="mx-auto mb-6 max-w-2xl text-center text-[15px] leading-7 text-slate-700 dark:text-slate-300">
-              ConnectAfrik is built by a passionate team of African
-              technologists, cultural advocates, and community leaders from
-              across the continent and diaspora.
+              CribsTalk is built by a passionate team of technologists,
+              creators, and community leaders from around the world.
             </p>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               <div className="rounded-xl border border-slate-200 p-4 text-center dark:border-slate-800">
@@ -320,8 +317,8 @@ const OurStory = () => {
               Join Our Story
             </h2>
             <p className="mx-auto mb-6 max-w-2xl text-[15px] leading-7 text-slate-700 dark:text-slate-300">
-              ConnectAfrik&apos;s story is just beginning, and we want you to be
-              part of it. Together, we can amplify African voices and build
+              CribsTalk&apos;s story is just beginning, and we want you to be
+              part of it. Together, we can connect people worldwide and build
               bridges that span continents.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
@@ -329,7 +326,7 @@ const OurStory = () => {
                 href="/signup"
                 className="inline-flex rounded-lg bg-emerald-600 px-6 py-3 font-medium text-white transition hover:bg-emerald-700"
               >
-                Join ConnectAfrik
+                Join CribsTalk
               </Link>
               <Link
                 href="/support"
@@ -346,4 +343,3 @@ const OurStory = () => {
 }
 
 export default OurStory
-

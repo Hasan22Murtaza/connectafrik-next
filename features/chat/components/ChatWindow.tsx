@@ -274,7 +274,7 @@ function sortChatWindowMessages(msgs: ChatMessage[]): ChatMessage[] {
 }
 
 const MESSAGES_PAGE_SIZE = 50;
-const PRIVATE_REPLY_STORAGE_KEY = "connectafrik.chat.privateReply";
+const PRIVATE_REPLY_STORAGE_KEY = "cribstalk.chat.privateReply";
 
 const ComposerEmojiPicker = dynamic(() => import("emoji-picker-react"), {
   ssr: false,

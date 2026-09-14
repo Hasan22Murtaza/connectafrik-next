@@ -9,7 +9,7 @@ import { deriveUserPresence } from '@/shared/hooks/usePresence'
 
 const placeholderAds = [
   { id: 'ad1', title: 'Build your own AI Agent!', url: 'https://getodin.ai', image: '/assets/images/odin.png' },
-  { id: 'ad2', title: 'Ghana Identification Authority', url: 'https://nia.gov.gh/', image: '/assets/images/ghanania.png' },
+  { id: 'ad2', title: 'Grow your community', url: 'https://cribstalk.com', image: '/assets/images/odin.png' },
 ]
 
 const FeedLayout = ({ children }) => {

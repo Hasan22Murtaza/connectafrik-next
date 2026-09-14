@@ -61,7 +61,7 @@ export default function ApiDocsPage() {
       >
         <div>
           <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700 }}>
-            ConnectAfrik API Documentation
+            CribsTalk API Documentation
           </h1>
           <p style={{ margin: '4px 0 0', opacity: 0.85, fontSize: '14px' }}>
             Interactive reference for all platform endpoints

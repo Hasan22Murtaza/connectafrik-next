@@ -1,4 +1,4 @@
-// ConnectAfrik Service Worker
+// CribsTalk Service Worker
 // Handles push notifications from Firebase Cloud Messaging (FCM)
 //
 // NOTE: Firebase SDK is NOT needed in the service worker because the app sends
@@ -21,7 +21,7 @@ self.addEventListener('push', (event) => {
   // FCM wraps payload in data field
   const notificationData = data.data || data.notification || data;
 
-  const title = notificationData.title || 'ConnectAfrik';
+  const title = notificationData.title || 'CribsTalk';
   const body = notificationData.body || '';
   const typeNorm = String(
     notificationData.type || notificationData.status || notificationData.call_status || ''
@@ -31,7 +31,7 @@ self.addEventListener('push', (event) => {
   const lastSignal = String(notificationData.last_signal || '')
     .trim()
     .toLowerCase();
-  const tag = notificationData.tag || 'connectafrik-notification';
+  const tag = notificationData.tag || 'cribstalk-notification';
   const image = notificationData.image || '';
   const icon = notificationData.icon || '/assets/images/logo.png';
   const badge = notificationData.badge || '/assets/images/logo.png';
@@ -167,7 +167,7 @@ self.addEventListener('push', (event) => {
               ? tag
               : threadId
                 ? `call-status-declined-${threadId}`
-                : 'connectafrik-notification';
+                : 'cribstalk-notification';
           await self.registration.showNotification(title, {
             body,
             icon,

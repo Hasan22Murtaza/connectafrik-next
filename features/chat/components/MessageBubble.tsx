@@ -65,11 +65,11 @@ import MessageAttachments from "./MessageAttachments";
 import ViewOncePlaceholder from "./ViewOncePlaceholder";
 import ChatMediaViewer, { type ChatMediaViewerItem } from "./ChatMediaViewer";
 import {
-  extractConnectAfrikPostId,
+  extractCribsTalkPostId,
   extractFirstUrl,
   isEmojiOnlyMessage,
   participantNameColor,
-  stripConnectAfrikPostUrls,
+  stripCribsTalkPostUrls,
 } from "./messageMediaUtils";
 import { ChatRichTextRenderer } from "@/features/chat/richtext";
 import { stripMarkdown } from "@/features/chat/richtext/markdown";
@@ -966,11 +966,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     isEmojiOnlyMessage(stripMarkdown(message.content || ""));
   const sharedPostId =
     !isDeleted && !locationPayload && message.content
-      ? extractConnectAfrikPostId(stripMarkdown(message.content))
+      ? extractCribsTalkPostId(stripMarkdown(message.content))
       : null;
   const sourceContent = translationDisplay?.text ?? message.content ?? "";
   const displayContent = sharedPostId
-    ? stripConnectAfrikPostUrls(sourceContent)
+    ? stripCribsTalkPostUrls(sourceContent)
     : sourceContent;
   const linkPreviewUrl =
     !isDeleted &&

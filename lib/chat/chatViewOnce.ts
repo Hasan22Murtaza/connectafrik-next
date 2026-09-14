@@ -31,7 +31,7 @@ function getViewOnceSecret(): string {
     process.env.CHAT_LOCK_SECRET ||
     process.env.AUTH_OTP_SECRET ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'connectafrik-view-once-dev'
+    'cribstalk-view-once-dev'
   )
 }
 

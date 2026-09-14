@@ -132,6 +132,6 @@ ${filled.next}
 
 ${filled.buttonLabel}: ${href}
 
-— The ConnectAfrik team
+— The CribsTalk team
 `
 }

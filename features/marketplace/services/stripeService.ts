@@ -16,7 +16,7 @@ export const getStripe = () => {
 }
 
 /**
- * Stripe-supported currencies for ConnectAfrik
+ * Stripe-supported currencies for CribsTalk
  */
 export const STRIPE_CURRENCIES = ['USD', 'EUR', 'GBP'] as const
 export type StripeCurrency = typeof STRIPE_CURRENCIES[number]

@@ -1,5 +1,5 @@
 /**
- * Semantic design tokens for ConnectAfrik.
+ * Semantic design tokens for CribsTalk.
  *
  * CSS variables are the source of truth (see app/globals.css).
  * Use Tailwind utilities mapped in @theme inline:

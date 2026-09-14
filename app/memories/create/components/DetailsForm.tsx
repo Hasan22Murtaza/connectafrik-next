@@ -51,7 +51,7 @@ interface DetailsFormProps {
   onInsertEmoji: (emoji: string) => void
 }
 
-const POPULAR_HASHTAGS = ['africa', 'connectafrik', 'viral', 'fyp', 'trending', 'reels']
+const POPULAR_HASHTAGS = ['africa', 'cribstalk', 'viral', 'fyp', 'trending', 'reels']
 
 export function DetailsForm({
   title,

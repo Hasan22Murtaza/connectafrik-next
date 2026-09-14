@@ -16,7 +16,7 @@ export function truncatePlainText(value: string | null | undefined, max = DESCRI
 }
 
 export function displayName(author?: { full_name?: string | null; username?: string | null } | null): string {
-  return author?.full_name?.trim() || author?.username?.trim() || 'ConnectAfrik member'
+  return author?.full_name?.trim() || author?.username?.trim() || 'CribsTalk member'
 }
 
 export function getNoIndexMetadata(title = SEO_SITE_NAME): Metadata {

@@ -15,7 +15,7 @@ function getOtpSecret(): string {
   return (
     process.env.AUTH_OTP_SECRET ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'connectafrik-otp-dev-secret'
+    'cribstalk-otp-dev-secret'
   )
 }
 

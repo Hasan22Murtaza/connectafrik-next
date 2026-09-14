@@ -29,7 +29,7 @@ const contactCards = [
         href="mailto:info@connectafrik.com"
         className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
       >
-        info@connectafrik.com
+        info@cribstalk.com
       </a>
     ),
   },

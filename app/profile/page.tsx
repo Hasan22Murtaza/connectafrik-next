@@ -406,7 +406,7 @@ const ProfileSettings: React.FC = () => {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `connectafrik-data-${Date.now()}.json`
+      a.download = `cribstalk-data-${Date.now()}.json`
       a.click()
       URL.revokeObjectURL(url)
 

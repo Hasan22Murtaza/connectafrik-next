@@ -1,7 +1,7 @@
 {
-  "name": "ConnectAfrik - African Community Platform",
-  "short_name": "ConnectAfrik",
-  "description": "The premier platform for Africans worldwide to share political insights, celebrate cultural diversity, and build meaningful connections.",
+  "name": "CribsTalk - Global Social Platform",
+  "short_name": "CribsTalk",
+  "description": "A global social platform for connecting, communicating, sharing, and building communities worldwide.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

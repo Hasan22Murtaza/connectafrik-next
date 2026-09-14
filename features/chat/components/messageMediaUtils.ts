@@ -98,21 +98,21 @@ export function extractFirstUrl(text: string): string | null {
   return url.startsWith("http") ? url : `https://${url}`;
 }
 
-/** UUID-style post id from ConnectAfrik post URLs (web, app deep links, or relative paths). */
+/** UUID-style post id from CribsTalk post URLs (web, app deep links, or relative paths). */
 const POST_ID =
   "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
 const POST_URL_RE = new RegExp(
-  `(?:https?:\\/\\/[^\\s/]+|connectafrik:\\/\\/)?\\/post\\/${POST_ID}(?:[/?#][^\\s]*)?`,
+  `(?:https?:\\/\\/[^\\s/]+|cribstalk:\\/\\/)?\\/post\\/${POST_ID}(?:[/?#][^\\s]*)?`,
   "i"
 );
 
-export function extractConnectAfrikPostId(text: string | undefined | null): string | null {
+export function extractCribsTalkPostId(text: string | undefined | null): string | null {
   const raw = text || "";
   const m = raw.match(POST_URL_RE);
   return m?.[1] ?? null;
 }
 
-export function stripConnectAfrikPostUrls(text: string): string {
+export function stripCribsTalkPostUrls(text: string): string {
   return text
     .replace(new RegExp(POST_URL_RE.source, "gi"), "")
     .replace(/[ \t]+\n/g, "\n")

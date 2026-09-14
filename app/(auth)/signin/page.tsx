@@ -213,7 +213,7 @@ const SigninForm: React.FC = () => {
             Welcome Back
           </h1>
           <p className="text-content-secondary sm:text-base text-sm">
-            Sign in to continue your journey with ConnectAfrik
+            Sign in to continue your journey with CribsTalk
           </p>
         </div>
 
@@ -419,7 +419,7 @@ const SigninForm: React.FC = () => {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-surface text-content-secondary">
-                  New to ConnectAfrik?
+                  New to CribsTalk?
                 </span>
               </div>
             </div>

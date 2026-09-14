@@ -35,7 +35,7 @@ export function AdminHeader() {
         >
           <Image
             src="/assets/images/logo_2.png"
-            alt="ConnectAfrik"
+            alt="CribsTalk"
             width={56}
             height={56}
             className="w-11 h-11 sm:w-14 sm:h-14 object-contain transition-transform duration-200 group-hover:scale-105"
@@ -43,7 +43,7 @@ export function AdminHeader() {
           />
           <div className="hidden sm:block">
             <span className="text-sm font-bold text-gray-900 leading-tight block">
-              ConnectAfrik
+              CribsTalk
             </span>
             <span className="text-xs text-gray-500">Admin Panel</span>
           </div>

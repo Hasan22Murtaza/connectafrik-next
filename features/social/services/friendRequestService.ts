@@ -192,7 +192,7 @@ class FriendRequestService {
       return list.map((u) => ({
         id: u.id,
         username: u.username ?? 'user',
-        full_name: u.full_name ?? u.username ?? 'ConnectAfrik User',
+        full_name: u.full_name ?? u.username ?? 'CribsTalk User',
         avatar_url: u.avatar_url,
         friends_since: (u as Friend).friends_since ?? '',
         status: u.status,

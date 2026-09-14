@@ -12,7 +12,7 @@ interface OpenClientProps {
   androidStoreUrl: string
 }
 
-const DEFERRED_LINK_KEY = 'connectafrik:deferred_deeplink'
+const DEFERRED_LINK_KEY = 'cribstalk:deferred_deeplink'
 
 function detectPlatform(): Platform {
   if (typeof navigator === 'undefined') return 'desktop'
@@ -107,10 +107,10 @@ export default function OpenClient({
       <div className="w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
         <img
           src="/assets/images/logo_2.png"
-          alt="ConnectAfrik"
+          alt="CribsTalk"
           className="mx-auto mb-6 w-28"
         />
-        <h1 className="mb-2 text-xl font-bold text-gray-900">Opening ConnectAfrik…</h1>
+        <h1 className="mb-2 text-xl font-bold text-gray-900">Opening CribsTalk…</h1>
         <p className="mb-6 text-sm text-gray-600">
           {stalled
             ? "Didn't open automatically? Use one of the options below."

@@ -360,7 +360,7 @@ export async function POST(request: NextRequest) {
           .eq('thread_id', lockedThreadId)
           .maybeSingle()
         if (lockRow?.is_locked) {
-          title = 'ConnectAfrik'
+          title = 'CribsTalk'
           notificationBody = 'You have a new message'
           body.title = title
           body.body = notificationBody
@@ -689,7 +689,7 @@ export async function POST(request: NextRequest) {
         // Use sender/caller profile image as icon when available (chat, missed call, etc.)
         icon: notificationIcon,
         badge: body.badge || DEFAULT_NOTIFICATION_LOGO,
-        tag: body.tag || 'connectafrik-notification',
+        tag: body.tag || 'cribstalk-notification',
         requireInteraction: String(body.requireInteraction || false),
         silent: String(body.silent || false),
         vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),

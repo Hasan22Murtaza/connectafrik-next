@@ -19,7 +19,7 @@ function extractInternalPath(rawUrl: string): string | null {
   try {
     const url = new URL(rawUrl)
 
-    // Custom scheme: connectafrik://post/123 -> host="post", path="/123".
+    // Custom scheme: cribstalk://post/123 -> host="post", path="/123".
     if (url.protocol === `${deepLinkConfig.scheme}:`) {
       const path = `/${url.host}${url.pathname}`.replace(/\/{2,}/g, '/')
       const cleaned = path.replace(/\/$/, '') || '/'
