@@ -75,7 +75,7 @@ const MAX_FILES = 4
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024
 
 const CATEGORIES = [
-  { value: 'general' as const, label: 'General', icon: '💬', active: 'bg-orange-50 border-orange-400 text-orange-700' },
+  { value: 'general' as const, label: 'General', icon: '💬', active: 'bg-orange-50 border-orange-400 text-orange-500' },
   { value: 'politics' as const, label: 'Politics', icon: '🏛️', active: 'bg-red-50 border-red-400 text-red-700' },
   { value: 'culture' as const, label: 'Culture', icon: '🎭', active: 'bg-emerald-50 border-emerald-400 text-emerald-700' },
 ]
@@ -548,7 +548,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
       <div
         className={
           useModalShell
-            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-visible rounded-t-[20px] border border-border bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
+            ? 'fixed bottom-0 left-0 right-0 z-[10051] flex min-h-0 max-h-[92dvh] flex-col overflow-hidden rounded-xl  bg-surface shadow-[0_-8px_40px_rgba(0,0,0,0.18)] sm:bottom-auto sm:left-1/2 sm:right-auto sm:top-1/2 sm:max-h-[min(88vh,720px)] sm:w-full sm:max-w-[500px] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-xl sm:shadow-2xl'
             : 'relative overflow-visible rounded-xl border border-border-subtle bg-surface shadow-sm'
         }
         {...(useModalShell ? { 'data-edit-modal': '' } : {})}
@@ -559,8 +559,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
       >
         {useModalShell ? (
           <>
-            <div className="relative flex shrink-0  border-b border-border px-4 py-3">
-              <h2 id="create-post-dialog-title" className=" text-lg font-bold ">
+            <div className="relative flex shrink-0  border-b border-border px-4 py-3 bg-primary-600">
+              <h2 id="create-post-dialog-title" className=" text-lg font-semibold text-white">
                 {isEditMode ? 'Edit post' : 'Create post'}
               </h2>
               <button
@@ -569,7 +569,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   if (!isSubmitting && !uploading) onCancel?.()
                 }}
                 disabled={isSubmitting || uploading}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-content-secondary transition-colors hover:bg-surface-hover hover:text-content disabled:opacity-50"
+                className="absolute right-2 top-1/2 -translate-y-1/2  p-2 text-gray-100 transition-colors  hover:text-gray-200 disabled:opacity-50"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
