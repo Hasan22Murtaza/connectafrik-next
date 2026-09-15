@@ -10,6 +10,7 @@ import React, {
   useState,
 } from 'react'
 import { Capacitor } from '@capacitor/core'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { setApiClientExtraHeaders } from '@/lib/api-client'
 import { supabaseMessagingService, type ChatThread } from '@/features/chat/services/supabaseMessagingService'
@@ -59,6 +60,8 @@ function dispatchThreadLockChanged(thread: ChatThread) {
 
 export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  const pathname = usePathname()
+  const isCallPage = Boolean(pathname?.startsWith('/call/'))
   const tokenRef = useRef<string | null>(null)
   const [unlockToken, setUnlockToken] = useState<string | null>(null)
   const [folderOpen, setFolderOpen] = useState(false)
@@ -119,11 +122,12 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   }, [unlockToken])
 
   useEffect(() => {
+    if (isCallPage) return
     void refreshStatus()
-  }, [refreshStatus])
+  }, [isCallPage, refreshStatus])
 
   useEffect(() => {
-    if (!user) return
+    if (!user || isCallPage) return
     const unsubscribe = supabaseMessagingService.subscribeToUserThreads(
       { id: user.id, name: '' },
       () => {
@@ -131,7 +135,7 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
       }
     )
     return unsubscribe
-  }, [user, refreshStatus])
+  }, [user, isCallPage, refreshStatus])
 
   useEffect(() => {
     if (!user) {

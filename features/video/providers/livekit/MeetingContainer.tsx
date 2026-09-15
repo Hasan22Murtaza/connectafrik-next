@@ -30,7 +30,7 @@ import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
 import { useCallSessionSignaling } from '@/features/video/hooks/useCallSessionSignaling';
 import { broadcastCallUiStatus } from '@/features/video/hooks/broadcastCallUiStatus';
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
-import { SPEAKER_VOLUMES } from '@/features/video/core/types';
+import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import CallControls from '@/features/video/ui/CallControls';
 import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
@@ -47,7 +47,6 @@ import type { MeetingContainerProps } from '@/features/video/providers/videosdk/
 // server-confirm check below, so this fallback can afford to be far more
 // patient.
 const LAST_PARTICIPANT_AUTO_END_MS = 20000;
-const CONNECTING_MEDIA_TO_CONNECTED_MS = 600;
 const REJOIN_BACKOFF_MS = [1000, 3000, 7000];
 
 const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
@@ -88,7 +87,9 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const isIncomingRef = useRef(!!isIncoming);
   isIncomingRef.current = !!isIncoming;
 
-  const [callStatus, setCallStatus] = useState<CallStatus>('connecting');
+  const initialCallStatus: CallStatus =
+    isIncoming && room.state === 'connected' ? 'connected' : 'connecting';
+  const [callStatus, setCallStatus] = useState<CallStatus>(initialCallStatus);
   const [callDuration, setCallDuration] = useState(0);
   const [speakerLevel, setSpeakerLevel] = useState<SpeakerLevel>('normal');
   const [effectiveCallType, setEffectiveCallType] = useState<'audio' | 'video'>(callType);
@@ -110,7 +111,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   pipTranslateRef.current = pipTranslate;
 
   const isMountedRef = useRef(true);
-  const callStatusRef = useRef<CallStatus>('connecting');
+  const callStatusRef = useRef<CallStatus>(initialCallStatus);
   const callIdRef = useRef(callIdHint || '');
   const callDurationRef = useRef(0);
   const ringbackRef = useRef<{ stop: () => void } | null>(null);
@@ -176,8 +177,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     (next: CallStatus) => {
       if (callStatusRef.current === next) return;
       if (next === 'connected' && !isIncomingRef.current) {
-        const remoteCount = participants.filter(
-          (p) => p.identity !== localParticipantInfo.identity,
+        const remoteCount = participantsRef.current.filter(
+          (p) => p.identity !== localParticipantRef.current?.identity,
         ).length;
         if (remoteCount < 1) return;
       }
@@ -188,7 +189,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         broadcastCallUiStatus('active', threadId, callIdHint);
       }
     },
-    [localParticipantInfo.identity, participants, threadId, callIdHint],
+    [threadId, callIdHint],
   );
 
   const signaling = useCallSessionSignaling({
@@ -280,13 +281,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         await room.startAudio().catch(() => undefined);
         rejoiningRef.current = false;
         if (isMountedRef.current) {
-          // `signalMeetingJoined` no-ops past the first join (hasSignaledJoinRef),
-          // so RoomEvent.Connected won't restore status on a rejoin -- do it
-          // here. Target connecting_media, not connected directly: the
-          // existing promotion effect re-confirms remote participants are
-          // actually present (avoids a race against `participants` not having
-          // re-populated the instant `connect()` resolves).
-          setCallStatusSafe('connecting_media');
+          const remoteCount = participantsRef.current.filter(
+            (p) => p.identity !== localParticipantRef.current?.identity,
+          ).length;
+          if (remoteCount > 0) {
+            setCallStatusSafe('connected');
+          } else {
+            setCallStatusSafe('connecting_media');
+          }
         }
         return;
       } catch {
@@ -428,14 +430,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       }
     };
     const onReconnected = () => {
-      // Target connecting_media (not the exact prior status) regardless of
-      // what preceded reconnecting: the existing connecting_media -> connected
-      // promotion effect below already re-confirms remote participants are
-      // actually present before calling it connected, avoiding a race against
-      // `participants` not having re-populated yet at the instant this fires.
-      if (callStatusRef.current === 'reconnecting') {
-        setCallStatusSafe('connecting_media');
-      }
+      if (callStatusRef.current !== 'reconnecting') return;
+      const remoteCount = participantsRef.current.filter(
+        (p) => p.identity !== localParticipantRef.current?.identity,
+      ).length;
+      setCallStatusSafe(remoteCount > 0 ? 'connected' : 'connecting_media');
     };
     const onDisconnected = () => {
       // Disconnected means LiveKit's own reconnect attempts are exhausted (or
@@ -509,16 +508,13 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 
   useEffect(() => () => clearRemoteDisconnectTimer(), [clearRemoteDisconnectTimer]);
 
-  // connecting_media → connected with short delay (matches VideoSDK)
+  // connecting_media → connected as soon as a remote participant is present
   useEffect(() => {
     if (callStatus !== 'connecting_media') return;
     const remoteCount = participants.filter(
       (p) => p.identity !== localParticipantInfo.identity,
     ).length;
-    if (remoteCount > 0) {
-      const t = setTimeout(() => setCallStatusSafe('connected'), CONNECTING_MEDIA_TO_CONNECTED_MS);
-      return () => clearTimeout(t);
-    }
+    if (remoteCount > 0) setCallStatusSafe('connected');
   }, [callStatus, participants, localParticipantInfo.identity, setCallStatusSafe]);
 
   useEffect(() => {
@@ -540,14 +536,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     }
   }, [localParticipantInfo.identity, participants, setCallStatusSafe]);
 
+  const durationRunning = isInCallUiStatus(callStatus);
   useEffect(() => {
-    if (callStatus !== 'connected') return;
+    if (!durationRunning) return;
     const timer = setInterval(() => {
       callDurationRef.current += 1;
       if (isMountedRef.current) setCallDuration(callDurationRef.current);
     }, 1000);
     return () => clearInterval(timer);
-  }, [callStatus]);
+  }, [durationRunning]);
 
   // Session ended remotely (last participant left / heartbeat) — leave LiveKit.
   useEffect(() => {
@@ -653,9 +650,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const handleEndCall = useCallback(async () => {
     const activeCallId = callIdRef.current || callIdHint || '';
     const activeRoomId = roomIdHint || meetingId;
-    const isConnected =
-      callStatusRef.current === 'connected' ||
-      callStatusRef.current === 'connecting_media';
+    const isConnected = isInCallUiStatus(callStatusRef.current);
     const groupLeave = isGroupCallSessionRef.current && isConnected;
 
     if (threadId && currentUserId) {
@@ -1011,6 +1006,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, []);
 
   const remoteOne = remoteParticipants[0] ?? null;
+  const inCallUi = isInCallUiStatus(callStatus);
+  const remoteMediaVisible =
+    inCallUi &&
+    (effectiveCallType === 'video' || !!remoteScreenShareParticipant || isLocalPresenting) &&
+    (!!gridLayout || !!remoteOne || !!remoteScreenShareParticipant || isLocalPresenting);
   const sidebarParticipants = useMemo(() => {
     const list = [...remoteParticipants];
     if (!list.some((p) => p.identity === localId)) {
@@ -1086,7 +1086,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           remoteParticipantIds.length === 1 &&
           remoteOne &&
           effectiveCallType === 'video' &&
-          (callStatus === 'connected' || callStatus === 'connecting_media') && (
+          inCallUi && (
             <div className="absolute inset-0">
               {renderLiveKitTile(remoteOne, {
                 tileCount: 1,
@@ -1160,7 +1160,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           !gridLayout &&
           !remoteScreenShareParticipant &&
           isVideoEnabled &&
-          callStatus === 'connected' && (
+          inCallUi && (
             <div
               ref={pipWrapRef}
               role="region"
@@ -1201,7 +1201,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
           isScreenSharing={isLocalPresenting}
           remoteScreenShareStream={null}
-          showConnectedGroupGallery={!!gridLayout && callStatus === 'connected'}
+          showConnectedGroupGallery={!!gridLayout && inCallUi}
+          remoteMediaVisible={remoteMediaVisible}
         />
 
         {callStatus === 'ringing' && !isIncoming && (
@@ -1239,7 +1240,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-        {callStatus === 'connected' && (
+        {inCallUi && (
           <CallControls
             isMuted={isMuted}
             isVideoEnabled={isVideoEnabled}

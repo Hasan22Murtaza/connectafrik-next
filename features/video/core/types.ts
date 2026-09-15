@@ -7,6 +7,11 @@ export type CallStatus =
   | 'ended';
 export type SpeakerLevel = 'normal' | 'low' | 'loud';
 
+/** In-call chrome (tiles, controls, PiP) should stay mounted through these. */
+export function isInCallUiStatus(status: CallStatus): boolean {
+  return status === 'connected' || status === 'connecting_media' || status === 'reconnecting';
+}
+
 /** Props for the call entry surface (`features/video/CallModal.tsx`). */
 export interface CallModalProps {
   isOpen: boolean;

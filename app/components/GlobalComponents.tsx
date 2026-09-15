@@ -30,13 +30,14 @@ export default function GlobalComponents() {
   const { user } = useAuth()
   const pathname = usePathname()
   const isChatPage = pathname?.startsWith('/chat')
+  const isCallPage = pathname?.startsWith('/call/')
 
   return (
     <>
       {/* {user && !isChatPage && <DynamicChatDock />} */}
       {/* {user && <DynamicMobileChatButton/>} */}
       {/* {user && <DynamicFriendRequestNotifications />} */}
-      {user && <DynamicGlobalCallNotification />}
+      {user && !isCallPage && <DynamicGlobalCallNotification />}
       {user && <DynamicFriendsRequiredCallDialog />}
     </>
   )

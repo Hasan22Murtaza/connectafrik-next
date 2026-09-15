@@ -39,7 +39,7 @@ import {
 } from '@/features/video/services/ringtoneService';
 import { apiClient } from '@/lib/api-client';
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
-import { SPEAKER_VOLUMES } from '@/features/video/core/types';
+import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
 import { VideoSDKParticipantTileBridge } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
 import { RemoteAudioSink } from '@/features/video/providers/videosdk/components/RemoteAudioSink';
@@ -692,10 +692,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     const remoteN = lid
       ? [...participants.keys()].filter((id) => id !== lid).length
       : participants.size;
-    if (remoteN > 0) {
-      const t = setTimeout(() => setCallStatusSafe('connected'), 600);
-      return () => clearTimeout(t);
-    }
+    if (remoteN > 0) setCallStatusSafe('connected');
   }, [participants, localParticipant?.id, callStatus, setCallStatusSafe]);
 
   // --------------------------------------------------------------------------
@@ -719,11 +716,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   // Call duration timer
   // --------------------------------------------------------------------------
   useEffect(() => { callDurationRef.current = callDuration; }, [callDuration]);
+  const durationRunning = isInCallUiStatus(callStatus);
   useEffect(() => {
-    if (callStatus !== 'connected') return;
+    if (!durationRunning) return;
     const interval = setInterval(() => setCallDuration((p) => p + 1), 1000);
     return () => clearInterval(interval);
-  }, [callStatus]);
+  }, [durationRunning]);
 
   // --------------------------------------------------------------------------
   // Stop ringback when call becomes connected or ends
@@ -938,8 +936,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const handleEndCall = useCallback(async () => {
     const activeCallId = callIdRef.current || callIdHint || '';
     const activeRoomId = roomIdHint || meetingId;
-    const isConnected =
-      callStatusRef.current === 'connected' || callStatusRef.current === 'connecting_media';
+    const isConnected = isInCallUiStatus(callStatusRef.current);
     const groupLeave = isGroupCallSessionRef.current && isConnected;
 
     if (threadId && currentUserId) {
@@ -1241,6 +1238,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     return { visibleRemote, allTiles, total, cols, rows, pageIndex, pageCount };
   }, [remoteParticipantIds, localId, groupPage]);
 
+  const inCallUi = isInCallUiStatus(callStatus);
+  const remoteMediaVisible =
+    inCallUi &&
+    (effectiveCallType === 'video' || !!remotePresenter || isLocalPresenting) &&
+    (!!gridLayout || remoteParticipantIds.length === 1 || !!remotePresenter || isLocalPresenting);
+
   // Reset to page 0 when participants join/leave
   useEffect(() => { setGroupPage(0); }, [remoteParticipantIds.length]);
 
@@ -1389,7 +1392,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           !remotePresenter &&
           remoteParticipantIds.length === 1 &&
           effectiveCallType === 'video' &&
-          (callStatus === 'connected' || callStatus === 'connecting_media') && (
+          inCallUi && (
             <div className="absolute inset-0">
               <VideoSDKParticipantTileBridge
                 participantId={remoteParticipantIds[0]}
@@ -1463,7 +1466,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           !gridLayout &&
           !remotePresenter &&
           isVideoEnabled &&
-          callStatus === 'connected' && (
+          inCallUi && (
             <div
               ref={pipWrapRef}
               role="region"
@@ -1526,7 +1529,8 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
           isScreenSharing={isLocalPresenting}
           remoteScreenShareStream={null}
-          showConnectedGroupGallery={!!gridLayout && callStatus === 'connected'}
+          showConnectedGroupGallery={!!gridLayout && inCallUi}
+          remoteMediaVisible={remoteMediaVisible}
         />
 
         {/* ── Outgoing ringing: drop-call button ───────────────────────── */}
@@ -1573,7 +1577,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-        {callStatus === 'connected' && (
+        {inCallUi && (
           <CallControls
             isMuted={isMuted}
             isVideoEnabled={isVideoEnabled}
