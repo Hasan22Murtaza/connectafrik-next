@@ -8,6 +8,7 @@ export interface NormalizedParticipant {
   isScreenSharing: boolean;
   isActiveSpeaker: boolean;
   avatarUrl: string;
+  handRaised?: boolean;
   metadata?: Record<string, unknown>;
 }
 

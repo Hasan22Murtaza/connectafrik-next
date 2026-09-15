@@ -1,13 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { Hand } from '@/shared/icons';
 import type { NormalizedParticipant } from '@/features/video/core/models';
 import { participantInitial } from '@/features/video/core/models';
 
 export interface ParticipantInfoProps {
   participant: Pick<
     NormalizedParticipant,
-    'displayName' | 'isLocal' | 'isMicOn' | 'isCameraOn' | 'isActiveSpeaker' | 'avatarUrl'
+    'displayName' | 'isLocal' | 'isMicOn' | 'isCameraOn' | 'isActiveSpeaker' | 'avatarUrl' | 'handRaised'
   >;
   tileCount?: number;
   showNameLabel?: boolean;
@@ -19,7 +20,7 @@ const ParticipantInfo = React.memo(function ParticipantInfo({
   tileCount = 1,
   showNameLabel = true,
 }: ParticipantInfoProps) {
-  const { displayName, isLocal, isMicOn, isActiveSpeaker, avatarUrl } = participant;
+  const { displayName, isLocal, isMicOn, isActiveSpeaker, avatarUrl, handRaised } = participant;
   const name = displayName || 'Participant';
   const initial = participantInitial(name);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
@@ -63,8 +64,19 @@ const ParticipantInfo = React.memo(function ParticipantInfo({
         </div>
       )}
 
+      {handRaised ? (
+        <div
+          className="absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-amber-400 text-amber-950 shadow-lg call-hand-pulse sm:h-8 sm:w-8"
+          title="Hand raised"
+          aria-label={`${isLocal ? 'You' : name} raised a hand`}
+        >
+          <Hand className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+        </div>
+      ) : null}
+
       {showNameLabel && (
         <div className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2 flex items-center gap-1 text-[10px] sm:text-xs text-white/90 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded max-w-[calc(100%-8px)]">
+          {handRaised ? <Hand className="h-2.5 w-2.5 flex-shrink-0 text-amber-300" aria-hidden /> : null}
           {!isMicOn && (
             <svg
               className="w-2.5 h-2.5 flex-shrink-0 text-red-400"

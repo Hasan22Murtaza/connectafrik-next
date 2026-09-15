@@ -35,7 +35,10 @@ import CallControls from '@/features/video/ui/CallControls';
 import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
 import AddPeoplePanel from '@/features/video/ui/AddPeoplePanel';
-import MessageInput from '@/features/video/ui/MessageInput';
+import CallChatPanel from '@/features/video/ui/CallChatPanel';
+import CallReactionOverlay from '@/features/video/ui/CallReactionOverlay';
+import RaisedHandsBanner from '@/features/video/ui/RaisedHandsBanner';
+import { useLiveKitCallEngagement } from '@/features/video/hooks/useCallEngagement';
 import { LiveKitParticipantTileBridge, normalizeLiveKitParticipant } from '@/features/video/providers/livekit/components/ParticipantTileBridge';
 import { LiveKitScreenShareMedia } from '@/features/video/providers/livekit/components/ScreenShareMedia';
 import type { MeetingContainerProps } from '@/features/video/providers/videosdk/MeetingContainer';
@@ -78,6 +81,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     isScreenShareEnabled,
   } = useLocalParticipant();
   const participants = useParticipants();
+  const engagementActiveIds = useMemo(
+    () => participants.map((p) => p.identity).filter(Boolean),
+    [participants],
+  );
+  const engagement = useLiveKitCallEngagement(
+    localParticipantInfo?.identity || currentUserId || '',
+    localParticipantInfo?.name || user?.user_metadata?.full_name || 'You',
+    engagementActiveIds,
+  );
 
   const callSessionDeviceFields = useMemo(() => {
     const id = getSessionIdFromAccessToken(session?.access_token ?? null);
@@ -754,7 +766,6 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
       );
       setMessageText('');
-      setShowMessageInput(false);
     } catch {
       /* ignore */
     }
@@ -894,9 +905,10 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         tileCount={opts.tileCount}
         showNameLabel={opts.showNameLabel}
         audioVolume={opts.audioVolume}
+        handRaised={engagement.isHandRaised(participant.identity)}
       />
     ),
-    [],
+    [engagement.isHandRaised],
   );
 
   const participantByIdentity = useMemo(() => {
@@ -1020,10 +1032,10 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, [localId, localParticipantInfo, remoteParticipants]);
 
   return (
-    <div className="w-full h-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden">
       <div
         ref={meetingSurfaceRef}
-        className="relative w-full h-screen overflow-hidden"
+        className="relative min-w-0 flex-1 h-screen overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
       >
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
@@ -1035,13 +1047,22 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             regardless of what's on screen, so none of those layout decisions
             can affect who is audible. */}
         <RoomAudioRenderer volume={audioVolume} />
+        <CallReactionOverlay reactions={engagement.liveReactions} />
+        {isGroupCall ? <RaisedHandsBanner hands={engagement.raisedHands} /> : null}
 
         {(remoteScreenShareParticipant || isLocalPresenting) && (
           <ScreenShareView
             presenter={normalizeLiveKitParticipant(
               isLocalPresenting ? localParticipantInfo : remoteScreenShareParticipant!,
               isLocalPresenting,
-              { isScreenSharing: true },
+              {
+                isScreenSharing: true,
+                handRaised: engagement.isHandRaised(
+                  isLocalPresenting
+                    ? localParticipantInfo.identity
+                    : remoteScreenShareParticipant?.identity || '',
+                ),
+              },
             )}
             presenterName={isLocalPresenting ? 'You' : presenterName}
             sidebarParticipants={sidebarParticipants
@@ -1053,7 +1074,9 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
                     : remoteScreenShareParticipant?.identity),
               )
               .map((p) =>
-                normalizeLiveKitParticipant(p, p.identity === localId),
+                normalizeLiveKitParticipant(p, p.identity === localId, {
+                  handRaised: engagement.isHandRaised(p.identity),
+                }),
               )}
             isLocalPresenting={isLocalPresenting}
             callDuration={callDuration}
@@ -1255,10 +1278,19 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             onToggleVideo={handleToggleVideo}
             onToggleScreenShare={handleToggleScreenShare}
             onToggleSpeaker={handleToggleSpeaker}
-            onToggleMessageInput={() => setShowMessageInput((v) => !v)}
-            onToggleAddPeople={() => setShowAddPeople((v) => !v)}
+            onToggleMessageInput={() => {
+              setShowAddPeople(false);
+              setShowMessageInput((v) => !v);
+            }}
+            onToggleAddPeople={() => {
+              setShowMessageInput(false);
+              setShowAddPeople((v) => !v);
+            }}
+            onToggleHand={engagement.toggleHand}
+            onSendReaction={engagement.sendReaction}
             onEndCall={handleEndCall}
             isGroupCall={isGroupCall}
+            handRaised={engagement.handRaised}
           />
         )}
       </div>
@@ -1285,17 +1317,18 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       )}
 
       {callStatus === 'connected' && showMessageInput && (
-        <div className="p-2 sm:p-3 md:p-4">
-          <MessageInput
-            messageText={messageText}
-            onMessageChange={setMessageText}
-            onSend={handleSendMessage}
-            onClose={() => {
-              setShowMessageInput(false);
-              setMessageText('');
-            }}
-          />
-        </div>
+        <CallChatPanel
+          threadId={threadId}
+          currentUserId={currentUserId}
+          currentUserName={user?.user_metadata?.full_name || 'You'}
+          messageText={messageText}
+          onMessageChange={setMessageText}
+          onSend={() => void handleSendMessage()}
+          onClose={() => {
+            setShowMessageInput(false);
+            setMessageText('');
+          }}
+        />
       )}
 
       <div className="sr-only" aria-hidden>

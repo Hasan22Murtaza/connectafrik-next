@@ -48,11 +48,14 @@ import type { NormalizedParticipant } from '@/features/video/core/models';
 import CallControls from '@/features/video/ui/CallControls';
 import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
 import AddPeoplePanel from '@/features/video/ui/AddPeoplePanel';
-import MessageInput from '@/features/video/ui/MessageInput';
+import CallChatPanel from '@/features/video/ui/CallChatPanel';
+import CallReactionOverlay from '@/features/video/ui/CallReactionOverlay';
+import RaisedHandsBanner from '@/features/video/ui/RaisedHandsBanner';
 import GroupCallParticipantsStrip from '@/features/video/ui/GroupCallParticipantsStrip';
 import type { CallParticipantProfile } from '@/features/video/ui/GroupCallParticipantsStrip';
 import { LocalAdaptiveSendQuality } from '@/features/video/providers/videosdk/LocalAdaptiveSendQuality';
 import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
+import { useVideoSDKCallEngagement } from '@/features/video/hooks/useVideoSDKCallEngagement';
 
 // See LiveKit MeetingContainer for the rationale: 5s was well inside normal
 // mobile network blip duration and turned routine drops into ended calls.
@@ -1099,7 +1102,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
       );
       setMessageText('');
-      setShowMessageInput(false);
     } catch { /* ignore */ }
   }, [messageText, threadId, currentUserId, user]);
 
@@ -1175,6 +1177,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     remoteParticipantIds.forEach((id) => s.add(id));
     return Array.from(s);
   }, [localId, remoteParticipantIds]);
+
+  const engagement = useVideoSDKCallEngagement(
+    localId || currentUserId || '',
+    localParticipant?.displayName || user?.user_metadata?.full_name || 'You',
+    inCallUserIds,
+  );
 
   const participantCount = remoteParticipantIds.length + 1; // +1 for local
   const isGroupCall = remoteParticipantIds.length > 1;
@@ -1314,10 +1322,10 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   // Render
   // --------------------------------------------------------------------------
   return (
-    <div className="w-full h-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden">
       <div
         ref={meetingSurfaceRef}
-        className="relative w-full h-screen overflow-hidden"
+        className="relative min-w-0 flex-1 h-screen overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
       >
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
@@ -1326,6 +1334,10 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             per-tile <audio> elements, silencing anyone not on the visible page
             or tile even though they were still connected and talking. */}
         <RemoteAudioSink participantIds={remoteParticipantIds} volume={audioVolume} />
+        <CallReactionOverlay reactions={engagement.liveReactions} />
+        {(isGroupCall || isGroupCallSession) ? (
+          <RaisedHandsBanner hands={engagement.raisedHands} />
+        ) : null}
 
         {/* ── Screen share view (remote full-screen OR local banner) ─────── */}
         {(remotePresenter || isLocalPresenting) && (
@@ -1358,6 +1370,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 isScreenSharing: false,
                 isActiveSpeaker: false,
                 avatarUrl: '',
+                handRaised: engagement.isHandRaised(id),
               }),
             )}
             isLocalPresenting={isLocalPresenting}
@@ -1378,6 +1391,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 tileCount={opts.tileCount}
                 showNameLabel
                 audioVolume={opts.audioVolume}
+                handRaised={engagement.isHandRaised(p.id)}
               />
             )}
           />
@@ -1399,6 +1413,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 tileCount={1}
                 showNameLabel={false}
                 audioVolume={audioVolume}
+                handRaised={engagement.isHandRaised(remoteParticipantIds[0])}
               />
             </div>
           )}
@@ -1428,6 +1443,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                   tileCount={gridLayout.total}
                   showNameLabel
                   audioVolume={audioVolume}
+                  handRaised={engagement.isHandRaised(pid)}
                 />
               </div>
             ))}
@@ -1491,6 +1507,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 tileCount={2}
                 showNameLabel={false}
                 audioVolume={0}
+                handRaised={engagement.isHandRaised(localId)}
               />
             </div>
           )}
@@ -1592,11 +1609,20 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             onToggleVideo={handleToggleVideo}
             onToggleScreenShare={handleToggleScreenShare}
             onToggleSpeaker={handleToggleSpeaker}
-            onToggleMessageInput={() => setShowMessageInput((p) => !p)}
-            onToggleAddPeople={() => setShowAddPeople((p) => !p)}
+            onToggleMessageInput={() => {
+              setShowAddPeople(false);
+              setShowMessageInput((p) => !p);
+            }}
+            onToggleAddPeople={() => {
+              setShowMessageInput(false);
+              setShowAddPeople((p) => !p);
+            }}
+            onToggleHand={engagement.toggleHand}
+            onSendReaction={engagement.sendReaction}
             onEndCall={handleEndCall}
             onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
             isGroupCall={isGroupCall || isGroupCallSession}
+            handRaised={engagement.handRaised}
           />
         )}
       </div>
@@ -1624,14 +1650,15 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
 
       {/* ── In-call message input ─────────────────────────────────────────── */}
       {callStatus === 'connected' && showMessageInput && (
-        <div className="p-2 sm:p-3 md:p-4">
-          <MessageInput
-            messageText={messageText}
-            onMessageChange={setMessageText}
-            onSend={handleSendMessage}
-            onClose={() => { setShowMessageInput(false); setMessageText(''); }}
-          />
-        </div>
+        <CallChatPanel
+          threadId={threadId}
+          currentUserId={currentUserId}
+          currentUserName={user?.user_metadata?.full_name || 'You'}
+          messageText={messageText}
+          onMessageChange={setMessageText}
+          onSend={() => void handleSendMessage()}
+          onClose={() => { setShowMessageInput(false); setMessageText(''); }}
+        />
       )}
     </div>
   );

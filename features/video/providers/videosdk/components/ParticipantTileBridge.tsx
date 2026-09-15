@@ -10,6 +10,7 @@ import ParticipantTile from '@/features/video/ui/ParticipantTile';
 export function useVideoSDKNormalizedParticipant(
   participantId: string,
   isLocal = false,
+  handRaised = false,
 ): NormalizedParticipant {
   const { micOn, webcamOn, displayName, isActiveSpeaker, participant } =
     useParticipant(participantId);
@@ -24,8 +25,9 @@ export function useVideoSDKNormalizedParticipant(
       isScreenSharing: false,
       isActiveSpeaker,
       avatarUrl: profileImageUrlFromMeta(participant?.metaData),
+      handRaised,
     }),
-    [participantId, isLocal, micOn, webcamOn, displayName, isActiveSpeaker, participant?.metaData],
+    [participantId, isLocal, micOn, webcamOn, displayName, isActiveSpeaker, participant?.metaData, handRaised],
   );
 }
 
@@ -36,6 +38,7 @@ export interface VideoSDKParticipantTileBridgeProps {
   audioVolume?: number;
   tileCount?: number;
   showNameLabel?: boolean;
+  handRaised?: boolean;
 }
 
 /** Bridges VideoSDK SDK state into the unified ParticipantTile. */
@@ -46,8 +49,9 @@ export function VideoSDKParticipantTileBridge({
   audioVolume = 0.85,
   tileCount = 1,
   showNameLabel = true,
+  handRaised = false,
 }: VideoSDKParticipantTileBridgeProps) {
-  const normalized = useVideoSDKNormalizedParticipant(participantId, isLocal);
+  const normalized = useVideoSDKNormalizedParticipant(participantId, isLocal, handRaised);
 
   const media = (
     <VideoSDKParticipantMedia

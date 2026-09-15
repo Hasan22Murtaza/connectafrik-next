@@ -13,7 +13,7 @@ export function normalizeLiveKitParticipant(
   participant: Participant,
   isLocal = false,
   overrides?: Partial<
-    Pick<NormalizedParticipant, 'isScreenSharing' | 'isActiveSpeaker' | 'isMicOn' | 'isCameraOn'>
+    Pick<NormalizedParticipant, 'isScreenSharing' | 'isActiveSpeaker' | 'isMicOn' | 'isCameraOn' | 'handRaised'>
   >,
 ): NormalizedParticipant {
   return {
@@ -40,6 +40,7 @@ export interface LiveKitParticipantTileBridgeProps {
   audioVolume?: number;
   tileCount?: number;
   showNameLabel?: boolean;
+  handRaised?: boolean;
 }
 
 export function LiveKitParticipantTileBridge({
@@ -49,6 +50,7 @@ export function LiveKitParticipantTileBridge({
   audioVolume = 0.85,
   tileCount = 1,
   showNameLabel = true,
+  handRaised = false,
 }: LiveKitParticipantTileBridgeProps) {
   const liveState = useLiveKitParticipantState(participant);
 
@@ -58,8 +60,9 @@ export function LiveKitParticipantTileBridge({
         isMicOn: liveState.micOn,
         isCameraOn: liveState.webcamOn,
         isActiveSpeaker: liveState.isActiveSpeaker,
+        handRaised,
       }),
-    [participant, isLocal, liveState],
+    [participant, isLocal, liveState, handRaised],
   );
 
   const media = (

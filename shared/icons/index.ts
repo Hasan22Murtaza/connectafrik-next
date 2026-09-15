@@ -257,6 +257,7 @@ export {
   Flag,
   Folder,
   Forward,
+  Hand,
   Hash,
   Headphones,
   Highlighter,
