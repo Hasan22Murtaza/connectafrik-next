@@ -191,7 +191,14 @@ export function VideoSDKParticipantStatusChrome({
 
 export function VideoSDKLocalNetworkChip({ participantId }: { participantId: string }) {
   const normalized = useVideoSDKNormalizedParticipant(participantId, true);
-  return <NetworkQualityIndicator quality={normalized.connectionQuality} size="md" showLabel />;
+  return (
+    <NetworkQualityIndicator
+      quality={normalized.connectionQuality}
+      size="md"
+      embedded
+      tone="onLight"
+    />
+  );
 }
 
 export default VideoSDKParticipantTileBridge;

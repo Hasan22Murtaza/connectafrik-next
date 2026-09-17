@@ -10,6 +10,8 @@ export interface NetworkQualityIndicatorProps {
   showLabel?: boolean;
   /** Skip the extra dark pill — use inside an already-tinted chip. */
   embedded?: boolean;
+  /** Bar colors for a light/white surface instead of the dark tile chip. */
+  tone?: 'onDark' | 'onLight';
   className?: string;
 }
 
@@ -30,34 +32,42 @@ function filledBars(quality: ConnectionQuality): number {
   }
 }
 
-function barColor(quality: ConnectionQuality): string {
+function inkColor(quality: ConnectionQuality, tone: 'onDark' | 'onLight', filled: boolean): string {
+  if (!filled) {
+    return tone === 'onLight' ? 'rgb(15 23 42 / 0.18)' : 'rgb(255 255 255 / 0.28)';
+  }
   switch (quality) {
     case 'fair':
-      return 'bg-amber-400';
+      return '#f59e0b';
     case 'poor':
-      return 'bg-red-400';
+      return '#ef4444';
     case 'unknown':
-      return 'bg-white/30';
+      return tone === 'onLight' ? 'rgb(15 23 42 / 0.18)' : 'rgb(255 255 255 / 0.28)';
     default:
-      return 'bg-white';
+      return tone === 'onLight' ? '#16a34a' : '#ffffff';
   }
 }
 
 /**
- * Microsoft Teams-style 4-bar network quality glyph.
+ * Cellular-style 4-bar network quality glyph.
  */
 const NetworkQualityIndicator = React.memo(function NetworkQualityIndicator({
   quality = 'unknown',
   size = 'sm',
   showLabel = false,
   embedded = false,
+  tone = 'onDark',
   className = '',
 }: NetworkQualityIndicatorProps) {
   const filled = filledBars(quality);
-  const color = barColor(quality);
   const label = connectionQualityLabel(quality);
-  const heights = size === 'md' ? [4, 7, 10, 13] : [3, 5, 7, 9];
-  const width = size === 'md' ? 'w-[3px]' : 'w-[2.5px]';
+  const iconSize = size === 'md' ? 22 : 16;
+  const barWidth = size === 'md' ? 3.4 : 2.6;
+  const gap = size === 'md' ? 2.1 : 1.6;
+  const radii = size === 'md' ? 1.2 : 0.9;
+  const heights = size === 'md' ? [8, 11.5, 15, 18.5] : [6, 8.5, 11, 13.5];
+  const vbH = size === 'md' ? 20 : 15;
+  const vbW = barWidth * BAR_COUNT + gap * (BAR_COUNT - 1);
 
   return (
     <div
@@ -66,18 +76,27 @@ const NetworkQualityIndicator = React.memo(function NetworkQualityIndicator({
       aria-label={label}
     >
       <span
-        className={`inline-flex items-end gap-px ${
-          embedded ? '' : 'rounded-sm bg-black/55 px-1 py-0.5 backdrop-blur-sm'
-        }`}
+        className={embedded ? 'inline-flex' : 'inline-flex rounded-md bg-black/55 px-1 py-0.5 backdrop-blur-sm'}
         aria-hidden
       >
-        {Array.from({ length: BAR_COUNT }, (_, i) => (
-          <span
-            key={i}
-            className={`block rounded-[1px] ${width} ${i < filled ? color : 'bg-white/25'}`}
-            style={{ height: heights[i] }}
-          />
-        ))}
+        <svg
+          width={iconSize}
+          height={iconSize}
+          viewBox={`0 0 ${vbW} ${vbH}`}
+          className="block overflow-visible"
+        >
+          {heights.map((h, i) => (
+            <rect
+              key={i}
+              x={i * (barWidth + gap)}
+              y={vbH - h}
+              width={barWidth}
+              height={h}
+              rx={radii}
+              fill={inkColor(quality, tone, i < filled)}
+            />
+          ))}
+        </svg>
       </span>
       {showLabel && quality !== 'excellent' && quality !== 'unknown' ? (
         <span

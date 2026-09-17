@@ -1343,9 +1343,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   return (
     <div className="flex h-full w-full overflow-hidden">
       <div
-        ref={meetingSurfaceRef}
-        className="relative min-w-0 flex-1 h-screen overflow-hidden"
+        className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+      >
+      <div
+        ref={meetingSurfaceRef}
+        className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       >
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
             branch below. Pagination (MAX_PER_PAGE), screen share replacing the
@@ -1356,11 +1359,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         <CallReactionOverlay reactions={engagement.liveReactions} />
         {(isGroupCall || isGroupCallSession) ? (
           <RaisedHandsBanner hands={engagement.raisedHands} />
-        ) : null}
-        {inCallUi && localId ? (
-          <div className="absolute top-3 left-3 z-20 pointer-events-none">
-            <VideoSDKLocalNetworkChip participantId={localId} />
-          </div>
         ) : null}
 
         {/* ── Screen share view (remote full-screen OR local banner) ─────── */}
@@ -1453,21 +1451,31 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         {/* ── Group video grid (2+ remote participants) ─────────────────── */}
         {gridLayout && !remotePresenter && (
           <div
-            className="absolute inset-0 flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
+            className="absolute inset-0 grid p-1.5 sm:p-2"
             style={{
-              gap: '4px',
+              gap: 6,
+              gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${gridLayout.rows}, minmax(0, 1fr))`,
               background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
             }}
           >
-            {gridLayout.allTiles.map((pid) => (
+            {gridLayout.allTiles.map((pid, index) => {
+              const leftover = gridLayout.total % gridLayout.cols;
+              const isLoneLastRowItem =
+                leftover === 1 && index === gridLayout.allTiles.length - 1;
+              return (
               <div
                 key={pid}
-                className="relative overflow-hidden rounded-md sm:rounded-lg"
-                style={{
-                  width: `calc(${100 / gridLayout.cols}% - 6px)`,
-                  height: `calc(${100 / gridLayout.rows}% - 6px)`,
-                  minHeight: 0,
-                }}
+                className="relative min-h-0 min-w-0 overflow-hidden rounded-md sm:rounded-lg"
+                style={
+                  isLoneLastRowItem
+                    ? {
+                        gridColumn: '1 / -1',
+                        width: `calc((100% - ${(gridLayout.cols - 1) * 6}px) / ${gridLayout.cols})`,
+                        justifySelf: 'center',
+                      }
+                    : undefined
+                }
               >
                 <VideoSDKParticipantTileBridge
                   participantId={pid}
@@ -1483,7 +1491,8 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                   }
                 />
               </div>
-            ))}
+            );
+            })}
 
             {gridLayout.pageCount > 1 && (
               <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-black/60 text-white rounded-full px-2.5 py-1.5 backdrop-blur-sm border border-white/20">
@@ -1636,6 +1645,8 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
+      </div>
+
         {inCallUi && (
           <CallControls
             isMuted={isMuted}
@@ -1665,6 +1676,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
             isGroupCall={isGroupCall || isGroupCallSession}
             handRaised={engagement.handRaised}
+            networkIndicator={
+              localId ? <VideoSDKLocalNetworkChip participantId={localId} /> : undefined
+            }
           />
         )}
       </div>

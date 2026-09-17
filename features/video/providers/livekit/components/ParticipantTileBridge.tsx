@@ -128,7 +128,14 @@ export function LiveKitLocalNetworkChip({
   participant: Participant;
 }) {
   const { connectionQuality } = useLiveKitParticipantState(participant);
-  return <NetworkQualityIndicator quality={connectionQuality} size="md" showLabel />;
+  return (
+    <NetworkQualityIndicator
+      quality={connectionQuality}
+      size="md"
+      embedded
+      tone="onLight"
+    />
+  );
 }
 
 export default LiveKitParticipantTileBridge;

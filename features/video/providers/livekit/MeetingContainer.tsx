@@ -1054,9 +1054,12 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   return (
     <div className="flex h-full w-full overflow-hidden">
       <div
-        ref={meetingSurfaceRef}
-        className="relative min-w-0 flex-1 h-screen overflow-hidden"
+        className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+      >
+      <div
+        ref={meetingSurfaceRef}
+        className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       >
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
             branch below. Pagination (MAX_PER_PAGE), screen share replacing the
@@ -1069,11 +1072,6 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         <RoomAudioRenderer volume={audioVolume} />
         <CallReactionOverlay reactions={engagement.liveReactions} />
         {isGroupCall ? <RaisedHandsBanner hands={engagement.raisedHands} /> : null}
-        {inCallUi ? (
-          <div className="absolute top-3 left-3 z-20 pointer-events-none">
-            <LiveKitLocalNetworkChip participant={localParticipantInfo} />
-          </div>
-        ) : null}
 
         {(remoteScreenShareParticipant || isLocalPresenting) && (
           <ScreenShareView
@@ -1146,24 +1144,33 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 
         {gridLayout && !remoteScreenShareParticipant && (
           <div
-            className="absolute inset-0 flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
+            className="absolute inset-0 grid p-1.5 sm:p-2"
             style={{
-              gap: '4px',
+              gap: 6,
+              gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${gridLayout.rows}, minmax(0, 1fr))`,
               background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
             }}
           >
-            {gridLayout.allTiles.map((identity) => {
+            {gridLayout.allTiles.map((identity, index) => {
               const p = participantByIdentity.get(identity);
               if (!p) return null;
+              const leftover = gridLayout.total % gridLayout.cols;
+              const isLoneLastRowItem =
+                leftover === 1 && index === gridLayout.allTiles.length - 1;
               return (
                 <div
                   key={identity}
-                  className="relative overflow-hidden rounded-md sm:rounded-lg"
-                  style={{
-                    width: `calc(${100 / gridLayout.cols}% - 6px)`,
-                    height: `calc(${100 / gridLayout.rows}% - 6px)`,
-                    minHeight: 0,
-                  }}
+                  className="relative min-h-0 min-w-0 overflow-hidden rounded-md sm:rounded-lg"
+                  style={
+                    isLoneLastRowItem
+                      ? {
+                          gridColumn: '1 / -1',
+                          width: `calc((100% - ${(gridLayout.cols - 1) * 6}px) / ${gridLayout.cols})`,
+                          justifySelf: 'center',
+                        }
+                      : undefined
+                  }
                 >
                   {renderLiveKitTile(p, {
                     isLocal: identity === localId,
@@ -1293,6 +1300,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
+      </div>
+
         {inCallUi && (
           <CallControls
             isMuted={isMuted}
@@ -1321,6 +1330,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             onEndCall={handleEndCall}
             isGroupCall={isGroupCall}
             handRaised={engagement.handRaised}
+            networkIndicator={<LiveKitLocalNetworkChip participant={localParticipantInfo} />}
           />
         )}
       </div>
