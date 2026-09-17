@@ -1645,8 +1645,6 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-      </div>
-
         {inCallUi && (
           <CallControls
             isMuted={isMuted}
@@ -1681,6 +1679,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             }
           />
         )}
+      </div>
       </div>
 
       {/* ── Add-people slide-over panel ───────────────────────────────────── */}

@@ -103,7 +103,7 @@ const CallControls: React.FC<CallControlsProps> = ({
   }, [reactionOpen]);
 
   return (
-    <div className="relative z-40 w-full shrink-0">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40">
       {onEndCallForAll && (
         <div className="pointer-events-auto flex justify-center px-3 pb-2 sm:justify-end sm:px-5">
           <button

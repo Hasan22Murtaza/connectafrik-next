@@ -1300,8 +1300,6 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-      </div>
-
         {inCallUi && (
           <CallControls
             isMuted={isMuted}
@@ -1333,6 +1331,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             networkIndicator={<LiveKitLocalNetworkChip participant={localParticipantInfo} />}
           />
         )}
+      </div>
       </div>
 
       {showAddPeople && (
