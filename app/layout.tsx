@@ -79,7 +79,7 @@ export default function RootLayout({
       >
         <Providers>
           <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
-          <div className="min-h-screen  4xl:max-w-screen-2xl mx-auto">
+          <div className="min-h-screen w-full mx-auto 2xl:max-w-[1536px]">
             <ConditionalHeader />
             
             {children}

@@ -33,7 +33,7 @@ const LeftSidebar = () => {
   };
 
   return (
-    <aside className="hidden lg:block shrink-0 h-full overflow-y-auto py-6  w-65 xl:w-80 2xl:w-[24rem]">
+    <aside className="hidden lg:block shrink-0 h-full overflow-y-auto py-4  w-55 xl:w-70 2xl:w-[24rem]">
       <ul className="space-y-3">
         {shortcuts.map((item) => {
           const isActive = pathname === item.to;
