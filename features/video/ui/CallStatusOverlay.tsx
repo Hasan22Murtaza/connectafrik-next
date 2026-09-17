@@ -17,6 +17,7 @@ interface CallStatusOverlayProps {
   showConnectedGroupGallery?: boolean;
   /** Remote video tile/grid is already filling the surface — don't cover it with chrome. */
   remoteMediaVisible?: boolean;
+  extraPersonChrome?: React.ReactNode;
 }
 
 const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
@@ -33,6 +34,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
   remoteScreenShareStream,
   showConnectedGroupGallery = false,
   remoteMediaVisible = false,
+  extraPersonChrome = null,
 }) => {
   const activeName = isIncoming ? decodedCallerName : decodedRecipientName;
   const activeAvatarUrl = (isIncoming ? decodedCallerAvatarUrl : decodedRecipientAvatarUrl) || '';
@@ -118,6 +120,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
               )}
             </div>
             {personFooter}
+            {extraPersonChrome}
           </div>
         </div>
       )}

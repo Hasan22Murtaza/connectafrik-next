@@ -1,26 +1,160 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Hand } from '@/shared/icons';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Hand, MicOff, MoreHorizontal } from '@/shared/icons';
+import Portal from '@/shared/components/ui/Portal';
 import type { NormalizedParticipant } from '@/features/video/core/models';
 import { participantInitial } from '@/features/video/core/models';
+import NetworkQualityIndicator from './NetworkQualityIndicator';
 
 export interface ParticipantInfoProps {
   participant: Pick<
     NormalizedParticipant,
-    'displayName' | 'isLocal' | 'isMicOn' | 'isCameraOn' | 'isActiveSpeaker' | 'avatarUrl' | 'handRaised'
+    | 'displayName'
+    | 'isLocal'
+    | 'isMicOn'
+    | 'isCameraOn'
+    | 'isActiveSpeaker'
+    | 'avatarUrl'
+    | 'handRaised'
+    | 'connectionQuality'
   >;
   tileCount?: number;
   showNameLabel?: boolean;
+  onMute?: () => void;
 }
 
-/** Provider-agnostic participant chrome (avatar, name, active speaker ring). */
+function ChipOverflowMenu({
+  name,
+  onMute,
+}: {
+  name: string;
+  onMute: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+
+  const updatePosition = () => {
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setCoords({ top: rect.top, left: rect.left });
+  };
+
+  const toggleMenu = (event: React.MouseEvent | React.PointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    updatePosition();
+    setOpen(true);
+  };
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updatePosition();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    const onReposition = () => setOpen(false);
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('resize', onReposition);
+    window.addEventListener('scroll', onReposition, true);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onReposition);
+      window.removeEventListener('scroll', onReposition, true);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`More actions for ${name}`}
+        onPointerDown={toggleMenu}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-white transition hover:bg-white/20 ${
+          open
+            ? 'opacity-100'
+            : 'opacity-100 md:opacity-0 md:group-hover/chip:opacity-100 md:group-focus-within/chip:opacity-100'
+        }`}
+      >
+        <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
+      </button>
+      {open && coords ? (
+        <Portal>
+          <div
+            ref={menuRef}
+            role="menu"
+            className="fixed z-[10050] min-w-[12rem] overflow-hidden rounded-lg bg-white py-1 text-sm text-gray-800 shadow-lg ring-1 ring-black/10"
+            style={{
+              top: coords.top,
+              left: coords.left,
+              transform: 'translateY(calc(-100% - 6px))',
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-gray-100"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                setOpen(false);
+                onMute();
+              }}
+            >
+              <MicOff className="h-4 w-4 text-gray-600" aria-hidden />
+              Mute participant
+            </button>
+          </div>
+        </Portal>
+      ) : null}
+    </>
+  );
+}
+
+/** Provider-agnostic participant chrome (avatar, name, mute, network). */
 const ParticipantInfo = React.memo(function ParticipantInfo({
   participant,
   tileCount = 1,
   showNameLabel = true,
+  onMute,
 }: ParticipantInfoProps) {
-  const { displayName, isLocal, isMicOn, isActiveSpeaker, avatarUrl, handRaised } = participant;
+  const {
+    displayName,
+    isLocal,
+    isMicOn,
+    isActiveSpeaker,
+    avatarUrl,
+    handRaised,
+    connectionQuality,
+  } = participant;
   const name = displayName || 'Participant';
   const initial = participantInitial(name);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
@@ -75,27 +209,41 @@ const ParticipantInfo = React.memo(function ParticipantInfo({
       ) : null}
 
       {showNameLabel && (
-        <div className="absolute bottom-1 left-1 sm:bottom-2 sm:left-2 flex items-center gap-1 text-[10px] sm:text-xs text-white/90 bg-black/60 backdrop-blur-sm px-1.5 py-0.5 rounded max-w-[calc(100%-8px)]">
-          {handRaised ? <Hand className="h-2.5 w-2.5 flex-shrink-0 text-amber-300" aria-hidden /> : null}
-          {!isMicOn && (
-            <svg
-              className="w-2.5 h-2.5 flex-shrink-0 text-red-400"
-              fill="currentColor"
-              viewBox="0 0 20 20"
+        <div className="group/chip absolute bottom-1 left-1 z-30 flex max-w-[calc(100%-8px)] items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/90 backdrop-blur-sm sm:bottom-2 sm:left-2 sm:text-xs">
+          {isLocal ? (
+            <NetworkQualityIndicator
+              quality={connectionQuality}
+              size="sm"
+              embedded
+              className="flex-shrink-0"
+            />
+          ) : null}
+          {!isMicOn ? (
+            <span
+              className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-red-500 text-white"
+              title="Muted"
+              aria-label="Muted"
             >
-              <path
-                fillRule="evenodd"
-                d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-4.512 1.074l-1.78-1.781zm4.261 4.26l1.514 1.515a2.003 2.003 0 012.45 2.45l1.514 1.514a4 4 0 00-5.478-5.478z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
+              <MicOff className="h-2.5 w-2.5" aria-hidden />
+            </span>
+          ) : null}
           <span className="truncate">{isLocal ? 'You' : name}</span>
+          {onMute && !isLocal ? <ChipOverflowMenu name={name} onMute={onMute} /> : null}
+        </div>
+      )}
+
+      {!showNameLabel && !isMicOn && (
+        <div
+          className="absolute bottom-1 left-1 z-30 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-md sm:bottom-1.5 sm:left-1.5 sm:h-7 sm:w-7"
+          title="Muted"
+          aria-label={`${isLocal ? 'You are' : `${name} is`} muted`}
+        >
+          <MicOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" aria-hidden />
         </div>
       )}
 
       {isActiveSpeaker && !isLocal && (
-        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg" />
+        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-lg sm:right-2" />
       )}
     </>
   );

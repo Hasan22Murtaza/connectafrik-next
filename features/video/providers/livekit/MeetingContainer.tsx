@@ -39,7 +39,7 @@ import CallChatPanel from '@/features/video/ui/CallChatPanel';
 import CallReactionOverlay from '@/features/video/ui/CallReactionOverlay';
 import RaisedHandsBanner from '@/features/video/ui/RaisedHandsBanner';
 import { useLiveKitCallEngagement } from '@/features/video/hooks/useCallEngagement';
-import { LiveKitParticipantTileBridge, normalizeLiveKitParticipant } from '@/features/video/providers/livekit/components/ParticipantTileBridge';
+import { LiveKitParticipantTileBridge, LiveKitParticipantStatusChrome, LiveKitLocalNetworkChip, normalizeLiveKitParticipant } from '@/features/video/providers/livekit/components/ParticipantTileBridge';
 import { LiveKitScreenShareMedia } from '@/features/video/providers/livekit/components/ScreenShareMedia';
 import type { MeetingContainerProps } from '@/features/video/providers/videosdk/MeetingContainer';
 
@@ -595,6 +595,21 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     await localParticipantInfo.setMicrophoneEnabled(isMuted);
   }, [isMuted, localParticipantInfo]);
 
+  useEffect(() => {
+    engagement.attachForceMute((byName) => {
+      void localParticipantInfo.setMicrophoneEnabled(false).catch(() => undefined);
+      toast(`You've been muted${byName ? ` by ${byName}` : ''}`);
+    });
+  }, [engagement, localParticipantInfo]);
+
+  const handleMuteParticipant = useCallback(
+    (participantId: string, displayName?: string) => {
+      engagement.requestMute(participantId);
+      toast(`Muted ${displayName || 'participant'}`);
+    },
+    [engagement],
+  );
+
   const handleToggleVideo = useCallback(async () => {
     const remoteCount = participants.filter(
       (p) => p.identity !== localParticipantInfo.identity,
@@ -906,9 +921,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         showNameLabel={opts.showNameLabel}
         audioVolume={opts.audioVolume}
         handRaised={engagement.isHandRaised(participant.identity)}
+        onMute={
+          opts.isLocal
+            ? undefined
+            : () => handleMuteParticipant(participant.identity, participant.name || 'participant')
+        }
       />
     ),
-    [engagement.isHandRaised],
+    [engagement.isHandRaised, handleMuteParticipant],
   );
 
   const participantByIdentity = useMemo(() => {
@@ -1049,6 +1069,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         <RoomAudioRenderer volume={audioVolume} />
         <CallReactionOverlay reactions={engagement.liveReactions} />
         {isGroupCall ? <RaisedHandsBanner hands={engagement.raisedHands} /> : null}
+        {inCallUi ? (
+          <div className="absolute top-3 left-3 z-20 pointer-events-none">
+            <LiveKitLocalNetworkChip participant={localParticipantInfo} />
+          </div>
+        ) : null}
 
         {(remoteScreenShareParticipant || isLocalPresenting) && (
           <ScreenShareView
@@ -1113,7 +1138,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             <div className="absolute inset-0">
               {renderLiveKitTile(remoteOne, {
                 tileCount: 1,
-                showNameLabel: false,
+                showNameLabel: true,
                 audioVolume,
               })}
             </div>
@@ -1226,6 +1251,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           remoteScreenShareStream={null}
           showConnectedGroupGallery={!!gridLayout && inCallUi}
           remoteMediaVisible={remoteMediaVisible}
+          extraPersonChrome={
+            effectiveCallType === 'audio' && inCallUi && remoteOne ? (
+              <LiveKitParticipantStatusChrome participant={remoteOne} />
+            ) : null
+          }
         />
 
         {callStatus === 'ringing' && !isIncoming && (

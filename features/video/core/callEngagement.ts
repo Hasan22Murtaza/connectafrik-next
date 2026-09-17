@@ -16,7 +16,8 @@ export type CallLiveReactionEmoji = (typeof CALL_LIVE_REACTIONS)[number]['emoji'
 export type CallEngagementPayload =
   | { v: 1; t: 'hand'; raised: boolean; id: string; name: string }
   | { v: 1; t: 'hand-req' }
-  | { v: 1; t: 'rx'; emoji: string; id: string; name: string; k: string };
+  | { v: 1; t: 'rx'; emoji: string; id: string; name: string; k: string }
+  | { v: 1; t: 'mute'; id: string; name: string };
 
 export interface RaisedHandEntry {
   id: string;
@@ -41,6 +42,7 @@ export function decodeCallEngagement(raw: string): CallEngagementPayload | null 
     if (p.t === 'rx' && typeof p.emoji === 'string' && typeof p.id === 'string' && typeof p.k === 'string') {
       return p;
     }
+    if (p.t === 'mute' && typeof p.id === 'string') return p;
     return null;
   } catch {
     return null;

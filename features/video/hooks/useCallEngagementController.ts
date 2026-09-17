@@ -20,6 +20,8 @@ export interface CallEngagementApi {
   toggleHand: () => void;
   sendReaction: (emoji: string) => void;
   liveReactions: LiveCallReaction[];
+  requestMute: (participantId: string) => void;
+  attachForceMute: (fn: (byName: string) => void) => void;
 }
 
 export function useCallEngagementController(
@@ -31,6 +33,7 @@ export function useCallEngagementController(
   const [raisedById, setRaisedById] = useState<Map<string, string>>(() => new Map());
   const [liveReactions, setLiveReactions] = useState<LiveCallReaction[]>([]);
   const publishRef = useRef<(payload: CallEngagementPayload) => void>(() => {});
+  const forceMuteRef = useRef<(byName: string) => void>(() => {});
   const selfNameRef = useRef(selfName);
   selfNameRef.current = selfName;
   const raisedByIdRef = useRef(raisedById);
@@ -38,6 +41,10 @@ export function useCallEngagementController(
 
   const attachPublish = useCallback((fn: (payload: CallEngagementPayload) => void) => {
     publishRef.current = fn;
+  }, []);
+
+  const attachForceMute = useCallback((fn: (byName: string) => void) => {
+    forceMuteRef.current = fn;
   }, []);
 
   const applyIncoming = useCallback((payload: CallEngagementPayload, senderId?: string) => {
@@ -64,6 +71,14 @@ export function useCallEngagementController(
         else next.delete(id);
         return next;
       });
+      return;
+    }
+
+    if (payload.t === 'mute') {
+      const id = normalizeEngagementId(payload.id);
+      if (id && id === normalizeEngagementId(selfId)) {
+        forceMuteRef.current(payload.name || 'Someone');
+      }
       return;
     }
 
@@ -133,6 +148,20 @@ export function useCallEngagementController(
     [applyIncoming, selfKey],
   );
 
+  const requestMute = useCallback(
+    (participantId: string) => {
+      const id = normalizeEngagementId(participantId);
+      if (!id || id === selfKey) return;
+      publishRef.current({
+        v: 1,
+        t: 'mute',
+        id,
+        name: selfNameRef.current || 'Someone',
+      });
+    },
+    [selfKey],
+  );
+
   const isHandRaised = useCallback(
     (participantId: string) => raisedById.has(normalizeEngagementId(participantId)),
     [raisedById],
@@ -155,6 +184,8 @@ export function useCallEngagementController(
       toggleHand,
       sendReaction,
       liveReactions,
+      requestMute,
+      attachForceMute,
     } satisfies CallEngagementApi,
     attachPublish,
     applyIncoming,

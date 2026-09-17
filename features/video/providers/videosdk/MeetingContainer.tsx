@@ -41,7 +41,7 @@ import { apiClient } from '@/lib/api-client';
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
 import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
-import { VideoSDKParticipantTileBridge } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
+import { VideoSDKParticipantTileBridge, VideoSDKParticipantStatusChrome, VideoSDKLocalNetworkChip } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
 import { RemoteAudioSink } from '@/features/video/providers/videosdk/components/RemoteAudioSink';
 import { VideoSDKScreenShareMedia } from '@/features/video/providers/videosdk/components/ScreenShareMedia';
 import type { NormalizedParticipant } from '@/features/video/core/models';
@@ -1184,6 +1184,25 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     inCallUserIds,
   );
 
+  useEffect(() => {
+    engagement.attachForceMute((byName) => {
+      try {
+        localParticipant?.disableMic();
+      } catch {
+        /* ignore */
+      }
+      toast(`You've been muted${byName ? ` by ${byName}` : ''}`);
+    });
+  }, [engagement, localParticipant]);
+
+  const handleMuteParticipant = useCallback(
+    (participantId: string, displayName?: string) => {
+      engagement.requestMute(participantId);
+      toast(`Muted ${displayName || 'participant'}`);
+    },
+    [engagement],
+  );
+
   const participantCount = remoteParticipantIds.length + 1; // +1 for local
   const isGroupCall = remoteParticipantIds.length > 1;
   const isCallHost = Boolean(sessionHostId && currentUserId && sessionHostId === currentUserId);
@@ -1338,6 +1357,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         {(isGroupCall || isGroupCallSession) ? (
           <RaisedHandsBanner hands={engagement.raisedHands} />
         ) : null}
+        {inCallUi && localId ? (
+          <div className="absolute top-3 left-3 z-20 pointer-events-none">
+            <VideoSDKLocalNetworkChip participantId={localId} />
+          </div>
+        ) : null}
 
         {/* ── Screen share view (remote full-screen OR local banner) ─────── */}
         {(remotePresenter || isLocalPresenting) && (
@@ -1392,6 +1416,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 showNameLabel
                 audioVolume={opts.audioVolume}
                 handRaised={engagement.isHandRaised(p.id)}
+                onMute={
+                  p.isLocal
+                    ? undefined
+                    : () => handleMuteParticipant(p.id, p.displayName)
+                }
               />
             )}
           />
@@ -1411,9 +1440,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               <VideoSDKParticipantTileBridge
                 participantId={remoteParticipantIds[0]}
                 tileCount={1}
-                showNameLabel={false}
+                showNameLabel
                 audioVolume={audioVolume}
                 handRaised={engagement.isHandRaised(remoteParticipantIds[0])}
+                onMute={() =>
+                  handleMuteParticipant(remoteParticipantIds[0], 'participant')
+                }
               />
             </div>
           )}
@@ -1444,6 +1476,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                   showNameLabel
                   audioVolume={audioVolume}
                   handRaised={engagement.isHandRaised(pid)}
+                  onMute={
+                    pid === localId
+                      ? undefined
+                      : () => handleMuteParticipant(pid, 'participant')
+                  }
                 />
               </div>
             ))}
@@ -1548,6 +1585,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           remoteScreenShareStream={null}
           showConnectedGroupGallery={!!gridLayout && inCallUi}
           remoteMediaVisible={remoteMediaVisible}
+          extraPersonChrome={
+            effectiveCallType === 'audio' && inCallUi && remoteParticipantIds[0] ? (
+              <VideoSDKParticipantStatusChrome participantId={remoteParticipantIds[0]} />
+            ) : null
+          }
         />
 
         {/* ── Outgoing ringing: drop-call button ───────────────────────── */}
