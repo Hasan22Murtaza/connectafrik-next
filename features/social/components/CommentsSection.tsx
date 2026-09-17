@@ -323,10 +323,10 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
                   type="button"
                   onClick={loadMoreComments}
                   disabled={isLoadingMore}
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium text-gray-600  disabled:cursor-not-allowed hover:text-primary-600"
                 >
                   {isLoadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {isLoadingMore ? 'Loading...' : 'Load more comments'}
+                  {isLoadingMore ? 'Loading...' : 'Load more'}
                 </button>
               </div>
             )}
