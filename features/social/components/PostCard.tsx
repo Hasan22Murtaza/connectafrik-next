@@ -963,7 +963,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               id={postOptionsMenuId}
               role="menu"
               aria-label={isOwnPost ? "Your post actions" : "Post actions"}
-              className="absolute right-0 top-full z-50 mt-1 px-1 m-0 w-[min(100vw-2rem,10rem)] list-none rounded-lg  bg-surface py-1 shadow-2xl"
+              className="absolute right-0 top-full z-50 mt-1 px-1 m-0 w-[min(100vw-2rem,10rem)] list-none rounded-lg  bg-surface py-1 shadow-card"
             >
               {isOwnPost ? (
                 <>
@@ -986,7 +986,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       </span>
                     </button>
                   </li>
-                  <li role="none" className="list-none border-t border-border-subtle">
+                  <li role="none" className="list-none ">
                     <button
                       type="button"
                       role="menuitem"
@@ -1066,7 +1066,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                   )}
                   <li
                     role="none"
-                    className={`list-none ${canFollow ? "border-t border-border-subtle" : ""}`}
+                    className={`list-none ${canFollow ? "" : ""}`}
                   >
                     {postSaved ? (
                       <button
@@ -1118,7 +1118,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       </button>
                     )}
                   </li>
-                  <li role="none" className="list-none border-t border-border-subtle">
+                  <li role="none" className="list-none ">
                     <button
                       type="button"
                       role="menuitem"
@@ -1142,7 +1142,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       </span>
                     </button>
                   </li>
-                  <li role="none" className="list-none border-t border-border-subtle">
+                  <li role="none" className="list-none ">
                     <button
                       type="button"
                       role="menuitem"
@@ -1165,7 +1165,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       </span>
                     </button>
                   </li>
-                  <li role="none" className="list-none border-t border-border-subtle">
+                  <li role="none" className="list-none ">
                     <button
                       type="button"
                       role="menuitem"
@@ -1495,7 +1495,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       {showInlineComments && (
         <div
           id={`post-${post.id}-comments`}
-          className={`border-t border-border-subtle mt-1 ${isTheater ? "flex-1 min-h-0" : ""}`}
+          className={` mt-1 ${isTheater ? "flex-1 min-h-0" : ""}`}
           onClick={(e) => e.stopPropagation()}
         >
           <CommentsSection
