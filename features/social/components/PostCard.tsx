@@ -963,7 +963,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
               id={postOptionsMenuId}
               role="menu"
               aria-label={isOwnPost ? "Your post actions" : "Post actions"}
-              className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,20rem)] list-none rounded-xl border border-border bg-surface py-1 shadow-lg"
+              className="absolute right-0 top-full z-50 mt-1 px-1 m-0 w-[min(100vw-2rem,10rem)] list-none rounded-lg  bg-surface py-1 shadow-2xl"
             >
               {isOwnPost ? (
                 <>
@@ -972,14 +972,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       type="button"
                       role="menuitem"
                       onClick={handleEditClick}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                     >
                       <Edit
                         className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-content">
+                        <span className="block text-sm  text-content">
                           Edit post
                         </span>
                      
@@ -991,7 +991,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                       type="button"
                       role="menuitem"
                       onClick={handleDeleteClick}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-red-50 focus:outline-none focus-visible:bg-red-50"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-red-50 focus:outline-none focus-visible:bg-red-50"
                     >
                       <Trash2
                         className="mt-0.5 h-5 w-5 shrink-0 text-red-600"
@@ -1019,7 +1019,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                           await handleFollow(e);
                           setShowMenu(false);
                         }}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                        className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {followCheckLoading ? (
                           <>
@@ -1028,7 +1028,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                               aria-hidden
                             />
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-content">
+                              <span className="block text-sm  text-content">
                                 Working…
                               </span>
                              
@@ -1041,7 +1041,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                               aria-hidden
                             />
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-content">
+                              <span className="block text-sm  text-content">
                                 UnTap In
                               </span>
                             
@@ -1054,7 +1054,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                               aria-hidden
                             />
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-content">
+                              <span className="block text-sm  text-content">
                                 Tap In
                               </span>
                               
@@ -1079,14 +1079,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                             setShowMenu(false);
                           })();
                         }}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                        className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                       >
                         <BookmarkX
                           className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                           aria-hidden
                         />
                         <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-content">
+                          <span className="block text-sm  text-content">
                             Unsave post
                           </span>
                           
@@ -1103,14 +1103,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                             setShowMenu(false);
                           })();
                         }}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                        className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                       >
                         <Bookmark
                           className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                           aria-hidden
                         />
                         <span className="min-w-0">
-                          <span className="block text-sm font-semibold text-content">
+                          <span className="block text-sm  text-content">
                             Save post
                           </span>
                           
@@ -1129,14 +1129,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                           setShowMenu(false);
                         })();
                       }}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                     >
                       <Repeat2
                         className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-content">
+                        <span className="block text-sm  text-content">
                           {post.is_reposted ? "Reposted" : "Repost"}
                         </span>
                       </span>
@@ -1152,14 +1152,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         setIsHidden(true);
                         onHide?.(post.id);
                       }}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                     >
                       <EyeOff
                         className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-content">
+                        <span className="block text-sm  text-content">
                           Hide post
                         </span>
                       </span>
@@ -1175,14 +1175,14 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         if (!requireSignedIn()) return;
                         setShowReportConfirm(true);
                       }}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-sm text-left transition-colors hover:bg-surface-secondary focus:outline-none focus-visible:bg-surface-secondary"
                     >
                       <Flag
                         className="mt-0.5 h-5 w-5 shrink-0 text-content-secondary"
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-content">
+                        <span className="block text-sm  text-content">
                           Report post
                         </span>
                       </span>

@@ -334,8 +334,6 @@ const FeedPage: React.FC = () => {
             <Advertisement type="banner" placement="feed-top" className="rounded-2xl" />
           {/* </div> */}
 
-          <StoriesBar />
-
 
           <section>
             {!user ? (
@@ -366,6 +364,9 @@ const FeedPage: React.FC = () => {
               </button>
             )}
           </section>
+
+          <StoriesBar />
+
 
           <section className="rounded-2xl shadow-card bg-surface p-4">
             <div className="flex items-center justify-between mb-3">
