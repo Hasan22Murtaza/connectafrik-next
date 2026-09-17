@@ -686,7 +686,6 @@ export async function POST(request: NextRequest) {
       data: {
         title: body.title,
         body: notificationBody,
-        // Use sender/caller profile image as icon when available (chat, missed call, etc.)
         icon: notificationIcon,
         badge: body.badge || DEFAULT_NOTIFICATION_LOGO,
         tag: body.tag || 'cribstalk-notification',
@@ -694,9 +693,7 @@ export async function POST(request: NextRequest) {
         silent: String(body.silent || false),
         vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),
         timestamp: String(Date.now()),
-        // Actions are determined by the service worker based on notification type.
-        // For type ringing: SW shows Answer/Decline. For missed: SW shows no actions.
-        // Pass through any explicit actions, or let the SW decide based on type.
+        
         actions: JSON.stringify(body.actions || []),
       },
       
@@ -726,7 +723,6 @@ export async function POST(request: NextRequest) {
 
         if (isAcceptingDeviceSession(subAuthSessionId)) {
           const skipReason = 'skipped-accepting-device-session'
-          console.log(`Skipping FCM for accepting device session (${skipReason})`)
           return {
             success: true,
             skipped: true,
@@ -738,7 +734,6 @@ export async function POST(request: NextRequest) {
 
         if (subscription.device_type === 'ios' && skipIosFcmForVoipCall) {
           const skipReason = `skipped-ios-call-${callEventStatus || 'event'}-voip`
-          console.log(`Skipping FCM for iOS call push (${skipReason})`)
           return {
             success: true,
             skipped: true,
@@ -793,7 +788,6 @@ export async function POST(request: NextRequest) {
 
         const response = await admin.messaging(firebaseAdmin).send(fcmMessage)
         
-        console.log(`✅ djs FCM notification sent successfully to ${subscription.device_type} device: ${response}`)
         return { 
           success: true, 
           endpoint: subscription.device_id || fcmToken.substring(0, 50), 
