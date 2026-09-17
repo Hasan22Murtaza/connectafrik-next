@@ -41,7 +41,7 @@ import { apiClient } from '@/lib/api-client';
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
 import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
-import { VideoSDKParticipantTileBridge } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
+import { VideoSDKParticipantTileBridge, VideoSDKParticipantStatusChrome, VideoSDKLocalNetworkChip } from '@/features/video/providers/videosdk/components/ParticipantTileBridge';
 import { RemoteAudioSink } from '@/features/video/providers/videosdk/components/RemoteAudioSink';
 import { VideoSDKScreenShareMedia } from '@/features/video/providers/videosdk/components/ScreenShareMedia';
 import type { NormalizedParticipant } from '@/features/video/core/models';
@@ -1184,6 +1184,25 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     inCallUserIds,
   );
 
+  useEffect(() => {
+    engagement.attachForceMute((byName) => {
+      try {
+        localParticipant?.disableMic();
+      } catch {
+        /* ignore */
+      }
+      toast(`You've been muted${byName ? ` by ${byName}` : ''}`);
+    });
+  }, [engagement, localParticipant]);
+
+  const handleMuteParticipant = useCallback(
+    (participantId: string, displayName?: string) => {
+      engagement.requestMute(participantId);
+      toast(`Muted ${displayName || 'participant'}`);
+    },
+    [engagement],
+  );
+
   const participantCount = remoteParticipantIds.length + 1; // +1 for local
   const isGroupCall = remoteParticipantIds.length > 1;
   const isCallHost = Boolean(sessionHostId && currentUserId && sessionHostId === currentUserId);
@@ -1324,9 +1343,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   return (
     <div className="flex h-full w-full overflow-hidden">
       <div
-        ref={meetingSurfaceRef}
-        className="relative min-w-0 flex-1 h-screen overflow-hidden"
+        className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+      >
+      <div
+        ref={meetingSurfaceRef}
+        className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       >
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
             branch below. Pagination (MAX_PER_PAGE), screen share replacing the
@@ -1392,6 +1414,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 showNameLabel
                 audioVolume={opts.audioVolume}
                 handRaised={engagement.isHandRaised(p.id)}
+                onMute={
+                  p.isLocal
+                    ? undefined
+                    : () => handleMuteParticipant(p.id, p.displayName)
+                }
               />
             )}
           />
@@ -1411,9 +1438,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
               <VideoSDKParticipantTileBridge
                 participantId={remoteParticipantIds[0]}
                 tileCount={1}
-                showNameLabel={false}
+                showNameLabel
                 audioVolume={audioVolume}
                 handRaised={engagement.isHandRaised(remoteParticipantIds[0])}
+                onMute={() =>
+                  handleMuteParticipant(remoteParticipantIds[0], 'participant')
+                }
               />
             </div>
           )}
@@ -1421,21 +1451,31 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         {/* ── Group video grid (2+ remote participants) ─────────────────── */}
         {gridLayout && !remotePresenter && (
           <div
-            className="absolute inset-0 flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
+            className="absolute inset-0 grid p-1.5 sm:p-2"
             style={{
-              gap: '4px',
+              gap: 6,
+              gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${gridLayout.rows}, minmax(0, 1fr))`,
               background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
             }}
           >
-            {gridLayout.allTiles.map((pid) => (
+            {gridLayout.allTiles.map((pid, index) => {
+              const leftover = gridLayout.total % gridLayout.cols;
+              const isLoneLastRowItem =
+                leftover === 1 && index === gridLayout.allTiles.length - 1;
+              return (
               <div
                 key={pid}
-                className="relative overflow-hidden rounded-md sm:rounded-lg"
-                style={{
-                  width: `calc(${100 / gridLayout.cols}% - 6px)`,
-                  height: `calc(${100 / gridLayout.rows}% - 6px)`,
-                  minHeight: 0,
-                }}
+                className="relative min-h-0 min-w-0 overflow-hidden rounded-md sm:rounded-lg"
+                style={
+                  isLoneLastRowItem
+                    ? {
+                        gridColumn: '1 / -1',
+                        width: `calc((100% - ${(gridLayout.cols - 1) * 6}px) / ${gridLayout.cols})`,
+                        justifySelf: 'center',
+                      }
+                    : undefined
+                }
               >
                 <VideoSDKParticipantTileBridge
                   participantId={pid}
@@ -1444,9 +1484,15 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                   showNameLabel
                   audioVolume={audioVolume}
                   handRaised={engagement.isHandRaised(pid)}
+                  onMute={
+                    pid === localId
+                      ? undefined
+                      : () => handleMuteParticipant(pid, 'participant')
+                  }
                 />
               </div>
-            ))}
+            );
+            })}
 
             {gridLayout.pageCount > 1 && (
               <div className="absolute top-2 right-2 z-10 flex items-center gap-2 bg-black/60 text-white rounded-full px-2.5 py-1.5 backdrop-blur-sm border border-white/20">
@@ -1548,6 +1594,11 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           remoteScreenShareStream={null}
           showConnectedGroupGallery={!!gridLayout && inCallUi}
           remoteMediaVisible={remoteMediaVisible}
+          extraPersonChrome={
+            effectiveCallType === 'audio' && inCallUi && remoteParticipantIds[0] ? (
+              <VideoSDKParticipantStatusChrome participantId={remoteParticipantIds[0]} />
+            ) : null
+          }
         />
 
         {/* ── Outgoing ringing: drop-call button ───────────────────────── */}
@@ -1623,8 +1674,12 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
             onEndCallForAll={isCallHost && (isGroupCall || isGroupCallSession) ? handleEndCallForAll : undefined}
             isGroupCall={isGroupCall || isGroupCallSession}
             handRaised={engagement.handRaised}
+            networkIndicator={
+              localId ? <VideoSDKLocalNetworkChip participantId={localId} /> : undefined
+            }
           />
         )}
+      </div>
       </div>
 
       {/* ── Add-people slide-over panel ───────────────────────────────────── */}

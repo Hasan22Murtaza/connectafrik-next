@@ -120,7 +120,7 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
 
   return (
     <aside
-      className="z-40 flex h-[min(58vh,28rem)] w-full flex-col border-t border-white/10 bg-surface shadow-2xl sm:h-screen sm:w-[360px] sm:border-l sm:border-t-0 max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:rounded-t-2xl"
+      className="z-40 flex h-[min(58vh,28rem)] w-full flex-col border-t border-border bg-surface shadow-2xl sm:h-screen sm:w-[360px] sm:border-l sm:border-t-0 max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:rounded-t-2xl"
       aria-label="Meeting chat"
     >
       <header className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2.5">

@@ -11,6 +11,7 @@ export interface ParticipantTileProps {
   audioOnly?: boolean;
   tileCount?: number;
   showNameLabel?: boolean;
+  onMute?: () => void;
 }
 
 /**
@@ -23,6 +24,7 @@ const ParticipantTile = React.memo(function ParticipantTile({
   audioOnly = false,
   tileCount = 1,
   showNameLabel = true,
+  onMute,
 }: ParticipantTileProps) {
   const { isLocal, isActiveSpeaker } = participant;
 
@@ -33,7 +35,7 @@ const ParticipantTile = React.memo(function ParticipantTile({
 
   return (
     <div
-      className={`relative w-full h-full overflow-hidden transition-all duration-200 ${
+      className={`group relative w-full h-full overflow-hidden transition-all duration-200 ${
         isActiveSpeaker && !isLocal ? 'ring-2 ring-inset ring-green-400' : ''
       }`}
       style={{ background: 'rgba(15, 23, 42, 0.58)' }}
@@ -43,6 +45,7 @@ const ParticipantTile = React.memo(function ParticipantTile({
         participant={participant}
         tileCount={tileCount}
         showNameLabel={showNameLabel}
+        onMute={onMute}
       />
     </div>
   );

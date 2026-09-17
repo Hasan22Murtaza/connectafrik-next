@@ -42,39 +42,42 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
   onInvite,
 }) => {
   return (
-    <div className="absolute top-0 right-0 w-full sm:w-80 h-full bg-gray-900/95 backdrop-blur-md z-50 flex flex-col border-l border-white/10">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-white/10">
-        <h3 className="text-sm font-semibold text-white">Add People</h3>
+    <aside
+      className="z-50 flex h-full w-full flex-col border-l border-border bg-surface shadow-2xl sm:w-80 max-sm:absolute max-sm:inset-0"
+      aria-label="Add people to call"
+    >
+      <header className="flex items-center justify-between border-b border-border px-3 py-2.5">
+        <h3 className="text-sm font-semibold text-content">Add People</h3>
         <button
           onClick={onClose}
-          className="text-content-tertiary hover:text-white p-1 rounded transition-colors"
+          className="rounded-full p-1.5 text-content-secondary transition hover:bg-surface-hover hover:text-content"
+          aria-label="Close add people"
         >
           <X className="w-4 h-4" />
         </button>
-      </div>
+      </header>
 
-      {/* Search Input */}
       <div className="p-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-tertiary" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
           <input
             type="text"
             placeholder="Search by name..."
             value={addPeopleSearch}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+            className="w-full rounded-lg border border-border bg-surface-secondary py-2 pl-9 pr-3 text-sm text-content outline-none transition placeholder:text-content-tertiary focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
             autoFocus
           />
         </div>
       </div>
 
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-1">
+      <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-3">
         {addPeopleSearch.length < 2 ? (
-          <p className="text-xs text-content-secondary text-center mt-4">Type at least 2 characters to search</p>
+          <p className="mt-4 text-center text-xs text-content-secondary">
+            Type at least 2 characters to search
+          </p>
         ) : addPeopleResults.length === 0 ? (
-          <p className="text-xs text-content-secondary text-center mt-4">No users found</p>
+          <p className="mt-4 text-center text-xs text-content-secondary">No users found</p>
         ) : (
           addPeopleResults.map((person: any) => {
             const inThisMeeting = isUserInThisMeetingById(person.id, participants, inCallUserIds);
@@ -86,44 +89,52 @@ const AddPeoplePanel: React.FC<AddPeoplePanelProps> = ({
                 key={person.id}
                 onClick={() => !cannotInvite && onInvite(person)}
                 disabled={cannotInvite}
-                className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-left ${
+                className={`flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors ${
                   cannotInvite && invitingUserId !== person.id
-                    ? 'opacity-50 cursor-not-allowed'
+                    ? 'cursor-not-allowed opacity-50'
                     : invitingUserId === person.id
-                    ? 'bg-primary-500/20'
-                    : 'hover:bg-surface/10'
+                    ? 'bg-primary/15'
+                    : 'hover:bg-surface-hover'
                 }`}
               >
                 {person.avatar_url ? (
-                  <img src={person.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                  <img src={person.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover" />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center">
-                    <span className="text-xs font-bold text-white">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary">
+                    <span className="text-xs font-bold text-content-inverse">
                       {(person.full_name || person.username || 'U')[0].toUpperCase()}
                     </span>
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{person.full_name || person.username}</p>
-                  {person.username && <p className="text-xs text-content-tertiary truncate">@{person.username}</p>}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-content">
+                    {person.full_name || person.username}
+                  </p>
+                  {person.username && (
+                    <p className="truncate text-xs text-content-tertiary">@{person.username}</p>
+                  )}
                 </div>
                 {inThisMeeting ? (
-                  <span className="text-[10px] text-green-400 font-medium shrink-0">In this call</span>
+                  <span className="shrink-0 text-[10px] font-medium text-[var(--african-green)]">
+                    In this call
+                  </span>
                 ) : onAnotherCall ? (
-                  <span className="text-[10px] text-amber-400 font-medium text-right shrink-0 max-w-[100px] sm:max-w-none leading-tight">
+                  <span className="max-w-[100px] shrink-0 text-right text-[10px] font-medium leading-tight text-primary sm:max-w-none">
                     On another call
                   </span>
                 ) : invitingUserId === person.id ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-400 border-t-transparent" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                 ) : (
-                  <span className="text-xs bg-orange-500 text-white px-3 py-1 rounded-full font-medium">Invite</span>
+                  <span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-content-inverse">
+                    Invite
+                  </span>
                 )}
               </button>
             );
           })
         )}
       </div>
-    </div>
+    </aside>
   );
 };
 

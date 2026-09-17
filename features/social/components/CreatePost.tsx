@@ -8,7 +8,7 @@ import toast from 'react-hot-toast'
 import { CULTURE_SUBCATEGORIES, type CultureSubcategorySlug } from '@/shared/constants/culture'
 import { POLITICS_SUBCATEGORIES, type PoliticsSubcategorySlug } from '@/shared/constants/politics'
 import { POST_BACKGROUND_PRESETS, getPostBackgroundPreset } from '@/features/social/constants/postBackgrounds'
-import { serializePostLocation } from '@/features/social/utils/postLocation'
+import { parsePostLocation, serializePostLocation } from '@/features/social/utils/postLocation'
 
 type MediaType = 'image' | 'video' | 'none'
 type Category = 'politics' | 'culture' | 'general'
@@ -112,6 +112,18 @@ interface PlaceSuggestion {
   types: string[]
 }
 
+const selectedLocationFromEdit = (raw?: string): SelectedLocation | null => {
+  const parsed = parsePostLocation(raw)
+  if (!parsed) return null
+  return {
+    name: parsed.display_name,
+    address: parsed.map_title ?? '',
+    lat: parsed.latitude ?? 0,
+    lng: parsed.longitude ?? 0,
+    types: [],
+  }
+}
+
 const getPlaceTypeIcon = (types: string[]): string => {
   if (types.some(t => ['store', 'shopping_mall', 'clothing_store', 'shoe_store', 'jewelry_store', 'hardware_store', 'convenience_store', 'department_store', 'supermarket'].includes(t))) return '🛍️'
   if (types.some(t => ['restaurant', 'food', 'cafe', 'bakery', 'bar', 'meal_delivery', 'meal_takeaway'].includes(t))) return '🍽️'
@@ -165,7 +177,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const [uploadProgress, setUploadProgress] = useState('')
   const [showSubcategories, setShowSubcategories] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<SelectedLocation | null>(
-    editData?.location ? { name: editData.location, address: '', lat: 0, lng: 0, types: [] } : null
+    selectedLocationFromEdit(editData?.location)
   )
   const [showLocationModal, setShowLocationModal] = useState(false)
   const [locationQuery, setLocationQuery] = useState('')
@@ -584,12 +596,17 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-[15px] font-semibold leading-tight text-content">
-                  {profile?.full_name || 'User'}
+                <p className="flex min-w-0 items-baseline text-[15px] font-semibold leading-tight text-content">
+                  <span className="shrink-0">{profile?.full_name || 'User'}</span>
                   {selectedLocation && (
                     <>
-                      <span className="font-normal text-content-secondary"> · </span>
-                      <span className="font-medium text-[var(--african-orange)]">{selectedLocation.name}</span>
+                      <span className="shrink-0 font-normal text-content-secondary">&nbsp;·&nbsp;</span>
+                      <span
+                        className="min-w-0 truncate font-medium text-[var(--african-orange)]"
+                        title={selectedLocation.name}
+                      >
+                        {selectedLocation.name}
+                      </span>
                     </>
                   )}
                 </p>

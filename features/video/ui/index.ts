@@ -10,6 +10,7 @@ export { default as CallChatPanel } from './CallChatPanel';
 export { default as CallReactionOverlay } from './CallReactionOverlay';
 export { default as RaisedHandsBanner } from './RaisedHandsBanner';
 export { default as GroupCallParticipantsStrip } from './GroupCallParticipantsStrip';
+export { default as NetworkQualityIndicator } from './NetworkQualityIndicator';
 
 export type { ParticipantTileProps } from './ParticipantTile';
 export type { ScreenShareViewProps } from './ScreenShareView';

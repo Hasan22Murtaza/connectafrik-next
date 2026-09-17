@@ -1,3 +1,5 @@
+import type { ConnectionQuality } from './media';
+
 /** Normalized participant — UI never sees raw SDK objects. */
 export interface NormalizedParticipant {
   id: string;
@@ -9,6 +11,7 @@ export interface NormalizedParticipant {
   isActiveSpeaker: boolean;
   avatarUrl: string;
   handRaised?: boolean;
+  connectionQuality?: ConnectionQuality;
   metadata?: Record<string, unknown>;
 }
 
