@@ -59,26 +59,8 @@ export type PrivacyDecision = {
   message?: string
 }
 
-export const PRIVACY_SETTINGS_SELECT = [
-  'id',
-  'profile_visibility',
-  'post_visibility',
-  'allow_comments',
-  'allow_follows',
-  'allow_direct_messages',
-  'show_online_status',
-  'show_last_seen',
-  'show_location',
-  'show_phone',
-  'show_email',
-  'show_followers',
-  'show_following',
-  'show_country',
-  'show_followers_count',
-  'show_read_receipts',
-  'is_record',
-  'is_capture',
-].join(', ')
+export const PRIVACY_SETTINGS_SELECT =
+  'id, profile_visibility, post_visibility, allow_comments, allow_follows, allow_direct_messages, show_online_status, show_last_seen, show_location, show_phone, show_email, show_followers, show_following, show_country, show_followers_count, show_read_receipts, is_record, is_capture' as const
 
 export function normalizePrivacySettings(
   row: Partial<PrivacySettings> | null | undefined

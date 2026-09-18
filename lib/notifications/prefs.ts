@@ -29,17 +29,8 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   post_updates: false,
 }
 
-export const NOTIFICATION_SETTINGS_SELECT = [
-  'id',
-  'email_notifications',
-  'push_notifications',
-  'comment_notifications',
-  'like_notifications',
-  'follow_notifications',
-  'message_notifications',
-  'mention_notifications',
-  'post_updates',
-].join(', ')
+export const NOTIFICATION_SETTINGS_SELECT =
+  'id, email_notifications, push_notifications, comment_notifications, like_notifications, follow_notifications, message_notifications, mention_notifications, post_updates' as const
 
 function serviceDb(client?: SupabaseClient): SupabaseClient {
   try {
