@@ -126,6 +126,7 @@ export async function middleware(request: NextRequest) {
     '/friends',
     '/groups',
     '/profile',
+    '/settings',
     '/saved',
     '/memories',
     '/my-orders',
