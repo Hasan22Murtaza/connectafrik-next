@@ -734,6 +734,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
       return threadId
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to start chat'
+      toast.error(message)
       console.error('Failed to start chat:', error)
       return null
     }

@@ -60,6 +60,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const alreadyParticipantList = userIds.filter((id) => alreadyParticipantIds.has(id))
 
     if (toAdd.length > 0) {
+      const { canMessage } = await import('@/lib/privacy/access')
+      const { privacyDecisionResponse } = await import('@/lib/privacy/http')
+      for (const uid of toAdd) {
+        const decision = await canMessage(user.id, uid, serviceClient)
+        const denied = privacyDecisionResponse(decision)
+        if (denied) return denied
+      }
       try {
         await ensureChatParticipantsForThread(serviceClient, threadId, toAdd)
         for (const uid of toAdd) {

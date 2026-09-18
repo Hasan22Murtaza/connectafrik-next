@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { filterThreadIdsAccessibleToUser } from '@/lib/chat/chatThreadAccess'
 import { getBlockStatesForThreads } from '@/lib/chat/chatThreadBlock'
+import { getRelationships } from '@/lib/privacy/access'
+import { sanitizePresenceFields } from '@/lib/privacy/sanitize'
 
 export type ThreadCategory = 'general' | 'marketplace'
 export type ThreadListFilter = 'all' | 'unread' | 'groups' | 'locked'
@@ -120,6 +122,40 @@ async function getParticipantPrefsForThreads(
     })
   }
   return m
+}
+
+async function sanitizeThreadsPresence(threads: any[], viewerId: string): Promise<any[]> {
+  const userIds = [
+    ...new Set(
+      threads.flatMap((t) =>
+        Array.isArray(t?.chat_participants)
+          ? t.chat_participants.map((p: { user_id?: string; user?: { id?: string } }) => p.user_id || p.user?.id)
+          : []
+      ).filter((id: unknown): id is string => typeof id === 'string')
+    ),
+  ]
+  if (userIds.length === 0) return threads
+  const rels = await getRelationships(viewerId, userIds)
+  return threads.map((thread) => {
+    if (!Array.isArray(thread?.chat_participants)) return thread
+    return {
+      ...thread,
+      chat_participants: thread.chat_participants.map((p: any) => {
+        const id = p.user_id || p.user?.id
+        const rel = id ? rels.get(id) : undefined
+        if (!p.user || !rel) return p
+        const presence = sanitizePresenceFields(p.user, viewerId, rel)
+        return {
+          ...p,
+          user: {
+            ...p.user,
+            status: presence.status,
+            last_seen: presence.last_seen,
+          },
+        }
+      }),
+    }
+  })
 }
 
 const getThreadActivityTime = (thread: any) => {
@@ -296,7 +332,7 @@ export async function queryUserThreads(
       }
     }
     return {
-      data: visibleDeduped.slice(from, to + 1),
+      data: await sanitizeThreadsPresence(visibleDeduped.slice(from, to + 1), user.id),
       meta: { page, pageSize: limit, hasMore: visibleDeduped.length > to + 1 },
     }
   }
@@ -426,7 +462,7 @@ export async function queryUserThreads(
   })
 
   return {
-    data: result,
+    data: await sanitizeThreadsPresence(result, user.id),
     meta: { page, pageSize: limit, hasMore: dedupedTotal > to + 1 },
   }
 }

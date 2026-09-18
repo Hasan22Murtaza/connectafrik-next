@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { lookupDirectThreadIdBetweenUsers } from '@/lib/chat/chatThreadLookup'
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+import { getRelationship } from '@/lib/privacy/access'
+import { sanitizeProfileForViewer } from '@/lib/privacy/sanitize'
+import { getSupabaseAndViewer, UUID_RE } from './_shared/resolve-user-request'
 
 export async function GET(
   request: NextRequest,
@@ -12,12 +12,10 @@ export async function GET(
 ) {
   try {
     const { identifier } = await params
-    let supabase
 
     if (identifier === 'me') {
       const auth = await getAuthenticatedUser(request)
-      supabase = auth.supabase
-      const { data: profile, error } = await supabase
+      const { data: profile, error } = await auth.supabase
         .from('profiles')
         .select('*')
         .eq('id', auth.user.id)
@@ -26,25 +24,14 @@ export async function GET(
       if (error || !profile) {
         return errorResponse('Profile not found', 404)
       }
-      return jsonResponse({ data: { ...profile, threadId: null } })
+      return jsonResponse({ data: { ...profile, threadId: null, profile_restricted: false } })
     }
 
     if (!UUID_RE.test(identifier)) {
       return errorResponse('Invalid user id', 400)
     }
 
-    let viewerUserId: string | null = null
-    try {
-      const auth = await getAuthenticatedUser(request)
-      supabase = auth.supabase
-      viewerUserId = auth.user.id
-    } catch {
-      supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-    }
-
+    const { supabase, viewerId } = await getSupabaseAndViewer(request)
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
@@ -55,12 +42,15 @@ export async function GET(
       return errorResponse('User not found', 404)
     }
 
+    const relationship = await getRelationship(viewerId, profile.id, supabase)
+    const sanitized = sanitizeProfileForViewer(profile as Record<string, unknown>, viewerId, relationship)
+
     const threadId =
-      viewerUserId && viewerUserId !== profile.id
-        ? (await lookupDirectThreadIdBetweenUsers(viewerUserId, profile.id)) ?? null
+      viewerId && viewerId !== profile.id && !relationship.isBlocked
+        ? (await lookupDirectThreadIdBetweenUsers(viewerId, profile.id)) ?? null
         : null
 
-    return jsonResponse({ data: { ...profile, threadId } })
+    return jsonResponse({ data: { ...sanitized, threadId } })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()

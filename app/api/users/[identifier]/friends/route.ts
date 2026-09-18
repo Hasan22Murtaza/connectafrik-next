@@ -13,6 +13,10 @@ export async function GET(
     const access = await requireProfileAccess(request, identifier)
     if (!access.ok) return access.response
 
+    if (!access.ctx.relationship.isSelf && !access.ctx.relationship.settings.show_followers) {
+      return jsonResponse({ data: [] })
+    }
+
     const data = await fetchConnectionsForOwner(access.ctx.supabase, access.ctx.ownerId)
     return jsonResponse({ data })
   } catch (error: unknown) {

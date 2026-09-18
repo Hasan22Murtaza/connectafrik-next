@@ -5,6 +5,12 @@ import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
 import { blockStateErrorMessage, getThreadBlockState } from '@/lib/chat/chatThreadBlock'
 import {
+  getRelationships,
+  filterReadByForViewer,
+} from '@/lib/privacy'
+import { assertCanMessageThread } from '@/lib/privacy/chat'
+import { privacyDecisionResponse } from '@/lib/privacy/http'
+import {
   attachmentsAreViewOnceEligible,
   detectViewOnceKind,
   sanitizeViewOnceMessage,
@@ -66,7 +72,10 @@ const enrichMessageResponse = async (serviceClient: any, message: any, fallbackR
     serviceClient.from('message_reads').select('user_id').eq('message_id', message.id),
     serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
   ])
-  const readBy = (readsRes.data || []).map((r: any) => r.user_id)
+  const rawReadBy = (readsRes.data || []).map((r: any) => r.user_id)
+  const readerIds = [...new Set([...rawReadBy, fallbackReaderId])]
+  const relationships = await getRelationships(fallbackReaderId, readerIds, serviceClient)
+  const readBy = filterReadByForViewer(readerIds, fallbackReaderId, relationships)
   return sanitizeViewOnceMessage({
     ...message,
     read_by: readBy.length ? readBy : [fallbackReaderId],
@@ -182,6 +191,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       })
     }
 
+    const allReaderIds = [...new Set((readsRes.data || []).map((r: { user_id: string }) => r.user_id))]
+    const readRelationships = await getRelationships(user.id, allReaderIds, serviceClient)
+
     const formatted = list.map((m: any) => {
       const reactionMap = reactionsByMessage.get(m.id) || new Map()
       const reactions = Array.from(reactionMap.entries())
@@ -193,7 +205,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .sort((a, b) => b.count - a.count)
       return sanitizeViewOnceMessage({
         ...m,
-        read_by: readByMessage.get(m.id) || [],
+        read_by: filterReadByForViewer(readByMessage.get(m.id) || [], user.id, readRelationships),
         attachments: attachmentsByMessage.get(m.id) || [],
         reactions,
       })
@@ -241,6 +253,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (blockMessage) {
       return errorResponse(blockMessage, 403)
     }
+
+    const messageDecision = await assertCanMessageThread(serviceClient, user.id, threadId)
+    const messageDenied = privacyDecisionResponse(messageDecision)
+    if (messageDenied) return messageDenied
 
     const safeContent = typeof content === 'string' ? content : ''
     const hasAttachments = Boolean(attachments && attachments.length > 0)

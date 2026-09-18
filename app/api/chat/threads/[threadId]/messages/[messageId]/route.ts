@@ -17,7 +17,11 @@ const enrichMessageResponse = async (serviceClient: any, message: any, fallbackR
     serviceClient.from('message_reads').select('user_id').eq('message_id', message.id),
     serviceClient.from('message_attachments').select('*').eq('message_id', message.id),
   ])
-  const readBy = (readsRes.data || []).map((r: any) => r.user_id)
+  const rawReadBy = (readsRes.data || []).map((r: any) => r.user_id)
+  const readerIds = [...new Set([...rawReadBy, fallbackReaderId])]
+  const { getRelationships, filterReadByForViewer } = await import('@/lib/privacy')
+  const relationships = await getRelationships(fallbackReaderId, readerIds, serviceClient)
+  const readBy = filterReadByForViewer(readerIds, fallbackReaderId, relationships)
   return sanitizeViewOnceMessage({
     ...message,
     read_by: readBy.length ? readBy : [fallbackReaderId],

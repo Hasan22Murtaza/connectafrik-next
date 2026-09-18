@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { loadPostAuthorAccess } from '@/lib/privacy/access'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -8,6 +9,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   try {
     const { id: postId } = await context.params
     const { user, supabase } = await getAuthenticatedUser(request)
+
+    const postAccess = await loadPostAuthorAccess(user.id, postId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
 
     // Check if already shared
     const { data: existing, error: checkError } = await supabase

@@ -37,6 +37,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Post not found', 404)
     }
 
+    const { loadPostAuthorAccess } = await import('@/lib/privacy/access')
+    const postAccess = await loadPostAuthorAccess(user.id, sourcePostId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
+
     const { data: existingRepost } = await supabase
       .from('posts')
       .select('id')

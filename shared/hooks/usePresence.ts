@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { useProfile } from '@/shared/hooks/useProfile'
 import { apiClient } from '@/lib/api-client'
 import {
   initChatPresenceRealtime,
@@ -117,6 +118,8 @@ export const formatContactPresenceLine = (
 /** Current user: only `online` (and `last_seen` / `last_active_at`) or clear to `null` when leaving. */
 export const usePresence = () => {
   const { user } = useAuth()
+  const { profile } = useProfile()
+  const shareOnlineStatus = profile?.show_online_status !== false
   const [isInitialized, setIsInitialized] = useState(false)
 
   const lastDatabaseStatus = useRef<PresenceStatusType | null>(null)
@@ -260,7 +263,11 @@ export const usePresence = () => {
       await patchMyPresence('online', { force: true })
       if (cancelled) return
       try {
-        await initChatPresenceRealtime(uid)
+        if (shareOnlineStatus) {
+          await initChatPresenceRealtime(uid)
+        } else {
+          await cleanupChatPresenceRealtime()
+        }
       } catch (e) {
         console.error('initChatPresenceRealtime:', e)
       }
@@ -271,7 +278,7 @@ export const usePresence = () => {
       statusIntervalRef.current = setInterval(() => {
         if (lastDatabaseStatus.current === 'online') {
           void patchMyPresence('online')
-          void trackPresence(uid)
+          if (shareOnlineStatus) void trackPresence(uid)
         }
       }, HEARTBEAT_INTERVAL)
     }
@@ -283,8 +290,8 @@ export const usePresence = () => {
       void cleanupSession()
       setIsInitialized(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- one session per user id
-  }, [user?.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- session keyed by user + online-visibility
+  }, [user?.id, shareOnlineStatus])
 
   const updateStatus = useCallback(
     async (status: PresenceStatusType) => {

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { apiClient, isChatLockedError } from '@/lib/api-client'
+import { apiClient, isChatLockedError, isPrivacyDeniedError } from '@/lib/api-client'
 import type { ChatParticipant as BaseParticipant } from "@/shared/types/chat"
 import { notificationService } from '@/shared/services/notificationService'
 import {
@@ -1315,6 +1315,7 @@ export const supabaseMessagingService = {
       if (!id) throw new Error('No thread id returned')
       return id
     } catch (error) {
+      if (isPrivacyDeniedError(error) || isChatLockedError(error)) throw error
       console.error('Error creating thread:', error)
       activateFallback(error)
       const thread = createLocalThread(currentUser, options)
@@ -1462,6 +1463,7 @@ export const supabaseMessagingService = {
       notifyMessageSubscribers(formattedMessage)
       return formattedMessage
     } catch (error) {
+      if (isPrivacyDeniedError(error) || isChatLockedError(error)) throw error
       console.error('Error sending message:', error)
       activateFallback(error)
       return createLocalMessage(threadId, payload, currentUser)

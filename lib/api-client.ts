@@ -1,6 +1,8 @@
 import { supabase } from './supabase'
 import { CHAT_LOCKED_CODE } from '@/features/chat/chatLockEvents'
 
+export const PRIVACY_DENIED_CODE = 'PRIVACY_DENIED'
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -16,6 +18,12 @@ export function isChatLockedError(error: unknown): boolean {
   if (!(error instanceof ApiError)) return false
   const details = error.details as { code?: string } | undefined
   return error.status === 403 && details?.code === CHAT_LOCKED_CODE
+}
+
+export function isPrivacyDeniedError(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false
+  const details = error.details as { code?: string } | undefined
+  return error.status === 403 && details?.code === PRIVACY_DENIED_CODE
 }
 
 let extraHeaderProvider: (endpoint?: string) => Record<string, string> = () => ({})

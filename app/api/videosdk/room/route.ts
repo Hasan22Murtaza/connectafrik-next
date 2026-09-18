@@ -3,6 +3,8 @@ import { createCallRoom } from '@/lib/call-media/provider'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { getBusyMapForUserIds } from '@/lib/call-media/session-busy'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { canCall } from '@/lib/privacy/access'
+import { privacyDecisionResponse } from '@/lib/privacy/http'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,33 +86,19 @@ export async function POST(request: NextRequest) {
     try {
       const serviceClient = createServiceClient()
 
-      // 1:1 outbound calls must be between accepted friends.
+      // 1:1 outbound calls must be between allowed contacts (friends, not blocked).
+      const isGroupCall = check_user_ids.filter((id) => id !== authedUserId).length > 1
       for (const otherUserId of check_user_ids) {
         if (otherUserId === authedUserId) continue
-        const { data: friendshipRows, error: friendshipError } = await serviceClient
-          .from('friend_requests')
-          .select('id')
-          .eq('status', 'accepted')
-          .or(
-            `and(sender_id.eq.${authedUserId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${authedUserId})`
-          )
-          .limit(1)
-
-        if (friendshipError) {
-          console.warn('[videosdk/room] friendship check failed', friendshipError)
-          return NextResponse.json(
-            { error: 'Could not verify friendship. Please try again.' },
-            { status: 500, headers: corsHeaders },
-          )
-        }
-        if (!friendshipRows?.length) {
-          return NextResponse.json(
-            {
-              error: 'You need to be friends to start a call.',
-              code: 'FRIENDS_REQUIRED_FOR_CALL',
-            },
-            { status: 403, headers: corsHeaders },
-          )
+        const decision = await canCall(authedUserId, otherUserId, {
+          isGroupCall,
+          client: serviceClient,
+        })
+        const denied = privacyDecisionResponse(decision)
+        if (denied) {
+          const res = denied
+          Object.entries(corsHeaders).forEach(([k, v]) => res.headers.set(k, v))
+          return res
         }
       }
 

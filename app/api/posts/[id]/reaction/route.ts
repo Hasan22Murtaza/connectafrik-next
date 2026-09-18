@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { loadPostAuthorAccess } from '@/lib/privacy/access'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -21,6 +22,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
     }
+
+    const postAccess = await loadPostAuthorAccess(userId, postId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
 
     const { searchParams } = new URL(request.url)
     const limitParam = searchParams.get('limit')
@@ -132,6 +136,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (!reaction_type) {
       return errorResponse('reaction_type is required', 400)
     }
+
+    const postAccess = await loadPostAuthorAccess(user.id, postId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
 
     // Check for existing reaction
     const { data: existing, error: checkError } = await supabase

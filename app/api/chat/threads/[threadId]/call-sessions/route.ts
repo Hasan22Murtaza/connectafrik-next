@@ -506,6 +506,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Thread not found or access denied', 404)
     }
 
+    const { assertCanCallThread } = await import('@/lib/privacy/chat')
+    const { privacyDecisionResponse } = await import('@/lib/privacy/http')
+    const callDecision = await assertCanCallThread(serviceClient, user.id, threadId, is_group_call)
+    const callDenied = privacyDecisionResponse(callDecision)
+    if (callDenied) return callDenied
+
     const live = await listLiveSessionsForThread(serviceClient, threadId)
     const nowMs = Date.now()
     const recentLive = live.filter((s) => {

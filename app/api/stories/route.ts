@@ -99,6 +99,10 @@ export async function GET(request: NextRequest) {
         if (!friendship) {
           return errorResponse('You can only view stories from friends', 403)
         }
+        const { isBlocked } = await import('@/lib/privacy/access')
+        if (await isBlocked(user.id, targetUserId, supabase)) {
+          return errorResponse('You can only view stories from friends', 403)
+        }
       }
 
       const { data, error } = await supabase

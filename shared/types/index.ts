@@ -55,6 +55,7 @@ export interface Profile {
   show_following?: boolean
   show_country?: boolean
   show_followers_count?: boolean
+  show_read_receipts?: boolean
   // Chat privacy: control recording / screen capture in chats with this user
   is_record?: boolean
   is_capture?: boolean
@@ -103,7 +104,16 @@ export interface UserProfile {
 export type UserProfileWithVisibility = UserProfile & Partial<Pick<Profile,
   'profile_visibility' | 'post_visibility' | 'allow_comments' | 'allow_follows' | 'allow_direct_messages' |
   'show_country' | 'show_phone' | 'show_email' | 'show_followers' | 'show_following' | 'show_followers_count' |
-  'show_last_seen' | 'show_online_status' | 'show_location' | 'is_record' | 'is_capture'>>
+  'show_last_seen' | 'show_online_status' | 'show_location' | 'is_record' | 'is_capture' | 'show_read_receipts'>>
+  & { profile_restricted?: boolean; permissions?: {
+    can_view?: boolean
+    can_follow?: boolean
+    can_friend_request?: boolean
+    can_message?: boolean
+    can_call?: boolean
+    can_view_online_status?: boolean
+    can_view_last_seen?: boolean
+  } }
 
 export interface MutualFriend {
   user_id: string

@@ -420,6 +420,11 @@ const UserProfilePage: React.FC = () => {
       if (!profileData) throw new Error('Not found')
       setProfile(profileData)
 
+      if (profileData.profile_restricted) {
+        setLoading(false)
+        return
+      }
+
       const viewerId = user?.id ?? null
       const ownerId = profileData.id
       const isOwn = viewerId === ownerId
@@ -618,10 +623,15 @@ const UserProfilePage: React.FC = () => {
 
   const isOwnProfile = user && user.id === profile.id
   const viewerId = user?.id ?? null
-  const canView = isOwnProfile || canViewProfile(viewerId, profile.id, profile.profile_visibility || 'public', isMutual)
-  const showFollowBtn = canFollow(viewerId, profile.id, profile.allow_follows || 'everyone', isMutual)
-  const showMessageBtn = canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)
-  const visibleFields = getVisibleProfileFields(profile as VisibleProfileFieldsInput, Boolean(isOwnProfile), Boolean(isMutual))
+  const perms = profile.permissions
+  const canView =
+    Boolean(isOwnProfile) ||
+    (perms ? Boolean(perms.can_view) : !profile.profile_restricted && canViewProfile(viewerId, profile.id, profile.profile_visibility || 'public', isMutual))
+  const showFollowBtn = perms ? Boolean(perms.can_follow) : canFollow(viewerId, profile.id, profile.allow_follows || 'everyone', isMutual)
+  const showMessageBtn = perms ? Boolean(perms.can_message) : canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)
+  const showCallBtn = perms ? Boolean(perms.can_call) : Boolean(isMutual)
+  const showFriendRequestBtn = friendshipStatus !== 'none' || (perms ? Boolean(perms.can_friend_request) : true)
+  const visibleFields = getVisibleProfileFields(profile as VisibleProfileFieldsInput, Boolean(isOwnProfile), Boolean(isMutual), Boolean(perms?.can_view === false))
   const canCommentOnPost = (authorId: string) => isOwnProfile || canComment(viewerId, authorId, profile.allow_comments ?? 'everyone', isMutual)
 
   if (!canView) return (
@@ -716,18 +726,24 @@ const UserProfilePage: React.FC = () => {
                     {isFollowing ? 'Tapped In' : 'Tap In'}
                   </button>
                 )}
+                {showFriendRequestBtn && (
                 <button onClick={handleFriendRequest} disabled={friendLoading} className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap disabled:opacity-50 transition ${fb.cls}`}>
                   {friendLoading ? <Spinner className="w-3.5 h-3.5" /> : <fb.icon className="w-3.5 h-3.5" />}{fb.label}
                 </button>
-                {showMessageBtn && (
+                )}
+                {(showMessageBtn || showCallBtn) && (
                   <div className="relative flex-shrink-0">
                     <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-content-secondary active:bg-[#d8dadf] transition" aria-label="More">
                       <MoreHorizontal className="w-5 h-5" />
                     </button>
                     {showMenu && (
                       <div className="absolute right-0 top-full mt-2 w-48 bg-surface rounded-lg shadow-xl border border-border py-1 z-50">
-                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
-                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
+                        {showCallBtn ? (
+                          <>
+                            <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
+                            <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
+                          </>
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -766,18 +782,24 @@ const UserProfilePage: React.FC = () => {
                     {isFollowing ? 'Tapped In' : 'Tap In'}
                   </button>
                 )}
+                {showFriendRequestBtn && (
                 <button onClick={handleFriendRequest} disabled={friendLoading} className={`${btnBase} disabled:opacity-50 ${fb.cls}`}>
                   {friendLoading ? <Spinner /> : <fb.icon className="w-4 h-4" />}{fb.label}
                 </button>
-                {showMessageBtn && (
+                )}
+                {(showMessageBtn || showCallBtn) && (
                   <div className="relative flex-shrink-0">
                     <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-content-secondary hover:bg-[#d8dadf] transition" aria-label="More">
                       <MoreHorizontal className="w-5 h-5" />
                     </button>
                     {showMenu && (
                       <div className="absolute right-0 top-full mt-2 w-48 bg-surface rounded-lg shadow-xl border border-border py-1 z-50">
-                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
-                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
+                        {showCallBtn ? (
+                          <>
+                            <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
+                            <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
+                          </>
+                        ) : null}
                       </div>
                     )}
                   </div>

@@ -37,6 +37,16 @@ export async function createNotification(input: {
     type: input.data?.type || type,
   }
 
+  const actorId = [data.actor_id, data.sender_id, data.follower_id, data.caller_id].find(
+    (v) => typeof v === 'string' && v.trim()
+  ) as string | undefined
+  if (actorId && actorId !== input.user_id) {
+    const { isBlocked } = await import('@/lib/privacy/access')
+    if (await isBlocked(input.user_id, actorId, serviceSupabase)) {
+      return null
+    }
+  }
+
   const friendRequestIdValue = data['friend_request_id']
   const friendRequestId =
     type === 'friend_request' && typeof friendRequestIdValue === 'string'

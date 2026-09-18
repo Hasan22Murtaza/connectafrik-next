@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { filterSearchableUserIds } from '@/lib/privacy/access'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,17 @@ export async function GET(request: NextRequest) {
       return jsonResponse({ data: [] })
     }
 
-    const profileIds = results.map((p: any) => p.id)
+    const visibleIds = await filterSearchableUserIds(
+      user.id,
+      results.map((p: { id: string }) => p.id),
+      supabase
+    )
+    const visibleResults = results.filter((p: { id: string }) => visibleIds.has(p.id))
+    if (visibleResults.length === 0) {
+      return jsonResponse({ data: [] })
+    }
+
+    const profileIds = visibleResults.map((p: any) => p.id)
 
     const { data: friendRows } = await supabase
       .from('friend_requests')
@@ -62,7 +73,7 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    const enriched = results.map((p: any) => ({
+    const enriched = visibleResults.map((p: any) => ({
       ...p,
       is_friend: friendStatusMap.get(p.id)?.is_friend ?? false,
       has_pending_request: friendStatusMap.get(p.id)?.has_pending_request ?? false,

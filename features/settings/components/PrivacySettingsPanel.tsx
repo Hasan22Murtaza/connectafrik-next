@@ -45,6 +45,7 @@ type PrivacyState = {
   show_following: boolean
   show_country: boolean
   show_followers_count: boolean
+  show_read_receipts: boolean
   is_record: boolean
   is_capture: boolean
 }
@@ -64,6 +65,7 @@ const defaultPrivacy: PrivacyState = {
   show_following: true,
   show_country: true,
   show_followers_count: true,
+  show_read_receipts: true,
   is_record: true,
   is_capture: true,
 }
@@ -130,6 +132,7 @@ export function PrivacySettingsPanel() {
       show_followers_count: profile.show_followers_count ?? true,
       is_record: profile.is_record ?? true,
       is_capture: profile.is_capture ?? true,
+      show_read_receipts: profile.show_read_receipts ?? true,
     }
     setPrivacy(next)
     setSaved(next)
@@ -237,6 +240,14 @@ export function PrivacySettingsPanel() {
           description="Let people see when you were last active"
           checked={privacy.show_last_seen}
           onChange={(show_last_seen) => setPrivacy({ ...privacy, show_last_seen })}
+        />
+        <Divider />
+        <SettingsToggleRow
+          icon={Mail}
+          title="Read receipts"
+          description="Let others see when you’ve read their messages"
+          checked={privacy.show_read_receipts}
+          onChange={(show_read_receipts) => setPrivacy({ ...privacy, show_read_receipts })}
         />
       </SettingsCard>
 

@@ -19,6 +19,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (commentError) {
       return errorResponse(commentError.message, 400)
     }
+
+    const { loadPostAuthorAccess } = await import('@/lib/privacy/access')
+    const postAccess = await loadPostAuthorAccess(user.id, postId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
     if (!comment) {
       return errorResponse('Comment not found', 404)
     }
