@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
 import { createAuthClient } from '../_shared'
 import { createServiceClient } from '@/lib/supabase-server'
-import { sendNewLoginAlertEmail } from '@/shared/services/emailService'
-import { deviceLabelFromUserAgent } from '@/shared/utils/sessionDeviceLabel'
+import { maybeSendLoginAlert } from '@/lib/auth/loginAlerts'
+import { revokeAuthSession, sendTwoFactorOtp, twoFactorRequiredResponse } from '@/lib/auth/twoFactor'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,23 +43,34 @@ export async function POST(request: NextRequest) {
 
     let profileAvatarUrl: string | null = null
     let platformRole: string | null = null
-    let profileName = email.split('@')[0] || 'there'
+    let twoFactorEnabled = false
+
     if (data.user?.id) {
       try {
         const serviceSupabase = createServiceClient()
         const { data: profile } = await serviceSupabase
           .from('profiles')
-          .select('avatar_url, platform_role, full_name, username, first_name')
+          .select('avatar_url, platform_role, two_factor_enabled')
           .eq('id', data.user.id)
           .maybeSingle()
         profileAvatarUrl = profile?.avatar_url || null
         platformRole = profile?.platform_role || null
-        profileName =
-          profile?.full_name || profile?.first_name || profile?.username || profileName
+        twoFactorEnabled = profile?.two_factor_enabled === true
       } catch {
         profileAvatarUrl = null
         platformRole = null
       }
+    }
+
+    if (twoFactorEnabled && data.user?.id) {
+      const serviceSupabase = createServiceClient()
+      await revokeAuthSession(serviceSupabase, data.session?.access_token)
+      const otp = await sendTwoFactorOtp(serviceSupabase, email)
+      if (otp.error && !otp.cooldown) {
+        const status = otp.error.toLowerCase().includes('too many') ? 429 : 500
+        return errorResponse(otp.error, status)
+      }
+      return twoFactorRequiredResponse(email, otp.error || undefined)
     }
 
     const avatarUrl =
@@ -94,15 +105,13 @@ export async function POST(request: NextRequest) {
         }
       : data.session
 
-    if (email.includes('@')) {
-      const forwarded = request.headers.get('x-forwarded-for')
-      const ip =
-        forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || null
-      sendNewLoginAlertEmail(email, {
-        userName: profileName,
-        deviceLabel: deviceLabelFromUserAgent(request.headers.get('user-agent')),
-        ip,
-        timeLabel: new Date().toUTCString(),
+    if (data.user?.id) {
+      const serviceSupabase = createServiceClient()
+      maybeSendLoginAlert({
+        serviceClient: serviceSupabase,
+        userId: data.user.id,
+        email,
+        request,
       }).catch(() => {})
     }
 

@@ -169,7 +169,20 @@ const SigninForm: React.FC = () => {
     } catch (error: unknown) {
       if (error instanceof ApiError && error.status === 403) {
         const details = error.details as { data?: { code?: string; email?: string } } | undefined
-        if (details?.data?.code === 'EMAIL_NOT_VERIFIED' && loginMethod === 'email') {
+        const code = details?.data?.code
+        if (code === 'TWO_FACTOR_REQUIRED' && loginMethod === 'email') {
+          savePendingLogin({
+            email: formData.email,
+            password: formData.password,
+          })
+          toast.success('Enter the verification code we sent to your email.')
+          router.push(
+            `/verify-otp?email=${encodeURIComponent(formData.email)}&purpose=two_factor&redirect=${encodeURIComponent(searchParams.get('redirect') || '/feed')}`
+          )
+          setIsLoading(false)
+          return
+        }
+        if (code === 'EMAIL_NOT_VERIFIED' && loginMethod === 'email') {
           try {
             savePendingLogin({
               email: formData.email,

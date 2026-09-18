@@ -111,7 +111,8 @@ const VerifyOTPForm: React.FC = () => {
         return
       }
 
-      const pendingLogin = purpose === 'login' ? readPendingLogin() : null
+      const pendingLogin =
+        purpose === 'login' || purpose === 'two_factor' ? readPendingLogin() : null
 
       const data = await apiClient.post<{
         verified: boolean
@@ -127,7 +128,7 @@ const VerifyOTPForm: React.FC = () => {
       })
 
       setIsSuccess(true)
-      toast.success('Email verified successfully!')
+      toast.success(purpose === 'two_factor' ? 'Verified. Welcome back!' : 'Email verified successfully!')
 
       if (data.session?.access_token && data.session?.refresh_token) {
         const { error: setSessionError } = await supabase.auth.setSession({
@@ -166,7 +167,7 @@ const VerifyOTPForm: React.FC = () => {
           return
         }
 
-        if (purpose === 'login') {
+        if (purpose === 'login' || purpose === 'two_factor') {
           clearPendingLogin()
           router.push('/signin')
         }
@@ -212,7 +213,7 @@ const VerifyOTPForm: React.FC = () => {
       } else {
         await apiClient.post<{ sent: boolean }>('/api/auth/send-email-otp', {
           email,
-          purpose: 'login',
+          purpose: purpose === 'two_factor' ? 'two_factor' : 'login',
         })
       }
 
@@ -242,13 +243,17 @@ const VerifyOTPForm: React.FC = () => {
 
   const title = isPhoneFlow
     ? 'Verify Your Phone'
-    : purpose === 'recovery'
-      ? 'Verify Your Email'
-      : 'Verify Your Email'
+    : purpose === 'two_factor'
+      ? 'Two-factor authentication'
+      : purpose === 'recovery'
+        ? 'Verify Your Email'
+        : 'Verify Your Email'
 
   const subtitle = isPhoneFlow
     ? `Enter the 6-digit code sent to ${phone.slice(0, 3)}****${phone.slice(-4)}`
-    : `Enter the 6-digit code sent to ${maskEmail(email)}`
+    : purpose === 'two_factor'
+      ? `Enter the 6-digit code sent to ${maskEmail(email)} to finish signing in.`
+      : `Enter the 6-digit code sent to ${maskEmail(email)}`
 
   if (isSuccess) {
     return (

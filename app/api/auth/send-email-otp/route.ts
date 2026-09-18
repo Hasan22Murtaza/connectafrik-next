@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (purpose === 'login' || purpose === 'recovery') {
+    if (purpose === 'login' || purpose === 'recovery' || purpose === 'two_factor') {
       if (!existingUser) {
         return errorResponse('No account found with this email address.', 404)
       }
