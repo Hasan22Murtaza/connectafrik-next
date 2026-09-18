@@ -18,25 +18,25 @@ const UserMenu: React.FC<UserMenuProps> = ({ isOpen, onSignOut, onClose }) => {
         isOpen ? 'opacity-100 visible' : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'
       }`}
     >
-      <div className="py-2">
+      <div className="p-1.5">
         <Link
           href="/profile"
           onClick={onClose}
-          className="block px-4 py-2 text-sm text-content hover:bg-surface-hover transition-colors"
+          className="block px-4 py-2 text-sm text-content rounded-md hover:bg-surface-hover transition-colors"
         >
           My Profile
         </Link>
         <Link
           href="/settings"
           onClick={onClose}
-          className="block px-4 py-2 text-sm text-content hover:bg-surface-hover transition-colors"
+          className="block px-4 py-2 text-sm text-content rounded-md hover:bg-surface-hover transition-colors"
         >
           Settings
         </Link>
         <Link
           href="/feedback"
           onClick={onClose}
-          className="block px-4 py-2 text-sm text-content hover:bg-surface-hover transition-colors"
+          className="block px-4 py-2 text-sm text-content rounded-md hover:bg-surface-hover transition-colors"
         >
           Feedback
         </Link>

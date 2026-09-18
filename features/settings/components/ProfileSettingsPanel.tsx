@@ -128,20 +128,21 @@ export function ProfileSettingsPanel() {
 
   return (
     <div className="space-y-4">
-      <SettingsCard>
+      <div>
         <div className="flex flex-col items-center gap-5 px-5 py-6 sm:flex-row sm:items-center sm:gap-6">
-          <div className="relative">
+          <div className="relative h-28 w-28 shrink-0 sm:h-32 sm:w-32">
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
                 alt="Profile"
-                className="h-28 w-28 rounded-full object-cover ring-1 ring-border-subtle"
+                className="h-full w-full shrink-0 rounded-full object-cover ring-1 ring-border-subtle"
               />
             ) : (
-              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-surface-secondary ring-1 ring-border-subtle">
+              <div className="flex h-full w-full shrink-0 items-center justify-center rounded-full bg-surface-secondary ring-1 ring-border-subtle">
                 <User className="h-10 w-10 text-content-tertiary" />
               </div>
             )}
+
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -151,6 +152,7 @@ export function ProfileSettingsPanel() {
             >
               <Camera className="h-4 w-4" />
             </button>
+
             {isUploading ? (
               <div className="absolute inset-0 z-[5] flex items-center justify-center rounded-full bg-black/45">
                 <Loader2 className="h-7 w-7 animate-spin text-white" />
@@ -179,7 +181,7 @@ export function ProfileSettingsPanel() {
             <p className="mt-2 text-xs text-content-tertiary">JPG, PNG or WebP. Max 5MB.</p>
           </div>
         </div>
-      </SettingsCard>
+      </div>
 
       <SettingsCard>
         <div className="space-y-5 px-4 py-5 sm:px-5">

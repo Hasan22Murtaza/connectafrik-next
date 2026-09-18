@@ -38,7 +38,7 @@
   --surface-tertiary: #e4e6eb;
   --surface-elevated: #ffffff;
   --surface-hover: #f2f2f2;
-  --surface-input: #eef1f4;
+  --surface-input: var(--surface-secondary);
   --surface-overlay: rgba(0, 0, 0, 0.5);
 
   /* Semantic content */
@@ -503,7 +503,7 @@ body {
   padding: 9px 16px;
   background-color: var(--interactive-secondary);
   color: var(--interactive-secondary-text);
-  font-weight: 600;
+  font-weight: 500;
   border: none;
   border-radius: 0.5rem;
   transition: all 0.2s;

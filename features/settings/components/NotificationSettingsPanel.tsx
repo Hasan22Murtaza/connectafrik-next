@@ -105,7 +105,7 @@ export function NotificationSettingsPanel() {
           <button
             type="button"
             onClick={() => setShowNotificationManager(true)}
-            className="btn-secondary min-h-11 shrink-0 rounded-[14px] px-4"
+            className="btn-secondary min-h-11 shrink-0 rounded-[14px] px-4 space-x-0.5"
           >
             <Settings className="h-4 w-4" />
             <span>Configure</span>

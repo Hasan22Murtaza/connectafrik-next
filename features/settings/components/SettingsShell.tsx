@@ -18,7 +18,7 @@ export function SettingsShell({ activeTab, title, description, children }: Setti
   const sidebarActive: SettingsTab = isHub ? 'profile' : activeTab
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background sm:min-h-[calc(100vh-4rem)]">
+    <div className="min-h-[calc(100vh-4rem)] bg-background sm:min-h-[calc(100vh-5rem)]">
       <div className="mx-auto max-w-[1080px] px-4 py-5 sm:px-6 sm:py-8">
         <header className="mb-6 hidden md:block">
           <h1 className="text-[28px] font-semibold tracking-tight text-content">Settings</h1>
@@ -64,7 +64,7 @@ export function SettingsShell({ activeTab, title, description, children }: Setti
         >
           <aside className="hidden md:block md:sticky md:top-20 md:self-start">
             <nav
-              className="rounded-[16px] border border-border-subtle bg-surface p-2"
+              className="rounded-[16px] border border-border-subtle bg-surface p-2 space-y-1.5"
               aria-label="Settings sections"
             >
               {SETTINGS_NAV.map((item) => {

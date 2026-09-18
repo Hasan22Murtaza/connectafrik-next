@@ -1013,7 +1013,7 @@ const FriendsPageContent: React.FC = () => {
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                 <h2 className="text-2xl font-semibold text-content">All Friends</h2>
                 <div className="relative max-w-full w-sm ">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search friends..."

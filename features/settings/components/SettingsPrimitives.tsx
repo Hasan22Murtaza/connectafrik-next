@@ -60,13 +60,13 @@ export function SettingsToggle({
       aria-labelledby={labelledBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 ${
+      className={`relative inline-flex h-6 w-10 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 ${
         checked ? 'bg-primary' : 'bg-surface-tertiary'
       }`}
     >
       <span
-        className={`inline-block h-[22px] w-[22px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
-          checked ? 'translate-x-[22px]' : 'translate-x-[3px]'
+        className={`inline-block h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          checked ? 'translate-x-[18px]' : 'translate-x-[2px]'
         }`}
       />
     </button>
