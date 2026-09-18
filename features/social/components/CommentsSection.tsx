@@ -409,10 +409,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
         </div>
       )}
 
-      {user && !canComment && (
-        <p className="px-3 py-2 text-center text-xs text-gray-400">Comments are turned off for this post.</p>
-      )}
-
       {!user && (
         <p className="px-3 py-2 text-center text-xs text-gray-400">
           <a href="/signin" className="font-semibold text-primary-600 hover:underline">Sign in</a>

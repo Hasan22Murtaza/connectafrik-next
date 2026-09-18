@@ -337,7 +337,7 @@ const FeedPage: React.FC = () => {
 
           <section>
             {!user ? (
-              <div className="rounded-xl border border-dashed border-border bg-surface-secondary px-4 py-6 text-center text-sm text-content-secondary">
+              <div className="rounded-xl border border-dashed border-border bg-surface-secondary sm:px-4 sm:py-6 px-2 py-3 text-center text-sm text-content-secondary">
                 Sign in to share your thoughts with the community.
               </div>
             ) : isComposerOpen ? (
@@ -349,7 +349,7 @@ const FeedPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsComposerOpen(true)}
-                className="flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface px-4 py-3 text-left shadow-card transition-all hover:shadow hover:border-border"
+                className="flex w-full items-center gap-3 rounded-xl border border-border-subtle bg-surface py-3 p-2 text-left shadow-card transition-all hover:shadow hover:border-border"
               >
                 {profile?.avatar_url ? (
                   <img src={profile.avatar_url} alt={profile.full_name} className="h-10 w-10 rounded-full object-cover shrink-0" />
@@ -358,7 +358,7 @@ const FeedPage: React.FC = () => {
                     {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
                   </span>
                 )}
-                <div className="flex-1 min-w-0 rounded-full bg-surface-input px-4 py-2.5">
+                <div className="flex-1 min-w-0 rounded-full bg-surface-input px-4 py-2.5 ">
                   <p className="text-sm sm:text-base text-content-secondary">What&apos;s on your mind, {profile?.full_name?.split(' ')[0] || 'there'}?</p>
                 </div>
               </button>
