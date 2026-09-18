@@ -108,49 +108,50 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
 
   if (onClose) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Push Notifications</h2>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-md overflow-hidden rounded-[16px] border border-border bg-surface shadow-dropdown">
+          <div className="p-5">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-content">Push Notifications</h2>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] text-content-tertiary transition-colors duration-200 hover:bg-surface-hover hover:text-content"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between rounded-[14px] bg-surface-secondary p-3">
                 <div className="flex items-center space-x-3">
-                  <Bell className="w-5 h-5 text-gray-600" />
+                  <Bell className="w-5 h-5 text-content-secondary" />
                   <div>
-                    <p className="font-medium text-gray-900">Browser Permission</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-content">Browser Permission</p>
+                    <p className="text-sm text-content-secondary">
                       {permission === 'granted' ? 'Allowed' : 
                        permission === 'denied' ? 'Blocked' : 'Not requested'}
                     </p>
                   </div>
                 </div>
                 <div className={`w-3 h-3 rounded-full ${
-                  permission === 'granted' ? 'bg-orange-500' :
-                  permission === 'denied' ? 'bg-red-500' : 'bg-yellow-500'
+                  permission === 'granted' ? 'bg-primary' :
+                  permission === 'denied' ? 'bg-danger' : 'bg-yellow-500'
                 }`} />
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between rounded-[14px] bg-surface-secondary p-3">
                 <div className="flex items-center space-x-3">
-                  <Settings className="w-5 h-5 text-gray-600" />
+                  <Settings className="w-5 h-5 text-content-secondary" />
                   <div>
-                    <p className="font-medium text-gray-900">CribsTalk Notifications</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-content">ConnectAfrik Notifications</p>
+                    <p className="text-sm text-content-secondary">
                       {isSubscribed ? 'Enabled' : 'Disabled'}
                     </p>
                   </div>
                 </div>
                 <div className={`w-3 h-3 rounded-full ${
-                  isSubscribed ? 'bg-orange-500' : 'bg-gray-400'
+                  isSubscribed ? 'bg-primary' : 'bg-content-tertiary'
                 }`} />
               </div>
 
@@ -159,7 +160,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                     <button
                       onClick={handleSubscribe}
                       disabled={isLoading || permission === 'denied'}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                      className="btn-primary min-h-11 w-full rounded-[14px] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <Bell className="w-4 h-4" />
                       <span>{isLoading ? 'Enabling...' : 'Enable Notifications'}</span>
@@ -169,7 +170,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                     <button
                       onClick={handleUnsubscribe}
                       disabled={isLoading}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+                      className="btn-secondary min-h-11 w-full rounded-[14px] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <BellOff className="w-4 h-4" />
                       <span>{isLoading ? 'Disabling...' : 'Disable Notifications'}</span>
@@ -177,7 +178,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                     
                     <button
                       onClick={handleTestNotification}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                      className="btn-primary min-h-11 w-full rounded-[14px]"
                     >
                       <Bell className="w-4 h-4" />
                       <span>Send Test Notification</span>
@@ -186,7 +187,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                 )}
               </div>
 
-              <div className="text-sm text-gray-500 space-y-2">
+              <div className="text-sm text-content-secondary space-y-2">
                 <p>You'll receive notifications for:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li>Friend requests</li>
@@ -206,24 +207,25 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
 
   if (!isSupported) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Push Notifications</h2>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="w-full max-w-md overflow-hidden rounded-[16px] border border-border bg-surface shadow-dropdown">
+          <div className="p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-content">Push Notifications</h2>
               <button
                 onClick={handleClose}
-                className="text-gray-400 hover:text-gray-600"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] text-content-tertiary transition-colors duration-200 hover:bg-surface-hover hover:text-content"
+                aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="text-center py-8">
-              <BellOff className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <div className="py-8 text-center">
+              <BellOff className="mx-auto mb-4 h-16 w-16 text-content-tertiary" />
+              <h3 className="mb-2 text-lg font-medium text-content">
                 Notifications Not Supported
               </h3>
-              <p className="text-gray-500">
+              <p className="text-content-secondary">
                 Your browser doesn't support push notifications. Please use a modern browser like Chrome, Firefox, or Safari.
               </p>
             </div>
@@ -234,49 +236,50 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Push Notifications</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md overflow-hidden rounded-[16px] border border-border bg-surface shadow-dropdown">
+        <div className="p-5">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-content">Push Notifications</h2>
             <button
               onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] text-content-tertiary transition-colors duration-200 hover:bg-surface-hover hover:text-content"
+              aria-label="Close"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between rounded-[14px] bg-surface-secondary p-3">
               <div className="flex items-center space-x-3">
-                <Bell className="w-5 h-5 text-gray-600" />
+                <Bell className="w-5 h-5 text-content-secondary" />
                 <div>
-                  <p className="font-medium text-gray-900">Browser Permission</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-content">Browser Permission</p>
+                  <p className="text-sm text-content-secondary">
                     {permission === 'granted' ? 'Allowed' : 
                      permission === 'denied' ? 'Blocked' : 'Not requested'}
                   </p>
                 </div>
               </div>
               <div className={`w-3 h-3 rounded-full ${
-                permission === 'granted' ? 'bg-orange-500' :
-                permission === 'denied' ? 'bg-red-500' : 'bg-yellow-500'
+                permission === 'granted' ? 'bg-primary' :
+                permission === 'denied' ? 'bg-danger' : 'bg-yellow-500'
               }`} />
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between rounded-[14px] bg-surface-secondary p-3">
               <div className="flex items-center space-x-3">
-                <Settings className="w-5 h-5 text-gray-600" />
+                <Settings className="w-5 h-5 text-content-secondary" />
                 <div>
-                  <p className="font-medium text-gray-900">CribsTalk Notifications</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-content">ConnectAfrik Notifications</p>
+                  <p className="text-sm text-content-secondary">
                     {isSubscribed ? 'Enabled' : 'Disabled'}
                   </p>
                 </div>
               </div>
               <div className={`w-3 h-3 rounded-full ${
-                isSubscribed ? 'bg-orange-500' : 'bg-gray-400'
+                isSubscribed ? 'bg-primary' : 'bg-content-tertiary'
               }`} />
             </div>
 
@@ -285,7 +288,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                   <button
                     onClick={handleSubscribe}
                     disabled={isLoading || permission === 'denied'}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    className="btn-primary min-h-11 w-full rounded-[14px] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Bell className="w-4 h-4" />
                     <span>{isLoading ? 'Enabling...' : 'Enable Notifications'}</span>
@@ -295,7 +298,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                   <button
                     onClick={handleUnsubscribe}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
+                    className="btn-secondary min-h-11 w-full rounded-[14px] disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <BellOff className="w-4 h-4" />
                     <span>{isLoading ? 'Disabling...' : 'Disable Notifications'}</span>
@@ -303,7 +306,7 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
                   
                   <button
                     onClick={handleTestNotification}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                    className="btn-primary min-h-11 w-full rounded-[14px]"
                   >
                     <Bell className="w-4 h-4" />
                     <span>Send Test Notification</span>
@@ -312,9 +315,9 @@ export const NotificationManager: React.FC<NotificationManagerProps> = ({ onClos
               )}
             </div>
 
-            <div className="text-sm text-gray-500 space-y-2">
+            <div className="space-y-2 text-sm text-content-secondary">
               <p>You'll receive notifications for:</p>
-              <ul className="list-disc list-inside space-y-1 ml-4">
+              <ul className="ml-4 list-inside list-disc space-y-1">
                 <li>Friend requests</li>
                 <li>New messages</li>
                 <li>Missed calls</li>
