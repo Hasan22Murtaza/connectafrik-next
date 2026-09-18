@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { loadPostAuthorAccess } from '@/lib/privacy/access'
 
@@ -210,6 +210,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .from('posts')
         .update({ likes_count: (post.likes_count || 0) + 1 })
         .eq('id', postId)
+    }
+
+    if (postAccess.authorId && postAccess.authorId !== user.id) {
+      const { notifyIfAllowed, actorDisplayName } = await import('@/lib/notifications')
+      const actorName = actorDisplayName(user)
+      void notifyIfAllowed({
+        recipientId: postAccess.authorId,
+        actorId: user.id,
+        type: 'post_like',
+        title: 'New Like',
+        message: `${actorName} liked your post`,
+        accessToken: getAccessTokenFromRequest(request),
+        data: {
+          post_id: postId,
+          actor_name: actorName,
+          url: `/post/${postId}`,
+        },
+      })
     }
 
     return jsonResponse({ action: 'added', reaction_type })

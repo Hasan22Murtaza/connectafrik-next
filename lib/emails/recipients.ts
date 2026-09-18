@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { userAllowsNotificationEmail } from '@/lib/notifications/prefs'
 
 export type EmailRecipient = {
   email: string
@@ -34,6 +35,19 @@ export async function lookupUserContact(
     .maybeSingle()
 
   return { email, name: displayName(profile, email) }
+}
+
+/**
+ * Resolve an inbox for SES notification mail. Returns null when the user
+ * disabled Email Notifications (in-app and push are unaffected).
+ */
+export async function lookupNotificationEmailRecipient(
+  serviceClient: SupabaseClient,
+  userId: string,
+  type?: string | null
+): Promise<EmailRecipient | null> {
+  if (!(await userAllowsNotificationEmail(userId, type, serviceClient))) return null
+  return lookupUserContact(serviceClient, userId)
 }
 
 /** Platform admins who should receive moderation / report emails. */

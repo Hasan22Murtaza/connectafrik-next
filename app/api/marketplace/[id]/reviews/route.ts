@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { sendNewReviewReceivedEmail } from '@/shared/services/emailService'
-import { lookupUserContact } from '@/lib/emails/recipients'
+import { lookupUserContact, lookupNotificationEmailRecipient } from '@/lib/emails/recipients'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     try {
       const serviceClient = createServiceClient()
       const seller = product?.seller_id
-        ? await lookupUserContact(serviceClient, product.seller_id)
+        ? await lookupNotificationEmailRecipient(serviceClient, product.seller_id)
         : null
       if (seller) {
         const reviewer = await lookupUserContact(serviceClient, user.id)

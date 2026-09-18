@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const REEL_SELECT = `
@@ -245,6 +245,37 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) return errorResponse(error.message, 400)
+
+    const { actorDisplayName, notifyFollowersOfContent, notifyMentionedUsers } = await import(
+      '@/lib/notifications'
+    )
+    const authorName = actorDisplayName(user)
+    const preview = typeof title === 'string' && title.trim() ? title.trim() : 'a new memory'
+    void notifyFollowersOfContent({
+      authorId: user.id,
+      authorName,
+      type: 'reel_create',
+      title: 'New Memory',
+      message: `${authorName} shared a new memory: "${preview}"`,
+      data: {
+        reel_id: reel.id,
+        author_id: user.id,
+        author_name: authorName,
+        url: `/memories/${reel.id}`,
+      },
+      accessToken: getAccessTokenFromRequest(request),
+    })
+    void notifyMentionedUsers({
+      text: [title, description].filter(Boolean).join(' '),
+      actorId: user.id,
+      actorName: authorName,
+      accessToken: getAccessTokenFromRequest(request),
+      data: {
+        reel_id: reel.id,
+        url: `/memories/${reel.id}`,
+      },
+    })
+
     return jsonResponse({ data: reel }, 201)
   } catch (error: unknown) {
     const err = error as { message?: string }

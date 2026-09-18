@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 type RouteContext = { params: Promise<{ id: string; postId: string }> }
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const { postId } = await context.params
+    const { id: groupId, postId } = await context.params
     const { user, supabase } = await getAuthenticatedUser(request)
     const { reaction_type } = await request.json()
 
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { data: postRow } = await supabase
       .from('group_posts')
-      .select('id, is_restricted, is_hidden, is_deleted, moderation_status')
+      .select('id, author_id, is_restricted, is_hidden, is_deleted, moderation_status')
       .eq('id', postId)
       .maybeSingle()
 
@@ -213,6 +213,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .from('group_posts')
         .update({ likes_count: (post.likes_count || 0) + 1 })
         .eq('id', postId)
+    }
+
+    if (postRow.author_id && postRow.author_id !== user.id) {
+      const { notifyIfAllowed, actorDisplayName } = await import('@/lib/notifications')
+      const actorName = actorDisplayName(user)
+      void notifyIfAllowed({
+        recipientId: postRow.author_id,
+        actorId: user.id,
+        type: 'post_like',
+        title: 'New Like',
+        message: `${actorName} liked your post`,
+        accessToken: getAccessTokenFromRequest(request),
+        data: {
+          group_id: groupId,
+          post_id: postId,
+          actor_name: actorName,
+          url: `/groups/${groupId}`,
+        },
+      })
     }
 
     return jsonResponse({ action: 'added', reaction_type })

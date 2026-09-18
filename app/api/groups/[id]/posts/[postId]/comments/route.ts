@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 type RouteContext = { params: Promise<{ id: string; postId: string }> }
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
-    const { postId } = await context.params
+    const { id: groupId, postId } = await context.params
     const { user, supabase } = await getAuthenticatedUser(request)
     const body = await request.json()
 
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { data: postRow } = await supabase
       .from('group_posts')
-      .select('id, is_restricted, is_hidden, is_deleted, moderation_status')
+      .select('id, author_id, is_restricted, is_hidden, is_deleted, moderation_status')
       .eq('id', postId)
       .maybeSingle()
 
@@ -162,6 +162,39 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .select('id, username, full_name, avatar_url')
       .eq('id', user.id)
       .single()
+
+    const { actorDisplayName, notifyIfAllowed, notifyMentionedUsers } = await import('@/lib/notifications')
+    const actorName = actorDisplayName(user, authorProfile?.full_name || authorProfile?.username || 'Someone')
+    const accessToken = getAccessTokenFromRequest(request)
+    if (postRow.author_id && postRow.author_id !== user.id) {
+      void notifyIfAllowed({
+        recipientId: postRow.author_id,
+        actorId: user.id,
+        type: 'post_comment',
+        title: 'New Comment',
+        message: `${actorName} commented on your post`,
+        accessToken,
+        data: {
+          group_id: groupId,
+          post_id: postId,
+          comment_id: comment.id,
+          actor_name: actorName,
+          url: `/groups/${groupId}`,
+        },
+      })
+    }
+    void notifyMentionedUsers({
+      text: content,
+      actorId: user.id,
+      actorName,
+      accessToken,
+      data: {
+        group_id: groupId,
+        post_id: postId,
+        comment_id: comment.id,
+        url: `/groups/${groupId}`,
+      },
+    })
 
     return jsonResponse(
       { data: { ...comment, author: authorProfile ?? null } },

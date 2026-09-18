@@ -68,7 +68,6 @@ export interface Profile {
   message_notifications?: boolean
   mention_notifications?: boolean
   post_updates?: boolean
-  weekly_digest?: boolean
   // Security
   two_factor_enabled?: boolean
   login_alerts?: boolean

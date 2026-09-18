@@ -272,6 +272,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
           inviterAvatar: inviterProfile?.avatar_url,
         })
 
+        const { userAllowsNotificationEmail } = await import('@/lib/notifications/prefs')
+        if (!(await userAllowsNotificationEmail(targetUserId, 'group_invite', serviceClient))) return false
+
         const { data: authData, error: authErr } = await serviceClient.auth.admin.getUserById(targetUserId)
         const targetEmail = authData?.user?.email
         if (authErr || !targetEmail?.includes('@')) return false

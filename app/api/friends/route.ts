@@ -4,7 +4,7 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
 import { sendFriendRequestReceivedEmail } from '@/shared/services/emailService'
-import { lookupUserContact } from '@/lib/emails/recipients'
+import { lookupNotificationEmailRecipient } from '@/lib/emails/recipients'
 import { canSendFriendRequestAsync, getRelationships, sanitizePresenceFields } from '@/lib/privacy'
 import { privacyDecisionResponse } from '@/lib/privacy/http'
 
@@ -64,7 +64,7 @@ async function notifyFriendRequestReceived(params: {
 
   try {
     const serviceClient = createServiceClient()
-    const recipient = await lookupUserContact(serviceClient, params.receiverId)
+    const recipient = await lookupNotificationEmailRecipient(serviceClient, params.receiverId, 'friend_request')
     if (recipient) {
       await sendFriendRequestReceivedEmail(recipient.email, {
         recipientName: recipient.name,

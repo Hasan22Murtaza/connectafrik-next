@@ -4,7 +4,7 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
 import { sendFriendRequestAcceptedEmail } from '@/shared/services/emailService'
-import { lookupUserContact } from '@/lib/emails/recipients'
+import { lookupNotificationEmailRecipient } from '@/lib/emails/recipients'
 
 export async function GET(
   request: NextRequest,
@@ -122,18 +122,13 @@ export async function PATCH(
       }
 
       try {
-        const serviceSupabase = createServiceClient()
-        const { error: insertError } = await serviceSupabase.from('notifications').insert(notificationRow)
-        if (insertError) {
-          console.error('Friend request response notification insert failed:', insertError)
-          await createNotification({
-            user_id: notificationRow.user_id,
-            type: notificationType,
-            title,
-            message,
-            data: notificationRow.data,
-          })
-        }
+        await createNotification({
+          user_id: notificationRow.user_id,
+          type: notificationType,
+          title,
+          message,
+          data: notificationRow.data,
+        })
       } catch (error) {
         console.error('Failed to save friend request response notification:', error)
       }
@@ -157,7 +152,7 @@ export async function PATCH(
       if (isAccepted) {
         try {
           const serviceSupabase = createServiceClient()
-          const recipient = await lookupUserContact(serviceSupabase, row.sender_id)
+          const recipient = await lookupNotificationEmailRecipient(serviceSupabase, row.sender_id, 'friend_request_accepted')
           if (recipient) {
             await sendFriendRequestAcceptedEmail(recipient.email, {
               recipientName: recipient.name,

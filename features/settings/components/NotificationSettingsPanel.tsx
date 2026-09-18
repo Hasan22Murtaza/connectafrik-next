@@ -23,7 +23,6 @@ type NotificationState = {
   message_notifications: boolean
   mention_notifications: boolean
   post_updates: boolean
-  weekly_digest: boolean
 }
 
 const defaultNotifications: NotificationState = {
@@ -35,7 +34,6 @@ const defaultNotifications: NotificationState = {
   message_notifications: true,
   mention_notifications: true,
   post_updates: false,
-  weekly_digest: true,
 }
 
 export function NotificationSettingsPanel() {
@@ -56,7 +54,6 @@ export function NotificationSettingsPanel() {
       message_notifications: profile.message_notifications ?? true,
       mention_notifications: profile.mention_notifications ?? true,
       post_updates: profile.post_updates ?? false,
-      weekly_digest: profile.weekly_digest ?? true,
     }
     setSettings(next)
     setSaved(next)
@@ -184,14 +181,6 @@ export function NotificationSettingsPanel() {
           description="Receive notifications via email"
           checked={settings.email_notifications}
           onChange={(email_notifications) => setSettings({ ...settings, email_notifications })}
-        />
-        <Divider />
-        <SettingsToggleRow
-          icon={Mail}
-          title="Weekly digest"
-          description="A weekly summary of activity"
-          checked={settings.weekly_digest}
-          onChange={(weekly_digest) => setSettings({ ...settings, weekly_digest })}
         />
       </SettingsCard>
 

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 type RouteContext = { params: Promise<{ id: string; commentId: string }> }
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     const { data: comment, error: commentError } = await supabase
       .from('comments')
-      .select('id, post_id')
+      .select('id, post_id, author_id')
       .eq('id', commentId)
       .eq('post_id', postId)
       .maybeSingle()
@@ -51,6 +51,26 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       if (error) return errorResponse(error.message, 400)
       liked = true
+
+      const commentAuthorId = (comment as { author_id?: string } | null)?.author_id
+      if (commentAuthorId && commentAuthorId !== user.id) {
+        const { notifyIfAllowed, actorDisplayName } = await import('@/lib/notifications')
+        const actorName = actorDisplayName(user)
+        void notifyIfAllowed({
+          recipientId: commentAuthorId,
+          actorId: user.id,
+          type: 'post_comment_like',
+          title: 'Comment Liked',
+          message: `${actorName} liked your comment`,
+          accessToken: getAccessTokenFromRequest(request),
+          data: {
+            post_id: postId,
+            comment_id: commentId,
+            actor_name: actorName,
+            url: `/post/${postId}`,
+          },
+        })
+      }
     }
 
     const { count } = await supabase

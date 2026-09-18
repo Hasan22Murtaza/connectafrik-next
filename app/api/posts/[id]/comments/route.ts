@@ -273,6 +273,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
       )
     }
 
+    const { notifyMentionedUsers } = await import('@/lib/notifications/mentions')
+    await notifyMentionedUsers({
+      text: content,
+      actorId: user.id,
+      actorName: user.user_metadata?.full_name || user.email || 'Someone',
+      accessToken: getAccessTokenFromRequest(request),
+      data: {
+        post_id: postId,
+        comment_id: comment.id,
+        url: `/post/${postId}`,
+      },
+    })
+
     return jsonResponse({
       data: {
         ...comment,

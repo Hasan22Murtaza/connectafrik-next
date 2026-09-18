@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 export async function POST(
@@ -27,6 +27,25 @@ export async function POST(
       const { error } = await supabase.from('reel_likes').insert({ reel_id: reelId, user_id: user.id })
       if (error) return errorResponse(error.message, 400)
       liked = true
+
+      const { data: reel } = await supabase.from('reels').select('author_id').eq('id', reelId).maybeSingle()
+      if (reel?.author_id && reel.author_id !== user.id) {
+        const { notifyIfAllowed, actorDisplayName } = await import('@/lib/notifications')
+        const actorName = actorDisplayName(user)
+        void notifyIfAllowed({
+          recipientId: reel.author_id,
+          actorId: user.id,
+          type: 'reel_like',
+          title: 'Memory Liked',
+          message: `${actorName} liked your memory`,
+          accessToken: getAccessTokenFromRequest(request),
+          data: {
+            reel_id: reelId,
+            actor_name: actorName,
+            url: `/memories/${reelId}`,
+          },
+        })
+      }
     }
 
     return jsonResponse({ data: { liked } })

@@ -345,6 +345,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { allowsInAppNotification, allowsPushNotification, loadNotificationSettings } =
+      await import('@/lib/notifications/prefs')
+    const recipientSettings = await loadNotificationSettings(user_id)
+    if (!allowsInAppNotification(recipientSettings, canonicalType)) {
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: true,
+          reason: 'notification_preference_disabled',
+          sent: 0,
+          failed: 0,
+          total: 0,
+          results: [],
+        },
+        { headers: corsHeaders },
+      )
+    }
+    const allowPush = allowsPushNotification(recipientSettings, canonicalType)
+
     const rawPushData: Record<string, unknown> =
       body.data && typeof body.data === 'object' && !Array.isArray(body.data)
         ? { ...(body.data as Record<string, unknown>) }
@@ -589,6 +608,23 @@ export async function POST(request: NextRequest) {
         console.log('✅ Notification created in database:', notificationId)
       }
     }
+
+    if (!allowPush) {
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: true,
+          reason: 'push_preference_disabled',
+          notification_id: notificationId,
+          sent: 0,
+          failed: 0,
+          total: 0,
+          results: [],
+        },
+        { headers: corsHeaders },
+      )
+    }
+
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')

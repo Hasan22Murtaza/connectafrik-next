@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { POST_SELECT, formatPostsForClient } from './format-posts-response'
 import { sanitizePostBackgroundId } from '@/features/social/constants/postBackgrounds'
@@ -117,8 +117,7 @@ export async function POST(request: NextRequest) {
       return errorResponse(insertError.message, 400)
     }
 
-    // Fire-and-forget: notify followers and friends
-    notifyFollowersAndFriends(supabase, user, post).catch(() => {})
+    notifyFollowersAndFriends(user, post, getAccessTokenFromRequest(request)).catch(() => {})
 
     return jsonResponse({
       data: {
@@ -155,45 +154,48 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function notifyFollowersAndFriends(supabase: any, user: any, post: any) {
+async function notifyFollowersAndFriends(
+  user: { id: string; user_metadata?: Record<string, unknown>; email?: string | null },
+  post: { id: string; content?: string | null },
+  accessToken: string | null,
+) {
   try {
-    const serviceSupabase = createServiceClient()
-    const authorName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Someone'
+    const { actorDisplayName, notifyFollowersOfContent, notifyMentionedUsers } = await import(
+      '@/lib/notifications'
+    )
+    const authorName = actorDisplayName(user, user.email?.split('@')[0] || 'Someone')
     const postTitle = post.content?.substring(0, 80) || 'a new post'
+    const data = {
+      type: 'post_create' as const,
+      post_id: post.id,
+      author_id: user.id,
+      author_name: authorName,
+      url: `/post/${post.id}`,
+    }
 
-    const { data: friendsData } = await serviceSupabase
-      .from('friend_requests')
-      .select('sender_id, receiver_id')
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .eq('status', 'accepted')
-
-    const recipientIds = new Set<string>()
-
-    friendsData?.forEach((f: any) => {
-      const friendId = f.sender_id === user.id ? f.receiver_id : f.sender_id
-      if (friendId && friendId !== user.id) recipientIds.add(friendId)
-    })
-
-    const notifications = Array.from(recipientIds).map((recipientId) => ({
-      user_id: recipientId,
+    await notifyFollowersOfContent({
+      authorId: user.id,
+      authorName,
       type: 'post_create',
       title: 'New Post',
       message: `${authorName} shared a new post: "${postTitle}"`,
+      data,
+      accessToken,
+      postPreview: postTitle,
+      postId: post.id,
+    })
+
+    await notifyMentionedUsers({
+      text: post.content,
+      actorId: user.id,
+      actorName: authorName,
+      accessToken,
       data: {
-        type: 'post_create',
         post_id: post.id,
-        author_id: user.id,
-        author_name: authorName,
         url: `/post/${post.id}`,
       },
-      is_read: false,
-    }))
-
-    if (notifications.length > 0) {
-      await serviceSupabase.from('notifications').insert(notifications)
-    }
+    })
   } catch (error) {
-    // Notifications are best-effort
     console.error('Post create notification failed:', error)
   }
 }

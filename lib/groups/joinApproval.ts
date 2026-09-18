@@ -13,7 +13,7 @@ import {
   sendGroupRequestApprovedEmail,
   sendGroupRequestRejectedEmail,
 } from '@/shared/services/emailService'
-import { lookupUserContact } from '@/lib/emails/recipients'
+import { lookupNotificationEmailRecipient } from '@/lib/emails/recipients'
 
 export async function syncGroupMemberCount(
   serviceClient: SupabaseClient,
@@ -180,7 +180,7 @@ export async function notifyAdminsOfJoinRequest(params: {
   await Promise.all(
     managerIds.map(async (userId) => {
       try {
-        const recipient = await lookupUserContact(params.serviceClient, userId)
+        const recipient = await lookupNotificationEmailRecipient(params.serviceClient, userId, 'group_join_request')
         if (!recipient) return
         await sendGroupJoinRequestEmail(recipient.email, {
           recipientName: recipient.name,
@@ -238,7 +238,7 @@ export async function notifyJoinRequestDecision(params: {
 
   try {
     const serviceClient = createServiceClient()
-    const recipient = await lookupUserContact(serviceClient, params.requesterId)
+    const recipient = await lookupNotificationEmailRecipient(serviceClient, params.requesterId, type)
     if (recipient) {
       const payload = {
         recipientName: recipient.name,

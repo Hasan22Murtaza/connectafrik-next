@@ -32,6 +32,10 @@ export async function createNotification(input: {
 }): Promise<string | null> {
   const serviceSupabase = createServiceClient()
   const type = persistableType(input.type)
+  const { userAllowsInAppNotification } = await import('@/lib/notifications/prefs')
+  if (!(await userAllowsInAppNotification(input.user_id, type, serviceSupabase))) {
+    return null
+  }
   const data: Record<string, unknown> = {
     ...(input.data || {}),
     type: input.data?.type || type,
