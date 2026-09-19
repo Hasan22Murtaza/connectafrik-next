@@ -75,7 +75,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({
   const authorName =
     post?.author?.full_name?.trim() ||
     post?.author?.username?.trim() ||
-    "ConnectAfrik";
+    "CribsTalk";
   const authorAvatar = post?.author?.avatar_url || null;
   const snippet = (post?.content || "").replace(/\s+/g, " ").trim();
 
@@ -115,7 +115,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({
           <Newspaper className="h-5 w-5" />
         </span>
         <span className="min-w-0">
-          <span className="block text-sm font-semibold text-content">ConnectAfrik post</span>
+          <span className="block text-sm font-semibold text-content">CribsTalk post</span>
           <span className="block text-[11px] text-content-tertiary">Tap to open</span>
         </span>
       </button>
@@ -190,10 +190,10 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({
             {snippet}
           </p>
         ) : (
-          <p className="text-[12px] text-content-tertiary">View this post on ConnectAfrik</p>
+          <p className="text-[12px] text-content-tertiary">View this post on CribsTalk</p>
         )}
         <p className="mt-1.5 text-[11px] font-medium text-[#027eb5] dark:text-sky-400">
-          connectafrik.com
+          cribstalk.com
         </p>
       </div>
     </button>

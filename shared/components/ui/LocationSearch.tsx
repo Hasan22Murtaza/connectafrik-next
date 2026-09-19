@@ -15,6 +15,7 @@ export type LocationSearchProps = {
   disabled?: boolean
   className?: string
   fieldClassName?: string
+  labelClassName?: string
 }
 
 const defaultFieldClass =
@@ -32,6 +33,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
   disabled = false,
   className = '',
   fieldClassName = defaultFieldClass,
+  labelClassName = 'flex items-center text-xs text-content-secondary mb-0.5',
 }) => {
   const idBase = useId()
   const sessionTokenRef = useRef<string>(
@@ -127,13 +129,14 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
   return (
     <div ref={wrapRef} className={`space-y-1 ${className}`}>
       {label ? (
-        <label className="flex items-center text-xs text-content-secondary mb-0.5" htmlFor={`${idBase}-search`}>
+        <label className={labelClassName} htmlFor={`${idBase}-search`}>
           {label}
           {required ? <span className="text-red-500 ml-0.5">*</span> : null}
         </label>
       ) : null}
 
       <div className="relative">
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" aria-hidden />
         <input
           id={`${idBase}-search`}
           type="search"
@@ -143,7 +146,7 @@ export const LocationSearch: React.FC<LocationSearchProps> = ({
           onChange={(e) => onInputChange(e.target.value)}
           onFocus={() => setOpen(true)}
           placeholder="Search for an address or place…"
-          className={`${fieldClassName} pl-9`}
+          className={`${fieldClassName} !pl-10`}
           required={required}
         />
         {loading ? (

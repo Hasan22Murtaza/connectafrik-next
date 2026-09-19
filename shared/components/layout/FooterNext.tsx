@@ -49,12 +49,12 @@ const Footer: React.FC = () => {
           <div className="space-y-4">
             <img
               src="/assets/images/logo_2.png"
-              alt="ConnectAfrik"
+              alt="CribsTalk"
               className="w-32"
             />
             <p className="max-w-xs text-sm leading-relaxed text-content-secondary">
-              Connecting the African continent and diaspora through meaningful
-              conversations about politics, culture, and community building.
+              Connecting people worldwide through conversation, culture, and
+              community — a global social home for everyone, everywhere.
             </p>
             <div className="flex items-center gap-3 pt-1">
               {socials.map(({ icon: Icon, href, label }) => (
@@ -121,7 +121,7 @@ const Footer: React.FC = () => {
                 className="flex items-center gap-2.5 text-content-secondary transition-colors duration-300 hover:text-orange-500"
               >
                 <Mail className="h-4 w-4 flex-none" />
-                info@connectafrik.com
+                info@cribstalk.com
               </a>
               <a
                 href="tel:+233534787731"
@@ -139,7 +139,7 @@ const Footer: React.FC = () => {
               </a>
               <div className="flex items-start gap-2.5 text-content-secondary">
                 <Globe className="mt-0.5 h-4 w-4 flex-none" />
-                <span>Serving Africa &amp; Global Diaspora</span>
+                <span>Connecting people worldwide</span>
               </div>
             </div>
           </div>
@@ -148,9 +148,9 @@ const Footer: React.FC = () => {
         {/* Bottom bar */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-gray-200 pb-16 pt-6 sm:pb-6 md:flex-row dark:border-border">
           <div className="flex flex-wrap items-center justify-center gap-1.5 text-sm text-content-secondary">
-            <span>© {currentYear} ConnectAfrik. Made with</span>
+            <span>© {currentYear} CribsTalk. Made with</span>
             <Heart className="h-4 w-4 fill-red-500 text-red-500" />
-            <span>for the African community worldwide.</span>
+            <span>for communities worldwide.</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-content-secondary">
             <Link

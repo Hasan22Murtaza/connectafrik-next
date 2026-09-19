@@ -345,6 +345,25 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { allowsInAppNotification, allowsPushNotification, loadNotificationSettings } =
+      await import('@/lib/notifications/prefs')
+    const recipientSettings = await loadNotificationSettings(user_id)
+    if (!allowsInAppNotification(recipientSettings, canonicalType)) {
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: true,
+          reason: 'notification_preference_disabled',
+          sent: 0,
+          failed: 0,
+          total: 0,
+          results: [],
+        },
+        { headers: corsHeaders },
+      )
+    }
+    const allowPush = allowsPushNotification(recipientSettings, canonicalType)
+
     const rawPushData: Record<string, unknown> =
       body.data && typeof body.data === 'object' && !Array.isArray(body.data)
         ? { ...(body.data as Record<string, unknown>) }
@@ -360,7 +379,7 @@ export async function POST(request: NextRequest) {
           .eq('thread_id', lockedThreadId)
           .maybeSingle()
         if (lockRow?.is_locked) {
-          title = 'ConnectAfrik'
+          title = 'CribsTalk'
           notificationBody = 'You have a new message'
           body.title = title
           body.body = notificationBody
@@ -589,6 +608,23 @@ export async function POST(request: NextRequest) {
         console.log('✅ Notification created in database:', notificationId)
       }
     }
+
+    if (!allowPush) {
+      return NextResponse.json(
+        {
+          success: true,
+          skipped: true,
+          reason: 'push_preference_disabled',
+          notification_id: notificationId,
+          sent: 0,
+          failed: 0,
+          total: 0,
+          results: [],
+        },
+        { headers: corsHeaders },
+      )
+    }
+
     // Fetch active FCM tokens from database
     const { data: subscriptions, error: subscriptionError } = await supabase
       .from('fcm_tokens')
@@ -686,17 +722,14 @@ export async function POST(request: NextRequest) {
       data: {
         title: body.title,
         body: notificationBody,
-        // Use sender/caller profile image as icon when available (chat, missed call, etc.)
         icon: notificationIcon,
         badge: body.badge || DEFAULT_NOTIFICATION_LOGO,
-        tag: body.tag || 'connectafrik-notification',
+        tag: body.tag || 'cribstalk-notification',
         requireInteraction: String(body.requireInteraction || false),
         silent: String(body.silent || false),
         vibrate: JSON.stringify(body.vibrate || [200, 100, 200]),
         timestamp: String(Date.now()),
-        // Actions are determined by the service worker based on notification type.
-        // For type ringing: SW shows Answer/Decline. For missed: SW shows no actions.
-        // Pass through any explicit actions, or let the SW decide based on type.
+        
         actions: JSON.stringify(body.actions || []),
       },
       
@@ -726,7 +759,6 @@ export async function POST(request: NextRequest) {
 
         if (isAcceptingDeviceSession(subAuthSessionId)) {
           const skipReason = 'skipped-accepting-device-session'
-          console.log(`Skipping FCM for accepting device session (${skipReason})`)
           return {
             success: true,
             skipped: true,
@@ -738,7 +770,6 @@ export async function POST(request: NextRequest) {
 
         if (subscription.device_type === 'ios' && skipIosFcmForVoipCall) {
           const skipReason = `skipped-ios-call-${callEventStatus || 'event'}-voip`
-          console.log(`Skipping FCM for iOS call push (${skipReason})`)
           return {
             success: true,
             skipped: true,
@@ -793,7 +824,6 @@ export async function POST(request: NextRequest) {
 
         const response = await admin.messaging(firebaseAdmin).send(fcmMessage)
         
-        console.log(`✅ djs FCM notification sent successfully to ${subscription.device_type} device: ${response}`)
         return { 
           success: true, 
           endpoint: subscription.device_id || fcmToken.substring(0, 50), 

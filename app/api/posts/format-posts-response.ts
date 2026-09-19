@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { canComment, canFollow, canViewPost } from '@/shared/utils/visibilityUtils'
+import { getRelationships } from '@/lib/privacy/access'
 
 const LATEST_COMMENTS_PREVIEW = 3
 
@@ -108,33 +110,22 @@ export async function formatPostsForClient(
       : posts
 
   const authorIds = [...new Set(scoped.map((p: any) => p.author_id))]
-  let mutualSet = new Set<string>()
+  const relationships = await getRelationships(userId, authorIds, supabase)
   let followingSet = new Set<string>()
 
   if (userId && authorIds.length > 0) {
-    const mutualChecks = await Promise.all(
-      authorIds.map(async (authorId: string) => {
-        if (authorId === userId) return { authorId, isMutual: true, isFollowing: false }
-        const [aToB, bToA] = await Promise.all([
-          supabase.from('follows').select('id').eq('follower_id', userId).eq('following_id', authorId).maybeSingle(),
-          supabase.from('follows').select('id').eq('follower_id', authorId).eq('following_id', userId).maybeSingle(),
-        ])
-        return { authorId, isMutual: !!aToB.data && !!bToA.data, isFollowing: !!aToB.data }
-      })
-    )
-    mutualChecks.forEach((c: any) => {
-      if (c.isMutual) mutualSet.add(c.authorId)
-      if (c.isFollowing) followingSet.add(c.authorId)
-    })
+    const { data: followingRows } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', userId)
+      .in('following_id', authorIds)
+    followingSet = new Set((followingRows || []).map((r: { following_id: string }) => r.following_id))
   }
 
   const filtered = scoped.filter((p: any) => {
-    const vis = p.author?.post_visibility ?? 'public'
-    if (userId === p.author_id) return true
-    if (vis === 'public' || vis === 'everyone') return true
-    if (vis === 'private') return false
-    if (vis === 'friends') return mutualSet.has(p.author_id)
-    return false
+    const rel = relationships.get(p.author_id)
+    const vis = p.author?.post_visibility ?? rel?.settings.post_visibility ?? 'public'
+    return canViewPost(userId, p.author_id, vis, rel?.isFriend ?? false, rel?.isBlocked ?? false)
   })
 
   let likedPostIds = new Set<string>()
@@ -287,9 +278,10 @@ export async function formatPostsForClient(
   }
 
   return filtered.map((post: any) => {
-    const isMutual = mutualSet.has(post.author_id)
-    const allowComments = post.author?.allow_comments ?? 'everyone'
-    const allowFollows = post.author?.allow_follows ?? 'everyone'
+    const rel = relationships.get(post.author_id)
+    const isMutual = rel?.isFriend ?? false
+    const allowComments = post.author?.allow_comments ?? rel?.settings.allow_comments ?? 'everyone'
+    const allowFollows = post.author?.allow_follows ?? rel?.settings.allow_follows ?? 'everyone'
 
     const realCommentCount =
       Array.isArray(post.comments) && post.comments.length > 0
@@ -332,10 +324,10 @@ export async function formatPostsForClient(
       is_following: userId && userId !== post.author_id ? followingSet.has(post.author_id) : false,
       reactions: reactionGroupsArray,
       reactions_total_count: postReactions?.totalCount ?? 0,
-      canComment: computePermission(userId, post.author_id, allowComments, isMutual),
+      canComment: canComment(userId, post.author_id, allowComments, isMutual, rel?.isBlocked ?? false),
       canFollow:
         userId && userId !== post.author_id
-          ? computePermission(userId, post.author_id, allowFollows, isMutual)
+          ? canFollow(userId, post.author_id, allowFollows, isMutual, rel?.isBlocked ?? false)
           : false,
       repost_of_id: post.repost_of_id ?? null,
       reposted_post: post.repost_of_id

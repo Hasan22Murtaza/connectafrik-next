@@ -255,17 +255,17 @@ const UserProfilePage: React.FC = () => {
     if (!isOwn && !canViewProfile(viewerId, ownerId, pv, isMutual)) return
 
     let cancelled = false
-    ;(async () => {
-      try {
-        const res = await apiClient.get<{ data: { url: string; postId: string }[] }>(
-          `/api/users/${identifierApiPath}/photos`,
-          { limit: 9, postLimit: 80 }
-        )
-        if (!cancelled) setSidebarPhotos(res.data || [])
-      } catch {
-        if (!cancelled) setSidebarPhotos([])
-      }
-    })()
+      ; (async () => {
+        try {
+          const res = await apiClient.get<{ data: { url: string; postId: string }[] }>(
+            `/api/users/${identifierApiPath}/photos`,
+            { limit: 9, postLimit: 80 }
+          )
+          if (!cancelled) setSidebarPhotos(res.data || [])
+        } catch {
+          if (!cancelled) setSidebarPhotos([])
+        }
+      })()
     return () => { cancelled = true }
   }, [profileIdentifier, profile?.id, user?.id, isMutual, identifierApiPath])
 
@@ -280,134 +280,134 @@ const UserProfilePage: React.FC = () => {
     if (activeTab === 'posts') {
       if (postsTabFetched) return
       let cancelled = false
-      ;(async () => {
-        setPostsTabLoading(true)
-        try {
-          const postsRes = await apiClient.get<{ data: PostWithAuthor[] }>(
-            `/api/users/${identifierApiPath}/posts`,
-            { limit: 20 }
-          )
-          if (cancelled) return
-          const rows = postsRes.data || []
-          const withAuthor = rows.map((p) => ({
-            ...p,
-            author: p.author || {
-              id: ownerId,
-              username: profile.username,
-              full_name: profile.full_name,
-              avatar_url: profile.avatar_url,
-              country: profile.country,
-            },
-          }))
-          setPosts(withAuthor)
-          setPostsTabFetched(true)
-        } catch (e) {
-          console.error(e)
-          if (!cancelled) {
-            setPosts([])
+        ; (async () => {
+          setPostsTabLoading(true)
+          try {
+            const postsRes = await apiClient.get<{ data: PostWithAuthor[] }>(
+              `/api/users/${identifierApiPath}/posts`,
+              { limit: 20 }
+            )
+            if (cancelled) return
+            const rows = postsRes.data || []
+            const withAuthor = rows.map((p) => ({
+              ...p,
+              author: p.author || {
+                id: ownerId,
+                username: profile.username,
+                full_name: profile.full_name,
+                avatar_url: profile.avatar_url,
+                country: profile.country,
+              },
+            }))
+            setPosts(withAuthor)
             setPostsTabFetched(true)
+          } catch (e) {
+            console.error(e)
+            if (!cancelled) {
+              setPosts([])
+              setPostsTabFetched(true)
+            }
+          } finally {
+            if (!cancelled) setPostsTabLoading(false)
           }
-        } finally {
-          if (!cancelled) setPostsTabLoading(false)
-        }
-      })()
+        })()
       return () => { cancelled = true }
     }
 
     if (activeTab === 'photos') {
       if (photosTabFetched) return
       let cancelled = false
-      ;(async () => {
-        setPhotosTabLoading(true)
-        try {
-          const res = await apiClient.get<{ data: { url: string; postId: string }[] }>(
-            `/api/users/${identifierApiPath}/photos`,
-            { limit: 500, postLimit: 200 }
-          )
-          if (!cancelled) {
-            setTabPhotos(res.data || [])
-            setPhotosTabFetched(true)
+        ; (async () => {
+          setPhotosTabLoading(true)
+          try {
+            const res = await apiClient.get<{ data: { url: string; postId: string }[] }>(
+              `/api/users/${identifierApiPath}/photos`,
+              { limit: 500, postLimit: 200 }
+            )
+            if (!cancelled) {
+              setTabPhotos(res.data || [])
+              setPhotosTabFetched(true)
+            }
+          } catch (e) {
+            console.error(e)
+            if (!cancelled) {
+              setTabPhotos([])
+              setPhotosTabFetched(true)
+            }
+          } finally {
+            if (!cancelled) setPhotosTabLoading(false)
           }
-        } catch (e) {
-          console.error(e)
-          if (!cancelled) {
-            setTabPhotos([])
-            setPhotosTabFetched(true)
-          }
-        } finally {
-          if (!cancelled) setPhotosTabLoading(false)
-        }
-      })()
+        })()
       return () => { cancelled = true }
     }
 
     if (activeTab === 'reels') {
       if (reelsTabFetched) return
       let cancelled = false
-      ;(async () => {
-        setReelsTabLoading(true)
-        try {
-          const res = await apiClient.get<{
-            data: { url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]
-          }>(`/api/users/${identifierApiPath}/reels`, { postLimit: 200 })
-          if (!cancelled) {
-            setTabReels(res.data || [])
-            setReelsTabFetched(true)
+        ; (async () => {
+          setReelsTabLoading(true)
+          try {
+            const res = await apiClient.get<{
+              data: { url: string; postId: string; content: string; author: PostWithAuthor['author'] }[]
+            }>(`/api/users/${identifierApiPath}/reels`, { postLimit: 200 })
+            if (!cancelled) {
+              setTabReels(res.data || [])
+              setReelsTabFetched(true)
+            }
+          } catch (e) {
+            console.error(e)
+            if (!cancelled) {
+              setTabReels([])
+              setReelsTabFetched(true)
+            }
+          } finally {
+            if (!cancelled) setReelsTabLoading(false)
           }
-        } catch (e) {
-          console.error(e)
-          if (!cancelled) {
-            setTabReels([])
-            setReelsTabFetched(true)
-          }
-        } finally {
-          if (!cancelled) setReelsTabLoading(false)
-        }
-      })()
+        })()
       return () => { cancelled = true }
     }
 
     if (activeTab === 'friends') {
       if (friendsTabFetched) return
       let cancelled = false
-      ;(async () => {
-        setFriendsTabLoading(true)
-        try {
-          const res = await apiClient.get<{ data: any[] }>(`/api/users/${identifierApiPath}/friends`)
-          if (!cancelled) {
-            setUserFriends(res.data || [])
-            setFriendsTabFetched(true)
+        ; (async () => {
+          setFriendsTabLoading(true)
+          try {
+            const res = await apiClient.get<{ data: any[] }>(`/api/users/${identifierApiPath}/friends`)
+            if (!cancelled) {
+              setUserFriends(res.data || [])
+              setFriendsTabFetched(true)
+            }
+          } catch (e) {
+            console.error(e)
+            if (!cancelled) {
+              setUserFriends([])
+              setFriendsTabFetched(true)
+            }
+          } finally {
+            if (!cancelled) setFriendsTabLoading(false)
           }
-        } catch (e) {
-          console.error(e)
-          if (!cancelled) {
-            setUserFriends([])
-            setFriendsTabFetched(true)
-          }
-        } finally {
-          if (!cancelled) setFriendsTabLoading(false)
-        }
-      })()
+        })()
       return () => { cancelled = true }
     }
 
     if (activeTab === 'about') {
       if (aboutTabFetched) return
       let cancelled = false
-      ;(async () => {
-        try {
-          const res = await apiClient.get<{ data: UserProfileWithVisibility }>(
-            `/api/users/${identifierApiPath}/about`
-          )
-          if (!cancelled) {
-            setAboutForTab(res.data)
-            setAboutTabFetched(true)
+        ; (async () => {
+          try {
+            const res = await apiClient.get<{ data: UserProfileWithVisibility }>(
+              `/api/users/${identifierApiPath}/about`
+            )
+            if (!cancelled) {
+              setAboutForTab(res.data)
+              setAboutTabFetched(true)
+            }
+          } catch (e) {
+            console.error(e)
+            if (!cancelled) setAboutTabFetched(true)
           }
-        } catch (e) {
-          console.error(e)
-          if (!cancelled) setAboutTabFetched(true)
-        }
-      })()
+        })()
       return () => { cancelled = true }
     }
   }, [activeTab, profileIdentifier, identifierApiPath, profile, user?.id, isMutual, postsTabFetched, photosTabFetched, reelsTabFetched, friendsTabFetched, aboutTabFetched])
@@ -419,6 +419,11 @@ const UserProfilePage: React.FC = () => {
       const profileData = profileRes.data
       if (!profileData) throw new Error('Not found')
       setProfile(profileData)
+
+      if (profileData.profile_restricted) {
+        setLoading(false)
+        return
+      }
 
       const viewerId = user?.id ?? null
       const ownerId = profileData.id
@@ -560,8 +565,8 @@ const UserProfilePage: React.FC = () => {
           res.action === 'added'
             ? p.likes_count + 1
             : res.action === 'removed'
-            ? Math.max(0, p.likes_count - 1)
-            : p.likes_count,
+              ? Math.max(0, p.likes_count - 1)
+              : p.likes_count,
       }))
     } catch {
       updatePost(postId, (p) => ({ ...p, isLiked: wasLiked, likes_count: wasLiked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1) }))
@@ -609,7 +614,7 @@ const UserProfilePage: React.FC = () => {
         <div className="w-20 h-20 rounded-full bg-surface-secondary flex items-center justify-center mx-auto mb-5">
           <Users className="w-10 h-10 text-content-tertiary" />
         </div>
-        <h1 className="text-2xl font-semibold text-content-secondary mb-2">User not found</h1>
+        <h1 className="text-2xl font-semibold text-content mb-2">User not found</h1>
         <p className="text-content-secondary mb-6">The user you&apos;re looking for doesn&apos;t exist or may have been removed.</p>
         <button onClick={() => router.push('/feed')} className="h-10 px-6 bg-[#F97316] text-white text-sm font-semibold rounded-lg hover:bg-[#ea580c] transition">Back to Feed</button>
       </div>
@@ -618,10 +623,15 @@ const UserProfilePage: React.FC = () => {
 
   const isOwnProfile = user && user.id === profile.id
   const viewerId = user?.id ?? null
-  const canView = isOwnProfile || canViewProfile(viewerId, profile.id, profile.profile_visibility || 'public', isMutual)
-  const showFollowBtn = canFollow(viewerId, profile.id, profile.allow_follows || 'everyone', isMutual)
-  const showMessageBtn = canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)
-  const visibleFields = getVisibleProfileFields(profile as VisibleProfileFieldsInput, Boolean(isOwnProfile), Boolean(isMutual))
+  const perms = profile.permissions
+  const canView =
+    Boolean(isOwnProfile) ||
+    (perms ? Boolean(perms.can_view) : !profile.profile_restricted && canViewProfile(viewerId, profile.id, profile.profile_visibility || 'public', isMutual))
+  const showFollowBtn = perms ? Boolean(perms.can_follow) : canFollow(viewerId, profile.id, profile.allow_follows || 'everyone', isMutual)
+  const showMessageBtn = perms ? Boolean(perms.can_message) : canSendMessage(viewerId, profile.id, profile.allow_direct_messages || 'everyone', isMutual)
+  const showCallBtn = perms ? Boolean(perms.can_call) : Boolean(isMutual)
+  const showFriendRequestBtn = friendshipStatus !== 'none' || (perms ? Boolean(perms.can_friend_request) : true)
+  const visibleFields = getVisibleProfileFields(profile as VisibleProfileFieldsInput, Boolean(isOwnProfile), Boolean(isMutual), Boolean(perms?.can_view === false))
   const canCommentOnPost = (authorId: string) => isOwnProfile || canComment(viewerId, authorId, profile.allow_comments ?? 'everyone', isMutual)
 
   if (!canView) return (
@@ -630,7 +640,7 @@ const UserProfilePage: React.FC = () => {
         <div className="w-20 h-20 rounded-full bg-surface-tertiary flex items-center justify-center mx-auto mb-6">
           <span className="text-4xl font-bold text-content-tertiary">{profile.full_name?.charAt(0)?.toUpperCase() ?? '?'}</span>
         </div>
-        <h1 className="text-xl font-semibold text-content-secondary mb-2">This content isn&apos;t available</h1>
+        <h1 className="text-xl font-semibold text-content mb-2">This content isn&apos;t available</h1>
         <p className="text-content-secondary mb-6">This person only shares content with a small group of people, or the link may be broken.</p>
         <button onClick={() => router.push('/feed')} className="px-5 py-2.5 bg-[#F97316] text-white rounded-full font-semibold hover:bg-[#ea580c] transition">Go to Feed</button>
       </div>
@@ -650,149 +660,137 @@ const UserProfilePage: React.FC = () => {
 
   return (
     <div className="min-h-screen  pb-20 sm:pb-8 px-4">
-      
+
       <div className=" mt-4">
         <div className="bg-surface shadow-card rounded-2xl">
-        <div className="px-4 sm:px-6 pt-4 pb-3 sm:py-5">
-          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
-            <div className="flex-shrink-0">
-              <div className="rounded-full p-[3px] bg-gradient-to-tr from-[#F97316] via-[#16a34a] to-[#F97316]">
-                <div className="border-[3px] border-white rounded-full">
-                  <Avatar src={profile.avatar_url} name={profile.full_name} size="lg" />
+          <div className="px-2 sm:px-6 pt-4 pb-3 sm:py-5 ">
+            <div className="flex flex-col items-center sm:flex-row sm:items-start gap-3 sm:gap-5">
+              <div className="flex-shrink-0">
+                <div className="rounded-full border-[3px] border-white">
+                  {profile.avatar_url ? (
+                    <Avatar
+                      src={profile.avatar_url}
+                      name={profile.full_name}
+                      size="lg"
+                    />
+                  ) : (
+                    <div className="flex h-28 w-28 items-center justify-center rounded-full bg-primary-100 text-xl font-semibold text-primary-600 ">
+                      {profile.full_name?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              <div className="flex-1 min-w-0 text-center sm:text-left">
+                <div className="flex flex-wrap items-baseline gap-x-2 justify-center sm:justify-start">
+                  <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-semibold text-content leading-tight">{profile.full_name}</h1>
+                  <div className="flex items-center gap-1">
+                    {profile.is_verified && (
+                      <div className="w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-[9px] font-bold">{'\u2713'}</span>
+                      </div>
+                    )}
+                    <span className="text-content-secondary text-sm sm:text-base">@{profile.username}</span>
+                  </div>
+                </div>
+
+                <p className="mt-0.5 text-[14px] sm:text-[15px] text-content-secondary">
+                  <span className="font-semibold text-content">{fmt(profile.following_count)}</span> tapping in
+                </p>
+
+                {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
+
+                {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
+                  <div className="flex items-center justify-center sm:justify-start mt-1.5 gap-2">
+                    <div className="flex -space-x-1.5">
+                      {mutualFriends.slice(0, 3).map((f) => (
+                        <div key={f.user_id} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-white overflow-hidden">
+                          {f.avatar_url
+                            ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full bg-surface-tertiary flex items-center justify-center"><span className="text-[9px] font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
+                          }
+                        </div>
+                      ))}
+                    </div>
+                    <span className="text-[12px] sm:text-[13px] text-content-secondary">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="flex-1 min-w-0 text-center sm:text-left">
-              <div className="flex flex-wrap items-baseline gap-x-2 justify-center sm:justify-start">
-                <h1 className="text-[22px] sm:text-[28px] lg:text-[32px] font-semibold text-content-secondary leading-tight">{profile.full_name}</h1>
-                <div className="flex items-center gap-1">
-                  {profile.is_verified && (
-                    <div className="w-[18px] h-[18px] bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-[9px] font-bold">{'\u2713'}</span>
-                    </div>
+            <div className="flex items-center gap-1.5 mt-3 sm:hidden">
+              {isOwnProfile ? (
+                <button onClick={() => router.push('/profile')} className=" px-2 py-2 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">Edit Profile</button>
+              ) : (
+                <>
+                  {showMessageBtn && (
+                    <button onClick={handleStartChat} className=" px-2 py-2 inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      Message
+                    </button>
                   )}
-                  <span className="text-content-secondary text-sm sm:text-base">@{profile.username}</span>
-                </div>
-              </div>
+                  {showFollowBtn && (
+                    <button onClick={handleFollow} disabled={followLoading} className={` px-2 py-2 inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  disabled:opacity-50 transition ${isFollowing ? 'bg-[#e4e6eb] text-content active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
+                      {followLoading ? <Spinner className="w-3.5 h-3.5" /> : isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                      {isFollowing ? 'Tapped In' : 'Tap In'}
+                    </button>
+                  )}
+                  {showFriendRequestBtn && (
+                    <button onClick={handleFriendRequest} disabled={friendLoading} className={`px-2 py-2  inline-flex items-center justify-center gap-1.5  rounded-md text-[13px] font-semibold  disabled:opacity-50 transition ${fb.cls}`}>
+                      {friendLoading ? <Spinner className="w-3.5 h-3.5" /> : <fb.icon className="w-3.5 h-3.5" />}{fb.label}
+                    </button>
+                  )}
 
-              <p className="mt-0.5 text-[14px] sm:text-[15px] text-content-secondary">
-                <span className="font-semibold text-content">{fmt(profile.following_count)}</span> tapping in
-              </p>
-
-              {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
-
-              {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
-                <div className="flex items-center justify-center sm:justify-start mt-1.5 gap-2">
-                  <div className="flex -space-x-1.5">
-                    {mutualFriends.slice(0, 3).map((f) => (
-                      <div key={f.user_id} className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 border-white overflow-hidden">
-                        {f.avatar_url
-                          ? <img src={f.avatar_url} alt={f.full_name} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full bg-surface-tertiary flex items-center justify-center"><span className="text-[9px] font-semibold text-content-secondary">{f.full_name.charAt(0).toUpperCase()}</span></div>
-                        }
-                      </div>
-                    ))}
-                  </div>
-                  <span className="text-[12px] sm:text-[13px] text-content-secondary">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
-                </div>
+                </>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 mt-3 sm:hidden">
-            {isOwnProfile ? (
-              <button onClick={() => router.push('/profile')} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">Edit Profile</button>
-            ) : (
-              <>
-                {showMessageBtn && (
-                  <button onClick={handleStartChat} className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap bg-[#e4e6eb] text-content active:bg-[#d8dadf] transition">
-                    <MessageCircle className="w-3.5 h-3.5" />Message
-                  </button>
-                )}
-                {showFollowBtn && (
-                  <button onClick={handleFollow} disabled={followLoading} className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap disabled:opacity-50 transition ${isFollowing ? 'bg-[#e4e6eb] text-content active:bg-[#d8dadf]' : 'bg-[#F97316] text-white active:bg-[#ea580c]'}`}>
-                    {followLoading ? <Spinner className="w-3.5 h-3.5" /> : isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
-                    {isFollowing ? 'Tapped In' : 'Tap In'}
-                  </button>
-                )}
-                <button onClick={handleFriendRequest} disabled={friendLoading} className={`flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-md text-[13px] font-semibold whitespace-nowrap disabled:opacity-50 transition ${fb.cls}`}>
-                  {friendLoading ? <Spinner className="w-3.5 h-3.5" /> : <fb.icon className="w-3.5 h-3.5" />}{fb.label}
+          <hr className="border-border" />
+
+          <div className="flex items-center justify-between px-1 sm:px-4">
+            <div className="flex items-center overflow-x-auto scrollbar-hide flex-1">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3 sm:px-4 py-3 text-[13px] sm:text-[15px] font-semibold border-b-[3px] transition-colors whitespace-nowrap ${activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-content-secondary border-transparent hover:text-content rounded-t-md'
+                    }`}
+                >
+                  {tab.label}
                 </button>
-                {showMessageBtn && (
-                  <div className="relative flex-shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-content-secondary active:bg-[#d8dadf] transition" aria-label="More">
-                      <MoreHorizontal className="w-5 h-5" />
+              ))}
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 flex-shrink-0 py-1.5">
+              {isOwnProfile ? (
+                <button onClick={() => router.push('/profile')} className={btnGray}>Edit Profile</button>
+              ) : (
+                <>
+                  {showMessageBtn && <button onClick={handleStartChat} className={btnGray}><MessageCircle className="w-4 h-4" />Message</button>}
+                  {showFollowBtn && (
+                    <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
+                      {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                      {isFollowing ? 'Tapped In' : 'Tap In'}
                     </button>
-                    {showMenu && (
-                      <div className="absolute right-0 top-full mt-2 w-48 bg-surface rounded-lg shadow-xl border border-border py-1 z-50">
-                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
-                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        <hr className="border-border" />
-
-        <div className="flex items-center justify-between px-2 sm:px-4">
-          <div className="flex items-center overflow-x-auto scrollbar-hide flex-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-3 sm:px-4 py-3 text-[13px] sm:text-[15px] font-semibold border-b-[3px] transition-colors whitespace-nowrap ${
-                  activeTab === tab.id ? 'text-[#F97316] border-[#F97316]' : 'text-content-secondary border-transparent hover:bg-surface-hover rounded-t-md'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0 py-1.5">
-            {isOwnProfile ? (
-              <button onClick={() => router.push('/profile')} className={btnGray}>Edit Profile</button>
-            ) : (
-              <>
-                {showMessageBtn && <button onClick={handleStartChat} className={btnGray}><MessageCircle className="w-4 h-4" />Message</button>}
-                {showFollowBtn && (
-                  <button onClick={handleFollow} disabled={followLoading} className={`${btnBase} disabled:opacity-50 ${isFollowing ? 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' : 'bg-[#F97316] text-white hover:bg-[#ea580c]'}`}>
-                    {followLoading ? <Spinner /> : isFollowing ? <UserCheck className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                    {isFollowing ? 'Tapped In' : 'Tap In'}
-                  </button>
-                )}
-                <button onClick={handleFriendRequest} disabled={friendLoading} className={`${btnBase} disabled:opacity-50 ${fb.cls}`}>
-                  {friendLoading ? <Spinner /> : <fb.icon className="w-4 h-4" />}{fb.label}
-                </button>
-                {showMessageBtn && (
-                  <div className="relative flex-shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu) }} className="flex items-center justify-center w-9 h-9 rounded-md bg-[#e4e6eb] text-content-secondary hover:bg-[#d8dadf] transition" aria-label="More">
-                      <MoreHorizontal className="w-5 h-5" />
+                  )}
+                  {showFriendRequestBtn && (
+                    <button onClick={handleFriendRequest} disabled={friendLoading} className={`${btnBase} disabled:opacity-50 ${fb.cls}`}>
+                      {friendLoading ? <Spinner /> : <fb.icon className="w-4 h-4" />}{fb.label}
                     </button>
-                    {showMenu && (
-                      <div className="absolute right-0 top-full mt-2 w-48 bg-surface rounded-lg shadow-xl border border-border py-1 z-50">
-                        <button onClick={() => { handleCall(false); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Phone className="w-4 h-4 text-content-secondary" />Call</button>
-                        <button onClick={() => { handleCall(true); setShowMenu(false) }} className="w-full px-4 py-2.5 text-left text-content hover:bg-surface-hover flex items-center gap-3 text-sm font-medium"><Video className="w-4 h-4 text-content-secondary" />Video Call</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+                  )}
+
+                </>
+              )}
+            </div>
           </div>
-        </div>
         </div>
 
         <div className="mt-3 sm:mt-4 w-full flex flex-col lg:flex-row gap-0 sm:gap-4">
 
           <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
             <div className="bg-surface sm:rounded-2xl shadow-card p-4">
-              <h2 className="text-base sm:text-lg font-semibold text-content-secondary mb-3">Personal details</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
               {profile.bio && <p className="text-sm text-content text-center leading-relaxed mb-3 pb-3 border-b border-border">{profile.bio}</p>}
               <div className="space-y-2.5">
                 {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
@@ -804,14 +802,13 @@ const UserProfilePage: React.FC = () => {
                 <DetailRow icon={Calendar}><span suppressHydrationWarning>Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}</span></DetailRow>
                 <DetailRow icon={Users}><span className="font-semibold">{profile.posts_count}</span> posts</DetailRow>
               </div>
-              <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-content-secondary bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
+              <button onClick={() => setActiveTab('about')} className="w-full mt-3 py-2 text-sm font-semibold text-content bg-[#e4e6eb] hover:bg-[#d8dadf] rounded-md transition">See more details</button>
             </div>
 
             {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
               <div className="bg-surface sm:rounded-2xl shadow-card p-4">
-                <h2 className="text-base sm:text-lg font-semibold text-content-secondary">Friends</h2>
-                <p className="text-[13px] text-content-secondary mb-3">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</p>
-                <div className="grid grid-cols-3 gap-2">
+                <h2 className="text-base sm:text-lg font-semibold text-content">Friends</h2>
+                <div className="grid grid-cols-3 gap-2 pt-2">
                   {mutualFriends.slice(0, 6).map((f) => (
                     <button key={f.user_id} onClick={() => router.push(`/user/${f.user_id}`)} className="text-left group focus:outline-none">
                       <div className="aspect-square rounded-lg overflow-hidden bg-surface-secondary">
@@ -831,7 +828,7 @@ const UserProfilePage: React.FC = () => {
             {sidebarPhotos.length > 0 && (
               <div className="bg-surface sm:rounded-2xl shadow-card p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base sm:text-lg font-semibold text-content-secondary">Photos</h2>
+                  <h2 className="text-base sm:text-lg font-semibold text-content">Photos</h2>
                   <button onClick={() => setActiveTab('photos')} className="text-sm text-[#F97316] hover:underline font-medium">See all</button>
                 </div>
                 <div className="grid grid-cols-3 gap-1 rounded-lg overflow-hidden">

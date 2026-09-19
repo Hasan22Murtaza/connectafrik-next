@@ -196,7 +196,7 @@ const ConfirmDeliveryModal: React.FC<ConfirmDeliveryModalProps> = ({
                 Payment is being processed and will be released to the seller.
               </p>
               <p className="text-sm text-content-secondary">
-                Thank you for shopping on ConnectAfrik!
+                Thank you for shopping on CribsTalk!
               </p>
             </div>
           )}

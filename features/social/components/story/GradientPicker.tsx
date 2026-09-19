@@ -8,7 +8,7 @@ export interface GradientOption {
 }
 
 export const STORY_GRADIENTS: GradientOption[] = [
-  { id: 'primary-orange', name: 'ConnectAfrik', colors: ['#f97316', '#ea580c'] },
+  { id: 'primary-orange', name: 'CribsTalk', colors: ['#f97316', '#ea580c'] },
   { id: 'blue-purple', name: 'Ocean', colors: ['#2563eb', '#9333ea'] },
   { id: 'pink-orange', name: 'Sunset', colors: ['#ec4899', '#f97316'] },
   { id: 'green-teal', name: 'Forest', colors: ['#22c55e', '#14b8a6'] },

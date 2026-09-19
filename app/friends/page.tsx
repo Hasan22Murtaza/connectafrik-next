@@ -143,7 +143,7 @@ function SentRequestCard({
       </Link>
       <div className="p-3">
         <Link href={`/user/${userId}`} className="block cursor-pointer">
-          <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
             {profile?.full_name || "Unknown User"}
           </h3>
         </Link>
@@ -745,7 +745,7 @@ const FriendsPageContent: React.FC = () => {
                           {/* Content */}
                           <div className="p-3">
                             <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                              <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {request.requester?.full_name || "Unknown User"}
                               </h3>
                             </Link>
@@ -844,7 +844,7 @@ const FriendsPageContent: React.FC = () => {
                           {/* Content */}
                           <div className="p-4">
                             <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                              <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                              <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
                                 {suggestion.full_name || "Unknown User"}
                               </h3>
                             </Link>
@@ -965,14 +965,14 @@ const FriendsPageContent: React.FC = () => {
                       {/* Content */}
                       <div className="p-3">
                         <Link href={`/user/${request.requester_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
                             {request.requester?.full_name || "Unknown User"}
                           </h3>
                         </Link>
 
                         {/* Mutual Friends */}
                         {request.mutualFriendsCount !== undefined && request.mutualFriendsCount > 0 && (
-                          <div className="flex items-center space-x-1.5 text-xs text-content-secondary mb-1">
+                          <div className="flex items-center space-x-1.5 mb-2 text-xs text-content-secondary ">
                          
                             <span>{request.mutualFriendsCount} mutual {request.mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                           </div>
@@ -1013,7 +1013,7 @@ const FriendsPageContent: React.FC = () => {
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
                 <h2 className="text-2xl font-semibold text-content">All Friends</h2>
                 <div className="relative max-w-full w-sm ">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
                   <input
                     type="text"
                     placeholder="Search friends..."
@@ -1139,7 +1139,7 @@ const FriendsPageContent: React.FC = () => {
                       {/* Content */}
                       <div className="p-4">
                         <Link href={`/user/${suggestion.user_id || ''}`} className="block cursor-pointer">
-                          <h3 className="font-semibold text-content text-sm mb-2 line-clamp-1 hover:text-primary-600 transition-colors">
+                          <h3 className="font-semibold text-content text-sm mb-1 line-clamp-1 hover:text-primary-600 transition-colors">
                             {suggestion.full_name || "Unknown User"}
                           </h3>
                         </Link>

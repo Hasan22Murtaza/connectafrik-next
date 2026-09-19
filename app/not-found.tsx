@@ -12,7 +12,7 @@ export default function NotFound() {
           This page may have been removed, or the link may be incorrect.
         </p>
         <Link href="/" className="btn-primary mt-6 inline-flex">
-          Back to ConnectAfrik
+          Back to CribsTalk
         </Link>
       </div>
     </div>

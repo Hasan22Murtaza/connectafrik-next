@@ -148,7 +148,7 @@ const Signup: React.FC = () => {
   return (
     <AuthPageShell
       title="Create a new account"
-      subtitle="Connect with the African community worldwide"
+      subtitle="Connect with people and communities worldwide"
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
@@ -261,7 +261,7 @@ const Signup: React.FC = () => {
 
         {/* <div className="space-y-2 pt-2">
           <p className="text-xs text-content-secondary">
-            People who use our service may have uploaded your contact information to ConnectAfrik.{' '}
+            People who use our service may have uploaded your contact information to CribsTalk.{' '}
             <Link href="/support" className="text-primary-600 hover:underline">
               Learn more.
             </Link>

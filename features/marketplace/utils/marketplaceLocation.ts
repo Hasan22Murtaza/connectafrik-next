@@ -7,7 +7,7 @@ export const MARKETPLACE_LOCATION_STORAGE_KEY = 'marketplace-location-filter'
 
 export const DEFAULT_MARKETPLACE_RADIUS_KM = 500
 
-/** Fallback map center (West Africa) when no coordinates are available yet. */
+/** Fallback map center when no coordinates are available yet. */
 export const DEFAULT_MAP_CENTER = { lat: 7.9465, lng: -1.0232 }
 
 export const MARKETPLACE_RADIUS_OPTIONS = [

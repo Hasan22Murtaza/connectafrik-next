@@ -86,11 +86,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [setTheme])
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { error }
+    try {
+      const response = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const body = (await response.json().catch(() => null)) as {
+        success?: boolean
+        message?: string
+        data?: { session?: { access_token: string; refresh_token: string } }
+      } | null
+
+      if (!response.ok || body?.success === false) {
+        return {
+          error: {
+            message: body?.message || 'Failed to sign in',
+          } as AuthError,
+        }
+      }
+
+      const sessionTokens = body?.data?.session
+      if (sessionTokens?.access_token && sessionTokens?.refresh_token) {
+        const { error } = await supabase.auth.setSession({
+          access_token: sessionTokens.access_token,
+          refresh_token: sessionTokens.refresh_token,
+        })
+        return { error }
+      }
+
+      return {
+        error: { message: 'Sign in succeeded, but no session was returned.' } as AuthError,
+      }
+    } catch (error) {
+      return {
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to sign in',
+        } as AuthError,
+      }
+    }
   }
 
   const signUp = async (email: string, password: string) => {

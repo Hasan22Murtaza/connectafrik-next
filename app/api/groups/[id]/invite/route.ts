@@ -256,7 +256,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       inviterProfile?.username?.trim() ||
       user.user_metadata?.full_name ||
       user.email?.split('@')[0] ||
-      'A ConnectAfrik member'
+      'A CribsTalk member'
 
     const groupImageUrl = group.avatar_url || group.banner_url || null
     let emails_sent = 0
@@ -271,6 +271,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
           inviterName,
           inviterAvatar: inviterProfile?.avatar_url,
         })
+
+        const { userAllowsNotificationEmail } = await import('@/lib/notifications/prefs')
+        if (!(await userAllowsNotificationEmail(targetUserId, 'group_invite', serviceClient))) return false
 
         const { data: authData, error: authErr } = await serviceClient.auth.admin.getUserById(targetUserId)
         const targetEmail = authData?.user?.email

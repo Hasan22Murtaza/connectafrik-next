@@ -97,7 +97,7 @@ const benefits = [
 const testimonials = [
   {
     quote:
-      "ConnectAfrik finally feels like home online. I've met incredible people from all over the world and found communities that truly get me.",
+      "CribsTalk finally feels like home online. I've met incredible people from all over the world and found communities that truly get me.",
     name: "Sofia Reyes",
     role: "Creator, Mexico City",
     initials: "SR",
@@ -136,12 +136,12 @@ const testimonials = [
 
 const faqs = [
   {
-    q: "Is ConnectAfrik free to use?",
+    q: "Is CribsTalk free to use?",
     a: "Yes. Creating an account, posting, messaging and joining communities are completely free — no matter where you are in the world. Optional premium features may be added later, but the core experience will always be free.",
   },
   {
-    q: "Who is ConnectAfrik for?",
-    a: "Everyone. Whether you're a creator in Tokyo, a student in Nairobi, an entrepreneur in Berlin or simply someone who wants meaningful connection — ConnectAfrik is the social home for the world.",
+    q: "Who is CribsTalk for?",
+    a: "Everyone. Whether you're a creator in Tokyo, a student in Nairobi, an entrepreneur in Berlin or simply someone who wants meaningful connection — CribsTalk is the social home for the world.",
   },
   {
     q: "How is my privacy protected?",
@@ -152,12 +152,12 @@ const faqs = [
     a: "Absolutely. TradeHub lets you list products, reach customers around the world and accept secure payments — all in one place.",
   },
   {
-    q: "What can I do on ConnectAfrik?",
+    q: "What can I do on CribsTalk?",
     a: "Share posts and videos, message friends across borders, join global communities, follow discussions on topics you care about, discover memories and reels, and buy or sell on TradeHub.",
   },
   {
-    q: "Is ConnectAfrik available in my country?",
-    a: "Yes. ConnectAfrik is built for a global audience. You can sign up, connect and participate from virtually anywhere — we're here to bring people together for a better world.",
+    q: "Is CribsTalk available in my country?",
+    a: "Yes. CribsTalk is built for a global audience. You can sign up, connect and participate from virtually anywhere — we're here to bring people together for a better world.",
   },
 ];
 
@@ -362,7 +362,7 @@ const Home: React.FC = () => {
                   <div className="mt-3 aspect-[16/10] overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 via-amber-400 to-rose-400">
                     <img
                       src="/assets/images/hero2.png"
-                      alt="A scenic view shared by the ConnectAfrik community worldwide"
+                      alt="A scenic view shared by the CribsTalk community worldwide"
                       className="h-full w-full object-cover"
                     />
                   </div>
@@ -613,7 +613,7 @@ const Home: React.FC = () => {
             <div className="relative grid items-center gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-2">
               <Reveal>
                 <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-white backdrop-blur">
-                  <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Why ConnectAfrik
+                  <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Why CribsTalk
                 </span>
                 <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">
                   Connecting people for a better world

@@ -243,7 +243,7 @@ export async function testNotification(): Promise<NotificationResponse> {
     return sendNotification({
       user_id: user.id,
       title: '🧪 Test Notification',
-      body: 'This is a test notification from ConnectAfrik. If you see this, notifications are working!',
+      body: 'This is a test notification from CribsTalk. If you see this, notifications are working!',
       notification_type: 'system',
       tag: 'test-notification',
       data: {

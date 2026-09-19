@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { filterSearchableUserIds, getRelationships } from '@/lib/privacy/access'
+import { canViewPost } from '@/shared/utils/visibilityUtils'
 
 const DEFAULT_LIMIT = 5
 const MAX_LIMIT = 20
@@ -33,7 +35,7 @@ async function runQuery<T>(
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase } = await getAuthenticatedUser(request)
+    const { user, supabase } = await getAuthenticatedUser(request)
     const { searchParams } = new URL(request.url)
     const q = (searchParams.get('q') || '').trim()
     const limit = parseLimit(searchParams.get('limit'))
@@ -84,9 +86,29 @@ export async function GET(request: NextRequest) {
       ),
     ])
 
+    const visibleUserIds = await filterSearchableUserIds(
+      user.id,
+      users.map((u: { id: string }) => u.id),
+      supabase
+    )
+    const visibleUsers = users.filter((u: { id: string }) => visibleUserIds.has(u.id))
+
+    const postAuthorIds = [...new Set(posts.map((p: { author_id: string }) => p.author_id))]
+    const postRels = await getRelationships(user.id, postAuthorIds, supabase)
+    const visiblePosts = posts.filter((p: { author_id: string }) => {
+      const rel = postRels.get(p.author_id)
+      return canViewPost(
+        user.id,
+        p.author_id,
+        rel?.settings.post_visibility ?? 'public',
+        rel?.isFriend ?? false,
+        rel?.isBlocked ?? false
+      )
+    })
+
     return jsonResponse({
-      users,
-      posts,
+      users: visibleUsers,
+      posts: visiblePosts,
       groups,
       products,
     })

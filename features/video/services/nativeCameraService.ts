@@ -1,5 +1,5 @@
 /**
- * Native Camera Service for ConnectAfrik Reels
+ * Native Camera Service for CribsTalk Reels
  *
  * This service provides native camera access for iOS and Android,
  * solving the web camera zoom issue where selfies are too close.

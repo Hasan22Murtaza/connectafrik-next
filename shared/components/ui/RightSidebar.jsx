@@ -6,7 +6,7 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
 
   return (
     <aside className="w-65 xl:w-80 2xl:w-[24rem] shrink-0 h-full overflow-y-auto py-6 scrollbar-hover">
-      {/* DataAfrik Promotion */}
+      {/* CribsTalk promo */}
       <div className="mb-8">
         <a
           href="https://www.dataafrik.com"
@@ -16,16 +16,16 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
         >
           <img
             src="/assets/images/logo.png"
-            alt="DataAfrik logo"
+            alt="CribsTalk logo"
             className="h-10 w-10 rounded-full object-cover shadow-sm"
           />
 
           <div>
             <p className="font-semibold text-primary-600 group-hover:text-primary-700 transition-colors">
-              Connect with DataAfrik
+              Discover CribsTalk
             </p>
             <p className="text-xs font-medium text-primary-700 dark:text-primary-400">
-              www.dataafrik.com
+              A global home for community
             </p>
           </div>
         </a>

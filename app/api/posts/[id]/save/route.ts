@@ -19,6 +19,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Post not found', 404)
     }
 
+    const { loadPostAuthorAccess } = await import('@/lib/privacy/access')
+    const postAccess = await loadPostAuthorAccess(user.id, postId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
+
     if (postRow.author_id === user.id) {
       return errorResponse('You cannot save your own post', 400)
     }

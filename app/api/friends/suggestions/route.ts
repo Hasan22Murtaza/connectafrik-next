@@ -35,6 +35,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const { filterSearchableUserIds } = await import('@/lib/privacy/access')
+    const ids = suggestions
+      .map((s: { id?: string; user_id?: string }) => s.id || s.user_id)
+      .filter((id: unknown): id is string => typeof id === 'string')
+    const visible = await filterSearchableUserIds(user.id, ids, supabase)
+    suggestions = suggestions.filter((s: { id?: string; user_id?: string }) => {
+      const id = s.id || s.user_id
+      return typeof id === 'string' && visible.has(id)
+    })
+
     const paged = suggestions.slice(from, toExclusive)
     const hasMore = suggestions.length > toExclusive
     return jsonResponse({ data: paged, page, pageSize: limit, hasMore })

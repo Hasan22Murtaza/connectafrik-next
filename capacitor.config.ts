@@ -19,7 +19,7 @@ type CapacitorConfig = {
 }
 
 /**
- * Capacitor configuration for the ConnectAfrik mobile apps (iOS + Android).
+ * Capacitor configuration for the CribsTalk mobile apps (iOS + Android).
  *
  * The native shell loads the live Next.js app. Universal Links (iOS) and App
  * Links (Android) are configured natively (Associated Domains entitlement /
@@ -36,24 +36,24 @@ type CapacitorConfig = {
  * docs/deep-linking/android/build.gradle.snippet.gradle.
  */
 const config: CapacitorConfig = {
-  appId: process.env.NEXT_PUBLIC_IOS_BUNDLE_ID || 'com.senyoapp.connectAfrick',
-  appName: 'ConnectAfrik',
+  appId: process.env.NEXT_PUBLIC_IOS_BUNDLE_ID || 'com.senyoapp.cribstalk',
+  appName: 'CribsTalk',
   // Used only for bundled assets (icons/splash). The app itself is served from
   // `server.url` below so SSR + middleware keep working.
   webDir: 'public',
   server: {
     // Point the WebView at the deployed site for this environment. Override per
     // build (dev/staging/prod) with CAP_SERVER_URL.
-    url: process.env.CAP_SERVER_URL || 'https://connectafrik.com',
+    url: process.env.CAP_SERVER_URL || 'https://cribstalk.com',
     cleartext: false,
     // https origin keeps Secure cookies + Universal Links working.
     androidScheme: 'https',
     iosScheme: 'https',
     // Allow our own host to be navigated within the WebView.
-    allowNavigation: ['connectafrik.com', '*.connectafrik.com'],
+    allowNavigation: ['cribstalk.com', '*.cribstalk.com'],
   },
   ios: {
-    scheme: 'ConnectAfrik',
+    scheme: 'CribsTalk',
   },
 }
 

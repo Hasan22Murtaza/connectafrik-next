@@ -102,6 +102,7 @@ export async function PATCH(request: NextRequest) {
     const profilePart: Record<string, unknown> = {}
 
     for (const [key, val] of Object.entries(raw)) {
+      if (key === 'two_factor_enabled') continue
       if (PRESENCE_KEYS.has(key)) {
         ;(presencePart as Record<string, unknown>)[key] = val
       } else {

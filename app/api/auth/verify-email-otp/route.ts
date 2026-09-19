@@ -11,6 +11,7 @@ import {
   confirmUserEmail,
   signInAndBuildResponse,
 } from '@/lib/auth/completeRegistration'
+import { maybeSendLoginAlert } from '@/lib/auth/loginAlerts'
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,10 +70,28 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Login verification for unverified accounts
     const user = await findAuthUserByEmail(serviceClient, email)
     if (!user) {
       return errorResponse('No account found with this email address.', 404)
+    }
+
+    if (purpose === 'two_factor') {
+      if (!password) {
+        return errorResponse('Password is required to complete two-factor sign-in.', 400)
+      }
+
+      const signInResult = await signInAndBuildResponse(serviceClient, email, password)
+      maybeSendLoginAlert({
+        serviceClient,
+        userId: user.id,
+        email,
+        request,
+      }).catch(() => {})
+
+      return jsonResponse({
+        verified: true,
+        ...signInResult,
+      })
     }
 
     await confirmUserEmail(serviceClient, user.id)
@@ -92,6 +111,13 @@ export async function POST(request: NextRequest) {
     }
 
     const signInResult = await signInAndBuildResponse(serviceClient, email, password)
+    maybeSendLoginAlert({
+      serviceClient,
+      userId: user.id,
+      email,
+      request,
+    }).catch(() => {})
+
     return jsonResponse({
       verified: true,
       emailVerified: true,

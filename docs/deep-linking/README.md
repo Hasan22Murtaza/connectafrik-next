@@ -1,4 +1,4 @@
-# Deep Linking & Sharing — ConnectAfrik
+# Deep Linking & Sharing — CribsTalk
 
 End-to-end deep linking for the Next.js web app and the Capacitor iOS/Android
 apps: account activation, email/OTP verification, password reset, social login
@@ -10,7 +10,7 @@ redirects, and opening specific screens from shared links.
 
 ```
                        ┌──────────────────────────────────────────┐
-                       │  https://connectafrik.com/<path>          │
+                       │  https://cribstalk.com/<path>          │
    Shared link  ─────► │  (canonical Universal / App Link)         │
                        └───────────────┬──────────────────────────┘
                                        │
@@ -29,7 +29,7 @@ redirects, and opening specific screens from shared links.
 ```
 
 **Key principle:** every shareable URL is just a normal HTTPS URL on our own
-domain (`https://connectafrik.com/post/123`). The OS decides whether to open the
+domain (`https://cribstalk.com/post/123`). The OS decides whether to open the
 app. This means links always work — in email, SMS, social media, and browsers —
 with zero third-party dependency (no Firebase Dynamic Links / Branch required).
 
@@ -54,26 +54,26 @@ Set these in `.env` (web) and your CI/hosting for each environment. All are
 optional with sensible defaults baked into `lib/deeplink/config.ts`.
 
 ```bash
-NEXT_PUBLIC_APP_URL=https://connectafrik.com        # canonical web/base URL
+NEXT_PUBLIC_APP_URL=https://cribstalk.com        # canonical web/base URL
 NEXT_PUBLIC_DEEPLINK_ENV=production                  # development|staging|production
-NEXT_PUBLIC_DEEPLINK_SCHEME=connectafrik            # custom scheme fallback
-NEXT_PUBLIC_IOS_BUNDLE_ID=com.senyoapp.connectAfrick
+NEXT_PUBLIC_DEEPLINK_SCHEME=cribstalk            # custom scheme fallback
+NEXT_PUBLIC_IOS_BUNDLE_ID=com.senyoapp.cribsTalk
 APPLE_TEAM_ID=5P2C27ZV83
 NEXT_PUBLIC_IOS_APP_STORE_ID=1234567890             # numeric App Store id
-NEXT_PUBLIC_ANDROID_PACKAGE=com.senyoapp.connectAfrick
+NEXT_PUBLIC_ANDROID_PACKAGE=com.senyoapp.cribsTalk
 ANDROID_SHA256_CERT_FINGERPRINTS=AA:BB:..,CC:DD:..  # upload key + Play signing key
 DEEPLINK_SIGNING_SECRET=<64+ random chars>
-CAP_SERVER_URL=https://connectafrik.com             # native shell target
+CAP_SERVER_URL=https://cribstalk.com             # native shell target
 ```
 
 | Environment | `NEXT_PUBLIC_APP_URL` | iOS domain | Android host |
 |-------------|----------------------|-----------|--------------|
 | development | `http://localhost:3000` | n/a (use scheme) | n/a (use scheme) |
-| staging | `https://staging.connectafrik.com` | `applinks:staging.connectafrik.com` | `staging.connectafrik.com` |
-| production | `https://connectafrik.com` | `applinks:connectafrik.com` | `connectafrik.com` |
+| staging | `https://staging.cribstalk.com` | `applinks:staging.cribstalk.com` | `staging.cribstalk.com` |
+| production | `https://cribstalk.com` | `applinks:cribstalk.com` | `cribstalk.com` |
 
 > Universal/App Links require HTTPS, so on local dev use the custom scheme
-> (`connectafrik://post/123`) or a tunnel (ngrok/cloudflared) with a real
+> (`cribstalk://post/123`) or a tunnel (ngrok/cloudflared) with a real
 > domain + association files.
 
 ---
@@ -84,10 +84,10 @@ Both files are generated dynamically from env so they stay correct per
 environment. They are served at the **exact** required paths via rewrites in
 `next.config.ts`.
 
-- iOS: `https://connectafrik.com/.well-known/apple-app-site-association`
+- iOS: `https://cribstalk.com/.well-known/apple-app-site-association`
   - `Content-Type: application/json`, **no** extension, **no** redirects.
   - Handler: `app/api/well-known/apple-app-site-association/route.ts`
-- Android: `https://connectafrik.com/.well-known/assetlinks.json`
+- Android: `https://cribstalk.com/.well-known/assetlinks.json`
   - `Content-Type: application/json`, **no** redirects.
   - Handler: `app/api/well-known/assetlinks/route.ts`
   - Requires `ANDROID_SHA256_CERT_FINGERPRINTS` (upload **and** Play signing key).
@@ -95,8 +95,8 @@ environment. They are served at the **exact** required paths via rewrites in
 Verify after deploy:
 
 ```bash
-curl -i https://connectafrik.com/.well-known/apple-app-site-association
-curl -i https://connectafrik.com/.well-known/assetlinks.json
+curl -i https://cribstalk.com/.well-known/apple-app-site-association
+curl -i https://cribstalk.com/.well-known/assetlinks.json
 # Google verifier:
 # https://developers.google.com/digital-asset-links/tools/generator
 ```
@@ -120,7 +120,7 @@ npx cap sync
 2. In Xcode → target → Signing & Capabilities → add **Associated Domains** (it
    will pick up the entitlements file).
 3. Merge `docs/deep-linking/ios/Info.plist.snippet.xml` into
-   `ios/App/App/Info.plist` (registers the `connectafrik://` scheme).
+   `ios/App/App/Info.plist` (registers the `cribstalk://` scheme).
 4. Ensure the bundle id matches `NEXT_PUBLIC_IOS_BUNDLE_ID` and Team ID matches
    `APPLE_TEAM_ID` (these feed the AASA `appID`).
 
@@ -130,7 +130,7 @@ npx cap sync
 2. Set `applicationId` (+ `namespace`) in `android/app/build.gradle` to
    `NEXT_PUBLIC_ANDROID_PACKAGE` so it matches `assetlinks.json` — see
    `docs/deep-linking/android/build.gradle.snippet.gradle`.
-   Current value: `com.example.connectafrik` (⚠ placeholder — replace before
+   Current value: `com.example.cribstalk` (⚠ placeholder — replace before
    publishing to Play).
 3. Get your SHA-256 fingerprints and put them in `ANDROID_SHA256_CERT_FINGERPRINTS`:
    ```bash
@@ -180,8 +180,8 @@ In UI code, prefer the isomorphic helpers directly:
 
 ```ts
 import { buildShareLink, buildResolverLink } from '@/lib/deeplink/links'
-buildShareLink('/post/123')      // https://connectafrik.com/post/123
-buildResolverLink('/post/123')   // https://connectafrik.com/open?target=/post/123
+buildShareLink('/post/123')      // https://cribstalk.com/post/123
+buildResolverLink('/post/123')   // https://cribstalk.com/open?target=/post/123
 ```
 
 Sharing (`features/social/services/sharesService.ts`) and `ShareModal` already
@@ -207,16 +207,16 @@ produce Universal Links.
 
 | Purpose | URL |
 |---------|-----|
-| Open a post | `https://connectafrik.com/post/123` |
-| Open a profile | `https://connectafrik.com/user/3f1c2e8a-9b4d-4c7a-8e21-2a6f0b9d1c34` |
-| Open a group | `https://connectafrik.com/groups/42` |
-| Marketplace listing | `https://connectafrik.com/marketplace/987` |
-| Smart "open in app" | `https://connectafrik.com/open?target=/post/123` |
-| Signed/expiring link | `https://connectafrik.com/open?target=/post/123&t=<token>` |
-| Custom scheme fallback | `connectafrik://post/123` |
-| Account activation | `https://connectafrik.com/confirm-signup?...` (from email) |
-| Password reset | `https://connectafrik.com/reset-password?...` (from email) |
-| OAuth return | `https://connectafrik.com/auth/callback?code=...&redirect=/feed` |
+| Open a post | `https://cribstalk.com/post/123` |
+| Open a profile | `https://cribstalk.com/user/3f1c2e8a-9b4d-4c7a-8e21-2a6f0b9d1c34` |
+| Open a group | `https://cribstalk.com/groups/42` |
+| Marketplace listing | `https://cribstalk.com/marketplace/987` |
+| Smart "open in app" | `https://cribstalk.com/open?target=/post/123` |
+| Signed/expiring link | `https://cribstalk.com/open?target=/post/123&t=<token>` |
+| Custom scheme fallback | `cribstalk://post/123` |
+| Account activation | `https://cribstalk.com/confirm-signup?...` (from email) |
+| Password reset | `https://cribstalk.com/reset-password?...` (from email) |
+| OAuth return | `https://cribstalk.com/auth/callback?code=...&redirect=/feed` |
 
 ---
 
@@ -228,17 +228,17 @@ produce Universal Links.
 - [ ] Google statement-list verifier passes for the production host.
 
 **iOS (real device — simulators don't fully support Universal Links)**
-- [ ] Tap `https://connectafrik.com/post/123` in Notes/Mail → app opens to post.
-- [ ] App installed, link from Safari long-press → "Open in ConnectAfrik".
+- [ ] Tap `https://cribstalk.com/post/123` in Notes/Mail → app opens to post.
+- [ ] App installed, link from Safari long-press → "Open in CribsTalk".
 - [ ] App not installed → website renders; `/open` offers App Store.
-- [ ] `connectafrik://post/123` opens the app (custom scheme fallback).
+- [ ] `cribstalk://post/123` opens the app (custom scheme fallback).
 - [ ] Password-reset email link opens the app to `/reset-password`.
 
 **Android**
-- [ ] `adb shell am start -W -a android.intent.action.VIEW -d "https://connectafrik.com/post/123" com.senyoapp.connectAfrick` opens the post.
-- [ ] App Links verification: `adb shell pm get-app-links com.senyoapp.connectAfrick` shows `verified`.
+- [ ] `adb shell am start -W -a android.intent.action.VIEW -d "https://cribstalk.com/post/123" com.senyoapp.cribsTalk` opens the post.
+- [ ] App Links verification: `adb shell pm get-app-links com.senyoapp.cribsTalk` shows `verified`.
 - [ ] App not installed → website renders; `/open` offers Play Store with referrer.
-- [ ] `connectafrik://post/123` custom scheme opens the app.
+- [ ] `cribstalk://post/123` custom scheme opens the app.
 
 **Auth**
 - [ ] Signup activation, password reset, Google login all return to the app when

@@ -151,7 +151,7 @@ const CheckoutForm: React.FC<{
         })
 
         const order = result.data
-        const buyerEmail = user?.user_metadata?.email || user?.email || 'support@connectafrik.com'
+        const buyerEmail = user?.user_metadata?.email || user?.email || 'support@cribstalk.com'
         const buyerName = user?.user_metadata?.full_name || user?.id || 'Customer'
         const sellerName = product.seller?.full_name || product.seller?.id || 'Seller'
 
@@ -282,7 +282,7 @@ const StripeCheckout: React.FC<StripeCheckoutProps> = ({
       product_title: product.title,
       quantity: quantity.toString(),
       buyer_id: user.id,
-      buyer_email: user?.email || 'support@connectafrik.com'
+      buyer_email: user?.email || 'support@cribstalk.com'
     }).then(result => {
       if (cancelled) return
       if (result) {

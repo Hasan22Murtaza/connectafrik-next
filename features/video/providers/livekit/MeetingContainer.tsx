@@ -30,13 +30,16 @@ import { useCallHeartbeat } from '@/shared/hooks/useCallHeartbeat';
 import { useCallSessionSignaling } from '@/features/video/hooks/useCallSessionSignaling';
 import { broadcastCallUiStatus } from '@/features/video/hooks/broadcastCallUiStatus';
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
-import { SPEAKER_VOLUMES } from '@/features/video/core/types';
+import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import CallControls from '@/features/video/ui/CallControls';
 import CallStatusOverlay from '@/features/video/ui/CallStatusOverlay';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
 import AddPeoplePanel from '@/features/video/ui/AddPeoplePanel';
-import MessageInput from '@/features/video/ui/MessageInput';
-import { LiveKitParticipantTileBridge, normalizeLiveKitParticipant } from '@/features/video/providers/livekit/components/ParticipantTileBridge';
+import CallChatPanel from '@/features/video/ui/CallChatPanel';
+import CallReactionOverlay from '@/features/video/ui/CallReactionOverlay';
+import RaisedHandsBanner from '@/features/video/ui/RaisedHandsBanner';
+import { useLiveKitCallEngagement } from '@/features/video/hooks/useCallEngagement';
+import { LiveKitParticipantTileBridge, LiveKitParticipantStatusChrome, LiveKitLocalNetworkChip, normalizeLiveKitParticipant } from '@/features/video/providers/livekit/components/ParticipantTileBridge';
 import { LiveKitScreenShareMedia } from '@/features/video/providers/livekit/components/ScreenShareMedia';
 import type { MeetingContainerProps } from '@/features/video/providers/videosdk/MeetingContainer';
 
@@ -47,7 +50,6 @@ import type { MeetingContainerProps } from '@/features/video/providers/videosdk/
 // server-confirm check below, so this fallback can afford to be far more
 // patient.
 const LAST_PARTICIPANT_AUTO_END_MS = 20000;
-const CONNECTING_MEDIA_TO_CONNECTED_MS = 600;
 const REJOIN_BACKOFF_MS = [1000, 3000, 7000];
 
 const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
@@ -79,6 +81,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     isScreenShareEnabled,
   } = useLocalParticipant();
   const participants = useParticipants();
+  const engagementActiveIds = useMemo(
+    () => participants.map((p) => p.identity).filter(Boolean),
+    [participants],
+  );
+  const engagement = useLiveKitCallEngagement(
+    localParticipantInfo?.identity || currentUserId || '',
+    localParticipantInfo?.name || user?.user_metadata?.full_name || 'You',
+    engagementActiveIds,
+  );
 
   const callSessionDeviceFields = useMemo(() => {
     const id = getSessionIdFromAccessToken(session?.access_token ?? null);
@@ -88,7 +99,9 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const isIncomingRef = useRef(!!isIncoming);
   isIncomingRef.current = !!isIncoming;
 
-  const [callStatus, setCallStatus] = useState<CallStatus>('connecting');
+  const initialCallStatus: CallStatus =
+    isIncoming && room.state === 'connected' ? 'connected' : 'connecting';
+  const [callStatus, setCallStatus] = useState<CallStatus>(initialCallStatus);
   const [callDuration, setCallDuration] = useState(0);
   const [speakerLevel, setSpeakerLevel] = useState<SpeakerLevel>('normal');
   const [effectiveCallType, setEffectiveCallType] = useState<'audio' | 'video'>(callType);
@@ -110,7 +123,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   pipTranslateRef.current = pipTranslate;
 
   const isMountedRef = useRef(true);
-  const callStatusRef = useRef<CallStatus>('connecting');
+  const callStatusRef = useRef<CallStatus>(initialCallStatus);
   const callIdRef = useRef(callIdHint || '');
   const callDurationRef = useRef(0);
   const ringbackRef = useRef<{ stop: () => void } | null>(null);
@@ -176,8 +189,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     (next: CallStatus) => {
       if (callStatusRef.current === next) return;
       if (next === 'connected' && !isIncomingRef.current) {
-        const remoteCount = participants.filter(
-          (p) => p.identity !== localParticipantInfo.identity,
+        const remoteCount = participantsRef.current.filter(
+          (p) => p.identity !== localParticipantRef.current?.identity,
         ).length;
         if (remoteCount < 1) return;
       }
@@ -188,7 +201,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         broadcastCallUiStatus('active', threadId, callIdHint);
       }
     },
-    [localParticipantInfo.identity, participants, threadId, callIdHint],
+    [threadId, callIdHint],
   );
 
   const signaling = useCallSessionSignaling({
@@ -280,13 +293,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         await room.startAudio().catch(() => undefined);
         rejoiningRef.current = false;
         if (isMountedRef.current) {
-          // `signalMeetingJoined` no-ops past the first join (hasSignaledJoinRef),
-          // so RoomEvent.Connected won't restore status on a rejoin -- do it
-          // here. Target connecting_media, not connected directly: the
-          // existing promotion effect re-confirms remote participants are
-          // actually present (avoids a race against `participants` not having
-          // re-populated the instant `connect()` resolves).
-          setCallStatusSafe('connecting_media');
+          const remoteCount = participantsRef.current.filter(
+            (p) => p.identity !== localParticipantRef.current?.identity,
+          ).length;
+          if (remoteCount > 0) {
+            setCallStatusSafe('connected');
+          } else {
+            setCallStatusSafe('connecting_media');
+          }
         }
         return;
       } catch {
@@ -428,14 +442,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       }
     };
     const onReconnected = () => {
-      // Target connecting_media (not the exact prior status) regardless of
-      // what preceded reconnecting: the existing connecting_media -> connected
-      // promotion effect below already re-confirms remote participants are
-      // actually present before calling it connected, avoiding a race against
-      // `participants` not having re-populated yet at the instant this fires.
-      if (callStatusRef.current === 'reconnecting') {
-        setCallStatusSafe('connecting_media');
-      }
+      if (callStatusRef.current !== 'reconnecting') return;
+      const remoteCount = participantsRef.current.filter(
+        (p) => p.identity !== localParticipantRef.current?.identity,
+      ).length;
+      setCallStatusSafe(remoteCount > 0 ? 'connected' : 'connecting_media');
     };
     const onDisconnected = () => {
       // Disconnected means LiveKit's own reconnect attempts are exhausted (or
@@ -509,16 +520,13 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 
   useEffect(() => () => clearRemoteDisconnectTimer(), [clearRemoteDisconnectTimer]);
 
-  // connecting_media → connected with short delay (matches VideoSDK)
+  // connecting_media → connected as soon as a remote participant is present
   useEffect(() => {
     if (callStatus !== 'connecting_media') return;
     const remoteCount = participants.filter(
       (p) => p.identity !== localParticipantInfo.identity,
     ).length;
-    if (remoteCount > 0) {
-      const t = setTimeout(() => setCallStatusSafe('connected'), CONNECTING_MEDIA_TO_CONNECTED_MS);
-      return () => clearTimeout(t);
-    }
+    if (remoteCount > 0) setCallStatusSafe('connected');
   }, [callStatus, participants, localParticipantInfo.identity, setCallStatusSafe]);
 
   useEffect(() => {
@@ -540,14 +548,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     }
   }, [localParticipantInfo.identity, participants, setCallStatusSafe]);
 
+  const durationRunning = isInCallUiStatus(callStatus);
   useEffect(() => {
-    if (callStatus !== 'connected') return;
+    if (!durationRunning) return;
     const timer = setInterval(() => {
       callDurationRef.current += 1;
       if (isMountedRef.current) setCallDuration(callDurationRef.current);
     }, 1000);
     return () => clearInterval(timer);
-  }, [callStatus]);
+  }, [durationRunning]);
 
   // Session ended remotely (last participant left / heartbeat) — leave LiveKit.
   useEffect(() => {
@@ -585,6 +594,21 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const handleToggleMute = useCallback(async () => {
     await localParticipantInfo.setMicrophoneEnabled(isMuted);
   }, [isMuted, localParticipantInfo]);
+
+  useEffect(() => {
+    engagement.attachForceMute((byName) => {
+      void localParticipantInfo.setMicrophoneEnabled(false).catch(() => undefined);
+      toast(`You've been muted${byName ? ` by ${byName}` : ''}`);
+    });
+  }, [engagement, localParticipantInfo]);
+
+  const handleMuteParticipant = useCallback(
+    (participantId: string, displayName?: string) => {
+      engagement.requestMute(participantId);
+      toast(`Muted ${displayName || 'participant'}`);
+    },
+    [engagement],
+  );
 
   const handleToggleVideo = useCallback(async () => {
     const remoteCount = participants.filter(
@@ -653,9 +677,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const handleEndCall = useCallback(async () => {
     const activeCallId = callIdRef.current || callIdHint || '';
     const activeRoomId = roomIdHint || meetingId;
-    const isConnected =
-      callStatusRef.current === 'connected' ||
-      callStatusRef.current === 'connecting_media';
+    const isConnected = isInCallUiStatus(callStatusRef.current);
     const groupLeave = isGroupCallSessionRef.current && isConnected;
 
     if (threadId && currentUserId) {
@@ -759,7 +781,6 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         { id: currentUserId, name: user?.user_metadata?.full_name || 'User' },
       );
       setMessageText('');
-      setShowMessageInput(false);
     } catch {
       /* ignore */
     }
@@ -899,9 +920,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         tileCount={opts.tileCount}
         showNameLabel={opts.showNameLabel}
         audioVolume={opts.audioVolume}
+        handRaised={engagement.isHandRaised(participant.identity)}
+        onMute={
+          opts.isLocal
+            ? undefined
+            : () => handleMuteParticipant(participant.identity, participant.name || 'participant')
+        }
       />
     ),
-    [],
+    [engagement.isHandRaised, handleMuteParticipant],
   );
 
   const participantByIdentity = useMemo(() => {
@@ -1011,6 +1038,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, []);
 
   const remoteOne = remoteParticipants[0] ?? null;
+  const inCallUi = isInCallUiStatus(callStatus);
+  const remoteMediaVisible =
+    inCallUi &&
+    (effectiveCallType === 'video' || !!remoteScreenShareParticipant || isLocalPresenting) &&
+    (!!gridLayout || !!remoteOne || !!remoteScreenShareParticipant || isLocalPresenting);
   const sidebarParticipants = useMemo(() => {
     const list = [...remoteParticipants];
     if (!list.some((p) => p.identity === localId)) {
@@ -1020,11 +1052,14 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   }, [localId, localParticipantInfo, remoteParticipants]);
 
   return (
-    <div className="w-full h-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden">
+      <div
+        className="flex h-screen min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+      >
       <div
         ref={meetingSurfaceRef}
-        className="relative w-full h-screen overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)' }}
+        className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       >
         {/* Every remote participant's audio, mounted once, OUTSIDE every layout
             branch below. Pagination (MAX_PER_PAGE), screen share replacing the
@@ -1035,13 +1070,22 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             regardless of what's on screen, so none of those layout decisions
             can affect who is audible. */}
         <RoomAudioRenderer volume={audioVolume} />
+        <CallReactionOverlay reactions={engagement.liveReactions} />
+        {isGroupCall ? <RaisedHandsBanner hands={engagement.raisedHands} /> : null}
 
         {(remoteScreenShareParticipant || isLocalPresenting) && (
           <ScreenShareView
             presenter={normalizeLiveKitParticipant(
               isLocalPresenting ? localParticipantInfo : remoteScreenShareParticipant!,
               isLocalPresenting,
-              { isScreenSharing: true },
+              {
+                isScreenSharing: true,
+                handRaised: engagement.isHandRaised(
+                  isLocalPresenting
+                    ? localParticipantInfo.identity
+                    : remoteScreenShareParticipant?.identity || '',
+                ),
+              },
             )}
             presenterName={isLocalPresenting ? 'You' : presenterName}
             sidebarParticipants={sidebarParticipants
@@ -1053,7 +1097,9 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
                     : remoteScreenShareParticipant?.identity),
               )
               .map((p) =>
-                normalizeLiveKitParticipant(p, p.identity === localId),
+                normalizeLiveKitParticipant(p, p.identity === localId, {
+                  handRaised: engagement.isHandRaised(p.identity),
+                }),
               )}
             isLocalPresenting={isLocalPresenting}
             callDuration={callDuration}
@@ -1086,11 +1132,11 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           remoteParticipantIds.length === 1 &&
           remoteOne &&
           effectiveCallType === 'video' &&
-          (callStatus === 'connected' || callStatus === 'connecting_media') && (
+          inCallUi && (
             <div className="absolute inset-0">
               {renderLiveKitTile(remoteOne, {
                 tileCount: 1,
-                showNameLabel: false,
+                showNameLabel: true,
                 audioVolume,
               })}
             </div>
@@ -1098,24 +1144,33 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 
         {gridLayout && !remoteScreenShareParticipant && (
           <div
-            className="absolute inset-0 flex flex-wrap justify-center content-center p-1.5 sm:p-2 md:p-3"
+            className="absolute inset-0 grid p-1.5 sm:p-2"
             style={{
-              gap: '4px',
+              gap: 6,
+              gridTemplateColumns: `repeat(${gridLayout.cols}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${gridLayout.rows}, minmax(0, 1fr))`,
               background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
             }}
           >
-            {gridLayout.allTiles.map((identity) => {
+            {gridLayout.allTiles.map((identity, index) => {
               const p = participantByIdentity.get(identity);
               if (!p) return null;
+              const leftover = gridLayout.total % gridLayout.cols;
+              const isLoneLastRowItem =
+                leftover === 1 && index === gridLayout.allTiles.length - 1;
               return (
                 <div
                   key={identity}
-                  className="relative overflow-hidden rounded-md sm:rounded-lg"
-                  style={{
-                    width: `calc(${100 / gridLayout.cols}% - 6px)`,
-                    height: `calc(${100 / gridLayout.rows}% - 6px)`,
-                    minHeight: 0,
-                  }}
+                  className="relative min-h-0 min-w-0 overflow-hidden rounded-md sm:rounded-lg"
+                  style={
+                    isLoneLastRowItem
+                      ? {
+                          gridColumn: '1 / -1',
+                          width: `calc((100% - ${(gridLayout.cols - 1) * 6}px) / ${gridLayout.cols})`,
+                          justifySelf: 'center',
+                        }
+                      : undefined
+                  }
                 >
                   {renderLiveKitTile(p, {
                     isLocal: identity === localId,
@@ -1160,7 +1215,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           !gridLayout &&
           !remoteScreenShareParticipant &&
           isVideoEnabled &&
-          callStatus === 'connected' && (
+          inCallUi && (
             <div
               ref={pipWrapRef}
               role="region"
@@ -1201,7 +1256,13 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           decodedRecipientAvatarUrl={decodedRecipientAvatarUrl}
           isScreenSharing={isLocalPresenting}
           remoteScreenShareStream={null}
-          showConnectedGroupGallery={!!gridLayout && callStatus === 'connected'}
+          showConnectedGroupGallery={!!gridLayout && inCallUi}
+          remoteMediaVisible={remoteMediaVisible}
+          extraPersonChrome={
+            effectiveCallType === 'audio' && inCallUi && remoteOne ? (
+              <LiveKitParticipantStatusChrome participant={remoteOne} />
+            ) : null
+          }
         />
 
         {callStatus === 'ringing' && !isIncoming && (
@@ -1239,7 +1300,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           </div>
         )}
 
-        {callStatus === 'connected' && (
+        {inCallUi && (
           <CallControls
             isMuted={isMuted}
             isVideoEnabled={isVideoEnabled}
@@ -1254,12 +1315,23 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
             onToggleVideo={handleToggleVideo}
             onToggleScreenShare={handleToggleScreenShare}
             onToggleSpeaker={handleToggleSpeaker}
-            onToggleMessageInput={() => setShowMessageInput((v) => !v)}
-            onToggleAddPeople={() => setShowAddPeople((v) => !v)}
+            onToggleMessageInput={() => {
+              setShowAddPeople(false);
+              setShowMessageInput((v) => !v);
+            }}
+            onToggleAddPeople={() => {
+              setShowMessageInput(false);
+              setShowAddPeople((v) => !v);
+            }}
+            onToggleHand={engagement.toggleHand}
+            onSendReaction={engagement.sendReaction}
             onEndCall={handleEndCall}
             isGroupCall={isGroupCall}
+            handRaised={engagement.handRaised}
+            networkIndicator={<LiveKitLocalNetworkChip participant={localParticipantInfo} />}
           />
         )}
+      </div>
       </div>
 
       {showAddPeople && (
@@ -1284,17 +1356,18 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       )}
 
       {callStatus === 'connected' && showMessageInput && (
-        <div className="p-2 sm:p-3 md:p-4">
-          <MessageInput
-            messageText={messageText}
-            onMessageChange={setMessageText}
-            onSend={handleSendMessage}
-            onClose={() => {
-              setShowMessageInput(false);
-              setMessageText('');
-            }}
-          />
-        </div>
+        <CallChatPanel
+          threadId={threadId}
+          currentUserId={currentUserId}
+          currentUserName={user?.user_metadata?.full_name || 'You'}
+          messageText={messageText}
+          onMessageChange={setMessageText}
+          onSend={() => void handleSendMessage()}
+          onClose={() => {
+            setShowMessageInput(false);
+            setMessageText('');
+          }}
+        />
       )}
 
       <div className="sr-only" aria-hidden>

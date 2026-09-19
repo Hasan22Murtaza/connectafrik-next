@@ -30,6 +30,22 @@ function AuthCallbackContent() {
         return
       }
 
+      const accessToken = data.session?.access_token
+      if (accessToken) {
+        try {
+          await fetch('/api/auth/login-alert', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            keepalive: true,
+          })
+        } catch {
+          /* login alert is best-effort */
+        }
+      }
+
       const platformRole =
         (data.session?.user?.app_metadata?.platform_role as string | undefined) ??
         (data.session?.user?.user_metadata?.platform_role as string | undefined)

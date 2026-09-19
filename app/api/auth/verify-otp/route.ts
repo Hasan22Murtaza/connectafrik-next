@@ -1,6 +1,8 @@
 import { NextRequest } from 'next/server'
 import { jsonResponse, errorResponse } from '@/lib/api-utils'
 import { createAuthClient } from '../_shared'
+import { createServiceClient } from '@/lib/supabase-server'
+import { maybeSendLoginAlert } from '@/lib/auth/loginAlerts'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +24,16 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return errorResponse(error.message, 400)
+    }
+
+    if (data.user?.id) {
+      const serviceClient = createServiceClient()
+      maybeSendLoginAlert({
+        serviceClient,
+        userId: data.user.id,
+        email: data.user.email,
+        request,
+      }).catch(() => {})
     }
 
     return jsonResponse({

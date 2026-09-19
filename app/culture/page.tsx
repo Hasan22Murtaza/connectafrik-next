@@ -92,9 +92,9 @@ const CulturePage: React.FC = () => {
                 <Users className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <h1 className="sm:text-3xl text-2xl font-bold text-content">African Culture</h1>
+                <h1 className="sm:text-3xl text-2xl font-bold text-content">Culture</h1>
                 <p className="text-content-secondary hidden sm:block">
-                  Celebrating the rich cultural heritage and diversity of the African continent
+                  Celebrating cultural heritage and diversity from around the world
                 </p>
                 {statsError && (
                   <p className="text-sm text-amber-600 mt-2">Stats: {statsError}</p>
@@ -299,7 +299,7 @@ const CulturePage: React.FC = () => {
                 <div className="bg-surface rounded-2xl shadow-card p-4 text-center py-12">
                   <Users className="w-16 h-16 text-green-200 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-content mb-2">No cultural shares yet</h3>
-                  <p className="text-content-secondary mb-6">Be the first to share a piece of African culture!</p>
+                  <p className="text-content-secondary mb-6">Be the first to share a piece of culture!</p>
                   <button
                     onClick={() => setShowCreatePost(true)}
                     className="btn-primary bg-green-600 hover:bg-green-700"

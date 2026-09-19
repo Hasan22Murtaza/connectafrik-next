@@ -3,6 +3,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getAuthenticatedUser } from '@/lib/supabase-server'
 import { canViewProfile } from '@/shared/utils/visibilityUtils'
 import { errorResponse } from '@/lib/api-utils'
+import { getRelationship } from '@/lib/privacy/access'
+import { privacyDeniedResponse } from '@/lib/privacy/http'
+import { PRIVACY_ERRORS } from '@/shared/utils/visibilityUtils'
+import type { UserRelationship } from '@/lib/privacy/types'
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -38,12 +42,8 @@ export async function getIsMutual(
   viewerId: string,
   ownerId: string
 ): Promise<boolean> {
-  if (viewerId === ownerId) return true
-  const [a, b] = await Promise.all([
-    supabase.from('follows').select('id').eq('follower_id', viewerId).eq('following_id', ownerId).maybeSingle(),
-    supabase.from('follows').select('id').eq('follower_id', ownerId).eq('following_id', viewerId).maybeSingle(),
-  ])
-  return Boolean(a.data && b.data)
+  const rel = await getRelationship(viewerId, ownerId, supabase)
+  return rel.isFriend
 }
 
 export type OwnerContext = {
@@ -52,9 +52,10 @@ export type OwnerContext = {
   profile: Record<string, unknown>
   viewerId: string | null
   isMutual: boolean
+  relationship: UserRelationship
 }
 
-/** Resolve user, load profile, enforce profile_visibility for the viewer. */
+/** Resolve user, load profile, enforce profile_visibility and blocks for the viewer. */
 export async function requireProfileAccess(
   request: NextRequest,
   identifier: string
@@ -71,14 +72,11 @@ export async function requireProfileAccess(
     return { ok: false, response: errorResponse('User not found', 404) }
   }
 
-  const isOwn = viewerId === ownerId
-  const isMutual =
-    isOwn ||
-    (viewerId != null && (await getIsMutual(supabase, viewerId, ownerId)))
+  const relationship = await getRelationship(viewerId, ownerId, supabase)
+  const isMutual = relationship.isFriend
 
-  const pv = (profile as { profile_visibility?: string }).profile_visibility || 'public'
-  if (!canViewProfile(viewerId, ownerId, pv as 'public' | 'friends' | 'private' | 'everyone', isMutual)) {
-    return { ok: false, response: errorResponse('This profile is not available', 403) }
+  if (!canViewProfile(viewerId, ownerId, relationship.settings.profile_visibility, isMutual, relationship.isBlocked)) {
+    return { ok: false, response: privacyDeniedResponse(PRIVACY_ERRORS.profileUnavailable) }
   }
 
   return {
@@ -89,6 +87,7 @@ export async function requireProfileAccess(
       profile,
       viewerId,
       isMutual,
+      relationship,
     },
   }
 }

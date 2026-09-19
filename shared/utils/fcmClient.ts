@@ -135,7 +135,7 @@ export const initialize = async (): Promise<boolean> => {
               ? d.tag
               : tid && statusKey
                 ? `call-status-${statusKey}-${tid}`
-                : 'connectafrik-notification'
+                : 'cribstalk-notification'
           const silentFlag = String(d.silent ?? '').trim().toLowerCase()
           const silent =
             t === 'missed' ||
@@ -143,7 +143,7 @@ export const initialize = async (): Promise<boolean> => {
             silentFlag === 'true' ||
             silentFlag === '1'
           // `renotify` omitted: not in all TS lib.dom NotificationOptions (breaks `next build` on some hosts).
-          await registration.showNotification(d.title || 'ConnectAfrik', {
+          await registration.showNotification(d.title || 'CribsTalk', {
             body: d.body || '',
             icon: d.icon || d.sender_image || d.caller_avatar_url || '/assets/images/logo.png',
             badge: d.badge || '/assets/images/logo.png',

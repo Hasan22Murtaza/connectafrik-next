@@ -7,6 +7,7 @@ import { CHAT_THREAD_MARKED_READ_EVENT } from '@/features/chat/threadReadEvents'
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService'
 
 const CALLS_LAST_VIEWED_KEY = 'header_calls_last_viewed_at'
+const MISSED_BADGE_STATUSES = new Set(['missed', 'declined', 'ended'])
 
 function readCallsLastViewedAt(): string | undefined {
   if (typeof window === 'undefined') return undefined
@@ -17,12 +18,25 @@ function readCallsLastViewedAt(): string | undefined {
   }
 }
 
+/** Heartbeats rewrite call_sessions without changing status — those must not refresh the badge. */
+function callSessionAffectsMissedBadge(payload: {
+  eventType?: string
+  new?: Record<string, unknown>
+  old?: Record<string, unknown>
+}): boolean {
+  const next = String(payload.new?.status || '')
+  if (!MISSED_BADGE_STATUSES.has(next)) return false
+  if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') return true
+  return next !== String(payload.old?.status || '')
+}
+
 export function useHeaderInboxCounts() {
   const { user } = useAuth()
   const { currentUser, callRequests } = useProductionChat()
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [missedCalls, setMissedCalls] = useState(0)
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const missedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchUnreadMessages = useCallback(async () => {
     if (!user) {
@@ -61,6 +75,13 @@ export function useHeaderInboxCounts() {
       void fetchMissedCalls()
     }, 400)
   }, [fetchMissedCalls, fetchUnreadMessages])
+
+  const scheduleMissedRefresh = useCallback(() => {
+    if (missedTimerRef.current) clearTimeout(missedTimerRef.current)
+    missedTimerRef.current = setTimeout(() => {
+      void fetchMissedCalls()
+    }, 400)
+  }, [fetchMissedCalls])
 
   const markCallsViewed = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -140,8 +161,17 @@ export function useHeaderInboxCounts() {
           schema: 'public',
           table: 'call_sessions',
         },
-        () => {
-          void fetchMissedCalls()
+        (payload) => {
+          if (
+            !callSessionAffectsMissedBadge({
+              eventType: payload.eventType,
+              new: payload.new as Record<string, unknown> | undefined,
+              old: payload.old as Record<string, unknown> | undefined,
+            })
+          ) {
+            return
+          }
+          scheduleMissedRefresh()
         }
       )
       .subscribe()
@@ -153,11 +183,12 @@ export function useHeaderInboxCounts() {
         /* ignore */
       }
     }
-  }, [fetchMissedCalls, scheduleRefresh, user?.id])
+  }, [scheduleMissedRefresh, scheduleRefresh, user?.id])
 
   useEffect(() => {
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      if (missedTimerRef.current) clearTimeout(missedTimerRef.current)
     }
   }, [])
 

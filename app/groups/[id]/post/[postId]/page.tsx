@@ -34,7 +34,7 @@ export default async function GroupPostPage({ params }: PageProps) {
 
   const seo = getGroupPostSeoInput(post)
   const media = (post.media_urls ?? []).filter(Boolean)
-  const authorName = post.author?.full_name || post.author?.username || 'ConnectAfrik member'
+  const authorName = post.author?.full_name || post.author?.username || 'CribsTalk member'
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-8">

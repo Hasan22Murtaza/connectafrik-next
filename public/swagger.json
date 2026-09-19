@@ -1,11 +1,11 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "ConnectAfrik API",
-    "description": "Complete API documentation for the ConnectAfrik platform — a social network with marketplace, messaging, groups, stories, and more.",
+    "title": "CribsTalk API",
+    "description": "Complete API documentation for the CribsTalk platform — a social network with marketplace, messaging, groups, stories, and more.",
     "version": "1.0.0",
     "contact": {
-      "name": "ConnectAfrik Team"
+      "name": "CribsTalk Team"
     }
   },
   "servers": [

@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getAuthenticatedUser } from '@/lib/supabase-server'
+import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
+import { loadPostAuthorAccess } from '@/lib/privacy/access'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -21,6 +22,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       )
     }
+
+    const postAccess = await loadPostAuthorAccess(userId, postId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
 
     const { searchParams } = new URL(request.url)
     const limitParam = searchParams.get('limit')
@@ -133,6 +137,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('reaction_type is required', 400)
     }
 
+    const postAccess = await loadPostAuthorAccess(user.id, postId, supabase)
+    if (!postAccess.allowed) return errorResponse('Post not found', 404)
+
     // Check for existing reaction
     const { data: existing, error: checkError } = await supabase
       .from('post_reactions')
@@ -203,6 +210,24 @@ export async function POST(request: NextRequest, context: RouteContext) {
         .from('posts')
         .update({ likes_count: (post.likes_count || 0) + 1 })
         .eq('id', postId)
+    }
+
+    if (postAccess.authorId && postAccess.authorId !== user.id) {
+      const { notifyIfAllowed, actorDisplayName } = await import('@/lib/notifications')
+      const actorName = actorDisplayName(user)
+      void notifyIfAllowed({
+        recipientId: postAccess.authorId,
+        actorId: user.id,
+        type: 'post_like',
+        title: 'New Like',
+        message: `${actorName} liked your post`,
+        accessToken: getAccessTokenFromRequest(request),
+        data: {
+          post_id: postId,
+          actor_name: actorName,
+          url: `/post/${postId}`,
+        },
+      })
     }
 
     return jsonResponse({ action: 'added', reaction_type })

@@ -127,6 +127,8 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     wsUrl?: string;
   }> | null>(null);
   const prewarmStreamRef = useRef<MediaStream | null>(null);
+  const livekitRoomRef = useRef<Room | null>(null);
+  livekitRoomRef.current = livekitRoom;
   const livekitPrepGenRef = useRef(0);
 
   useEffect(() => {
@@ -143,6 +145,10 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       setWsUrl(wsUrlHint);
       hasInitRef.current = false;
       livekitPrepGenRef.current += 1;
+      const existingRoom = livekitRoomRef.current;
+      if (existingRoom) {
+        void existingRoom.disconnect().catch(() => undefined);
+      }
       setLivekitRoom(null);
       setLivekitPrepError('');
     }
@@ -476,10 +482,14 @@ const CallModal: React.FC<CallModalProps> = (props) => {
       return;
     }
 
+    const existing = livekitRoomRef.current;
+    if (existing && existing.state !== 'disconnected') {
+      return;
+    }
+
     const gen = ++livekitPrepGenRef.current;
     let cancelled = false;
     setLivekitPrepError('');
-    setLivekitRoom(null);
 
     (async () => {
       try {
@@ -570,15 +580,23 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     background: 'linear-gradient(135deg, #ddd3c5 0%, #c7d9d1 100%)',
   } as const;
 
-  // ── Pre-call: incoming — ringing screen ────────────────────────────────────
-  if (isIncoming && !token) {
+  // ── Pre-call: incoming — keep this SAME shell through Answer until media
+  //     is ready. Swapping to a second person/"Connecting…" tree after Accept
+  //     looked like a second incoming call on the receiver.
+  const incomingWaitingForMedia =
+    isIncoming &&
+    prePhase !== 'error' &&
+    (!token ||
+      (mediaProvider === 'livekit' && !livekitRoom && !livekitPrepError));
+  if (incomingWaitingForMedia) {
+    const answered = isAcceptingCall || Boolean(token);
     return (
       <div
-        className="fixed inset-0 z-[9999] animate-fadeIn"
+        className="fixed inset-0 z-[9999]"
         style={callShellBackground}
       >
         <CallStatusOverlay
-          callStatus="ringing"
+          callStatus={answered ? 'connecting_media' : 'ringing'}
           callType={callType}
           callDuration={0}
           formatDuration={() => '00:00'}
@@ -590,11 +608,13 @@ const CallModal: React.FC<CallModalProps> = (props) => {
           isScreenSharing={false}
           remoteScreenShareStream={null}
         />
-        <IncomingCallControls
-          isAcceptingCall={isAcceptingCall}
-          onAccept={handleAccept}
-          onReject={handleReject}
-        />
+        {!answered && (
+          <IncomingCallControls
+            isAcceptingCall={isAcceptingCall}
+            onAccept={handleAccept}
+            onReject={handleReject}
+          />
+        )}
       </div>
     );
   }
@@ -704,7 +724,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
     }
 
     return (
-      <div className="fixed inset-0 z-[9999] animate-fadeIn">
+      <div className="fixed inset-0 z-[9999]">
         <LiveKitRoom
           room={livekitRoom}
           serverUrl={serverUrl}
@@ -737,7 +757,7 @@ const CallModal: React.FC<CallModalProps> = (props) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[9999] animate-fadeIn">
+    <div className="fixed inset-0 z-[9999]">
       <MeetingProvider
         config={{
           meetingId,

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 export async function POST(
@@ -14,7 +14,7 @@ export async function POST(
     // Ensure comment belongs to the reel route segment.
     const { data: comment, error: commentErr } = await supabase
       .from('reel_comments')
-      .select('id')
+      .select('id, user_id')
       .eq('id', commentId)
       .eq('reel_id', reelId)
       .single()
@@ -41,6 +41,25 @@ export async function POST(
       const { error } = await supabase.from('reel_comment_likes').insert({ comment_id: commentId, user_id: user.id })
       if (error) return errorResponse(error.message, 400)
       liked = true
+
+      if (comment.user_id && comment.user_id !== user.id) {
+        const { notifyIfAllowed, actorDisplayName } = await import('@/lib/notifications')
+        const actorName = actorDisplayName(user)
+        void notifyIfAllowed({
+          recipientId: comment.user_id,
+          actorId: user.id,
+          type: 'reel_comment_like',
+          title: 'Comment Liked',
+          message: `${actorName} liked your comment`,
+          accessToken: getAccessTokenFromRequest(request),
+          data: {
+            reel_id: reelId,
+            comment_id: commentId,
+            actor_name: actorName,
+            url: `/memories/${reelId}`,
+          },
+        })
+      }
     }
 
     return jsonResponse({ data: { liked } })

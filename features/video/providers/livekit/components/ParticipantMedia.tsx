@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   VideoTrack,
   useIsMuted,
@@ -8,8 +8,10 @@ import {
   useParticipantTracks,
 } from '@livekit/components-react';
 import type { Participant } from 'livekit-client';
-import { Track } from 'livekit-client';
+import { ConnectionQuality as LiveKitConnectionQuality, ParticipantEvent, Track } from 'livekit-client';
 import type { ParticipantMediaOptions } from '@/features/video/core/interfaces/CallMediaProvider';
+import type { ConnectionQuality } from '@/features/video/core/models';
+import { mapLiveKitConnectionQuality } from '@/features/video/core/utils/connectionQuality';
 
 export interface LiveKitParticipantMediaProps extends ParticipantMediaOptions {
   participant: Participant;
@@ -64,11 +66,27 @@ export function useLiveKitParticipantState(participant: Participant) {
     micTrackRef ?? { participant, source: Track.Source.Microphone },
   );
   const isSpeaking = useIsSpeaking(participant);
+  const [connectionQuality, setConnectionQuality] = useState<ConnectionQuality>(() =>
+    mapLiveKitConnectionQuality(participant.connectionQuality),
+  );
+
+  useEffect(() => {
+    const sync = (quality?: LiveKitConnectionQuality | string) => {
+      setConnectionQuality(mapLiveKitConnectionQuality(quality ?? participant.connectionQuality));
+    };
+    sync();
+    const onChange = (quality: LiveKitConnectionQuality) => sync(quality);
+    participant.on(ParticipantEvent.ConnectionQualityChanged, onChange);
+    return () => {
+      participant.off(ParticipantEvent.ConnectionQualityChanged, onChange);
+    };
+  }, [participant]);
 
   return {
     webcamOn: Boolean(cameraTrackRef?.publication?.track) && !camMuted,
     micOn: Boolean(micTrackRef?.publication?.track) && !micMuted,
     isActiveSpeaker: isSpeaking,
+    connectionQuality,
   };
 }
 

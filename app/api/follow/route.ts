@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { notificationService } from '@/shared/services/notificationService'
+import { canFollowUser } from '@/lib/privacy/access'
+import { privacyDecisionResponse } from '@/lib/privacy/http'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +19,10 @@ export async function POST(request: NextRequest) {
     if (following_id === user.id) {
       return errorResponse('Cannot follow yourself', 400)
     }
+
+    const followDecision = await canFollowUser(user.id, following_id, supabase)
+    const followDenied = privacyDecisionResponse(followDecision)
+    if (followDenied) return followDenied
 
     const { data: existing } = await supabase
       .from('follows')

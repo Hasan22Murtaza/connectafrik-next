@@ -34,6 +34,9 @@ type ComposerAttachment =
 const MAX_IMAGE_ATTACHMENTS = 4
 const MAX_REPLY_DEPTH = 5
 
+const flattenReplies = (replies: Comment[]): Comment[] =>
+  replies.flatMap(reply => [reply, ...flattenReplies(reply.replies || [])])
+
 const createLocalId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -42,7 +45,7 @@ const createLocalId = (): string => {
 }
 
 const getUserDisplayName = (user: User | null): string => {
-  if (!user) return 'ConnectAfrik member'
+  if (!user) return 'CribsTalk member'
 
   const fullName = typeof user.user_metadata?.full_name === 'string' ? user.user_metadata.full_name : ''
   if (fullName.trim().length > 0) {
@@ -56,7 +59,7 @@ const getUserDisplayName = (user: User | null): string => {
     }
   }
 
-  return 'ConnectAfrik member'
+  return 'CribsTalk member'
 }
 
 const getUserInitial = (user: User | null): string => {
@@ -300,22 +303,42 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
         ) : (
           <>
             {comments.map(comment => (
-              <FBCommentItem
-                key={comment.id}
-                comment={comment}
-                onLike={toggleCommentLike}
-                onEmojiReact={toggleCommentReaction}
-                onReplyToggle={handleReplyToggle}
-                onDelete={handleDeleteComment}
-                onUpdate={updateComment}
-                replyingTo={replyingTo}
-                replyContent={replyContent}
-                setReplyContent={setReplyContent}
-                onSubmitReply={handleSubmitReply}
-                isReplySubmitting={isReplySubmitting}
-                currentUser={user}
-                highlightCommentId={highlightCommentId}
-              />
+              <React.Fragment key={comment.id}>
+                <FBCommentItem
+                  comment={comment}
+                  onLike={toggleCommentLike}
+                  onEmojiReact={toggleCommentReaction}
+                  onReplyToggle={handleReplyToggle}
+                  onDelete={handleDeleteComment}
+                  onUpdate={updateComment}
+                  replyingTo={replyingTo}
+                  replyContent={replyContent}
+                  setReplyContent={setReplyContent}
+                  onSubmitReply={handleSubmitReply}
+                  isReplySubmitting={isReplySubmitting}
+                  currentUser={user}
+                  highlightCommentId={highlightCommentId}
+                />
+                {flattenReplies(comment.replies || []).map(reply => (
+                  <FBCommentItem
+                    key={reply.id}
+                    comment={reply}
+                    onLike={toggleCommentLike}
+                    onEmojiReact={toggleCommentReaction}
+                    onReplyToggle={handleReplyToggle}
+                    onDelete={handleDeleteComment}
+                    onUpdate={updateComment}
+                    replyingTo={replyingTo}
+                    replyContent={replyContent}
+                    setReplyContent={setReplyContent}
+                    onSubmitReply={handleSubmitReply}
+                    isReplySubmitting={isReplySubmitting}
+                    currentUser={user}
+                    depth={1}
+                    highlightCommentId={highlightCommentId}
+                  />
+                ))}
+              </React.Fragment>
             ))}
             {hasNextPage && (
               <div className="py-2 text-center">
@@ -323,10 +346,10 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
                   type="button"
                   onClick={loadMoreComments}
                   disabled={isLoadingMore}
-                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium text-gray-600  disabled:cursor-not-allowed hover:text-primary-600"
                 >
                   {isLoadingMore && <Loader2 className="h-3 w-3 animate-spin" />}
-                  {isLoadingMore ? 'Loading...' : 'Load more comments'}
+                  {isLoadingMore ? 'Loading...' : 'Load more'}
                 </button>
               </div>
             )}
@@ -407,10 +430,6 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
             onChange={handleImageSelect}
           />
         </div>
-      )}
-
-      {user && !canComment && (
-        <p className="px-3 py-2 text-center text-xs text-gray-400">Comments are turned off for this post.</p>
       )}
 
       {!user && (
@@ -524,7 +543,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
   return (
     <div
       id={`comment-${comment.id}`}
-      className={`${depth > 0 ? 'ml-2 mt-2' : 'mt-1'} ${
+      className={`${depth > 0 ? 'ml-10 mt-2' : 'mt-1'} ${
         highlightCommentId === comment.id ? 'rounded-xl ring-2 ring-primary-300 bg-primary-50/40 px-1 py-0.5' : ''
       }`}
     >
@@ -548,7 +567,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
         <div className="flex-1 min-w-0">
           {/* Gray bubble */}
           {isEditing ? (
-            <div className="rounded-2xl bg-gray-100 px-3 py-2">
+            <div className=" px-3 py-2">
               <input
                 type="text"
                 value={editContent}
@@ -569,7 +588,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
             </div>
           ) : (
             <div className="relative group inline-block max-w-full">
-              <div className="rounded-2xl bg-gray-100 px-3 py-1.5 inline-block max-w-full">
+              <div className=" px-3 py-1.5 inline-block max-w-full">
                 {/* Author name */}
                 <span className="text-[13px] font-semibold text-gray-900 leading-tight">
                   {comment.author.full_name}
@@ -599,7 +618,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
 
               {/* Three-dot menu on hover */}
               {!comment.is_deleted && (
-                <div className="absolute -right-7 top-1 hidden group-hover:block" ref={menuRef}>
+                <div className="absolute -right-6 top-1 hidden group-hover:block" ref={menuRef}>
                   <button
                     onClick={() => setShowMenu(prev => !prev)}
                     className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
@@ -607,18 +626,18 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                     <span className="text-sm leading-none">···</span>
                   </button>
                   {showMenu && (
-                    <div className="absolute right-0 top-full mt-1 z-10 w-32 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    <div className="absolute right-0 top-full mt-1 p-1 z-10 w-32 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                       {isOwnComment ? (
                         <>
                           <button
                             onClick={() => { setIsEditing(true); setShowMenu(false) }}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50"
+                            className="flex w-full items-center gap-2 rounded-md py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50"
                           >
                             <Edit2 className="h-3 w-3" /> Edit
                           </button>
                           <button
                             onClick={() => { onDelete(comment.id); setShowMenu(false) }}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50"
+                            className="flex w-full items-center gap-2 rounded-md py-1.5 text-left text-xs text-red-600 hover:bg-red-50"
                           >
                             <Trash2 className="h-3 w-3" /> Delete
                           </button>
@@ -626,7 +645,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                       ) : (
                         <button
                           onClick={() => setShowMenu(false)}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50"
+                          className="flex w-full items-center gap-2 rounded-md py-1.5 text-left text-xs text-gray-600 hover:bg-gray-50"
                         >
                           <Flag className="h-3 w-3" /> Report
                         </button>
@@ -697,30 +716,6 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
             </div>
           )}
 
-          {/* Nested replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-1">
-              {comment.replies.map(reply => (
-                <FBCommentItem
-                  key={reply.id}
-                  comment={reply}
-                  onLike={onLike}
-                  onEmojiReact={onEmojiReact}
-                  onReplyToggle={onReplyToggle}
-                  onDelete={onDelete}
-                  onUpdate={onUpdate}
-                  replyingTo={replyingTo}
-                  replyContent={replyContent}
-                  setReplyContent={setReplyContent}
-                  onSubmitReply={onSubmitReply}
-                  isReplySubmitting={isReplySubmitting}
-                  currentUser={currentUser}
-                  depth={depth + 1}
-                  highlightCommentId={highlightCommentId}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

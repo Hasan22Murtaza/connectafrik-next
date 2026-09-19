@@ -71,7 +71,7 @@ const ConfirmSignup: React.FC = () => {
       <div className="max-w-md w-full text-center">
         <div className="flex items-center justify-center mb-6">
           <Link href="/">
-            <img src="/assets/images/logo_2.png" alt="ConnectAfrik" className="w-30" />
+            <img src="/assets/images/logo_2.png" alt="CribsTalk" className="w-30" />
           </Link>
         </div>
         <Suspense

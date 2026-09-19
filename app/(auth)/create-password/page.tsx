@@ -103,7 +103,7 @@ const CreatePasswordForm: React.FC = () => {
       toast.success(
         purpose === 'recovery'
           ? 'Password updated successfully!'
-          : 'Welcome to ConnectAfrik!'
+          : 'Welcome to CribsTalk!'
       )
 
       const redirectTo = getPostAuthRedirect(data.platform_role, '/feed')

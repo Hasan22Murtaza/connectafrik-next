@@ -190,7 +190,7 @@ const CreateGroupPost: React.FC<CreateGroupPostProps> = ({ onSubmit, onCancel })
             className={`w-full focus:outline-none ${
               selectedBgPreset
                 ? `bg-transparent border-0 px-0 py-1 text-lg font-semibold ${selectedBgPreset.textClass} ${selectedBgPreset.placeholderClass}`
-                : 'px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent'
+                : 'px-4 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary'
             }`}
             maxLength={200}
             required
@@ -216,7 +216,7 @@ const CreateGroupPost: React.FC<CreateGroupPostProps> = ({ onSubmit, onCancel })
             className={`w-full min-h-[100px] resize-none focus:outline-none ${
               selectedBgPreset
                 ? `bg-transparent border-0 px-0 py-1 ${selectedBgPreset.textClass} ${selectedBgPreset.placeholderClass}`
-                : 'px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent'
+                : 'px-4 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary'
             }`}
             maxLength={5000}
             required

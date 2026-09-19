@@ -15,10 +15,10 @@
 <dict>
   <key>com.apple.developer.associated-domains</key>
   <array>
-    <string>applinks:connectafrik.com</string>
-    <string>applinks:www.connectafrik.com</string>
-    <string>applinks:staging.connectafrik.com</string>
-    <string>webcredentials:connectafrik.com</string>
+    <string>applinks:cribstalk.com</string>
+    <string>applinks:www.cribstalk.com</string>
+    <string>applinks:staging.cribstalk.com</string>
+    <string>webcredentials:cribstalk.com</string>
   </array>
 </dict>
 </plist>

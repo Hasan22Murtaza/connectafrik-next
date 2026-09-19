@@ -16,10 +16,16 @@ import { IoBookmarkOutline } from "react-icons/io5";
 import { MdOutlineGroups2 } from "react-icons/md";
 import { RiHandbagLine } from "react-icons/ri";
 import DisplayModeMenu from '@/shared/components/theme/DisplayModeMenu'
+import { useSpaceNavCounts } from '@/shared/hooks/useSpaceNavCounts'
 
 type MobileSideDrawerProps = {
   isOpen: boolean
   onClose: () => void
+}
+
+function formatBadge(count: number): string | null {
+  if (count <= 0) return null
+  return count > 99 ? '99+' : String(count)
 }
 
 const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
@@ -29,13 +35,14 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
   const [showUserSearch, setShowUserSearch] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
+  const { friendRequestCount, newOrderCount } = useSpaceNavCounts()
 
   const shortcuts = [
     { icon: Search, label: 'Search Users', action: 'search' },
-    { icon: FaRegUser, label: 'Friends', path: '/friends' },
+    { icon: FaRegUser, label: 'Friends', path: '/friends', badge: formatBadge(friendRequestCount) },
     { icon: MdOutlineGroups2, label: 'Groups', path: '/groups' },
     { icon: BsShop, label: 'TradeHub', path: '/marketplace' },
-    { icon: RiHandbagLine, label: 'My Orders', path: '/my-orders' },
+    { icon: RiHandbagLine, label: 'My Orders', path: '/my-orders', badge: formatBadge(newOrderCount) },
     { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
     { icon: MessageSquare, label: 'Feedback', path: '/feedback' },
   ]
@@ -98,7 +105,12 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
                         isActive ? 'text-primary-600' : 'text-content-secondary'
                       }`}
                     />
-                    {item.label}
+                    <span className="flex-1 text-left">{item.label}</span>
+                    {'badge' in item && item.badge ? (
+                      <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center">
+                        {item.badge}
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               )

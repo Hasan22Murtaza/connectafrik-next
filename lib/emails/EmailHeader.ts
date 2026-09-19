@@ -2,7 +2,7 @@ import { emailBadgeHtml, emailWordmarkHtml } from './emailTheme'
 import { escapeHtml } from './utils'
 
 /**
- * Card header: navy ConnectAfrik wordmark on the left, optional status
+ * Card header: navy CribsTalk wordmark on the left, optional status
  * badge on the right. Matches the transactional email template.
  */
 export function EmailHeader(badge?: string): string {

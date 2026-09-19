@@ -28,7 +28,7 @@ function getChatLockSecret(): string {
     process.env.CHAT_LOCK_SECRET ||
     process.env.AUTH_OTP_SECRET ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    'connectafrik-chat-lock-dev'
+    'cribstalk-chat-lock-dev'
   )
 }
 

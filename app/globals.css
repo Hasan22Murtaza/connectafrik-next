@@ -38,7 +38,7 @@
   --surface-tertiary: #e4e6eb;
   --surface-elevated: #ffffff;
   --surface-hover: #f2f2f2;
-  --surface-input: #eef1f4;
+  --surface-input: var(--surface-secondary);
   --surface-overlay: rgba(0, 0, 0, 0.5);
 
   /* Semantic content */
@@ -409,6 +409,24 @@
   50% { transform: scale(1.25); opacity: 0.7; }
 }
 
+@keyframes call-reaction-float {
+  0% { opacity: 0; transform: translateY(18px) scale(0.55); }
+  12% { opacity: 1; transform: translateY(0) scale(1.12); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-150px) scale(1); }
+}
+.call-reaction-float {
+  animation: call-reaction-float 2.45s ease-out forwards;
+}
+
+@keyframes call-hand-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+.call-hand-pulse {
+  animation: call-hand-pulse 1.6s ease-in-out infinite;
+}
+
 /* ─── Tailwind v4 theme tokens ──────────────────────────────────────────── */
 @theme inline {
   --color-background: var(--background);
@@ -485,7 +503,7 @@ body {
   padding: 9px 16px;
   background-color: var(--interactive-secondary);
   color: var(--interactive-secondary-text);
-  font-weight: 600;
+  font-weight: 500;
   border: none;
   border-radius: 0.5rem;
   transition: all 0.2s;
@@ -977,7 +995,9 @@ button {
   }
 
   .chat-typing-dot,
-  .chat-wave-bar {
+  .chat-wave-bar,
+  .call-reaction-float,
+  .call-hand-pulse {
     animation: none !important;
   }
 }

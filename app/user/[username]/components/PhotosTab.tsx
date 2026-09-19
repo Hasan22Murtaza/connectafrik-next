@@ -31,7 +31,7 @@ const PhotosTab: React.FC<PhotosTabProps> = ({ photos, isOwnProfile }) => {
     <>
       <div className="bg-white sm:rounded-2xl shadow-card overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-600">Photos</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-content">Photos</h2>
         </div>
         <div className="p-2 sm:p-4">
           {photos.length === 0 ? (

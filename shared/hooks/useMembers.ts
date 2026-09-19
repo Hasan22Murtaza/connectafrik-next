@@ -15,7 +15,7 @@ const normalizedName = (fullName?: string | null, username?: string | null) => {
   if (byFullName) return byFullName
   const byUsername = username?.trim()
   if (byUsername) return byUsername
-  return 'ConnectAfrik Member'
+  return 'CribsTalk Member'
 }
 
 export function useMembers(enabled: boolean = true) {

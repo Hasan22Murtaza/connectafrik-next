@@ -3,6 +3,8 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { queryUserThreads } from '@/lib/chat/chatThreadsQuery'
 import { ChatLockAuthError } from '@/lib/chat/chatLock'
+import { canMessage } from '@/lib/privacy/access'
+import { privacyDecisionResponse } from '@/lib/privacy/http'
 
 /**
  * GET /api/chat/threads
@@ -46,6 +48,33 @@ export async function POST(request: NextRequest) {
 
     const allParticipantIds = [...new Set([user.id, ...participantIds])]
     const resolvedType = allParticipantIds.length > 2 ? 'group' : type
+    const others = allParticipantIds.filter((id) => id !== user.id)
+
+    if (resolvedType === 'direct' && allParticipantIds.length === 2) {
+      const { data: existingThreads } = await serviceClient
+        .from('chat_threads')
+        .select('id, chat_participants(user_id)')
+        .eq('type', 'direct')
+
+      if (existingThreads && existingThreads.length > 0) {
+        const desiredIds = new Set(allParticipantIds)
+        for (const thread of existingThreads as any[]) {
+          const participantList = thread.chat_participants ?? []
+          const threadUserIds = new Set(participantList.map((item: any) => item.user_id))
+          if (threadUserIds.size === desiredIds.size && allParticipantIds.every((id) => threadUserIds.has(id))) {
+            return jsonResponse({ data: { id: thread.id } }, 201)
+          }
+        }
+      }
+    }
+
+    if (resolvedType !== 'group' || !effectiveGroupId) {
+      for (const otherId of others) {
+        const decision = await canMessage(user.id, otherId, serviceClient)
+        const denied = privacyDecisionResponse(decision)
+        if (denied) return denied
+      }
+    }
 
     if (resolvedType === 'group' && effectiveGroupId) {
       const { data: mem, error: memErr } = await serviceClient
@@ -83,24 +112,6 @@ export async function POST(request: NextRequest) {
           if (addPartErr) return errorResponse(addPartErr.message, 400)
         }
         return jsonResponse({ data: { id: existingGroupThread.id } }, 201)
-      }
-    }
-
-    if (resolvedType === 'direct' && allParticipantIds.length === 2) {
-      const { data: existingThreads } = await serviceClient
-        .from('chat_threads')
-        .select('id, chat_participants(user_id)')
-        .eq('type', 'direct')
-
-      if (existingThreads && existingThreads.length > 0) {
-        const desiredIds = new Set(allParticipantIds)
-        for (const thread of existingThreads as any[]) {
-          const participantList = thread.chat_participants ?? []
-          const threadUserIds = new Set(participantList.map((item: any) => item.user_id))
-          if (threadUserIds.size === desiredIds.size && allParticipantIds.every((id) => threadUserIds.has(id))) {
-            return jsonResponse({ data: { id: thread.id } }, 201)
-          }
-        }
       }
     }
 

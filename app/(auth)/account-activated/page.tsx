@@ -11,7 +11,7 @@ const AccountActivated: React.FC = () => {
         <div className="text-center mb-6">
           <div className="flex items-center justify-center mb-4">
             <Link href="/">
-              <img src="/assets/images/logo_2.png" alt="ConnectAfrik" className="w-30" />
+              <img src="/assets/images/logo_2.png" alt="CribsTalk" className="w-30" />
             </Link>
           </div>
         </div>
@@ -25,8 +25,8 @@ const AccountActivated: React.FC = () => {
             Account activated successfully
           </h1>
           <p className="text-content-secondary sm:text-base text-sm mb-6">
-            Your email has been verified. You can now sign in and start connecting with the
-            African community worldwide.
+            Your email has been verified. You can now sign in and start connecting with
+            people and communities worldwide.
           </p>
 
           <Link href="/signin" className="w-full btn-primary text-base inline-block">
@@ -34,7 +34,7 @@ const AccountActivated: React.FC = () => {
           </Link>
 
           <p className="text-xs text-content-secondary mt-4">
-            Welcome to ConnectAfrik — uniting Africans and the diaspora worldwide.
+            Welcome to CribsTalk — connecting people worldwide.
           </p>
         </div>
       </div>

@@ -33,7 +33,7 @@ const TermsOfServicePage: React.FC = () => {
                 Agreement to Terms
               </h2>
               <p className="text-gray-700">
-                By accessing or using ConnectAfrik, you agree to be bound by these
+                By accessing or using CribsTalk, you agree to be bound by these
                 Terms of Service and all applicable laws and regulations. If you
                 do not agree with any of these terms, you are prohibited from
                 using this platform.
@@ -45,7 +45,7 @@ const TermsOfServicePage: React.FC = () => {
                 Use License
               </h2>
               <p className="text-gray-700 mb-4">
-                Permission is granted to temporarily access ConnectAfrik for
+                Permission is granted to temporarily access CribsTalk for
                 personal, non-commercial use. This is the grant of a license, not
                 a transfer of title, and under this license you may not:
               </p>
@@ -80,7 +80,7 @@ const TermsOfServicePage: React.FC = () => {
                 User Content
               </h2>
               <p className="text-gray-700 mb-4">
-                You retain ownership of any content you post on ConnectAfrik. By
+                You retain ownership of any content you post on CribsTalk. By
                 posting content, you grant us a worldwide, non-exclusive,
                 royalty-free license to use, reproduce, and distribute your
                 content on the platform.
@@ -122,7 +122,7 @@ const TermsOfServicePage: React.FC = () => {
                 Disclaimer
               </h2>
               <p className="text-gray-700">
-                ConnectAfrik is provided "as is" without warranties of any kind,
+                CribsTalk is provided "as is" without warranties of any kind,
                 either express or implied. We do not warrant that the platform
                 will be uninterrupted, secure, or error-free.
               </p>
@@ -136,10 +136,10 @@ const TermsOfServicePage: React.FC = () => {
                 If you have any questions about these Terms of Service, please
                 contact us at{' '}
                 <a
-                  href="mailto:info@connectafrik.com "
+                  href="mailto:info@cribstalk.com "
                   className="text-green-600 hover:text-green-700"
                 >
-                  info@connectafrik.com 
+                  info@cribstalk.com 
                 </a>
               </p>
             </section>

@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { notificationService } from '@/shared/services/notificationService'
+import { canCommentOnAuthor, loadPostAuthorAccess } from '@/lib/privacy/access'
+import { privacyDecisionResponse } from '@/lib/privacy/http'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -9,6 +11,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id: postId } = await context.params
     const serviceClient = createServiceClient()
+    let userId: string | null = null
+    try {
+      const { user } = await getAuthenticatedUser(request)
+      userId = user.id
+    } catch {
+      userId = null
+    }
+
+    const postAccess = await loadPostAuthorAccess(userId, postId, serviceClient)
+    const postDenied = privacyDecisionResponse(postAccess)
+    if (postDenied) return errorResponse('Post not found', 404)
+
     const searchParams = request.nextUrl.searchParams
     const rawLimit = Number(searchParams.get('limit') || '20')
     const rawPage = Number(searchParams.get('page') || '1')
@@ -24,14 +38,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const page = Math.floor(rawPage)
     const from = (page - 1) * limit
     const to = from + limit - 1
-
-    let userId: string | null = null
-    try {
-      const { user } = await getAuthenticatedUser(request)
-      userId = user.id
-    } catch {
-      userId = null
-    }
 
     const { data: topLevelCommentsData, error: commentsError, count: topLevelCount } = await serviceClient
       .from('comments')
@@ -212,6 +218,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse('Post not found', 404)
     }
 
+    const commentDecision = await canCommentOnAuthor(user.id, postData.author_id, serviceClient)
+    const commentDenied = privacyDecisionResponse(commentDecision)
+    if (commentDenied) return commentDenied
+
     const { data: comment, error: insertError } = await serviceClient
       .from('comments')
       .insert({
@@ -262,6 +272,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
         { accessToken: getAccessTokenFromRequest(request) },
       )
     }
+
+    const { notifyMentionedUsers } = await import('@/lib/notifications/mentions')
+    await notifyMentionedUsers({
+      text: content,
+      actorId: user.id,
+      actorName: user.user_metadata?.full_name || user.email || 'Someone',
+      accessToken: getAccessTokenFromRequest(request),
+      data: {
+        post_id: postId,
+        comment_id: comment.id,
+        url: `/post/${postId}`,
+      },
+    })
 
     return jsonResponse({
       data: {

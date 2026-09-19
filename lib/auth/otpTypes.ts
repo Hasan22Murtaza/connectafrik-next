@@ -1,4 +1,4 @@
-export const OTP_PURPOSES = ['signup', 'login', 'recovery'] as const
+export const OTP_PURPOSES = ['signup', 'login', 'recovery', 'two_factor'] as const
 
 export type OtpPurpose = (typeof OTP_PURPOSES)[number]
 

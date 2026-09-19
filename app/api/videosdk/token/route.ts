@@ -4,6 +4,8 @@ import { parseProviderName } from '@/lib/call-media/resolve';
 import { userInvolvedInSession } from '@/lib/call-media/session-busy';
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess';
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server';
+import { isBlocked } from '@/lib/privacy/access';
+import { PRIVACY_ERRORS } from '@/shared/utils/visibilityUtils';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -87,6 +89,18 @@ async function authorizeForRoom(
   }
   if (!allowed) throw new Error('Forbidden');
 
+  const participantIds = Array.isArray(row.participants)
+    ? row.participants.filter((id: unknown): id is string => typeof id === 'string')
+    : []
+  const others = [...new Set([row.created_by, ...participantIds].filter(Boolean))].filter(
+    (id) => id !== user.id
+  )
+  for (const otherId of others) {
+    if (await isBlocked(user.id, otherId, service)) {
+      throw new Error(PRIVACY_ERRORS.blocked)
+    }
+  }
+
   const { data: profile } = await service
     .from('profiles')
     .select('full_name, username, avatar_url')
@@ -121,8 +135,8 @@ function authErrorResponse(err: unknown): NextResponse | null {
   if (msg === 'CallNotFound') {
     return NextResponse.json({ error: 'Call not found' }, { status: 404, headers: corsHeaders });
   }
-  if (msg === 'Forbidden') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403, headers: corsHeaders });
+  if (msg === 'Forbidden' || msg === PRIVACY_ERRORS.blocked || msg === PRIVACY_ERRORS.call) {
+    return NextResponse.json({ error: msg === 'Forbidden' ? 'Forbidden' : msg }, { status: 403, headers: corsHeaders });
   }
   return null;
 }

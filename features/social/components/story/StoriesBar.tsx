@@ -288,7 +288,7 @@ const CreateStoryCard: React.FC<CreateStoryCardProps> = React.memo(({ userStorie
 })
 CreateStoryCard.displayName = 'CreateStoryCard'
 const LoadingSkeleton: React.FC = React.memo(() => (
-  <div className="bg-surface rounded-xl p-3 sm:p-4">
+  <div className="bg-surface rounded-xl ">
     <div className="flex gap-1.5 sm:gap-2 overflow-hidden">
       {Array.from({ length: 5 }).map((_, index) => (
         <div key={index} className="flex-shrink-0 w-[90px] sm:w-[112px] h-[160px] sm:h-[200px] bg-surface-tertiary rounded-xl animate-shimmer" />
@@ -513,7 +513,7 @@ const StoriesBar: React.FC = () => {
 
   return (
     <>
-      <div className="bg-surface rounded-xl shadow-card p-3 sm:p-4 relative">
+      <div className="bg-surface  relative">
         {showLeftArrow && (
           <button
             onClick={() => scroll('left')}

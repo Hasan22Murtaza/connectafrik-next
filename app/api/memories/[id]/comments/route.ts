@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
+import { getAuthenticatedUser, createServiceClient, getAccessTokenFromRequest } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 
 const COMMENT_SELECT = `
@@ -90,6 +90,38 @@ export async function POST(
       .single()
 
     if (error) return errorResponse(error.message, 400)
+
+    const { data: reel } = await supabase.from('reels').select('author_id, title').eq('id', reelId).maybeSingle()
+    const { actorDisplayName, notifyIfAllowed, notifyMentionedUsers } = await import('@/lib/notifications')
+    const actorName = actorDisplayName(user)
+    if (reel?.author_id && reel.author_id !== user.id) {
+      void notifyIfAllowed({
+        recipientId: reel.author_id,
+        actorId: user.id,
+        type: 'reel_comment',
+        title: 'New Comment',
+        message: `${actorName} commented on your memory`,
+        accessToken: getAccessTokenFromRequest(request),
+        data: {
+          reel_id: reelId,
+          comment_id: comment.id,
+          actor_name: actorName,
+          url: `/memories/${reelId}`,
+        },
+      })
+    }
+    void notifyMentionedUsers({
+      text: content,
+      actorId: user.id,
+      actorName,
+      accessToken: getAccessTokenFromRequest(request),
+      data: {
+        reel_id: reelId,
+        comment_id: comment.id,
+        url: `/memories/${reelId}`,
+      },
+    })
+
     return jsonResponse({ data: normalizeComment(comment as Record<string, unknown>) }, 201)
   } catch (error: unknown) {
     const err = error as { message?: string }

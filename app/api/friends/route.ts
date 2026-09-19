@@ -4,7 +4,9 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { createNotification } from '@/lib/notifications/createNotification'
 import { notificationService } from '@/shared/services/notificationService'
 import { sendFriendRequestReceivedEmail } from '@/shared/services/emailService'
-import { lookupUserContact } from '@/lib/emails/recipients'
+import { lookupNotificationEmailRecipient } from '@/lib/emails/recipients'
+import { canSendFriendRequestAsync, getRelationships, sanitizePresenceFields } from '@/lib/privacy'
+import { privacyDecisionResponse } from '@/lib/privacy/http'
 
 async function notifyFriendRequestReceived(params: {
   senderId: string
@@ -62,7 +64,7 @@ async function notifyFriendRequestReceived(params: {
 
   try {
     const serviceClient = createServiceClient()
-    const recipient = await lookupUserContact(serviceClient, params.receiverId)
+    const recipient = await lookupNotificationEmailRecipient(serviceClient, params.receiverId, 'friend_request')
     if (recipient) {
       await sendFriendRequestReceivedEmail(recipient.email, {
         recipientName: recipient.name,
@@ -113,11 +115,16 @@ export async function GET(request: NextRequest) {
     }
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+    const relationships = await getRelationships(user.id, otherIds, supabase)
 
     const friends = rows.map((r: any) => {
       const otherId = r.sender_id === user.id ? r.receiver_id : r.sender_id
       const profile = profileMap.get(otherId)
       if (!profile) return null
+      const rel = relationships.get(otherId)
+      const presence = rel
+        ? sanitizePresenceFields(profile, user.id, rel)
+        : { status: null, last_seen: null }
       return {
         id: profile.id,
         username: profile.username,
@@ -127,8 +134,8 @@ export async function GET(request: NextRequest) {
         bio: profile.bio,
         birthday: profile.birthday,
         friendship_date: r.created_at,
-        status: profile.status,
-        last_seen: profile.last_seen,
+        status: presence.status,
+        last_seen: presence.last_seen,
       }
     }).filter(Boolean)
 
@@ -199,7 +206,13 @@ export async function POST(request: NextRequest) {
       if (existing.status === 'blocked') {
         return errorResponse('Cannot send friend request', 403)
       }
+    }
 
+    const sendDecision = await canSendFriendRequestAsync(user.id, receiver_id, supabase)
+    const sendDenied = privacyDecisionResponse(sendDecision)
+    if (sendDenied) return sendDenied
+
+    if (existing) {
       // Declined (or other inactive status): Link Up is shown again — reuse the row.
       const service = createServiceClient()
       const { data: revived, error: reviveError } = await service

@@ -1,7 +1,7 @@
 {
-  "name": "ConnectAfrik - African Social Network",
-  "short_name": "ConnectAfrik",
-  "description": "Connect with friends, share moments, chat, video call, and build community across Africa. Shop at the marketplace and stay connected.",
+  "name": "CribsTalk - Global Social Network",
+  "short_name": "CribsTalk",
+  "description": "Connect with friends, share moments, chat, video call, and build community worldwide. Shop at the marketplace and stay connected.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

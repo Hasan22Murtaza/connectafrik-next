@@ -91,7 +91,7 @@ const GuidelinesPage = () => {
                 Community Guidelines
               </h1>
               <p className="max-w-2xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
-                Welcome to ConnectAfrik. Our mission is to help people connect,
+                Welcome to CribsTalk. Our mission is to help people connect,
                 create, and thrive safely. These guidelines explain what is and
                 is not allowed and how enforcement works.
               </p>
@@ -160,7 +160,7 @@ const GuidelinesPage = () => {
                 </li>
                 <li>
                   <strong>Responsibility to community:</strong> Your rights come
-                  with responsibilities. Help keep ConnectAfrik welcoming and
+                  with responsibilities. Help keep CribsTalk welcoming and
                   trust worthy.
                 </li>
                 <li>
@@ -205,7 +205,7 @@ const GuidelinesPage = () => {
                       banned.
                     </li>
                     <li>
-                      Age-restricted content is not allowed. Keep ConnectAfrik
+                      Age-restricted content is not allowed. Keep CribsTalk
                       safe for a general audience.
                     </li>
                   </ul>
@@ -364,7 +364,7 @@ const GuidelinesPage = () => {
               <ul className="list-disc space-y-1.5 pl-5">
                 <li>
                   You must meet the minimum age required in your region to use
-                  ConnectAfrik.
+                  CribsTalk.
                 </li>
                 <li>Do not solicit minors or exchange private contact details.</li>
                 <li>

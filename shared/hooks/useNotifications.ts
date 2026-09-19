@@ -73,8 +73,8 @@ export const useNotifications = () => {
   const sendTestNotification = useCallback(async () => {
     try {
       await sendLocalNotification({
-        title: 'ConnectAfrik Test',
-        body: 'This is a test notification from ConnectAfrik!',
+        title: 'CribsTalk Test',
+        body: 'This is a test notification from CribsTalk!',
         icon: '/assets/images/logo.png',
         tag: 'test-notification',
         data: { url: '/feed' }

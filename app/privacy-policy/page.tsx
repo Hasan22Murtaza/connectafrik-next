@@ -98,7 +98,7 @@ const PrivacyPolicyPage = () => {
                 Privacy Policy
               </h1>
               <p className="max-w-2xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
-                This policy explains how ConnectAfrik collects, uses, shares,
+                This policy explains how CribsTalk collects, uses, shares,
                 transfers, protects, and retains personal information, and
                 describes your rights and choices.
               </p>
@@ -156,14 +156,14 @@ const PrivacyPolicyPage = () => {
 
           <article className="space-y-6 [scroll-behavior:smooth]">
             <div className="rounded-2xl border-l-4 border-emerald-500 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-              Important: By using ConnectAfrik, you agree to this policy and
+              Important: By using CribsTalk, you agree to this policy and
               consent to processing as described below, subject to your local
               legal rights and controls.
             </div>
 
             <SectionCard id="who-we-are" title="1) Who We Are">
               <p>
-                ConnectAfrik.com operates a social platform that enables people
+                CribsTalk.com operates a social platform that enables people
                 to create profiles, connect, share content, and discover
                 communities and events.
               </p>
@@ -180,7 +180,7 @@ const PrivacyPolicyPage = () => {
                 creators, advertisers, business partners, and developers.
               </p>
               <p>
-                <strong>Target Regions:</strong> ConnectAfrik.com is a global
+                <strong>Target Regions:</strong> CribsTalk.com is a global
                 platform and provides services to users in Europe (EEA), the
                 United Kingdom, the United States, Canada, Africa, Asia, and
                 other international locations. We comply with applicable privacy
@@ -546,10 +546,10 @@ const PrivacyPolicyPage = () => {
                   <li>
                     Or email{' '}
                     <a
-                      href="mailto:info@connectafric.com"
+                      href="mailto:info@cribstalk.com"
                       className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
                     >
-                      info@connectafric.com
+                      info@cribstalk.com
                     </a>{' '}
                     with your request and locale.
                   </li>
@@ -565,7 +565,7 @@ const PrivacyPolicyPage = () => {
 
             <SectionCard id="children" title="12) Children&apos;s Privacy">
               <p>
-                ConnectAfrik is not directed to children under [13/16, depending
+                CribsTalk is not directed to children under [13/16, depending
                 on jurisdiction]. We do not knowingly collect personal
                 information from children without appropriate parental consent as
                 required by law.
@@ -758,17 +758,17 @@ const PrivacyPolicyPage = () => {
               <p>
                 Email{' '}
                 <a
-                  href="mailto:info@connectafric.com"
+                  href="mailto:info@cribstalk.com"
                   className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
-                  info@connectafric.com
+                  info@cribstalk.com
                 </a>{' '}
                 or{' '}
                 <a
-                  href="mailto:info@connectafric.com"
+                  href="mailto:info@cribstalk.com"
                   className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
-                  info@connectafric.com
+                  info@cribstalk.com
                 </a>
                 .
               </p>
@@ -799,25 +799,25 @@ const PrivacyPolicyPage = () => {
               <p className="font-medium text-slate-900 dark:text-slate-100">
                 Privacy inquiries and rights requests
               </p>
-              <p>ConnectAfrik.com (legal entity: [ConnectAfrik, Inc./Ltd.])</p>
+              <p>CribsTalk.com (legal entity: [CribsTalk, Inc./Ltd.])</p>
               <p>Attn: Privacy Office / DPO</p>
               <p>[Address, City, Country, Postal Code]</p>
               <p>
                 Email:{' '}
                 <a
-                  href="mailto:info@connectafric.com"
+                  href="mailto:info@cribstalk.com"
                   className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
-                  info@connectafric.com
+                  info@cribstalk.com
                 </a>
               </p>
               <p>
                 Support:{' '}
                 <a
-                  href="mailto:info@connectafric.com"
+                  href="mailto:info@cribstalk.com"
                   className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
                 >
-                  info@connectafric.com
+                  info@cribstalk.com
                 </a>{' '}
                 or in-app Help.
               </p>
