@@ -1440,15 +1440,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className={`mb-1.5 flex w-[min(100%,280px)] items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
+                    className={`mb-1.5 flex max-w-full items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
                         ? "border-[#128c7e] bg-black/[0.05] dark:bg-white/10"
                         : "border-primary-500 bg-surface-secondary/60"
                       }`}
+                    style={{ width: "min(100%, 280px)" }}
                   >
                     <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-content-tertiary" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-[12px] font-semibold text-content">Link</p>
-                      <p className="truncate text-[11px] text-content-tertiary">{linkPreviewUrl}</p>
+                      <p className="break-all text-[11px] text-content-tertiary">{linkPreviewUrl}</p>
                     </div>
                   </a>
                 ) : null}

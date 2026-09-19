@@ -339,7 +339,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   return (
     <div
       ref={dropdownRef}
-      className="absolute sm:right-0 -right-6 z-[120] mt-3 w-65 max-w-[90vw] translate-x-0 transform rounded-xl border border-border bg-surface p-2 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-3"
+      className="absolute sm:right-0 -right-14 z-[120] mt-3 w-70 max-w-[90vw] translate-x-0 transform rounded-xl border border-border bg-surface p-2 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-3"
     >
       <div className="border-b border-border-subtle pb-3">
         <div className="mb-3 flex items-center justify-between gap-2">

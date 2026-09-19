@@ -50,7 +50,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ isOpen, onSignOut, onClose }) => {
         <button
           type="button"
           onClick={onSignOut}
-          className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-surface-hover flex items-center gap-2 transition-colors"
+          className="w-full text-left px-4 py-2 text-sm rounded-md text-danger hover:bg-surface-hover flex items-center gap-2 transition-colors"
         >
           <LogOut className="w-4 h-4" />
           <span>Sign Out</span>
