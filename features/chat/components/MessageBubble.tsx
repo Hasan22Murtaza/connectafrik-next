@@ -26,7 +26,6 @@ import {
   Copy,
   Download,
   ExternalLink,
-  Flag,
   Forward,
   Info,
   Languages,
@@ -35,7 +34,6 @@ import {
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
-  Pin,
   Reply,
   Share2,
   Smile,
@@ -470,7 +468,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const viewOnceKind = viewOnceKindFromMessage(message);
   const canSaveOrOpen = hasAttachments && !isDeleted && !isUploading && !isViewOnce;
   const canSelect = Boolean(onEnterSelection) && !isDeleted;
-  const canReport = !isOwnMessage && !isDeleted;
   const senderId = getChatMessageAuthorId(message);
   const senderName = (message.sender?.name || "User").trim() || "User";
   const canReplyPrivately =
@@ -496,7 +493,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canCopy ||
     canSaveOrOpen ||
     canSelect ||
-    canReport ||
     canReplyPrivately ||
     canMessageSender ||
     Boolean(onReply);
@@ -638,11 +634,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     };
   }, []);
 
-  const handleReport = () => {
-    toast.success("Thanks, we received your report");
-    setShowMenu(false);
-  };
-
   const handleSelect = () => {
     onEnterSelection?.(message);
     setShowMenu(false);
@@ -725,19 +716,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           },
         ]
         : []),
-      ...(!isDeleted
-        ? [
-          {
-            id: "pin",
-            label: "Pin",
-            Icon: Pin,
-            onClick: () => {
-              toast("Pin is not available yet", { icon: "ℹ️" });
-              setShowMenu(false);
-            },
-          },
-        ]
-        : []),
       ...(canEditMessage
         ? [
           {
@@ -790,16 +768,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     ];
 
     const destructive: ChatHeaderOptionsMenuItem[] = [
-      ...(canReport
-        ? [
-          {
-            id: "report",
-            label: "Report",
-            Icon: Flag,
-            onClick: handleReport,
-          },
-        ]
-        : []),
       ...(canDeleteForMe
         ? [
           {
@@ -848,7 +816,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canDeleteForEveryone,
     canSaveOrOpen,
     canSelect,
-    canReport,
     isDeleted,
     handleReply,
     handleCopyText,
@@ -859,7 +826,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     handleSaveAs,
     handleShareAttachment,
     handleOpenWith,
-    handleReport,
   ]);
 
   if (isDeletedForMe) return null;
@@ -937,25 +903,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const locationPayload =
     !isDeleted &&
-    (message.message_type === "location" ||
-      Boolean(tryParseChatLocationContent(message.content)))
+      (message.message_type === "location" ||
+        Boolean(tryParseChatLocationContent(message.content)))
       ? tryParseChatLocationContent(message.content) ||
-        (message.message_type === "location"
-          ? {
-              display_name:
-                message.content?.trim() || "Location",
-            }
-          : null)
+      (message.message_type === "location"
+        ? {
+          display_name:
+            message.content?.trim() || "Location",
+        }
+        : null)
       : null;
 
   /** Outgoing / incoming bubble fill — WhatsApp-inspired, tokenized for themes */
   const bubbleBg = isOwnMessage ? "chat-bubble-own" : "chat-bubble-in";
   const bubbleShape = isOwnMessage
     ? showTail
-      ? "rounded-tl-[8px] rounded-tr-[4px] rounded-br-[8px] rounded-bl-[8px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
+      ? "rounded-tl-[8px] rounded-tr-[0px] rounded-br-[8px] rounded-bl-[8px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
       : "rounded-[8px]"
     : showTail
-      ? "rounded-tr-[8px] rounded-tl-[4px] rounded-br-[8px] rounded-bl-[8px] ring-1 ring-black/[0.04] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--chat-bubble-in)]"
+      ? "rounded-tr-[8px] rounded-tl-[5px] rounded-br-[8px] rounded-bl-[8px] ring-1 ring-black/[0.04] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--chat-bubble-in)]"
       : "rounded-[8px] ring-1 ring-black/[0.04]";
   const forwardAccent =
     showForwardBadge && isOwnMessage ? "border-l-[3px] border-[#25d366] pl-[9px]" : "";
@@ -974,10 +940,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     : sourceContent;
   const linkPreviewUrl =
     !isDeleted &&
-    !emojiOnly &&
-    !locationPayload &&
-    !sharedPostId &&
-    message.content
+      !emojiOnly &&
+      !locationPayload &&
+      !sharedPostId &&
+      message.content
       ? extractFirstUrl(stripMarkdown(message.content))
       : null;
   const toggleExpanded = (messageId: string) => {
@@ -1056,11 +1022,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   return (
     <div
       id={`chat-message-${message.id}`}
-      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${
-        hasReactions ? "mb-8" : isClusterEnd ? "mb-2" : "mb-[2px]"
-      } ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"} ${highlighted ? "chat-message-jump-highlight rounded-xl" : ""} ${
-        selectionMode ? "cursor-pointer pl-8" : ""
-      }`}
+      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : isClusterEnd ? "mb-2" : "mb-[2px]"
+        } ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"} ${highlighted ? "chat-message-jump-highlight rounded-xl" : ""} ${selectionMode ? "cursor-pointer pl-8" : ""
+        }`}
       onClick={
         selectionMode
           ? () => onToggleSelect?.(message)
@@ -1070,19 +1034,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onContextMenu={handleContextMenu}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setShowReactionPicker(false);
-      }}
     >
       {selectionMode ? (
         <span
-          className={`absolute left-0 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border ${
-            isMessageSelected
+          className={`absolute left-0 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border ${isMessageSelected
               ? "border-[#00a884] bg-[#00a884] text-white"
               : "border-[#8696a0] bg-white dark:bg-surface"
-          }`}
+            }`}
           aria-hidden
         >
           {isMessageSelected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
@@ -1123,25 +1081,30 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         ) : null}
 
-        <div className="group/bubble relative" ref={bubbleBlockRef}>
+        <div
+          className="group/bubble relative"
+          ref={bubbleBlockRef}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            setShowReactionPicker(false);
+          }}
+        >
           <div
-            className={`relative inline-block max-w-full overflow-visible transition-shadow ${
-              emojiOnly
+            className={`relative inline-block max-w-full overflow-visible transition-shadow ${emojiOnly
                 ? "bg-transparent shadow-none px-1"
-                : `shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${bubbleShape} ${
-                    visualMediaOnly
-                      ? "w-fit p-[3px] pb-1"
-                      : mediaOnly
-                        ? "w-fit p-1 pb-0.5"
-                        : hasAttachments
-                          ? "w-fit px-2.5 pb-1.5 pt-1.5"
-                          : "px-2.5 pb-1.5 pt-1.5"
-                  }`
-            } ${forwardAccent} ${
-              isComposerEditingThis
+                : `shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${bubbleShape} ${visualMediaOnly
+                  ? "w-fit p-[3px] pb-1"
+                  : mediaOnly
+                    ? "w-fit p-1 pb-0.5"
+                    : hasAttachments
+                      ? "w-fit px-2.5 py-1.5"
+                      : "px-2.5 py-1.5"
+                }`
+              } ${forwardAccent} ${isComposerEditingThis
                 ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-transparent"
                 : ""
-            }`}
+              }`}
           >
             {!isDeleted && (showOverflowMenu || onReact) && !selectionMode && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
               <div className="absolute right-0 top-0 z-20">
@@ -1151,19 +1114,30 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     e.stopPropagation();
                     toggleMessageMenu();
                   }}
-                  className="flex h-5 w-5 items-center justify-center rounded-bl-[18px] rounded-tl-2xl rounded-br-[18px] bg-black/10 text-white backdrop-blur-sm transition hover:bg-black/20 hover:text-white/90"
+                  className="
+                      relative flex h-6 w-8
+                      items-start justify-end
+                      overflow-hidden
+                      rounded-bl-[50px]
+                      bg-gradient-to-bl from-black/20 via-black/10  via-black/5 to-transparent
+                      text-white
+                      backdrop-blur-sm
+                      transition
+                      hover:from-black/30 hover:via-black/15
+                    "
                   aria-label="Open message actions"
                 >
-                  <ChevronDown className="h-4 w-4" />
+                  <span className="flex h-6 w-6 items-center justify-center">
+                    <ChevronDown className="h-4 w-4" />
+                  </span>
                 </button>
               </div>
             ) : null}
 
             {!isDeleted && !selectionMode && (onReact || onReply) && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
               <div
-                className={`absolute z-30 hidden items-center gap-0.5 sm:flex ${
-                  isOwnMessage ? "right-full mr-1.5" : "left-full ml-1.5"
-                } top-1/2 -translate-y-1/2`}
+                className={`absolute z-30 flex items-center gap-0.5 ${isOwnMessage ? "right-full mr-1.5" : "left-full ml-1.5"
+                  } top-1/2 -translate-y-1/2`}
               >
                 {onReact ? (
                   <button
@@ -1199,17 +1173,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               {onReact ? (
                 <div
                   ref={quickReactionsRef}
-                  className={`absolute z-40 flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full bg-surface px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] transform-gpu transition-all duration-150 ease-out scrollbar-thin ${
-                    menuPlacement === "above"
+                  className={`absolute z-40 flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full bg-surface px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] transform-gpu transition-all duration-150 ease-out scrollbar-thin ${menuPlacement === "above"
                       ? "bottom-full mb-2"
                       : "top-full mt-2"
-                  } left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 ${
-                    isOwnMessage ? "sm:right-0" : "sm:left-0"
-                  } ${
-                    showQuickReactions && !showMenu
+                    } left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 ${isOwnMessage ? "sm:right-0" : "sm:left-0"
+                    } ${showQuickReactions && !showMenu
                       ? "pointer-events-auto scale-100 opacity-100"
                       : "pointer-events-none scale-95 opacity-0"
-                  }`}
+                    }`}
                   style={{ willChange: "transform, opacity" }}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -1244,13 +1215,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               ) : null}
               {showReactionPicker && onReact ? (
                 <div
-                  className={`absolute z-50 noto-color-emoji-regular flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full bg-surface px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] transform-gpu transition-all duration-150 ease-out scrollbar-thin ${
-                    menuPlacement === "above"
+                  className={`absolute z-50 noto-color-emoji-regular flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full bg-surface px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] transform-gpu transition-all duration-150 ease-out scrollbar-thin ${menuPlacement === "above"
                       ? "bottom-full mb-2"
                       : "top-full mt-2"
-                  } left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 ${
-                    isOwnMessage ? "sm:right-0" : "sm:left-0"
-                  }`}
+                    } left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 ${isOwnMessage ? "sm:right-0" : "sm:left-0"
+                    }`}
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={handleReactionPickerEnter}
                   onMouseLeave={handleReactionPickerLeave}
@@ -1277,22 +1246,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {showMenu ? (
               <div
                 ref={messageMenuRef}
-                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] flex-col items-stretch gap-1.5 ${
-                  isOwnMessage ? "right-0 items-end sm:right-full sm:mr-1" : "left-0 items-start sm:left-full sm:ml-1"
-                } ${
-                  menuPlacement === "above"
+                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] flex-col items-stretch gap-1.5 ${isOwnMessage ? "right-0 items-end sm:right-full sm:mr-1" : "left-0 items-start sm:left-full sm:ml-1"
+                  } ${menuPlacement === "above"
                     ? "bottom-full mb-2"
                     : menuPlacement === "side"
                       ? "top-4"
                       : "top-full mt-2 sm:top-4 sm:mt-0"
-                }`}
+                  }`}
                 onClick={(e) => e.stopPropagation()}
                 onMouseEnter={handleReactionPickerEnter}
                 onMouseLeave={handleReactionPickerLeave}
               >
                 {onReact ? (
                   <div
-                    className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-x-auto rounded-full bg-white px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] dark:bg-surface"
+                    className="flex max-w-[calc(100vw-1.5rem)] items-center gap-0.5 overflow-auto rounded-full bg-white px-1.5 py-1 shadow-[0_6px_18px_rgba(11,20,26,0.18)] ring-1 ring-black/[0.06] dark:bg-surface"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {WA_QUICK_REACTION_EMOJIS.map((emoji) => (
@@ -1327,7 +1294,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
                   <div
                     role="menu"
-                    className="w-[180px] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-xl bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface"
+                    className={`w-[180px] max-w-[calc(100vw-1.5rem)] ${isOwnMessage ? "h-52" : "h-48"}  p-1 scrollbar-hover overflow-auto rounded-xl bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface`}
                   >
                     {messageOverflowMenuSections.map((section, sectionIdx) => (
                       <Fragment key={section.id}>
@@ -1335,7 +1302,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         {section.items.map((item) => {
                           const { id, label, Icon, tone = "default", trailing, disabled, onClick } = item;
                           const baseRow =
-                            "flex w-full items-center gap-2.5 px-3 py-2 text-left text-[14.5px] leading-snug transition-colors";
+                            "flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[14.5px] leading-snug transition-colors";
                           const rowClass = disabled
                             ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
                             : tone === "danger"
@@ -1388,11 +1355,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   e.stopPropagation();
                   onScrollToMessage?.(message.reply_to_id!);
                 }}
-                className={`mb-1.5 max-w-full overflow-hidden rounded-lg border-l-[3px] px-2 py-1.5 text-left transition hover:opacity-90 ${
-                  isOwnMessage
+                className={`mb-1.5 max-w-full overflow-hidden rounded-lg border-l-[3px] px-2 py-1.5 text-left transition hover:opacity-90 ${isOwnMessage
                     ? "border-[#25d366] bg-black/[0.06] dark:bg-white/10"
                     : "border-primary-500 bg-surface-secondary/70"
-                }`}
+                  }`}
                 aria-label={`Jump to message from ${replyQuote.senderName}`}
               >
                 <div className="truncate text-[11px] font-semibold text-primary-700 dark:text-primary-300">
@@ -1446,14 +1412,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             ) : (
               <>
                 {isViewOnce && !isUploading ? (
-                    <ViewOncePlaceholder
-                      kind={viewOnceKind}
-                      opened={viewOnceOpened}
-                      isOwnMessage={isOwnMessage}
-                      loading={viewOnceOpening}
-                      onOpen={handleOpenViewOnce}
-                    />
-                  ) : message.attachments && message.attachments.length > 0 ? (
+                  <ViewOncePlaceholder
+                    kind={viewOnceKind}
+                    opened={viewOnceOpened}
+                    isOwnMessage={isOwnMessage}
+                    loading={viewOnceOpening}
+                    onOpen={handleOpenViewOnce}
+                  />
+                ) : message.attachments && message.attachments.length > 0 ? (
                   <MessageAttachments
                     attachments={message.attachments}
                     isOwnMessage={isOwnMessage}
@@ -1474,11 +1440,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className={`mb-1.5 flex w-[min(100%,280px)] items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${
-                      isOwnMessage
+                    className={`mb-1.5 flex w-[min(100%,280px)] items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
                         ? "border-[#128c7e] bg-black/[0.05] dark:bg-white/10"
                         : "border-primary-500 bg-surface-secondary/60"
-                    }`}
+                      }`}
                   >
                     <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-content-tertiary" />
                     <div className="min-w-0">
@@ -1499,20 +1464,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 ) : null}
 
                 {canTranslate &&
-                !isDeleted &&
-                !locationPayload &&
-                (offerTranslateLink ||
-                  isTranslating ||
-                  translationDisplay?.isTranslated ||
-                  (activeTranslationLanguage && showOriginalOverride) ||
-                  (activeTranslationLanguage &&
-                    !translationDisplay?.isTranslated &&
-                    !showOriginalOverride)) ? (
-                  <div className="mt-1 flex items-center gap-1.5">
-                    {isTranslating ||
+                  !isDeleted &&
+                  !locationPayload &&
+                  (offerTranslateLink ||
+                    isTranslating ||
+                    translationDisplay?.isTranslated ||
+                    (activeTranslationLanguage && showOriginalOverride) ||
                     (activeTranslationLanguage &&
                       !translationDisplay?.isTranslated &&
-                      !showOriginalOverride) ? (
+                      !showOriginalOverride)) ? (
+                  <div className="mt-1 flex items-center gap-1.5">
+                    {isTranslating ||
+                      (activeTranslationLanguage &&
+                        !translationDisplay?.isTranslated &&
+                        !showOriginalOverride) ? (
                       <span className="inline-flex items-center gap-1 text-[11px] text-content-tertiary">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         Translating…
@@ -1573,17 +1538,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
                   {showEditedBadge ? (
                     <span
-                      className={`text-[11px] lowercase leading-none ${
-                        visualMediaOnly ? "text-white/90" : "text-content-tertiary"
-                      }`}
+                      className={`text-[11px] lowercase leading-none ${visualMediaOnly ? "text-white/90" : "text-content-tertiary"
+                        }`}
                     >
                       edited
                     </span>
                   ) : null}
                   <span
-                    className={`shrink-0 text-[11px] tabular-nums ${
-                      visualMediaOnly ? "text-white/90" : "text-content-tertiary"
-                    }`}
+                    className={`shrink-0 text-[11px] tabular-nums ${visualMediaOnly ? "text-white/90" : "text-content-tertiary"
+                      }`}
                   >
                     {format(new Date(message.created_at), "HH:mm")}
                   </span>
@@ -1606,8 +1569,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   void openReactionsModal();
                 }}
                 className={`absolute z-10 flex max-w-[min(100%,200px)] cursor-pointer items-center rounded-full bg-surface p-1 shadow-[0_1px_3px_rgba(11,20,26,0.16)] ring-1 ring-border-subtle transition hover:bg-surface-hover hover:scale-105 noto-color-emoji-regular animate-[chatReactPop_280ms_ease-out] ${isOwnMessage
-                    ? "-bottom-4 right-2 "
-                    : "-bottom-4 left-2  "
+                  ? "-bottom-4 right-2 "
+                  : "-bottom-4 left-2  "
                   }`}
               >
                 {activeReactions.slice(0, 3).map((reaction, index) => (

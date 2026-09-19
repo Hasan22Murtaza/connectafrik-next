@@ -2666,7 +2666,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div
                 ref={menuRef}
                 role="menu"
-                className="absolute right-0 top-full z-50 mt-1 min-w-[min(240px,calc(100vw-1.5rem))] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-xl animate-[chatFadeIn_140ms_ease-out]"
+                className="absolute right-0 top-full z-50 mt-1 p-1 min-w-[min(240px,calc(100vw-1.5rem))] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-border bg-surface py-1 shadow-xl animate-[chatFadeIn_140ms_ease-out]"
               >
                 {chatHeaderOptionsMenuSections.map((section, sectionIdx) => (
                   <React.Fragment key={section.id}>
@@ -2687,7 +2687,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         onClick,
                       } = item;
                       const baseRow =
-                        "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-[13px] leading-snug";
+                        "flex w-full items-center gap-2.5 px-3 py-1.5 rounded-md text-left text-[13px] leading-snug";
                       const rowClass =
                         disabled
                           ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
