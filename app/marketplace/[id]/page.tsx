@@ -775,7 +775,7 @@ const ProductDetailPage: React.FC = () => {
                     }`}
                   >
                     <UserPlus className="w-4 h-4" />
-                    {isFollowing ? "Following" : "Follow"}
+                    {isFollowing ? "Tap In" : "UnTap In"}
                   </button>
                 </div>
               )}
