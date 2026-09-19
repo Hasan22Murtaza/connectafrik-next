@@ -14,6 +14,9 @@ interface GroupPostCommentsSectionProps {
   onClose: () => void
 }
 
+const flattenReplies = (replies: GroupPostComment[]): GroupPostComment[] =>
+  replies.flatMap(reply => [reply, ...flattenReplies(reply.replies || [])])
+
 const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
   groupId,
   groupPostId,
@@ -87,23 +90,45 @@ const GroupPostCommentsSection: React.FC<GroupPostCommentsSectionProps> = ({
           <p className="py-3 text-center text-xs text-gray-400">Be the first to comment</p>
         ) : (
           comments.map(comment => (
-            <FBGroupCommentItem
-              key={comment.id}
-              comment={comment}
-              onLike={toggleLike}
-              onReplyToggle={(id) => {
-                setReplyContent('')
-                setReplyingTo(replyingTo === id ? null : id)
-              }}
-              onDelete={handleDelete}
-              replyingTo={replyingTo}
-              replyContent={replyContent}
-              setReplyContent={setReplyContent}
-              onSubmitReply={handleSubmitReply}
-              onReplyKeyDown={handleReplyKeyDown}
-              isReplySubmitting={isReplySubmitting}
-              currentUserId={user?.id}
-            />
+            <React.Fragment key={comment.id}>
+              <FBGroupCommentItem
+                comment={comment}
+                onLike={toggleLike}
+                onReplyToggle={(id) => {
+                  setReplyContent('')
+                  setReplyingTo(replyingTo === id ? null : id)
+                }}
+                onDelete={handleDelete}
+                replyingTo={replyingTo}
+                replyContent={replyContent}
+                setReplyContent={setReplyContent}
+                onSubmitReply={handleSubmitReply}
+                onReplyKeyDown={handleReplyKeyDown}
+                isReplySubmitting={isReplySubmitting}
+                currentUserId={user?.id}
+              />
+              {flattenReplies(comment.replies || []).map(reply => (
+                <div key={reply.id} className="ml-8">
+                  <FBGroupCommentItem
+                    comment={reply}
+                    onLike={toggleLike}
+                    onReplyToggle={(id) => {
+                      setReplyContent('')
+                      setReplyingTo(replyingTo === id ? null : id)
+                    }}
+                    onDelete={handleDelete}
+                    replyingTo={replyingTo}
+                    replyContent={replyContent}
+                    setReplyContent={setReplyContent}
+                    onSubmitReply={handleSubmitReply}
+                    onReplyKeyDown={handleReplyKeyDown}
+                    isReplySubmitting={isReplySubmitting}
+                    currentUserId={user?.id}
+                    depth={1}
+                  />
+                </div>
+              ))}
+            </React.Fragment>
           ))
         )}
       </div>
@@ -195,7 +220,7 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
     .replace(/ years?/, 'y')
 
   return (
-    <div className={depth > 0 ? 'ml-8 mt-1' : 'mt-1'}>
+    <div className={depth > 0 ? 'mt-2' : 'mt-1'}>
       <div className="flex gap-2">
         {/* Avatar */}
         <div className="flex-shrink-0 pt-0.5">
@@ -216,7 +241,7 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
         <div className="flex-1 min-w-0">
           {/* Gray bubble */}
           <div className="relative group inline-block max-w-full">
-            <div className="rounded-2xl bg-gray-100 px-3 py-1.5 inline-block max-w-full">
+            <div className="px-2 py-1.5 inline-block max-w-full">
               <span className="text-[13px] font-semibold text-gray-900 leading-tight">
                 {comment.author?.full_name || comment.author?.username || 'Unknown'}
               </span>
@@ -225,7 +250,7 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
 
             {/* Three-dot menu on hover */}
             {isAuthor && (
-              <div className="absolute -right-7 top-1 hidden group-hover:block">
+              <div className="absolute -right-6 top-1 hidden group-hover:block">
                 <button
                   onClick={() => setShowMenu(prev => !prev)}
                   className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
@@ -233,10 +258,10 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
                   <span className="text-sm leading-none">···</span>
                 </button>
                 {showMenu && (
-                  <div className="absolute right-0 top-full mt-1 z-10 w-28 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 top-full mt-1 z-10 w-28 rounded-lg p-1 border border-gray-200 bg-white py-1 shadow-lg">
                     <button
                       onClick={() => { onDelete(comment.id); setShowMenu(false) }}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs rounded-md text-red-600 hover:bg-red-50"
                     >
                       <Trash2 className="h-3 w-3" /> Delete
                     </button>
@@ -298,28 +323,6 @@ const FBGroupCommentItem: React.FC<FBGroupCommentItemProps> = ({
             </div>
           )}
 
-          {/* Nested replies */}
-          {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-1">
-              {comment.replies.map(reply => (
-                <FBGroupCommentItem
-                  key={reply.id}
-                  comment={reply}
-                  onLike={onLike}
-                  onReplyToggle={onReplyToggle}
-                  onDelete={onDelete}
-                  replyingTo={replyingTo}
-                  replyContent={replyContent}
-                  setReplyContent={setReplyContent}
-                  onSubmitReply={onSubmitReply}
-                  onReplyKeyDown={onReplyKeyDown}
-                  isReplySubmitting={isReplySubmitting}
-                  currentUserId={currentUserId}
-                  depth={depth + 1}
-                />
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -258,7 +258,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                 id={postOptionsMenuId}
                 role="menu"
                 aria-label="Post actions"
-                className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,20rem)] list-none rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                className="absolute right-0 top-full z-50 mt-1 m-0 w-[min(100vw-2rem,10rem)] list-none rounded-lg border border-gray-200 bg-white p-1 shadow-lg"
               >
                 {isAuthor && onEdit && (
                   <li role="none" className="list-none">
@@ -266,14 +266,14 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                       type="button"
                       role="menuitem"
                       onClick={handleEditClick}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-md text-left transition-colors hover:bg-gray-100 focus:outline-none focus-visible:bg-gray-100"
                     >
                       <Edit
                         className="mt-0.5 h-5 w-5 shrink-0 text-gray-600"
                         aria-hidden
                       />
                       <span className="min-w-0">
-                        <span className="block text-sm font-semibold text-gray-900">
+                        <span className="block text-sm text-gray-900">
                           Edit post
                         </span>
                       </span>
@@ -286,10 +286,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                       type="button"
                       role="menuitem"
                       onClick={() => handleModerate('approve')}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-md text-left transition-colors hover:bg-gray-100"
                     >
                       <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-600" aria-hidden />
-                      <span className="block text-sm font-semibold text-gray-900">Approve post</span>
+                      <span className="block text-sm text-gray-900">Approve post</span>
                     </button>
                   </li>
                 )}
@@ -299,7 +299,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                       type="button"
                       role="menuitem"
                       onClick={() => handleModerate('reject')}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-red-50"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-md text-left transition-colors hover:bg-red-50"
                     >
                       <Ban className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden />
                       <span className="block text-sm font-semibold text-red-600">Reject post</span>
@@ -313,14 +313,14 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                         type="button"
                         role="menuitem"
                         onClick={() => handleModerate(post.is_hidden ? 'unhide' : 'hide')}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                        className="flex w-full items-start gap-3 px-3 py-1.5 rounded-md text-left transition-colors hover:bg-gray-100"
                       >
                         {post.is_hidden ? (
                           <Eye className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
                         ) : (
                           <EyeOff className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
                         )}
-                        <span className="block text-sm font-semibold text-gray-900">
+                        <span className="block text-sm text-gray-900">
                           {post.is_hidden ? 'Unhide post' : 'Hide post'}
                         </span>
                       </button>
@@ -330,10 +330,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                         type="button"
                         role="menuitem"
                         onClick={() => handleModerate(post.is_restricted ? 'unrestrict' : 'restrict')}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                        className="flex w-full items-start gap-3 px-3 py-1.5 rounded-md text-left transition-colors hover:bg-gray-100"
                       >
                         <Ban className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
-                        <span className="block text-sm font-semibold text-gray-900">
+                        <span className="block text-sm text-gray-900">
                           {post.is_restricted ? 'Unrestrict post' : 'Restrict post'}
                         </span>
                       </button>
@@ -349,10 +349,10 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                         setShowMenu(false)
                         setShowReportModal(true)
                       }}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-100"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-md text-left transition-colors hover:bg-gray-100"
                     >
                       <Flag className="mt-0.5 h-5 w-5 shrink-0 text-gray-600" aria-hidden />
-                      <span className="block text-sm font-semibold text-gray-900">Report post</span>
+                      <span className="block text-sm text-gray-900">Report post</span>
                     </button>
                   </li>
                 )}
@@ -365,7 +365,7 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
                       type="button"
                       role="menuitem"
                       onClick={handleDeleteClick}
-                      className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-red-50 focus:outline-none focus-visible:bg-red-50"
+                      className="flex w-full items-start gap-3 px-3 py-1.5 rounded-md text-left transition-colors hover:bg-red-50 focus:outline-none focus-visible:bg-red-50"
                     >
                       <Trash2
                         className="mt-0.5 h-5 w-5 shrink-0 text-red-600"
