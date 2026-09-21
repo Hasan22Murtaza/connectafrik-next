@@ -693,13 +693,6 @@ const UserProfilePage: React.FC = () => {
                     <span className="text-content-secondary text-sm sm:text-base">@{profile.username}</span>
                   </div>
                 </div>
-
-                <p className="mt-0.5 text-[14px] sm:text-[15px] text-content-secondary">
-                  <span className="font-semibold text-content">{fmt(profile.following_count)}</span> tapping in
-                </p>
-
-                {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
-
                 {user && user.id !== profile.id && visibleFields.followersList && mutualFriendsCount > 0 && (
                   <div className="flex items-center justify-center sm:justify-start mt-1.5 gap-2">
                     <div className="flex -space-x-1.5">
@@ -715,6 +708,13 @@ const UserProfilePage: React.FC = () => {
                     <span className="text-[12px] sm:text-[13px] text-content-secondary">{mutualFriendsCount} mutual {mutualFriendsCount === 1 ? 'friend' : 'friends'}</span>
                   </div>
                 )}
+                <p className="mt-0.5 text-[14px] sm:text-[15px] text-content-secondary">
+                  <span className="font-medioum text-content">{fmt(profile.following_count)}</span> tapping in
+                </p>
+
+                {profile.bio && <p className="mt-1 text-[14px] sm:text-[15px] text-content leading-snug line-clamp-1 sm:line-clamp-2 max-w-xl">{profile.bio}</p>}
+
+
               </div>
             </div>
 
@@ -791,7 +791,7 @@ const UserProfilePage: React.FC = () => {
           <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
             <div className="bg-surface sm:rounded-2xl shadow-card p-4">
               <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
-              {profile.bio && <p className="text-sm text-content text-center leading-relaxed mb-3 pb-3 border-b border-border">{profile.bio}</p>}
+              {profile.bio && <p className="text-sm text-content leading-relaxed mb-3 pb-3 border-b border-border">{profile.bio}</p>}
               <div className="space-y-2.5">
                 {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
                 {visibleFields.location && profileLivesInLine ? (
