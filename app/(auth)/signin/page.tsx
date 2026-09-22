@@ -214,8 +214,8 @@ const SigninForm: React.FC = () => {
 
   return (
     <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-5">
-      <div className="mb-6 text-center">
-        <h1 className="text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#111827] sm:text-[1.85rem]">
+      <div className="mb-4 text-center">
+        <h1 className="text-[1.60rem] font-extrabold leading-tight tracking-tight text-[#111827] sm:text-[1.85rem]">
           Welcome back <span aria-hidden="true">👋</span>
         </h1>
       </div>
@@ -230,7 +230,7 @@ const SigninForm: React.FC = () => {
         {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
       </button>
 
-      <div className="relative my-5">
+      <div className="relative my-3">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-[#E5E7EB]" />
         </div>
@@ -239,7 +239,7 @@ const SigninForm: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3.5">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {loginMethod === "email" ? (
           <>
             <div>
