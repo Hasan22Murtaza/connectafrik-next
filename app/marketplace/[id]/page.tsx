@@ -51,6 +51,7 @@ import {
   unfollowUser,
 } from "@/features/social/services/followService";
 import { ProductDetailPageShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import Link from "next/link";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
@@ -429,8 +430,8 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const openSellerProfile = () => {
-    if (product.seller?.username) {
-      router.push(`/user/${encodeURIComponent(product.seller.username)}`);
+    if (product.seller?.id) {
+      router.push(`/user/${product.seller.id}`);
     }
   };
 
@@ -716,6 +717,7 @@ const ProductDetailPage: React.FC = () => {
                   />
                 </button>
                 <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={openSellerProfile}
@@ -728,32 +730,7 @@ const ProductDetailPage: React.FC = () => {
                       @{product.seller?.username || "unknown"}
                     </p>
                   </button>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-content-secondary">
-                    {(product.average_rating || 0) > 0 && (
-                      <span>
-                        ★ {(product.average_rating || 0).toFixed(1)}
-                        {product.reviews_count
-                          ? ` · ${product.reviews_count} reviews`
-                          : ""}
-                      </span>
-                    )}
-                    {sellerListingCount != null && (
-                      <span>
-                        {sellerListingCount} active listing
-                        {sellerListingCount === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {product.seller?.bio && (
-                <p className="mt-3 text-sm text-content-secondary leading-relaxed line-clamp-3">
-                  {product.seller.bio}
-                </p>
-              )}
-
-              {!isOwnProduct && (
+                   {!isOwnProduct && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {product.contact_phone && (
                     <a
@@ -779,6 +756,33 @@ const ProductDetailPage: React.FC = () => {
                   </button>
                 </div>
               )}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-content-secondary">
+                    {(product.average_rating || 0) > 0 && (
+                      <span>
+                        ★ {(product.average_rating || 0).toFixed(1)}
+                        {product.reviews_count
+                          ? ` · ${product.reviews_count} reviews`
+                          : ""}
+                      </span>
+                    )}
+                    {sellerListingCount != null && (
+                      <span>
+                        {sellerListingCount} active listing
+                        {sellerListingCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {product.seller?.bio && (
+                <p className="mt-3 text-sm text-content-secondary leading-relaxed line-clamp-3">
+                  {product.seller.bio}
+                </p>
+              )}
+
+             
             </section>
 
             {/* Description */}
