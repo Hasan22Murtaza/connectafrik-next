@@ -172,11 +172,17 @@ const GroupCard: React.FC<GroupCardProps> = ({
                
               {group.is_verified && <span className="text-primary-600">✓</span>}
             </div>
-            <div className="flex items-center gap-1 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              <div className="flex items-center gap-1">
             <Calendar className="w-4 h-4" />
             {formatDistanceToNow(new Date(group.created_at), {
               addSuffix: true,
             })}
+            </div>
+            <div className="flex items-center gap-1">
+            <Users className="w-4 h-4" />
+            {group.member_count} members
+          </div>
           </div>
 
             {/* <span
@@ -197,13 +203,13 @@ const GroupCard: React.FC<GroupCardProps> = ({
             </button>
 
             {openMenu && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div className="absolute right-0 p-1 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                 <button
                   onClick={() => {
                     handleViewGroup();
                     setOpenMenu(false);
                   }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+                  className="w-full flex items-center rounded-md gap-2 px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                 >
                   <Eye className="w-4 h-4" />
                   View Group
@@ -215,7 +221,7 @@ const GroupCard: React.FC<GroupCardProps> = ({
                       handleJoinGroup();
                       setOpenMenu(false);
                     }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
+                    className="w-full flex items-center rounded-md gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                     Leave Group
@@ -231,27 +237,6 @@ const GroupCard: React.FC<GroupCardProps> = ({
           {group.description}
         </p>
 
-        {/* Stats */}
-        <div className="flex flex-wrap gap-2 text-sm text-gray-500 mb-4">
-          <div className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            {group.member_count} members
-          </div>
-
-          {group.location && (
-            <div className="flex items-center gap-1">
-              <MapPin className="w-4 h-4" />
-              {group.location}
-            </div>
-          )}
-
-          {/* <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            {formatDistanceToNow(new Date(group.created_at), {
-              addSuffix: true,
-            })}
-          </div> */}
-        </div>
 
         {/* Actions */}
         <div className="space-y-3">

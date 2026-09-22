@@ -16,6 +16,7 @@ import {
 interface ProductBrowseCardProps {
   product: Product;
   onView: (productId: string) => void;
+  handleUnsave?: () => void;
 }
 
 const FALLBACK_IMAGE =
@@ -24,6 +25,7 @@ const FALLBACK_IMAGE =
 const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   product,
   onView,
+  handleUnsave,
 }) => {
   const [isSaved, setIsSaved] = useState<boolean>(Boolean(product.is_saved));
   const mainImage = product.images?.[0] || FALLBACK_IMAGE;
@@ -57,6 +59,16 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
     }
   };
 
+  const handleUnsaveClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (handleUnsave) {
+      void handleUnsave();
+      return;
+    }
+    void handleSave();
+  };
+
+
   return (
     <article
       className="group cursor-pointer rounded-xl overflow-hidden bg-surface border border-border-subtle shadow-sm hover:bg-surface-hover hover:shadow-md transition-all duration-200"
@@ -75,10 +87,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         />
         <button
           type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            void handleSave();
-          }}
+          onClick={handleUnsaveClick}
           className={`p-2.5 rounded-full backdrop-blur-sm shadow-sm transition-all active:scale-95 absolute top-2 right-2 ${isSaved
               ? "bg-primary-600 text-white"
               : "bg-surface/90 text-content hover:bg-surface"
@@ -118,12 +127,13 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
       </div>
 
       <div className="flex flex-col gap-1 px-3 pt-2.5 pb-3 min-w-0">
+         <h3 className="text-sm text-content line-clamp-1 leading-snug">
+          {product.title}
+        </h3>
         <p className="text-base font-bold text-content truncate leading-none">
           {formatProductPrice(product)}
         </p>
-        <h3 className="text-sm text-content line-clamp-2 leading-snug">
-          {product.title}
-        </h3>
+       
         {location && (
           <p className="text-xs text-content-secondary truncate">{location}</p>
         )}
