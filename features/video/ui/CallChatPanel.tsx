@@ -123,18 +123,18 @@ const CallChatPanel: React.FC<CallChatPanelProps> = ({
       className="z-40 flex h-[min(58vh,28rem)] w-full flex-col border-t border-border bg-surface shadow-2xl sm:h-screen sm:w-[360px] sm:border-l sm:border-t-0 max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:rounded-t-2xl"
       aria-label="Meeting chat"
     >
-      <header className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2.5">
+      <header className="flex shrink-0 items-center justify-between border-b border-border bg-primary-600 px-3 py-2.5">
         <div>
-          <h2 className="text-sm font-semibold text-content">Chat</h2>
-          <p className="text-[11px] text-content-secondary">Visible to everyone in this thread</p>
+          <h2 className="text-sm font-semibold text-white">Chat</h2>
+          <p className="text-[11px] text-white">Visible to everyone in this thread</p>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full p-1.5 text-content-secondary transition hover:bg-surface-hover hover:text-content"
+          className="rounded-full p-1.5 text-content-secondary transition  hover:text-content"
           aria-label="Close chat"
         >
-          <X className="h-4 w-4" />
+          <X className="h-4 w-4 text-white hover:text-gray-200" />
         </button>
       </header>
 
