@@ -195,12 +195,12 @@ const BuyingPageContent: React.FC = () => {
         />
       </div>
       <div className="p-2 min-w-0">
+        <p className="text-sm text-content line-clamp-1 mt-0.5">{item.title}</p>
         <p className="font-bold text-content text-sm">
           {item.price === 0
             ? "FREE"
             : `${getCurrencySymbol(item.currency)}${item.price.toLocaleString()}`}
         </p>
-        <p className="text-sm text-content line-clamp-1 mt-0.5">{item.title}</p>
         <p className="text-xs text-content-secondary mt-1 line-clamp-1">
           {item.subtitle} · {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
         </p>
@@ -261,10 +261,11 @@ const BuyingPageContent: React.FC = () => {
         />
       </div>
       <div className="flex-1 min-w-0">
+        
+        <p className="text-sm text-content line-clamp-2 mt-0.5">{order.product_title}</p>
         <p className="font-bold text-content">
           {order.currency} {order.total_amount.toLocaleString()}
         </p>
-        <p className="text-sm text-content line-clamp-2 mt-0.5">{order.product_title}</p>
         <p className="text-xs text-content-secondary mt-1">
           Order #{order.order_number} · {order.status} ·{" "}
           {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
@@ -288,10 +289,10 @@ const BuyingPageContent: React.FC = () => {
         />
       </div>
       <div className="p-2 min-w-0">
+        <p className="text-sm text-content line-clamp-1 mt-0.5">{order.product_title}</p>
         <p className="font-bold text-content text-sm">
           {order.currency} {order.total_amount.toLocaleString()}
         </p>
-        <p className="text-sm text-content line-clamp-1 mt-0.5">{order.product_title}</p>
         <p className="text-xs text-content-secondary mt-1 line-clamp-1">
           #{order.order_number} · {order.status}
         </p>

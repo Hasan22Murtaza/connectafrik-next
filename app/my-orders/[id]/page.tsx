@@ -998,7 +998,7 @@ const OrderDetailPage: React.FC = () => {
               )}
 
               {/* Actions */}
-              <div className="hidden sm:block px-4 sm:px-5 py-4 border-t border-border-subtle bg-surface-secondary/30">
+              <div className="hidden sm:block px-2 py-4 border-t border-border-subtle bg-surface-secondary/30">
                 <div className="flex flex-col gap-1">
                   <Link
                     href={`/marketplace/${order.product_id}`}
