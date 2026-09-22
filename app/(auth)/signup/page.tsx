@@ -142,15 +142,13 @@ const Signup: React.FC = () => {
   }
 
   const maxBirthday = new Date().toISOString().split('T')[0]
-  const inputClassName =
-    'w-full px-3 py-2 border border-gray-300 rounded-md text-sm  focus:outline-none focus:border-[#f97316] focus:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]'
 
   return (
     <AuthPageShell
       title="Create a new account"
       subtitle="Connect with people and communities worldwide"
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-3">
+      <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <input
@@ -159,11 +157,11 @@ const Signup: React.FC = () => {
               value={formData.firstName}
               onChange={handleInputChange}
               placeholder="First name"
-              className={inputClassName}
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
               aria-invalid={!!fieldErrors.firstName}
             />
             {fieldErrors.firstName && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.firstName}</p>
+              <p className="mt-1.5 text-xs text-red-600">{fieldErrors.firstName}</p>
             )}
           </div>
           <div>
@@ -173,11 +171,11 @@ const Signup: React.FC = () => {
               value={formData.lastName}
               onChange={handleInputChange}
               placeholder="Last name"
-              className={inputClassName}
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
               aria-invalid={!!fieldErrors.lastName}
             />
             {fieldErrors.lastName && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.lastName}</p>
+              <p className="mt-1.5 text-xs text-red-600">{fieldErrors.lastName}</p>
             )}
           </div>
         </div>
@@ -189,11 +187,11 @@ const Signup: React.FC = () => {
             value={formData.username}
             onChange={handleInputChange}
             placeholder="Username"
-            className={inputClassName}
+            className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
             aria-invalid={!!fieldErrors.username}
           />
           {fieldErrors.username && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.username}</p>
+            <p className="mt-1.5 text-xs text-red-600">{fieldErrors.username}</p>
           )}
         </div>
 
@@ -204,38 +202,38 @@ const Signup: React.FC = () => {
             value={formData.emailOrPhone}
             onChange={handleInputChange}
             placeholder="Email address"
-            className={inputClassName}
+            className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
             aria-invalid={!!fieldErrors.emailOrPhone}
           />
           {fieldErrors.emailOrPhone && (
-            <p className="text-xs text-red-600 mt-1">{fieldErrors.emailOrPhone}</p>
+            <p className="mt-1.5 text-xs text-red-600">{fieldErrors.emailOrPhone}</p>
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="flex items-center text-xs text-content-secondary mb-1">Date of Birthday</label>
+            <label className="mb-1.5 block text-xs font-medium text-[#6B7280]">Date of Birthday</label>
             <input
               type="date"
               name="birthday"
               value={formData.birthday}
               onChange={handleInputChange}
               max={maxBirthday}
-              className={inputClassName}
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
               aria-invalid={!!fieldErrors.birthday}
             />
             {fieldErrors.birthday && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.birthday}</p>
+              <p className="mt-1.5 text-xs text-red-600">{fieldErrors.birthday}</p>
             )}
           </div>
 
           <div>
-            <label className="flex items-center text-xs text-content-secondary mb-1">Gender</label>
+            <label className="mb-1.5 block text-xs font-medium text-[#6B7280]">Gender</label>
             <select
               name="gender"
               value={formData.gender}
               onChange={handleInputChange}
-              className={inputClassName}
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
               aria-invalid={!!fieldErrors.gender}
             >
               <option value="">Select gender</option>
@@ -250,52 +248,51 @@ const Signup: React.FC = () => {
                 value={formData.customGender}
                 onChange={handleInputChange}
                 placeholder="Enter your gender (optional)"
-                className={`${inputClassName} mt-2`}
+                className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white px-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 mt-2"
               />
             )}
             {fieldErrors.gender && (
-              <p className="text-xs text-red-600 mt-1">{fieldErrors.gender}</p>
+              <p className="mt-1.5 text-xs text-red-600">{fieldErrors.gender}</p>
             )}
           </div>
         </div>
 
-        {/* <div className="space-y-2 pt-2">
-          <p className="text-xs text-content-secondary">
-            People who use our service may have uploaded your contact information to CribsTalk.{' '}
-            <Link href="/support" className="text-primary-600 hover:underline">
-              Learn more.
-            </Link>
-          </p>
-          <p className="text-xs text-content-secondary">
-            By clicking Continue, you agree to our{' '}
-            <Link href="/terms-of-service" className="text-primary-600 hover:underline">
-              Terms
-            </Link>
-            ,{' '}
-            <Link href="/privacy-policy" className="text-primary-600 hover:underline">
-              Privacy Policy
-            </Link>{' '}
-            and{' '}
-            <Link href="/privacy-policy" className="text-primary-600 hover:underline">
-              Cookies Policy
-            </Link>
-            .
-          </p>
-        </div> */}
-
         <button
           type="submit"
           disabled={!isFormValid || isLoading}
-          className="w-full btn-primary text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
         >
-          {isLoading ? 'Sending code...' : 'Continue'}
+          {isLoading ? 'Sending code...' : (
+            <>
+              Continue <span aria-hidden="true">→</span>
+            </>
+          )}
         </button>
 
-        <div className="text-center pt-2">
-          <Link href="/signin" className="text-primary-600 hover:underline text-sm font-medium">
-            Already have an account?
+        <p className="pt-1 text-center text-sm text-[#6B7280]">
+          Already have an account?{' '}
+          <Link href="/signin" className="font-medium text-[#22C55E] hover:text-[#16A34A]">
+            Sign in
           </Link>
-        </div>
+        </p>
+
+        <p className="pt-1 text-center text-xs text-[#6B7280]">
+          By continuing, you agree to our{' '}
+          <Link
+            href="/terms-of-service"
+            className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
+          >
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link
+            href="/privacy-policy"
+            className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </form>
     </AuthPageShell>
   )
