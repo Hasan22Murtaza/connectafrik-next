@@ -13,6 +13,8 @@ import {
   Landmark,
   Palette,
   Users,
+  Menu,
+  Close,
 } from "@/shared/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/shared/hooks/useProfile";
@@ -63,6 +65,8 @@ const Header: React.FC<HeaderProps> = ({
 
   const { unreadMessages, callBadgeCount, markCallsViewed } = useHeaderInboxCounts();
   const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+  const [guestMenuOpen, setGuestMenuOpen] = useState(false);
 
   // Sync with external searchTerm prop
   useEffect(() => {
@@ -70,6 +74,14 @@ const Header: React.FC<HeaderProps> = ({
       handleSearch(externalSearchTerm);
     }
   }, [externalSearchTerm, internalSearchTerm, handleSearch]);
+
+  useEffect(() => {
+    if (user) return;
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [user]);
 
   // Handle search input change
   const handleSearchChange = (value: string) => {
@@ -117,13 +129,35 @@ const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-surface shadow-header ">
-        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 overflow-visible">
-          <div className="flex items-center h-14 sm:h-16 justify-between gap-2 w-full">
+      <header
+        className={
+          user
+            ? "sticky top-0 z-50 bg-surface shadow-header"
+            : `sticky top-0 z-50 border-b transition-[background-color,box-shadow,border-color] duration-300 ${
+                scrolled
+                  ? "border-black/[0.06] bg-white/90 shadow-sm backdrop-blur-xl"
+                  : "border-transparent bg-white/70 backdrop-blur-md"
+              }`
+        }
+      >
+        <div
+          className={
+            user
+              ? "max-w-full 4xl:max-w-screen-2xl mx-auto px-1 sm:px-2 2xl:px-6 overflow-visible"
+              : "mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8"
+          }
+        >
+          <div
+            className={
+              user
+                ? "flex items-center h-14 sm:h-16 justify-between gap-2 w-full"
+                : "flex w-full items-center justify-between gap-4"
+            }
+          >
             <div className="flex items-center ">
             {/* Logo - Pinned to left */}
-            <Link href="/" className="flex-shrink-0 ">
-              <img src="/assets/images/logo_2.png" alt="" className="sm:w-48 w-32" />
+            <Link href="/" className="flex-shrink-0 " aria-label="CribsTalk home">
+              <img src="/assets/images/logo_2.png" alt="CribsTalk" className="sm:w-48 w-32" />
             </Link>
 
             {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}
@@ -395,25 +429,61 @@ const Header: React.FC<HeaderProps> = ({
                   </div>
                 </>
               ) : (
-                <div className="flex items-center space-x-2 sm:space-x-4 pr-1  border-0 border-border-subtle">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <Link
                     href="/signin"
-                    className="btn-secondary !px-3 sm:px-5 sm:text-base text-sm"
+                    className="hidden rounded-full border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
                   >
                     Sign In
                   </Link>
                   <Link
                     href="/signup"
-                    className="btn-primary !px-3 sm:px-5 sm:text-base text-sm"
+                    className="hidden rounded-full bg-[#F97316] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
                   >
-                    Join Community
+                    Join CribsTalk
                   </Link>
+
+                  <button
+                    type="button"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827] transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:hidden"
+                    aria-label={guestMenuOpen ? "Close menu" : "Open menu"}
+                    aria-expanded={guestMenuOpen}
+                    onClick={() => setGuestMenuOpen((open) => !open)}
+                  >
+                    {guestMenuOpen ? (
+                      <Close className="h-5 w-5" />
+                    ) : (
+                      <Menu className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
               )}
           </div>
         </div>
 
-
+        {!user && guestMenuOpen && (
+          <div className="border-t border-black/[0.06] bg-white sm:hidden">
+            <nav
+              className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 sm:px-6"
+              aria-label="Mobile"
+            >
+              <Link
+                href="/signin"
+                onClick={() => setGuestMenuOpen(false)}
+                className="inline-flex h-12 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#111827]"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/signup"
+                onClick={() => setGuestMenuOpen(false)}
+                className="inline-flex h-12 items-center justify-center rounded-full bg-[#F97316] text-sm font-semibold text-white hover:bg-[#EA580C]"
+              >
+                Join CribsTalk
+              </Link>
+            </nav>
+          </div>
+        )}
       </header>
       {/* Mobile Navigation */}
       {user && !pathname?.startsWith("/memories") && (
@@ -424,7 +494,7 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/feed"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/feed"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/feed"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
@@ -437,7 +507,7 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/memories/foryou"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname()?.startsWith("/memories")
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname?.startsWith("/memories")
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
@@ -450,7 +520,7 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/politics"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/politics"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/politics"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
@@ -463,7 +533,7 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/culture"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/culture"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/culture"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
@@ -476,7 +546,7 @@ const Header: React.FC<HeaderProps> = ({
               <li>
                 <Link
                   href="/groups"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${usePathname() === "/groups"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/groups"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
