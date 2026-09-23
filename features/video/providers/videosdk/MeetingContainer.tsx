@@ -38,6 +38,7 @@ import {
   playRingbackTone,
 } from '@/features/video/services/ringtoneService';
 import { apiClient } from '@/lib/api-client';
+import { friendRequestService } from '@/features/social/services/friendRequestService';
 import type { CallStatus, SpeakerLevel } from '@/features/video/core/types';
 import { SPEAKER_VOLUMES, isInCallUiStatus } from '@/features/video/core/types';
 import ScreenShareView from '@/features/video/ui/ScreenShareView';
@@ -144,7 +145,8 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   const [messageText, setMessageText] = useState('');
   const [showAddPeople, setShowAddPeople] = useState(false);
   const [addPeopleSearch, setAddPeopleSearch] = useState('');
-  const [addPeopleResults, setAddPeopleResults] = useState<any[]>([]);
+  const [addPeopleFriends, setAddPeopleFriends] = useState<any[]>([]);
+  const [addPeopleLoading, setAddPeopleLoading] = useState(false);
   const [addPeopleBusyById, setAddPeopleBusyById] = useState<Record<string, boolean>>({});
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(0);
@@ -885,25 +887,39 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
   }, [isOpen, threadId, callStatus, shouldHandleSignal, closeCall, callIdHint]);
 
   // --------------------------------------------------------------------------
-  // Add-people search (debounced 300ms)
+  // Add people — WhatsApp-style friends list (search filters friends only)
   // --------------------------------------------------------------------------
   useEffect(() => {
-    if (!showAddPeople || !addPeopleSearch.trim() || addPeopleSearch.length < 2) {
-      setAddPeopleResults([]);
-      return;
-    }
-    const t = setTimeout(async () => {
+    if (!showAddPeople) return;
+    let cancelled = false;
+    setAddPeopleLoading(true);
+    void (async () => {
       try {
-        const res = await apiClient.get<{ data: any[] }>('/api/users/search', {
-          q: addPeopleSearch, limit: 10,
-        });
-        if (isMountedRef.current) {
-          setAddPeopleResults((res?.data || []).filter((u: any) => u.id !== currentUserId));
-        }
-      } catch { setAddPeopleResults([]); }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [addPeopleSearch, showAddPeople, currentUserId]);
+        const friends = await friendRequestService.getFriends();
+        if (cancelled || !isMountedRef.current) return;
+        setAddPeopleFriends(
+          (friends || []).filter((u: any) => u?.id && String(u.id) !== String(currentUserId)),
+        );
+      } catch {
+        if (!cancelled && isMountedRef.current) setAddPeopleFriends([]);
+      } finally {
+        if (!cancelled && isMountedRef.current) setAddPeopleLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showAddPeople, currentUserId]);
+
+  const addPeopleResults = useMemo(() => {
+    const q = addPeopleSearch.trim().toLowerCase();
+    if (!q) return addPeopleFriends;
+    return addPeopleFriends.filter((u: any) => {
+      const name = String(u.full_name || '').toLowerCase();
+      const username = String(u.username || '').toLowerCase();
+      return name.includes(q) || username.includes(q);
+    });
+  }, [addPeopleFriends, addPeopleSearch]);
 
   // Who is in another call (call_sessions), excluding this meeting's call_id
   useEffect(() => {
@@ -1127,23 +1143,17 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
       }
       setInvitingUserId(targetUser.id);
       try {
-        const threadRes = await apiClient.post<{ data: { id: string } }>(
-          '/api/chat/threads', { participant_ids: [targetUser.id], type: 'direct' },
-        );
-        const directThreadId = threadRes?.data?.id;
-        if (!directThreadId) throw new Error('Thread not found');
-        await apiClient.post(`/api/chat/threads/${directThreadId}/call-sessions`, {
+        await apiClient.post('/api/chat/calls/invite', {
           call_id: callIdRef.current || callIdHint || '',
           call_type: effectiveCallType,
           room_id: roomIdHint || meetingId,
           target_user_id: targetUser.id,
-          is_group_call: true,
           caller_name: resolvedCallerName,
           provider: 'videosdk',
         });
         setShowAddPeople(false);
         setAddPeopleSearch('');
-        setAddPeopleResults([]);
+        setAddPeopleFriends([]);
       } catch (err: any) {
         console.error('[MeetingContainer] Failed to invite:', err);
         toast.error(err?.message || 'Could not add this person to the call.');
@@ -1687,6 +1697,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
         <AddPeoplePanel
           addPeopleSearch={addPeopleSearch}
           addPeopleResults={addPeopleResults}
+          loading={addPeopleLoading}
           participants={Array.from(participants.values()).filter(
             (p: any) => p.id !== localId,
           )}
@@ -1697,6 +1708,7 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
           onClose={() => {
             setShowAddPeople(false);
             setAddPeopleSearch('');
+            setAddPeopleFriends([]);
             setAddPeopleBusyById({});
           }}
           onInvite={handleInviteToCall}

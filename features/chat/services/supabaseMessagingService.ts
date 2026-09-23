@@ -143,6 +143,14 @@ export function shouldSkipOptimisticMessageSend(
   return false
 }
 
+export interface RecentCallParticipant {
+  id: string
+  name: string
+  avatar_url?: string | null
+  joined?: boolean
+  is_self?: boolean
+}
+
 export interface RecentCallEntry {
   /** Stable row id for call history (one entry per call session). */
   session_id: string
@@ -158,6 +166,7 @@ export interface RecentCallEntry {
   contact_name?: string | null
   contact_avatar_url?: string | null
   banner_url?: string | null
+  participants?: RecentCallParticipant[]
 }
 
 type ThreadSubscriber = (thread: ChatThread) => void
@@ -1292,6 +1301,15 @@ export const supabaseMessagingService = {
           contact_name: r.contact_name ?? null,
           contact_avatar_url: r.contact_avatar_url ?? null,
           banner_url: r.banner_url ?? null,
+          participants: Array.isArray(r.participants)
+            ? r.participants.map((p: any) => ({
+                id: String(p.id),
+                name: String(p.name || 'Unknown'),
+                avatar_url: p.avatar_url ?? null,
+                joined: p.joined !== false,
+                is_self: Boolean(p.is_self),
+              }))
+            : [],
         }
       })
     } catch (err) {

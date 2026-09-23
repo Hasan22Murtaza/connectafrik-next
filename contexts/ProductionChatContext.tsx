@@ -97,6 +97,8 @@ export interface CallRequest {
   callId?: string
   isGroupCall?: boolean
   isRejoin?: boolean
+  /** ISO timestamp of this invite attempt — changes on re-invite so Accept UI can show again. */
+  invitedAt?: string
 }
 
 export interface ActiveCallInfo {
@@ -1154,6 +1156,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const clearCallRequest = useCallback((threadId: string) => {
     setCallRequests(prev => {
+      const existing = prev[threadId]
+      if (existing?.callId) {
+        const callId = existing.callId
+        // Drop all dispatch keys for this call so a later re-invite can ring again.
+        for (const key of [...dispatchedIncomingCallIdsRef.current]) {
+          if (key === callId || key.startsWith(`${callId}:`)) {
+            dispatchedIncomingCallIdsRef.current.delete(key)
+          }
+        }
+      }
       const updated = { ...prev }
       delete updated[threadId]
       return updated
@@ -1283,7 +1295,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         : status === 'ringing' || status === 'initiated'
       if (!joinable) return
 
-      if (meta.targetUserId && meta.targetUserId !== currentUser.id) return
+      const invited: string[] = Array.isArray(meta.invitedUserIds)
+        ? meta.invitedUserIds.filter((id: unknown): id is string => typeof id === 'string')
+        : []
+      const isInvitee =
+        meta.targetUserId === currentUser.id ||
+        meta.lastInvitedUserId === currentUser.id ||
+        invited.includes(currentUser.id)
+
+      // Targeted invite for someone else (unless this user is also listed).
+      if (meta.targetUserId && meta.targetUserId !== currentUser.id && !isInvitee) return
 
       // Already in the call on this device, or already declined -- not an
       // invitation. These guards are what make widening the status check
@@ -1298,10 +1319,30 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const callType = (row.call_type as string) || (meta.callType as string)
       const callId = (row.call_id as string) || (meta.callId as string)
       if (!roomId || !callType || !callId) return
+
+      // Re-invites reuse the same call_id; include lastInvitedAt so a second
+      // invite after leave/decline can show the Accept UI again.
+      const inviteStamp =
+        typeof meta.lastInvitedAt === 'string' && meta.lastInvitedAt.trim()
+          ? meta.lastInvitedAt.trim()
+          : typeof meta.timestamp === 'string' && meta.timestamp.trim()
+            ? meta.timestamp.trim()
+            : ''
+      const dispatchKey = inviteStamp ? `${callId}:${inviteStamp}` : callId
+
       const existing = callRequestsRef.current[row.thread_id]
-      if (existing?.callId === callId) return
-      if (dispatchedIncomingCallIdsRef.current.has(callId)) return
-      dispatchedIncomingCallIdsRef.current.add(callId)
+      if (existing?.callId === callId && existing.roomId === roomId && !inviteStamp) return
+      // Same invite attempt already showing — skip. A newer lastInvitedAt is a new ring.
+      if (
+        existing?.callId === callId &&
+        existing.roomId === roomId &&
+        inviteStamp &&
+        dispatchedIncomingCallIdsRef.current.has(dispatchKey)
+      ) {
+        return
+      }
+      if (dispatchedIncomingCallIdsRef.current.has(dispatchKey)) return
+      dispatchedIncomingCallIdsRef.current.add(dispatchKey)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('incomingCall', {
@@ -1312,9 +1353,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
               callerName: (meta.callerName as string) || 'Unknown',
               callerAvatarUrl: meta.callerAvatarUrl as string | undefined,
               roomId,
-              targetUserId: meta.targetUserId as string | undefined,
+              targetUserId: (meta.targetUserId as string | undefined) || currentUser.id,
               callId,
               isGroupCall: meta.isGroupCall === true,
+              invitedAt: inviteStamp || undefined,
             },
           })
         )
@@ -1328,7 +1370,18 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, targetUserId, callId, isGroupCall } = event.detail
+      const {
+        threadId,
+        type,
+        callerId,
+        callerName,
+        callerAvatarUrl,
+        roomId,
+        targetUserId,
+        callId,
+        isGroupCall,
+        invitedAt,
+      } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
 
       setCallRequests(prev => {
@@ -1337,7 +1390,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           cur &&
           cur.callId === callId &&
           cur.roomId === roomId &&
-          cur.callerId === callerId
+          cur.callerId === callerId &&
+          (cur.invitedAt || '') === (invitedAt || '')
         ) {
           return prev
         }
@@ -1353,6 +1407,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             targetUserId,
             callId,
             isGroupCall,
+            ...(invitedAt ? { invitedAt } : {}),
           },
         }
       })
@@ -1556,6 +1611,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         { event: 'UPDATE', schema: 'public', table: 'call_sessions' },
         (payload) => {
           const row = payload.new as Record<string, any>
+          const prev = (payload.old || {}) as Record<string, any>
           const meta = parseCallSessionMetadata(row.metadata)
           const st = String(row.status || '')
           const lsRaw = meta.last_signal as string | undefined
@@ -1575,6 +1631,19 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             lsNorm === 'failed'
           ) {
             clearCallRequest(row.thread_id)
+          }
+
+          // Re-invite updates an existing row back to ringing (same call_id).
+          // INSERT-only dispatch never sees this — surface Accept UI again.
+          if (
+            !['ended', 'missed', 'failed', 'declined'].includes(st) &&
+            (st === 'ringing' || st === 'initiated') &&
+            (lsNorm === 'ringing' ||
+              meta.reinvited === true ||
+              meta.last_signal === 'ringing' ||
+              String(prev.status || '') !== st)
+          ) {
+            tryDispatchIncomingFromCallSession(row)
           }
         }
       )
