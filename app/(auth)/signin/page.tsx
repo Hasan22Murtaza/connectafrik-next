@@ -224,7 +224,7 @@ const SigninForm: React.FC = () => {
         type="button"
         onClick={handleGoogleSignIn}
         disabled={isGoogleLoading || isLoading}
-        className="flex h-12 w-full min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] transition-colors hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-12 w-full min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] transition-colors !hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <FcGoogle className="h-5 w-5" />
         {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
@@ -360,7 +360,7 @@ const SigninForm: React.FC = () => {
         New to Cribstalk?
       </p>
 
-      <Link href="/signup" className="mt-3 flex h-12 min-h-12 w-full items-center justify-center rounded-full border-2 border-[#22C55E] bg-white text-sm font-semibold text-[#22C55E] transition-colors hover:bg-[#F0FDF4] sm:text-base">
+      <Link href="/signup" className="mt-3 flex h-12 min-h-12 w-full items-center justify-center rounded-full border-2 border-[#22C55E]  text-sm font-semibold text-[#22C55E] transition-colors !hover:bg-[#F0FDF4] sm:text-base">
         Create account
       </Link>
 
