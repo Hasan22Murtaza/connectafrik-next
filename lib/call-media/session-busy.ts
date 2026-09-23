@@ -11,18 +11,25 @@ function parseMeta(meta: unknown): Record<string, unknown> {
 function targetsFromMeta(meta: unknown): string[] {
   const m = parseMeta(meta)
   const out: string[] = []
-  for (const k of ['targetUserId', 'target_user_id'] as const) {
+  for (const k of ['targetUserId', 'target_user_id', 'lastInvitedUserId'] as const) {
     const v = m[k]
     if (typeof v === 'string' && v.trim()) out.push(v.trim())
   }
-  return out
+  // Mid-call Add People stamps invitees here on every sibling session that
+  // shares the call_id — token auth must honor this or re-invites 403.
+  if (Array.isArray(m.invitedUserIds)) {
+    for (const id of m.invitedUserIds) {
+      if (typeof id === 'string' && id.trim()) out.push(id.trim())
+    }
+  }
+  return [...new Set(out)]
 }
 
 function normId(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase() : ''
 }
 
-/** True if the user created the call, is in participants, or is a metadata target. */
+/** True if the user created the call, is in participants, or was invited/targeted. */
 export function userInvolvedInSession(
   row: { created_by: string; participants: unknown; metadata: unknown },
   userId: string,

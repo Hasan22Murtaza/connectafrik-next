@@ -257,53 +257,50 @@ const VerifyOTPForm: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <AuthPageShell showLogo={false} title="Verified!" subtitle="Your email has been verified successfully.">
+      <AuthPageShell title="Verified!" subtitle="Your email has been verified successfully.">
         <div className="text-center py-8">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <p className="text-sm text-content-secondary">Redirecting you to the next step...</p>
+          <p className="text-sm text-[#6B7280]">Redirecting you to the next step...</p>
         </div>
       </AuthPageShell>
     )
   }
 
   return (
-    <AuthPageShell showLogo={false} title={title} subtitle={subtitle}>
-      <form onSubmit={handleVerify} className="space-y-6">
+    <AuthPageShell title={title} subtitle={subtitle}>
+      <form onSubmit={handleVerify} className="space-y-3.5">
         <div>
-          <label
-            htmlFor="otp-0"
-            className="block text-sm font-medium text-content mb-3 text-center"
-          >
+          <label htmlFor="otp-0" className="sr-only">
             Verification Code
           </label>
           <OtpInput value={otp} onChange={setOtp} disabled={isLoading} />
           {inlineError && (
-            <p className="text-sm text-red-600 text-center mt-3" role="alert">
+            <p className="mt-1.5 text-xs text-red-600 text-center" role="alert">
               {inlineError}
             </p>
           )}
         </div>
 
-        <div className="text-center space-y-2">
+        <div className="space-y-2 text-center">
           {countdown > 0 ? (
-            <p className="text-sm text-content-secondary">Resend code in {countdown}s</p>
+            <p className="text-sm text-[#6B7280]">Resend code in {countdown}s</p>
           ) : (
             <button
               type="button"
               onClick={handleResend}
               disabled={isResending}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              className="inline-flex items-center gap-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 font-medium text-[#22C55E] hover:text-[#16A34A]"
             >
               {isResending ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <RefreshCw className="h-4 w-4 animate-spin" />
                   Sending...
                 </>
               ) : (
                 <>
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="h-4 w-4" />
                   Resend OTP
                 </>
               )}
@@ -314,7 +311,7 @@ const VerifyOTPForm: React.FC = () => {
             <button
               type="button"
               onClick={handleChangeEmail}
-              className="block w-full text-sm text-primary-600 hover:text-primary-700 font-medium"
+              className="block w-full text-sm font-medium text-[#22C55E] hover:text-[#16A34A]"
             >
               Change Email
             </button>
@@ -324,25 +321,28 @@ const VerifyOTPForm: React.FC = () => {
         <button
           type="submit"
           disabled={isLoading || otp.join('').length !== 6}
-          className="w-full btn-primary text-base disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
         >
-          {isLoading ? 'Verifying...' : 'Verify'}
+          {isLoading ? (
+            'Verifying...'
+          ) : (
+            <>
+              Verify <span aria-hidden="true">→</span>
+            </>
+          )}
         </button>
 
-        <div className="text-center">
-          <Link
-            href="/signin"
-            className="text-sm text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
+        <p className="text-center text-sm text-[#6B7280]">
+          <Link href="/signin" className="inline-flex items-center gap-2 font-medium text-[#22C55E] hover:text-[#16A34A]">
+            <ArrowLeft className="h-4 w-4" />
             Back to Sign In
           </Link>
-        </div>
+        </p>
       </form>
 
-      <div className="mt-6 text-center">
-        <p className="text-xs text-content-secondary inline-flex items-center justify-center gap-1">
-          {isPhoneFlow ? <Phone className="w-3 h-3" /> : <Mail className="w-3 h-3" />}
+      <div className="mt-5 text-center">
+        <p className="text-xs text-[#6B7280] inline-flex items-center justify-center gap-1">
+          {isPhoneFlow ? <Phone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
           {isPhoneFlow
             ? "Didn't receive the code? Check your SMS messages or try resending."
             : "Didn't receive the code? Check your inbox and spam folder."}
@@ -356,9 +356,9 @@ const VerifyOTP: React.FC = () => {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center">
-          <p className="text-content-secondary">Loading...</p>
-        </div>
+        <AuthPageShell title="Verify" subtitle="Loading...">
+          <p className="text-center text-sm text-content-secondary">Loading...</p>
+        </AuthPageShell>
       }
     >
       <VerifyOTPForm />

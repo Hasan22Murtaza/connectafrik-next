@@ -51,6 +51,7 @@ import {
   unfollowUser,
 } from "@/features/social/services/followService";
 import { ProductDetailPageShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import Link from "next/link";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
@@ -429,8 +430,8 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const openSellerProfile = () => {
-    if (product.seller?.username) {
-      router.push(`/user/${encodeURIComponent(product.seller.username)}`);
+    if (product.seller?.id) {
+      router.push(`/user/${product.seller.id}`);
     }
   };
 
@@ -716,6 +717,7 @@ const ProductDetailPage: React.FC = () => {
                   />
                 </button>
                 <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={openSellerProfile}
@@ -728,6 +730,33 @@ const ProductDetailPage: React.FC = () => {
                       @{product.seller?.username || "unknown"}
                     </p>
                   </button>
+                   {!isOwnProduct && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {product.contact_phone && (
+                    <a
+                      href={`tel:${product.contact_phone}`}
+                      className="px-4 py-2.5 rounded-xl text-sm font-semibold text-content bg-surface-secondary hover:bg-surface-hover transition-colors active:scale-[0.98] inline-flex items-center gap-1.5"
+                    >
+                      <Phone className="w-4 h-4" />
+                      Call
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleFollowSeller}
+                    disabled={followLoading}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors active:scale-[0.98] inline-flex items-center gap-1.5 disabled:opacity-50 ${
+                      isFollowing
+                        ? "text-content bg-surface-secondary hover:bg-surface-hover"
+                        : "text-primary-700 bg-primary-50 hover:bg-primary-100"
+                    }`}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    {isFollowing ? "Tap In" : "UnTap In"}
+                  </button>
+                </div>
+              )}
+                  </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-content-secondary">
                     {(product.average_rating || 0) > 0 && (
                       <span>
@@ -753,32 +782,7 @@ const ProductDetailPage: React.FC = () => {
                 </p>
               )}
 
-              {!isOwnProduct && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {product.contact_phone && (
-                    <a
-                      href={`tel:${product.contact_phone}`}
-                      className="px-4 py-2.5 rounded-xl text-sm font-semibold text-content bg-surface-secondary hover:bg-surface-hover transition-colors active:scale-[0.98] inline-flex items-center gap-1.5"
-                    >
-                      <Phone className="w-4 h-4" />
-                      Call
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleFollowSeller}
-                    disabled={followLoading}
-                    className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors active:scale-[0.98] inline-flex items-center gap-1.5 disabled:opacity-50 ${
-                      isFollowing
-                        ? "text-content bg-surface-secondary hover:bg-surface-hover"
-                        : "text-primary-700 bg-primary-50 hover:bg-primary-100"
-                    }`}
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    {isFollowing ? "Following" : "Follow"}
-                  </button>
-                </div>
-              )}
+             
             </section>
 
             {/* Description */}

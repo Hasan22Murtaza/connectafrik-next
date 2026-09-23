@@ -37,13 +37,13 @@ const ForgotPassword: React.FC = () => {
       title="Reset Password"
       subtitle="Enter your email address and we'll send you a 6-digit verification code"
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-content mb-2">
+          <label htmlFor="email" className="sr-only">
             Email Address
           </label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary w-5 h-5" />
+            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9CA3AF]" />
             <input
               id="email"
               name="email"
@@ -54,33 +54,34 @@ const ForgotPassword: React.FC = () => {
                 setEmail(e.target.value)
                 setInlineError('')
               }}
-              className="input-field !pl-10"
-              placeholder="Enter your email"
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+              placeholder="Enter your email address"
+              autoComplete="email"
             />
           </div>
           {inlineError && (
-            <p className="text-sm text-red-600 mt-2" role="alert">
+            <p className="mt-1.5 text-xs text-red-600" role="alert">
               {inlineError}
             </p>
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full btn-primary text-base disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Sending...' : 'Send Verification Code'}
+        <button type="submit" disabled={isLoading} className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base">
+          {isLoading ? (
+            'Sending...'
+          ) : (
+            <>
+              Send Verification Code <span aria-hidden="true">→</span>
+            </>
+          )}
         </button>
 
-        <div className="text-center">
-          <p className="text-sm text-content-secondary">
-            Remember your password?{' '}
-            <Link href="/signin" className="text-primary-600 hover:text-primary-500 font-medium">
-              Sign in
-            </Link>
-          </p>
-        </div>
+        <p className="pt-1 text-center text-sm text-[#6B7280]">
+          Remember your password?{' '}
+          <Link href="/signin" className="font-medium text-[#22C55E] hover:text-[#16A34A]">
+            Sign in
+          </Link>
+        </p>
       </form>
     </AuthPageShell>
   )

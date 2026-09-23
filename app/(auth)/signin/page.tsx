@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Globe, Eye, EyeOff, Mail, Lock, Phone } from '@/shared/icons';
+import { Eye, EyeOff, Mail, Lock } from '@/shared/icons';
 import { supabase } from "@/lib/supabase";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { getPostAuthRedirect } from "@/lib/auth/postAuthRedirect";
@@ -213,240 +213,174 @@ const SigninForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15  flex items-center justify-center p-4">
-      <div className="max-w-md w-full ">
-        {/* Header */}
-        <div className="text-center mb-2">
-          <div className="flex items-center justify-center mb-2">
-            <Link href={"/"}>
-              <img src="/assets/images/logo_2.png" alt="" className="w-30" />
-            </Link>
-          </div>
-          <h1 className="sm:text-3xl text-2xl font-bold text-content mb-2">
-            Welcome Back
-          </h1>
-          <p className="text-content-secondary sm:text-base text-sm">
-            Sign in to continue your journey with CribsTalk
-          </p>
+    <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-5">
+      <div className="mb-4 text-center">
+        <h1 className="text-[1.60rem] font-extrabold leading-tight tracking-tight text-[#111827] sm:text-[1.85rem]">
+          Welcome back <span aria-hidden="true">👋</span>
+        </h1>
+      </div>
+
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={isGoogleLoading || isLoading}
+        className="flex h-12 w-full min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] transition-colors !hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <FcGoogle className="h-5 w-5" />
+        {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
+      </button>
+
+      <div className="relative my-3">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-[#E5E7EB]" />
         </div>
-
-        {/* Form */}
-        <div className="card ">
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading || isLoading}
-            className="w-full border border-gray-300 rounded-lg py-3 flex items-center justify-center gap-2 bg-surface text-content font-medium hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FcGoogle className="w-5 h-5" />
-            {isGoogleLoading ? "Redirecting..." : "Continue with Google"}
-          </button>
-
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-surface text-content-secondary">or</span>
-            </div>
-          </div>
-
-          {/* Login Method Toggle */}
-          <div className="flex gap-2 mb-2 p-1 bg-surface-secondary rounded-lg">
-            <button
-              type="button"
-              onClick={() => setLoginMethod("email")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                loginMethod === "email"
-                  ? "bg-surface text-primary-600 shadow-sm"
-                  : "text-content-secondary hover:text-content"
-              }`}
-            >
-              Email
-            </button>
-            <button
-              type="button"
-              onClick={() => setLoginMethod("phone")}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                loginMethod === "phone"
-                  ? "bg-surface text-primary-600 shadow-sm"
-                  : "text-content-secondary hover:text-content"
-              }`}
-            >
-              Phone
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-2">
-            {loginMethod === "email" ? (
-              <>
-                {/* Email */}
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-content mb-2"
-                  >
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-5 h-5" />
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="input-field !pl-10"
-                      placeholder="Enter your email"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="block text-sm font-medium text-content mb-2"
-                  >
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-5 h-5" />
-                    <input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      required
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="input-field !px-10"
-                      placeholder="Enter your password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-content-tertiary hover:text-content-secondary  cursor-pointer"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="w-5 h-5" />
-                      ) : (
-                        <Eye className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remember Me & Forgot Password */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <input
-                      id="remember-me"
-                      name="remember-me"
-                      type="checkbox"
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                    />
-                    <label
-                      htmlFor="remember-me"
-                      className="ml-2 block text-sm text-content"
-                    >
-                      Remember me
-                    </label>
-                  </div>
-                  <div className="text-sm">
-                    <Link
-                      href="/forgot-password"
-                      className="font-medium text-primary-600 hover:text-primary-500"
-                    >
-                      Forgot password?
-                    </Link>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Phone */}
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="block text-sm font-medium text-content mb-2"
-                  >
-                    Phone Number
-                  </label>
-                <div
-  className="
-    [&_.PhoneInput]:flex
-    [&_.PhoneInput]:items-center
-    [&_.PhoneInput]:border
-    [&_.PhoneInput]:border-gray-300
-    [&_.PhoneInput]:rounded-md
-    [&_.PhoneInput]:bg-[#F9FAFB]
-    [&_.PhoneInput]:px-2
-    [&_.PhoneInput]:py-3
-
-    [&_.PhoneInputInput]:w-full
-    [&_.PhoneInputInput]:bg-transparent
-    [&_.PhoneInputInput]:focus:outline-none
-    [&_.PhoneInputInput]:focus:ring-0
-
-    [&_.PhoneInputCountry]:mr-2
-
-    [&_.PhoneInput]:focus-within:border-orange-500
-    [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.1)]
-  "
->
-                    <PhoneInput
-                      international
-                      defaultCountry="GH"
-                      value={formData.phone}
-                      onChange={(value) =>
-                        setFormData((prev) => ({ ...prev, phone: value || "" }))
-                      }
-                      placeholder="Enter your phone number"
-                      numberInputProps={{ required: true }}
-                    />
-                  </div>
-
-                  <p className="text-xs text-content-secondary mt-1">
-                    We'll send you a verification code via SMS
-                  </p>
-                </div>
-              </>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full btn-primary  text-base disabled:opacity-50"
-            >
-              {isLoading ? "Signing In..." : "Sign In"}
-            </button>
-          </form>
-
-          {/* Divider */}
-          <div className="my-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-surface text-content-secondary">
-                  New to CribsTalk?
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Sign Up Link */}
-          <div>
-            <Link href="/signup" className="btn-secondary w-full">
-              Create New Account
-            </Link>
-          </div>
-
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-white px-3 text-[#9CA3AF]">or</span>
         </div>
       </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {loginMethod === "email" ? (
+          <>
+            <div>
+              <label htmlFor="email" className="sr-only">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9CA3AF]" />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-4 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+                  placeholder="Enter your email address"
+                  autoComplete="email"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9CA3AF]" />
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#9CA3AF] hover:text-[#6B7280]"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-0.5">
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-[#D1D5DB] text-[#22C55E] focus:ring-[#22C55E]"
+                />
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-[#4B5563]"
+                >
+                  Remember me
+                </label>
+              </div>
+              <div className="text-sm">
+                <Link href="/forgot-password" className="font-medium text-[#22C55E] hover:text-[#16A34A]">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label htmlFor="phone" className="sr-only">
+                Phone Number
+              </label>
+              <div className="[&_.PhoneInput]:flex [&_.PhoneInput]:h-12 [&_.PhoneInput]:items-center [&_.PhoneInput]:rounded-xl [&_.PhoneInput]:border [&_.PhoneInput]:border-[#E5E7EB] [&_.PhoneInput]:bg-white [&_.PhoneInput]:px-3 [&_.PhoneInputInput]:w-full [&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:text-sm [&_.PhoneInputInput]:text-[#111827] [&_.PhoneInputInput]:placeholder:text-[#9CA3AF] [&_.PhoneInputInput]:focus:outline-none [&_.PhoneInputInput]:focus:ring-0 [&_.PhoneInputCountry]:mr-2 [&_.PhoneInput]:focus-within:border-[#F97316] [&_.PhoneInput]:focus-within:shadow-[0_0_0_3px_rgba(249,115,22,0.2)]">
+                <PhoneInput
+                  international
+                  defaultCountry="GH"
+                  value={formData.phone}
+                  onChange={(value) =>
+                    setFormData((prev) => ({ ...prev, phone: value || "" }))
+                  }
+                  placeholder="Enter your phone number"
+                  numberInputProps={{ required: true, id: "phone" }}
+                />
+              </div>
+              <p className="mt-1.5 text-xs text-[#6B7280]">
+                We&apos;ll send you a verification code via SMS
+              </p>
+            </div>
+          </>
+        )}
+
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
+        >
+          {isLoading ? (
+            "Signing In..."
+          ) : (
+            <>
+              Sign In <span aria-hidden="true">→</span>
+            </>
+          )}
+        </button>
+      </form>
+
+      <p className="mt-5 text-center text-sm text-[#6B7280]">
+        New to Cribstalk?
+      </p>
+
+      <Link href="/signup" className="mt-3 flex h-12 min-h-12 w-full items-center justify-center rounded-full border-2 border-[#22C55E]  text-sm font-semibold text-[#22C55E] transition-colors !hover:bg-[#F0FDF4] sm:text-base">
+        Create account
+      </Link>
+
+      <p className="mt-5 text-center text-[11px] leading-relaxed text-[#9CA3AF]">
+        By continuing, you agree to our{" "}
+        <Link
+          href="/terms-of-service"
+          className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
+        >
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link
+          href="/privacy-policy"
+          className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
+        >
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </div>
   );
 };
@@ -455,10 +389,8 @@ const Signin: React.FC = () => {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-content-secondary">Loading...</p>
-          </div>
+        <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-10 text-center shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-8">
+          <p className="text-sm text-[#6B7280]">Loading...</p>
         </div>
       }
     >

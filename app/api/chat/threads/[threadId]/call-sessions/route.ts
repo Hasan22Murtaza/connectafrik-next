@@ -41,9 +41,80 @@ type CallSessionMeta = Record<string, unknown>
 
 function isGroupSession(row: { metadata: unknown; participants: unknown }): boolean {
   const meta = mergeSessionMetadata(row.metadata, {})
-  if (meta.isGroupCall === true) return true
+  if (meta.isGroupCall === true || meta.isGroupCall === 'true') return true
   const parts = row.participants
   return Array.isArray(parts) && parts.length > 2
+}
+
+function readInvitedUserIds(meta: CallSessionMeta): string[] {
+  const fromArray = Array.isArray(meta.invitedUserIds)
+    ? (meta.invitedUserIds as unknown[]).filter((id): id is string => typeof id === 'string' && Boolean(id))
+    : []
+  const singles = [meta.targetUserId, meta.target_user_id, meta.lastInvitedUserId]
+    .filter((id): id is string => typeof id === 'string' && Boolean(id.trim()))
+    .map((id) => id.trim())
+  return [...new Set([...fromArray, ...singles])]
+}
+
+/**
+ * When a user joins/accepts on an invite thread (created via POST /api/chat/calls/invite),
+ * also attach them to every other live session that shares the same call_id
+ * (the original 1:1 row). Mid-call Add People lives in /api/chat/calls/invite.
+ */
+async function syncJoinedParticipantAcrossCallId(
+  serviceClient: ServiceClient,
+  callId: string,
+  userId: string,
+  excludeSessionId?: string,
+): Promise<void> {
+  const cid = (callId || '').trim()
+  const uid = (userId || '').trim()
+  if (!cid || !uid) return
+
+  const { data: siblings } = await serviceClient
+    .from('call_sessions')
+    .select('id, participants, metadata')
+    .eq('call_id', cid)
+    .in('status', ['initiated', 'ringing', 'active'])
+
+  const now = new Date().toISOString()
+  await Promise.allSettled(
+    (siblings || []).map(async (row: { id: string; participants: unknown; metadata: unknown }) => {
+      if (excludeSessionId && row.id === excludeSessionId) return
+      const parts = Array.isArray(row.participants) ? [...(row.participants as string[])] : []
+      if (parts.includes(uid)) {
+        // Still ensure group flag is set once a 3rd person is involved.
+        const meta = mergeSessionMetadata(row.metadata, {})
+        if (parts.length > 2 || readInvitedUserIds(meta).length > 0) {
+          if (meta.isGroupCall === true) return
+          await serviceClient
+            .from('call_sessions')
+            .update({
+              metadata: mergeSessionMetadata(meta, { isGroupCall: true }),
+              updated_at: now,
+            })
+            .eq('id', row.id)
+        }
+        return
+      }
+      parts.push(uid)
+      const meta = mergeSessionMetadata(row.metadata, {})
+      await serviceClient
+        .from('call_sessions')
+        .update({
+          participants: parts,
+          metadata: mergeSessionMetadata(meta, {
+            isGroupCall: true,
+            last_signal: 'participant_joined',
+            joinedBy: uid,
+            joinedAt: now,
+            activeParticipantCount: parts.length,
+          }),
+          updated_at: now,
+        })
+        .eq('id', row.id)
+    }),
+  )
 }
 
 const toPushDataRecord = (data: Record<string, unknown>): Record<string, string> => {
@@ -1031,6 +1102,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     if (updateError || !updated) {
       return errorResponse(updateError?.message || 'Failed to update call session', 400)
+    }
+
+    // Propagate join/accept onto sibling sessions that share this call_id so the
+    // original 1:1 history row picks up participants who answered on an invite thread.
+    if (
+      (event === 'accept' || event === 'join') &&
+      nextStatus === 'active' &&
+      typeof updated.call_id === 'string' &&
+      updated.call_id
+    ) {
+      await syncJoinedParticipantAcrossCallId(
+        serviceClient,
+        updated.call_id,
+        user.id,
+        typeof updated.id === 'string' ? updated.id : undefined,
+      )
     }
 
     if (['ended', 'missed', 'declined', 'failed'].includes(nextStatus)) {

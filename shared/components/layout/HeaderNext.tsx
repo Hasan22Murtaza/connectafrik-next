@@ -123,7 +123,7 @@ const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center ">
             {/* Logo - Pinned to left */}
             <Link href="/" className="flex-shrink-0 ">
-              <img src="/assets/images/logo_2.png" alt="" className="w-16" />
+              <img src="/assets/images/logo_2.png" alt="" className="sm:w-48 w-32" />
             </Link>
 
             {/* Search Bar - Only when logged in; hidden on mobile, visible on tablet+ */}

@@ -29,65 +29,82 @@ type CallSessionRow = {
 };
 
 /**
- * Resolve a call session by media room id or call id.
+ * Resolve call sessions by media room id or call id (newest first).
  *
  * Do NOT use maybeSingle()/single() here — room_id / call_id are not unique
  * (retries, re-rings, historical rows). maybeSingle throws PGRST116
  * ("JSON object requested, multiple (or no) rows returned") for video and
- * group joins alike. Take limit(1) as an array instead.
+ * group joins alike.
  */
-async function findCallSessionForRoom(
+async function findCallSessionsForRoom(
   service: ReturnType<typeof createServiceClient>,
   roomId: string,
-): Promise<CallSessionRow | null> {
-  const select = 'thread_id, created_by, participants, metadata, status';
+): Promise<CallSessionRow[]> {
+  const select = 'thread_id, created_by, participants, metadata, status'
+  const seen = new Set<string>()
+  const out: CallSessionRow[] = []
 
   const lookup = async (column: 'room_id' | 'call_id', liveOnly: boolean) => {
-    let query = service.from('call_sessions').select(select).eq(column, roomId);
+    let query = service.from('call_sessions').select(select).eq(column, roomId)
     if (liveOnly) {
-      query = query.in('status', [...LIVE_CALL_STATUSES]);
+      query = query.in('status', [...LIVE_CALL_STATUSES])
     }
-    const { data, error } = await query
-      .order('updated_at', { ascending: false })
-      .limit(1);
-    if (error) throw new Error(error.message);
-    const rows = (data ?? []) as CallSessionRow[];
-    return rows[0] ?? null;
-  };
+    const { data, error } = await query.order('updated_at', { ascending: false }).limit(10)
+    if (error) throw new Error(error.message)
+    for (const row of (data ?? []) as CallSessionRow[]) {
+      const dedupeKey = `${row.thread_id}|${row.status}|${row.created_by}`
+      if (seen.has(dedupeKey)) continue
+      seen.add(dedupeKey)
+      out.push(row)
+    }
+  }
 
   // Clients pass the media room id; call_id and room_id are often different UUIDs.
-  return (
-    (await lookup('room_id', true)) ||
-    (await lookup('call_id', true)) ||
-    (await lookup('room_id', false)) ||
-    (await lookup('call_id', false))
-  );
+  await lookup('room_id', true)
+  await lookup('call_id', true)
+  if (out.length === 0) {
+    await lookup('room_id', false)
+    await lookup('call_id', false)
+  }
+  return out
 }
 
 /**
  * Signed in, AND allowed on this call. Identity is derived from the session —
  * never from caller-supplied userId / displayName / avatarUrl.
  *
- * Creator / participants / metadata target always pass. Otherwise any current
- * thread member may mint a token — needed for 1:1 video accept and group join
- * before PATCH accept/join adds them to participants.
+ * Creator / participants / metadata target/invitees always pass. Otherwise any
+ * current thread member may mint a token — needed for 1:1 video accept and
+ * group join before PATCH accept/join adds them to participants.
+ *
+ * Mid-call invites create extra ringing rows on other threads that share the
+ * same room_id. Heartbeats may make the original 1:1 row "newest"; check every
+ * live sibling so an invitee is not Forbidden just because lookup picked the
+ * wrong row.
  */
 async function authorizeForRoom(
   request: NextRequest,
   roomId: string,
 ): Promise<{ userId: string; displayName?: string; avatarUrl?: string }> {
-  const { user } = await getAuthenticatedUser(request);
+  const { user } = await getAuthenticatedUser(request)
 
-  const service = createServiceClient();
-  const row = await findCallSessionForRoom(service, roomId);
+  const service = createServiceClient()
+  const rows = await findCallSessionsForRoom(service, roomId)
 
-  if (!row) throw new Error('CallNotFound');
+  if (rows.length === 0) throw new Error('CallNotFound')
 
-  let allowed = userInvolvedInSession(row, user.id);
-  if (!allowed && row.thread_id) {
-    allowed = await requireChatThreadAccess(service, user.id, row.thread_id);
+  let row: CallSessionRow | null = null
+  for (const candidate of rows) {
+    let allowed = userInvolvedInSession(candidate, user.id)
+    if (!allowed && candidate.thread_id) {
+      allowed = await requireChatThreadAccess(service, user.id, candidate.thread_id)
+    }
+    if (allowed) {
+      row = candidate
+      break
+    }
   }
-  if (!allowed) throw new Error('Forbidden');
+  if (!row) throw new Error('Forbidden')
 
   const participantIds = Array.isArray(row.participants)
     ? row.participants.filter((id: unknown): id is string => typeof id === 'string')
@@ -105,26 +122,26 @@ async function authorizeForRoom(
     .from('profiles')
     .select('full_name, username, avatar_url')
     .eq('id', user.id)
-    .maybeSingle();
+    .maybeSingle()
 
   const displayName =
     (typeof profile?.full_name === 'string' && profile.full_name.trim()) ||
     (typeof profile?.username === 'string' && profile.username.trim()) ||
     (typeof user.user_metadata?.full_name === 'string' &&
       user.user_metadata.full_name.trim()) ||
-    undefined;
+    undefined
 
   const avatarUrl =
     (typeof profile?.avatar_url === 'string' && profile.avatar_url.trim()) ||
     (typeof user.user_metadata?.avatar_url === 'string' &&
       user.user_metadata.avatar_url.trim()) ||
-    undefined;
+    undefined
 
   return {
     userId: user.id.trim().toLowerCase(),
     ...(displayName ? { displayName } : {}),
     ...(avatarUrl ? { avatarUrl } : {}),
-  };
+  }
 }
 
 function authErrorResponse(err: unknown): NextResponse | null {

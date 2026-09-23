@@ -54,10 +54,10 @@ const menuRowActiveClass = "bg-primary-50 text-primary-700";
 
 const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold text-primary-700";
 
-const dividerClass = "border-t border-primary-100 my-1";
+const dividerClass = "border-t border-gray-100 my-1";
 
 const fieldClass =
-  "w-full appearance-none px-3 py-2 bg-surface border border-border rounded-lg text-sm text-content focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-200";
+  "w-full appearance-none px-3 py-2 bg-surface border border-border rounded-lg text-sm text-content focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200";
 
 const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
   filters,

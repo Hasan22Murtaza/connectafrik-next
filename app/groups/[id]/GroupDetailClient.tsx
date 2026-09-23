@@ -657,7 +657,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'posts'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                  : 'text-gray-600 border-transparent hover:text-content '
               }`}
             >
               Posts
@@ -668,7 +668,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'about'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                  : 'text-gray-600 border-transparent hover:text-content '
               }`}
             >
               About
@@ -679,7 +679,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'members'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                  : 'text-gray-600 border-transparent hover:text-content '
               }`}
             >
               Members ({group.member_count})
@@ -691,7 +691,7 @@ const GroupDetailPage: React.FC = () => {
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                   activeTab === 'requests'
                     ? 'text-primary-600 border-primary-600'
-                    : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-600 border-transparent hover:text-content '
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -711,7 +711,7 @@ const GroupDetailPage: React.FC = () => {
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                   activeTab === 'complaints'
                     ? 'text-primary-600 border-primary-600'
-                    : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-600 border-transparent hover:text-content '
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -730,7 +730,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'events'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                  : 'text-gray-600 border-transparent hover:text-content '
               }`}
             >
               <span className="flex items-center gap-2">
@@ -744,7 +744,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'media'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                  : 'text-gray-600 border-transparent hover:text-content '
               }`}
             >
               <span className="flex items-center gap-2">
@@ -758,7 +758,7 @@ const GroupDetailPage: React.FC = () => {
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'files'
                   ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-600 hover:bg-gray-50'
+                  : 'text-gray-600 border-transparent hover:text-content '
               }`}
             >
               <span className="flex items-center gap-2">
