@@ -7,10 +7,10 @@ function stripTrailingSlash(value: string): string {
 }
 
 export const SEO_SITE_NAME = 'CribsTalk'
-export const SEO_SITE_TAGLINE = 'Global Social Platform'
-export const SEO_DEFAULT_TITLE = `${SEO_SITE_NAME} - ${SEO_SITE_TAGLINE}`
+export const SEO_SITE_TAGLINE = 'Connect. Share. Belong.'
+export const SEO_DEFAULT_TITLE = `${SEO_SITE_NAME} — ${SEO_SITE_TAGLINE}`
 export const SEO_DEFAULT_DESCRIPTION =
-  'A global social platform for connecting, communicating, sharing, and building communities worldwide. Share stories, join groups, and meet people everywhere.'
+  'CribsTalk is a social platform for connecting with people, sharing moments, discovering communities, and staying connected.'
 
 export const SEO_DEFAULT_OG_IMAGE_PATH = '/assets/images/hero.jpg'
 export const SEO_LOGO_PATH = '/assets/icons/icon-192x192.png'

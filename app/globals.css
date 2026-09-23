@@ -844,12 +844,19 @@ button {
   }
 }
 
-/* Scroll-reveal: hidden until .is-visible is added by IntersectionObserver */
+/* Scroll-reveal: hidden until .is-visible is added by IntersectionObserver.
+   Falls back to visible if JS never marks the element (e.g. slow hydration). */
 .lp-reveal {
   opacity: 0;
 }
 .lp-reveal.is-visible {
   animation: lp-reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (scripting: none) {
+  .lp-reveal {
+    opacity: 1;
+  }
 }
 
 .lp-delay-1 {

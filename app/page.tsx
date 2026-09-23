@@ -1,209 +1,249 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import {
-  Globe,
-  Users,
-  MessageCircle,
-  TrendingUp,
   Heart,
+  MessageCircle,
   Share2,
   Bookmark,
-  Video,
-  ShoppingBag,
-  Sparkles,
-  ShieldCheck,
-  Bell,
-  Play,
-  Star,
-  ArrowRight,
-  Check,
-  Plus,
-  Minus,
-  Quote,
-  Zap,
   MoreHorizontal,
   Send,
-  Icon,
+  Phone,
+  Video,
+  Bell,
+  ArrowRight,
+  Users,
+  Camera,
+  Image as ImageIcon,
 } from "@/shared/icons";
 import { useAuth } from "@/contexts/AuthContext";
-import Slider, { Settings } from "react-slick";
-
 
 /* ------------------------------------------------------------------ */
-/*  Content                                                            */
+/*  Preview content (visual only — no API calls)                       */
 /* ------------------------------------------------------------------ */
 
-const features = [
-  {
-    icon: Share2,
-    title: "Share Your Story",
-    description:
-      "Post photos, videos and ideas to a feed built for every voice. Your culture, your perspective, your stage.",
-    accent: "from-orange-500 to-amber-500",
-  },
-  {
-    icon: MessageCircle,
-    title: "Real-time Messaging",
-    description:
-      "Chat one-on-one or in groups with instant delivery, voice notes, calls and reactions that keep you close.",
-    accent: "from-sky-500 to-blue-600",
-  },
-  {
-    icon: Users,
-    title: "Communities & Groups",
-    description:
-      "Find your people across borders and time zones. Join groups around politics, culture, business and more.",
-    accent: "from-emerald-500 to-green-600",
-  },
-  {
-    icon: Globe,
-    title: "Networking",
-    description:
-      "Build meaningful connections with creators, entrepreneurs and changemakers shaping a better world.",
-    accent: "from-violet-500 to-purple-600",
-  },
-  {
-    icon: Video,
-    title: "Memories & Video",
-    description:
-      "Share short-form videos and live moments. Discover stories from every corner of the world as they happen.",
-    accent: "from-rose-500 to-pink-600",
-  },
-  {
-    icon: ShoppingBag,
-    title: "TradeHub",
-    description:
-      "Buy and sell with confidence. Discover authentic products and grow your business with secure payments.",
-    accent: "from-amber-500 to-orange-600",
-  },
+const LP = "/assets/images/landing";
+
+const avatars = {
+  maya: `${LP}/avatar-maya.png`,
+  daniel: `${LP}/avatar-daniel.png`,
+  sophia: `${LP}/avatar-sophia.png`,
+  alex: `${LP}/avatar-alex.png`,
+  emma: `${LP}/avatar-emma.png`,
+  marcus: `${LP}/avatar-marcus.png`,
+} as const;
+
+const stories: {
+  name: string;
+  avatar: string;
+}[] = [
+  { name: "Maya", avatar: avatars.maya },
+  { name: "Daniel", avatar: avatars.daniel },
+  { name: "Sophia", avatar: avatars.sophia },
+  { name: "Alex", avatar: avatars.alex },
+  { name: "Noah", avatar: avatars.marcus },
+  { name: "Emma", avatar: avatars.emma },
 ];
 
-const stats = [
-  { number: "190+", label: "Countries" },
-  { number: "10k+", label: "Active Members" },
-  { number: "25k+", label: "Discussions" },
-  { number: "50+", label: "Communities" },
-];
+const discoverItems = [
+  { title: "Photography", image: `${LP}/discover-photo.png` },
+  { title: "Technology", image: `${LP}/discover-tech.png` },
+  { title: "Travel", image: `${LP}/discover-travel.png` },
+  { title: "Music", image: `${LP}/discover-music.png` },
+  { title: "Fitness", image: `${LP}/discover-fitness.png` },
+  { title: "Food", image: `${LP}/discover-food.png` },
+  { title: "Gaming", image: `${LP}/discover-gaming.png` },
+  { title: "Business", image: `${LP}/discover-business.png` },
+] as const;
 
-const benefits = [
-  "Built for a global community — wherever you are",
-  "Lightning-fast, real-time interactions everywhere",
-  "Private by design with secure, encrypted messaging",
-  "Free to join — no hidden fees, ever",
-];
-
-const testimonials = [
+const communityCards = [
   {
-    quote:
-      "CribsTalk finally feels like home online. I've met incredible people from all over the world and found communities that truly get me.",
-    name: "Sofia Reyes",
-    role: "Creator, Mexico City",
-    initials: "SR",
-    color: "from-orange-500 to-amber-500",
-    image_url: "/assets/images/avatar-1.png",
+    name: "Technology",
+    description: "Discuss the latest ideas in technology, AI and software.",
+    members: "12.4K",
+    image: `${LP}/discover-tech.png`,
   },
   {
-    quote:
-      "The communities here are alive. Real conversations about culture, ideas and current events that actually go somewhere. I'm hooked.",
-    name: "James Chen",
-    role: "Entrepreneur, Singapore",
-    initials: "JC",
-    color: "from-emerald-500 to-green-600",
-    image_url: "/assets/images/avatar-2.png",
-
+    name: "Travel Stories",
+    description: "Share places, experiences and travel inspiration.",
+    members: "8.2K",
+    image: `${LP}/discover-travel.png`,
   },
   {
-    quote:
-      "I grew my small business through TradeHub in weeks. Reaching customers worldwide who share my values changed everything.",
+    name: "Photography",
+    description: "Capture light, moments, and stories worth keeping.",
+    members: "9.1K",
+    image: `${LP}/discover-photo.png`,
+  },
+  {
+    name: "Music Lounge",
+    description: "Playlists, live sessions, and conversations about sound.",
+    members: "15.8K",
+    image: `${LP}/discover-music.png`,
+  },
+  {
+    name: "Fitness",
+    description: "Workouts, habits, and people who keep you going.",
+    members: "7.6K",
+    image: `${LP}/discover-fitness.png`,
+  },
+  {
+    name: "Food & Kitchen",
+    description: "Recipes, kitchen wins, and meals worth sharing.",
+    members: "6.9K",
+    image: `${LP}/discover-food.png`,
+  },
+] as const;
+
+const marketplaceListings = [
+  {
+    title: "Mid-century lounge chair",
+    price: "$180",
+    location: "Brooklyn",
+    category: "Furniture",
+    image: `${LP}/market-furniture.png`,
+    seller: "Sofia",
+    avatar: avatars.maya,
+  },
+  {
+    title: "Wireless headphones",
+    price: "$95",
+    location: "Austin",
+    category: "Electronics",
+    image: `${LP}/market-electronics.png`,
+    seller: "James",
+    avatar: avatars.daniel,
+  },
+  {
+    title: "Linen summer set",
+    price: "$42",
+    location: "Lisbon",
+    category: "Clothing",
+    image: `${LP}/market-clothing.png`,
+    seller: "Emma",
+    avatar: avatars.emma,
+  },
+  {
+    title: "Wooden play kitchen",
+    price: "$65",
+    location: "Toronto",
+    category: "Baby & Kids",
+    image: `${LP}/market-kids.png`,
+    seller: "Marcus",
+    avatar: avatars.marcus,
+  },
+  {
+    title: "Road bike — lightly used",
+    price: "$220",
+    location: "Denver",
+    category: "Sports",
+    image: `${LP}/market-sports.png`,
+    seller: "Daniel",
+    avatar: avatars.daniel,
+  },
+  {
+    title: "Compact espresso machine",
+    price: "$110",
+    location: "Seattle",
+    category: "Appliances",
+    image: `${LP}/market-appliances.png`,
+    seller: "Maya",
+    avatar: avatars.maya,
+  },
+] as const;
+
+const conversations = [
+  {
     name: "Emma Laurent",
-    role: "Seller, Paris",
-    initials: "EL",
-    color: "from-sky-500 to-blue-600",
-    image_url: "/assets/images/avatar-4.png",
+    avatar: avatars.emma,
+    preview: "Are we still on for Friday?",
+    time: "2m",
+    online: true,
+    active: true,
   },
   {
-    quote:
-      "Finally a platform where distance doesn't matter. I've built friendships across continents and learned so much from people I'd never have met otherwise.",
+    name: "Photography Crew",
+    avatar: avatars.daniel,
+    preview: "James: Sending the shots now",
+    time: "18m",
+    online: false,
+    active: false,
+  },
+  {
     name: "Marcus Webb",
-    role: "Developer, Toronto",
-    initials: "MW",
-    color: "from-violet-500 to-purple-600",
-    image_url: "/assets/images/avatar-5.png",
+    avatar: avatars.marcus,
+    preview: "Loved that post 🔥",
+    time: "1h",
+    online: true,
+    active: false,
   },
-];
+  {
+    name: "Travel Stories",
+    avatar: avatars.maya,
+    preview: "Sofia: New album is up",
+    time: "3h",
+    online: false,
+    active: false,
+  },
+] as const;
 
-const faqs = [
-  {
-    q: "Is CribsTalk free to use?",
-    a: "Yes. Creating an account, posting, messaging and joining communities are completely free — no matter where you are in the world. Optional premium features may be added later, but the core experience will always be free.",
-  },
-  {
-    q: "Who is CribsTalk for?",
-    a: "Everyone. Whether you're a creator in Tokyo, a student in Nairobi, an entrepreneur in Berlin or simply someone who wants meaningful connection — CribsTalk is the social home for the world.",
-  },
-  {
-    q: "How is my privacy protected?",
-    a: "Your data is yours. We use secure, encrypted messaging and give you granular control over who sees your content. We never sell your personal information to third parties.",
-  },
-  {
-    q: "Can I sell products on the platform?",
-    a: "Absolutely. TradeHub lets you list products, reach customers around the world and accept secure payments — all in one place.",
-  },
-  {
-    q: "What can I do on CribsTalk?",
-    a: "Share posts and videos, message friends across borders, join global communities, follow discussions on topics you care about, discover memories and reels, and buy or sell on TradeHub.",
-  },
-  {
-    q: "Is CribsTalk available in my country?",
-    a: "Yes. CribsTalk is built for a global audience. You can sign up, connect and participate from virtually anywhere — we're here to bring people together for a better world.",
-  },
-];
-
-
-const settings: Settings = {
-  dots: true,
-  infinite: true,
-  speed: 500,
-  slidesToShow: 3,
-  slidesToScroll: 1,
-  autoplay: true,
-  autoplaySpeed: 3000,
-  arrows: false,
-
-  responsive: [
-    {
-      breakpoint: 1024,
-      settings: {
-        slidesToShow: 2,
-        slidesToScroll: 1,
-      },
-    },
-    {
-      breakpoint: 768,
-      settings: {
-        slidesToShow: 1,
-        slidesToScroll: 1,
-      },
-    },
-  ],
-};
 /* ------------------------------------------------------------------ */
-/*  Scroll-reveal helper                                               */
+/*  Shared UI                                                          */
 /* ------------------------------------------------------------------ */
 
 const Reveal: React.FC<{
   children: React.ReactNode;
   className?: string;
   delay?: 1 | 2 | 3 | 4 | 5;
-}> = ({ children, className = "", delay }) => {
-  return (
-    <div className={`lp-reveal ${delay ? `lp-delay-${delay}` : ""} ${className}`}>
-      {children}
-    </div>
-  );
-};
+}> = ({ children, className = "", delay }) => (
+  <div className={`lp-reveal ${delay ? `lp-delay-${delay}` : ""} ${className}`}>
+    {children}
+  </div>
+);
+
+const PrimaryCta: React.FC<{
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ href, children, className = "" }) => (
+  <Link
+    href={href}
+    className={`group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#F97316] px-7 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EA580C] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 focus-visible:ring-offset-2 sm:text-base ${className}`}
+  >
+    {children}
+  </Link>
+);
+
+const SecondaryCta: React.FC<{
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ href, children, className = "" }) => (
+  <Link
+    href={href}
+    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-7 py-3 text-sm font-semibold text-[#111827] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#F9FAFB] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 focus-visible:ring-offset-2 sm:text-base ${className}`}
+  >
+    {children}
+  </Link>
+);
+
+const SectionHeading: React.FC<{
+  title: string;
+  description?: string;
+  align?: "left" | "center";
+}> = ({ title, description, align = "center" }) => (
+  <div className={`max-w-2xl ${align === "center" ? "mx-auto text-center" : ""}`}>
+    <h2 className="text-[1.75rem] font-bold tracking-tight text-[#111827] sm:text-4xl">
+      {title}
+    </h2>
+    {description ? (
+      <p className="mt-4 text-base leading-relaxed text-[#4B5563] sm:text-lg">
+        {description}
+      </p>
+    ) : null}
+  </div>
+);
 
 /* ------------------------------------------------------------------ */
 /*  Page                                                               */
@@ -211,620 +251,737 @@ const Reveal: React.FC<{
 
 const Home: React.FC = () => {
   const { user } = useAuth();
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const joinHref = user ? "/feed" : "/signup";
 
   useEffect(() => {
     const els = rootRef.current?.querySelectorAll(".lp-reveal");
     if (!els || els.length === 0) return;
 
+    const reveal = (el: Element) => {
+      el.classList.add("is-visible");
+    };
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
+            reveal(entry.target);
             observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+      { threshold: 0.08, rootMargin: "0px 0px -24px 0px" }
     );
 
-    els.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
+    els.forEach((el) => {
+      const rect = el.getBoundingClientRect();
+      const inView =
+        rect.top < window.innerHeight * 0.92 && rect.bottom > 0;
+      if (inView) {
+        reveal(el);
+      } else {
+        observer.observe(el);
+      }
+    });
+
+    // Safety net: never leave content permanently invisible
+    const fallback = window.setTimeout(() => {
+      els.forEach((el) => reveal(el));
+    }, 1200);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallback);
+    };
   }, []);
 
-  const users = [
-    { name: "Sofia Reyes", avatarUrl: "/assets/images/avatar-1.png" },
-    { name: "James Chen", avatarUrl: "/assets/images/avatar-2.png" },
-    { name: "Emma Laurent", avatarUrl: "/assets/images/avatar-4.png" },
-    { name: "Marcus Webb", avatarUrl: "/assets/images/avatar-5.png" }
-  ];
   return (
-    <div ref={rootRef} className="overflow-x-hidden ">
+    <div ref={rootRef} className="overflow-x-hidden bg-white text-[#111827]">
       {/* ============================== HERO ============================== */}
-      <section className="relative isolate overflow-hidden">
+      <section className="relative isolate overflow-hidden bg-[#FBF6EF]">
+        {/* Banner image */}
+        <div className="pointer-events-none absolute inset-0 -z-20">
+          <img
+            src={`${LP}/hero-banner-curves.png`}
+            alt=""
+            className="h-full w-full object-cover object-center"
+            loading="eager"
+            aria-hidden="true"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#FBF6EF]/95 via-[#FBF6EF]/75 to-[#FBF6EF]/35 sm:via-[#FBF6EF]/70 sm:to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#FBF6EF]/40 via-transparent to-[#FBF6EF]/20" />
+        </div>
 
-        <div className="max-w-full 4xl:max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 2xl:px-6 py-8 sm:py-12 lg:py-18 ">
-          <div className="grid items-center gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-2">
-            {/* Left: copy */}
-            <div className="text-center lg:text-left">
+        {/* Soft organic curves */}
+        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+          <svg
+            className="absolute -right-[18%] top-[-12%] h-[70%] w-[70%] text-[#F97316]/15"
+            viewBox="0 0 600 600"
+            fill="currentColor"
+          >
+            <path d="M480 40C560 120 620 240 560 340C500 440 360 480 240 440C120 400 60 280 90 170C120 60 300 -40 480 40Z" />
+          </svg>
+          <svg
+            className="absolute -left-[20%] bottom-[-8%] h-[55%] w-[65%] text-orange-200/40"
+            viewBox="0 0 600 600"
+            fill="currentColor"
+          >
+            <path d="M80 420C20 300 40 160 150 90C260 20 420 40 490 140C560 240 520 380 410 450C300 520 140 540 80 420Z" />
+          </svg>
+          <div className="absolute right-[8%] top-[18%] h-40 w-40 rounded-full bg-[#F97316]/10 blur-3xl sm:h-56 sm:w-56" />
+          <div className="absolute bottom-[22%] left-[12%] h-36 w-36 rounded-full bg-amber-200/30 blur-3xl" />
+        </div>
+
+        <div className="relative mx-auto flex max-w-7xl flex-col justify-center px-4 pb-16 pt-8 sm:px-6 sm:pb-20 sm:pt-10 lg:min-h-[calc(100svh-72px)] lg:px-8 lg:pb-28 lg:pt-14">
+          <div className="grid items-center gap-6 sm:gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12 xl:gap-16">
+            {/* Copy */}
+            <div className="relative z-10 flex flex-col text-center lg:text-left">
               <Reveal>
-                <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white/70 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium text-orange-700 shadow-sm backdrop-blur dark:border-border dark:bg-surface dark:text-orange-300">
-                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  Connecting people for a better world
-                </span>
+                <p className="text-sm font-semibold tracking-[0.14em] text-[#F97316]">
+                  CONNECT · SHARE · BELONG
+                </p>
               </Reveal>
-              <div className="max-w-2xl mx-auto lg:mx-0">
-                <h1 className="mt-4 sm:mt-6 text-2xl sm:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-extrabold leading-tight sm:leading-[1.1] tracking-tight text-gray-900">
-                  The social home for the world
+
+              <Reveal delay={1}>
+                <h1 className="mt-2 text-[2.6rem] font-extrabold leading-[1.02] tracking-tight text-[#111827] sm:mt-3 sm:text-[3.5rem] lg:text-[4.5rem] xl:text-[5rem]">
+                  Connect.
+                  <br />
+                  Share.
+                  <br />
+                  Belong.
                 </h1>
-              </div>
+              </Reveal>
+
               <Reveal delay={2}>
-                <p className="mx-auto mt-4 sm:mt-6 max-w-xl text-sm sm:text-base lg:text-lg leading-relaxed text-gray-600 lg:mx-0">
-                  Share your story, join vibrant communities, message in
-                  real time and discover the culture, ideas and people shaping
-                  our world. One platform, endless connection.
+                <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-[#4B5563] sm:mt-5 sm:text-lg lg:mx-0">
+                  A place for your people, your stories, your conversations, and
+                  the communities you care about.
                 </p>
               </Reveal>
 
               <Reveal delay={3}>
-                <div className="mt-6 sm:mt-8 flex flex-col items-center gap-2 sm:gap-3 sm:flex-row lg:justify-start justify-center">
+                <div className="mt-6 flex flex-col items-center gap-3 sm:mt-7 sm:flex-row lg:justify-start">
                   {!user ? (
                     <>
-                      <Link
-                        href="/signup"
-                        className="group inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-orange-500/40"
-                      >
-                        Join the Community
-                        <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
-                      </Link>
-                      <Link
-                        href="/signin"
-                        className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/80 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm sm:text-base font-semibold text-gray-800 shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-md sm:w-auto dark:border-border dark:bg-surface dark:text-content"
-                      >
+                      <PrimaryCta href="/signup" className="w-full sm:w-auto">
+                        Join CribsTalk
+                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                      </PrimaryCta>
+                      <SecondaryCta href="/signin" className="w-full sm:w-auto">
                         Sign In
-                      </Link>
+                      </SecondaryCta>
                     </>
                   ) : (
-                    <Link
-                      href="/feed"
-                      className="group inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm sm:text-base font-semibold text-white shadow-lg shadow-orange-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
-                    >
+                    <PrimaryCta href="/feed" className="w-full sm:w-auto">
                       Go to your feed
-                      <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
-                    </Link>
+                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    </PrimaryCta>
                   )}
                 </div>
               </Reveal>
 
-              {/* Trust row */}
-              <Reveal delay={4}>
-                <div className="mt-6 sm:mt-8 flex flex-col items-center gap-3 sm:gap-4 sm:flex-row lg:justify-start justify-center">
+              {/* People strip */}
+              <Reveal delay={4} className="mt-7 sm:mt-9">
+                <div className="flex items-center justify-center gap-3 lg:justify-start">
                   <div className="flex -space-x-3">
-                    {users.map((user, i) => (
-                      <div
-                        key={i}
-                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border-2 border-white overflow-hidden dark:border-surface"
-                      >
-                        <img
-                          src={user.avatarUrl}
-                          alt={user.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+                    {stories.map((story) => (
+                      <img
+                        key={story.name}
+                        src={story.avatar}
+                        alt={story.name}
+                        className="h-10 w-10 rounded-full border-[2.5px] border-white object-cover shadow-sm sm:h-11 sm:w-11"
+                      />
                     ))}
-                    <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border-2 border-white bg-gray-900 text-xs font-semibold text-white dark:border-surface">
-                      10k+
-                    </div>
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-600">
-                    <div className="flex items-center justify-center gap-1 lg:justify-start">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className="h-3 w-3 sm:h-4 sm:w-4 fill-amber-400 text-amber-400"
-                        />
-                      ))}
-                    </div>
-                    <span>Loved by members around the world</span>
-                  </div>
+                  <p className="max-w-[11rem] text-left text-sm leading-snug text-[#6B7280]">
+                    People already sharing moments on CribsTalk
+                  </p>
                 </div>
               </Reveal>
             </div>
 
-            {/* Right: floating feed preview mockup */}
-            <Reveal delay={2} className="relative mx-auto w-full max-w-xs sm:max-w-sm lg:max-w-none">
-              <div className="relative">
-                {/* Glow */}
-                <div className="absolute -inset-4 -z-10 rounded-[2rem] bg-gradient-to-tr from-orange-500/20 via-transparent to-emerald-500/20 blur-2xl" />
+            {/* Social composition — denser, fills banner */}
+            <Reveal delay={2} className="relative z-10 mx-auto mt-2 w-full max-w-[520px] sm:mt-4 lg:mt-0 lg:max-w-none">
+              <div className="relative mx-auto aspect-[4/5] w-full max-w-[480px] sm:aspect-[5/6] lg:aspect-auto lg:min-h-[560px] lg:max-w-none">
+                {/* Curved glass plate behind cards */}
+                <div
+                  className="absolute inset-[4%] bg-white/55 shadow-[0_30px_80px_rgba(15,23,42,0.08)] backdrop-blur-[2px] sm:inset-[3%]"
+                  style={{
+                    borderRadius: "42% 58% 48% 52% / 48% 42% 58% 52%",
+                  }}
+                />
+                <div
+                  className="absolute inset-[10%] border border-white/70 bg-gradient-to-br from-white/70 to-[#FBF6EF]/50 sm:inset-[8%]"
+                  style={{
+                    borderRadius: "48% 52% 55% 45% / 45% 55% 45% 55%",
+                  }}
+                />
 
                 {/* Main post card */}
-                <div className="lp-animate-float rounded-3xl border border-white/60 bg-white/90 p-5 shadow-2xl shadow-black/10 backdrop-blur-xl dark:border-border dark:bg-surface">
+                <article className="lp-animate-float-slow absolute right-[2%] top-[2%] z-20 w-[72%] max-w-[320px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_20px_50px_rgba(15,23,42,0.12)] transition-shadow duration-300 hover:shadow-[0_24px_60px_rgba(15,23,42,0.16)] sm:right-[4%] sm:top-[4%] sm:p-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-sm font-bold text-white">
-                      SR
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-gray-900">
-                        Sofia Reyes
-                      </p>
-                      <p className="text-xs text-gray-500">Mexico City · 2h ago</p>
-                    </div>
-                    <MoreHorizontal className="h-5 w-5 text-gray-400" />
-                  </div>
-
-                  <p className="mt-3 text-sm leading-relaxed text-gray-700">
-                    Golden hour in the city never gets old. Grateful for a
-                    community that brings the whole world a little closer.
-                  </p>
-
-                  <div className="mt-3 aspect-[16/10] overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 via-amber-400 to-rose-400">
                     <img
-                      src="/assets/images/hero2.png"
-                      alt="A scenic view shared by the CribsTalk community worldwide"
-                      className="h-full w-full object-cover"
+                      src={avatars.daniel}
+                      alt="Daniel Carter"
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[#111827]">
+                        Daniel Carter
+                      </p>
+                      <p className="text-xs text-[#6B7280]">@danielc · 2h</p>
+                    </div>
+                    <MoreHorizontal className="h-4 w-4 text-[#9CA3AF]" />
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-[#374151]">
+                    Weekend hike with friends — some places become memories.
+                  </p>
+                  <div className="mt-3 overflow-hidden rounded-xl">
+                    <img
+                      src={`${LP}/feed-hike.png`}
+                      alt="Photo shared in the CribsTalk feed"
+                      className="aspect-[16/10] h-full w-full object-cover"
+                      loading="eager"
                     />
                   </div>
-
-                  <div className="mt-4 flex items-center justify-between text-gray-500">
-                    <div className="flex items-center gap-5 text-sm">
-                      <span className="flex items-center gap-1.5 font-medium text-rose-500">
-                        <Heart className="h-4 w-4 fill-rose-500" /> 1.2k
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <MessageCircle className="h-4 w-4" /> 348
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Share2 className="h-4 w-4" /> 86
-                      </span>
-                    </div>
-                    <Bookmark className="h-4 w-4" />
+                  <div className="mt-3 flex items-center justify-between text-sm text-[#6B7280]">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 font-medium text-rose-500 transition-transform hover:scale-105"
+                      aria-label="Like"
+                    >
+                      <Heart className="h-4 w-4 fill-rose-500" /> 248
+                    </button>
+                    <span className="inline-flex items-center gap-1.5">
+                      <MessageCircle className="h-4 w-4" /> 32
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Share2 className="h-4 w-4" /> Share
+                    </span>
                   </div>
+                </article>
+
+                {/* Profile card */}
+                <div className="lp-animate-float absolute left-[1%] top-[12%] z-10 w-[48%] max-w-[210px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_16px_40px_rgba(15,23,42,0.10)] transition-transform duration-300 hover:-translate-y-0.5 sm:left-[2%] sm:top-[14%] sm:p-4">
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src={avatars.maya}
+                      alt="Maya Johnson"
+                      className="h-11 w-11 rounded-full object-cover ring-2 ring-[#F97316]/25"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#111827]">
+                        Maya Johnson
+                      </p>
+                      <p className="text-xs text-[#6B7280]">@mayaj</p>
+                    </div>
+                  </div>
+                  <p className="mt-2.5 text-xs text-[#6B7280]">
+                    <span className="font-semibold text-[#111827]">1.2K</span>{" "}
+                    followers
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-2.5 inline-flex h-9 w-full items-center justify-center rounded-full bg-[#F97316] text-xs font-semibold text-white transition-colors hover:bg-[#EA580C]"
+                  >
+                    Follow
+                  </button>
                 </div>
 
-                {/* Floating notification chip */}
-                <div className="lp-animate-float-slow absolute -left-4 top-10 hidden items-center gap-2 rounded-2xl border border-white/60 bg-white/90 px-3.5 py-2.5 shadow-xl backdrop-blur-xl sm:flex dark:border-border dark:bg-surface">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                {/* Notification */}
+                <div className="lp-animate-float-slow absolute bottom-[28%] right-[0%] z-30 flex max-w-[210px] items-center gap-2.5 rounded-2xl border border-black/[0.06] bg-white px-3 py-2.5 shadow-xl sm:bottom-[30%] sm:right-[2%]">
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-orange-50 text-[#F97316]">
                     <Bell className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-xs font-semibold text-gray-900">
-                      New follower
+                    <p className="text-xs font-semibold text-[#111827]">
+                      Someone liked your post
                     </p>
-                    <p className="text-[11px] text-gray-500">James started following you</p>
+                    <p className="text-[11px] text-[#6B7280]">Just now</p>
                   </div>
                 </div>
 
-                {/* Floating message chip */}
-                <div className="lp-animate-float absolute -right-3 bottom-12 hidden items-center gap-2 rounded-2xl border border-white/60 bg-white/90 px-3.5 py-2.5 shadow-xl backdrop-blur-xl sm:flex dark:border-border dark:bg-surface [animation-delay:1.5s]">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-                    <MessageCircle className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-xs font-semibold text-gray-900">
-                      Emma
-                    </p>
-                    <p className="text-[11px] text-gray-500">Sent you a message ✨</p>
+                {/* Message preview */}
+                <div className="lp-animate-float absolute bottom-[14%] left-[0%] z-30 w-[52%] max-w-[220px] rounded-2xl border border-black/[0.06] bg-white p-3 shadow-xl sm:bottom-[16%] sm:left-[2%] sm:p-3.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative">
+                      <img
+                        src={avatars.sophia}
+                        alt="Sophia"
+                        className="h-9 w-9 rounded-full object-cover"
+                      />
+                      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-[#111827]">
+                        Sophia
+                      </p>
+                      <p className="truncate text-[11px] text-[#6B7280]">
+                        That photo is beautiful ✨
+                      </p>
+                    </div>
                   </div>
+                </div>
+
+                {/* Community card */}
+                <div className="lp-animate-float absolute bottom-[1%] right-[4%] z-20 flex w-[64%] max-w-[260px] items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-lg sm:bottom-[2%] sm:right-[6%]">
+                  <img
+                    src={`${LP}/discover-travel.png`}
+                    alt="Travel Stories community"
+                    className="h-11 w-11 rounded-xl object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold text-[#111827]">
+                      Travel Stories
+                    </p>
+                    <p className="text-[11px] text-[#6B7280]">8.2K members</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full bg-[#F97316] px-3 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-[#EA580C]"
+                  >
+                    Join
+                  </button>
                 </div>
               </div>
             </Reveal>
           </div>
         </div>
-      </section>
 
-
-      {/* =========================== FEATURES =========================== */}
-      <section className="py-8 sm:py-12 lg:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Reveal className="mx-auto mb-10 sm:mb-14 max-w-2xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-orange-700 dark:bg-surface-secondary dark:text-orange-300">
-              <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Everything in one place
-            </span>
-            <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
-              Built for the way the world connects
-            </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
-              From real-time chat to thriving communities and a trusted
-              marketplace — every tool you need to share, connect and grow.
-            </p>
-          </Reveal>
-
-          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature, i) => {
-              const Icon = feature.icon;
-              return (
-                <Reveal
-                  key={feature.title}
-                  delay={((i % 3) + 1) as 1 | 2 | 3}
-                  className="h-full"
-                >
-                  <div className="group relative h-full overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-xl dark:border-border dark:bg-surface">
-                    <div
-                      className={`absolute inset-x-0 -top-px h-1 scale-x-0 bg-gradient-to-r ${feature.accent} transition-transform duration-300 group-hover:scale-x-100`}
-                    />
-                    <div
-                      className={`mb-4 sm:mb-5 inline-flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.accent} text-white shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
-                    >
-                      <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
-                      {feature.title}
-                    </h3>
-                    <p className="mt-2 sm:mt-3 text-sm sm:text-base leading-relaxed text-gray-600">
-                      {feature.description}
-                    </p>
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
-
+        {/* Bottom wave curve into next section */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 -z-0 leading-[0]" aria-hidden="true">
+          <svg
+            className="relative block h-[48px] w-full text-white sm:h-[64px] lg:h-[80px]"
+            viewBox="0 0 1440 80"
+            preserveAspectRatio="none"
+            fill="currentColor"
+          >
+            <path d="M0,48 C240,80 480,8 720,32 C960,56 1200,80 1440,40 L1440,80 L0,80 Z" />
+          </svg>
         </div>
       </section>
 
-      {/* ====================== FEED SHOWCASE / SPLIT ==================== */}
-      <section className="relative overflow-hidden py-8 sm:py-12 lg:py-16">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-orange-50/40 to-transparent dark:via-surface-secondary/30" />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-2">
-            {/* Copy */}
-            <Reveal>
-              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:bg-surface-secondary dark:text-emerald-300">
-                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> A feed that feels alive
-              </span>
-              <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
-                See what your community is talking about
-              </h2>
-              <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
-                A rich, fast feed packed with photos, videos and real
-                conversations from every time zone. React, comment and share —
-                engagement that actually means something.
-              </p>
+      {/* ======================== SOCIAL FEED ======================== */}
+   
 
-              <ul className="my-6 sm:my-8 space-y-3 sm:space-y-4">
+      {/* ======================== DISCOVER ======================== */}
+     
+
+      {/* ======================== COMMUNITIES ======================== */}
+      <section id="communities" className="scroll-mt-24 py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <SectionHeading
+              title="Find your people."
+              description="Join conversations built around the things you care about."
+            />
+          </Reveal>
+
+          <Reveal delay={1} className="mt-10 sm:mt-14">
+            <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:px-0 lg:grid-cols-3">
+              {communityCards.map((community) => (
+                <article
+                  key={community.name}
+                  className="w-[78%] flex-none overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:w-auto"
+                >
+                  <div className="aspect-[16/9] overflow-hidden">
+                    <img
+                      src={community.image}
+                      alt={community.name}
+                      className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="p-4 sm:p-5">
+                    <h3 className="text-base font-semibold text-[#111827]">
+                      {community.name}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280]">
+                      {community.description}
+                    </p>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <span className="text-sm text-[#6B7280]">
+                        <span className="font-semibold text-[#111827]">
+                          {community.members}
+                        </span>{" "}
+                        members
+                      </span>
+                      <Link
+                        href={user ? "/groups" : "/signup"}
+                        className="inline-flex h-9 items-center justify-center rounded-full bg-[#F97316] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40"
+                      >
+                        Join
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ======================== MESSAGING ======================== */}
+      <section
+        id="messaging"
+        className="scroll-mt-24 bg-[#FAFAF9] py-16 sm:py-20 lg:py-24"
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <SectionHeading
+              title="Keep the conversation going."
+              description="From one-on-one conversations to group chats, stay close to the people who matter."
+            />
+          </Reveal>
+
+          <Reveal delay={2} className="mx-auto mt-10 max-w-4xl sm:mt-14">
+            <div className="overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+              <div className="grid lg:grid-cols-[280px_1fr]">
+                {/* Conversation list */}
+                <div className="border-b border-[#F3F4F6] lg:border-b-0 lg:border-r">
+                  <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-4">
+                    <p className="font-semibold text-[#111827]">Messages</p>
+                    <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-[#EA580C]">
+                      3 new
+                    </span>
+                  </div>
+                  <ul className="divide-y divide-[#F3F4F6]">
+                    {conversations.map((chat) => (
+                      <li
+                        key={chat.name}
+                        className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${
+                          chat.active ? "bg-[#FBF6EF]/80" : "hover:bg-[#F9FAFB]"
+                        }`}
+                      >
+                        <div className="relative flex-none">
+                          <img
+                            src={chat.avatar}
+                            alt={chat.name}
+                            className="h-11 w-11 rounded-full object-cover"
+                          />
+                          {chat.online ? (
+                            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-sm font-semibold text-[#111827]">
+                              {chat.name}
+                            </p>
+                            <span className="flex-none text-[11px] text-[#9CA3AF]">
+                              {chat.time}
+                            </span>
+                          </div>
+                          <p className="truncate text-sm text-[#6B7280]">
+                            {chat.preview}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Active conversation */}
+                <div className="flex min-h-[360px] flex-col">
+                  <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-3.5 sm:px-5">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <img
+                          src={avatars.emma}
+                          alt="Emma Laurent"
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
+                        <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#111827]">
+                          Emma Laurent
+                        </p>
+                        <p className="text-xs text-emerald-600">Online</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EF] text-[#F97316]">
+                        <Phone className="h-4 w-4" />
+                      </span>
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F97316] text-white">
+                        <Video className="h-4 w-4" />
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 space-y-3 bg-[#FAFAF9]/60 px-4 py-5 sm:px-5">
+                    <div className="max-w-[80%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm text-[#374151] shadow-sm">
+                      The group call yesterday was great — we should do that
+                      again.
+                    </div>
+                    <div className="ml-auto max-w-[80%] rounded-2xl rounded-tr-md bg-[#F97316] px-4 py-3 text-sm text-white shadow-sm">
+                      Absolutely. I&apos;ll send the invite for Friday.
+                    </div>
+                    <div className="overflow-hidden rounded-2xl rounded-tl-md bg-white shadow-sm">
+                      <img
+                        src={`${LP}/chat-share.png`}
+                        alt="Shared photo in chat"
+                        className="aspect-[16/10] w-full max-w-[240px] object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="max-w-[75%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm text-[#374151] shadow-sm">
+                      Perfect{" "}
+                      <span className="inline-flex align-middle text-rose-500">
+                        <Heart className="inline h-3.5 w-3.5 fill-rose-500" />
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-[#F3F4F6] px-4 py-3 sm:px-5">
+                    <div className="flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3 py-2.5">
+                      <span className="flex-1 text-sm text-[#9CA3AF]">
+                        Message…
+                      </span>
+                      <Send className="h-4 w-4 text-[#F97316]" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ======================== PROFILE ======================== */}
+     
+
+      {/* ======================== MARKETPLACE ======================== */}
+     
+      {/* ======================== GLOBAL COMMUNITY ======================== */}
+      <section className="py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <SectionHeading
+              title="Different stories. One community."
+              description="Connect with people from different places, backgrounds, interests, and communities."
+            />
+          </Reveal>
+
+          <Reveal delay={2} className="relative mx-auto mt-10 max-w-4xl sm:mt-14">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+              <div className="col-span-2 row-span-2 overflow-hidden rounded-2xl">
+                <img
+                  src={`${LP}/discover-travel.png`}
+                  alt="Shared travel moment"
+                  className="h-full min-h-[220px] w-full object-cover sm:min-h-[280px]"
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm sm:p-4">
+                <img
+                  src={avatars.maya}
+                  alt="Sofia"
+                  className="h-11 w-11 rounded-full object-cover ring-2 ring-[#F97316]/30"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">Sofia</p>
+                  <p className="truncate text-xs text-[#6B7280]">
+                    Shared a new photo
+                  </p>
+                </div>
+              </div>
+              <div className="overflow-hidden rounded-2xl">
+                <img
+                  src={avatars.daniel}
+                  alt="James"
+                  className="h-full min-h-[100px] w-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className="rounded-2xl border border-black/[0.06] bg-[#FBF6EF] p-3 sm:p-4">
+                <p className="text-xs font-semibold text-[#111827]">
+                  Photography
+                </p>
+                <p className="mt-1 text-[11px] text-[#6B7280]">8.1K members</p>
+                <span className="mt-3 inline-flex rounded-full bg-[#F97316] px-2.5 py-1 text-[11px] font-semibold text-white">
+                  Join
+                </span>
+              </div>
+              <div className="flex flex-col justify-between rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm sm:p-4">
+                <div className="flex -space-x-2">
+                  {[
+                    avatars.emma,
+                    avatars.marcus,
+                    avatars.maya,
+                  ].map((src) => (
+                    <img
+                      key={src}
+                      src={src}
+                      alt=""
+                      className="h-8 w-8 rounded-full border-2 border-white object-cover"
+                    />
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-[#6B7280]">
+                  <span className="font-semibold text-rose-500">♡ 128</span> new
+                  reactions today
+                </p>
+              </div>
+              <div className="col-span-2 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <img
+                    src={avatars.marcus}
+                    alt="Marcus"
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-[#111827]">
+                      Marcus Webb
+                    </p>
+                    <p className="mt-1 text-sm text-[#4B5563]">
+                      Built something new this week and shared it with the
+                      community — the feedback already feels like friends.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ======================== MOBILE ======================== */}
+      <section className="bg-[#FAFAF9] py-16 sm:py-20 lg:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            <Reveal>
+              <SectionHeading
+                align="left"
+                title="CribsTalk goes wherever you go."
+                description="Your feed, profile, messages, and communities — ready whenever you are."
+              />
+              <ul className="mt-8 space-y-3">
                 {[
-                  {
-                    icon: Heart,
-                    text: "Express yourself with reactions, likes and saves",
-                  },
-                  {
-                    icon: MessageCircle,
-                    text: "Threaded comments that keep discussions flowing",
-                  },
-                  {
-                    icon: TrendingUp,
-                    text: "Discover trending topics from every corner of the globe",
-                  },
-                ].map(({ icon: Icon, text }) => (
-                  <li key={text} className="flex items-start gap-3">
-                    <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-surface-secondary">
+                  { icon: ImageIcon, label: "Your feed on the go" },
+                  { icon: Camera, label: "Profiles and moments" },
+                  { icon: MessageCircle, label: "Messages and calls" },
+                  { icon: Users, label: "Communities that travel with you" },
+                ].map(({ icon: Icon, label }) => (
+                  <li
+                    key={label}
+                    className="flex items-center gap-3 text-[15px] text-[#374151]"
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#F97316] shadow-sm ring-1 ring-black/[0.04]">
                       <Icon className="h-4 w-4" />
                     </span>
-                    <span className="text-sm sm:text-base text-gray-700">{text}</span>
+                    {label}
                   </li>
                 ))}
               </ul>
-
-              {!user && (
-                <Link
-                  href="/signup"
-                  className="btn-primary text-sm sm:text-base"
-                >
-                  Start exploring
-                  <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
-              )}
             </Reveal>
 
-            {/* Mock feed cards */}
-            <Reveal delay={2} className="space-y-4 sm:space-y-5">
-              {/* Politics card */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg dark:border-border dark:bg-surface">
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-red-100 text-red-600 flex-shrink-0">
-                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Reveal
+              delay={2}
+              className="relative mx-auto flex w-full max-w-lg justify-center gap-3 sm:gap-5"
+            >
+              {/* Phone — feed */}
+              <div className="relative w-[42%] max-w-[180px] rounded-[2rem] border-[6px] border-[#111827] bg-white shadow-2xl">
+                <div className="absolute left-1/2 top-2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-[#111827]/80" />
+                <div className="space-y-2.5 overflow-hidden rounded-[1.55rem] bg-[#FBF6EF] p-2.5 pt-6">
+                  <div className="rounded-xl bg-white p-2 shadow-sm">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                      <img
+                        src={avatars.maya}
+                        alt=""
+                        className="h-5 w-5 rounded-full object-cover"
+                      />
+                      <span className="text-[10px] font-semibold">Maya</span>
+                    </div>
+                    <div className="aspect-[4/3] overflow-hidden rounded-lg">
+                      <img
+                        src={`${LP}/feed-hike.png`}
+                        alt="Mobile feed preview"
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="mt-1.5 flex gap-2 text-[9px] text-[#6B7280]">
+                      <span className="text-rose-500">♡ 48</span>
+                      <span>💬 6</span>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
-                      🏛️ Politics
-                    </span>
-                    <p className="mt-0.5 text-xs text-gray-500">2 hours ago</p>
+                  <div className="rounded-xl bg-white p-2 shadow-sm">
+                    <p className="text-[10px] leading-snug text-[#4B5563]">
+                      Daniel asked: one skill everyone should learn?
+                    </p>
                   </div>
-                </div>
-                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-                  The Role of Youth in Global Democracy
-                </h3>
-                <p className="mt-1.5 text-xs sm:text-sm text-gray-600">
-                  Young people everywhere are driving democratic change —
-                  from the streets to the ballot box.
-                </p>
-                <div className="mt-4 flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
-                  <span className="flex items-center gap-1.5">
-                    <Heart className="h-4 w-4" /> 234
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <MessageCircle className="h-4 w-4" /> 45
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Share2 className="h-4 w-4" /> 12
-                  </span>
                 </div>
               </div>
 
-              {/* Culture card */}
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 shadow-sm transition-all duration-300 hover:shadow-lg dark:border-border dark:bg-surface">
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-green-100 text-green-600 flex-shrink-0">
-                    <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+              {/* Phone — messages / community */}
+              <div className="relative mt-8 w-[42%] max-w-[180px] rounded-[2rem] border-[6px] border-[#111827] bg-white shadow-2xl sm:mt-10">
+                <div className="absolute left-1/2 top-2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-[#111827]/80" />
+                <div className="space-y-2 overflow-hidden rounded-[1.55rem] bg-white p-2.5 pt-6">
+                  <div className="mb-1 flex items-center gap-2 border-b border-[#F3F4F6] pb-2">
+                    <img
+                      src={avatars.emma}
+                      alt=""
+                      className="h-6 w-6 rounded-full object-cover"
+                    />
+                    <span className="text-[11px] font-semibold">Emma</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                      🎭 Culture
+                  <div className="max-w-[90%] rounded-2xl rounded-tl-md bg-[#F3F4F6] px-2 py-1.5 text-[10px] text-[#374151]">
+                    Free later for a quick call?
+                  </div>
+                  <div className="ml-auto max-w-[90%] rounded-2xl rounded-tr-md bg-[#F97316] px-2 py-1.5 text-[10px] text-white">
+                    Yes — sending invite.
+                  </div>
+                  <div className="mt-3 rounded-xl bg-[#FBF6EF] p-2">
+                    <p className="text-[10px] font-semibold text-[#111827]">
+                      Travel Stories
+                    </p>
+                    <p className="text-[9px] text-[#6B7280]">8.2K members</p>
+                  </div>
+                  <div className="flex justify-center gap-2 pt-1">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#FBF6EF] text-[#F97316]">
+                      <Phone className="h-3 w-3" />
                     </span>
-                    <p className="mt-0.5 text-xs text-gray-500">4 hours ago</p>
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F97316] text-white">
+                      <Video className="h-3 w-3" />
+                    </span>
                   </div>
                 </div>
-                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
-                  Celebrating Cultures That Connect the World
-                </h3>
-                <p className="mt-1.5 text-xs sm:text-sm text-gray-600">
-                  From festivals to family traditions — discover the stories,
-                  art and heritage people share across borders.
-                </p>
-                <div className="mt-4 flex items-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500">
-                  <span className="flex items-center gap-1.5">
-                    <Heart className="h-4 w-4" /> 189
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <MessageCircle className="h-4 w-4" /> 32
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Share2 className="h-4 w-4" /> 18
-                  </span>
-                </div>
-              </div>
-
-              {/* Quick comment composer */}
-              <div className="flex items-center gap-2 sm:gap-3 rounded-2xl border border-gray-100 bg-white p-2 sm:p-3 shadow-sm dark:border-border dark:bg-surface">
-                {/* <div className="h-9 w-9 flex-none rounded-full bg-gradient-to-br from-violet-400 to-purple-500" /> */}
-                <button type="button" className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center pointer-events-none rounded-full bg-transparent text-content-secondary hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40 ring-1 ring-[#25d366] text-[#128c7e] flex-shrink-0" aria-label="Attach" aria-expanded="true">
-                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  </button>
-                <div className="flex-1 truncate rounded-full bg-gray-100 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-400 dark:bg-surface-secondary">
-                  Share something...
-                </div>
-                <button className="flex h-7 w-7 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-full bg-orange-500 text-white flex-shrink-0 hover:bg-orange-600 transition-colors">
-                  <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                </button>
               </div>
             </Reveal>
           </div>
         </div>
       </section>
 
-      {/* =========================== BENEFITS =========================== */}
-      <section className="py-8 sm:py-12 lg:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-6 sm:p-8 lg:p-12 xl:p-16">
-            <div className="absolute -right-16 -top-16 h-48 sm:h-64 w-48 sm:w-64 rounded-full bg-orange-500/30 blur-3xl" />
-            <div className="absolute -bottom-16 -left-16 h-48 sm:h-64 w-48 sm:w-64 rounded-full bg-emerald-500/20 blur-3xl" />
-            <div className="relative grid items-center gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-2">
-              <Reveal>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-white backdrop-blur">
-                  <ShieldCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Why CribsTalk
-                </span>
-                <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">
-                  Connecting people for a better world
-                </h2>
-                <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-300">
-                  We're not just another social network. We're a global home
-                  built with care for every voice — fast, private and genuinely
-                  yours.
-                </p>
-              </Reveal>
-
-              <Reveal delay={2}>
-                <ul className="grid gap-3 sm:gap-4 sm:grid-cols-2">
-                  {benefits.map((b) => (
-                    <li
-                      key={b}
-                      className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4 backdrop-blur transition-colors hover:bg-white/10"
-                    >
-                      <span className="mt-0.5 flex h-5 w-5 sm:h-6 sm:w-6 flex-none items-center justify-center rounded-full bg-emerald-500 text-white flex-shrink-0">
-                        <Check className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </span>
-                      <span className="text-xs sm:text-sm text-gray-100">{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Reveal>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========================= TESTIMONIALS ========================= */}
-      <section className="py-8 sm:py-12 lg:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <Reveal className="mx-auto mb-10 sm:mb-14 max-w-2xl text-center">
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold text-emerald-700 dark:bg-surface-secondary dark:text-emerald-300">
-              <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Loved by the community
-            </span>
-            <h2 className="mt-4 sm:mt-5 text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
-              Real stories from real members
-            </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
-              Thousands of people around the world are already building
-              their home here.
-            </p>
-          </Reveal>
-
-          {/* <div className="grid gap-6 md:grid-cols-3">
-            {testimonials.map((t, i) => (
-              <Reveal key={t.name} delay={((i % 3) + 1) as 1 | 2 | 3} className="h-full">
-                <figure className="flex h-full flex-col rounded-2xl border border-gray-100 bg-white p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
-                  <Quote className="h-8 w-8 text-orange-300" />
-                  <blockquote className="mt-4 flex-1 text-gray-700">
-                    “{t.quote}”
-                  </blockquote>
-                  <div className="mt-5 flex items-center gap-1 text-amber-400">
-                    {[...Array(5)].map((_, s) => (
-                      <Star key={s} className="h-4 w-4 fill-amber-400" />
-                    ))}
-                  </div>
-                  <figcaption className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-5 dark:border-border">
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-sm font-bold text-white`}
-                    >
-                      {t.initials}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900">{t.name}</div>
-                      <div className="text-sm text-gray-500">{t.role}</div>
-                    </div>
-                  </figcaption>
-                </figure>
-              </Reveal>
-            ))}
-          </div> */}
-          <Slider {...settings}>
-            {testimonials.map((t, i) => (
-              <div key={t.name} className="px-2 sm:px-3 py-4">
-                <Reveal delay={((i % 3) + 1) as 1 | 2 | 3}>
-                  <figure className="flex min-h-[280px] sm:min-h-[300px] flex-col rounded-2xl border border-gray-100 bg-white p-5 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-border dark:bg-surface">
-                    <Quote className="h-7 w-7 sm:h-8 sm:w-8 text-orange-300" />
-
-                    <blockquote className="mt-3 sm:mt-4 flex-1 text-xs sm:text-sm lg:text-base text-gray-700">
-                      "{t.quote}"
-                    </blockquote>
-
-                    <div className="mt-4 sm:mt-5 flex items-center gap-1 text-amber-400">
-                      {[...Array(5)].map((_, s) => (
-                        <Star key={s} className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-amber-400" />
-                      ))}
-                    </div>
-
-                    <figcaption className="mt-4 sm:mt-5 flex items-center gap-3 border-t border-gray-100 pt-4 sm:pt-5 dark:border-border">
-                      {/* <div
-                        className={`flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br ${t.color} text-sm font-bold text-white`}
-                      >
-                        {t.initials}
-                      </div> */}
-                      <img src={t.image_url} alt={t.name} className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border-2 border-orange-500 flex-shrink-0" />
-
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900">
-                          {t.name}
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-500">
-                          {t.role}
-                        </div>
-                      </div>
-                    </figcaption>
-                  </figure>
-                </Reveal>
-              </div>
-            ))}
-          </Slider>
-        </div>
-      </section>
-
-      {/* ============================== FAQ ============================= */}
-      <section className="py-8 sm:py-12 lg:py-16">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <Reveal className="mb-10 sm:mb-12 text-center">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-gray-900">
-              Frequently asked questions
-            </h2>
-            <p className="mt-3 sm:mt-4 text-base sm:text-lg text-gray-600">
-              Everything you need to know before joining the global community.
-            </p>
-          </Reveal>
-
-          <Reveal delay={1} className="space-y-4">
-            {faqs.map((faq, i) => {
-              const isOpen = openFaq === i;
-              return (
-                <div
-                  key={faq.q}
-                  className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-shadow dark:border-border dark:bg-surface"
-                >
-                  <button
-                    onClick={() => setOpenFaq(isOpen ? null : i)}
-                    className="flex w-full items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 text-left"
-                    aria-expanded={isOpen}
-                  >
-                    <span className="font-semibold text-xs sm:text-sm lg:text-base text-gray-900">{faq.q}</span>
-                    <span
-                      className={`flex h-7 w-7 sm:h-8 sm:w-8 flex-none items-center justify-center rounded-full transition-colors flex-shrink-0 ${isOpen
-                        ? "bg-orange-500 text-white"
-                        : "bg-orange-100 text-orange-600 dark:bg-surface-secondary"
-                        }`}
-                    >
-                      {isOpen ? (
-                        <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      ) : (
-                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      )}
-                    </span>
-                  </button>
-                  <div
-                    className={`grid transition-all duration-300 ease-in-out ${isOpen
-                      ? "grid-rows-[1fr] opacity-100"
-                      : "grid-rows-[0fr] opacity-0"
-                      }`}
-                  >
-                    <div className="overflow-hidden">
-                      <p className="px-4 sm:px-6 pb-4 sm:pb-5 text-xs sm:text-sm lg:text-base text-gray-600">{faq.a}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ============================== CTA ============================= */}
-      <section className="px-4 pb-12 sm:pb-16 lg:pb-20 sm:px-6 lg:px-8">
+      {/* ======================== FINAL CTA ======================== */}
+      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <Reveal className="mx-auto max-w-7xl">
-          <div className="relative isolate overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-[2rem] bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 px-5 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20 text-center lp-animate-gradient">
-            <div className="absolute -left-10 -top-10 -z-10 h-32 w-32 sm:h-48 sm:w-48 rounded-full bg-white/20 blur-3xl" />
-            <div className="absolute -bottom-10 -right-10 -z-10 h-32 w-32 sm:h-48 sm:w-48 rounded-full bg-emerald-300/30 blur-3xl" />
-            <h2 className="mx-auto max-w-2xl text-xl sm:text-2xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-extrabold tracking-tight text-primary-600">
-              Ready to connect with the world?
+          <div className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-[#FBF6EF] px-6 py-14 text-center sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+            <h2 className="relative mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-[#111827] sm:text-4xl lg:text-5xl">
+              Your people. Your stories. Your Crib.
             </h2>
-            <p className="mx-auto mt-4 sm:mt-5 max-w-2xl text-sm sm:text-base lg:text-lg text-gray-600 ">
-              Connect with people everywhere sharing their stories, ideas
-              and culture. Your voice matters in shaping a better world.
+            <p className="relative mx-auto mt-5 max-w-xl text-base text-[#4B5563] sm:text-lg">
+              Join CribsTalk and start building your corner of the community.
             </p>
-            <div className="mt-7 sm:mt-8 lg:mt-9 flex flex-col items-center justify-center gap-2.5 sm:gap-3 sm:flex-row">
+
+            <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               {!user ? (
                 <>
-                  <Link
-                    href="/signup"
-                    className="btn-primary text-xs sm:text-sm lg:text-base px-4 sm:px-8 py-2.5 sm:py-3.5"
-                  >
-                    Get Started — it's free
-                    <ArrowRight className="h-3.5 w-3.5 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
-                  </Link>
-                  <Link
-                    href="/signin"
-                    className="btn-secondary text-xs sm:text-sm lg:text-base px-4 sm:px-8 py-2.5 sm:py-3.5"
-                  >
+                  <PrimaryCta href="/signup" className="w-full sm:w-auto">
+                    Join CribsTalk
+                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                  </PrimaryCta>
+                  <SecondaryCta href="/signin" className="w-full sm:w-auto">
                     Sign In
-                  </Link>
+                  </SecondaryCta>
                 </>
               ) : (
-                <Link
-                  href="/feed"
-                  className="group inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 sm:px-8 py-2.5 sm:py-3.5 text-xs sm:text-sm lg:text-base font-semibold text-orange-600 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl"
-                >
+                <PrimaryCta href="/feed" className="w-full sm:w-auto">
                   Go to your feed
-                  <ArrowRight className="h-3.5 w-3.5 sm:h-5 sm:w-5 transition-transform duration-300 group-hover:translate-x-1" />
-                </Link>
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                </PrimaryCta>
               )}
             </div>
           </div>
