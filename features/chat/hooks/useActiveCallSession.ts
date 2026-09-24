@@ -19,6 +19,7 @@ export interface ActiveCallSession {
     full_name?: string | null
     username?: string | null
     avatar_url?: string | null
+    is_friend?: boolean
   }>
 }
 
@@ -70,6 +71,7 @@ export function useActiveCallSession(
           full_name?: string | null
           username?: string | null
           avatar_url?: string | null
+          is_friend?: boolean
         }>
       }>(
         `/api/chat/threads/${threadId}/call-sessions`,

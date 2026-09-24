@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { filterThreadIdsAccessibleToUser } from '@/lib/chat/chatThreadAccess'
+import { loadFriendMaps } from '@/lib/privacy/queries'
 
 /** Align API message_type with call_sessions.status (Postgres check constraint). */
 function statusToMessageType(status: string | null | undefined): string {
@@ -201,12 +202,15 @@ export async function GET(request: NextRequest) {
       .map((r: any) => (typeof r.created_by === 'string' ? r.created_by : null))
       .filter(Boolean) as string[]
     const participantUserIds = [...new Set([...threadParticipantIds, ...rosterUserIds, ...creatorIds])]
-    const { data: profiles } = participantUserIds.length
-      ? await serviceClient
-          .from('profiles')
-          .select('id, username, full_name, avatar_url, status, last_seen')
-          .in('id', participantUserIds)
-      : { data: [] as any[] }
+    const [{ data: profiles }, friendMaps] = await Promise.all([
+      participantUserIds.length
+        ? serviceClient
+            .from('profiles')
+            .select('id, username, full_name, avatar_url, status, last_seen')
+            .in('id', participantUserIds)
+        : Promise.resolve({ data: [] as any[] }),
+      loadFriendMaps(user.id, participantUserIds, serviceClient),
+    ])
 
     const threadMap = new Map((threads || []).map((t: any) => [t.id, t]))
     const participantsByThread = new Map<string, string[]>()
@@ -225,6 +229,7 @@ export async function GET(request: NextRequest) {
         avatar_url: profile?.avatar_url || null,
         joined,
         is_self: id === user.id,
+        is_friend: id !== user.id && friendMaps.accepted.has(id),
       }
     }
 

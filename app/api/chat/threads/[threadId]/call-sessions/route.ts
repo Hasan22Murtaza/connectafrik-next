@@ -4,6 +4,7 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { persistAcceptedOnAnotherDeviceChatMessage } from '@/lib/chat/persistAcceptedOnAnotherDeviceMessage'
 import { deleteLiveKitRoom, listLiveKitParticipantIdentities } from '@/lib/call-media/livekit'
+import { loadFriendMaps } from '@/lib/privacy/queries'
 
 /** Forward the caller's session JWT so /api/push-notifications can authz the actor. */
 function pushRequestHeaders(request: NextRequest): Record<string, string> {
@@ -311,14 +312,18 @@ async function resolveActorAvatar(
 async function resolveParticipantProfiles(
   serviceClient: ReturnType<typeof createServiceClient>,
   participantIds: string[],
+  viewerId: string,
 ) {
   const ids = Array.from(new Set(participantIds.filter(Boolean)))
   if (ids.length === 0) return []
-  const { data } = await serviceClient
-    .from('profiles')
-    .select('id, full_name, username, avatar_url')
-    .in('id', ids)
-  return data || []
+  const [{ data }, friendMaps] = await Promise.all([
+    serviceClient.from('profiles').select('id, full_name, username, avatar_url').in('id', ids),
+    loadFriendMaps(viewerId, ids, serviceClient),
+  ])
+  return (data || []).map((profile) => ({
+    ...profile,
+    is_friend: profile.id !== viewerId && friendMaps.accepted.has(profile.id),
+  }))
 }
 
 /** In-call participants first; otherwise thread targets (group) or 1:1 callee. */
@@ -497,7 +502,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       if (includeParticipants && row) {
         const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
-        const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds)
+        const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds, user.id)
         return jsonResponse({ session: row, participant_profiles })
       }
 
@@ -521,7 +526,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     if (includeParticipants && row) {
       const participantIds = Array.isArray(row.participants) ? (row.participants as string[]) : []
-      const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds)
+      const participant_profiles = await resolveParticipantProfiles(serviceClient, participantIds, user.id)
       return jsonResponse({ session: row, participant_profiles })
     }
 
