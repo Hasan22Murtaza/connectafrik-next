@@ -304,6 +304,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
               avatar_url: p.avatarUrl || null,
               joined: true,
               is_self: p.id === currentUser?.id,
+              is_friend: false,
             }))
 
         const othersForDisplay = apiParticipants.filter(p => !p.is_self && p.id !== currentUser?.id)

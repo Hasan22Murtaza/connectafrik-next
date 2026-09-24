@@ -149,6 +149,7 @@ export interface RecentCallParticipant {
   avatar_url?: string | null
   joined?: boolean
   is_self?: boolean
+  is_friend?: boolean
 }
 
 export interface RecentCallEntry {
@@ -1308,6 +1309,7 @@ export const supabaseMessagingService = {
                 avatar_url: p.avatar_url ?? null,
                 joined: p.joined !== false,
                 is_self: Boolean(p.is_self),
+                is_friend: Boolean(p.is_friend),
               }))
             : [],
         }
