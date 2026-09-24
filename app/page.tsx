@@ -38,13 +38,12 @@ const stories: {
   name: string;
   avatar: string;
 }[] = [
-  { name: "Maya", avatar: avatars.maya },
-  { name: "Daniel", avatar: avatars.daniel },
-  { name: "Sophia", avatar: avatars.sophia },
-  { name: "Alex", avatar: avatars.alex },
-  { name: "Noah", avatar: avatars.marcus },
-  { name: "Emma", avatar: avatars.emma },
-];
+    { name: "Maya", avatar: avatars.maya },
+    { name: "Daniel", avatar: avatars.daniel },
+    { name: "Sophia", avatar: avatars.sophia },
+    { name: "Alex", avatar: avatars.alex },
+    { name: "Noah", avatar: avatars.marcus },
+  ];
 
 const discoverItems = [
   { title: "Photography", image: `${LP}/discover-photo.png` },
@@ -344,38 +343,44 @@ const Home: React.FC = () => {
               </Reveal>
 
               <Reveal delay={1}>
-                <h1 className="mt-2 text-[2.6rem] font-extrabold leading-[1.02] tracking-tight text-[#111827] sm:mt-3 sm:text-[3.5rem] lg:text-[4.5rem] xl:text-[5rem]">
-                  Connect.
-                  <br />
-                  Share.
-                  <br />
-                  Belong.
+                <h1 className="mt-2  font-extrabold sm:leading-[1.02] tracking-tight text-[#111827] sm:mt-3 sm:text-[3.5rem] lg:text-[4.5rem] text-[1.8rem] ">
+                  Bringing People and Communities Together.
                 </h1>
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-[#4B5563] sm:mt-5 sm:text-lg lg:mx-0">
+                <p className="mx-auto sm:mt-4 max-w-lg text-base leading-relaxed text-[#4B5563] sm:mt-5 sm:text-lg lg:mx-0">
                   A place for your people, your stories, your conversations, and
                   the communities you care about.
                 </p>
               </Reveal>
 
               <Reveal delay={3}>
-                <div className="mt-6 flex flex-col items-center gap-3 sm:mt-7 sm:flex-row lg:justify-start">
+                <div className="mt-6 flex flex-row flex-wrap items-center gap-3 sm:mt-7 lg:justify-start">
                   {!user ? (
                     <>
-                      <PrimaryCta href="/signup" className="w-full sm:w-auto">
+                      <PrimaryCta
+                        href="/signup"
+                        className="shrink-0 whitespace-nowrap"
+                      >
                         Join CribsTalk
-                        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                        <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5" />
                       </PrimaryCta>
-                      <SecondaryCta href="/signin" className="w-full sm:w-auto">
+
+                      <SecondaryCta
+                        href="/signin"
+                        className="shrink-0 whitespace-nowrap"
+                      >
                         Sign In
                       </SecondaryCta>
                     </>
                   ) : (
-                    <PrimaryCta href="/feed" className="w-full sm:w-auto">
+                    <PrimaryCta
+                      href="/feed"
+                      className="shrink-0 whitespace-nowrap"
+                    >
                       Go to your feed
-                      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                      <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5" />
                     </PrimaryCta>
                   )}
                 </div>
@@ -463,7 +468,7 @@ const Home: React.FC = () => {
                 </article>
 
                 {/* Profile card */}
-                <div className="lp-animate-float absolute left-[1%] top-[12%] z-10 w-[48%] max-w-[210px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_16px_40px_rgba(15,23,42,0.10)] transition-transform duration-300 hover:-translate-y-0.5 sm:left-[2%] sm:top-[14%] sm:p-4">
+                <div className="lp-animate-float absolute left-[1%] top-[12%] z-20 w-[48%] max-w-[210px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_16px_40px_rgba(15,23,42,0.10)] transition-transform duration-300 hover:-translate-y-0.5 sm:left-[2%] sm:top-[14%] sm:p-4">
                   <div className="flex items-center gap-2.5">
                     <img
                       src={avatars.maya}
@@ -563,10 +568,10 @@ const Home: React.FC = () => {
       </section>
 
       {/* ======================== SOCIAL FEED ======================== */}
-   
+
 
       {/* ======================== DISCOVER ======================== */}
-     
+
 
       {/* ======================== COMMUNITIES ======================== */}
       <section id="communities" className="scroll-mt-24 py-16 sm:py-20 lg:py-24">
@@ -639,7 +644,7 @@ const Home: React.FC = () => {
             <div className="overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
               <div className="grid lg:grid-cols-[280px_1fr]">
                 {/* Conversation list */}
-                <div className="border-b border-[#F3F4F6] lg:border-b-0 lg:border-r">
+                <div className="border-b border-[#F3F4F6] lg:border-b-0 lg:border-r sm:block hidden">
                   <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-4">
                     <p className="font-semibold text-[#111827]">Messages</p>
                     <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-[#EA580C]">
@@ -650,9 +655,8 @@ const Home: React.FC = () => {
                     {conversations.map((chat) => (
                       <li
                         key={chat.name}
-                        className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${
-                          chat.active ? "bg-[#FBF6EF]/80" : "hover:bg-[#F9FAFB]"
-                        }`}
+                        className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${chat.active ? "bg-[#FBF6EF]/80" : "hover:bg-[#F9FAFB]"
+                          }`}
                       >
                         <div className="relative flex-none">
                           <img
@@ -723,7 +727,7 @@ const Home: React.FC = () => {
                       <img
                         src={`${LP}/chat-share.png`}
                         alt="Shared photo in chat"
-                        className="aspect-[16/10] w-full max-w-[240px] object-cover"
+                        className="aspect-[16/10] w-full  object-cover"
                         loading="lazy"
                       />
                     </div>
@@ -751,10 +755,10 @@ const Home: React.FC = () => {
       </section>
 
       {/* ======================== PROFILE ======================== */}
-     
+
 
       {/* ======================== MARKETPLACE ======================== */}
-     
+
       {/* ======================== GLOBAL COMMUNITY ======================== */}
       <section className="py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
