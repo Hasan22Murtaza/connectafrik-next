@@ -51,13 +51,13 @@ const ChatLocationCard: React.FC<ChatLocationCardProps> = ({
             className="h-full w-full object-cover"
             loading="lazy"
           />
-          <span className="absolute bottom-2 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#00a884] text-white shadow-md">
+          <span className="absolute bottom-2 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#F97316] text-white shadow-md">
             <MapPin className="h-5 w-5" />
           </span>
         </div>
       ) : (
         <div className="flex h-28 items-center justify-center bg-gradient-to-br from-emerald-500/20 to-sky-500/20">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#00a884] text-white shadow-md">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F97316] text-white shadow-md">
             <MapPin className="h-6 w-6" />
           </span>
         </div>

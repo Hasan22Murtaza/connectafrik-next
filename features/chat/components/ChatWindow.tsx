@@ -2515,7 +2515,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         }`}
     >
       <div
-        className={`flex items-center justify-between gap-1 border-b border-[#e9edef] bg-[#f0f2f5] px-2 py-1.5 sm:gap-2 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+        className={`flex items-center justify-between gap-1 border-b border-[#e9edef] px-2 py-3 sm:gap-2 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
       >
         <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
@@ -2602,10 +2602,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-          <ChatTranslationMenu
-            value={receiveLanguage}
-            onChange={(language) => void setReceiveLanguage(language)}
-          />
+         
+            <button
+            type="button"
+            onClick={openMessageSearchFromMenu}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white dark:text-content-secondary dark:hover:bg-surface-hover"
+            aria-label="Search messages"
+          >
+            <Search className="h-5 w-5" />
+          </button>
           {canJoin && (
             <button
               type="button"
@@ -2623,7 +2628,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type="button"
                 onClick={() => handleStartCall("video")}
                 disabled={messagingBlocked}
-                className="hidden h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] disabled:cursor-not-allowed disabled:opacity-40 min-[380px]:flex dark:text-content-secondary dark:hover:bg-surface-hover"
+                className="hidden h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40 min-[380px]:flex dark:text-content-secondary dark:hover:bg-surface-hover"
                 aria-label="Video call"
               >
                 <Video className="h-5 w-5" />
@@ -2632,21 +2637,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type="button"
                 onClick={() => handleStartCall("audio")}
                 disabled={messagingBlocked}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover"
                 aria-label="Voice call"
               >
                 <Phone className="h-5 w-5" />
               </button>
             </>
           )}
-          <button
-            type="button"
-            onClick={openMessageSearchFromMenu}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] dark:text-content-secondary dark:hover:bg-surface-hover"
-            aria-label="Search messages"
-          >
-            <Search className="h-5 w-5" />
-          </button>
+        
+         <ChatTranslationMenu
+            value={receiveLanguage}
+            onChange={(language) => void setReceiveLanguage(language)}
+          />
 
           <div className="relative">
             <button
@@ -2797,14 +2799,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className={`relative bg-white ${mediaComposerOpen ? "hidden" : ""} ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
       <div
         ref={messagesScrollRef}
-        className={`chat-messages-pane flex flex-col space-y-0 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${
+        className={`chat-messages-pane flex flex-col space-y-2 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${
           typingUserIds.length > 0 ? "pb-12" : ""
         }`}
       >
         <div ref={messagesTopSentinelRef} className="h-1 w-full shrink-0" aria-hidden />
-        {isLoadingOlderMessages && (
+        {!isMessagesLoading && isLoadingOlderMessages && (
           <div className="flex justify-center py-2">
-            <Loader2 className="h-5 w-5 animate-spin text-[#00a884]" aria-label="Loading older messages" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#F97316]" aria-label="Loading older messages" />
           </div>
         )}
         {searchLoading && messageSearchKeyword.trim() ? (
@@ -2857,13 +2859,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   getChatMessageAuthorId(prev),
                   getChatMessageAuthorId(message)
                 ));
-            const sameSenderPrev =
-              Boolean(prev) &&
-              !showDateDivider &&
-              chatUserIdsEqual(
-                getChatMessageAuthorId(prev),
-                getChatMessageAuthorId(message)
-              );
+            // const sameSenderPrev =
+            //   Boolean(prev) &&
+            //   !showDateDivider &&
+            //   chatUserIdsEqual(
+            //     getChatMessageAuthorId(prev),
+            //     getChatMessageAuthorId(message)
+            //   );
             const sameSenderNext =
               Boolean(next) &&
               isSameDay(new Date(next.created_at), new Date(message.created_at)) &&
@@ -2888,7 +2890,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   }
                   participantPresence={participantPresenceById}
                   showSenderHeader={showSenderHeader}
-                  showTail={!sameSenderPrev}
+                  // showTail={!sameSenderPrev}
                   isClusterEnd={!sameSenderNext}
                   onReply={handleReply}
                   onReplyPrivately={
@@ -3053,13 +3055,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ) : null}
 
         {editingMessage ? (
-          <div className="mb-2 flex items-start gap-2 rounded-xl border border-border bg-surface-secondary px-2.5 py-2 border-l-[3px] border-l-[#128c7e]">
-            <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-[#128c7e]" aria-hidden />
+          <div className="mb-2 flex items-start gap-2 rounded-xl border border-border bg-surface-secondary px-2.5 py-2 border-l-[3px] border-l-[#f97316]">
+            <Pencil className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" aria-hidden />
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-[#128c7e]">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-[#f97316]">
                 Editing message
               </div>
-              <div className="mt-0.5 truncate text-xs font-medium text-content-secondary">
+              <div className="mt-0.5 truncate text-xs font-medium text-content-tertiary">
                 {editingMessage.is_deleted ? (
                   "This message was deleted"
                 ) : (
@@ -3077,9 +3079,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
           </div>
         ) : replyingTo ? (
-          <div className="mb-2 flex items-start gap-2 rounded-xl bg-surface-secondary p-2 border-l-[3px] border-[#128c7e]">
+          <div className="mb-2 flex items-start gap-2 rounded-xl bg-surface-secondary p-2 border-l-[3px] border-[#f97316]">
             <div className="min-w-0 flex-1">
-              <div className="mb-0.5 text-xs font-semibold text-[#128c7e]">
+              <div className="mb-0.5 text-xs font-semibold text-[#f97316]">
                 Replying to {replyingTo.sender?.name || "Unknown"}
               </div>
               <div className="truncate text-sm text-content-secondary">
@@ -3103,7 +3105,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <div className="mb-2 flex items-center gap-2 rounded-xl bg-surface-secondary px-2.5 py-2 animate-[chatFadeIn_160ms_ease-out] sm:gap-3 sm:px-3 sm:py-2.5">
             <span className="inline-block h-2.5 w-2.5 shrink-0 animate-[chatRecPulse_1s_ease-in-out_infinite] rounded-full bg-red-500" />
             <div className="flex min-w-0 flex-1 items-center gap-2 text-content-secondary">
-              <div className="flex h-6 min-w-0 flex-1 items-end gap-[2px] overflow-hidden text-[#128c7e]/70">
+              <div className="flex h-6 min-w-0 flex-1 items-end gap-[2px] overflow-hidden text-[#f97316]/70">
                 {Array.from({ length: 24 }).map((_, i) => (
                   <span
                     key={i}
@@ -3159,7 +3161,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   }}
                   disabled={!!editingMessage}
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] disabled:pointer-events-none disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover ${
-                    attachmentMenuOpen ? "text-[#00a884]" : ""
+                    attachmentMenuOpen ? "text-[#F97316]" : ""
                   }`}
                   aria-label="Attach"
                   aria-expanded={attachmentMenuOpen}
@@ -3178,7 +3180,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     setEmojiPickerOpen((open) => !open);
                   }}
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] dark:text-content-secondary dark:hover:bg-surface-hover ${
-                    emojiPickerOpen ? "text-[#00a884]" : ""
+                    emojiPickerOpen ? "text-[#F97316]" : ""
                   }`}
                   aria-label="Emoji"
                   aria-expanded={emojiPickerOpen}
@@ -3194,7 +3196,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <button
                 type="submit"
                 disabled={isSending || composerSendDisabled}
-                className="absolute inset-0 flex items-center justify-center rounded-full bg-[#00a884] text-white transition hover:bg-[#008f72] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 animate-[chatFadeIn_140ms_ease-out]"
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-primary-500 text-white transition hover:bg-[#ea580c] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 animate-[chatFadeIn_140ms_ease-out]"
                 aria-label={
                   editingMessage ? "Done editing — save changes" : "Send message"
                 }

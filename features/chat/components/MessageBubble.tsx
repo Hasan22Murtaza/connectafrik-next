@@ -242,7 +242,7 @@ interface MessageBubbleProps {
   uploadProgressById?: Record<string, number>;
   onCancelUpload?: () => void;
   /** First bubble in a consecutive same-sender cluster — shows the WhatsApp tail */
-  showTail?: boolean;
+  // showTail?: boolean;
   /** Last bubble in a consecutive same-sender cluster */
   isClusterEnd?: boolean;
 }
@@ -281,7 +281,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isUploading = false,
   uploadProgressById,
   onCancelUpload,
-  showTail = true,
+  // showTail = true,
   isClusterEnd = true,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -916,15 +916,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   /** Outgoing / incoming bubble fill — WhatsApp-inspired, tokenized for themes */
   const bubbleBg = isOwnMessage ? "chat-bubble-own" : "chat-bubble-in";
-  const bubbleShape = isOwnMessage
-    ? showTail
-      ? "rounded-tl-[8px] rounded-tr-[0px] rounded-br-[8px] rounded-bl-[8px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
-      : "rounded-[8px]"
-    : showTail
-      ? "rounded-tr-[8px] rounded-tl-[5px] rounded-br-[8px] rounded-bl-[8px] ring-1 ring-black/[0.04] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--chat-bubble-in)]"
-      : "rounded-[8px] ring-1 ring-black/[0.04]";
+  const bubbleShape = isOwnMessage ? "rounded-xl rounded-tr-none " : "rounded-xl rounded-tl-none border-gray-200 border";
   const forwardAccent =
-    showForwardBadge && isOwnMessage ? "border-l-[3px] border-[#25d366] pl-[9px]" : "";
+    showForwardBadge && isOwnMessage ? "border-l-[3px] border-gray-100 pl-[9px]" : "";
   const emojiOnly =
     !isDeleted &&
     !locationPayload &&
@@ -1038,7 +1032,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       {selectionMode ? (
         <span
           className={`absolute left-0 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border ${isMessageSelected
-              ? "border-[#00a884] bg-[#00a884] text-white"
+              ? "border-[#F97316] bg-[#e6a97e] text-white"
               : "border-[#8696a0] bg-white dark:bg-surface"
             }`}
           aria-hidden
@@ -1091,9 +1085,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           }}
         >
           <div
-            className={`relative inline-block max-w-full overflow-visible transition-shadow ${emojiOnly
+            className={`relative group inline-block max-w-full overflow-visible transition-shadow ${emojiOnly
                 ? "bg-transparent shadow-none px-1"
-                : `shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${bubbleShape} ${visualMediaOnly
+                : `shadow-[0 12px 32px rgba(0, 0, 0, 0.35)]  ${bubbleBg} ${bubbleShape} ${visualMediaOnly
                   ? "w-fit p-[3px] pb-1"
                   : mediaOnly
                     ? "w-fit p-1 pb-0.5"
@@ -1106,8 +1100,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 : ""
               }`}
           >
-            {!isDeleted && (showOverflowMenu || onReact) && !selectionMode && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
-              <div className="absolute right-0 top-0 z-20">
+            {!isDeleted && !isComposerEditingThis ? (
+              <div className="absolute right-0 top-0 z-25 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -1133,11 +1127,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </button>
               </div>
             ) : null}
-
-            {!isDeleted && !selectionMode && (onReact || onReply) && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
+            {!isDeleted ? (
               <div
-                className={`absolute z-30 flex items-center gap-0.5 ${isOwnMessage ? "right-full mr-1.5" : "left-full ml-1.5"
-                  } top-1/2 -translate-y-1/2`}
+                className={`absolute top-1/2 z-30 flex -translate-y-1/2 items-center gap-1.5
+                text-content-tertiary
+                opacity-0 invisible
+                transition-all duration-200 ease-out
+                group-hover:opacity-100 group-hover:visible
+                ${isOwnMessage
+                  ? "right-full mr-1 group-hover:translate-x-0 translate-x-1"
+                  : "left-full ml-1 group-hover:translate-x-0 -translate-x-1"
+                }`}
               >
                 {onReact ? (
                   <button
@@ -1147,7 +1147,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       setShowQuickReactions((s) => !s);
                       setShowMenu(false);
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary dark:hover:bg-surface-hover"
+                    className=""
                     aria-label="Add reaction"
                   >
                     <Smile className="h-4 w-4" />
@@ -1160,14 +1160,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       e.stopPropagation();
                       handleReply();
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary dark:hover:bg-surface-hover"
+                    className=""
                     aria-label="Reply"
                   >
                     <Reply className="h-4 w-4" />
                   </button>
                 ) : null}
               </div>
-            ) : null}
+              ) : null}
             {/* emojis */}
             <div>
               {onReact ? (
@@ -1356,45 +1356,45 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   onScrollToMessage?.(message.reply_to_id!);
                 }}
                 className={`mb-1.5 max-w-full overflow-hidden rounded-lg border-l-[3px] px-2 py-1.5 text-left transition hover:opacity-90 ${isOwnMessage
-                    ? "border-[#25d366] bg-black/[0.06] dark:bg-white/10"
-                    : "border-primary-500 bg-surface-secondary/70"
+                    ? "border-gray-100 bg-black/[0.06] dark:bg-white/10"
+                    : "border-orange-500 bg-surface-secondary/70"
                   }`}
                 aria-label={`Jump to message from ${replyQuote.senderName}`}
               >
-                <div className="truncate text-[11px] font-semibold text-primary-700 dark:text-primary-300">
+                <div className={`truncate text-[13px] font-semibold ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>
                   {replyQuote.senderName}
                 </div>
-                <div className="truncate text-[12px] italic text-content-tertiary">
+                <div className={`truncate text-[12px] italic ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>
                   {replyQuote.preview}
                 </div>
               </button>
             ) : null}
 
             {isDeleted ? (
-              <p className="pr-1 text-sm italic text-content-tertiary">This message was deleted</p>
+              <p className="pr-1 text-sm italic text-white">This message was deleted</p>
             ) : callPresentation ? (
               <div className="flex min-w-0 items-start gap-2.5">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
                   {callPresentation.variant === "missed" ? (
                     <PhoneMissed className="h-[22px] w-[22px] text-[#ea0038]" strokeWidth={2} aria-hidden />
                   ) : callPresentation.variant === "video" ? (
-                    <Video className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
+                    <Video className="h-[21px] w-[21px] text-primary-600" strokeWidth={2} aria-hidden />
                   ) : isOwnMessage ? (
-                    <PhoneOutgoing className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
+                    <PhoneOutgoing className="h-[21px] w-[21px] text-primary-600" strokeWidth={2} aria-hidden />
                   ) : (
                     <PhoneIncoming className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
                   )}
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[15px] font-medium leading-snug text-content">{callPresentation.title}</p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-content-tertiary">{callPresentation.subtitle}</p>
+                  <p className={`text-[15px] font-medium leading-snug ${isOwnMessage ? "text-white" : "text-content"}`}>{callPresentation.title}</p>
+                  <p className={`mt-0.5 text-[13px] leading-snug ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>{callPresentation.subtitle}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
                   <div className="flex items-end justify-end gap-1">
                     {showEditedBadge ? (
                       <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
                     ) : null}
-                    <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
+                    <span className= {`shrink-0 text-[11px] tabular-nums ${isOwnMessage ? " text-white" : " text-content-tertiary"}`}>
                       {format(new Date(message.created_at), "HH:mm")}
                     </span>
                     <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
@@ -1441,15 +1441,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className={`mb-1.5 flex max-w-full items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
-                        ? "border-[#128c7e] bg-black/[0.05] dark:bg-white/10"
+                        ? "border-[#fff] bg-black/[0.05] dark:bg-white/5"
                         : "border-primary-500 bg-surface-secondary/60"
                       }`}
                     style={{ width: "min(100%, 280px)" }}
                   >
-                    <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-content-tertiary" />
+                    <ExternalLink className={`mt-0.5 h-4 w-4 shrink-0 ${isOwnMessage ? "text-white" : "text-content-tertiary"}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-semibold text-content">Link</p>
-                      <p className="break-all text-[11px] text-content-tertiary">{linkPreviewUrl}</p>
+                      <p className={`truncate text-[12px] font-semibold ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>Link</p>
+                      <p className={`break-all text-[11px] ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>{linkPreviewUrl}</p>
                     </div>
                   </a>
                 ) : null}
@@ -1530,7 +1530,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <div
                 className={
                   visualMediaOnly
-                    ? "pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-end justify-end gap-1 rounded-[6px] bg-black/45 px-1.5 py-0.5"
+                    ? "pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-end justify-end gap-1  rounded-[6px] bg-black/45 px-1.5 py-0.5"
                     : mediaOnly
                       ? "mt-0.5 flex items-end justify-end gap-1 px-0.5"
                       : "mt-0.5 flex items-end justify-end gap-1 pl-6"
@@ -1539,15 +1539,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
                   {showEditedBadge ? (
                     <span
-                      className={`text-[11px] lowercase leading-none ${visualMediaOnly ? "text-white/90" : "text-content-tertiary"
+                      className={`text-[11px] lowercase leading-none ${visualMediaOnly ? "text-white/90" : "text-content-secondary"
                         }`}
                     >
                       edited
                     </span>
                   ) : null}
                   <span
-                    className={`shrink-0 text-[11px] tabular-nums ${visualMediaOnly ? "text-white/90" : "text-content-tertiary"
-                      }`}
+                    className={`shrink-0 text-[11px] tabular-nums ${isOwnMessage || visualMediaOnly ? "text-white" : "text-content-tertiary "}`}
                   >
                     {format(new Date(message.created_at), "HH:mm")}
                   </span>
