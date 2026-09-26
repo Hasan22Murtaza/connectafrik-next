@@ -2885,6 +2885,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   threadId={threadId}
                   isOwnMessage={isOwn}
                   currentUserId={currentUser?.id || ""}
+                  currentUserAvatarUrl={currentUser?.avatarUrl || undefined}
                   threadParticipants={
                     thread?.participants?.map((p: ChatParticipant) => p.id) || []
                   }

@@ -205,6 +205,7 @@ interface MessageBubbleProps {
   threadId: string;
   isOwnMessage: boolean;
   currentUserId: string;
+  currentUserAvatarUrl?: string;
   threadParticipants?: string[];
   participantPresence?: Record<string, "online" | "offline">;
   onReply?: (message: ChatMessage) => void;
@@ -252,6 +253,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   threadId,
   isOwnMessage,
   currentUserId,
+  currentUserAvatarUrl,
   threadParticipants = [],
   participantPresence = {},
   onReply,
@@ -1423,6 +1425,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <MessageAttachments
                     attachments={message.attachments}
                     isOwnMessage={isOwnMessage}
+                    profileImageUrl={
+                      message.sender?.avatarUrl ||
+                      (isOwnMessage ? currentUserAvatarUrl : undefined)
+                    }
                     onOpenMedia={(items, index) => setMediaViewer({ items, index })}
                     isUploading={isUploading}
                     uploadProgressById={uploadProgressById}

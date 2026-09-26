@@ -25,6 +25,7 @@ import {
 interface MessageAttachmentsProps {
   attachments: ChatAttachment[];
   isOwnMessage: boolean;
+  profileImageUrl?: string;
   onOpenMedia?: (items: ChatMediaViewerItem[], index: number) => void;
   isUploading?: boolean;
   uploadProgressById?: Record<string, number>;
@@ -150,7 +151,8 @@ function WaveBars({ active }: { active?: boolean }) {
 const VoiceNotePlayer: React.FC<{
   att: ChatAttachment;
   isOwnMessage: boolean;
-}> = ({ att, isOwnMessage }) => {
+  profileImageUrl?: string;
+}> = ({ att, isOwnMessage, profileImageUrl }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -211,9 +213,17 @@ const VoiceNotePlayer: React.FC<{
         <div className="mt-0.5 text-[11px] tabular-nums text-content-tertiary">
           {formatMediaDuration(playing || current > 0 ? current : duration)}
         </div>
-         <div>
-         
-         </div>
+        {profileImageUrl ? (
+          <img
+            src={profileImageUrl}
+            alt=""
+            className="h-9 w-9 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/10">
+            <UserRound className="h-4 w-4" aria-hidden />
+          </span>
+        )}
       </div>
     </div>
   );
@@ -258,6 +268,7 @@ const VideoThumb: React.FC<{
 const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
   isOwnMessage,
+  profileImageUrl,
   onOpenMedia,
   isUploading = false,
   uploadProgressById,
@@ -405,7 +416,11 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         if (isVoiceNoteAttachment(att)) {
           return (
             <div key={att.id} className="relative overflow-hidden rounded-2xl">
-              <VoiceNotePlayer att={att} isOwnMessage={isOwnMessage} />
+              <VoiceNotePlayer
+                att={att}
+                isOwnMessage={isOwnMessage}
+                profileImageUrl={profileImageUrl}
+              />
               {isUploading ? (
                 <UploadMediaOverlay
                   percent={progressFor(att.id)}
