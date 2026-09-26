@@ -304,7 +304,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
       className={
         onlyVisualMedia
           ? "mb-0.5 max-w-full space-y-2"
-          : "mb-0.5 w-[21rem] max-w-full space-y-2"
+          : "mb-0.5  max-w-full space-y-2"
       }
     >
       {multiImage ? (
