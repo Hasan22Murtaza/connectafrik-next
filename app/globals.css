@@ -77,11 +77,12 @@
   --scrollbar-thumb: #bdbfc0;
   --scrollbar-thumb-hover: #d1d5dc;
 
-  /* Chat bubbles (WhatsApp-style, light) */
-  --chat-bubble-own: #dcf8c6;
-  --chat-bubble-own-file: #c5e8bc;
-  --chat-bubble-own-file-hover: #b8e0ad;
-  --chat-bubble-in: #ffffff;
+  /* Chat bubbles - Light Mode */
+--chat-bubble-own: #f97316;
+--chat-bubble-own-file: #ea580c;
+--chat-bubble-own-file-hover: #c2410c;
+
+--chat-bubble-in: #ffffff;
 }
 
 
@@ -128,10 +129,12 @@
   --scrollbar-thumb: #475569;
   --scrollbar-thumb-hover: #64748b;
 
-  --chat-bubble-own: #005c4b;
-  --chat-bubble-own-file: #0a4a3d;
-  --chat-bubble-own-file-hover: #0d5c4a;
-  --chat-bubble-in: #1e293b;
+ /* Chat bubbles - Light Mode */
+--chat-bubble-own: #f97316;
+--chat-bubble-own-file: #ea580c;
+--chat-bubble-own-file-hover: #c2410c;
+
+--chat-bubble-in: var(--surface-tertiary);
 }
 
 /* ─── Dark mode: bridge legacy Tailwind gray utilities ──────────────────── */
@@ -290,7 +293,7 @@
 }
 .chat-rt-quote {
   margin: 0.25rem 0;
-  border-left: 3px solid #00a884;
+  border-left: 3px solid var(--primary-500);
   padding: 0.15rem 0.6rem;
   color: var(--content-secondary);
   background: color-mix(in srgb, var(--content-primary) 4%, transparent);
@@ -308,7 +311,7 @@
   margin: 0.1rem 0;
 }
 .chat-rt-link {
-  color: #027eb5;
+  color: var(--primary-100);
   text-decoration: underline;
   text-underline-offset: 2px;
   word-break: break-all;
@@ -321,8 +324,8 @@
   border-radius: 4px;
   padding: 0 3px;
   font-weight: 600;
-  background: color-mix(in srgb, #00a884 18%, transparent);
-  color: #0f766e;
+  background: color-mix(in srgb, var(--primary-100) 18%, transparent);
+  color: var(--primary-600);
 }
 .dark .chat-rt-mention {
   color: #5eead4;
@@ -599,6 +602,14 @@ body {
 }
 
 .hover\:bg-primary-600:hover {
+  background-color: var(--african-orange-dark);
+}
+
+.bg-primary-700 {
+  background-color: var(--african-orange);
+}
+
+.hover\:bg-primary-700:hover {
   background-color: var(--african-orange-dark);
 }
 

@@ -65,7 +65,7 @@ const communityCards = [
   },
   {
     name: "Travel Stories",
-    description: "Share places, experiences and travel inspiration.",
+    description: "Share places, experiences, and travel inspiration with fellow travelers.",
     members: "8.2K",
     image: `${LP}/discover-travel.png`,
   },
@@ -83,13 +83,13 @@ const communityCards = [
   },
   {
     name: "Fitness",
-    description: "Workouts, habits, and people who keep you going.",
+    description: "Workouts, habits, and people who keep you going every single day.",
     members: "7.6K",
     image: `${LP}/discover-fitness.png`,
   },
   {
     name: "Food & Kitchen",
-    description: "Recipes, kitchen wins, and meals worth sharing.",
+    description: "Recipes, kitchen wins, and meals worth sharing with friends and family.",
     members: "6.9K",
     image: `${LP}/discover-food.png`,
   },

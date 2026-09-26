@@ -421,7 +421,7 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
               onClick={() => onViewOnceChange?.(!viewOnceEnabled)}
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
                 viewOnceEnabled
-                  ? "bg-[#00a884] text-white shadow-sm"
+                  ? "bg-[#F97316] text-white shadow-sm"
                   : "bg-white text-[#54656f] shadow-[0_1px_2px_rgba(11,20,26,0.06)] hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary"
               }`}
               aria-pressed={viewOnceEnabled}
@@ -452,7 +452,7 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
                 onClick={() => setActiveIndex(index)}
                 className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#d1d7db] ring-2 transition dark:bg-surface-secondary ${
                   selected
-                    ? "ring-[#00a884]"
+                    ? "ring-[#F97316]"
                     : "ring-transparent hover:ring-[#8696a0]/50"
                 }`}
                 aria-label={`Select ${file.name}`}
@@ -514,7 +514,7 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
           type="button"
           onClick={onSend}
           disabled={disabled || sending}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#00a884] text-white shadow-[0_2px_8px_rgba(0,168,132,0.35)] transition hover:bg-[#008f72] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:w-14"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F97316] text-white shadow-lg transition hover:bg-[#ea580c] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:w-14"
           aria-label="Send"
         >
           {sending ? (

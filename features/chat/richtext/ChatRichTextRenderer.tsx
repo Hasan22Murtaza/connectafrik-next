@@ -40,7 +40,7 @@ const ChatRichTextRenderer: React.FC<ChatRichTextRendererProps> = ({
   return (
     <div className={`chat-rt-body ${isOwnMessage ? "chat-rt-own" : ""} ${className}`}>
       <div
-        className="chat-rt-content break-words text-[14px] leading-[1.45] text-content sm:text-[14.5px]"
+        className={`chat-rt-content break-words text-[14px] leading-[1.45] ${isOwnMessage ? "text-white" : "text-content"} sm:text-[14.5px]`}
         dangerouslySetInnerHTML={{ __html: html }}
       />
       {maxChars && plain.length > maxChars && onToggleExpand ? (
@@ -49,7 +49,7 @@ const ChatRichTextRenderer: React.FC<ChatRichTextRendererProps> = ({
           onClick={onToggleExpand}
           className={`mt-1 text-[12px] font-medium hover:underline ${
             isOwnMessage
-              ? "text-[#027eb5] hover:text-[#026aa1]"
+              ? "text-gray-100 hover:text-gray-200"
               : "text-blue-600 hover:text-blue-800"
           }`}
         >

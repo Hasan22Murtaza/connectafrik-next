@@ -41,10 +41,10 @@ export default function ChatTranslationMenu({
           event.stopPropagation()
           setOpen((prev) => !prev)
         }}
-        className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
+        className={`flex h-10 w-10 items-center justify-center rounded-full transition ${
           value !== 'off'
             ? 'text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/40'
-            : 'text-content-secondary hover:bg-surface-hover hover:text-primary-600'
+            : ' text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white '
         } disabled:cursor-not-allowed disabled:opacity-40`}
         aria-expanded={open}
         aria-haspopup="menu"
@@ -57,7 +57,7 @@ export default function ChatTranslationMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-1 max-h-72 min-w-[220px] overflow-y-auto rounded-xl border border-border bg-surface py-2 shadow-xl animate-[chatFadeIn_140ms_ease-out]"
+          className="absolute right-0 top-full z-50 mt-1 p-1 max-h-72 min-w-[220px] overflow-y-auto rounded-xl border border-border bg-surface py-2 shadow-xl animate-[chatFadeIn_140ms_ease-out]"
         >
           <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-content-tertiary">
             Receive messages in...
@@ -74,7 +74,7 @@ export default function ChatTranslationMenu({
                   onChange(language.code)
                   setOpen(false)
                 }}
-                className={`flex w-full items-center px-3 py-2 text-left text-[13px] transition hover:bg-surface-hover ${
+                className={`flex w-full items-center px-3 rounded-md py-2 text-left text-[13px] transition hover:bg-surface-hover ${
                   selected ? 'font-medium text-primary-600' : 'text-content'
                 }`}
               >
