@@ -2799,7 +2799,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className={`relative bg-white ${mediaComposerOpen ? "hidden" : ""} ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
       <div
         ref={messagesScrollRef}
-        className={`chat-messages-pane flex flex-col space-y-2 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${
+        className={`chat-messages-pane flex flex-col space-y-1 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${
           typingUserIds.length > 0 ? "pb-12" : ""
         }`}
       >

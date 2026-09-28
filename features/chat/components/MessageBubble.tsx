@@ -499,11 +499,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canMessageSender ||
     Boolean(onReply);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!showOverflowMenu && !onReact) return;
-    openMessageMenu();
-  };
+  // const handleContextMenu = (e: React.MouseEvent) => {
+  //   e.preventDefault();
+  //   if (!showOverflowMenu && !onReact) return;
+  //   openMessageMenu();
+  // };
 
   const handleForwardClick = () => {
     if (onForward && isForwardableChatMessage(message)) onForward(message);
@@ -918,7 +918,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   /** Outgoing / incoming bubble fill — WhatsApp-inspired, tokenized for themes */
   const bubbleBg = isOwnMessage ? "chat-bubble-own" : "chat-bubble-in";
-  const bubbleShape = isOwnMessage ? "rounded-xl rounded-tr-none " : "rounded-xl rounded-tl-none border-gray-200 border";
+  const bubbleShape = isOwnMessage ? "rounded-[18px] rounded-tr-none " : "rounded-[18px] rounded-tl-none border-gray-200 border";
   const forwardAccent =
     showForwardBadge && isOwnMessage ? "border-l-[3px] border-gray-100 pl-[9px]" : "";
   const emojiOnly =
@@ -1018,7 +1018,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   return (
     <div
       id={`chat-message-${message.id}`}
-      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : isClusterEnd ? "mb-2" : "mb-[2px]"
+      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : isClusterEnd && "mb-2"
         } ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"} ${highlighted ? "chat-message-jump-highlight rounded-xl" : ""} ${selectionMode ? "cursor-pointer pl-8" : ""
         }`}
       onClick={
@@ -1029,7 +1029,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      onContextMenu={handleContextMenu}
+      // onContextMenu={handleContextMenu}
     >
       {selectionMode ? (
         <span
@@ -1110,17 +1110,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     e.stopPropagation();
                     toggleMessageMenu();
                   }}
-                  className="
+                  className={`
                       relative flex h-6 w-8
                       items-start justify-end
                       overflow-hidden
-                      rounded-bl-[50px]
+                      ${isOwnMessage ? "rounded-bl-[50px]" : "rounded-tr-[18px] rounded-bl-[50px]"}
                       bg-gradient-to-bl from-black/20 via-black/10  via-black/5 to-transparent
                       text-white
                       backdrop-blur-sm
                       transition
                       hover:from-black/30 hover:via-black/15
-                    "
+                    `}
                   aria-label="Open message actions"
                 >
                   <span className="flex h-6 w-6 items-center justify-center">
@@ -1296,7 +1296,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
                   <div
                     role="menu"
-                    className={`w-[180px] max-w-[calc(100vw-1.5rem)] ${isOwnMessage ? "h-52" : "h-48"}  p-1 scrollbar-hover overflow-auto rounded-xl bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface`}
+                    className="w-[180px] max-w-[calc(100vw-1.5rem)] max-h-[320px] overflow-y-auto scrollbar-hover rounded-xl bg-white p-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface"
                   >
                     {messageOverflowMenuSections.map((section, sectionIdx) => (
                       <Fragment key={section.id}>
