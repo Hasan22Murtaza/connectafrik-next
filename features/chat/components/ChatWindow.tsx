@@ -3482,8 +3482,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
                 <div className="mb-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-emerald-700">Read by</h3>
-                    <CheckCheck className="h-4 w-4 text-emerald-700" />
+                    <h3 className="text-base font-semibold text-orange-500">Read by</h3>
+                    <CheckCheck className="h-4 w-4 text-orange-500" />
                   </div>
                   {(messageInfo?.read_receipts ?? []).length === 0 ? (
                     <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-content-secondary">
@@ -3514,8 +3514,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
                 <div>
                   <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-base font-semibold text-emerald-700">Delivered to</h3>
-                    <CheckCheck className="h-4 w-4 text-emerald-700" />
+                    <h3 className="text-base font-semibold text-orange-500">Delivered to</h3>
+                    <CheckCheck className="h-4 w-4 text-orange-500" />
                   </div>
                   {(messageInfo?.delivered_receipts ?? []).length === 0 ? (
                     <div className="rounded-lg border border-border bg-surface px-3 py-2 text-xs text-content-secondary">
@@ -3567,24 +3567,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           onClick={cancelForwardPicker}
         >
           <div
-            className="flex h-[min(88vh,640px)] w-full max-w-md flex-col rounded-t-2xl border border-border  shadow-2xl sm:h-[min(560px,85vh)] sm:rounded-2xl"
+            className="flex h-[min(88vh,600px)]  w-full max-w-md flex-col rounded-2xl overflow-hidden  shadow-2xl sm:h-[min(560px,85vh)] "
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center gap-1 border-b border-border/80  px-1 py-2">
-              <button
-                type="button"
-                onClick={cancelForwardPicker}
-                className="rounded-full p-2 text-content hover:bg-surface-hover"
-                aria-label="Back"
-              >
-                <ChevronLeft className="h-7 w-7" strokeWidth={2} />
-              </button>
-              <h2 className="text-lg font-medium text-content">
+            <div className="flex shrink-0 items-center gap-1 bg-primary-500   px-4 py-2.5">
+              <h2 className="text-lg font-medium text-white">
                 Forward message to
               </h2>
+
             </div>
 
-            <div className="shrink-0 border-b border-border/80  px-3 pb-3 pt-1">
+            <div className="shrink-0 border-b border-border/80 bg-white  px-3 py-2">
               <div className="relative">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary"
@@ -3613,7 +3606,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
               {filteredForwardThreads.length > 0 ? (
                 <div className="pb-2">
-                  <p className="sticky top-0 z-[1] bg-emerald-700/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white dark:bg-emerald-800/95">
+                  <p className="sticky top-0 z-[1] text-xs px-4 py-2.5  font-semibold uppercase tracking-wide text-content bg-gray-100  dark:bg-emerald-800/95">
                     Recent chats
                   </p>
                   <ul className="divide-y divide-border-subtle">
@@ -3680,7 +3673,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
               {filteredForwardContacts.length > 0 ? (
                 <div className="pb-4">
-                  <p className="sticky top-0 z-[1] bg-emerald-700/95 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white dark:bg-emerald-800/95">
+                  <p className="sticky top-0 z-[1] text-xs px-4 py-2.5  font-semibold uppercase tracking-wide text-content bg-gray-100  dark:bg-emerald-800/95">
                     Contacts
                   </p>
                   <ul className="divide-y divide-border-subtle">

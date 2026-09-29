@@ -87,7 +87,7 @@ export default function ChatSidebar({
   const [search, setSearch] = useState("");
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
   const [blockedExpanded, setBlockedExpanded] = useState(false);
-  const [view, setView] = useState<"chats" | "marketplace" | "locked">("chats");
+  const [view, setView] = useState<"chats" | "marketplace" | "locked" | "archived">("chats");
   const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
@@ -334,10 +334,22 @@ export default function ChatSidebar({
 
   const mergedThreads = useMemo(() => {
     // Membership comes from the API (general category). The realtime context
-    // pool only overlays live fields (unread, last message) for listed threads.
+    // pool overlays live fields (unread, last message); keep local prefs.
     const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
     return threads
-      .map((t) => ctxById.get(t.id) ?? t)
+      .map((t) => {
+        const ctx = ctxById.get(t.id);
+        if (!ctx) return t;
+        return {
+          ...ctx,
+          archived: t.archived,
+          pinned: t.pinned,
+          pinned_at: t.pinned_at,
+          is_block: t.is_block,
+          is_locked: t.is_locked,
+          locked_at: t.locked_at,
+        };
+      })
       .sort((a, b) => {
       const pinA = a.pinned ? 1 : 0;
       const pinB = b.pinned ? 1 : 0;
@@ -399,6 +411,27 @@ export default function ChatSidebar({
     [mergedThreads]
   );
 
+  const archivedThreads = useMemo(
+    () =>
+      mergedThreads
+        .filter((t) => t.archived === true && !t.is_locked)
+        .sort((a, b) => {
+          const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+          const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+          return bTime - aTime;
+        }),
+    [mergedThreads]
+  );
+
+  const archivedUnread = useMemo(
+    () =>
+      archivedThreads.reduce(
+        (sum, t) => sum + (typeof t.unread_count === "number" ? t.unread_count : 0),
+        0
+      ),
+    [archivedThreads]
+  );
+
   const filteredActive = useMemo(
     () => activeThreads.filter(matchesSearch),
     [activeThreads, matchesSearch]
@@ -407,6 +440,11 @@ export default function ChatSidebar({
   const filteredBlocked = useMemo(
     () => blockedThreads.filter(matchesSearch),
     [blockedThreads, matchesSearch]
+  );
+
+  const filteredArchived = useMemo(
+    () => archivedThreads.filter(matchesSearch),
+    [archivedThreads, matchesSearch]
   );
 
   // Server-fetched filter list (groups/unread), overlaid with realtime context
@@ -466,7 +504,16 @@ export default function ChatSidebar({
           currentUser.id,
           !thread.archived
         );
-        if (updated) updateThreadState(updated);
+        if (updated) {
+          setThreads((prev) => {
+            const next = prev.map((t) => (t.id === updated.id ? updated : t));
+            if (thread.archived) {
+              const stillArchived = next.some((t) => t.archived === true && !t.is_locked);
+              if (!stillArchived) setView("chats");
+            }
+            return next;
+          });
+        }
         toast.success(thread.archived ? "Chat restored" : "Chat archived");
       } catch {
         toast.error("Could not update archive");
@@ -474,7 +521,7 @@ export default function ChatSidebar({
         setMenuThreadId(null);
       }
     },
-    [currentUser?.id, updateThreadState]
+    [currentUser?.id]
   );
 
   const handleToggleBlock = useCallback(
@@ -661,6 +708,19 @@ export default function ChatSidebar({
               <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
               TradeHub
             </button>
+          ) : view === "archived" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("chats");
+                setSearch("");
+                setMenuThreadId(null);
+              }}
+              className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
+            >
+              <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+              Archived
+            </button>
           ) : view === "locked" ? (
             <button
               type="button"
@@ -755,9 +815,11 @@ export default function ChatSidebar({
               placeholder={
                 view === "marketplace"
                   ? "Search marketplace"
-                  : view === "locked"
-                    ? "Search locked chats"
-                    : "Search or start a new chat"
+                  : view === "archived"
+                    ? "Search archived"
+                    : view === "locked"
+                      ? "Search locked chats"
+                      : "Search or start a new chat"
               }
               className="w-full rounded-full border border-gray-300  py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
             />
@@ -820,6 +882,36 @@ export default function ChatSidebar({
             {lockedUnread > 0 ? (
               <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
                 {lockedUnread > 99 ? "99+" : lockedUnread}
+              </span>
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+            )}
+            <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+          </button>
+        ) : null}
+        {archivedThreads.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setView("archived");
+              setSearch("");
+              setMenuThreadId(null);
+            }}
+            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
+              <Archive className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-medium text-content">Archived</p>
+              <p className="truncate text-sm text-content-secondary">
+                {archivedThreads.length} archived chat
+                {archivedThreads.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            {archivedUnread > 0 ? (
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                {archivedUnread > 99 ? "99+" : archivedUnread}
               </span>
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
@@ -961,6 +1053,168 @@ export default function ChatSidebar({
                         >
                           <Unlock className="h-4 w-4" />
                           <span>Unlock chat</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : view === "archived" ? (
+        <div className="flex-1 overflow-y-auto">
+          {filteredArchived.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <Archive className="mx-auto mb-3 h-10 w-10 text-content-tertiary" aria-hidden />
+              <p className="text-sm font-semibold text-content">
+                {query ? "No archived chats match your search" : "No archived chats"}
+              </p>
+              <p className="mt-1 text-sm text-content-secondary">
+                Archive a chat from its menu to move it here.
+              </p>
+            </div>
+          ) : (
+            filteredArchived.map((thread) => {
+              const others = thread.participants.filter(
+                (participant: ChatParticipant) => participant.id !== currentUser?.id
+              );
+              const primary = others[0] ?? thread.participants[0];
+              const isGroup = isGroupThread(thread, currentUser?.id);
+              const displayName =
+                isGroup && thread.name ? thread.name : primary?.name || thread.name || "Chat";
+              const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
+              const selected = selectedThreadId === thread.id;
+              const canBlock = isDirectBlockableThread(thread, currentUser?.id);
+              const activeCall = activeCallsByThread[thread.id];
+
+              return (
+                <div
+                  key={thread.id}
+                  onClick={() => onOpenThread(thread.id, thread)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenThread(thread.id, thread);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${
+                    selected ? "bg-surface-hover" : "bg-transparent"
+                  }`}
+                >
+                  <div className="h-12 w-12 shrink-0">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-1 text-[15px] font-medium text-content">
+                        {thread.pinned ? (
+                          <Pin className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden />
+                        ) : null}
+                        <span className="truncate">{displayName}</span>
+                      </span>
+                      <span
+                        className={`shrink-0 text-xs tabular-nums ${
+                          thread.unread_count > 0 ? "text-[#25D366]" : "text-content-tertiary"
+                        }`}
+                      >
+                        {formatThreadListTime(thread.last_message_at)}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p
+                        className={`truncate text-sm ${
+                          activeCall ? "font-medium text-green-600" : "text-content-secondary"
+                        }`}
+                      >
+                        {activeCall ? (
+                          `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
+                        ) : (
+                          <>
+                            <span className="text-content-tertiary">Archived · </span>
+                            {thread.last_message_preview ? (
+                              <ChatRichTextPreview content={thread.last_message_preview} />
+                            ) : (
+                              "Tap to open chat"
+                            )}
+                          </>
+                        )}
+                      </p>
+                      {thread.unread_count > 0 ? (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="relative self-center">
+                    <button
+                      type="button"
+                      data-chat-menu-trigger
+                      aria-label="Chat actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                      }}
+                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                    {menuThreadId === thread.id ? (
+                      <div
+                        data-chat-menu
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "toggle-archive")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          <Archive className="h-4 w-4" />
+                          <span>Unarchive chat</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "toggle-pin")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                          <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
+                        </button>
+                        {canBlock ? (
+                          <button
+                            type="button"
+                            onClick={(e) => onMenuAction(e, thread, "toggle-block")}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                          >
+                            <Ban className="h-4 w-4" />
+                            <span>{thread.is_block ? "Unblock contact" : "Block contact"}</span>
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "lock")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          <Lock className="h-4 w-4" />
+                          <span>Lock chat</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "clear")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span>Clear chat</span>
                         </button>
                       </div>
                     ) : null}

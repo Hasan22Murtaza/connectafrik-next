@@ -32,14 +32,16 @@ function callSessionAffectsMissedBadge(payload: {
 
 export function useHeaderInboxCounts() {
   const { user } = useAuth()
+  const userId = user?.id
   const { currentUser, callRequests } = useProductionChat()
+  const currentUserId = currentUser?.id
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [missedCalls, setMissedCalls] = useState(0)
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const missedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchUnreadMessages = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setUnreadMessages(0)
       return
     }
@@ -49,10 +51,10 @@ export function useHeaderInboxCounts() {
     } catch (error) {
       console.error('Error fetching unread chat count:', error)
     }
-  }, [user])
+  }, [userId])
 
   const fetchMissedCalls = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setMissedCalls(0)
       return
     }
@@ -66,7 +68,7 @@ export function useHeaderInboxCounts() {
     } catch (error) {
       console.error('Error fetching missed call count:', error)
     }
-  }, [user])
+  }, [userId])
 
   const scheduleRefresh = useCallback(() => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
@@ -103,7 +105,7 @@ export function useHeaderInboxCounts() {
   }, [fetchMissedCalls, fetchUnreadMessages])
 
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
 
     const onMarkedRead = () => {
       void fetchUnreadMessages()
@@ -119,36 +121,37 @@ export function useHeaderInboxCounts() {
       window.removeEventListener(CHAT_THREAD_MARKED_READ_EVENT, onMarkedRead as EventListener)
       window.removeEventListener('chatThreadCreated', onThreadCreated as EventListener)
     }
-  }, [fetchUnreadMessages, scheduleRefresh, user])
+  }, [fetchUnreadMessages, scheduleRefresh, userId])
 
   useEffect(() => {
-    if (!currentUser?.id) return
+    if (!currentUserId) return
 
-    const participant = {
-      id: currentUser.id,
-      name: currentUser.name || 'User',
-      avatarUrl: currentUser.avatarUrl,
-    }
-
-    const unsubscribe = supabaseMessagingService.subscribeToUserThreads(participant, () => {
-      scheduleRefresh()
-    })
+    const unsubscribe = supabaseMessagingService.subscribeToUserThreads(
+      {
+        id: currentUserId,
+        name: currentUser?.name || 'User',
+        avatarUrl: currentUser?.avatarUrl,
+      },
+      () => {
+        scheduleRefresh()
+      }
+    )
 
     return unsubscribe
-  }, [currentUser, scheduleRefresh])
+  }, [currentUserId, currentUser?.name, currentUser?.avatarUrl, scheduleRefresh])
 
   useEffect(() => {
-    if (!user?.id) return
+    if (!userId) return
 
     const channel = supabase
-      .channel(`header_inbox_counts:${user.id}`)
+      .channel(`header_inbox_counts:${userId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'chat_participants',
-          filter: `user_id=eq.${user.id}`,
+          filter: `user_id=eq.${userId}`,
         },
         () => {
           scheduleRefresh()
@@ -183,7 +186,7 @@ export function useHeaderInboxCounts() {
         /* ignore */
       }
     }
-  }, [scheduleMissedRefresh, scheduleRefresh, user?.id])
+  }, [scheduleMissedRefresh, scheduleRefresh, userId])
 
   useEffect(() => {
     return () => {

@@ -6,11 +6,12 @@ import { apiClient } from '@/lib/api-client'
 
 export function useSpaceNavCounts() {
   const { user } = useAuth()
+  const userId = user?.id
   const [friendRequestCount, setFriendRequestCount] = useState(0)
   const [newOrderCount, setNewOrderCount] = useState(0)
 
   const fetchCounts = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setFriendRequestCount(0)
       setNewOrderCount(0)
       return
@@ -26,7 +27,7 @@ export function useSpaceNavCounts() {
     } catch (error) {
       console.error('Error fetching space nav counts:', error)
     }
-  }, [user])
+  }, [userId])
 
   useEffect(() => {
     void fetchCounts()

@@ -79,7 +79,7 @@
 
   /* Chat bubbles - Light Mode */
 --chat-bubble-own: #f97316;
---chat-bubble-own-file: #ea580c;
+--chat-bubble-own-file: #ea540c;
 --chat-bubble-own-file-hover: #c2410c;
 
 --chat-bubble-in: #ffffff;
@@ -221,9 +221,9 @@
 .chat-bubble-own-file {
   background-color: var(--chat-bubble-own-file);
 }
-.chat-bubble-own-file:hover {
+/* .chat-bubble-own-file:hover {
   background-color: var(--chat-bubble-own-file-hover);
-}
+} */
 
 .chat-messages-pane {
   overflow-anchor: none;
