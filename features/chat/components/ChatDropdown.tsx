@@ -1,12 +1,28 @@
 import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react'
 import { format, isToday, isYesterday, isThisYear } from 'date-fns'
-import { ArrowLeft, ChevronDown, ChevronRight, Loader2, Lock, Pin, Search, Store } from '@/shared/icons'
+import {
+  Archive,
+  ArrowLeft,
+  Ban,
+  ChevronRight,
+  Loader2,
+  Lock,
+  MoreVertical,
+  Pin,
+  PinOff,
+  Search,
+  Store,
+  Trash2,
+} from '@/shared/icons'
 import { useRouter } from 'next/navigation'
+import { toast } from 'react-hot-toast'
 import { useProductionChat } from '@/contexts/ProductionChatContext'
 import { useChatLock } from '@/contexts/ChatLockContext'
 import { ChatParticipant } from '@/shared/types/chat'
 import { supabaseMessagingService, ChatThread } from '@/features/chat/services/supabaseMessagingService'
 import { CHAT_THREAD_MARKED_READ_EVENT } from '@/features/chat/threadReadEvents'
+import { isDirectBlockableThread } from '@/features/chat/utils/threadHelpers'
+import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { ChatDropdownShimmer } from '@/shared/components/ui/ShimmerLoaders'
 
 const PAGE_SIZE = 40
@@ -26,18 +42,37 @@ interface ChatDropdownProps {
   onClose: () => void
 }
 
+type MenuAction =
+  | 'toggle-pin'
+  | 'toggle-archive'
+  | 'toggle-block'
+  | 'clear'
+  | 'lock'
+
 type ChatDropdownThreadRowProps = {
   thread: ChatThread
   currentUser: { id: string } | null | undefined
   onOpen: (threadId: string) => void
+  menuThreadId: string | null
+  setMenuThreadId: React.Dispatch<React.SetStateAction<string | null>>
+  onMenuAction: (
+    event: React.MouseEvent<HTMLButtonElement>,
+    thread: ChatThread,
+    action: MenuAction
+  ) => void
   subdued?: boolean
+  showArchivedLabel?: boolean
 }
 
 const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
   thread,
   currentUser,
   onOpen,
+  menuThreadId,
+  setMenuThreadId,
+  onMenuAction,
   subdued,
+  showArchivedLabel,
 }) => {
   const otherParticipants = thread.participants.filter(
     (participant: ChatParticipant) => participant.id !== currentUser?.id
@@ -56,78 +91,152 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
   const preview =
     thread.last_message_preview ||
     `${otherParticipants.length} participant${otherParticipants.length !== 1 ? 's' : ''}`
+  const canBlock = isDirectBlockableThread(thread, currentUser?.id)
+  const menuOpen = menuThreadId === thread.id
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(thread.id)}
-      className={`group rounded-lg flex w-full items-start gap-3 px-2 py-2.5 text-left transition-colors hover:bg-gray-50  ${
+    <div
+      className={`group relative flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-gray-50 ${
         subdued ? 'opacity-70' : ''
       }`}
     >
-      <div className="relative h-12 w-12 shrink-0 ">
-        {listAvatarUrl ? (
-          <img
-            src={listAvatarUrl}
-            alt=""
-            className="h-12 w-12 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-base font-semibold text-primary-700">
-            {threadDisplayName.charAt(0).toUpperCase()}
-          </div>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={() => onOpen(thread.id)}
+        className="flex min-w-0 flex-1 items-start gap-3 text-left"
+      >
+        <div className="relative h-12 w-12 shrink-0">
+          {listAvatarUrl ? (
+            <img
+              src={listAvatarUrl}
+              alt=""
+              className="h-12 w-12 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-base font-semibold text-primary-700">
+              {threadDisplayName.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
 
-      <div className="min-w-0 flex-1 py-0.5">
-        <div className="flex items-start justify-between gap-2">
-          <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">
-            {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden /> : null}
-            <span className="truncate">{threadDisplayName}</span>
-          </p>
-          {timeLabel ? (
-            <span
-              className={`shrink-0 text-xs tabular-nums ${
-                unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
-              }`}
-            >
-              {timeLabel}
-            </span>
-          ) : null}
-        </div>
-        <div className="mt-0.5 flex items-center justify-between gap-2">
-          <p className="min-w-0 flex-1 truncate text-sm text-content-secondary">
-            {subdued && thread.is_block ? (
-              <span className="text-content-tertiary">Blocked · </span>
-            ) : subdued ? (
-              <span className="text-content-tertiary">Archived · </span>
+        <div className="min-w-0 flex-1 py-0.5">
+          <div className="flex items-start justify-between gap-2">
+            <p className="flex min-w-0 items-center gap-1 text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">
+              {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden /> : null}
+              <span className="truncate">{threadDisplayName}</span>
+            </p>
+            {timeLabel ? (
+              <span
+                className={`shrink-0 text-xs tabular-nums ${
+                  unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
+                }`}
+              >
+                {timeLabel}
+              </span>
             ) : null}
-            {preview}
-          </p>
-          {unread > 0 ? (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
-              {unread > 99 ? '99+' : unread}
-            </span>
-          ) : null}
+          </div>
+          <div className="mt-0.5 flex items-center justify-between gap-2">
+            <p className="min-w-0 flex-1 truncate text-sm text-content-secondary">
+              {showArchivedLabel ? (
+                <span className="text-content-tertiary">Archived · </span>
+              ) : subdued && thread.is_block ? (
+                <span className="text-content-tertiary">Blocked · </span>
+              ) : null}
+              {preview}
+            </p>
+            {unread > 0 ? (
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                {unread > 99 ? '99+' : unread}
+              </span>
+            ) : null}
+          </div>
         </div>
+      </button>
+
+      <div className="relative self-center">
+        <button
+          type="button"
+          data-chat-menu-trigger
+          aria-label="Chat actions"
+          onClick={(e) => {
+            e.stopPropagation()
+            setMenuThreadId((prev) => (prev === thread.id ? null : thread.id))
+          }}
+          className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-gray-100 hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+        {menuOpen ? (
+          <div
+            data-chat-menu
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-0 top-8 z-30 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+          >
+            <button
+              type="button"
+              onClick={(e) => onMenuAction(e, thread, 'toggle-archive')}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+            >
+              <Archive className="h-4 w-4" />
+              <span>{thread.archived ? 'Unarchive chat' : 'Archive chat'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => onMenuAction(e, thread, 'toggle-pin')}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+            >
+              {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+              <span>{thread.pinned ? 'Unpin chat' : 'Pin chat'}</span>
+            </button>
+            {canBlock ? (
+              <button
+                type="button"
+                onClick={(e) => onMenuAction(e, thread, 'toggle-block')}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+              >
+                <Ban className="h-4 w-4" />
+                <span>{thread.is_block ? 'Unblock contact' : 'Block contact'}</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={(e) => onMenuAction(e, thread, 'lock')}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+            >
+              <Lock className="h-4 w-4" />
+              <span>Lock chat</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => onMenuAction(e, thread, 'clear')}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Clear chat</span>
+            </button>
+          </div>
+        ) : null}
       </div>
-    </button>
+    </div>
   )
 }
 
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const router = useRouter()
   const { openThread, currentUser, threads: contextThreads } = useProductionChat()
-  const { lockedCount, lockedUnread, openLockedFolder } = useChatLock()
+  const { lockedCount, lockedUnread, openLockedFolder, lockThread } = useChatLock()
+  const { confirm, dialog } = useConfirmDialog()
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [threadsLoading, setThreadsLoading] = useState(true)
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false)
   const [threadsHasMore, setThreadsHasMore] = useState(true)
   const [threadsListLastPage, setThreadsListLastPage] = useState(-1)
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<'chats' | 'marketplace'>('chats')
+  const [view, setView] = useState<'chats' | 'marketplace' | 'archived'>('chats')
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([])
   const [mpLoading, setMpLoading] = useState(true)
+  const [menuThreadId, setMenuThreadId] = useState<string | null>(null)
+  const [blockedExpanded, setBlockedExpanded] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -151,6 +260,19 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [onClose])
+
+  useEffect(() => {
+    if (!menuThreadId) return
+    const closeMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('[data-chat-menu]') || target?.closest('[data-chat-menu-trigger]')) {
+        return
+      }
+      setMenuThreadId(null)
+    }
+    document.addEventListener('mousedown', closeMenu)
+    return () => document.removeEventListener('mousedown', closeMenu)
+  }, [menuThreadId])
 
   useEffect(() => {
     const loadThreads = async () => {
@@ -208,9 +330,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
       )
       setThreadsHasMore(hasMore)
       setThreadsListLastPage(nextPage)
-      setThreads(prev => {
-        const existingIds = new Set(prev.map(t => t.id))
-        const deduped = moreThreads.filter(t => !existingIds.has(t.id))
+      setThreads((prev) => {
+        const existingIds = new Set(prev.map((t) => t.id))
+        const deduped = moreThreads.filter((t) => !existingIds.has(t.id))
         return [...prev, ...deduped]
       })
     } finally {
@@ -228,11 +350,162 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     [loadMoreThreads]
   )
 
+  const updateThreadState = useCallback((updated: ChatThread) => {
+    setThreads((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
+  }, [])
+
+  const handleToggleArchive = useCallback(
+    async (thread: ChatThread) => {
+      if (!currentUser?.id) return
+      try {
+        const updated = await supabaseMessagingService.setThreadArchived(
+          thread.id,
+          currentUser.id,
+          !thread.archived
+        )
+        if (updated) {
+          setThreads((prev) => {
+            const next = prev.map((t) => (t.id === updated.id ? updated : t))
+            if (thread.archived) {
+              const stillArchived = next.some((t) => t.archived === true && !t.is_locked)
+              if (!stillArchived) setView('chats')
+            }
+            return next
+          })
+        }
+        toast.success(thread.archived ? 'Chat restored' : 'Chat archived')
+      } catch {
+        toast.error('Could not update archive')
+      } finally {
+        setMenuThreadId(null)
+      }
+    },
+    [currentUser?.id]
+  )
+
+  const handleToggleBlock = useCallback(
+    async (thread: ChatThread) => {
+      if (!currentUser?.id) return
+      const nextBlocked = !thread.is_block
+      if (nextBlocked) {
+        const name =
+          thread.participants.find((p) => p.id !== currentUser.id)?.name ||
+          thread.name ||
+          'this contact'
+        const confirmed = await confirm({
+          title: 'Block contact',
+          message: `Block ${name}? They will not be able to call or message you in this chat.`,
+          confirmLabel: 'Block',
+        })
+        if (!confirmed) {
+          setMenuThreadId(null)
+          return
+        }
+      }
+      try {
+        const updated = await supabaseMessagingService.setThreadBlocked(
+          thread.id,
+          currentUser.id,
+          nextBlocked
+        )
+        if (updated) updateThreadState(updated)
+        toast.success(nextBlocked ? 'Contact blocked' : 'Contact unblocked')
+      } catch {
+        toast.error('Could not update block')
+      } finally {
+        setMenuThreadId(null)
+      }
+    },
+    [currentUser?.id, updateThreadState, confirm]
+  )
+
+  const handleTogglePin = useCallback(
+    async (thread: ChatThread) => {
+      if (!currentUser?.id) return
+      try {
+        const updated = await supabaseMessagingService.setThreadPinned(
+          thread.id,
+          currentUser.id,
+          !thread.pinned
+        )
+        if (updated) updateThreadState(updated)
+        toast.success(thread.pinned ? 'Chat unpinned' : 'Chat pinned')
+      } catch {
+        toast.error('Could not update pin')
+      } finally {
+        setMenuThreadId(null)
+      }
+    },
+    [currentUser?.id, updateThreadState]
+  )
+
+  const handleLockChat = useCallback(
+    async (thread: ChatThread) => {
+      setMenuThreadId(null)
+      const confirmed = await confirm({
+        title: 'Lock chat',
+        message:
+          'This conversation will move to Locked Chats. All locked chats use the same PIN.',
+        confirmLabel: 'Lock',
+        variant: 'primary',
+      })
+      if (!confirmed) return
+      try {
+        const updated = await lockThread(thread.id, thread.name || undefined)
+        if (updated) {
+          setThreads((prev) => prev.filter((t) => t.id !== thread.id))
+          toast.success('Chat locked')
+        }
+      } catch {
+        toast.error('Could not lock chat')
+      }
+    },
+    [confirm, lockThread]
+  )
+
+  const handleClear = useCallback(
+    async (thread: ChatThread) => {
+      if (!currentUser?.id) return
+      try {
+        await supabaseMessagingService.clearThreadMessagesForMe(thread.id, currentUser.id)
+        toast.success('Chat cleared')
+      } catch {
+        toast.error('Failed to clear chat')
+      } finally {
+        setMenuThreadId(null)
+      }
+    },
+    [currentUser?.id]
+  )
+
+  const onMenuAction = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>, thread: ChatThread, action: MenuAction) => {
+      event.stopPropagation()
+      if (action === 'toggle-pin') void handleTogglePin(thread)
+      if (action === 'toggle-archive') void handleToggleArchive(thread)
+      if (action === 'toggle-block') void handleToggleBlock(thread)
+      if (action === 'clear') void handleClear(thread)
+      if (action === 'lock') void handleLockChat(thread)
+    },
+    [handleClear, handleLockChat, handleToggleArchive, handleToggleBlock, handleTogglePin]
+  )
+
   const mergedThreads = useMemo(() => {
-    // Membership comes from the API (general category); the realtime context
-    // pool only overlays live fields (unread, last message) for listed threads.
+    // Overlay live fields from context, but keep local archive/pin/block/lock prefs.
     const ctxById = new Map(contextThreads.map((t) => [t.id, t]))
-    return threads.map((t) => ctxById.get(t.id) ?? t)
+    return threads.map((t) => {
+      const ctx = ctxById.get(t.id)
+      if (!ctx) return t
+      return {
+        ...ctx,
+        archived: t.archived,
+        pinned: t.pinned,
+        pinned_at: t.pinned_at,
+        is_block: t.is_block,
+        is_locked: t.is_locked,
+        locked_at: t.locked_at,
+      }
+    })
   }, [threads, contextThreads])
 
   const marketplaceThreads = useMemo(() => {
@@ -278,17 +551,30 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   )
 
   const archivedThreads = useMemo(
-    () => sortedThreads.filter((t) => t.archived === true && !t.is_locked),
+    () =>
+      sortedThreads
+        .filter((t) => t.archived === true && !t.is_locked)
+        .sort((a, b) => {
+          const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0
+          const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0
+          return dateB - dateA
+        }),
     [sortedThreads]
+  )
+
+  const archivedUnread = useMemo(
+    () =>
+      archivedThreads.reduce(
+        (sum, t) => sum + (typeof t.unread_count === 'number' ? t.unread_count : 0),
+        0
+      ),
+    [archivedThreads]
   )
 
   const blockedThreads = useMemo(
     () => sortedThreads.filter((t) => !t.archived && t.is_block === true && !t.is_locked),
     [sortedThreads]
   )
-
-  const [archivedExpanded, setArchivedExpanded] = useState(false)
-  const [blockedExpanded, setBlockedExpanded] = useState(false)
 
   const query = search.trim().toLowerCase()
   const filterThread = useCallback(
@@ -298,8 +584,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
       const primary = others[0] ?? t.participants[0]
       const isGroup =
         t.type === 'group' || Boolean(t.group_id) || others.length > 1 || Boolean((t as any).isGroup)
-      const name =
-        isGroup && t.name ? t.name : primary?.name || t.name || ''
+      const name = isGroup && t.name ? t.name : primary?.name || t.name || ''
       const preview = (t.last_message_preview || '').toLowerCase()
       return name.toLowerCase().includes(query) || preview.includes(query)
     },
@@ -336,24 +621,29 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     onClose()
   }
 
+  const headerTitle =
+    view === 'marketplace' ? 'TradeHub' : view === 'archived' ? 'Archived' : 'Chats'
+
   return (
     <div
       ref={dropdownRef}
       className="absolute sm:right-0 -right-14 z-[120] mt-3 w-70 max-w-[90vw] translate-x-0 transform rounded-xl border border-border bg-surface p-2 shadow-2xl sm:w-80 sm:max-w-[90vw] sm:translate-x-0 sm:p-3"
     >
+      {dialog}
       <div className="border-b border-border-subtle pb-3">
         <div className="mb-3 flex items-center justify-between gap-2">
-          {view === 'marketplace' ? (
+          {view !== 'chats' ? (
             <button
               type="button"
               onClick={() => {
                 setView('chats')
                 setSearch('')
+                setMenuThreadId(null)
               }}
               className="-ml-1 flex items-center gap-1.5 text-lg font-semibold text-content"
             >
               <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
-              TradeHub
+              {headerTitle}
             </button>
           ) : (
             <h4 className="text-lg font-semibold text-content">Chats</h4>
@@ -372,66 +662,118 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
+            placeholder={
+              view === 'marketplace'
+                ? 'Search marketplace'
+                : view === 'archived'
+                  ? 'Search archived'
+                  : 'Search chats'
+            }
             className="w-full rounded-lg border border-border  py-2 pl-9 pr-3 text-sm text-content placeholder:text-content-secondary outline-none ring-0 focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
-            aria-label={view === 'marketplace' ? 'Search marketplace' : 'Search chats'}
+            aria-label={
+              view === 'marketplace'
+                ? 'Search marketplace'
+                : view === 'archived'
+                  ? 'Search archived'
+                  : 'Search chats'
+            }
           />
         </div>
       </div>
 
       {view === 'chats' ? (
         <>
-        {lockedCount > 0 ? (
+          {lockedCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                onClose()
+                router.push('/chat')
+                void openLockedFolder()
+              }}
+              className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white">
+                <Lock className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">
+                  Locked Chats
+                </p>
+                <p className="mt-0.5 truncate text-sm text-content-secondary">
+                  {lockedCount} locked conversation{lockedCount === 1 ? '' : 's'}
+                </p>
+              </div>
+              {lockedUnread > 0 ? (
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                  {lockedUnread > 99 ? '99+' : lockedUnread}
+                </span>
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+              )}
+            </button>
+          ) : null}
+
+          {archivedThreads.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView('archived')
+                setSearch('')
+                setMenuThreadId(null)
+              }}
+              className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
+                <Archive className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">
+                  Archived
+                </p>
+                <p className="mt-0.5 truncate text-sm text-content-secondary">
+                  {archivedThreads.length} archived chat
+                  {archivedThreads.length === 1 ? '' : 's'}
+                </p>
+              </div>
+              {archivedUnread > 0 ? (
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                  {archivedUnread > 99 ? '99+' : archivedUnread}
+                </span>
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+              )}
+            </button>
+          ) : null}
+
           <button
             type="button"
             onClick={() => {
-              onClose()
-              router.push('/chat')
-              void openLockedFolder()
+              setView('marketplace')
+              setSearch('')
+              setMenuThreadId(null)
             }}
-            className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100"
+            className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100 "
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white">
-              <Lock className="h-5 w-5" aria-hidden />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+              <Store className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">Locked Chats</p>
+              <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">
+                TradeHub messages
+              </p>
               <p className="mt-0.5 truncate text-sm text-content-secondary">
-                {lockedCount} locked conversation{lockedCount === 1 ? '' : 's'}
+                Buying &amp; selling conversations
               </p>
             </div>
-            {lockedUnread > 0 ? (
+            {marketplaceUnread > 0 ? (
               <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
-                {lockedUnread > 99 ? '99+' : lockedUnread}
+                {marketplaceUnread > 99 ? '99+' : marketplaceUnread}
               </span>
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
             )}
           </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            setView('marketplace')
-            setSearch('')
-          }}
-          className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100 "
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
-            <Store className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[15px] font-medium leading-tight text-gray-700 group-hover:text-gray-900">TradeHub messages</p>
-            <p className="mt-0.5 truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
-          </div>
-          {marketplaceUnread > 0 ? (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
-              {marketplaceUnread > 99 ? '99+' : marketplaceUnread}
-            </span>
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
-          )}
-        </button>
         </>
       ) : null}
 
@@ -443,10 +785,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             <div className="py-8 text-center">
               <Store className="mx-auto mb-3 h-9 w-9 text-content-tertiary" aria-hidden />
               <p className="text-sm font-semibold text-content">No marketplace messages</p>
-              <p className="mt-1 text-sm text-content-secondary">Conversations about listings appear here.</p>
+              <p className="mt-1 text-sm text-content-secondary">
+                Conversations about listings appear here.
+              </p>
             </div>
           ) : filteredMarketplace.length === 0 ? (
-            <p className="py-6 text-center text-sm text-content-secondary">No conversations match your search.</p>
+            <p className="py-6 text-center text-sm text-content-secondary">
+              No conversations match your search.
+            </p>
           ) : (
             <div className="divide-y divide-border-subtle">
               {filteredMarketplace.map((thread) => {
@@ -507,6 +853,35 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             </div>
           )}
         </div>
+      ) : view === 'archived' ? (
+        <div className="custom-scrollbar max-h-[min(70vh,24rem)] overflow-y-auto pt-2">
+          {filteredArchived.length === 0 ? (
+            <div className="py-8 text-center">
+              <Archive className="mx-auto mb-3 h-9 w-9 text-content-tertiary" aria-hidden />
+              <p className="text-sm font-semibold text-content">
+                {query ? 'No archived chats match your search' : 'No archived chats'}
+              </p>
+              <p className="mt-1 text-sm text-content-secondary">
+                Archive a chat from its menu to move it here.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {filteredArchived.map((thread) => (
+                <ChatDropdownThreadRow
+                  key={thread.id}
+                  thread={thread}
+                  currentUser={currentUser}
+                  onOpen={handleOpenThread}
+                  menuThreadId={menuThreadId}
+                  setMenuThreadId={setMenuThreadId}
+                  onMenuAction={onMenuAction}
+                  showArchivedLabel
+                />
+              ))}
+            </div>
+          )}
+        </div>
       ) : threadsLoading ? (
         <ChatDropdownShimmer mode="chat" count={5} />
       ) : mergedThreads.length === 0 ? (
@@ -519,31 +894,28 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           onScroll={handleScroll}
           className="custom-scrollbar max-h-[min(60vh,22rem)] overflow-y-auto pt-1 sm:max-h-[min(50vh,24rem)]"
         >
-          {filteredActive.length === 0 &&
-          filteredArchived.length === 0 &&
-          filteredBlocked.length === 0 &&
-          query ? (
+          {filteredActive.length === 0 && filteredBlocked.length === 0 && query ? (
             <p className="py-6 text-center text-sm text-content-secondary">No chats match your search.</p>
           ) : null}
-          {activeThreads.length === 0 && archivedThreads.length > 0 && !query && (
+          {activeThreads.length === 0 && archivedThreads.length > 0 && !query ? (
             <p className="pb-2 text-xs text-content-secondary">
-              No active chats — open <span className="font-medium text-content">Archived</span> below.
+              No active chats — open <span className="font-medium text-content">Archived</span> above.
             </p>
-          )}
+          ) : null}
           <div>
-              <hr className="border-border-subtle mb-1" />
-
-              {filteredActive.map((thread, index) => (
-                <div key={thread.id}>
-
-                  <ChatDropdownThreadRow
-                    thread={thread}
-                    currentUser={currentUser}
-                    onOpen={handleOpenThread}
-                  />
-                </div>
-              ))}
-            </div>
+            <hr className="mb-1 border-border-subtle" />
+            {filteredActive.map((thread) => (
+              <ChatDropdownThreadRow
+                key={thread.id}
+                thread={thread}
+                currentUser={currentUser}
+                onOpen={handleOpenThread}
+                menuThreadId={menuThreadId}
+                setMenuThreadId={setMenuThreadId}
+                onMenuAction={onMenuAction}
+              />
+            ))}
+          </div>
           {blockedThreads.length > 0 && (
             <div className="mt-1 border-t border-border-subtle pt-2">
               <button
@@ -551,8 +923,8 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
                 onClick={() => setBlockedExpanded((e) => !e)}
                 className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
               >
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? '' : '-rotate-90'}`}
+                <ChevronRight
+                  className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? 'rotate-90' : ''}`}
                 />
                 Blocked ({blockedThreads.length})
               </button>
@@ -563,30 +935,9 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
                     thread={thread}
                     currentUser={currentUser}
                     onOpen={handleOpenThread}
-                    subdued
-                  />
-                ))}
-            </div>
-          )}
-          {archivedThreads.length > 0 && (
-            <div className="mt-1 border-t border-border-subtle pt-2">
-              <button
-                type="button"
-                onClick={() => setArchivedExpanded((e) => !e)}
-                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
-              >
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 transition-transform ${archivedExpanded ? '' : '-rotate-90'}`}
-                />
-                Archived ({archivedThreads.length})
-              </button>
-              {archivedExpanded &&
-                filteredArchived.map((thread) => (
-                  <ChatDropdownThreadRow
-                    key={thread.id}
-                    thread={thread}
-                    currentUser={currentUser}
-                    onOpen={handleOpenThread}
+                    menuThreadId={menuThreadId}
+                    setMenuThreadId={setMenuThreadId}
+                    onMenuAction={onMenuAction}
                     subdued
                   />
                 ))}
