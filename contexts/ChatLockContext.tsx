@@ -58,8 +58,11 @@ function dispatchThreadLockChanged(thread: ChatThread) {
   window.dispatchEvent(new CustomEvent(CHAT_LOCK_STATUS_CHANGED_EVENT))
 }
 
+const LOCK_STATUS_REFRESH_MS = 400
+
 export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  const userId = user?.id
   const pathname = usePathname()
   const isCallPage = Boolean(pathname?.startsWith('/call/'))
   const tokenRef = useRef<string | null>(null)
@@ -77,6 +80,7 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   const authTargetRef = useRef<AuthTarget | null>(null)
   const lockResultRef = useRef<ChatThread | null>(null)
   const hiddenSinceRef = useRef<number | null>(null)
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clearUnlockSession = useCallback((keepFolder = false) => {
     tokenRef.current = null
@@ -93,7 +97,7 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const refreshStatus = useCallback(async () => {
-    if (!user) {
+    if (!userId) {
       setLockedCount(0)
       setLockedUnread(0)
       setHasPin(false)
@@ -107,7 +111,22 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* keep last known */
     }
-  }, [user])
+  }, [userId])
+
+  /** Coalesce realtime/thread bursts so lock/status is not hit on every notification. */
+  const scheduleRefreshStatus = useCallback(() => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null
+      void refreshStatus()
+    }, LOCK_STATUS_REFRESH_MS)
+  }, [refreshStatus])
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     tokenRef.current = unlockToken
@@ -127,29 +146,29 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
   }, [isCallPage, refreshStatus])
 
   useEffect(() => {
-    if (!user || isCallPage) return
+    if (!userId || isCallPage) return
     const unsubscribe = supabaseMessagingService.subscribeToUserThreads(
-      { id: user.id, name: '' },
+      { id: userId, name: '' },
       () => {
-        void refreshStatus()
+        scheduleRefreshStatus()
       }
     )
     return unsubscribe
-  }, [user, isCallPage, refreshStatus])
+  }, [userId, isCallPage, scheduleRefreshStatus])
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       clearUnlockSession()
       setLockedCount(0)
       setLockedUnread(0)
       setHasPin(false)
     }
-  }, [user, clearUnlockSession])
+  }, [userId, clearUnlockSession])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
     const onStatus = () => {
-      void refreshStatus()
+      scheduleRefreshStatus()
     }
     window.addEventListener(CHAT_LOCK_STATUS_CHANGED_EVENT, onStatus)
     window.addEventListener(CHAT_THREAD_MARKED_READ_EVENT, onStatus)
@@ -157,7 +176,7 @@ export function ChatLockProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener(CHAT_LOCK_STATUS_CHANGED_EVENT, onStatus)
       window.removeEventListener(CHAT_THREAD_MARKED_READ_EVENT, onStatus)
     }
-  }, [refreshStatus])
+  }, [scheduleRefreshStatus])
 
   useEffect(() => {
     if (typeof document === 'undefined') return
