@@ -1444,9 +1444,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     onClick={(e) => e.stopPropagation()}
                     className={`mb-1.5 flex max-w-full items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
                         ? "border-[#fff] bg-black/[0.05] dark:bg-white/5"
-                        : "border-primary-500 bg-surface-secondary/60"
+                        : "border-orange-500 bg-surface-secondary/60"
                       }`}
-                    style={{ width: "min(100%, 280px)" }}
                   >
                     <ExternalLink className={`mt-0.5 h-4 w-4 shrink-0 ${isOwnMessage ? "text-white" : "text-content-tertiary"}`} />
                     <div className="min-w-0 flex-1">

@@ -804,7 +804,7 @@ export default function ChatSidebar({
           ) : null}
         </div>
 
-        <div className="px-4 pt-1">
+        <div className="px-4 py-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
             <input
@@ -1181,7 +1181,7 @@ export default function ChatSidebar({
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
-                          <span>Clear chat</span>
+                          <span>Delete chat</span>
                         </button>
                       </div>
                     ) : null}
@@ -1399,7 +1399,7 @@ export default function ChatSidebar({
                                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                                 >
                                   <Trash2 className="h-4 w-4" />
-                                  <span>Clear chat</span>
+                                  <span>Delete chat</span>
                                 </button>
                               </div>
                             ) : null}

@@ -311,7 +311,7 @@
   margin: 0.1rem 0;
 }
 .chat-rt-link {
-  color: var(--primary-100);
+  color: var(--primary-500);
   text-decoration: underline;
   text-underline-offset: 2px;
   word-break: break-all;

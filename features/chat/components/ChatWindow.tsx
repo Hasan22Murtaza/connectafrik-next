@@ -2347,13 +2347,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           handleOpenThreadDetailPage();
         },
       },
-      {
-        id: "search",
-        label: "Search",
-        Icon: Search,
-        onClick: () => openMessageSearchFromMenu(),
-      },
-
 
       {
         id: "pin",
@@ -2694,7 +2687,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         disabled
                           ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
                           : tone === "danger"
-                            ? `${baseRow} text-red-600 hover:bg-surface-hover`
+                            ? `${baseRow} text-red-600 hover:bg-red-100 dark:hover:bg-red-900`
                             : `${baseRow} text-content hover:bg-surface-hover`;
                       return (
                         <button
