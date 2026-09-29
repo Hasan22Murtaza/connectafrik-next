@@ -201,16 +201,14 @@ const VoiceNotePlayer: React.FC<{
           e.stopPropagation();
           toggle();
         }}
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition ${
-          isOwnMessage ? "bg-[#f97316] hover:bg-[#0e7368]" : "bg-primary-600 hover:bg-primary-700"
-        }`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isOwnMessage ? "bg-gray-50 text-orange-500" : "bg-primary-500 text-white"} transition`}
         aria-label={playing ? "Pause voice note" : "Play voice note"}
       >
         {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
       </button>
       <div className={`min-w-0 flex-1 flex items-center justify-between gap-2 ${isOwnMessage ? "text-white" : "text-content-secondary"}`}>
         <WaveBars active={playing} />
-        <div className="mt-0.5 text-[11px] tabular-nums text-content-tertiary">
+        <div className={`mt-0.5 text-[11px] tabular-nums ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>
           {formatMediaDuration(playing || current > 0 ? current : duration)}
         </div>
         {profileImageUrl ? (

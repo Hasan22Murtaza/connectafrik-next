@@ -1129,6 +1129,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 </button>
               </div>
             ) : null}
+
             {!isDeleted ? (
               <div
                 className={`absolute top-1/2 z-30 flex -translate-y-1/2 items-center gap-1.5
@@ -1248,8 +1249,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {showMenu ? (
               <div
                 ref={messageMenuRef}
-                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] flex-col items-stretch gap-1.5 ${isOwnMessage ? "right-0 items-end sm:right-full sm:mr-1" : "left-0 items-start sm:left-full sm:ml-1"
-                  } ${menuPlacement === "above"
+                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] 
+                   flex-col  gap-1.5 ${isOwnMessage ? "right-0 items-end" : "left-0 items-start"} 
+                   ${menuPlacement === "above"
                     ? "bottom-full mb-2"
                     : menuPlacement === "side"
                       ? "top-4"
@@ -1279,19 +1281,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         {emoji}
                       </button>
                     ))}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowReactionPicker((prev) => !prev);
-                      }}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
-                      aria-label="More reactions"
-                    >
-                      <TbMoodPlus className="h-5 w-5" />
-                    </button>
+                    
                   </div>
                 ) : null}
+
+                
 
                 {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
                   <div
@@ -1342,11 +1336,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {showForwardBadge && !isDeleted ? (
               <div className="mb-1 flex items-center gap-1 pr-1">
                 <ChevronsRight
-                  className="h-3.5 w-3.5 shrink-0 text-content-tertiary"
+                  className={`h-3.5 w-3.5 shrink-0 ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}
                   strokeWidth={2}
                   aria-hidden
                 />
-                <span className="text-[12px] italic leading-snug text-content-tertiary">Forwarded</span>
+                <span className={`text-[12px] italic leading-snug ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>Forwarded</span>
               </div>
             ) : null}
 
