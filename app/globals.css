@@ -319,7 +319,7 @@
 }
 .dark .chat-rt-link,
 .chat-rt-own .chat-rt-link {
-  color: #7dd3fc;
+  color: var(--primary-100);
 }
 .chat-rt-mention {
   border-radius: 4px;

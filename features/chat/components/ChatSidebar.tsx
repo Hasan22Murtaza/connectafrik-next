@@ -738,15 +738,6 @@ export default function ChatSidebar({
           )}
           {view === "chats" ? (
             <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => router.push("/friends")}
-                aria-label="New chat"
-                title="New chat"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content"
-              >
-                <SquarePen className="h-5 w-5" aria-hidden />
-              </button>
               <div className="relative">
                 <button
                   type="button"
