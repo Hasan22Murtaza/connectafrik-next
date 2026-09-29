@@ -123,7 +123,7 @@ interface ProductionChatContextType {
   joinCall: (threadId: string) => Promise<void>
   callRequests: Record<string, CallRequest>
   activeCallsByThread: Record<string, ActiveCallInfo>
-  currentUser: { id: string; name?: string; avatarUrl?: string } | null
+  currentUser: ChatParticipant | null
   clearCallRequest: (threadId: string) => void
   openThreads: string[]
   closeThread: (threadId: string) => void
@@ -194,13 +194,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     (user?.user_metadata?.picture as string | undefined) ||
     (user?.user_metadata?.profile_image as string | undefined)
 
-  const currentUser = useMemo(() => {
+  const currentUser = useMemo((): ChatParticipant | null => {
     if (!userId) return null
     const displayName =
       userMetaFullName ||
       [userMetaFirstName, userMetaLastName].filter(Boolean).join(' ') ||
       userEmail
-    return { id: userId, name: displayName || userEmail, avatarUrl: userMetaAvatar }
+    return {
+      id: userId,
+      name: displayName || userEmail || 'User',
+      avatarUrl: userMetaAvatar,
+    }
   }, [userId, userEmail, userMetaFullName, userMetaFirstName, userMetaLastName, userMetaAvatar])
 
   useEffect(() => {

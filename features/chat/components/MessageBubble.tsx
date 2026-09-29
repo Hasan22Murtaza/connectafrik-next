@@ -1250,12 +1250,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <div
                 ref={messageMenuRef}
                 className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] 
-                   flex-col  gap-1.5 ${isOwnMessage ? "right-0 items-end" : "left-0 items-start"} 
+                   flex-col  gap-1.5 
+                   ${isOwnMessage ? "right-0 items-end" 
+                    : "left-0 items-start sm:left-[70%] "}
                    ${menuPlacement === "above"
                     ? "bottom-full mb-2"
                     : menuPlacement === "side"
                       ? "top-4"
-                      : "top-full mt-2 sm:top-4 sm:mt-0"
+                      : "top-full mt-2 sm:top-5 sm:mt-0"
                   }`}
                 onClick={(e) => e.stopPropagation()}
                 onMouseEnter={handleReactionPickerEnter}
