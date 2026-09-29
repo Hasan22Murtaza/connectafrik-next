@@ -184,19 +184,24 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   /** Main window: pause any call poll while a call is active (accept is signaled via postMessage). */
   const pauseIncomingCallsPollRef = useRef(false)
 
+  const userId = user?.id
+  const userEmail = user?.email
+  const userMetaFullName = user?.user_metadata?.full_name as string | undefined
+  const userMetaFirstName = user?.user_metadata?.first_name as string | undefined
+  const userMetaLastName = user?.user_metadata?.last_name as string | undefined
+  const userMetaAvatar =
+    (user?.user_metadata?.avatar_url as string | undefined) ||
+    (user?.user_metadata?.picture as string | undefined) ||
+    (user?.user_metadata?.profile_image as string | undefined)
+
   const currentUser = useMemo(() => {
-    if (!user) return null
+    if (!userId) return null
     const displayName =
-      user.user_metadata?.full_name ||
-      [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(' ') ||
-      user.email
-    const avatarUrl =
-      user.user_metadata?.avatar_url ||
-      user.user_metadata?.picture ||
-      user.user_metadata?.profile_image ||
-      undefined
-    return { id: user.id, name: displayName || user.email, avatarUrl }
-  }, [user])
+      userMetaFullName ||
+      [userMetaFirstName, userMetaLastName].filter(Boolean).join(' ') ||
+      userEmail
+    return { id: userId, name: displayName || userEmail, avatarUrl: userMetaAvatar }
+  }, [userId, userEmail, userMetaFullName, userMetaFirstName, userMetaLastName, userMetaAvatar])
 
   useEffect(() => {
     callRequestsRef.current = callRequests
@@ -212,7 +217,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   // Preload call-related chunks/sdk during idle time so call startup is faster.
   useEffect(() => {
-    if (typeof window === 'undefined' || !user) return
+    if (typeof window === 'undefined' || !userId) return
     let cancelled = false
     const windowWithIdle = window as Window & {
       requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
@@ -238,7 +243,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [user])
+  }, [userId])
 
   const openThread = useCallback(async (threadId: string, seedThread?: ChatThread | null) => {
     supabaseMessagingService.allowRealtimeForThread(threadId)
@@ -1365,6 +1370,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     [currentUser]
   )
 
+  // Keep latest dispatcher in a ref so visibility/online catch-up effect
+  // does not remount when currentUser object identity changes.
+  const tryDispatchIncomingRef = useRef(tryDispatchIncomingFromCallSession)
+  useEffect(() => {
+    tryDispatchIncomingRef.current = tryDispatchIncomingFromCallSession
+  }, [tryDispatchIncomingFromCallSession])
+
   // Listen for incoming call requests (from WebSocket/Realtime)
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1537,7 +1549,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [currentUser, openThreads, clearCallRequest, isThreadUnlocked, unlockedThreadKey, threads])
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!userId) return
 
     const channel = supabase
       .channel('message_reads_updates')
@@ -1589,12 +1601,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser])
+  }, [userId])
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!userId) return
 
-    const channelName = `global-call-sessions:${currentUser.id}:${Date.now().toString(36)}`
+    const channelName = `global-call-sessions:${userId}`
     const channel = supabase
       .channel(channelName)
       .on(
@@ -1603,7 +1615,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         (payload) => {
           const row = payload.new as Record<string, any>
           // RLS on call_sessions already limits events to threads this user participates in.
-          tryDispatchIncomingFromCallSession(row)
+          tryDispatchIncomingRef.current(row)
         }
       )
       .on(
@@ -1616,10 +1628,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           const st = String(row.status || '')
           const lsRaw = meta.last_signal as string | undefined
           const lsNorm = lsRaw ? toCallSessionStatusMessageType(String(lsRaw)) : ''
-          if (meta.acceptedBy === currentUser.id && (st === 'active' || lsNorm === 'active')) {
+          if (meta.acceptedBy === userId && (st === 'active' || lsNorm === 'active')) {
             clearCallRequest(row.thread_id)
           }
-          if (meta.rejectedBy === currentUser.id && (st === 'declined' || lsNorm === 'declined')) {
+          if (meta.rejectedBy === userId && (st === 'declined' || lsNorm === 'declined')) {
             clearCallRequest(row.thread_id)
           }
           if (
@@ -1643,7 +1655,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
               meta.last_signal === 'ringing' ||
               String(prev.status || '') !== st)
           ) {
-            tryDispatchIncomingFromCallSession(row)
+            tryDispatchIncomingRef.current(row)
           }
         }
       )
@@ -1652,7 +1664,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser, clearCallRequest, tryDispatchIncomingFromCallSession])
+  }, [userId, clearCallRequest])
 
   // Pause poll while user is in an active call (popup notifies opener via CALL_STATUS).
   useEffect(() => {
@@ -1684,7 +1696,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   // not a continuous poll, and the endpoint bounds itself to a 90s window so
   // it can only ever surface calls still plausibly ringing.
   useEffect(() => {
-    if (!currentUser) return
+    if (!userId) return
     if (typeof window !== 'undefined' && window.location.pathname.startsWith('/call/')) return
     let cancelled = false
 
@@ -1696,7 +1708,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (cancelled) return
         const sessions = res?.sessions ?? []
         for (const row of sessions) {
-          tryDispatchIncomingFromCallSession(row)
+          tryDispatchIncomingRef.current(row)
         }
       } catch {
         /* ignore */
@@ -1714,16 +1726,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', onOnline)
-    window.addEventListener('focus', onOnline)
+    // Do not listen to `focus`: tab/devtools focus churn remounted this catch-up
+    // and looked like continuous polling. visibilitychange + online cover resume.
 
     return () => {
       cancelled = true
       window.clearTimeout(initial)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('online', onOnline)
-      window.removeEventListener('focus', onOnline)
     }
-  }, [currentUser, tryDispatchIncomingFromCallSession])
+  }, [userId])
 
   const value: ProductionChatContextType = {
     startChatWithMembers,
