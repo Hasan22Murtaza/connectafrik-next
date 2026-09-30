@@ -878,6 +878,36 @@ export default function ChatSidebar({
               <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
             </button>
           ) : null}
+          {archivedThreads.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("archived");
+                setSearch("");
+                setMenuThreadId(null);
+              }}
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
+                <Archive className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium text-content">Archived</p>
+                <p className="truncate text-sm text-content-secondary">
+                  {archivedThreads.length} archived chat
+                  {archivedThreads.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              {archivedUnread > 0 ? (
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                  {archivedUnread > 99 ? "99+" : archivedUnread}
+                </span>
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+              )}
+              <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
