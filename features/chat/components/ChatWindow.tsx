@@ -290,6 +290,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     getThreadById,
     getMessagesForThread,
     isMessagesLoadingForThread,
+    getThreadHasOlderMessages,
     sendMessage,
     currentUser,
     callRequests,
@@ -321,7 +322,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const pathname = usePathname();
   const { confirm, dialog } = useConfirmDialog();
 
-  const { members } = useMembers();
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(
+    null
+  );
+  // Members list is only needed for forward-to-contact; do not fetch on every chat render.
+  const { members } = useMembers(Boolean(forwardingMessage));
 
   const [presentUserIds, setPresentUserIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -612,9 +617,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [viewOnceEnabled, setViewOnceEnabled] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
-  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(
-    null
-  );
   const [forwardSearch, setForwardSearch] = useState("");
   /** WhatsApp-style: message loaded into composer for PATCH save on Send */
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
@@ -650,7 +652,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const prevScrollThreadRef = useRef(threadId);
   const [historyPage, setHistoryPage] = useState(0);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
-  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  // Start false so we never auto-request page=1 before page-0 hasMore is known.
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const allowOlderLoadRef = useRef(false);
+  const historyPageByThreadRef = useRef<Record<string, number>>({});
+  const hasOlderByThreadLocalRef = useRef<Record<string, boolean>>({});
   const [isSending, setIsSending] = useState(false);
   const [uploadProgressByMessage, setUploadProgressByMessage] = useState<
     Record<string, Record<string, number>>
@@ -674,11 +680,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, []);
 
   useEffect(() => {
-    setHistoryPage(0);
-    setHasOlderMessages(true);
+    const cachedPage = historyPageByThreadRef.current[threadId];
+    const cachedHasOlder = hasOlderByThreadLocalRef.current[threadId];
+    setHistoryPage(typeof cachedPage === "number" ? cachedPage : 0);
+    setHasOlderMessages(typeof cachedHasOlder === "boolean" ? cachedHasOlder : false);
     setIsLoadingOlderMessages(false);
     isPrependingHistoryRef.current = false;
     isLoadingOlderRef.current = false;
+    allowOlderLoadRef.current = false;
     setHighlightedMessageId(null);
     setShowMessageSearch(false);
     setMessageSearchDraft("");
@@ -715,6 +724,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setSelectionMode(false);
     setSelectedMessageIds([]);
   }, [threadId]);
+
+  // Sync hasMore from the initial page-0 load; never assume older pages exist.
+  useEffect(() => {
+    if (isMessagesLoading) return;
+    if (Object.prototype.hasOwnProperty.call(hasOlderByThreadLocalRef.current, threadId)) {
+      setHasOlderMessages(hasOlderByThreadLocalRef.current[threadId]);
+      return;
+    }
+    const fromContext = getThreadHasOlderMessages(threadId);
+    if (typeof fromContext === "boolean") {
+      hasOlderByThreadLocalRef.current[threadId] = fromContext;
+      setHasOlderMessages(fromContext);
+    }
+  }, [threadId, isMessagesLoading, getThreadHasOlderMessages, messages.length]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -872,11 +895,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         if (!olderMessages.length) {
           setHasOlderMessages(false);
+          hasOlderByThreadLocalRef.current[threadId] = false;
           unlockWithoutRestore();
           return;
         }
         if (!hasMore) {
           setHasOlderMessages(false);
+          hasOlderByThreadLocalRef.current[threadId] = false;
         }
 
         const currentMessages = getMessagesForThread(threadId);
@@ -889,6 +914,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         setMessagesForThread(threadId, merged);
         setHistoryPage(nextPage);
+        historyPageByThreadRef.current[threadId] = nextPage;
+        if (hasMore) {
+          hasOlderByThreadLocalRef.current[threadId] = true;
+        }
       }
     } catch (error) {
       console.error("Error loading older messages:", error);
@@ -1114,7 +1143,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       el.scrollTop = el.scrollHeight;
     };
     scrollToBottom();
-    requestAnimationFrame(scrollToBottom);
+    requestAnimationFrame(() => {
+      scrollToBottom();
+      // Allow older-page loads only after the initial stick-to-bottom settles.
+      allowOlderLoadRef.current = true;
+    });
     setShowScrollToBottom(false);
   }, [threadId, displayMessages.length]);
 
@@ -1123,7 +1156,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!el) return;
 
     const handleScroll = () => {
-      if (!isLoadingOlderRef.current && el.scrollTop <= 80) {
+      // Only load older messages when the user scrolls to the top — not on init.
+      if (
+        allowOlderLoadRef.current &&
+        !isLoadingOlderRef.current &&
+        !isPrependingHistoryRef.current &&
+        el.scrollHeight > el.clientHeight + 24 &&
+        el.scrollTop <= 80
+      ) {
         void loadOlderMessages();
       }
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -1135,40 +1175,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       el.removeEventListener("scroll", handleScroll);
     };
   }, [loadOlderMessages]);
-
-  useEffect(() => {
-    const root = messagesScrollRef.current;
-    const target = messagesTopSentinelRef.current;
-    if (!root || !target) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (isLoadingOlderRef.current || isPrependingHistoryRef.current) return;
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadOlderMessages();
-        }
-      },
-      { root, rootMargin: "120px 0px 0px 0px", threshold: 0 }
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [loadOlderMessages, displayMessages.length]);
-
-  useEffect(() => {
-    const el = messagesScrollRef.current;
-    if (!el || isLoadingOlderMessages || displayMessages.length === 0) return;
-    const canLoad = messageSearchKeyword.trim() ? searchHasOlder : hasOlderMessages;
-    if (!canLoad) return;
-    if (el.scrollHeight <= el.clientHeight + 12) {
-      void loadOlderMessages();
-    }
-  }, [
-    displayMessages.length,
-    isLoadingOlderMessages,
-    hasOlderMessages,
-    searchHasOlder,
-    messageSearchKeyword,
-    loadOlderMessages,
-  ]);
 
   useEffect(() => {
     if (!voiceRecording) {

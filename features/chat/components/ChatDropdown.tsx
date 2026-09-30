@@ -234,7 +234,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const [search, setSearch] = useState('')
   const [view, setView] = useState<'chats' | 'marketplace' | 'archived'>('chats')
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([])
-  const [mpLoading, setMpLoading] = useState(true)
+  const [mpLoading, setMpLoading] = useState(false)
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null)
   const [blockedExpanded, setBlockedExpanded] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -298,11 +298,16 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     loadThreads()
   }, [currentUser])
 
+  // Only fetch marketplace when the TradeHub section is open.
   useEffect(() => {
+    if (view !== 'marketplace') return
+    let cancelled = false
     const loadMarketplace = async () => {
       if (!currentUser) {
-        setMpThreads([])
-        setMpLoading(false)
+        if (!cancelled) {
+          setMpThreads([])
+          setMpLoading(false)
+        }
         return
       }
       setMpLoading(true)
@@ -311,13 +316,16 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           { id: currentUser.id, name: currentUser.name || '' },
           { limit: 50, page: 0, category: 'marketplace' }
         )
-        setMpThreads(rows)
+        if (!cancelled) setMpThreads(rows)
       } finally {
-        setMpLoading(false)
+        if (!cancelled) setMpLoading(false)
       }
     }
-    loadMarketplace()
-  }, [currentUser])
+    void loadMarketplace()
+    return () => {
+      cancelled = true
+    }
+  }, [currentUser, view])
 
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser || threadsLoadingMore || !threadsHasMore || threadsListLastPage < 0) return

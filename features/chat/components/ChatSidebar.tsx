@@ -91,7 +91,8 @@ export default function ChatSidebar({
   const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
-  const [mpLoading, setMpLoading] = useState(true);
+  const [mpLoading, setMpLoading] = useState(false);
+  const [mpLoaded, setMpLoaded] = useState(false);
   const [lockedThreads, setLockedThreads] = useState<ChatThread[]>([]);
   const [lockedLoading, setLockedLoading] = useState(false);
   const [filterThreads, setFilterThreads] = useState<ChatThread[]>([]);
@@ -125,6 +126,7 @@ export default function ChatSidebar({
     if (!currentUser?.id) {
       setMpThreads([]);
       setMpLoading(false);
+      setMpLoaded(false);
       return;
     }
     setMpLoading(true);
@@ -134,6 +136,7 @@ export default function ChatSidebar({
         { limit: 50, page: 0, category: "marketplace" }
       );
       setMpThreads(rows);
+      setMpLoaded(true);
     } finally {
       setMpLoading(false);
     }
@@ -143,9 +146,12 @@ export default function ChatSidebar({
     void loadGeneral();
   }, [loadGeneral]);
 
+  // Only fetch marketplace threads when that section is open.
   useEffect(() => {
-    void loadMarketplace();
-  }, [loadMarketplace]);
+    if (view === "marketplace" && currentUser?.id) {
+      void loadMarketplace();
+    }
+  }, [view, currentUser?.id, loadMarketplace]);
 
   useEffect(() => {
     if (folderOpen) setView("locked");
@@ -253,14 +259,13 @@ export default function ChatSidebar({
       if (!tid) return;
       const known = threads.some((t) => t.id === tid) || mpThreads.some((t) => t.id === tid);
       if (known) return;
-      // A thread we haven't listed was opened — let the API place it in the
-      // right list (general vs marketplace) by reloading both.
+      // Unknown thread opened — refresh the list(s) that are actually in use.
       void loadGeneral();
-      void loadMarketplace();
+      if (view === "marketplace" || mpLoaded) void loadMarketplace();
     };
     window.addEventListener("openChatThread", handler as EventListener);
     return () => window.removeEventListener("openChatThread", handler as EventListener);
-  }, [currentUser?.id, threads, mpThreads, loadGeneral, loadMarketplace]);
+  }, [currentUser?.id, threads, mpThreads, view, mpLoaded, loadGeneral, loadMarketplace]);
 
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser?.id || isLoadingMore || !hasMore || lastLoadedPage < 0) return;
