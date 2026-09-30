@@ -14,6 +14,7 @@ import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 import { ChatRichTextPreview } from "@/features/chat/richtext";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
+import CreateChatGroupModal from "@/features/chat/components/CreateChatGroupModal";
 
 const PAGE_SIZE = 10;
 
@@ -90,6 +91,7 @@ export default function ChatSidebar({
   const [view, setView] = useState<"chats" | "marketplace" | "locked" | "archived">("chats");
   const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
   const [mpLoading, setMpLoading] = useState(false);
   const [mpLoaded, setMpLoaded] = useState(false);
@@ -763,7 +765,7 @@ export default function ChatSidebar({
                       type="button"
                       onClick={() => {
                         setHeaderMenuOpen(false);
-                        router.push("/groups/create");
+                        setCreateGroupOpen(true);
                       }}
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                     >
@@ -1560,6 +1562,11 @@ export default function ChatSidebar({
         </div>
       )}
       {dialog}
+      <CreateChatGroupModal
+        open={createGroupOpen}
+        onClose={() => setCreateGroupOpen(false)}
+        onCreated={(threadId) => onOpenThread(threadId)}
+      />
     </aside>
   );
 }
