@@ -203,11 +203,11 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
   // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
   if (!options?.skipPush && !SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(message.message_type || '')) {
     try {
-      const res = await apiClient.get<{ data: { user_id: string }[] }>(
+      const res = await apiClient.get<{ data: { user_id: string }[] } | { user_id: string }[]>(
         `/api/chat/threads/${message.thread_id}/participants`,
         { exclude_user_id: message.sender_id }
       )
-      const participants = res?.data ?? []
+      const participants = Array.isArray(res) ? res : (res?.data ?? [])
 
       if (participants.length > 0) {
         // Deduplicate participant user_ids to avoid sending multiple notifications to the same user
@@ -1386,11 +1386,16 @@ export const supabaseMessagingService = {
             if (targetUserId) {
               targetParticipants = [{ user_id: targetUserId }]
             } else {
-              const callParticipantsRes = await apiClient.get<{ data: { user_id: string }[] }>(
+              const callParticipantsRes = await apiClient.get<
+                { data: { user_id: string }[] } | { user_id: string }[]
+              >(
                 `/api/chat/threads/${threadId}/participants`,
                 { exclude_user_id: currentUser.id }
               )
-              targetParticipants = callParticipantsRes?.data ?? []
+              const rawParts = Array.isArray(callParticipantsRes)
+                ? callParticipantsRes
+                : (callParticipantsRes?.data ?? [])
+              targetParticipants = rawParts
             }
 
             targetParticipants = Array.from(
