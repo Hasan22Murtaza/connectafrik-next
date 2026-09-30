@@ -2187,16 +2187,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setEmojiPickerOpen(false);
   }, [pendingFiles]);
 
-  const replacePendingFile = useCallback((index: number, next: FileUploadResult) => {
-    setPendingFiles((prev) => {
-      const current = prev[index];
-      if (current && current !== next) {
-        fileUploadService.revokePreviews([current]);
-      }
-      return prev.map((file, i) => (i === index ? next : file));
-    });
-  }, []);
-
   useEffect(() => {
     if (viewOnceEnabled && !canEnableViewOnce(pendingFiles)) {
       setViewOnceEnabled(false);
@@ -2782,7 +2772,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             onTyping={handleTyping}
             onClose={discardPendingMedia}
             onRemove={removePendingFile}
-            onReplaceFile={replacePendingFile}
             onAddFiles={handleFilesSelected}
             onSend={() => void handleSend()}
             viewOnceAvailable={canEnableViewOnce(pendingFiles)}
