@@ -2598,9 +2598,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 {headerInitial}
               </div>
             )}
-            {!isGroupThread && directSubtitle === "Online" ? (
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-green-500" aria-hidden />
-            ) : null}
           </div>
           <div
             className="min-w-0 cursor-pointer"
