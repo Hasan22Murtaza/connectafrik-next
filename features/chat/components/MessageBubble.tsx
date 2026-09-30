@@ -341,11 +341,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     });
   }, [computeMenuPlacement]);
 
-  const openMessageMenu = useCallback(() => {
-    setShowQuickReactions(false);
-    setMenuPlacement(computeMenuPlacement());
-    setShowMenu(true);
-  }, [computeMenuPlacement]);
+  // const openMessageMenu = useCallback(() => {
+  //   setShowQuickReactions(false);
+  //   setMenuPlacement(computeMenuPlacement());
+  //   setShowMenu(true);
+  // }, [computeMenuPlacement]);
 
   useLayoutEffect(() => {
     if (!showMenu) return;
@@ -1043,7 +1043,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </span>
       ) : null}
       <div
-        className={`relative min-w-0 max-w-[88%] flex-1 sm:max-w-[min(82%,440px)] ${isOwnMessage ? "ml-auto flex flex-col items-end" : "mr-auto flex flex-col items-start"}`}
+        className={`relative min-w-0 max-w-[82%] flex-1 sm:max-w-[min(82%,400px)] ${isOwnMessage ? "ml-auto flex flex-col items-end" : "mr-auto flex flex-col items-start"}`}
       >
         {showSenderHeader && !isOwnMessage && message.sender ? (
           <div className="mb-0.5 flex max-w-full items-center gap-1.5 px-1">
@@ -1094,8 +1094,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   : mediaOnly
                     ? "w-fit p-1 pb-0.5"
                     : hasAttachments
-                      ? "w-fit px-2.5 py-1.5"
-                      : "px-2.5 py-1.5"
+                      ? "w-fit  p-1.5"
+                      : "p-1.5"
                 }`
               } ${forwardAccent} ${isComposerEditingThis
                 ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-transparent"
@@ -1444,9 +1444,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     onClick={(e) => e.stopPropagation()}
                     className={`mb-1.5 flex max-w-full items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
                         ? "border-[#fff] bg-black/[0.05] dark:bg-white/5"
-                        : "border-primary-500 bg-surface-secondary/60"
+                        : "border-orange-500 bg-surface-secondary/60"
                       }`}
-                    style={{ width: "min(100%, 280px)" }}
                   >
                     <ExternalLink className={`mt-0.5 h-4 w-4 shrink-0 ${isOwnMessage ? "text-white" : "text-content-tertiary"}`} />
                     <div className="min-w-0 flex-1">

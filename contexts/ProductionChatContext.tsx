@@ -118,7 +118,8 @@ interface ProductionChatContextType {
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    options?: { forceGroupCall?: boolean }
   ) => Promise<void>
   joinCall: (threadId: string) => Promise<void>
   callRequests: Record<string, CallRequest>
@@ -131,6 +132,8 @@ interface ProductionChatContextType {
   getMessagesForThread: (threadId: string) => ChatMessage[]
   /** True until the first messages fetch for this thread completes (success or error). */
   isMessagesLoadingForThread: (threadId: string) => boolean
+  /** Whether older pages exist beyond the initial page-0 load (undefined while loading). */
+  getThreadHasOlderMessages: (threadId: string) => boolean | undefined
   sendMessage: (threadId: string, text: string, payload?: any) => Promise<void>
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
@@ -175,7 +178,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
+  const [hasOlderByThread, setHasOlderByThread] = useState<Record<string, boolean>>({})
   const messagesRef = useRef<Record<string, ChatMessage[]>>({})
+  const messagesLoadInFlightRef = useRef<Set<string>>(new Set())
   const threadsRef = useRef<ChatThread[]>([])
   const callRequestsRef = useRef<Record<string, CallRequest>>({})
   const callStartInFlightRef = useRef<Set<string>>(new Set())
@@ -367,6 +372,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           const { [thread.id]: _removed, ...rest } = prev
           return rest
         })
+        setHasOlderByThread((prev) => {
+          if (!Object.prototype.hasOwnProperty.call(prev, thread.id)) return prev
+          const { [thread.id]: _removed, ...rest } = prev
+          return rest
+        })
       }
     }
     const onSessionEnded = () => {
@@ -376,6 +386,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (lockedIds.size === 0) return
       setOpenThreads((prev) => prev.filter((id) => !lockedIds.has(id)))
       setMessages((prev) => {
+        let changed = false
+        const next = { ...prev }
+        for (const id of lockedIds) {
+          if (Object.prototype.hasOwnProperty.call(next, id)) {
+            delete next[id]
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+      setHasOlderByThread((prev) => {
         let changed = false
         const next = { ...prev }
         for (const id of lockedIds) {
@@ -435,6 +456,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     // An explicit empty array means loaded with no messages.
     return !Object.prototype.hasOwnProperty.call(messages, threadId)
   }, [messages])
+
+  const getThreadHasOlderMessages = useCallback((threadId: string) => {
+    if (!Object.prototype.hasOwnProperty.call(hasOlderByThread, threadId)) return undefined
+    return hasOlderByThread[threadId]
+  }, [hasOlderByThread])
 
   const sendMessage = useCallback(async (threadId: string, text: string, payload?: any) => {
     if (!currentUser) {
@@ -657,6 +683,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const clearMessagesForUser = useCallback((threadId: string, _userId: string) => {
     setMessages(prev => ({ ...prev, [threadId]: [] }))
+    setHasOlderByThread((prev) => ({ ...prev, [threadId]: false }))
   }, [])
 
   const markMessageDeletedForUser = useCallback((threadId: string, messageId: string, userId: string) => {
@@ -873,7 +900,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    options?: { forceGroupCall?: boolean }
   ) => {
     const telemetryBase = {
       threadId,
@@ -936,7 +964,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const cachedParticipantIds = (thread?.participants || [])
         .map((p: any) => p?.id)
         .filter((id: string | undefined) => Boolean(id && id !== currentUser?.id)) as string[]
-      let isGroupCall = (thread?.participants?.length || 0) > 2 || thread?.type === 'group'
+      let isGroupCall =
+        options?.forceGroupCall === true ||
+        (thread?.participants?.length || 0) > 2 ||
+        thread?.type === 'group'
 
       let resolvedTargetUserId = (targetUserId || '').trim()
       if (isGroupCall && resolvedTargetUserId) {
@@ -1445,8 +1476,20 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (!listed || (listed.is_locked && !isThreadUnlocked(threadId))) {
           continue
         }
+        // Skip threads that already have an initial page loaded (avoid duplicate page=0).
+        if (Object.prototype.hasOwnProperty.call(messagesRef.current, threadId)) {
+          continue
+        }
+        if (messagesLoadInFlightRef.current.has(threadId)) {
+          continue
+        }
+        messagesLoadInFlightRef.current.add(threadId)
         try {
-          const { messages: threadMessages } = await supabaseMessagingService.getThreadMessages(threadId)
+          const { messages: threadMessages, hasMore } = await supabaseMessagingService.getThreadMessages(
+            threadId,
+            { limit: 50, page: 0 },
+          )
+          setHasOlderByThread((prev) => ({ ...prev, [threadId]: hasMore }))
           setMessages(prev => {
             const current = prev[threadId] || []
             if (current.length === 0) {
@@ -1475,10 +1518,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           }
           console.error(`Error loading messages for thread ${threadId}:`, error)
           // Mark as loaded so the UI does not spin forever on failure.
+          setHasOlderByThread((prev) => ({ ...prev, [threadId]: false }))
           setMessages((prev) => {
             if (Object.prototype.hasOwnProperty.call(prev, threadId)) return prev
             return { ...prev, [threadId]: [] }
           })
+        } finally {
+          messagesLoadInFlightRef.current.delete(threadId)
         }
       }
     }
@@ -1755,6 +1801,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     getThreadById,
     getMessagesForThread,
     isMessagesLoadingForThread,
+    getThreadHasOlderMessages,
     sendMessage,
     minimizedThreadIds,
     markThreadRead,

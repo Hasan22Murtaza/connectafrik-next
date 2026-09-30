@@ -57,10 +57,14 @@ import {
   Smile,
   Square,
   Trash2,
+  UserMinus,
+  UserPlus,
   Video,
   X,
   XCircle,
   ChevronDown,
+  Shield,
+  ShieldOff,
 } from '@/shared/icons';
 import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -76,7 +80,12 @@ import React, {
 import { toast } from "react-hot-toast";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { useChatLock } from "@/contexts/ChatLockContext";
+import {
+  formatChatParticipantRoleLabel,
+  isChatAdminRole,
+} from "@/lib/chat/chatThreadAdmin";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
+import GroupInfoDrawer from "./GroupInfoDrawer";
 import ChatLocationPicker, {
   type ChatLocationSelection,
 } from "./ChatLocationPicker";
@@ -290,6 +299,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     getThreadById,
     getMessagesForThread,
     isMessagesLoadingForThread,
+    getThreadHasOlderMessages,
     sendMessage,
     currentUser,
     callRequests,
@@ -321,7 +331,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const pathname = usePathname();
   const { confirm, dialog } = useConfirmDialog();
 
-  const { members } = useMembers();
+  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(
+    null
+  );
+  // Members list is only needed for forward-to-contact; do not fetch on every chat render.
+  const { members } = useMembers(Boolean(forwardingMessage));
 
   const [presentUserIds, setPresentUserIds] = useState<Set<string>>(() => new Set());
   useEffect(() => {
@@ -447,6 +461,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const isMarketplaceThread = thread?.type === "marketplace";
 
+  const [headerImageFailed, setHeaderImageFailed] = useState(false);
+  const [threadMetaOverride, setThreadMetaOverride] = useState<{
+    name?: string;
+    banner_url?: string | null;
+  } | null>(null);
+  const [enrichedBanner, setEnrichedBanner] = useState<{
+    threadId: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setThreadMetaOverride(null);
+  }, [threadId]);
+
   const displayThreadName = useMemo(() => {
     if (isSelfChat) {
       return `${currentUser?.name || "You"} (Notes)`;
@@ -454,8 +482,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (isMarketplaceThread) {
       return primaryParticipant?.name || thread?.name || "TradeHub chat";
     }
-    if (isGroupThread && thread?.name) {
-      return thread.name;
+    if (isGroupThread) {
+      return (
+        threadMetaOverride?.name?.trim() ||
+        thread?.name ||
+        "Group"
+      );
     }
     return primaryParticipant?.name || thread?.name || "Chat";
   }, [
@@ -465,15 +497,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     primaryParticipant?.name,
     thread?.name,
     currentUser?.name,
+    threadMetaOverride?.name,
   ]);
 
   const marketplaceProductTitle = thread?.product_title || thread?.name || null;
-
-  const [headerImageFailed, setHeaderImageFailed] = useState(false);
-  const [enrichedBanner, setEnrichedBanner] = useState<{
-    threadId: string;
-    url: string;
-  } | null>(null);
 
   useEffect(() => {
     if (!threadId || !currentUser?.id || !thread) return;
@@ -509,6 +536,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ]);
 
   const groupBannerUrl =
+    (typeof threadMetaOverride?.banner_url === "string" &&
+      threadMetaOverride.banner_url.trim()) ||
     (typeof thread?.banner_url === "string" && thread.banner_url.trim()) ||
     (enrichedBanner?.threadId === threadId ? enrichedBanner.url : "") ||
     "";
@@ -596,7 +625,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [isGroupThread, isSelfChat, currentUser?.id, primaryParticipant?.id]);
 
   const [draft, setDraft] = useState("");
-  
+
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [webcamOpen, setWebcamOpen] = useState(false);
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
@@ -612,9 +641,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [pendingFiles, setPendingFiles] = useState<FileUploadResult[]>([]);
   const [viewOnceEnabled, setViewOnceEnabled] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
-  const [forwardingMessage, setForwardingMessage] = useState<ChatMessage | null>(
-    null
-  );
   const [forwardSearch, setForwardSearch] = useState("");
   /** WhatsApp-style: message loaded into composer for PATCH save on Send */
   const [editingMessage, setEditingMessage] = useState<ChatMessage | null>(
@@ -630,6 +656,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [participantRolesById, setParticipantRolesById] = useState<
     Record<string, string>
   >({});
+  const [groupInfoMembers, setGroupInfoMembers] = useState<
+    Array<{
+      id: string;
+      name: string;
+      avatarUrl?: string;
+      role: string;
+    }>
+  >([]);
+  const [groupInfoLoading, setGroupInfoLoading] = useState(false);
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [memberMenuId, setMemberMenuId] = useState<string | null>(null);
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(
+    null
+  );
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
@@ -650,7 +691,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const prevScrollThreadRef = useRef(threadId);
   const [historyPage, setHistoryPage] = useState(0);
   const [isLoadingOlderMessages, setIsLoadingOlderMessages] = useState(false);
-  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  // Start false so we never auto-request page=1 before page-0 hasMore is known.
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const allowOlderLoadRef = useRef(false);
+  const historyPageByThreadRef = useRef<Record<string, number>>({});
+  const hasOlderByThreadLocalRef = useRef<Record<string, boolean>>({});
   const [isSending, setIsSending] = useState(false);
   const [uploadProgressByMessage, setUploadProgressByMessage] = useState<
     Record<string, Record<string, number>>
@@ -674,11 +719,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, []);
 
   useEffect(() => {
-    setHistoryPage(0);
-    setHasOlderMessages(true);
+    const cachedPage = historyPageByThreadRef.current[threadId];
+    const cachedHasOlder = hasOlderByThreadLocalRef.current[threadId];
+    setHistoryPage(typeof cachedPage === "number" ? cachedPage : 0);
+    setHasOlderMessages(typeof cachedHasOlder === "boolean" ? cachedHasOlder : false);
     setIsLoadingOlderMessages(false);
     isPrependingHistoryRef.current = false;
     isLoadingOlderRef.current = false;
+    allowOlderLoadRef.current = false;
     setHighlightedMessageId(null);
     setShowMessageSearch(false);
     setMessageSearchDraft("");
@@ -716,6 +764,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setSelectedMessageIds([]);
   }, [threadId]);
 
+  // Sync hasMore from the initial page-0 load; never assume older pages exist.
+  useEffect(() => {
+    if (isMessagesLoading) return;
+    if (Object.prototype.hasOwnProperty.call(hasOlderByThreadLocalRef.current, threadId)) {
+      setHasOlderMessages(hasOlderByThreadLocalRef.current[threadId]);
+      return;
+    }
+    const fromContext = getThreadHasOlderMessages(threadId);
+    if (typeof fromContext === "boolean") {
+      hasOlderByThreadLocalRef.current[threadId] = fromContext;
+      setHasOlderMessages(fromContext);
+    }
+  }, [threadId, isMessagesLoading, getThreadHasOlderMessages, messages.length]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -738,14 +800,40 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!showParticipantsList || !threadId) return;
     let cancelled = false;
     void (async () => {
+      setGroupInfoLoading(true);
       try {
         const map: Record<string, string> = {};
-        const rows = await apiClient.get<
-          Array<{ user_id: string; role?: string }>
-        >(`/api/chat/threads/${threadId}/participants`);
-        for (const row of rows ?? []) {
-          if (row.user_id) map[row.user_id] = (row.role || "member").toLowerCase();
-        }
+        const res = await apiClient.get<
+          | Array<{
+              user_id: string
+              role?: string
+              name?: string
+              avatar_url?: string | null
+            }>
+          | {
+              data?: Array<{
+                user_id: string
+                role?: string
+                name?: string
+                avatar_url?: string | null
+              }>
+            }
+        >(`/api/chat/threads/${threadId}/participants`)
+        const rows = Array.isArray(res) ? res : (res?.data ?? [])
+
+        const membersFromApi = (rows ?? []).map((row) => {
+          const role = (row.role || "member").toLowerCase();
+          if (row.user_id) map[row.user_id] = role;
+          const fromThread = (thread?.participants ?? []).find(
+            (p) => p.id === row.user_id
+          );
+          return {
+            id: row.user_id,
+            name: row.name || fromThread?.name || "User",
+            avatarUrl: row.avatar_url || fromThread?.avatarUrl || undefined,
+            role,
+          };
+        });
 
         // Social groups store admin/co_admin/manager on group_memberships
         if (thread?.group_id) {
@@ -758,15 +846,55 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           }
         }
 
-        if (!cancelled) setParticipantRolesById(map);
+        const merged = (
+          membersFromApi.length > 0
+            ? membersFromApi
+            : (thread?.participants ?? []).map((p) => ({
+                id: p.id,
+                name: p.name || "User",
+                avatarUrl: p.avatarUrl,
+                role: map[p.id] || "member",
+              }))
+        ).map((m) => ({
+          ...m,
+          role: map[m.id] || m.role || "member",
+        }));
+
+        if (!cancelled) {
+          setParticipantRolesById(map);
+          setGroupInfoMembers(merged);
+        }
       } catch {
-        if (!cancelled) setParticipantRolesById({});
+        if (!cancelled) {
+          setParticipantRolesById({});
+          setGroupInfoMembers(
+            (thread?.participants ?? []).map((p) => ({
+              id: p.id,
+              name: p.name || "User",
+              avatarUrl: p.avatarUrl,
+              role: "member",
+            }))
+          );
+        }
+      } finally {
+        if (!cancelled) setGroupInfoLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [showParticipantsList, threadId, thread?.group_id]);
+  }, [showParticipantsList, threadId, thread?.group_id, thread?.participants]);
+
+  useEffect(() => {
+    if (!memberMenuId) return;
+    const close = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-group-member-menu]")) return;
+      setMemberMenuId(null);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [memberMenuId]);
 
   useEffect(() => {
     if (!threadId || !messageSearchKeyword.trim()) {
@@ -822,10 +950,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const firstBubble = scrollEl.querySelector<HTMLElement>("[id^='chat-message-']");
     historyAnchorRef.current = firstBubble
       ? {
-          id: firstBubble.id.replace(/^chat-message-/, ""),
-          top: firstBubble.getBoundingClientRect().top,
-          threadId,
-        }
+        id: firstBubble.id.replace(/^chat-message-/, ""),
+        top: firstBubble.getBoundingClientRect().top,
+        threadId,
+      }
       : null;
     isPrependingHistoryRef.current = true;
 
@@ -872,11 +1000,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         if (!olderMessages.length) {
           setHasOlderMessages(false);
+          hasOlderByThreadLocalRef.current[threadId] = false;
           unlockWithoutRestore();
           return;
         }
         if (!hasMore) {
           setHasOlderMessages(false);
+          hasOlderByThreadLocalRef.current[threadId] = false;
         }
 
         const currentMessages = getMessagesForThread(threadId);
@@ -889,6 +1019,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
         setMessagesForThread(threadId, merged);
         setHistoryPage(nextPage);
+        historyPageByThreadRef.current[threadId] = nextPage;
+        if (hasMore) {
+          hasOlderByThreadLocalRef.current[threadId] = true;
+        }
       }
     } catch (error) {
       console.error("Error loading older messages:", error);
@@ -1114,7 +1248,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       el.scrollTop = el.scrollHeight;
     };
     scrollToBottom();
-    requestAnimationFrame(scrollToBottom);
+    requestAnimationFrame(() => {
+      scrollToBottom();
+      // Allow older-page loads only after the initial stick-to-bottom settles.
+      allowOlderLoadRef.current = true;
+    });
     setShowScrollToBottom(false);
   }, [threadId, displayMessages.length]);
 
@@ -1123,7 +1261,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!el) return;
 
     const handleScroll = () => {
-      if (!isLoadingOlderRef.current && el.scrollTop <= 80) {
+      // Only load older messages when the user scrolls to the top — not on init.
+      if (
+        allowOlderLoadRef.current &&
+        !isLoadingOlderRef.current &&
+        !isPrependingHistoryRef.current &&
+        el.scrollHeight > el.clientHeight + 24 &&
+        el.scrollTop <= 80
+      ) {
         void loadOlderMessages();
       }
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -1135,40 +1280,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       el.removeEventListener("scroll", handleScroll);
     };
   }, [loadOlderMessages]);
-
-  useEffect(() => {
-    const root = messagesScrollRef.current;
-    const target = messagesTopSentinelRef.current;
-    if (!root || !target) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (isLoadingOlderRef.current || isPrependingHistoryRef.current) return;
-        if (entries.some((entry) => entry.isIntersecting)) {
-          void loadOlderMessages();
-        }
-      },
-      { root, rootMargin: "120px 0px 0px 0px", threshold: 0 }
-    );
-    observer.observe(target);
-    return () => observer.disconnect();
-  }, [loadOlderMessages, displayMessages.length]);
-
-  useEffect(() => {
-    const el = messagesScrollRef.current;
-    if (!el || isLoadingOlderMessages || displayMessages.length === 0) return;
-    const canLoad = messageSearchKeyword.trim() ? searchHasOlder : hasOlderMessages;
-    if (!canLoad) return;
-    if (el.scrollHeight <= el.clientHeight + 12) {
-      void loadOlderMessages();
-    }
-  }, [
-    displayMessages.length,
-    isLoadingOlderMessages,
-    hasOlderMessages,
-    searchHasOlder,
-    messageSearchKeyword,
-    loadOlderMessages,
-  ]);
 
   useEffect(() => {
     if (!voiceRecording) {
@@ -1435,7 +1546,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 !(
                   m.id.startsWith("optimistic:") &&
                   (m.metadata as Record<string, unknown> | undefined)?.__clientSendId ===
-                    prependSendId
+                  prependSendId
                 )
             );
             setMessagesForThread(threadId, msgs);
@@ -1460,9 +1571,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         ...(sendAsViewOnce ? { view_once: true } : {}),
         ...(prependSendId
           ? {
-              metadata: { __clientSendId: prependSendId },
-              skipContextOptimistic: true,
-            }
+            metadata: { __clientSendId: prependSendId },
+            skipContextOptimistic: true,
+          }
           : {}),
       });
 
@@ -1481,7 +1592,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             !(
               m.id.startsWith("optimistic:") &&
               (m.metadata as Record<string, unknown> | undefined)?.__clientSendId ===
-                prependSendId
+              prependSendId
             )
         );
         setMessagesForThread(threadId, msgs);
@@ -1749,27 +1860,124 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
-  const handleMessageReaction = async (messageId: string, emoji: string) => {
+  // const handleMessageReaction = async (messageId: string, emoji: string) => {
+  //   if (!currentUser) return;
+  //   try {
+  //     const data = await apiClient.post<{
+  //       action: string;
+  //       emoji: string;
+  //       reactions: { emoji: string; count: number; user_reacted: boolean }[];
+  //       totalCount: number;
+  //     }>(`/api/chat/threads/${threadId}/messages/${messageId}/reactions`, { emoji });
+  //     const msgs = getMessagesForThread(threadId);
+  //     setMessagesForThread(
+  //       threadId,
+  //       msgs.map((m) =>
+  //         m.id === messageId ? { ...m, reactions: data.reactions } : m
+  //       )
+  //     );
+  //   } catch {
+  //     toast.error("Could not update reaction");
+  //   }
+  // };
+
+  const handleMessageReaction = async (
+    messageId: string,
+    emoji: string
+  ) => {
     if (!currentUser) return;
+
+    const msgs = getMessagesForThread(threadId);
+    const message = msgs.find((m) => m.id === messageId);
+
+    if (!message) return;
+
+    // Save old state for rollback
+    const oldReactions = message.reactions ?? [];
+
+    // Optimistic update
+    const existingReaction = oldReactions.find(
+      (r) => r.emoji === emoji
+    );
+
+    let optimisticReactions;
+
+    if (existingReaction) {
+      optimisticReactions = oldReactions.map((r) =>
+        r.emoji === emoji
+          ? {
+            ...r,
+            count: r.user_reacted
+              ? r.count - 1
+              : r.count + 1,
+            user_reacted: !r.user_reacted,
+          }
+          : r
+      );
+    } else {
+      optimisticReactions = [
+        ...oldReactions,
+        {
+          emoji,
+          count: 1,
+          user_reacted: true,
+        },
+      ];
+    }
+
+    // Update UI immediately
+    setMessagesForThread(
+      threadId,
+      msgs.map((m) =>
+        m.id === messageId
+          ? { ...m, reactions: optimisticReactions }
+          : m
+      )
+    );
+
     try {
+      // Backend
       const data = await apiClient.post<{
         action: string;
         emoji: string;
-        reactions: { emoji: string; count: number; user_reacted: boolean }[];
+        reactions: {
+          emoji: string;
+          count: number;
+          user_reacted: boolean;
+        }[];
         totalCount: number;
-      }>(`/api/chat/threads/${threadId}/messages/${messageId}/reactions`, { emoji });
-      const msgs = getMessagesForThread(threadId);
+      }>(
+        `/api/chat/threads/${threadId}/messages/${messageId}/reactions`,
+        { emoji }
+      );
+
+      // Use server state as final truth
+      const latestMsgs = getMessagesForThread(threadId);
+
       setMessagesForThread(
         threadId,
-        msgs.map((m) =>
-          m.id === messageId ? { ...m, reactions: data.reactions } : m
+        latestMsgs.map((m) =>
+          m.id === messageId
+            ? { ...m, reactions: data.reactions }
+            : m
         )
       );
     } catch {
+      // Rollback if API fails
+      const latestMsgs = getMessagesForThread(threadId);
+
+      setMessagesForThread(
+        threadId,
+        latestMsgs.map((m) =>
+          m.id === messageId
+            ? { ...m, reactions: oldReactions }
+            : m
+        )
+      );
+
       toast.error("Could not update reaction");
     }
   };
-
   const openMessageInfo = useCallback(
     async (message: ChatMessage) => {
       setInfoMessage(message);
@@ -1853,7 +2061,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     const confirmed = await confirm({
       title: "Lock chat",
       message:
-      "This conversation will move to Locked Chats. All locked chats use the same PIN.",
+        "This conversation will move to Locked Chats. All locked chats use the same PIN.",
       confirmLabel: "Lock",
       variant: "primary",
     });
@@ -2048,9 +2256,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               })),
               ...(prependSendId
                 ? {
-                    metadata: { __clientSendId: prependSendId },
-                    skipContextOptimistic: true,
-                  }
+                  metadata: { __clientSendId: prependSendId },
+                  skipContextOptimistic: true,
+                }
                 : {}),
             });
             fileUploadService.revokePreviews(results);
@@ -2065,7 +2273,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   !(
                     m.id.startsWith("optimistic:") &&
                     (m.metadata as Record<string, unknown> | undefined)?.__clientSendId ===
-                      prependSendId
+                    prependSendId
                   )
               );
               setMessagesForThread(threadId, msgs);
@@ -2181,16 +2389,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     setEmojiPickerOpen(false);
   }, [pendingFiles]);
 
-  const replacePendingFile = useCallback((index: number, next: FileUploadResult) => {
-    setPendingFiles((prev) => {
-      const current = prev[index];
-      if (current && current !== next) {
-        fileUploadService.revokePreviews([current]);
-      }
-      return prev.map((file, i) => (i === index ? next : file));
-    });
-  }, []);
-
   useEffect(() => {
     if (viewOnceEnabled && !canEnableViewOnce(pendingFiles)) {
       setViewOnceEnabled(false);
@@ -2287,6 +2485,141 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     confirm,
   ]);
 
+  const isCurrentUserGroupAdmin = useMemo(() => {
+    if (!currentUser?.id) return false;
+    const fromList = groupInfoMembers.find((m) =>
+      chatUserIdsEqual(m.id, currentUser.id)
+    )?.role;
+    const role =
+      participantRolesById[currentUser.id] ||
+      fromList ||
+      "";
+    if (isChatAdminRole(role)) return true;
+    const r = role.toLowerCase();
+    return r === "manager";
+  }, [currentUser?.id, participantRolesById, groupInfoMembers]);
+
+  const handleRemoveGroupMember = useCallback(
+    async (member: { id: string; name: string }) => {
+      if (!isCurrentUserGroupAdmin || removingMemberId) return;
+      if (member.id === currentUser?.id) return;
+      const confirmed = await confirm({
+        title: "Remove member",
+        message: `Remove ${member.name} from this group?`,
+        confirmLabel: "Remove",
+      });
+      if (!confirmed) return;
+      setMemberMenuId(null);
+      setRemovingMemberId(member.id);
+      try {
+        await apiClient.post(
+          `/api/chat/threads/${threadId}/participants/remove`,
+          { user_id: member.id }
+        );
+        setGroupInfoMembers((prev) => prev.filter((m) => m.id !== member.id));
+        setParticipantRolesById((prev) => {
+          const next = { ...prev };
+          delete next[member.id];
+          return next;
+        });
+        toast.success(`${member.name} removed`);
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to remove member");
+      } finally {
+        setRemovingMemberId(null);
+      }
+    },
+    [
+      isCurrentUserGroupAdmin,
+      removingMemberId,
+      currentUser?.id,
+      confirm,
+      threadId,
+    ]
+  );
+
+  const handleChangeMemberRole = useCallback(
+    async (
+      member: { id: string; name: string; role: string },
+      nextRole: "admin" | "member"
+    ) => {
+      if (!isCurrentUserGroupAdmin || updatingRoleUserId) return;
+      const makingAdmin = nextRole === "admin";
+      const confirmed = await confirm({
+        title: makingAdmin ? "Make admin" : "Dismiss as admin",
+        message: makingAdmin
+          ? `Make ${member.name} a group admin? They will be able to add, remove, and manage members.`
+          : `Dismiss ${member.name} as admin? They will become a regular member.`,
+        confirmLabel: makingAdmin ? "Make admin" : "Dismiss",
+      });
+      if (!confirmed) return;
+      setMemberMenuId(null);
+      setUpdatingRoleUserId(member.id);
+      try {
+        await apiClient.post(
+          `/api/chat/threads/${threadId}/participants/role`,
+          { user_id: member.id, role: nextRole }
+        );
+        setGroupInfoMembers((prev) =>
+          prev.map((m) =>
+            m.id === member.id ? { ...m, role: nextRole } : m
+          )
+        );
+        setParticipantRolesById((prev) => ({
+          ...prev,
+          [member.id]: nextRole,
+        }));
+        toast.success(
+          makingAdmin
+            ? `${member.name} is now an admin`
+            : `${member.name} is no longer an admin`
+        );
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to update role");
+      } finally {
+        setUpdatingRoleUserId(null);
+      }
+    },
+    [isCurrentUserGroupAdmin, updatingRoleUserId, confirm, threadId]
+  );
+
+  const handleMembersAdded = useCallback(async () => {
+    try {
+      const res = await apiClient.get<
+        | Array<{
+            user_id: string;
+            role?: string;
+            name?: string;
+            avatar_url?: string | null;
+          }>
+        | {
+            data?: Array<{
+              user_id: string;
+              role?: string;
+              name?: string;
+              avatar_url?: string | null;
+            }>;
+          }
+      >(`/api/chat/threads/${threadId}/participants`);
+      const rows = Array.isArray(res) ? res : (res?.data ?? []);
+      const map: Record<string, string> = {};
+      const members = (rows ?? []).map((row) => {
+        const role = (row.role || "member").toLowerCase();
+        if (row.user_id) map[row.user_id] = role;
+        return {
+          id: row.user_id,
+          name: row.name || "User",
+          avatarUrl: row.avatar_url || undefined,
+          role,
+        };
+      });
+      setParticipantRolesById(map);
+      setGroupInfoMembers(members);
+    } catch {
+      /* list will refresh next open */
+    }
+  }, [threadId]);
+
   const handleDeleteChatFromMenu = useCallback(async () => {
     if (!currentUser) return;
     const confirmed = await confirm({
@@ -2335,33 +2668,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     const primary: ChatHeaderOptionsMenuItem[] = [
       {
-        id: "contact",
-        label: isGroupThread ? "Group info" : "Contact info",
-        Icon: Info,
-        onClick: () => {
-          setShowOptionsMenu(false);
-          if (isGroupThread) {
-            setShowParticipantsList(true);
-            return;
-          }
-          handleOpenThreadDetailPage();
-        },
-      },
-      {
-        id: "search",
-        label: "Search",
-        Icon: Search,
-        onClick: () => openMessageSearchFromMenu(),
-      },
-
-
-      {
-        id: "pin",
-        label: thread?.pinned ? "Unpin chat" : "Pin chat",
-        Icon: thread?.pinned ? PinOff : Pin,
-        onClick: () => void handlePinToggle(),
-      },
-      {
         id: "lock",
         label: thread?.is_locked ? "Unlock chat" : "Lock chat",
         Icon: thread?.is_locked ? Unlock : Lock,
@@ -2369,29 +2675,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       },
       ...(thread?.is_locked
         ? [
-            {
-              id: "change-pin",
-              label: "Change PIN",
-              Icon: Lock,
-              onClick: () => {
-                setShowOptionsMenu(false);
-                void changePin(threadId, thread.name || undefined).then((ok) => {
-                  if (ok) toast.success("Chat lock PIN updated");
-                });
-              },
-            } satisfies ChatHeaderOptionsMenuItem,
-          ]
+          {
+            id: "change-pin",
+            label: "Change PIN",
+            Icon: Lock,
+            onClick: () => {
+              setShowOptionsMenu(false);
+              void changePin(threadId, thread.name || undefined).then((ok) => {
+                if (ok) toast.success("Chat lock PIN updated");
+              });
+            },
+          } satisfies ChatHeaderOptionsMenuItem,
+        ]
         : []),
-      ...(canBlockContact
-        ? [
-            {
-              id: "block",
-              label: thread?.is_block ? "Unblock contact" : "Block contact",
-              Icon: Ban,
-              onClick: () => void handleBlockToggle(),
-            } satisfies ChatHeaderOptionsMenuItem,
-          ]
-        : []),
+      
 
       {
         id: "close",
@@ -2410,6 +2707,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         disabled: visibleMessages.length === 0,
         onClick: () => void handleClearAllMessages(),
       },
+      ...(canBlockContact
+        ? [
+          {
+            id: "block",
+            label: thread?.is_block ? "Unblock contact" : "Block contact",
+            Icon: Ban,
+            tone: "danger",
+
+            onClick: () => void handleBlockToggle(),
+          } satisfies ChatHeaderOptionsMenuItem,
+        ]
+        : []),
       {
         id: "delete",
         label: "Delete chat",
@@ -2449,16 +2758,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   if (chatLocked) {
     return (
       <div
-        className={`pointer-events-auto relative flex max-w-full flex-col bg-white dark:bg-surface ${
-          isPageVariant
+        className={`pointer-events-auto relative flex max-w-full flex-col bg-white dark:bg-surface ${isPageVariant
             ? "h-full w-full"
             : "w-72 rounded-2xl sm:w-80 sm:max-w-full shadow-[0_8px_28px_rgba(11,20,26,0.14)]"
-        }`}
+          }`}
       >
         <div
-          className={`flex items-center gap-2 border-b border-[#e9edef] bg-[#f0f2f5] px-2 py-1.5 sm:px-3 dark:border-border dark:bg-surface ${
-            isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
-          }`}
+          className={`flex items-center gap-2 border-b border-[#e9edef] bg-[#f0f2f5] px-2 py-1.5 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+            }`}
         >
           {isPageVariant ? (
             <button
@@ -2507,13 +2814,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`pointer-events-auto relative flex max-w-full flex-col bg-white dark:bg-surface ${
+      className={`pointer-events-auto relative flex max-w-full ${
+        isPageVariant ? "h-full w-full flex-row" : "flex-col"
+      } ${
         attachmentMenuOpen ? "overflow-visible" : "overflow-hidden"
-      } ${isPageVariant
-          ? "h-full w-full"
-          : "w-72 rounded-2xl sm:w-80 sm:max-w-full shadow-[0_8px_28px_rgba(11,20,26,0.14)]"
-        }`}
+      } ${
+        isPageVariant
+          ? ""
+          : "w-72 rounded-2xl bg-white sm:w-80 sm:max-w-full shadow-[0_8px_28px_rgba(11,20,26,0.14)] dark:bg-surface"
+      }`}
     >
+      <div
+        className={`relative flex min-w-0 flex-1 flex-col bg-white dark:bg-surface ${
+          attachmentMenuOpen ? "overflow-visible" : "overflow-hidden"
+        } ${isPageVariant ? "h-full" : ""}`}
+      >
       <div
         className={`flex items-center justify-between gap-1 border-b border-[#e9edef] px-2 py-3 sm:gap-2 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
@@ -2532,9 +2847,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 {headerInitial}
               </div>
             )}
-            {!isGroupThread && directSubtitle === "Online" ? (
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-surface bg-green-500" aria-hidden />
-            ) : null}
           </div>
           <div
             className="min-w-0 cursor-pointer"
@@ -2587,9 +2899,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   setShowParticipantsList(true);
                 }
               }}
-              className={`block w-full truncate text-left text-xs text-content-secondary hover:text-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500 ${
-                isGroupThread ? "cursor-pointer hover:underline" : ""
-              }`}
+              className={`block w-full truncate text-left text-xs text-content-secondary hover:text-content focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary-500 ${isGroupThread ? "cursor-pointer hover:underline" : ""
+                }`}
             >
               {isSelfChat
                 ? "Save messages to yourself"
@@ -2602,11 +2913,44 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
-         
-            <button
+
+          <div className="relative sm:flex w-full items-center hidden">
+            <Search
+              className="pointer-events-none absolute left-3 h-4 w-4 text-content-tertiary"
+            />
+
+            <input
+              type="search"
+              value={messageSearchDraft}
+              onChange={(e) => setMessageSearchDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyMessageSearch();
+                }
+              }}
+              placeholder="Search messages..."
+              autoFocus
+              className="
+                h-9 w-full rounded-lg
+                border border-border
+                bg-surface
+                pl-9 pr-3
+                text-sm text-content
+                placeholder:text-content-tertiary
+                outline-none
+                transition
+                focus:border-primary
+                focus:ring-2 focus:ring-primary/10
+              "
+              aria-label="Search messages in this chat"
+            />
+          </div>
+          {/* this icon use on mobile */}
+          <button
             type="button"
             onClick={openMessageSearchFromMenu}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white dark:text-content-secondary dark:hover:bg-surface-hover"
+            className="sm:hidden flex h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white dark:text-content-secondary dark:hover:bg-surface-hover"
             aria-label="Search messages"
           >
             <Search className="h-5 w-5" />
@@ -2616,7 +2960,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               type="button"
               onClick={() => void handleJoinCall()}
               disabled={messagingBlocked}
-              className="mr-1 flex max-w-[5.5rem] items-center gap-1 rounded-full bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-none sm:gap-1.5 sm:px-3"
+              className="mr-1 flex  flex-shrink-0 items-center gap-1 rounded-full bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40 sm:max-w-none sm:gap-1.5 sm:px-3"
             >
               <Phone className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Join</span>
@@ -2628,24 +2972,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type="button"
                 onClick={() => handleStartCall("video")}
                 disabled={messagingBlocked}
-                className="hidden h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40 min-[380px]:flex dark:text-content-secondary dark:hover:bg-surface-hover"
+                className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover"
                 aria-label="Video call"
               >
-                <Video className="h-5 w-5" />
+                <Video className="h-5.1 w-5.1" />
               </button>
               <button
                 type="button"
                 onClick={() => handleStartCall("audio")}
                 disabled={messagingBlocked}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover"
+                className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover"
                 aria-label="Voice call"
               >
                 <Phone className="h-5 w-5" />
               </button>
             </>
           )}
-        
-         <ChatTranslationMenu
+
+          <ChatTranslationMenu
             value={receiveLanguage}
             onChange={(language) => void setReceiveLanguage(language)}
           />
@@ -2657,7 +3001,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 event.stopPropagation();
                 setShowOptionsMenu((open) => !open);
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] hover:text-[#111b21] dark:text-content-tertiary dark:hover:bg-surface-hover"
+              className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover"
               aria-expanded={showOptionsMenu}
               aria-haspopup="menu"
               aria-label="More options"
@@ -2694,7 +3038,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         disabled
                           ? `${baseRow} cursor-not-allowed text-content-tertiary opacity-60`
                           : tone === "danger"
-                            ? `${baseRow} text-red-600 hover:bg-surface-hover`
+                            ? `${baseRow} text-red-600 hover:bg-red-100 dark:hover:bg-red-900`
                             : `${baseRow} text-content hover:bg-surface-hover`;
                       return (
                         <button
@@ -2724,14 +3068,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
 
       {showMessageSearch && (
-        <div className="flex items-center gap-1 border-b border-[#e9edef] bg-[#f0f2f5] px-1.5 py-1.5 dark:border-border dark:bg-surface">
+        <div className="flex items-center gap-1 border-b border-[#e9edef] bg-[#f0f2f5] px-1.5 py-1.5 dark:border-border dark:bg-surface sm:hidden ">
           <button
             type="button"
             onClick={closeMessageSearch}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content hover:bg-surface-hover"
             aria-label="Close search"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </button>
           <input
             type="search"
@@ -2770,11 +3114,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {mediaComposerOpen ? (
         <div
-          className={`flex min-h-0 flex-col ${
-            isPageVariant
+          className={`flex min-h-0 flex-col ${isPageVariant
               ? "min-h-0 flex-1 overflow-hidden"
               : "h-[318px] overflow-hidden rounded-bl-2xl rounded-br-2xl sm:h-[358px]"
-          }`}
+            }`}
         >
           <ChatMediaComposer
             files={pendingFiles}
@@ -2783,7 +3126,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             onTyping={handleTyping}
             onClose={discardPendingMedia}
             onRemove={removePendingFile}
-            onReplaceFile={replacePendingFile}
             onAddFiles={handleFilesSelected}
             onSend={() => void handleSend()}
             viewOnceAvailable={canEnableViewOnce(pendingFiles)}
@@ -2797,176 +3139,175 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       ) : null}
 
       <div className={`relative bg-white ${mediaComposerOpen ? "hidden" : ""} ${isPageVariant ? "flex min-h-0 flex-1 flex-col" : ""}`}>
-      <div
-        ref={messagesScrollRef}
-        className={`chat-messages-pane flex flex-col space-y-1 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${
-          typingUserIds.length > 0 ? "pb-12" : ""
-        }`}
-      >
-        <div ref={messagesTopSentinelRef} className="h-1 w-full shrink-0" aria-hidden />
-        {!isMessagesLoading && isLoadingOlderMessages && (
-          <div className="flex justify-center py-2">
-            <Loader2 className="h-5 w-5 animate-spin text-[#F97316]" aria-label="Loading older messages" />
-          </div>
-        )}
-        {searchLoading && messageSearchKeyword.trim() ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16">
-            <div className="h-10 w-10 animate-pulse rounded-full bg-surface-secondary" />
-            <div className="h-3 w-40 animate-pulse rounded-full bg-surface-secondary" />
-            <p className="text-sm text-content-secondary">Searching messages…</p>
-          </div>
-        ) : isMessagesLoading && displayMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-16">
-            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-            <p className="text-sm text-content-secondary">Loading messages…</p>
-          </div>
-        ) : displayMessages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center animate-[chatFadeIn_220ms_ease-out]">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface/90 text-2xl shadow-sm ring-1 ring-border-subtle">
-              💬
-            </div>
-            <p className="text-sm font-medium text-content">
-              {messageSearchKeyword.trim()
-                ? `No messages match "${messageSearchKeyword.trim()}"`
-                : "No messages yet"}
-            </p>
-            <p className="max-w-[220px] text-xs text-content-secondary">
-              {messageSearchKeyword.trim()
-                ? "Try a different keyword."
-                : "Say hello — send a message to start the conversation."}
-            </p>
-          </div>
-        ) : (
-          displayMessages.map((message: ChatMessage, index: number) => {
-            const isOwn = chatUserIdsEqual(
-              getChatMessageAuthorId(message),
-              currentUser?.id
-            );
-            const prev = displayMessages[index - 1];
-            const showDateDivider =
-              !prev ||
-              !isSameDay(
-                new Date(prev.created_at),
-                new Date(message.created_at)
-              );
-            const next = displayMessages[index + 1];
-            const showSenderHeader =
-              isGroupThread &&
-              !isOwn &&
-              (!prev ||
-                showDateDivider ||
-                !chatUserIdsEqual(
-                  getChatMessageAuthorId(prev),
-                  getChatMessageAuthorId(message)
-                ));
-            // const sameSenderPrev =
-            //   Boolean(prev) &&
-            //   !showDateDivider &&
-            //   chatUserIdsEqual(
-            //     getChatMessageAuthorId(prev),
-            //     getChatMessageAuthorId(message)
-            //   );
-            const sameSenderNext =
-              Boolean(next) &&
-              isSameDay(new Date(next.created_at), new Date(message.created_at)) &&
-              chatUserIdsEqual(
-                getChatMessageAuthorId(next),
-                getChatMessageAuthorId(message)
-              );
-
-            return (
-              <Fragment key={message.id}>
-                {showDateDivider ? (
-                  <ChatDateDivider dateIso={message.created_at} />
-                ) : null}
-                {index === unreadDividerBeforeIndex ? <ChatUnreadDivider /> : null}
-                <MessageBubble
-                  message={message}
-                  threadId={threadId}
-                  isOwnMessage={isOwn}
-                  currentUserId={currentUser?.id || ""}
-                  currentUserAvatarUrl={currentUser?.avatarUrl || undefined}
-                  threadParticipants={
-                    thread?.participants?.map((p: ChatParticipant) => p.id) || []
-                  }
-                  participantPresence={participantPresenceById}
-                  showSenderHeader={showSenderHeader}
-                  // showTail={!sameSenderPrev}
-                  isClusterEnd={!sameSenderNext}
-                  onReply={handleReply}
-                  onReplyPrivately={
-                    isGroupThread
-                      ? (msg) => void openDirectChatWithSender(msg, true)
-                      : undefined
-                  }
-                  onMessageSender={
-                    isGroupThread
-                      ? (msg) => void openDirectChatWithSender(msg, false)
-                      : undefined
-                  }
-                  onForward={openForwardPicker}
-                  onDelete={handleDelete}
-                  onBeginEdit={beginComposerEdit}
-                  composerEditingMessageId={editingMessage?.id ?? null}
-                  onReact={handleMessageReaction}
-                  onShowInfo={(msg) => void openMessageInfo(msg)}
-                  selectionMode={selectionMode}
-                  isMessageSelected={selectedMessageIds.includes(message.id)}
-                  onEnterSelection={(msg) => {
-                    setSelectionMode(true);
-                    setSelectedMessageIds([msg.id]);
-                  }}
-                  onToggleSelect={(msg) => {
-                    setSelectedMessageIds((prev) =>
-                      prev.includes(msg.id)
-                        ? prev.filter((id) => id !== msg.id)
-                        : [...prev, msg.id]
-                    );
-                  }}
-                  onScrollToMessage={(messageId) => void scrollToMessage(messageId)}
-                  repliedToMessage={
-                    message.reply_to_id ? messagesById.get(message.reply_to_id) ?? null : null
-                  }
-                  highlighted={highlightedMessageId === message.id}
-                  translationDisplay={getDisplayContent(message, isOwn)}
-                  isTranslating={isTranslating(message.id)}
-                  activeTranslationLanguage={getMessageLanguage(message.id, isOwn)}
-                  showOriginalOverride={overrides[message.id]?.showOriginal ?? false}
-                  defaultTranslateLanguage={defaultOneClickLanguage}
-                  onTranslateMessage={(language) =>
-                    void translateOneMessage(message.id, language)
-                  }
-                  onToggleShowOriginal={() =>
-                    showOriginalForMessage(message.id, isOwn)
-                  }
-                  isUploading={Boolean(uploadProgressByMessage[message.id])}
-                  uploadProgressById={uploadProgressByMessage[message.id]}
-                  onCancelUpload={
-                    uploadProgressByMessage[message.id]
-                      ? () => cancelMessageUpload(message.id)
-                      : undefined
-                  }
-                />
-              </Fragment>
-            );
-          })
-        )}
-        <div aria-hidden="true" />
-      </div>
-
-      {showScrollToBottom ? (
-        <button
-          type="button"
-          onClick={scrollMessagesToBottom}
-          className="absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_2px_8px_rgba(11,20,26,0.18)] ring-1 ring-[#e9edef] transition hover:bg-[#f0f2f5] hover:text-[#111b21] animate-[chatFadeIn_160ms_ease-out] dark:bg-surface dark:text-content-secondary dark:ring-border"
-          aria-label="Scroll to bottom"
+        <div
+          ref={messagesScrollRef}
+          className={`chat-messages-pane flex flex-col space-y-1 overflow-y-auto overflow-x-hidden bg-white px-2 py-2 sm:px-4 sm:py-3 ${isPageVariant ? "min-h-0 flex-1" : "h-[250px] sm:h-[290px]"} ${typingUserIds.length > 0 ? "pb-12" : ""
+            }`}
         >
-          <ChevronDown className="h-5 w-5" />
-        </button>
-      ) : null}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-10 z-10">
-        <TypingIndicator isTyping={typingUserIds.length > 0} />
-      </div>
+          <div ref={messagesTopSentinelRef} className="h-1 w-full shrink-0" aria-hidden />
+          {!isMessagesLoading && isLoadingOlderMessages && (
+            <div className="flex justify-center py-2">
+              <Loader2 className="h-5 w-5 animate-spin text-[#F97316]" aria-label="Loading older messages" />
+            </div>
+          )}
+          {searchLoading && messageSearchKeyword.trim() ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <div className="h-10 w-10 animate-pulse rounded-full bg-surface-secondary" />
+              <div className="h-3 w-40 animate-pulse rounded-full bg-surface-secondary" />
+              <p className="text-sm text-content-secondary">Searching messages…</p>
+            </div>
+          ) : isMessagesLoading && displayMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+              <p className="text-sm text-content-secondary">Loading messages…</p>
+            </div>
+          ) : displayMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center animate-[chatFadeIn_220ms_ease-out]">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-surface/90 text-2xl shadow-sm ring-1 ring-border-subtle">
+                💬
+              </div>
+              <p className="text-sm font-medium text-content">
+                {messageSearchKeyword.trim()
+                  ? `No messages match "${messageSearchKeyword.trim()}"`
+                  : "No messages yet"}
+              </p>
+              <p className="max-w-[220px] text-xs text-content-secondary">
+                {messageSearchKeyword.trim()
+                  ? "Try a different keyword."
+                  : "Say hello — send a message to start the conversation."}
+              </p>
+            </div>
+          ) : (
+            displayMessages.map((message: ChatMessage, index: number) => {
+              const isOwn = chatUserIdsEqual(
+                getChatMessageAuthorId(message),
+                currentUser?.id
+              );
+              const prev = displayMessages[index - 1];
+              const showDateDivider =
+                !prev ||
+                !isSameDay(
+                  new Date(prev.created_at),
+                  new Date(message.created_at)
+                );
+              const next = displayMessages[index + 1];
+              const showSenderHeader =
+                isGroupThread &&
+                !isOwn &&
+                (!prev ||
+                  showDateDivider ||
+                  !chatUserIdsEqual(
+                    getChatMessageAuthorId(prev),
+                    getChatMessageAuthorId(message)
+                  ));
+              // const sameSenderPrev =
+              //   Boolean(prev) &&
+              //   !showDateDivider &&
+              //   chatUserIdsEqual(
+              //     getChatMessageAuthorId(prev),
+              //     getChatMessageAuthorId(message)
+              //   );
+              const sameSenderNext =
+                Boolean(next) &&
+                isSameDay(new Date(next.created_at), new Date(message.created_at)) &&
+                chatUserIdsEqual(
+                  getChatMessageAuthorId(next),
+                  getChatMessageAuthorId(message)
+                );
+
+              return (
+                <Fragment key={message.id}>
+                  {showDateDivider ? (
+                    <ChatDateDivider dateIso={message.created_at} />
+                  ) : null}
+                  {index === unreadDividerBeforeIndex ? <ChatUnreadDivider /> : null}
+                  <MessageBubble
+                    message={message}
+                    threadId={threadId}
+                    isOwnMessage={isOwn}
+                    currentUserId={currentUser?.id || ""}
+                    currentUserAvatarUrl={currentUser?.avatarUrl || undefined}
+                    threadParticipants={
+                      thread?.participants?.map((p: ChatParticipant) => p.id) || []
+                    }
+                    participantPresence={participantPresenceById}
+                    showSenderHeader={showSenderHeader}
+                    // showTail={!sameSenderPrev}
+                    isClusterEnd={!sameSenderNext}
+                    onReply={handleReply}
+                    onReplyPrivately={
+                      isGroupThread
+                        ? (msg) => void openDirectChatWithSender(msg, true)
+                        : undefined
+                    }
+                    onMessageSender={
+                      isGroupThread
+                        ? (msg) => void openDirectChatWithSender(msg, false)
+                        : undefined
+                    }
+                    onForward={openForwardPicker}
+                    onDelete={handleDelete}
+                    onBeginEdit={beginComposerEdit}
+                    composerEditingMessageId={editingMessage?.id ?? null}
+                    onReact={handleMessageReaction}
+                    onShowInfo={(msg) => void openMessageInfo(msg)}
+                    selectionMode={selectionMode}
+                    isMessageSelected={selectedMessageIds.includes(message.id)}
+                    onEnterSelection={(msg) => {
+                      setSelectionMode(true);
+                      setSelectedMessageIds([msg.id]);
+                    }}
+                    onToggleSelect={(msg) => {
+                      setSelectedMessageIds((prev) =>
+                        prev.includes(msg.id)
+                          ? prev.filter((id) => id !== msg.id)
+                          : [...prev, msg.id]
+                      );
+                    }}
+                    onScrollToMessage={(messageId) => void scrollToMessage(messageId)}
+                    repliedToMessage={
+                      message.reply_to_id ? messagesById.get(message.reply_to_id) ?? null : null
+                    }
+                    highlighted={highlightedMessageId === message.id}
+                    translationDisplay={getDisplayContent(message, isOwn)}
+                    isTranslating={isTranslating(message.id)}
+                    activeTranslationLanguage={getMessageLanguage(message.id, isOwn)}
+                    showOriginalOverride={overrides[message.id]?.showOriginal ?? false}
+                    defaultTranslateLanguage={defaultOneClickLanguage}
+                    onTranslateMessage={(language) =>
+                      void translateOneMessage(message.id, language)
+                    }
+                    onToggleShowOriginal={() =>
+                      showOriginalForMessage(message.id, isOwn)
+                    }
+                    isUploading={Boolean(uploadProgressByMessage[message.id])}
+                    uploadProgressById={uploadProgressByMessage[message.id]}
+                    onCancelUpload={
+                      uploadProgressByMessage[message.id]
+                        ? () => cancelMessageUpload(message.id)
+                        : undefined
+                    }
+                  />
+                </Fragment>
+              );
+            })
+          )}
+          <div aria-hidden="true" />
+        </div>
+
+        {showScrollToBottom ? (
+          <button
+            type="button"
+            onClick={scrollMessagesToBottom}
+            className="absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_2px_8px_rgba(11,20,26,0.18)] ring-1 ring-[#e9edef] transition hover:bg-[#f0f2f5] hover:text-[#111b21] animate-[chatFadeIn_160ms_ease-out] dark:bg-surface dark:text-content-secondary dark:ring-border"
+            aria-label="Scroll to bottom"
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+        ) : null}
+        <div className="pointer-events-none absolute bottom-0 left-0 right-10 z-10">
+          <TypingIndicator isTyping={typingUserIds.length > 0} />
+        </div>
       </div>
 
       {messagingBlocked && !mediaComposerOpen ? (
@@ -3102,7 +3443,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : null}
 
-          {voiceRecording && (
+        {voiceRecording && (
           <div className="mb-2 flex items-center gap-2 rounded-xl bg-surface-secondary px-2.5 py-2 animate-[chatFadeIn_160ms_ease-out] sm:gap-3 sm:px-3 sm:py-2.5">
             <span className="inline-block h-2.5 w-2.5 shrink-0 animate-[chatRecPulse_1s_ease-in-out_infinite] rounded-full bg-red-500" />
             <div className="flex min-w-0 flex-1 items-center gap-2 text-content-secondary">
@@ -3161,9 +3502,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     setAttachmentMenuOpen((o) => !o);
                   }}
                   disabled={!!editingMessage}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] disabled:pointer-events-none disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover ${
-                    attachmentMenuOpen ? "text-[#F97316]" : ""
-                  }`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] disabled:pointer-events-none disabled:opacity-40 dark:text-content-secondary dark:hover:bg-surface-hover ${attachmentMenuOpen ? "text-[#F97316]" : ""
+                    }`}
                   aria-label="Attach"
                   aria-expanded={attachmentMenuOpen}
                   title={
@@ -3180,9 +3520,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     setAttachmentMenuOpen(false);
                     setEmojiPickerOpen((open) => !open);
                   }}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] dark:text-content-secondary dark:hover:bg-surface-hover ${
-                    emojiPickerOpen ? "text-[#F97316]" : ""
-                  }`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-[#54656f] transition hover:bg-[#f0f2f5] dark:text-content-secondary dark:hover:bg-surface-hover ${emojiPickerOpen ? "text-[#F97316]" : ""
+                    }`}
                   aria-label="Emoji"
                   aria-expanded={emojiPickerOpen}
                 >
@@ -3216,11 +3555,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type="button"
                 onClick={toggleVoiceRecording}
                 disabled={isSending || !!editingMessage}
-                className={`absolute inset-0 flex items-center justify-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 animate-[chatFadeIn_140ms_ease-out] ${
-                  voiceRecording
+                className={`absolute inset-0 flex items-center justify-center rounded-full transition active:scale-95 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-40 animate-[chatFadeIn_140ms_ease-out] ${voiceRecording
                     ? "bg-red-500 text-white hover:bg-red-600"
                     : "bg-transparent text-[#111b21] hover:bg-[#f0f2f5] dark:text-content dark:hover:bg-surface-hover"
-                }`}
+                  }`}
                 aria-label={voiceRecording ? "Stop recording" : "Voice message"}
                 title={
                   editingMessage
@@ -3259,114 +3597,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         onClose={() => setShowMediaGallery(false)}
         isGroupChat={isGroupThread}
       />
-
-      {showParticipantsList ? (
-        <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Group info"
-          onClick={() => setShowParticipantsList(false)}
-        >
-          <div
-            className="flex max-h-[min(90vh,520px)] w-full max-w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_rgba(11,20,26,0.22)] dark:bg-surface"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 py-4">
-              <div className="min-w-0">
-                <h2 className="text-base font-semibold text-content">Group info</h2>
-                <p className="mt-0.5 text-sm text-content-secondary">
-                  {thread?.participants?.length ?? 0}{" "}
-                  {(thread?.participants?.length ?? 0) === 1
-                    ? "member"
-                    : "members"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowParticipantsList(false)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content transition hover:bg-surface-hover"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <ul className="space-y-3.5">
-                {[...(thread?.participants ?? [])]
-                  .sort((a, b) => {
-                    const aAdmin =
-                      (participantRolesById[a.id] || "") === "admin" ? 0 : 1;
-                    const bAdmin =
-                      (participantRolesById[b.id] || "") === "admin" ? 0 : 1;
-                    if (aAdmin !== bAdmin) return aAdmin - bAdmin;
-                    return (a.name || "").localeCompare(b.name || "");
-                  })
-                  .map((p: ChatParticipant) => {
-                    const isYou = p.id === currentUser?.id;
-                    const role = participantRolesById[p.id] || "";
-                    const isAdmin = role === "admin";
-                    const label = p.name || "User";
-
-                    return (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowParticipantsList(false);
-                            router.push(`/user/${encodeURIComponent(p.id)}`);
-                          }}
-                          className="flex w-full items-center gap-3 text-left transition hover:opacity-80"
-                        >
-                          <div className="relative h-10 w-10 shrink-0">
-                            {p.avatarUrl ? (
-                              <img
-                                src={p.avatarUrl}
-                                alt=""
-                                className="h-10 w-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600">
-                                {label.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex min-w-0 flex-1 items-center gap-2">
-                            <span className="truncate text-sm font-medium text-content">
-                              {isYou ? `${label} (you)` : label}
-                            </span>
-                            {isAdmin ? (
-                              <span className="shrink-0 rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-medium text-orange-600">
-                                Admin
-                              </span>
-                            ) : null}
-                          </div>
-                        </button>
-                      </li>
-                    );
-                  })}
-              </ul>
-            </div>
-
-            <div className="shrink-0 border-t border-border px-5 py-4">
-              <button
-                type="button"
-                onClick={() => void handleLeaveGroup()}
-                disabled={leavingGroup}
-                className="flex items-center gap-2 text-sm font-medium text-red-600 transition hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {leavingGroup ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <LogOut className="h-4 w-4" />
-                )}
-                Leave group
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {infoMessage ? (
         <div
@@ -3429,9 +3659,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                       <div className="mb-2 flex justify-end">
                         <div
-                          className={`max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-emerald-500 text-sm text-white ${
-                            hasMedia ? "p-1.5" : "px-3 py-2"
-                          }`}
+                          className={`max-w-[min(100%,320px)] overflow-hidden rounded-xl rounded-br-sm bg-emerald-500 text-sm text-white ${hasMedia ? "p-1.5" : "px-3 py-2"
+                            }`}
                         >
                           {hasMedia ? (
                             <MessageAttachments
@@ -3456,9 +3685,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                             <span>Media message</span>
                           ) : null}
                           <div
-                            className={`mt-1 text-right text-[11px] text-emerald-100 ${
-                              hasMedia ? "px-1.5" : ""
-                            }`}
+                            className={`mt-1 text-right text-[11px] text-emerald-100 ${hasMedia ? "px-1.5" : ""
+                              }`}
                           >
                             {formatMessageInfoTimeLabel(
                               messageInfo?.sent_at || messageInfo?.created_at
@@ -3724,6 +3952,36 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
       ) : null}
+      </div>
+
+      {isGroupThread ? (
+        <GroupInfoDrawer
+          open={showParticipantsList}
+          threadId={threadId}
+          threadName={displayThreadName}
+          bannerUrl={groupBannerUrl || null}
+          currentUserId={currentUser?.id}
+          variant={isPageVariant ? "page" : "dock"}
+          leavingGroup={leavingGroup}
+          onClose={() => {
+            setShowParticipantsList(false);
+            setShowAddMembersModal(false);
+            setMemberMenuId(null);
+          }}
+          onVoiceCall={() => void handleStartCall("audio")}
+          onVideoCall={() => void handleStartCall("video")}
+          onSearchInChat={openMessageSearchFromMenu}
+          onOpenMediaGallery={() => {
+            setShowParticipantsList(false);
+            setShowMediaGallery(true);
+          }}
+          onLeaveGroup={() => void handleLeaveGroup()}
+          onMetaUpdated={(meta) => {
+            setThreadMetaOverride((prev) => ({ ...(prev || {}), ...meta }));
+          }}
+        />
+      ) : null}
+
       {dialog}
     </div>
   );

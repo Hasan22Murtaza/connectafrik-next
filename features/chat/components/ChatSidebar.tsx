@@ -14,6 +14,7 @@ import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 import { ChatRichTextPreview } from "@/features/chat/richtext";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
+import CreateChatGroupModal from "@/features/chat/components/CreateChatGroupModal";
 
 const PAGE_SIZE = 10;
 
@@ -90,8 +91,10 @@ export default function ChatSidebar({
   const [view, setView] = useState<"chats" | "marketplace" | "locked" | "archived">("chats");
   const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
-  const [mpLoading, setMpLoading] = useState(true);
+  const [mpLoading, setMpLoading] = useState(false);
+  const [mpLoaded, setMpLoaded] = useState(false);
   const [lockedThreads, setLockedThreads] = useState<ChatThread[]>([]);
   const [lockedLoading, setLockedLoading] = useState(false);
   const [filterThreads, setFilterThreads] = useState<ChatThread[]>([]);
@@ -125,6 +128,7 @@ export default function ChatSidebar({
     if (!currentUser?.id) {
       setMpThreads([]);
       setMpLoading(false);
+      setMpLoaded(false);
       return;
     }
     setMpLoading(true);
@@ -134,6 +138,7 @@ export default function ChatSidebar({
         { limit: 50, page: 0, category: "marketplace" }
       );
       setMpThreads(rows);
+      setMpLoaded(true);
     } finally {
       setMpLoading(false);
     }
@@ -143,9 +148,12 @@ export default function ChatSidebar({
     void loadGeneral();
   }, [loadGeneral]);
 
+  // Only fetch marketplace threads when that section is open.
   useEffect(() => {
-    void loadMarketplace();
-  }, [loadMarketplace]);
+    if (view === "marketplace" && currentUser?.id) {
+      void loadMarketplace();
+    }
+  }, [view, currentUser?.id, loadMarketplace]);
 
   useEffect(() => {
     if (folderOpen) setView("locked");
@@ -253,14 +261,13 @@ export default function ChatSidebar({
       if (!tid) return;
       const known = threads.some((t) => t.id === tid) || mpThreads.some((t) => t.id === tid);
       if (known) return;
-      // A thread we haven't listed was opened — let the API place it in the
-      // right list (general vs marketplace) by reloading both.
+      // Unknown thread opened — refresh the list(s) that are actually in use.
       void loadGeneral();
-      void loadMarketplace();
+      if (view === "marketplace" || mpLoaded) void loadMarketplace();
     };
     window.addEventListener("openChatThread", handler as EventListener);
     return () => window.removeEventListener("openChatThread", handler as EventListener);
-  }, [currentUser?.id, threads, mpThreads, loadGeneral, loadMarketplace]);
+  }, [currentUser?.id, threads, mpThreads, view, mpLoaded, loadGeneral, loadMarketplace]);
 
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser?.id || isLoadingMore || !hasMore || lastLoadedPage < 0) return;
@@ -738,15 +745,6 @@ export default function ChatSidebar({
           )}
           {view === "chats" ? (
             <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => router.push("/friends")}
-                aria-label="New chat"
-                title="New chat"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content"
-              >
-                <SquarePen className="h-5 w-5" aria-hidden />
-              </button>
               <div className="relative">
                 <button
                   type="button"
@@ -767,7 +765,7 @@ export default function ChatSidebar({
                       type="button"
                       onClick={() => {
                         setHeaderMenuOpen(false);
-                        router.push("/groups/create");
+                        setCreateGroupOpen(true);
                       }}
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                     >
@@ -804,7 +802,7 @@ export default function ChatSidebar({
           ) : null}
         </div>
 
-        <div className="px-4 pt-1">
+        <div className="px-4 py-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
             <input
@@ -880,6 +878,36 @@ export default function ChatSidebar({
               {lockedUnread > 0 ? (
                 <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
                   {lockedUnread > 99 ? "99+" : lockedUnread}
+                </span>
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+              )}
+              <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+            </button>
+          ) : null}
+          {archivedThreads.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("archived");
+                setSearch("");
+                setMenuThreadId(null);
+              }}
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
+                <Archive className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium text-content">Archived</p>
+                <p className="truncate text-sm text-content-secondary">
+                  {archivedThreads.length} archived chat
+                  {archivedThreads.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              {archivedUnread > 0 ? (
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                  {archivedUnread > 99 ? "99+" : archivedUnread}
                 </span>
               ) : (
                 <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
@@ -1181,7 +1209,7 @@ export default function ChatSidebar({
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
-                          <span>Clear chat</span>
+                          <span>Delete chat</span>
                         </button>
                       </div>
                     ) : null}
@@ -1399,7 +1427,7 @@ export default function ChatSidebar({
                                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                                 >
                                   <Trash2 className="h-4 w-4" />
-                                  <span>Clear chat</span>
+                                  <span>Delete chat</span>
                                 </button>
                               </div>
                             ) : null}
@@ -1534,6 +1562,11 @@ export default function ChatSidebar({
         </div>
       )}
       {dialog}
+      <CreateChatGroupModal
+        open={createGroupOpen}
+        onClose={() => setCreateGroupOpen(false)}
+        onCreated={(threadId) => onOpenThread(threadId)}
+      />
     </aside>
   );
 }

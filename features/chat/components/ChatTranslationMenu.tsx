@@ -41,7 +41,7 @@ export default function ChatTranslationMenu({
           event.stopPropagation()
           setOpen((prev) => !prev)
         }}
-        className={`flex h-10 w-10 items-center justify-center rounded-full transition ${
+        className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
           value !== 'off'
             ? 'text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/40'
             : ' text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white '

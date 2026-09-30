@@ -167,7 +167,7 @@ const Header: React.FC<HeaderProps> = ({
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-tertiary w-4 h-4 z-10" />
                   <input
                     type="text"
-                    placeholder="Search cribsTalk..."
+                    placeholder="Search CribsTalk..."
                     className="w-full px-3 py-2.5 pl-9 bg-surface-input hover:bg-surface-hover focus-visible:bg-surface-hover border border-border rounded-full focus:border-orange-500 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-colors text-sm text-content placeholder:text-content-tertiary"
                     value={searchTerm}
                     onChange={(e) => handleSearchChange(e.target.value)}
