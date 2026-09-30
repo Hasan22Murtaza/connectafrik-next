@@ -274,17 +274,17 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-6 py-2 bg-primary-500 border-b border-gray-200">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Invite friends to this group</h2>
-            <p className="text-sm text-gray-500 mt-0.5">{groupName}</p>
+            <h2 className="text-xl font-semibold text-white">Invite friends to this group</h2>
+            <p className="text-sm text-surface-secondary mt-0.5">{groupName}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 hover:text-gray-200 rounded-full transition-colors"
             disabled={sending}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-100" />
           </button>
         </div>
 
@@ -344,7 +344,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
                       onClick={() => toggleFriendSelection(friend.id)}
                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
                         isSelected
-                          ? 'bg-primary-50 border-2 border-primary-500'
+                          ? 'bg-primary-50 border-2 border-orange-500'
                           : 'hover:bg-gray-50 border-2 border-transparent'
                       }`}
                     >
@@ -371,7 +371,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
                       <div
                         className={`w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                           isSelected
-                            ? 'bg-primary-500 border-primary-500'
+                            ? 'bg-primary-500 border-orange-500'
                             : 'border-gray-300'
                         }`}
                       >
@@ -419,7 +419,7 @@ const InviteFriendsModal: React.FC<InviteFriendsModalProps> = ({
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors font-medium"
+            className="btn-secondary"
             disabled={sending}
           >
             Cancel

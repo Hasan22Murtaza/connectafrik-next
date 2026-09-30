@@ -2667,6 +2667,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const chatHeaderOptionsMenuSections = useMemo((): ChatHeaderOptionsMenuSection[] => {
 
     const primary: ChatHeaderOptionsMenuItem[] = [
+        
       {
         id: "lock",
         label: thread?.is_locked ? "Unlock chat" : "Lock chat",
@@ -2830,7 +2831,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         } ${isPageVariant ? "h-full" : ""}`}
       >
       <div
-        className={`flex items-center justify-between gap-1 border-b border-[#e9edef] px-2 py-3 sm:gap-2 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
+        className={`flex items-center justify-between gap-1 border-b border-[#e9edef] px-2 py-2 sm:gap-2 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
       >
         <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">

@@ -610,6 +610,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                     </>
                   )}
                 </p>
+                  <p className="shrink-0 text-sm text-secondary">{profile?.username}</p>
               </div>
             </div>
           </>
