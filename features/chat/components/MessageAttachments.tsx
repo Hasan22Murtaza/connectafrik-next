@@ -240,7 +240,7 @@ const VideoThumb: React.FC<{
         e.stopPropagation();
         onOpen();
       }}
-      className="group relative block w-full max-w-[min(100%,280px)] overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+      className="group relative block w-full overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
     >
       <video
         src={att.url}
@@ -506,8 +506,8 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 <MapPin className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-content">Location</p>
-                <p className="truncate text-[11px] text-content-tertiary">{att.name}</p>
+                <p className={`text-sm font-medium ${isOwnMessage ? "text-white" : "text-content"}`}>Location</p>
+                <p className={`truncate text-[11px] ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>{att.name}</p>
               </div>
               {isUploading ? (
                 <UploadMediaOverlay

@@ -10,6 +10,7 @@ import {
   ZoomOut,
 } from '@/shared/icons';
 import React, { useCallback, useEffect, useState } from "react";
+import toast from 'react-hot-toast';
 
 export interface ChatMediaViewerItem {
   id: string;
@@ -69,13 +70,31 @@ const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
 
   if (!open || !current) return null;
 
-  const handleDownload = () => {
-    const a = document.createElement("a");
-    a.href = current.url;
-    a.download = current.name || "media";
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.click();
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(current.url);
+
+      if (!response.ok) {
+        throw new Error("Failed to download file");
+      }
+
+      const blob = await response.blob();
+
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = current.name || "media";
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error("Could not download file");
+    }
   };
 
   const handleShare = async () => {
@@ -145,22 +164,22 @@ const ChatMediaViewer: React.FC<ChatMediaViewerProps> = ({
             <span className="hidden text-[11px] text-white/70 sm:inline">View once</span>
           ) : (
             <>
-          <button
-            type="button"
-            onClick={() => void handleShare()}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 sm:h-10 sm:w-10"
-            aria-label="Share"
-          >
-            <Share2 className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={handleDownload}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 sm:h-10 sm:w-10"
-            aria-label="Download"
-          >
-            <Download className="h-5 w-5" />
-          </button>
+              <button
+                type="button"
+                onClick={() => void handleShare()}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 sm:h-10 sm:w-10"
+                aria-label="Share"
+              >
+                <Share2 className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20 sm:h-10 sm:w-10"
+                aria-label="Download"
+              >
+                <Download className="h-5 w-5" />
+              </button>
             </>
           )}
         </div>
