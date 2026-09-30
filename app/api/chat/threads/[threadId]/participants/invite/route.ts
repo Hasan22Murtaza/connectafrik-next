@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
+import { isChatThreadAdmin } from '@/lib/chat/chatThreadAdmin'
 import {
   ensureChatParticipantsForThread,
   insertGroupMembershipSystemMessage,
@@ -20,6 +21,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
     if (!allowed) {
       return errorResponse('Thread not found or access denied', 404)
+    }
+
+    const isAdmin = await isChatThreadAdmin(serviceClient, user.id, threadId)
+    if (!isAdmin) {
+      return errorResponse('Only group admins can add members', 403)
     }
 
     const { data: thread, error: threadError } = await serviceClient

@@ -160,7 +160,8 @@ export interface CallHistoryDropdownProps {
  * Header calls menu: WhatsApp-style chronological log with Call info + participants.
  */
 function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
-  const { startCall, currentUser, threads: contextThreads } = useProductionChat()
+  const { startCall, startChatWithMembers, currentUser, threads: contextThreads } =
+    useProductionChat()
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [recentCallEntries, setRecentCallEntries] = useState<RecentCallEntry[]>([])
   const [threadsLoading, setThreadsLoading] = useState(true)
@@ -169,6 +170,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
   const [callsHasMore, setCallsHasMore] = useState(true)
   const [callsPage, setCallsPage] = useState(0)
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null)
+  const [startingCallKey, setStartingCallKey] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -347,13 +349,53 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    options?: { forceGroupCall?: boolean }
   ) => {
+    const lockKey = `${threadId}:${type}:${targetUserId || 'group'}`
+    if (startingCallKey) return
+    setStartingCallKey(lockKey)
     try {
-      await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl)
+      await startCall(threadId, type, targetUserId, targetUserName, targetUserAvatarUrl, options)
       onClose()
     } catch {
       /* startCall shows toast */
+    } finally {
+      setStartingCallKey(null)
+    }
+  }
+
+  /** Open (or reuse) a direct thread, then start a 1:1 call with that person. */
+  const handleStartOneToOneCall = async (
+    participant: RecentCallParticipant,
+    type: 'audio' | 'video'
+  ) => {
+    if (!participant.id || participant.is_self || startingCallKey) return
+    const lockKey = `1to1:${participant.id}:${type}`
+    setStartingCallKey(lockKey)
+    try {
+      const chatParticipant: ChatParticipant = {
+        id: participant.id,
+        name: participant.name || 'Unknown',
+        avatarUrl: participant.avatar_url || undefined,
+      }
+      const threadId = await startChatWithMembers([chatParticipant], {
+        participant_ids: [chatParticipant.id],
+        openInDock: true,
+      })
+      if (!threadId) return
+      await startCall(
+        threadId,
+        type,
+        chatParticipant.id,
+        chatParticipant.name,
+        chatParticipant.avatarUrl
+      )
+      onClose()
+    } catch {
+      /* startCall / friendship gate shows toast */
+    } finally {
+      setStartingCallKey(null)
     }
   }
 
@@ -403,33 +445,38 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
             <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
+                disabled={Boolean(startingCallKey)}
                 onClick={() =>
                   handleStartCall(
                     selectedCall.thread_id,
                     'video',
-                    selectedCall.id,
-                    selectedCall.name,
-                    selectedCall.avatarUrl
+                    // Group header = call everyone; 1:1 = call that contact
+                    selectedCall.isGroup ? undefined : selectedCall.id,
+                    selectedCall.isGroup ? undefined : selectedCall.name,
+                    selectedCall.isGroup ? undefined : selectedCall.avatarUrl,
+                    selectedCall.isGroup ? { forceGroupCall: true } : undefined
                   )
                 }
-                className="w-8 h-8 flex items-center justify-center bg-surface-secondary text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                title="Start video call"
+                className="w-8 h-8 flex items-center justify-center bg-surface-secondary text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors disabled:opacity-50"
+                title={selectedCall.isGroup ? 'Video call everyone' : 'Start video call'}
               >
                 <Video className="w-4 h-4" />
               </button>
               <button
                 type="button"
+                disabled={Boolean(startingCallKey)}
                 onClick={() =>
                   handleStartCall(
                     selectedCall.thread_id,
                     'audio',
-                    selectedCall.id,
-                    selectedCall.name,
-                    selectedCall.avatarUrl
+                    selectedCall.isGroup ? undefined : selectedCall.id,
+                    selectedCall.isGroup ? undefined : selectedCall.name,
+                    selectedCall.isGroup ? undefined : selectedCall.avatarUrl,
+                    selectedCall.isGroup ? { forceGroupCall: true } : undefined
                   )
                 }
-                className="w-8 h-8 flex items-center justify-center bg-surface-secondary text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                title="Start voice call"
+                className="w-8 h-8 flex items-center justify-center bg-surface-secondary text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors disabled:opacity-50"
+                title={selectedCall.isGroup ? 'Voice call everyone' : 'Start voice call'}
               >
                 <Phone className="w-4 h-4" />
               </button>
@@ -454,24 +501,62 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
               <p className="text-sm text-content-secondary py-2">No participants found.</p>
             ) : (
               <ul className="space-y-1">
-                {participants.map(p => (
-                  <li
-                    key={p.id}
-                    className="flex items-center gap-2.5 rounded-lg px-1 py-1.5"
-                  >
-                    <ParticipantAvatar name={p.name} avatarUrl={p.avatar_url} size="sm" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-content truncate">
-                        {p.is_self ? 'You' : p.name}
-                      </p>
-                      {p.joined === false ? (
-                        <p className="text-xs text-content-secondary">Invited</p>
-                      ) : (
-                        <p className="text-xs text-content-secondary">Joined</p>
+                {participants.map(p => {
+                  const isSelf = Boolean(p.is_self) || p.id === currentUser?.id
+                  const oneToOneBusy =
+                    startingCallKey === `1to1:${p.id}:video` ||
+                    startingCallKey === `1to1:${p.id}:audio`
+                  return (
+                    <li
+                      key={p.id}
+                      className="flex items-center gap-2.5 rounded-lg px-1 py-1.5"
+                    >
+                      <ParticipantAvatar name={p.name} avatarUrl={p.avatar_url} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-content truncate">
+                          {isSelf ? 'You' : p.name}
+                        </p>
+                        {p.joined === false ? (
+                          <p className="text-xs text-content-secondary">Invited</p>
+                        ) : (
+                          <p className="text-xs text-content-secondary">Joined</p>
+                        )}
+                      </div>
+                      {!isSelf && (
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            disabled={Boolean(startingCallKey)}
+                            onClick={() => handleStartOneToOneCall(p, 'video')}
+                            className="w-8 h-8 flex items-center justify-center text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors disabled:opacity-50"
+                            title={`Video call ${p.name}`}
+                            aria-label={`Video call ${p.name}`}
+                          >
+                            {oneToOneBusy && startingCallKey?.endsWith(':video') ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Video className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={Boolean(startingCallKey)}
+                            onClick={() => handleStartOneToOneCall(p, 'audio')}
+                            className="w-8 h-8 flex items-center justify-center text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors disabled:opacity-50"
+                            title={`Voice call ${p.name}`}
+                            aria-label={`Voice call ${p.name}`}
+                          >
+                            {oneToOneBusy && startingCallKey?.endsWith(':audio') ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Phone className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       )}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </div>
@@ -552,10 +637,25 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
                         type="button"
                         onClick={e => {
                           e.stopPropagation()
-                          handleStartCall(call.thread_id, call.call_type, call.id, call.name, call.avatarUrl)
+                          handleStartCall(
+                            call.thread_id,
+                            call.call_type,
+                            call.isGroup ? undefined : call.id,
+                            call.isGroup ? undefined : call.name,
+                            call.isGroup ? undefined : call.avatarUrl,
+                            call.isGroup ? { forceGroupCall: true } : undefined
+                          )
                         }}
                         className="w-8 h-8 flex items-center justify-center bg-surface-secondary text-content-secondary rounded-full hover:bg-green-100 hover:text-green-600 transition-colors"
-                        title={call.call_type === 'video' ? 'Start video call' : 'Start voice call'}
+                        title={
+                          call.isGroup
+                            ? call.call_type === 'video'
+                              ? 'Video call everyone'
+                              : 'Voice call everyone'
+                            : call.call_type === 'video'
+                              ? 'Start video call'
+                              : 'Start voice call'
+                        }
                       >
                         {call.call_type === 'video' ? (
                           <Video className="w-4 h-4" />

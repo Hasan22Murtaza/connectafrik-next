@@ -57,10 +57,14 @@ import {
   Smile,
   Square,
   Trash2,
+  UserMinus,
+  UserPlus,
   Video,
   X,
   XCircle,
   ChevronDown,
+  Shield,
+  ShieldOff,
 } from '@/shared/icons';
 import { usePathname, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -76,7 +80,12 @@ import React, {
 import { toast } from "react-hot-toast";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { useChatLock } from "@/contexts/ChatLockContext";
+import {
+  formatChatParticipantRoleLabel,
+  isChatAdminRole,
+} from "@/lib/chat/chatThreadAdmin";
 import ChatAttachmentMenu from "./ChatAttachmentMenu";
+import GroupInfoDrawer from "./GroupInfoDrawer";
 import ChatLocationPicker, {
   type ChatLocationSelection,
 } from "./ChatLocationPicker";
@@ -452,6 +461,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const isMarketplaceThread = thread?.type === "marketplace";
 
+  const [headerImageFailed, setHeaderImageFailed] = useState(false);
+  const [threadMetaOverride, setThreadMetaOverride] = useState<{
+    name?: string;
+    banner_url?: string | null;
+  } | null>(null);
+  const [enrichedBanner, setEnrichedBanner] = useState<{
+    threadId: string;
+    url: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setThreadMetaOverride(null);
+  }, [threadId]);
+
   const displayThreadName = useMemo(() => {
     if (isSelfChat) {
       return `${currentUser?.name || "You"} (Notes)`;
@@ -459,8 +482,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (isMarketplaceThread) {
       return primaryParticipant?.name || thread?.name || "TradeHub chat";
     }
-    if (isGroupThread && thread?.name) {
-      return thread.name;
+    if (isGroupThread) {
+      return (
+        threadMetaOverride?.name?.trim() ||
+        thread?.name ||
+        "Group"
+      );
     }
     return primaryParticipant?.name || thread?.name || "Chat";
   }, [
@@ -470,15 +497,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     primaryParticipant?.name,
     thread?.name,
     currentUser?.name,
+    threadMetaOverride?.name,
   ]);
 
   const marketplaceProductTitle = thread?.product_title || thread?.name || null;
-
-  const [headerImageFailed, setHeaderImageFailed] = useState(false);
-  const [enrichedBanner, setEnrichedBanner] = useState<{
-    threadId: string;
-    url: string;
-  } | null>(null);
 
   useEffect(() => {
     if (!threadId || !currentUser?.id || !thread) return;
@@ -514,6 +536,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   ]);
 
   const groupBannerUrl =
+    (typeof threadMetaOverride?.banner_url === "string" &&
+      threadMetaOverride.banner_url.trim()) ||
     (typeof thread?.banner_url === "string" && thread.banner_url.trim()) ||
     (enrichedBanner?.threadId === threadId ? enrichedBanner.url : "") ||
     "";
@@ -632,6 +656,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [participantRolesById, setParticipantRolesById] = useState<
     Record<string, string>
   >({});
+  const [groupInfoMembers, setGroupInfoMembers] = useState<
+    Array<{
+      id: string;
+      name: string;
+      avatarUrl?: string;
+      role: string;
+    }>
+  >([]);
+  const [groupInfoLoading, setGroupInfoLoading] = useState(false);
+  const [showAddMembersModal, setShowAddMembersModal] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [memberMenuId, setMemberMenuId] = useState<string | null>(null);
+  const [updatingRoleUserId, setUpdatingRoleUserId] = useState<string | null>(
+    null
+  );
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [infoMessage, setInfoMessage] = useState<ChatMessage | null>(null);
   const [messageInfo, setMessageInfo] = useState<MessageInfoData | null>(null);
@@ -761,14 +800,40 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!showParticipantsList || !threadId) return;
     let cancelled = false;
     void (async () => {
+      setGroupInfoLoading(true);
       try {
         const map: Record<string, string> = {};
-        const rows = await apiClient.get<
-          Array<{ user_id: string; role?: string }>
-        >(`/api/chat/threads/${threadId}/participants`);
-        for (const row of rows ?? []) {
-          if (row.user_id) map[row.user_id] = (row.role || "member").toLowerCase();
-        }
+        const res = await apiClient.get<
+          | Array<{
+              user_id: string
+              role?: string
+              name?: string
+              avatar_url?: string | null
+            }>
+          | {
+              data?: Array<{
+                user_id: string
+                role?: string
+                name?: string
+                avatar_url?: string | null
+              }>
+            }
+        >(`/api/chat/threads/${threadId}/participants`)
+        const rows = Array.isArray(res) ? res : (res?.data ?? [])
+
+        const membersFromApi = (rows ?? []).map((row) => {
+          const role = (row.role || "member").toLowerCase();
+          if (row.user_id) map[row.user_id] = role;
+          const fromThread = (thread?.participants ?? []).find(
+            (p) => p.id === row.user_id
+          );
+          return {
+            id: row.user_id,
+            name: row.name || fromThread?.name || "User",
+            avatarUrl: row.avatar_url || fromThread?.avatarUrl || undefined,
+            role,
+          };
+        });
 
         // Social groups store admin/co_admin/manager on group_memberships
         if (thread?.group_id) {
@@ -781,15 +846,55 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           }
         }
 
-        if (!cancelled) setParticipantRolesById(map);
+        const merged = (
+          membersFromApi.length > 0
+            ? membersFromApi
+            : (thread?.participants ?? []).map((p) => ({
+                id: p.id,
+                name: p.name || "User",
+                avatarUrl: p.avatarUrl,
+                role: map[p.id] || "member",
+              }))
+        ).map((m) => ({
+          ...m,
+          role: map[m.id] || m.role || "member",
+        }));
+
+        if (!cancelled) {
+          setParticipantRolesById(map);
+          setGroupInfoMembers(merged);
+        }
       } catch {
-        if (!cancelled) setParticipantRolesById({});
+        if (!cancelled) {
+          setParticipantRolesById({});
+          setGroupInfoMembers(
+            (thread?.participants ?? []).map((p) => ({
+              id: p.id,
+              name: p.name || "User",
+              avatarUrl: p.avatarUrl,
+              role: "member",
+            }))
+          );
+        }
+      } finally {
+        if (!cancelled) setGroupInfoLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [showParticipantsList, threadId, thread?.group_id]);
+  }, [showParticipantsList, threadId, thread?.group_id, thread?.participants]);
+
+  useEffect(() => {
+    if (!memberMenuId) return;
+    const close = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-group-member-menu]")) return;
+      setMemberMenuId(null);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [memberMenuId]);
 
   useEffect(() => {
     if (!threadId || !messageSearchKeyword.trim()) {
@@ -2380,6 +2485,141 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     confirm,
   ]);
 
+  const isCurrentUserGroupAdmin = useMemo(() => {
+    if (!currentUser?.id) return false;
+    const fromList = groupInfoMembers.find((m) =>
+      chatUserIdsEqual(m.id, currentUser.id)
+    )?.role;
+    const role =
+      participantRolesById[currentUser.id] ||
+      fromList ||
+      "";
+    if (isChatAdminRole(role)) return true;
+    const r = role.toLowerCase();
+    return r === "manager";
+  }, [currentUser?.id, participantRolesById, groupInfoMembers]);
+
+  const handleRemoveGroupMember = useCallback(
+    async (member: { id: string; name: string }) => {
+      if (!isCurrentUserGroupAdmin || removingMemberId) return;
+      if (member.id === currentUser?.id) return;
+      const confirmed = await confirm({
+        title: "Remove member",
+        message: `Remove ${member.name} from this group?`,
+        confirmLabel: "Remove",
+      });
+      if (!confirmed) return;
+      setMemberMenuId(null);
+      setRemovingMemberId(member.id);
+      try {
+        await apiClient.post(
+          `/api/chat/threads/${threadId}/participants/remove`,
+          { user_id: member.id }
+        );
+        setGroupInfoMembers((prev) => prev.filter((m) => m.id !== member.id));
+        setParticipantRolesById((prev) => {
+          const next = { ...prev };
+          delete next[member.id];
+          return next;
+        });
+        toast.success(`${member.name} removed`);
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to remove member");
+      } finally {
+        setRemovingMemberId(null);
+      }
+    },
+    [
+      isCurrentUserGroupAdmin,
+      removingMemberId,
+      currentUser?.id,
+      confirm,
+      threadId,
+    ]
+  );
+
+  const handleChangeMemberRole = useCallback(
+    async (
+      member: { id: string; name: string; role: string },
+      nextRole: "admin" | "member"
+    ) => {
+      if (!isCurrentUserGroupAdmin || updatingRoleUserId) return;
+      const makingAdmin = nextRole === "admin";
+      const confirmed = await confirm({
+        title: makingAdmin ? "Make admin" : "Dismiss as admin",
+        message: makingAdmin
+          ? `Make ${member.name} a group admin? They will be able to add, remove, and manage members.`
+          : `Dismiss ${member.name} as admin? They will become a regular member.`,
+        confirmLabel: makingAdmin ? "Make admin" : "Dismiss",
+      });
+      if (!confirmed) return;
+      setMemberMenuId(null);
+      setUpdatingRoleUserId(member.id);
+      try {
+        await apiClient.post(
+          `/api/chat/threads/${threadId}/participants/role`,
+          { user_id: member.id, role: nextRole }
+        );
+        setGroupInfoMembers((prev) =>
+          prev.map((m) =>
+            m.id === member.id ? { ...m, role: nextRole } : m
+          )
+        );
+        setParticipantRolesById((prev) => ({
+          ...prev,
+          [member.id]: nextRole,
+        }));
+        toast.success(
+          makingAdmin
+            ? `${member.name} is now an admin`
+            : `${member.name} is no longer an admin`
+        );
+      } catch (error: any) {
+        toast.error(error?.message || "Failed to update role");
+      } finally {
+        setUpdatingRoleUserId(null);
+      }
+    },
+    [isCurrentUserGroupAdmin, updatingRoleUserId, confirm, threadId]
+  );
+
+  const handleMembersAdded = useCallback(async () => {
+    try {
+      const res = await apiClient.get<
+        | Array<{
+            user_id: string;
+            role?: string;
+            name?: string;
+            avatar_url?: string | null;
+          }>
+        | {
+            data?: Array<{
+              user_id: string;
+              role?: string;
+              name?: string;
+              avatar_url?: string | null;
+            }>;
+          }
+      >(`/api/chat/threads/${threadId}/participants`);
+      const rows = Array.isArray(res) ? res : (res?.data ?? []);
+      const map: Record<string, string> = {};
+      const members = (rows ?? []).map((row) => {
+        const role = (row.role || "member").toLowerCase();
+        if (row.user_id) map[row.user_id] = role;
+        return {
+          id: row.user_id,
+          name: row.name || "User",
+          avatarUrl: row.avatar_url || undefined,
+          role,
+        };
+      });
+      setParticipantRolesById(map);
+      setGroupInfoMembers(members);
+    } catch {
+      /* list will refresh next open */
+    }
+  }, [threadId]);
+
   const handleDeleteChatFromMenu = useCallback(async () => {
     if (!currentUser) return;
     const confirmed = await confirm({
@@ -2574,12 +2814,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   return (
     <div
-      className={`pointer-events-auto relative flex max-w-full flex-col bg-white dark:bg-surface ${attachmentMenuOpen ? "overflow-visible" : "overflow-hidden"
-        } ${isPageVariant
-          ? "h-full w-full"
-          : "w-72 rounded-2xl sm:w-80 sm:max-w-full shadow-[0_8px_28px_rgba(11,20,26,0.14)]"
-        }`}
+      className={`pointer-events-auto relative flex max-w-full ${
+        isPageVariant ? "h-full w-full flex-row" : "flex-col"
+      } ${
+        attachmentMenuOpen ? "overflow-visible" : "overflow-hidden"
+      } ${
+        isPageVariant
+          ? ""
+          : "w-72 rounded-2xl bg-white sm:w-80 sm:max-w-full shadow-[0_8px_28px_rgba(11,20,26,0.14)] dark:bg-surface"
+      }`}
     >
+      <div
+        className={`relative flex min-w-0 flex-1 flex-col bg-white dark:bg-surface ${
+          attachmentMenuOpen ? "overflow-visible" : "overflow-hidden"
+        } ${isPageVariant ? "h-full" : ""}`}
+      >
       <div
         className={`flex items-center justify-between gap-1 border-b border-[#e9edef] px-2 py-3 sm:gap-2 sm:px-3 dark:border-border dark:bg-surface ${isPageVariant ? "" : "rounded-tl-2xl rounded-tr-2xl"
           }`}
@@ -3349,114 +3598,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         isGroupChat={isGroupThread}
       />
 
-      {showParticipantsList ? (
-        <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[1px]"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Group info"
-          onClick={() => setShowParticipantsList(false)}
-        >
-          <div
-            className="flex max-h-[min(90vh,520px)] w-full max-w-[380px] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_rgba(11,20,26,0.22)] dark:bg-surface"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-5 py-4">
-              <div className="min-w-0">
-                <h2 className="text-base font-semibold text-content">Group info</h2>
-                <p className="mt-0.5 text-sm text-content-secondary">
-                  {thread?.participants?.length ?? 0}{" "}
-                  {(thread?.participants?.length ?? 0) === 1
-                    ? "member"
-                    : "members"}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowParticipantsList(false)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content transition hover:bg-surface-hover"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <ul className="space-y-3.5">
-                {[...(thread?.participants ?? [])]
-                  .sort((a, b) => {
-                    const aAdmin =
-                      (participantRolesById[a.id] || "") === "admin" ? 0 : 1;
-                    const bAdmin =
-                      (participantRolesById[b.id] || "") === "admin" ? 0 : 1;
-                    if (aAdmin !== bAdmin) return aAdmin - bAdmin;
-                    return (a.name || "").localeCompare(b.name || "");
-                  })
-                  .map((p: ChatParticipant) => {
-                    const isYou = p.id === currentUser?.id;
-                    const role = participantRolesById[p.id] || "";
-                    const isAdmin = role === "admin";
-                    const label = p.name || "User";
-
-                    return (
-                      <li key={p.id}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowParticipantsList(false);
-                            router.push(`/user/${encodeURIComponent(p.id)}`);
-                          }}
-                          className="flex w-full items-center gap-3 text-left transition hover:opacity-80"
-                        >
-                          <div className="relative h-10 w-10 shrink-0">
-                            {p.avatarUrl ? (
-                              <img
-                                src={p.avatarUrl}
-                                alt=""
-                                className="h-10 w-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-sm font-semibold text-orange-600">
-                                {label.charAt(0).toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex min-w-0 flex-1 items-center gap-2">
-                            <span className="truncate text-sm font-medium text-content">
-                              {isYou ? `${label} (you)` : label}
-                            </span>
-                            {isAdmin ? (
-                              <span className="shrink-0 rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-medium text-orange-600">
-                                Admin
-                              </span>
-                            ) : null}
-                          </div>
-                        </button>
-                      </li>
-                    );
-                  })}
-              </ul>
-            </div>
-
-            <div className="shrink-0 border-t border-border px-5 py-4">
-              <button
-                type="button"
-                onClick={() => void handleLeaveGroup()}
-                disabled={leavingGroup}
-                className="flex items-center gap-2 text-sm font-medium text-red-600 transition hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {leavingGroup ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <LogOut className="h-4 w-4" />
-                )}
-                Leave group
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
       {infoMessage ? (
         <div
           className="absolute inset-0 z-[95] flex flex-col overflow-hidden rounded-2xl bg-surface"
@@ -3811,6 +3952,36 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         </div>
       ) : null}
+      </div>
+
+      {isGroupThread ? (
+        <GroupInfoDrawer
+          open={showParticipantsList}
+          threadId={threadId}
+          threadName={displayThreadName}
+          bannerUrl={groupBannerUrl || null}
+          currentUserId={currentUser?.id}
+          variant={isPageVariant ? "page" : "dock"}
+          leavingGroup={leavingGroup}
+          onClose={() => {
+            setShowParticipantsList(false);
+            setShowAddMembersModal(false);
+            setMemberMenuId(null);
+          }}
+          onVoiceCall={() => void handleStartCall("audio")}
+          onVideoCall={() => void handleStartCall("video")}
+          onSearchInChat={openMessageSearchFromMenu}
+          onOpenMediaGallery={() => {
+            setShowParticipantsList(false);
+            setShowMediaGallery(true);
+          }}
+          onLeaveGroup={() => void handleLeaveGroup()}
+          onMetaUpdated={(meta) => {
+            setThreadMetaOverride((prev) => ({ ...(prev || {}), ...meta }));
+          }}
+        />
+      ) : null}
+
       {dialog}
     </div>
   );
