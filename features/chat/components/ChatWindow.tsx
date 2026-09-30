@@ -2726,7 +2726,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 className="h-9 w-9 flex items-center justify-center rounded-full text-content-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover"
                 aria-label="Video call"
               >
-                <Video className="h-5 w-5" />
+                <Video className="h-5.1 w-5.1" />
               </button>
               <button
                 type="button"

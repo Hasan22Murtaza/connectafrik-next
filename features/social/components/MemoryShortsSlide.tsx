@@ -414,10 +414,10 @@ const MemoryShortsSlide: React.FC<MemoryShortsSlideProps> = ({
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-bold text-white drop-shadow-md lg:text-sm">@{username}</p>
-                {displayName !== username && (
-                  <p className="truncate text-[11px] text-white/85 drop-shadow lg:text-xs">{displayName}</p>
+                 {displayName !== username && (
+                  <p className="truncate text-[13px] text-white font-bold drop-shadow lg:text-xs">{displayName}</p>
                 )}
+                <p className="truncate text-[11px]  text-white/85 drop-shadow-md lg:text-sm">@{username}</p>
               </div>
             </div>
             <p className="mt-1.5 text-[13px] leading-snug text-white/95 drop-shadow lg:text-sm">
