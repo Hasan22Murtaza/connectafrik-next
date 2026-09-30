@@ -118,7 +118,8 @@ interface ProductionChatContextType {
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    options?: { forceGroupCall?: boolean }
   ) => Promise<void>
   joinCall: (threadId: string) => Promise<void>
   callRequests: Record<string, CallRequest>
@@ -899,7 +900,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    options?: { forceGroupCall?: boolean }
   ) => {
     const telemetryBase = {
       threadId,
@@ -962,7 +964,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const cachedParticipantIds = (thread?.participants || [])
         .map((p: any) => p?.id)
         .filter((id: string | undefined) => Boolean(id && id !== currentUser?.id)) as string[]
-      let isGroupCall = (thread?.participants?.length || 0) > 2 || thread?.type === 'group'
+      let isGroupCall =
+        options?.forceGroupCall === true ||
+        (thread?.participants?.length || 0) > 2 ||
+        thread?.type === 'group'
 
       let resolvedTargetUserId = (targetUserId || '').trim()
       if (isGroupCall && resolvedTargetUserId) {
