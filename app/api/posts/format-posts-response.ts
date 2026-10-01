@@ -3,6 +3,7 @@ import { canComment, canFollow, canViewPost } from '@/shared/utils/visibilityUti
 import { getRelationships } from '@/lib/privacy/access'
 
 const LATEST_COMMENTS_PREVIEW = 3
+const MAX_REACTION_PREVIEW_USERS = 3
 
 const COMMENT_PREVIEW_SELECT = `
   id,
@@ -21,7 +22,31 @@ const COMMENT_PREVIEW_SELECT = `
   )
 `
 
-function mapCommentPreviewRow(row: any) {
+type CommentPreview = {
+  id: string
+  post_id: string
+  content: string
+  created_at: string
+  parent_id: string | null
+  author_id: string
+  author: {
+    id: string
+    username: string
+    full_name: string
+    avatar_url: string | null
+    country: string | null
+    is_verified: boolean
+  } | null
+  likes_count: number
+  isLiked: boolean
+  replies_count: number
+  replies: CommentPreview[]
+}
+
+function mapCommentPreviewRow(
+  row: any,
+  likeMeta?: { likes_count: number; isLiked: boolean }
+): CommentPreview {
   const author = row.author
   return {
     id: row.id,
@@ -36,11 +61,49 @@ function mapCommentPreviewRow(row: any) {
           username: author.username,
           full_name: author.full_name,
           avatar_url: author.avatar_url,
-          country: author.country,
+          country: author.country ?? null,
           is_verified: author.is_verified ?? false,
         }
       : null,
+    likes_count: likeMeta?.likes_count ?? 0,
+    isLiked: likeMeta?.isLiked ?? false,
+    replies_count: 0,
+    replies: [],
   }
+}
+
+function assignRepliesCounts(nodes: CommentPreview[]): number {
+  let total = 0
+  for (const node of nodes) {
+    const nested = assignRepliesCounts(node.replies)
+    node.replies_count = node.replies.length + nested
+    total += 1 + node.replies_count
+  }
+  return total
+}
+
+function nestCommentPreviews(
+  rows: any[],
+  likeMetaByCommentId: Map<string, { likes_count: number; isLiked: boolean }>
+): CommentPreview[] {
+  const byId = new Map<string, CommentPreview>()
+  const roots: CommentPreview[] = []
+
+  for (const row of rows) {
+    byId.set(row.id, mapCommentPreviewRow(row, likeMetaByCommentId.get(row.id)))
+  }
+
+  for (const row of rows) {
+    const node = byId.get(row.id)!
+    if (row.parent_id && byId.has(row.parent_id)) {
+      byId.get(row.parent_id)!.replies.push(node)
+    } else if (!row.parent_id) {
+      roots.push(node)
+    }
+  }
+
+  assignRepliesCounts(roots)
+  return roots
 }
 
 export const POST_SELECT = `
@@ -96,7 +159,9 @@ function mapEmbeddedRepostPost(row: any) {
 }
 
 /**
- * Visibility filter, reactions, likes, follow flags, optional saved state, and up to three earliest top-level comments per post — same shape as GET /api/posts.
+ * Visibility filter, reactions, likes, follow flags, optional saved state, and up to three
+ * earliest top-level comments per post (with nested replies, replies_count, likes_count, isLiked)
+ * — same shape as GET /api/posts.
  */
 export async function formatPostsForClient(
   supabase: SupabaseClient,
@@ -202,7 +267,11 @@ export async function formatPostsForClient(
         group.count++
         entry.totalCount++
         const profile = profileMap.get(r.user_id)
-        if (profile && !group.users.find((u: any) => u.id === profile.id)) {
+        if (
+          profile &&
+          group.users.length < MAX_REACTION_PREVIEW_USERS &&
+          !group.users.find((u: any) => u.id === profile.id)
+        ) {
           group.users.push(profile)
         }
         if (userId && r.user_id === userId) {
@@ -212,9 +281,13 @@ export async function formatPostsForClient(
     }
   }
 
-  const latestCommentsByPostId = new Map<string, ReturnType<typeof mapCommentPreviewRow>[]>()
+  const latestCommentsByPostId = new Map<string, CommentPreview[]>()
   if (postIds.length > 0) {
-    const previewRows = await Promise.all(
+    // Parallel limited top-level fetch (3/post), then one BFS for nested replies.
+    const previewTopLevelByPost = new Map<string, any[]>()
+    const previewParentIds: string[] = []
+
+    const topLevelResults = await Promise.all(
       postIds.map(async (postId: string) => {
         const { data, error } = await supabase
           .from('comments')
@@ -231,8 +304,74 @@ export async function formatPostsForClient(
         return { postId, rows: data || [] }
       })
     )
-    for (const { postId, rows } of previewRows) {
-      latestCommentsByPostId.set(postId, rows.map(mapCommentPreviewRow))
+
+    for (const { postId, rows } of topLevelResults) {
+      previewTopLevelByPost.set(postId, rows)
+      for (const row of rows) {
+        previewParentIds.push(row.id)
+      }
+    }
+
+    const replyRows: any[] = []
+    let pendingParentIds = previewParentIds
+
+    while (pendingParentIds.length > 0) {
+      const { data: childComments, error: childError } = await supabase
+        .from('comments')
+        .select(COMMENT_PREVIEW_SELECT)
+        .in('parent_id', pendingParentIds)
+        .eq('is_deleted', false)
+        .order('created_at', { ascending: true })
+
+      if (childError || !childComments || childComments.length === 0) {
+        break
+      }
+
+      replyRows.push(...childComments)
+      pendingParentIds = childComments.map((comment: { id: string }) => comment.id)
+    }
+
+    const allPreviewRows = [
+      ...Array.from(previewTopLevelByPost.values()).flat(),
+      ...replyRows,
+    ]
+    const allPreviewIds = allPreviewRows.map((row: { id: string }) => row.id)
+
+    const likeMetaByCommentId = new Map<string, { likes_count: number; isLiked: boolean }>()
+    for (const id of allPreviewIds) {
+      likeMetaByCommentId.set(id, { likes_count: 0, isLiked: false })
+    }
+
+    if (allPreviewIds.length > 0) {
+      const { data: likesRows } = await supabase
+        .from('likes')
+        .select('comment_id, user_id')
+        .in('comment_id', allPreviewIds)
+
+      for (const like of likesRows || []) {
+        const meta = likeMetaByCommentId.get(like.comment_id)
+        if (!meta) continue
+        meta.likes_count += 1
+        if (userId && like.user_id === userId) {
+          meta.isLiked = true
+        }
+      }
+    }
+
+    const repliesByPostId = new Map<string, any[]>()
+    for (const row of replyRows) {
+      const list = repliesByPostId.get(row.post_id) || []
+      list.push(row)
+      repliesByPostId.set(row.post_id, list)
+    }
+
+    for (const postId of postIds) {
+      const topLevel = previewTopLevelByPost.get(postId) || []
+      const replies = repliesByPostId.get(postId) || []
+      latestCommentsByPostId.set(
+        postId,
+        nestCommentPreviews([...topLevel, ...replies], likeMetaByCommentId)
+      )
     }
   }
 
