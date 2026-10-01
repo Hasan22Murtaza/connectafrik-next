@@ -937,7 +937,7 @@ export default function ChatSidebar({
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
             )}
-            <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+            <span className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-border-subtle" />
           </button>
         </>
       ) : null}

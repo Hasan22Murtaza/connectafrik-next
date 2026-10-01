@@ -65,7 +65,7 @@ interface GroupInfoDrawerProps {
   }) => void;
 }
 
-const WA_GREEN = "#008069";
+const WA_GREEN = "#f97316";
 
 export default function GroupInfoDrawer({
   open,
@@ -331,7 +331,7 @@ export default function GroupInfoDrawer({
       disabled={disabled}
       className="flex flex-col items-center gap-1.5 disabled:opacity-40"
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f0f2f5] text-[#54656f] transition hover:bg-[#e9edef]">
+      <span className="h-11 w-11 flex items-center justify-center rounded-full text-content-tertiary bg-surface-tertiary shrink-0 hover:bg-orange-500 hover:text-white  disabled:cursor-not-allowed disabled:opacity-40  dark:text-content-secondary dark:hover:bg-surface-hover">
         {icon}
       </span>
       <span className="text-[12px] text-[#54656f]">{label}</span>
@@ -358,7 +358,7 @@ export default function GroupInfoDrawer({
             removingMemberId === p.id || updatingRoleUserId === p.id;
 
           return (
-            <li key={p.id} className="relative flex items-center gap-2 px-4 py-3">
+            <li key={p.id} className="relative flex items-center gap-2 px-4 py-2">
               <button
                 type="button"
                 onClick={() => {
@@ -463,7 +463,7 @@ export default function GroupInfoDrawer({
       role="dialog"
       aria-label="Group info"
     >
-      <div className="flex shrink-0 items-center gap-3 border-b border-[#e9edef] bg-[#f0f2f5] px-3 py-3 dark:border-border dark:bg-surface-secondary">
+      <div className="flex shrink-0 items-center gap-3 border-b border-[#e9edef]  px-3 py-2.5 dark:border-border dark:bg-surface-secondary">
         {view === "members" ? (
           <button
             type="button"
@@ -510,7 +510,7 @@ export default function GroupInfoDrawer({
             ) : null}
             {membersLoading ? (
               <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-[#008069]" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
               </div>
             ) : (
               membersList
@@ -641,6 +641,7 @@ export default function GroupInfoDrawer({
                     onVideoCall();
                   }
                 )}
+
                 {actionBtn(
                   <UserPlus className="h-5 w-5" />,
                   "Add",

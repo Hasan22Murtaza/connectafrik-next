@@ -226,6 +226,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 
   const {
     isGroupCallSession,
+    sessionHostId,
     isGroupCallSessionRef,
     suppressSignalRef,
     signalMediaDisconnected,
@@ -604,12 +605,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     });
   }, [engagement, localParticipantInfo]);
 
+  const isCallHost = Boolean(sessionHostId && currentUserId && sessionHostId === currentUserId);
+
   const handleMuteParticipant = useCallback(
     (participantId: string, displayName?: string) => {
+      if (!isCallHost) return;
       engagement.requestMute(participantId);
       toast(`Muted ${displayName || 'participant'}`);
     },
-    [engagement],
+    [engagement, isCallHost],
   );
 
   const handleToggleVideo = useCallback(async () => {
@@ -929,13 +933,17 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         audioVolume={opts.audioVolume}
         handRaised={engagement.isHandRaised(participant.identity)}
         onMute={
-          opts.isLocal
-            ? undefined
-            : () => handleMuteParticipant(participant.identity, participant.name || 'participant')
+          isCallHost && !opts.isLocal
+            ? () =>
+                handleMuteParticipant(
+                  participant.identity,
+                  participant.name || 'participant',
+                )
+            : undefined
         }
       />
     ),
-    [engagement.isHandRaised, handleMuteParticipant],
+    [engagement.isHandRaised, handleMuteParticipant, isCallHost],
   );
 
   const participantByIdentity = useMemo(() => {

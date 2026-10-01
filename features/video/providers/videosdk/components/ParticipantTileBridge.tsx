@@ -144,18 +144,20 @@ export function VideoSDKParticipantTileBridge({
     />
   );
 
-  const handleMute = !isLocal
-    ? () => {
-        if (micOn) {
-          try {
-            disableMic();
-          } catch {
-            /* permission / teardown */
+  // Mute-others is host/admin-only; parent omits `onMute` for non-hosts.
+  const handleMute =
+    !isLocal && onMute
+      ? () => {
+          if (micOn) {
+            try {
+              disableMic();
+            } catch {
+              /* permission / teardown */
+            }
           }
+          onMute();
         }
-        onMute?.();
-      }
-    : undefined;
+      : undefined;
 
   return (
     <ParticipantTile

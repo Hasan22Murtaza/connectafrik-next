@@ -112,14 +112,27 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const commentIds = comments.map((comment: { id: string }) => comment.id)
 
     let likedCommentIds = new Set<string>()
-    if (userId && commentIds.length > 0) {
+    const likesCountByCommentId = new Map<string, number>()
+    if (commentIds.length > 0) {
       const { data: likesData } = await serviceClient
         .from('likes')
-        .select('comment_id')
-        .eq('user_id', userId)
+        .select('comment_id, user_id')
         .in('comment_id', commentIds)
 
-      likedCommentIds = new Set((likesData || []).map((like: { comment_id: string }) => like.comment_id))
+      for (const like of likesData || []) {
+        likesCountByCommentId.set(
+          like.comment_id,
+          (likesCountByCommentId.get(like.comment_id) || 0) + 1
+        )
+      }
+
+      if (userId) {
+        likedCommentIds = new Set(
+          (likesData || [])
+            .filter((like: { user_id: string }) => like.user_id === userId)
+            .map((like: { comment_id: string }) => like.comment_id)
+        )
+      }
     }
 
     const { data: reactionsData } = await serviceClient
@@ -154,9 +167,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       return {
         ...comment,
+        likes_count: likesCountByCommentId.get(comment.id) || 0,
         isLiked: likedCommentIds.has(comment.id),
         reactions,
         replies: [] as any[],
+        replies_count: 0,
       }
     })
 
@@ -174,6 +189,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
         topLevel.push(comment)
       }
     }
+
+    const assignRepliesCounts = (nodes: any[]): number => {
+      let total = 0
+      for (const node of nodes) {
+        const nested = assignRepliesCounts(node.replies || [])
+        node.replies_count = (node.replies?.length || 0) + nested
+        total += 1 + node.replies_count
+      }
+      return total
+    }
+    assignRepliesCounts(topLevel)
 
     const totalPages = Math.ceil(total / limit)
     const hasNext = page < totalPages

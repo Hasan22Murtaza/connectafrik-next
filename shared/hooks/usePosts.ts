@@ -180,7 +180,7 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
       if (!user) throw new Error('User not authenticated')
 
       const post = posts.find(p => p.id === postId)
-      if (!post) return
+      if (!post) return false
 
       // Optimistic update
       const wasLiked = post.isLiked
@@ -194,6 +194,14 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
         `/api/posts/${postId}/reaction`,
         { reaction_type: 'like' }
       )
+
+      window.dispatchEvent(new CustomEvent('reaction-updated', {
+        detail: {
+          postId,
+          action: response.action,
+          reactionType: response.reaction_type,
+        },
+      }))
 
       // Reconcile with server state
       setPosts(prev => prev.map(p =>
@@ -210,6 +218,7 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
             }
           : p
       ))
+      return true
     } catch (error: any) {
       // Revert optimistic update on failure
       const post = posts.find(p => p.id === postId)
@@ -221,6 +230,7 @@ export const usePosts = (category?: string, options?: UsePostsOptions) => {
         ))
       }
       console.error('Error toggling like:', error.message)
+      return false
     }
   }
 

@@ -142,7 +142,7 @@ const ReactionIcon: React.FC<ReactionIconProps> = ({
         }}
       >
         <IconComponent
-          style={{ width: iconSize, height: iconSize, color: config.iconColor }}
+          style={{ width: iconSize, height: iconSize, color: config.iconColor, fontFamily: 'inherit' }}
         />
       </span>
     )

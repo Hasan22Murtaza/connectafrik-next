@@ -108,16 +108,20 @@ const FeedPage: React.FC = () => {
 
   const handleToggleLike = useCallback(async (postId: string) => {
     const post = posts.find(p => p.id === postId)
+    const succeeded = await toggleLike(postId)
+    if (!succeeded) return false
+
     if (post?.author_id) {
       updateEngagementReward(post.author_id, 'like')
     }
-    await toggleLike(postId)
 
     // Track engagement event
     if (user?.id) {
       trackEvent.like(user.id, postId)
     }
+    return true
   }, [posts, toggleLike, user?.id])
+ 
 
   const handleComment = useCallback((postId: string) => {
     const post = posts.find(p => p.id === postId)
