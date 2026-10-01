@@ -31,7 +31,7 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
     try {
       if (!user) {
         toast.error('Please sign in to react')
-        return
+        return false
       }
 
       const reactionType = getReactionTypeFromEmoji(emoji)
@@ -54,10 +54,18 @@ export function useEmojiReaction(options: UseEmojiReactionOptions = {}) {
         toast.success('Reaction saved!')
       }
 
-      window.dispatchEvent(new CustomEvent(eventName, { detail: { postId } }))
+      window.dispatchEvent(new CustomEvent(eventName, {
+        detail: {
+          postId,
+          action: response.action,
+          reactionType: response.reaction_type,
+        },
+      }))
+      return true
     } catch (error: any) {
       console.error('Error handling emoji reaction:', error)
       toast.error('Something went wrong')
+      return false
     }
   }, [user, eventName, onLikesCountChange, trackEngagement, reactionEndpoint])
 

@@ -31,6 +31,7 @@ const EMOJI_TO_REACTION: Record<string, ReactionType> = {
   '\u{1F62E}': 'wow',       // 😮 surprised
   '\u{1F622}': 'sad',       // 😢 crying
   '\u{1F621}': 'angry',     // 😡 angry
+  '\u{1F917}': 'care',      // 🤗 care
   '\u{1F525}': 'love',      // 🔥 fire (love)
   '\u{1F44F}': 'like',      // 👏 clapping (like)
   '\u{1F64C}': 'like',      // 🙌 raising hands (like)

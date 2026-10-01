@@ -18,13 +18,13 @@ import toast from 'react-hot-toast'
 
 interface GroupPostCardProps {
   post: GroupPost
-  onLike: () => void
+  onLike: () => void | boolean | Promise<void | boolean>
   onComment: () => void
   onShare: () => void
   onDelete?: () => void
   onEdit?: (data: PostSubmitData) => void
   onView?: () => void
-  onEmojiReaction?: (postId: string, emoji: string) => void
+  onEmojiReaction?: (postId: string, emoji: string) => void | boolean | Promise<void | boolean>
   isPostLiked?: boolean
   showCommentsFor?: boolean
   onToggleComments?: () => void
@@ -436,7 +436,9 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         totalReactionCount={prefetchedReactionGroups ? (prefetchedTotalReactionCount ?? 0) : reactions.totalCount}
         commentsCount={post.comments_count}
         sharesCount={post.shares_count ?? 0}
-        onLike={(emoji) => onEmojiReaction?.(post.id, emoji || '👍')}
+        onLike={(emoji) => onEmojiReaction
+          ? onEmojiReaction(post.id, emoji || '👍')
+          : onLike()}
         onComment={() => onToggleComments ? onToggleComments() : onComment()}
         onShare={onShare}
         onUserClick={(userId) => router.push(`/user/${userId}`)}
