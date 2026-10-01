@@ -270,6 +270,9 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
     })
   }
 
+  const countCommentTree = (items: Comment[]): number =>
+    items.reduce((sum, comment) => sum + 1 + countCommentTree(comment.replies || []), 0)
+
   const mergeComments = (existing: Comment[], incoming: Comment[]): Comment[] => {
     if (incoming.length === 0) return existing
     const existingIds = new Set(existing.map(comment => comment.id))
@@ -336,7 +339,8 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
       setListSource('seed')
       setCurrentPage(1)
       if (typeof totalCommentsCount === 'number') {
-        setHasNextPage(totalCommentsCount > processed.length)
+        // Compare against the full nested tree, not just top-level preview rows.
+        setHasNextPage(totalCommentsCount > countCommentTree(processed))
       } else {
         setHasNextPage(processed.length >= COMMENT_PREVIEW_LIMIT)
       }

@@ -1205,17 +1205,18 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
     });
   }, [engagement, localParticipant]);
 
-  const handleMuteParticipant = useCallback(
-    (participantId: string, displayName?: string) => {
-      engagement.requestMute(participantId);
-      toast(`Muted ${displayName || 'participant'}`);
-    },
-    [engagement],
-  );
-
   const participantCount = remoteParticipantIds.length + 1; // +1 for local
   const isGroupCall = remoteParticipantIds.length > 1;
   const isCallHost = Boolean(sessionHostId && currentUserId && sessionHostId === currentUserId);
+
+  const handleMuteParticipant = useCallback(
+    (participantId: string, displayName?: string) => {
+      if (!isCallHost) return;
+      engagement.requestMute(participantId);
+      toast(`Muted ${displayName || 'participant'}`);
+    },
+    [engagement, isCallHost],
+  );
 
   // Load participant profile avatars for group call strip
   useEffect(() => {
@@ -1425,9 +1426,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 audioVolume={opts.audioVolume}
                 handRaised={engagement.isHandRaised(p.id)}
                 onMute={
-                  p.isLocal
-                    ? undefined
-                    : () => handleMuteParticipant(p.id, p.displayName)
+                  isCallHost && !p.isLocal
+                    ? () => handleMuteParticipant(p.id, p.displayName)
+                    : undefined
                 }
               />
             )}
@@ -1451,8 +1452,14 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                 showNameLabel
                 audioVolume={audioVolume}
                 handRaised={engagement.isHandRaised(remoteParticipantIds[0])}
-                onMute={() =>
-                  handleMuteParticipant(remoteParticipantIds[0], 'participant')
+                onMute={
+                  isCallHost
+                    ? () =>
+                        handleMuteParticipant(
+                          remoteParticipantIds[0],
+                          'participant',
+                        )
+                    : undefined
                 }
               />
             </div>
@@ -1495,9 +1502,9 @@ const MeetingContainer: React.FC<MeetingContainerProps> = ({
                   audioVolume={audioVolume}
                   handRaised={engagement.isHandRaised(pid)}
                   onMute={
-                    pid === localId
-                      ? undefined
-                      : () => handleMuteParticipant(pid, 'participant')
+                    isCallHost && pid !== localId
+                      ? () => handleMuteParticipant(pid, 'participant')
+                      : undefined
                   }
                 />
               </div>
