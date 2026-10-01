@@ -96,9 +96,8 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
 
   return (
     <div
-      className={`group relative flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-gray-50 ${
-        subdued ? 'opacity-70' : ''
-      }`}
+      className={`group relative flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left transition-colors hover:bg-gray-50 ${subdued ? 'opacity-70' : ''
+        }`}
     >
       <button
         type="button"
@@ -125,15 +124,78 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
               {thread.pinned ? <Pin className="h-3.5 w-3.5 shrink-0 text-primary-600" aria-hidden /> : null}
               <span className="truncate">{threadDisplayName}</span>
             </p>
-            {timeLabel ? (
-              <span
-                className={`shrink-0 text-xs tabular-nums ${
-                  unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
-                }`}
-              >
-                {timeLabel}
+            <div>
+            {unread > 0 ? (
+              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
+                {unread > 99 ? '99+' : unread}
               </span>
             ) : null}
+
+            <div className="relative self-center">
+              <button
+                type="button"
+                data-chat-menu-trigger
+                aria-label="Chat actions"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setMenuThreadId((prev) => (prev === thread.id ? null : thread.id))
+                }}
+                className="rounded-full text-content-tertiary opacity-60 transition hover:bg-gray-100 hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {menuOpen ? (
+                <div
+                  data-chat-menu
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute right-0 top-8 z-30 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => onMenuAction(e, thread, 'toggle-archive')}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                  >
+                    <Archive className="h-4 w-4" />
+                    <span>{thread.archived ? 'Unarchive chat' : 'Archive chat'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => onMenuAction(e, thread, 'toggle-pin')}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                  >
+                    {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                    <span>{thread.pinned ? 'Unpin chat' : 'Pin chat'}</span>
+                  </button>
+                  {canBlock ? (
+                    <button
+                      type="button"
+                      onClick={(e) => onMenuAction(e, thread, 'toggle-block')}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                    >
+                      <Ban className="h-4 w-4" />
+                      <span>{thread.is_block ? 'Unblock contact' : 'Block contact'}</span>
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={(e) => onMenuAction(e, thread, 'lock')}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                  >
+                    <Lock className="h-4 w-4" />
+                    <span>Lock chat</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => onMenuAction(e, thread, 'clear')}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Clear chat</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            </div>
           </div>
           <div className="mt-0.5 flex items-center justify-between gap-2">
             <p className="min-w-0 flex-1 truncate text-sm text-content-secondary">
@@ -144,79 +206,22 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
               ) : null}
               {preview}
             </p>
-            {unread > 0 ? (
-              <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-600 px-1 text-[11px] font-semibold text-white">
-                {unread > 99 ? '99+' : unread}
+
+            {timeLabel ? (
+              <span
+                className={`shrink-0 text-xs tabular-nums ${unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
+                  }`}
+              >
+                {timeLabel}
               </span>
             ) : null}
+
+
           </div>
         </div>
       </button>
 
-      <div className="relative self-center">
-        <button
-          type="button"
-          data-chat-menu-trigger
-          aria-label="Chat actions"
-          onClick={(e) => {
-            e.stopPropagation()
-            setMenuThreadId((prev) => (prev === thread.id ? null : thread.id))
-          }}
-          className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-gray-100 hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
-        >
-          <MoreVertical className="h-4 w-4" />
-        </button>
-        {menuOpen ? (
-          <div
-            data-chat-menu
-            onClick={(e) => e.stopPropagation()}
-            className="absolute right-0 top-8 z-30 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
-          >
-            <button
-              type="button"
-              onClick={(e) => onMenuAction(e, thread, 'toggle-archive')}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-            >
-              <Archive className="h-4 w-4" />
-              <span>{thread.archived ? 'Unarchive chat' : 'Archive chat'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={(e) => onMenuAction(e, thread, 'toggle-pin')}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-            >
-              {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-              <span>{thread.pinned ? 'Unpin chat' : 'Pin chat'}</span>
-            </button>
-            {canBlock ? (
-              <button
-                type="button"
-                onClick={(e) => onMenuAction(e, thread, 'toggle-block')}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-              >
-                <Ban className="h-4 w-4" />
-                <span>{thread.is_block ? 'Unblock contact' : 'Block contact'}</span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={(e) => onMenuAction(e, thread, 'lock')}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-            >
-              <Lock className="h-4 w-4" />
-              <span>Lock chat</span>
-            </button>
-            <button
-              type="button"
-              onClick={(e) => onMenuAction(e, thread, 'clear')}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Clear chat</span>
-            </button>
-          </div>
-        ) : null}
-      </div>
+
     </div>
   )
 }
@@ -836,9 +841,8 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
                         </p>
                         {timeLabel ? (
                           <span
-                            className={`shrink-0 text-xs tabular-nums ${
-                              unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
-                            }`}
+                            className={`shrink-0 text-xs tabular-nums ${unread > 0 ? 'text-primary-600' : 'text-content-tertiary'
+                              }`}
                           >
                             {timeLabel}
                           </span>
@@ -862,7 +866,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           )}
         </div>
       ) : view === 'archived' ? (
-        <div className="custom-scrollbar max-h-[min(70vh,24rem)] overflow-y-auto pt-2">
+        <div className="custom-scrollbar min-h-[50vh] overflow-y-auto pt-2">
           {filteredArchived.length === 0 ? (
             <div className="py-8 text-center">
               <Archive className="mx-auto mb-3 h-9 w-9 text-content-tertiary" aria-hidden />
