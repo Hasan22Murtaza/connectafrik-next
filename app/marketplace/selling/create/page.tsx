@@ -100,8 +100,8 @@ const CreateListingPageContent: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-blue-900 text-sm mb-1">Stay safe</h3>
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    Meet in public places, never share payment details in chat, and use
-                    CribsTalk checkout for buyer protection.
+                    Meet in a public place, inspect the item, and arrange payment directly
+                    with the buyer. Do not send money in advance.
                   </p>
                 </div>
               </div>

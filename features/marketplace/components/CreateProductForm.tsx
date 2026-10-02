@@ -389,7 +389,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
               <Camera className="w-4 h-4 text-primary-600" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-content">Images</h2>
+              <h2 className="text-base font-bold text-content">1. Photos</h2>
               <p className="text-xs text-content-secondary">Add up to 5 photos. The first photo is your cover.</p>
             </div>
           </div>
@@ -475,8 +475,8 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           <Sparkles className="w-4 h-4 text-primary-600" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-content">Listing details</h2>
-          <p className="text-xs text-content-secondary">Help buyers understand what you&apos;re selling.</p>
+          <h2 className="text-base font-bold text-content">2. Title</h2>
+          <p className="text-xs text-content-secondary">Use a clear name buyers will search for.</p>
         </div>
       </div>
 
@@ -498,6 +498,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
       </div>
 
       <div>
+        <h2 className="text-base font-bold text-content mb-2">6. Description</h2>
         <label className={labelClassName} htmlFor="description">
           Description <span className="text-primary-600">*</span>
         </label>
@@ -519,7 +520,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           <DollarSign className="w-4 h-4 text-primary-600" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-content">Price</h2>
+          <h2 className="text-base font-bold text-content">3. Price</h2>
         </div>
       </div>
 
@@ -575,7 +576,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           <Tag className="w-4 h-4 text-primary-600" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-content">Category & condition</h2>
+          <h2 className="text-base font-bold text-content">4. Category & 5. Condition</h2>
         </div>
       </div>
 
@@ -649,7 +650,7 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           <MapPin className="w-4 h-4 text-primary-600" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-content">Location & fulfillment</h2>
+          <h2 className="text-base font-bold text-content">7. Location & 8. Details</h2>
         </div>
       </div>
 
@@ -780,6 +781,38 @@ const CreateProductForm: React.FC<CreateProductFormProps> = ({
           placeholder="handmade, local, vintage (comma-separated)"
           className={fieldClassName}
         />
+      </div>
+    </div>
+
+    <div className="rounded-2xl border border-border-subtle bg-surface-secondary/60 p-4">
+      <h2 className="text-base font-bold text-content mb-3">9. Preview</h2>
+      <div className="flex gap-3 items-start">
+        <div className="w-24 h-24 rounded-xl overflow-hidden bg-surface-secondary shrink-0 border border-border">
+          {previewImages[0] ? (
+            <img src={previewImages[0]} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs text-content-tertiary px-2 text-center">
+              No photo
+            </div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-lg font-bold text-content">
+            {formData.price.trim()
+              ? `${listingCurrency.symbol}${Number(formData.price).toLocaleString()}`
+              : "Price"}
+          </p>
+          <p className="text-sm font-semibold text-content line-clamp-2">
+            {formData.title.trim() || "Listing title"}
+          </p>
+          <p className="text-xs text-content-secondary mt-1">
+            {PRODUCT_CONDITIONS.find((item) => item.value === formData.condition)?.label ||
+              "Condition"}
+            {listingLocation.city || listingLocation.formattedAddress
+              ? ` · ${listingLocation.city || listingLocation.formattedAddress}`
+              : ""}
+          </p>
+        </div>
       </div>
     </div>
 

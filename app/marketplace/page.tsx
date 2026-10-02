@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   CREATE_LISTING_PATH,
   MarketplaceSort,
+  TRADEHUB_CATEGORIES,
 } from "@/features/marketplace/constants/marketplaceConstants";
 import TradeHubFilterSidebar from "@/features/marketplace/components/TradeHubFilterSidebar";
 import MarketplaceHubNav from "@/features/marketplace/components/MarketplaceHubNav";
@@ -22,12 +23,13 @@ import {
 } from "@/shared/components/ui/ShimmerLoaders";
 import { Product } from "@/shared/types";
 import {
+  Filter,
   Plus,
   Search,
   X,
 } from "@/shared/icons";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import ReactPaginate from "react-paginate";
 import toast from "react-hot-toast";
 
@@ -56,9 +58,11 @@ const MarketplacePage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [pageCount, setPageCount] = useState(1);
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(
+    searchParams.get("category") || ""
+  );
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
   const [selectedCondition, setSelectedCondition] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -83,7 +87,6 @@ const MarketplacePage: React.FC = () => {
   };
 
   const shimmerCount = useShimmerCount();
-  const paymentHandledRef = useRef(false);
 
   const handleLocationFilterChange = useCallback(
     (patch: Partial<MarketplaceLocationFilter>) => {
@@ -102,23 +105,19 @@ const MarketplacePage: React.FC = () => {
   }, [searchTerm]);
 
   useEffect(() => {
-    if (paymentHandledRef.current) return;
+    const category = searchParams.get("category") || "";
+    setSelectedCategory((current) => (current === category ? current : category));
+  }, [searchParams]);
 
-    const paymentStatus = searchParams.get("payment");
-    const message = searchParams.get("message");
-
-    if (paymentStatus === "success") {
-      paymentHandledRef.current = true;
-      toast.success("Payment successful! Your order has been created.");
-      router.replace("/marketplace");
-    } else if (paymentStatus === "error") {
-      paymentHandledRef.current = true;
-      toast.error(
-        message ? decodeURIComponent(message) : "Payment failed. Please try again."
-      );
-      router.replace("/marketplace");
-    }
-  }, [searchParams, router]);
+  const selectCategory = (value: string) => {
+    setSelectedCategory(value);
+    setSelectedSubcategory("");
+    const params = new URLSearchParams();
+    if (value) params.set("category", value);
+    if (debouncedSearch.trim()) params.set("q", debouncedSearch.trim());
+    const qs = params.toString();
+    router.replace(qs ? `/marketplace?${qs}` : "/marketplace", { scroll: false });
+  };
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -232,6 +231,7 @@ const MarketplacePage: React.FC = () => {
     setLocationFilter(resetLocation);
     writeStoredMarketplaceFilter(resetLocation);
     setSortBy("newest");
+    router.replace("/marketplace", { scroll: false });
   };
 
   const hasActiveFilters =
@@ -319,7 +319,7 @@ const MarketplacePage: React.FC = () => {
               featuredOnly,
             }}
             onChange={(patch) => {
-              if (patch.category !== undefined) setSelectedCategory(patch.category);
+              if (patch.category !== undefined) selectCategory(patch.category);
               if (patch.subcategory !== undefined) {
                 setSelectedSubcategory(patch.subcategory);
               }
@@ -353,11 +353,20 @@ const MarketplacePage: React.FC = () => {
         </div>
 
         <main className={MP.mainBrowse}>
-          <div className={`${MP.headerRow} mb-3`}>
+          <div className="flex flex-col gap-3 mb-3 md:flex-row md:items-center md:justify-between">
             <h1 className={`${MP.pageTitleLg} truncate`}>Today&apos;s picks</h1>
 
-            <div className={MP.headerActions}>
-              <div className="relative w-full sm:w-56 md:w-64 lg:w-72">
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setIsFilterDrawerOpen(true)}
+                className="md:hidden shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-surface-secondary text-content text-sm font-medium"
+                aria-label="Open filters"
+              >
+                <Filter className="w-4 h-4" />
+                Filters
+              </button>
+              <div className="relative flex-1 min-w-0 md:w-64 lg:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary pointer-events-none" />
                 <input
                   className={MP.searchInput}
@@ -378,6 +387,34 @@ const MarketplacePage: React.FC = () => {
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-3 mb-1 scrollbar-hide -mx-1 px-1">
+            <button
+              type="button"
+              onClick={() => selectCategory("")}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                selectedCategory === ""
+                  ? "bg-primary-600 text-white"
+                  : "bg-surface-secondary text-content hover:bg-surface-hover"
+              }`}
+            >
+              All
+            </button>
+            {TRADEHUB_CATEGORIES.map((category) => (
+              <button
+                key={category.value}
+                type="button"
+                onClick={() => selectCategory(category.value)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === category.value
+                    ? "bg-primary-600 text-white"
+                    : "bg-surface-secondary text-content hover:bg-surface-hover"
+                }`}
+              >
+                {category.label}
+              </button>
+            ))}
           </div>
 
           {loading ? (

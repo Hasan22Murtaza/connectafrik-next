@@ -6,6 +6,7 @@ import {
 import { Product } from "@/shared/types";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { PRODUCT_CONDITIONS } from "../constants/marketplaceConstants";
 import { hasTag, URGENT_TAG } from "../utils/listingTags";
 import {
   formatProductLocation,
@@ -30,6 +31,9 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   const [isSaved, setIsSaved] = useState<boolean>(Boolean(product.is_saved));
   const mainImage = product.images?.[0] || FALLBACK_IMAGE;
   const location = formatProductLocation(product);
+  const conditionLabel =
+    PRODUCT_CONDITIONS.find((item) => item.value === product.condition)?.label ||
+    product.condition;
   const isOutOfStock = product.stock_quantity === 0;
   const isUnavailable = !product.is_available;
   const justListed = isJustListed(product.created_at);
@@ -127,15 +131,17 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
       </div>
 
       <div className="flex flex-col gap-1 px-3 pt-2.5 pb-3 min-w-0">
-         <h3 className="text-sm text-content line-clamp-1 leading-snug">
-          {product.title}
-        </h3>
         <p className="text-base font-bold text-content truncate leading-none">
           {formatProductPrice(product)}
         </p>
-       
+        <h3 className="text-sm text-content line-clamp-2 leading-snug">
+          {product.title}
+        </h3>
         {location && (
           <p className="text-xs text-content-secondary truncate">{location}</p>
+        )}
+        {conditionLabel && (
+          <p className="text-xs text-content-tertiary truncate">{conditionLabel}</p>
         )}
       </div>
     </article>

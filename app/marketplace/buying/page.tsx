@@ -2,9 +2,13 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import ProductBrowseCard from "@/features/marketplace/components/ProductBrowseCard";
-import { BUYING_TABS, BuyingTab, CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplaceConstants";
+import { BUYING_TABS, BuyingTab } from "@/features/marketplace/constants/marketplaceConstants";
 import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import { getCurrencySymbol } from "@/features/marketplace/utils/productFormatting";
+import {
+  readRecentlyViewed,
+  type RecentListing,
+} from "@/features/marketplace/utils/recentlyViewed";
 import { apiClient } from "@/lib/api-client";
 import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import { Product } from "@/shared/types";
@@ -13,10 +17,10 @@ import {
   ArrowLeft,
   Bookmark,
   Clock,
-  HelpCircle,
+  Eye,
   LayoutGrid,
   List,
-  Plus,
+  MessageCircle,
   ShoppingBag,
 } from '@/shared/icons';
 import { useRouter, useSearchParams } from "next/navigation";
@@ -40,9 +44,19 @@ interface PurchaseOrder {
   created_at: string;
 }
 
+interface MarketplaceThreadRow {
+  id: string;
+  name?: string | null;
+  title?: string | null;
+  product_id?: string | null;
+  product?: { id?: string; title?: string; images?: string[] | null } | null;
+  last_message_preview?: string | null;
+  last_message_at?: string | null;
+}
+
 interface ActivityItem {
   id: string;
-  type: "saved" | "purchased";
+  type: "saved" | "purchased" | "viewed";
   timestamp: string;
   productId: string;
   title: string;
@@ -66,6 +80,8 @@ const BuyingPageContent: React.FC = () => {
 
   const [savedItems, setSavedItems] = useState<SavedProduct[]>([]);
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
+  const [threads, setThreads] = useState<MarketplaceThreadRow[]>([]);
+  const [recentItems, setRecentItems] = useState<RecentListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
@@ -80,7 +96,7 @@ const BuyingPageContent: React.FC = () => {
 
     try {
       setLoading(true);
-      const [savedRes, ordersRes] = await Promise.all([
+      const [savedRes, ordersRes, threadsRes] = await Promise.all([
         apiClient.get<{ data: SavedProduct[] }>("/api/marketplace/saved", {
           limit: 50,
         }),
@@ -88,10 +104,18 @@ const BuyingPageContent: React.FC = () => {
           type: "purchases",
           limit: 50,
         }),
+        apiClient
+          .get<{ data: MarketplaceThreadRow[] }>("/api/chat/threads", {
+            category: "marketplace",
+            limit: 30,
+          })
+          .catch(() => ({ data: [] as MarketplaceThreadRow[] })),
       ]);
 
       setSavedItems(savedRes.data || []);
       setOrders(ordersRes.data || []);
+      setThreads(threadsRes.data || []);
+      setRecentItems(readRecentlyViewed());
     } catch {
       toast.error("Failed to load buying data");
     } finally {
@@ -121,6 +145,18 @@ const BuyingPageContent: React.FC = () => {
       subtitle: "Saved",
     }));
 
+    const viewedActivities: ActivityItem[] = recentItems.map((item) => ({
+      id: `viewed-${item.id}`,
+      type: "viewed",
+      timestamp: item.viewed_at,
+      productId: item.id,
+      title: item.title,
+      image: item.image,
+      price: item.price,
+      currency: item.currency,
+      subtitle: "Viewed",
+    }));
+
     const purchaseActivities: ActivityItem[] = orders.map((order) => ({
       id: `order-${order.id}`,
       type: "purchased",
@@ -133,10 +169,10 @@ const BuyingPageContent: React.FC = () => {
       subtitle: `Order #${order.order_number}`,
     }));
 
-    return [...savedActivities, ...purchaseActivities].sort(
+    return [...savedActivities, ...viewedActivities, ...purchaseActivities].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-  }, [savedItems, orders]);
+  }, [savedItems, orders, recentItems]);
 
   const setTab = (tab: BuyingTab) => {
     router.push(`/marketplace/buying?tab=${tab}`);
@@ -312,10 +348,10 @@ const BuyingPageContent: React.FC = () => {
             <Clock className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
             <p className="text-content-secondary mb-2">No recent activity yet</p>
             <p className="text-sm text-content-tertiary mb-4">
-              Items you save or purchase will appear here
+              Listings you view or save will show up here
             </p>
             <button onClick={() => router.push("/marketplace")} className="btn-primary">
-              Browse TradeHub
+              Browse marketplace
             </button>
           </div>
         );
@@ -356,13 +392,145 @@ const BuyingPageContent: React.FC = () => {
       );
     }
 
+    if (activeTab === "inbox") {
+      if (threads.length === 0) {
+        return (
+          <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
+            <MessageCircle className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+            <p className="text-content-secondary mb-2">No seller conversations yet</p>
+            <p className="text-sm text-content-tertiary mb-4">
+              Message a seller from a listing to start a chat
+            </p>
+            <button onClick={() => router.push("/marketplace")} className="btn-primary">
+              Browse marketplace
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className={MP.listStack}>
+          {threads.map((thread) => {
+            const productId = thread.product_id || thread.product?.id;
+            const title =
+              thread.product?.title || thread.title || thread.name || "Marketplace chat";
+            const image = thread.product?.images?.[0] || FALLBACK_IMAGE;
+            return (
+              <div key={thread.id} className={MP.listRow}>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/chat/${encodeURIComponent(thread.id)}`)}
+                  className="flex flex-1 items-center gap-2 min-w-0 text-left"
+                >
+                  <div className={MP.listThumb}>
+                    <img src={image} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-content line-clamp-1">{title}</p>
+                    <p className="text-xs text-content-secondary line-clamp-2 mt-1">
+                      {thread.last_message_preview || "Open conversation"}
+                    </p>
+                  </div>
+                </button>
+                {productId && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/marketplace/${productId}`)}
+                    className="shrink-0 text-xs font-semibold text-primary-600 px-2"
+                  >
+                    Open listing
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (activeTab === "recent") {
+      if (recentItems.length === 0) {
+        return (
+          <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
+            <Eye className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+            <p className="text-content-secondary mb-2">No recently viewed listings</p>
+            <button onClick={() => router.push("/marketplace")} className="btn-primary">
+              Browse marketplace
+            </button>
+          </div>
+        );
+      }
+
+      return viewMode === "grid" ? (
+        <div className={MP.productGridCompact}>
+          {recentItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => router.push(`/marketplace/${item.id}`)}
+              className="group flex flex-col text-left bg-surface rounded-lg border border-border-subtle shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+            >
+              <div className="aspect-square bg-surface-secondary overflow-hidden">
+                <img
+                  src={item.image || FALLBACK_IMAGE}
+                  alt={item.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                />
+              </div>
+              <div className="p-2 min-w-0">
+                <p className="font-bold text-content text-sm">
+                  {item.price === 0
+                    ? "FREE"
+                    : `${getCurrencySymbol(item.currency)}${item.price.toLocaleString()}`}
+                </p>
+                <p className="text-sm text-content line-clamp-2 mt-0.5">{item.title}</p>
+                {item.location && (
+                  <p className="text-xs text-content-secondary mt-1 line-clamp-1">{item.location}</p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className={MP.listStack}>
+          {recentItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => router.push(`/marketplace/${item.id}`)}
+              className={MP.listRow}
+            >
+              <div className={MP.listThumb}>
+                <img
+                  src={item.image || FALLBACK_IMAGE}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-content">
+                  {item.price === 0
+                    ? "FREE"
+                    : `${getCurrencySymbol(item.currency)}${item.price.toLocaleString()}`}
+                </p>
+                <p className="text-sm text-content line-clamp-2 mt-0.5">{item.title}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      );
+    }
+
     if (orders.length === 0) {
       return (
         <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
           <ShoppingBag className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
-          <p className="text-content-secondary mb-2">No purchases yet</p>
+          <p className="text-content-secondary mb-2">No earlier orders</p>
+          <p className="text-sm text-content-tertiary mb-4">
+            New listings are arranged by messaging the seller
+          </p>
           <button onClick={() => router.push("/marketplace")} className="btn-primary">
-            Start shopping
+            Browse marketplace
           </button>
         </div>
       );

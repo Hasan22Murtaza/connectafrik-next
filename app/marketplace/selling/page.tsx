@@ -266,21 +266,30 @@ const SellerDashboardPage: React.FC = () => {
   };
 
   const handleRenewListing = async (productId: string) => {
+    const current = listings.find((item) => item.id === productId);
+    const stockQuantity =
+      current && current.stock_quantity > 0 ? current.stock_quantity : 1;
     try {
       await apiClient.patch(`/api/marketplace/${productId}`, {
         is_available: true,
+        stock_quantity: stockQuantity,
         created_at: new Date().toISOString(),
       });
-      toast.success("Listing renewed");
+      toast.success("Listing is available again");
       setListings((prev) =>
         prev.map((p) =>
           p.id === productId
-            ? { ...p, is_available: true, created_at: new Date().toISOString() }
+            ? {
+                ...p,
+                is_available: true,
+                stock_quantity: stockQuantity,
+                created_at: new Date().toISOString(),
+              }
             : p
         )
       );
     } catch {
-      toast.error("Failed to renew listing");
+      toast.error("Failed to make listing available");
     }
   };
 
