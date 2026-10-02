@@ -249,7 +249,7 @@ export function GroupDetailPageShimmer() {
           </div>
         </div>
       </div>
-      <div className="px-3 sm:px-4 py-4 sm:py-6 w-full min-w-0">
+      <div className=" py-4 sm:py-6 w-full min-w-0">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           <div className="lg:col-span-7 space-y-4 min-w-0 w-full">
             <GroupPostsFeedShimmer count={feedCount} />

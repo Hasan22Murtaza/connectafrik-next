@@ -14,8 +14,7 @@ import {
   ChevronRight,
 } from '@/shared/icons';
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import toast from "react-hot-toast";
 import { getReactionTypeFromEmoji } from "@/shared/utils/reactionUtils";
@@ -27,6 +26,7 @@ import {
 import ShareModal from "@/features/social/components/ShareModal";
 import { useMembers } from "@/shared/hooks/useMembers";
 import { sendNotification } from "@/shared/services/notificationService";
+import GroupsSidebar from "@/features/groups/components/GroupsSidebar";
 
 const GroupsPage: React.FC = () => {
   const { user } = useAuth();
@@ -39,27 +39,49 @@ const GroupsPage: React.FC = () => {
     fetchManagedGroups,
     fetchRecentActivity,
   } = useGroups();
+  const requestedViewRef = useRef<string | null>(null);
+  const fetchGroupsRef = useRef(fetchGroups);
+  const fetchMyGroupsRef = useRef(fetchMyGroups);
+  const fetchManagedGroupsRef = useRef(fetchManagedGroups);
+  fetchGroupsRef.current = fetchGroups;
+  fetchMyGroupsRef.current = fetchMyGroups;
+  fetchManagedGroupsRef.current = fetchManagedGroups;
   const [searchTerm, setSearchTerm] = useState("");
   const [view, setView] = useState<"feed" | "discover" | "my-groups">("feed");
   const [managedGroups, setManagedGroups] = useState<Group[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
-  const [showAllJoined, setShowAllJoined] = useState(false);
   const [showCommentsFor, setShowCommentsFor] = useState<string | null>(null);
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null; groupId: string | null }>({ open: false, postId: null, groupId: null });
   const { members } = useMembers();
   const shimmerCount = useShimmerCount();
 
+  useEffect(() => {
+    const requestedView = new URLSearchParams(window.location.search).get("view");
+    if (requestedView === "feed" || requestedView === "discover" || requestedView === "my-groups") {
+      requestedViewRef.current = requestedView;
+      setView(requestedView);
+    }
+  }, []);
+
   // Fetch managed and joined groups separately
   useEffect(() => {
-    if (user?.id) {
-      const loadGroups = async () => {
-        await fetchMyGroups();
-        const managed = await fetchManagedGroups();
-        setManagedGroups(managed);
-      };
-      loadGroups();
+    if (!user?.id) {
+      if (requestedViewRef.current === "discover") {
+        void fetchGroupsRef.current();
+      }
+      return;
     }
+
+    const loadGroups = async () => {
+      await fetchMyGroupsRef.current();
+      const managed = await fetchManagedGroupsRef.current();
+      setManagedGroups(managed);
+      if (requestedViewRef.current === "discover") {
+        await fetchGroupsRef.current();
+      }
+    };
+    void loadGroups();
   }, [user?.id]);
 
   // Derive joined groups synchronously — no extra render cycle
@@ -138,11 +160,6 @@ const GroupsPage: React.FC = () => {
   const handleViewGroup = (groupId: string) => {
     router.push(`/groups/${groupId}`);
   };
-
-  const displayedJoinedGroups = useMemo(
-    () => (showAllJoined ? joinedGroups : joinedGroups.slice(0, 5)),
-    [joinedGroups, showAllJoined],
-  );
 
   const handlePostLike = async (postId: string) => {
     // Default like reaction via the React button fallback
@@ -282,202 +299,6 @@ const GroupsPage: React.FC = () => {
     return `${window.location.origin}/groups/${shareModalState.groupId || ''}?post=${shareModalState.postId}`;
   }, [shareModalState.postId, shareModalState.groupId]);
 
-  // Sidebar content as plain JSX — avoids recreating a component type every
-  // render which would cause React to fully unmount/remount the sidebar DOM.
-  const sidebarContent = (
-    <div className="space-y-4 ">
-      {/* Groups Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-semibold text-content">Groups</h2>
-
-      </div>
-
-
-      {/* Navigation */}
-      <div className="space-y-2">
-        {/* FEED */}
-        <button
-          onClick={() => handleViewChange("feed")}
-          className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-    transition-all duration-300 ease-in-out
-    ${view === "feed"
-              ? "bg-orange-50 text-primary-600"
-              : "text-content-secondary hover:bg-gray-50 hover:text-gray-700"
-            }
-    `}
-        >
-          <FileText
-            className={`w-5 h-5 transition-all duration-300`}
-          />
-          <span className="font-medium transition-all duration-300 ">
-            Your feed
-          </span>
-        </button>
-
-        {/* DISCOVER */}
-        <button
-          onClick={() => handleViewChange("discover")}
-          className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-    transition-all duration-300 ease-in-out
-    ${view === "discover"
-              ? "bg-orange-50 text-primary-600"
-              : "text-content-secondary hover:bg-gray-50 hover:text-gray-700"
-            }
-    `}
-        >
-          
-
-          <Compass
-            className={`w-5 h-5 transition-all duration-300 `}
-          />
-          <span className="font-medium transition-all duration-300 ">
-            Discover
-          </span>
-        </button>
-
-        {/* GROUPS */}
-        {user && (
-          <button
-            onClick={() => handleViewChange("my-groups")}
-            className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
-      transition-all duration-300 ease-in-out
-      ${view === "my-groups"
-                ? "bg-orange-50 text-primary-600"
-                : "text-content-secondary hover:bg-gray-50 hover:text-gray-700"
-              }
-      `}
-          >
-
-            <Users
-              className={`w-5 h-5 transition-all duration-300 `}
-            />
-            <span className="font-medium transition-all duration-300 ">
-              Your groups
-            </span>
-          </button>
-        )}
-      </div>
-
-      {/* Create Group Button */}
-      {user && (
-        <button
-          onClick={() => {
-            router.push("/groups/create");
-          }}
-          className="btn-primary w-full flex items-center justify-center gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Create new group</span>
-        </button>
-      )}
-
-      {/* Groups You Manage */}
-      {user && managedGroups.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-content mb-2 px-2">
-            Groups you manage
-          </h3>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {managedGroups.map((group) => (
-              <button
-                key={group.id}
-                onClick={() => {
-                  handleViewGroup(group.id);
-
-                }}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-secondary transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
-                  {group.banner_url ? (
-                    <img
-                      src={group.banner_url}
-                      alt={group.name}
-                      className="w-full h-full rounded-lg object-cover"
-                    />
-                  ) : (
-                    <span className="text-content font-bold text-sm bg-surface-tertiary w-10 h-10 rounded-lg flex items-center justify-center">
-                      {group.name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-content truncate text-sm">
-                    {group.name}
-                  </p>
-                  <p className="text-xs text-content-secondary">
-                    Last active{" "}
-                    {formatDistanceToNow(
-                      new Date(group.updated_at || group.created_at),
-                      { addSuffix: true },
-                    )}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Groups You've Joined */}
-      {user && joinedGroups.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2 px-2">
-            <h3 className="text-sm font-semibold text-content">
-              Groups you've joined
-            </h3>
-            {joinedGroups.length > 5 && (
-              <button
-                onClick={() => setShowAllJoined(!showAllJoined)}
-                className="text-xs text-orange-600 hover:underline"
-              >
-                {showAllJoined ? "See less" : "See all"}
-              </button>
-            )}
-          </div>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {displayedJoinedGroups.map((group) => (
-              <button
-                key={group.id}
-                onClick={() => {
-                  handleViewGroup(group.id);
-
-                }}
-                className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-secondary transition-colors text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-african-green flex items-center justify-center shrink-0">
-                  {group.banner_url ? (
-                    <img
-                      src={group.banner_url}
-                      alt={group.name}
-                      className="w-full h-full rounded-lg object-cover"
-                    />
-                  ) : (
-                    <span className="text-content font-bold text-sm bg-surface-tertiary w-10 h-10 rounded-lg flex items-center justify-center">
-                      {group.name.charAt(0).toUpperCase()}
-                    </span>
-
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-content truncate text-sm">
-                    {group.name}
-                  </p>
-                  <p className="text-xs text-content-secondary">
-                    Last active{" "}
-                    {formatDistanceToNow(
-                      new Date(group.updated_at || group.created_at),
-                      { addSuffix: true },
-                    )}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="min-h-screen px-2 sm:px-6 py-5 w-full min-w-0">
       <div>
@@ -507,16 +328,15 @@ const GroupsPage: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleSearch()}
               className="
-               w-full
-    pl-10 pe-4 py-2
-    border border-gray-300
-    rounded-full
-    text-base
-    text-content
-    transition-all duration-200
-    focus:outline-none
-    focus:border-orange-500
-    focus:ring-3 focus:ring-orange-500/10"
+                  w-full pl-10 pe-4 py-2
+                  border border-gray-300
+                  rounded-full
+                  text-base
+                  text-content
+                  transition-all duration-200
+                  focus:outline-none
+                focus:border-orange-500
+                  focus:ring-3 focus:ring-orange-500/10"
             />
           </div>
 
@@ -525,8 +345,8 @@ const GroupsPage: React.FC = () => {
             <button
               onClick={() => handleViewChange("feed")}
               className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary  ${view === "feed"
-                  ? "text-orange-600 bg-orange-100"
-                  : "text-content hover:bg-surface-secondary "
+                  ? "text-orange-600 bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300"
+                  : "text-content hover:bg-surface-secondary dark:hover:bg-surface-hover"
                 }`}
             >
               Your feed
@@ -534,8 +354,8 @@ const GroupsPage: React.FC = () => {
             <button
               onClick={() => handleViewChange("discover")}
               className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary ${view === "discover"
-                  ? "text-orange-600 bg-orange-100"
-                  : "text-content hover:bg-surface-secondary"
+                  ? "text-orange-600 bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300"
+                  : "text-content hover:bg-surface-secondary dark:hover:bg-surface-hover"
                 }`}
             >
               Discover
@@ -544,8 +364,8 @@ const GroupsPage: React.FC = () => {
               <button
                 onClick={() => handleViewChange("my-groups")}
                 className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary ${view === "my-groups"
-                    ? "text-orange-600 bg-orange-100"
-                    : "text-content hover:bg-surface-secondary"
+                    ? "text-orange-600 bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300"
+                    : "text-content hover:bg-surface-secondary dark:hover:bg-surface-hover"
                   }`}
               >
                 Your groups
@@ -557,7 +377,13 @@ const GroupsPage: React.FC = () => {
         <div className="flex gap-4 lg:gap-6">
           {/* Left Sidebar - Desktop */}
           <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto scrollbar-hover ">
-              {sidebarContent}
+            <GroupsSidebar
+              view={view}
+              onViewChange={handleViewChange}
+              isAuthenticated={!!user}
+              managedGroups={managedGroups}
+              joinedGroups={joinedGroups}
+            />
           </div>
 
 
