@@ -285,14 +285,14 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                 userReaction ? KIND_TO_EMOJI[userReaction as ReactionKind] : KIND_TO_EMOJI.like
               )
             }}
-            className={`flex w-full items-center noto-color-emoji-regular justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium ${userReactionConfig
+            className={`flex w-full items-center noto-color-emoji-regular justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium dark:hover:bg-blue-900/10 ${userReactionConfig
                 ? `${userReaction === 'love'
                   ? 'text-red-500'
                   : userReaction === 'like'
                     ? 'text-blue-600'
                     : 'text-amber-500'
                 } ${userReactionConfig.hoverBg}`
-                : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50'
+                : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 '
               }`}
             aria-label={
               userReactionConfig
@@ -315,7 +315,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
             e.stopPropagation()
             onComment()
           }}
-          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium"
+          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium dark:hover:bg-blue-900/10"
           aria-label="Comment on post"
         >
           <MessageCircle className="w-4 h-4" />
@@ -329,7 +329,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
           }}
           className={`flex flex-1 items-center justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium ${isShared
               ? 'text-green-600 hover:bg-green-50'
-              : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
+              : 'text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-blue-900/10'
             }`}
           aria-label={isShared ? 'Shared post' : 'Share post'}
           aria-pressed={isShared}

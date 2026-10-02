@@ -83,14 +83,10 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
   if (type === 'featured') {
     return (
       <div 
-        className={`relative bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border-2 border-transparent rounded-xl p-6 overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 ${className}`}
-        style={{
-          background: 'linear-gradient(135deg, #faf5ff, #f3e8ff, #fdf4ff)',
-          boxShadow: isHovered 
-            ? '0 25px 50px -12px rgba(147, 51, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-            : '0 10px 25px -5px rgba(147, 51, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-          borderImage: 'linear-gradient(45deg, #e879f9, #a855f7, #c084fc) 1'
-        }}
+        className={`relative bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 dark:from-slate-900 dark:via-purple-950 dark:to-slate-900 border-2 border-purple-300 dark:border-purple-300 rounded-xl p-6 overflow-hidden transition-all duration-500 transform hover:-translate-y-2 ${isHovered
+          ? 'shadow-[0_25px_50px_-12px_rgba(147,51,234,0.25),inset_0_1px_0_rgba(255,255,255,0.1)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]'
+          : 'shadow-[0_10px_25px_-5px_rgba(147,51,234,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] dark:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]'
+        } ${className}`}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -125,7 +121,7 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
               <Palette className="w-6 h-6 text-white drop-shadow-sm" />
             </div>
             <div>
-              <h3 className="font-bold text-xl bg-gradient-to-r from-violet-800 via-purple-800 to-fuchsia-800 bg-clip-text text-transparent drop-shadow-sm flex items-center space-x-2">
+              <h3 className="font-bold text-xl bg-gradient-to-r from-violet-800 via-purple-800 to-fuchsia-800 dark:from-violet-200 dark:via-purple-200 dark:to-fuchsia-200 bg-clip-text text-transparent drop-shadow-sm flex items-center space-x-2">
                 <span>ART OF INKS</span>
                 <Sparkles className="w-4 h-4 text-yellow-500 animate-spin" />
               </h3>
@@ -133,20 +129,20 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
                 {[...Array(5)].map((_, i) => (
                   <Star key={i} className="w-4 h-4 text-yellow-400 fill-current drop-shadow-sm" />
                 ))}
-                <span className="text-sm bg-gradient-to-r from-gray-600 to-gray-500 bg-clip-text text-transparent ml-2">Premium Service</span>
+                <span className="text-sm bg-gradient-to-r from-gray-600 to-gray-500 dark:from-gray-300 dark:to-gray-400 bg-clip-text text-transparent ml-2">Premium Service</span>
               </div>
             </div>
           </div>
           <div className="relative ">
-            <span className="bg-gradient-to-r from-violet-100 to-purple-100 border-2 border-violet-200 text-violet-800 px-4 py-2 rounded-full text-sm font-medium shadow-inner whitespace-nowrap backdrop-blur-sm">
+            <span className="bg-gradient-to-r from-violet-100 to-purple-100 dark:from-violet-900 dark:to-purple-900 border-2 border-violet-200 dark:border-violet-700 text-violet-800 dark:text-violet-100 px-4 py-2 rounded-full text-sm font-medium shadow-inner whitespace-nowrap backdrop-blur-sm">
               Sponsored
             </span>
           </div>
         </div>
 
         <div className="relative z-10 mb-6">
-          <h4 className="font-semibold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2 drop-shadow-sm">Transform Your Vision Into Stunning Visuals</h4>
-          <p className="text-gray-600 text-sm leading-relaxed">
+          <h4 className="font-semibold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent mb-2 drop-shadow-sm">Transform Your Vision Into Stunning Visuals</h4>
+          <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
             Professional graphic design services and large format printing in the Volta Region. 
             From business branding to event banners, we bring your creative ideas to life with 
             exceptional quality and attention to detail.
@@ -166,31 +162,31 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
             <div className="grid grid-cols-2 gap-4 mb-4 animate-fadeIn">
               <div className="flex items-center space-x-2 group">
                 <Printer className="w-4 h-4 text-violet-600 group-hover:scale-110 transition-transform" />
-                <span className="text-sm text-gray-700 group-hover:text-violet-600 transition-colors">Large Format Printing</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-violet-600 transition-colors">Large Format Printing</span>
               </div>
               <div className="flex items-center space-x-2 group">
                 <Palette className="w-4 h-4 text-purple-600 group-hover:scale-110 transition-transform" />
-                <span className="text-sm text-gray-700 group-hover:text-purple-600 transition-colors">Custom Graphic Design</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-purple-600 transition-colors">Custom Graphic Design</span>
               </div>
               <div className="flex items-center space-x-2 group">
                 <Award className="w-4 h-4 text-yellow-600 group-hover:scale-110 transition-transform" />
-                <span className="text-sm text-gray-700 group-hover:text-yellow-600 transition-colors">Premium Quality</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-yellow-600 transition-colors">Premium Quality</span>
               </div>
               <div className="flex items-center space-x-2 group">
                 <Users className="w-4 h-4 text-green-600 group-hover:scale-110 transition-transform" />
-                <span className="text-sm text-gray-700 group-hover:text-green-600 transition-colors">Expert Team</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-green-600 transition-colors">Expert Team</span>
               </div>
             </div>
           )}
         </div>
 
-        <div className="relative z-10 bg-gradient-to-br from-white to-gray-50 rounded-lg p-4 mb-4 border border-gray-100 shadow-inner">
+        <div className="relative z-10 bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-lg p-4 mb-4 border border-gray-100 dark:border-slate-700 shadow-inner">
           <div className="flex items-center space-x-2 mb-2">
             <MapPin className="w-4 h-4 text-violet-500" />
-            <span className="text-sm font-medium bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Visit Our Location</span>
+            <span className="text-sm font-medium bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">Visit Our Location</span>
           </div>
-          <p className="text-sm text-gray-600">HO, GOIL DOWN STADIUM ROAD</p>
-          <p className="text-sm text-gray-600">Volta Region, Ghana</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300">HO, GOIL DOWN STADIUM ROAD</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300">Volta Region, Ghana</p>
         </div>
 
         <div className="relative z-10 flex space-x-3">
@@ -214,7 +210,7 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
           </button>
           <button
             onClick={(e) => handleButtonClick(e, handleGetDirections)}
-            className="relative flex-1 bg-gradient-to-r from-white to-gray-50 border-2 border-violet-200 text-violet-600 px-4 py-3 rounded-lg font-medium hover:border-violet-300 hover:bg-violet-50 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg overflow-hidden flex items-center justify-center space-x-2"
+            className="relative flex-1 bg-gradient-to-r from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 border-2 border-violet-200 dark:border-violet-700 text-violet-600 dark:text-violet-300 px-4 py-3 rounded-lg font-medium hover:border-violet-300 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:from-slate-700 dark:hover:to-slate-800 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg overflow-hidden flex items-center justify-center space-x-2"
           >
             {rippleEffect.show && (
               <span 
@@ -244,13 +240,10 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
   // Default card type with enhanced effects
   return (
     <div 
-      className={`relative bg-gradient-to-br from-white via-violet-50 to-white border-2 border-transparent rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1 ${className}`}
-      style={{
-        background: 'linear-gradient(145deg, #ffffff, #faf5ff, #f8fafc)',
-        boxShadow: isHovered 
-          ? '0 25px 50px -12px rgba(147, 51, 234, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-          : '0 10px 25px -5px rgba(147, 51, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-      }}
+      className={`relative bg-gradient-to-br from-white via-violet-50 to-white dark:from-slate-900 dark:via-purple-950 dark:to-slate-900 border-2 border-purple-300 dark:border-purple-300 rounded-xl overflow-hidden transition-all duration-500 transform hover:-translate-y-1 ${isHovered
+        ? 'shadow-[0_25px_50px_-12px_rgba(147,51,234,0.25),inset_0_1px_0_rgba(255,255,255,0.1)] dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]'
+        : 'shadow-[0_10px_25px_-5px_rgba(147,51,234,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] dark:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]'
+      } ${className}`}
       onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -308,21 +301,15 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
       </div>
 
       {/* Enhanced content with embossed background */}
-      <div className="relative p-4 bg-gradient-to-b from-white to-violet-50/50">
+      <div className="relative p-4 bg-gradient-to-b from-white to-violet-50/50 dark:from-slate-900 dark:to-slate-900">
         {/* Embossed background layer */}
-        <div className="absolute inset-2 bg-gradient-to-br from-orange-50/30 via-white to-green-50/40 rounded-lg" style={{
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05), inset 0 -2px 4px rgba(255,255,255,0.8)'
-        }} />
+        <div className="absolute inset-2 bg-gradient-to-br from-orange-50/30 via-white to-green-50/40 dark:from-slate-800/70 dark:via-slate-800 dark:to-slate-800/70 rounded-lg shadow-inner dark:shadow-black/20" />
         
         <div className="relative z-10">
-          <h4 className="font-semibold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-2 text-sm drop-shadow-sm" style={{
-            textShadow: '0 1px 2px rgba(0,0,0,0.1), 0 -1px 1px rgba(255,255,255,0.3)'
-          }}>
+          <h4 className="font-semibold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent mb-2 text-sm drop-shadow-sm">
             Premium Design & Large Format Printing
           </h4>
-          <p className="text-gray-600 text-xs mb-4 leading-relaxed" style={{
-            textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-          }}>
+          <p className="text-gray-600 dark:text-gray-300 text-xs mb-4 leading-relaxed">
             Transform your brand with professional graphic design and high-quality large format printing. 
             Serving businesses across the Volta Region with creative excellence.
           </p>
@@ -333,54 +320,36 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
               <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full shadow-sm group-hover:scale-110 transition-transform" style={{
                 boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 2px rgba(255,255,255,0.3)'
               }}></span>
-              <span className="text-xs text-gray-700 group-hover:text-orange-600 transition-colors" style={{
-                textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-              }}>Logo Design</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 group-hover:text-orange-600 transition-colors">Logo Design</span>
             </div>
             <div className="flex items-center space-x-1 group">
               <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-green-600 rounded-full shadow-sm group-hover:scale-110 transition-transform" style={{
                 boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 2px rgba(255,255,255,0.3)'
               }}></span>
-              <span className="text-xs text-gray-700 group-hover:text-green-600 transition-colors" style={{
-                textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-              }}>Banners</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 group-hover:text-green-600 transition-colors">Banners</span>
             </div>
             <div className="flex items-center space-x-1 group">
               <span className="w-2 h-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-full shadow-sm group-hover:scale-110 transition-transform" style={{
                 boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 2px rgba(255,255,255,0.3)'
               }}></span>
-              <span className="text-xs text-gray-700 group-hover:text-orange-600 transition-colors" style={{
-                textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-              }}>Brochures</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 group-hover:text-orange-600 transition-colors">Brochures</span>
             </div>
             <div className="flex items-center space-x-1 group">
               <span className="w-2 h-2 bg-gradient-to-r from-green-500 to-green-600 rounded-full shadow-sm group-hover:scale-110 transition-transform" style={{
                 boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2), 0 1px 2px rgba(255,255,255,0.3)'
               }}></span>
-              <span className="text-xs text-gray-700 group-hover:text-green-600 transition-colors" style={{
-                textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-              }}>Signage</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 group-hover:text-green-600 transition-colors">Signage</span>
             </div>
           </div>
 
           {/* Enhanced location with embossed effect */}
-          <div className="bg-gradient-to-br from-orange-50/50 to-green-50/50 rounded-lg p-3 mb-4 border border-orange-100/50 shadow-inner" style={{
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05), inset 0 -2px 4px rgba(255,255,255,0.8)'
-          }}>
+          <div className="bg-gradient-to-br from-orange-50/50 to-green-50/50 dark:from-slate-800 dark:to-slate-800 rounded-lg p-3 mb-4 border border-orange-100/50 dark:border-slate-700 shadow-inner dark:shadow-black/20">
             <div className="flex items-center space-x-2 mb-1">
-              <MapPin className="w-3 h-3 text-orange-500" style={{
-                filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.1))'
-              }} />
-              <span className="text-xs font-medium bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent" style={{
-                textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-              }}>Our Location</span>
+              <MapPin className="w-3 h-3 text-orange-500" />
+              <span className="text-xs font-medium bg-gradient-to-r from-gray-800 to-gray-600 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">Our Location</span>
             </div>
-            <p className="text-xs text-gray-600" style={{
-              textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-            }}>HO, GOIL DOWN STADIUM ROAD</p>
-            <p className="text-xs text-gray-600" style={{
-              textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-            }}>Volta Region, Ghana</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">HO, GOIL DOWN STADIUM ROAD</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">Volta Region, Ghana</p>
           </div>
 
           {/* Interactive buttons with embossed effects */}
@@ -407,10 +376,7 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
             </button>
             <button
               onClick={(e) => handleButtonClick(e, handleGetDirections)}
-              className="relative px-3 py-2 bg-gradient-to-r from-white to-green-50 border-2 border-green-200 text-green-600 rounded-lg text-xs hover:border-green-300 hover:text-green-700 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg overflow-hidden"
-              style={{
-                boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), inset 0 -2px 4px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.1)'
-              }}
+              className="relative px-3 py-2 bg-gradient-to-r from-white to-green-50 dark:from-slate-800 dark:to-slate-900 border-2 border-green-200 dark:border-green-800 text-green-600 dark:text-green-300 rounded-lg text-xs hover:border-green-300 dark:hover:border-green-600 hover:text-green-700 dark:hover:text-green-200 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-md hover:shadow-lg overflow-hidden"
             >
               {rippleEffect.show && (
                 <span 
@@ -428,10 +394,8 @@ const ArtOfInksAd: React.FC<ArtOfInksAdProps> = ({ type = 'card', className = ''
           </div>
 
           <div className="mt-3 text-center">
-            <p className="text-xs text-gray-500" style={{
-              textShadow: '0 1px 1px rgba(255,255,255,0.5)'
-            }}>
-              <span className="font-medium bg-gradient-to-r from-gray-700 to-gray-500 bg-clip-text text-transparent">+233 54 141 8930</span>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="font-medium bg-gradient-to-r from-gray-700 to-gray-500 dark:from-gray-200 dark:to-gray-400 bg-clip-text text-transparent">+233 54 141 8930</span>
             </p>
           </div>
         </div>
