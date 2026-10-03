@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Users,
   Link2,
+  ChevronLeft,
   ChevronRight,
   Globe,
   ChevronDown,
@@ -31,7 +32,7 @@ export interface ShareModalProps {
   onShared?: (platform: string) => void;
 }
 
-const FB_BLUE = "#0866ff";
+const FB_BLUE = "#F97316";
 
 type ShareToOption = {
   name: string;
@@ -111,7 +112,7 @@ const MemberAvatar: React.FC<{
   >
     <div
       className={`relative rounded-full p-0.5 transition-colors ${
-        selected ? "ring-2 ring-[#0866ff] ring-offset-1" : ""
+        selected ? "ring-2 ring-[#F97316] ring-offset-1" : ""
       }`}
     >
       {avatarUrl ? (
@@ -126,7 +127,7 @@ const MemberAvatar: React.FC<{
         </div>
       )}
       {selected && (
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#0866ff] text-[10px] font-bold text-white">
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#F97316] text-[10px] font-bold text-white">
           ✓
         </span>
       )}
@@ -156,6 +157,10 @@ const ShareModal: React.FC<ShareModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const membersScrollRef = useRef<HTMLDivElement>(null);
+  const [memberScrollState, setMemberScrollState] = useState({
+    canScrollLeft: false,
+    canScrollRight: false,
+  });
 
   const displayName =
     profile?.full_name?.trim() ||
@@ -261,10 +266,46 @@ const ShareModal: React.FC<ShareModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const updateMemberScrollState = useCallback(() => {
+    const el = membersScrollRef.current;
+    if (!el) return;
+    setMemberScrollState({
+      canScrollLeft: el.scrollLeft > 1,
+      canScrollRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setMemberScrollState({ canScrollLeft: false, canScrollRight: false });
+      return;
+    }
+
+    const el = membersScrollRef.current;
+    if (!el) return;
+
+    const update = () => updateMemberScrollState();
+    const frame = window.requestAnimationFrame(update);
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(el);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      resizeObserver.disconnect();
+    };
+  }, [isOpen, members.length, updateMemberScrollState]);
+
   const scrollMembers = (direction: "left" | "right") => {
     const el = membersScrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: direction === "right" ? 200 : -200, behavior: "smooth" });
+    el.scrollBy({
+      left: direction === "right" ? el.clientWidth * 0.8 : -el.clientWidth * 0.8,
+      behavior: "smooth",
+    });
   };
 
   if (!isOpen) return null;
@@ -295,12 +336,12 @@ const ShareModal: React.FC<ShareModalProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="relative flex items-center justify-center border-b border-gray-200 px-4 py-3">
-            <h2 className="text-xl font-bold text-gray-900">Share</h2>
+          <div className="relative flex items-center justify-between border-b border-gray-200 bg-primary-500 px-4 py-3">
+            <h2 className="text-xl font-bold text-white">Share</h2>
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-3 flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
+              className="text-gray-100 hover:text-gray-700 focus:outline-none"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
@@ -325,7 +366,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 <p className="text-[15px] font-semibold text-gray-900">
                   {displayName}
                 </p>
-
+                <p className="text-xs text-gray-500">{profile?.username}</p>
               </div>
             </div>
 
@@ -340,16 +381,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
 
             </div>
 
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={handleShareNow}
-                disabled={sharingNow}
-                className="rounded-md bg-[var(--african-orange)] px-4 py-1.5 text-[15px] font-semibold text-white transition-opacity hover:bg-[var(--african-orange-dark)] disabled:opacity-60"
-              >
-                {sharingNow ? "Sharing..." : "Share now"}
-              </button>
-            </div>
+           
           </div>
 
           <div className="border-t border-gray-200" />
@@ -376,7 +408,7 @@ const ShareModal: React.FC<ShareModalProps> = ({
             <div className="relative flex items-center">
               <div
                 ref={membersScrollRef}
-                className="flex flex-1 gap-2 overflow-x-auto scrollbar-hide pr-10"
+                className="flex flex-1 gap-2 overflow-x-auto scrollbar-hide py-1 "
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
               >
                 {members.length === 0 ? (
@@ -393,12 +425,22 @@ const ShareModal: React.FC<ShareModalProps> = ({
                   ))
                 )}
               </div>
-              {members.length > 4 && (
+              {memberScrollState.canScrollLeft && (
+                <button
+                  type="button"
+                  onClick={() => scrollMembers("left")}
+                  className="absolute top-3 left-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-colors hover:bg-gray-50"
+                  aria-label="Scroll members left"
+                >
+                  <ChevronLeft className="h-5 w-5 text-gray-700" />
+                </button>
+              )}
+              {memberScrollState.canScrollRight && (
                 <button
                   type="button"
                   onClick={() => scrollMembers("right")}
-                  className="absolute right-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-colors hover:bg-gray-50"
-                  aria-label="Scroll members"
+                  className="absolute top-3 right-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white shadow-sm transition-colors hover:bg-gray-50"
+                  aria-label="Scroll members right"
                 >
                   <ChevronRight className="h-5 w-5 text-gray-700" />
                 </button>
@@ -434,8 +476,22 @@ const ShareModal: React.FC<ShareModalProps> = ({
                 </button>
               ))}
             </div>
+
+            
+         <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={handleShareNow}
+                disabled={sharingNow}
+                className="rounded-md bg-[var(--african-orange)] px-4 py-1.5 text-[15px] font-semibold text-white transition-opacity hover:bg-[var(--african-orange-dark)] disabled:opacity-60"
+              >
+                {sharingNow ? "Sharing..." : "Share now"}
+              </button>
+            </div>
           </div>
+          
         </div>
+
       </div>
     </Portal>
   );

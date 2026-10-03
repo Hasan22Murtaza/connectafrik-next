@@ -187,7 +187,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   }, [post.id, post.is_saved]);
 
   useEffect(() => {
-    setIsShared(post.isShare ?? false);
+    setIsShared(post?.isShare ?? false);
   }, [post.id, post.isShare]);
 
   useEffect(() => {
@@ -1437,7 +1437,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           setShowInlineComments((prev) => !prev);
         }}
         onShare={() => {
-          setIsShared(true);
           onShare(post.id);
         }}
         onUserClick={(userId) => router.push(`/user/${userId}`)}

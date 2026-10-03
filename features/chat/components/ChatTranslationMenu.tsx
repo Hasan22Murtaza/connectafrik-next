@@ -44,7 +44,7 @@ export default function ChatTranslationMenu({
         className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
           value !== 'off'
             ? 'text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/40'
-            : ' text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white '
+            : ' text-content-tertiary transition duration-200 hover:bg-orange-500 hover:text-white dark:text-content-secondary dark:hover:bg-surface-hover'
         } disabled:cursor-not-allowed disabled:opacity-40`}
         aria-expanded={open}
         aria-haspopup="menu"
