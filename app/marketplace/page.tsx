@@ -249,6 +249,52 @@ const MarketplacePage: React.FC = () => {
     Boolean(locationFilter.location.country || locationFilter.location.city) ||
     sortBy !== "newest";
 
+  const renderFilters = (onClose?: () => void) => (
+    <TradeHubFilterSidebar
+      filters={{
+        category: selectedCategory,
+        subcategory: selectedSubcategory,
+        condition: selectedCondition,
+        minPrice,
+        maxPrice,
+        postedWithinDays,
+        pickupOnly,
+        deliveryAvailable,
+        urgentSale,
+        featuredOnly,
+      }}
+      onChange={(patch) => {
+        if (patch.category !== undefined) selectCategory(patch.category);
+        if (patch.subcategory !== undefined) {
+          setSelectedSubcategory(patch.subcategory);
+        }
+        if (patch.condition !== undefined) setSelectedCondition(patch.condition);
+        if (patch.minPrice !== undefined) setMinPrice(patch.minPrice);
+        if (patch.maxPrice !== undefined) setMaxPrice(patch.maxPrice);
+        if (patch.postedWithinDays !== undefined) {
+          setPostedWithinDays(patch.postedWithinDays);
+        }
+        if (patch.pickupOnly !== undefined) setPickupOnly(patch.pickupOnly);
+        if (patch.deliveryAvailable !== undefined) {
+          setDeliveryAvailable(patch.deliveryAvailable);
+        }
+        if (patch.urgentSale !== undefined) setUrgentSale(patch.urgentSale);
+        if (patch.featuredOnly !== undefined) setFeaturedOnly(patch.featuredOnly);
+      }}
+      sortBy={sortBy}
+      onSortChange={setSortBy}
+      location={locationFilter.location}
+      radiusKm={locationFilter.radiusKm}
+      onLocationChange={(location) => handleLocationFilterChange({ location })}
+      onLocationFilterApply={(location, radiusKm) =>
+        handleLocationFilterChange({ location, radiusKm })
+      }
+      onClear={clearFilters}
+      hasActiveFilters={Boolean(hasActiveFilters)}
+      onCloseMobile={onClose}
+    />
+  );
+
   const renderEmptyState = () => (
     <div className="text-center py-16 px-4">
       <p className="text-content-secondary mb-2">No listings found</p>
@@ -266,91 +312,49 @@ const MarketplacePage: React.FC = () => {
   return (
     <div className={MP.page}>
       <div className={MP.shell}>
-        {/* Permanent hub nav (desktop) */}
-        <aside className={MP.sidebarBrowse}>
-          <MarketplaceHubNav
-            activeHub="browse"
-            user={user}
-            onCreateListing={goToCreateListing}
-            onOpenFilters={() => setIsFilterDrawerOpen(true)}
-          />
+        <aside className="hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-[280px] md:shrink-0 md:self-start md:overflow-hidden bg-surface">
+          <div className="shrink-0 px-4 pt-3">
+            <MarketplaceHubNav
+              activeHub="browse"
+              user={user}
+              onCreateListing={goToCreateListing}
+            />
+          </div>
+          <div className="flex flex-1 min-h-0 flex-col border-t border-border-subtle overflow-hidden">
+            {renderFilters()}
+          </div>
         </aside>
 
-        {/* Amazon-style filter drawer (desktop + mobile) */}
         {isFilterDrawerOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-black/50"
-            onClick={() => setIsFilterDrawerOpen(false)}
-            aria-hidden
-          />
-        )}
-        <div
-          className={`${MP.filterDrawer} ${
-            isFilterDrawerOpen ? MP.filterDrawerOpen : MP.filterDrawerClosed
-          }`}
-          role="dialog"
-          aria-modal="true"
-          aria-label="TradeHub filters"
-        >
-          <div className="flex items-center justify-between px-4 py-3 bg-primary-600 text-white shrink-0">
-            <span className="font-bold text-[16px]">Hello, TradeHub</span>
-            <button
-              type="button"
+          <div className="md:hidden">
+            <div
+              className="fixed inset-0 z-40 bg-black/50"
               onClick={() => setIsFilterDrawerOpen(false)}
-              aria-label="Close filters"
-              className="p-1.5 rounded-full hover:bg-primary-700 transition-colors"
+              aria-hidden
+            />
+            <div
+              className="fixed inset-x-0 bottom-0 z-50 h-[min(85vh,720px)] bg-surface rounded-t-2xl shadow-2xl flex flex-col"
+              role="dialog"
+              aria-modal="true"
+              aria-label="TradeHub filters"
             >
-              <X className="w-5 h-5" />
-            </button>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
+                <span className="font-bold text-[16px] text-content">Filters</span>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterDrawerOpen(false)}
+                  aria-label="Close filters"
+                  className="p-1.5 rounded-full hover:bg-surface-hover transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+                {renderFilters(() => setIsFilterDrawerOpen(false))}
+              </div>
+            </div>
           </div>
-
-          <TradeHubFilterSidebar
-            key={isFilterDrawerOpen ? "open" : "closed"}
-            filters={{
-              category: selectedCategory,
-              subcategory: selectedSubcategory,
-              condition: selectedCondition,
-              minPrice,
-              maxPrice,
-              postedWithinDays,
-              pickupOnly,
-              deliveryAvailable,
-              urgentSale,
-              featuredOnly,
-            }}
-            onChange={(patch) => {
-              if (patch.category !== undefined) selectCategory(patch.category);
-              if (patch.subcategory !== undefined) {
-                setSelectedSubcategory(patch.subcategory);
-              }
-              if (patch.condition !== undefined) setSelectedCondition(patch.condition);
-              if (patch.minPrice !== undefined) setMinPrice(patch.minPrice);
-              if (patch.maxPrice !== undefined) setMaxPrice(patch.maxPrice);
-              if (patch.postedWithinDays !== undefined) {
-                setPostedWithinDays(patch.postedWithinDays);
-              }
-              if (patch.pickupOnly !== undefined) setPickupOnly(patch.pickupOnly);
-              if (patch.deliveryAvailable !== undefined) {
-                setDeliveryAvailable(patch.deliveryAvailable);
-              }
-              if (patch.urgentSale !== undefined) setUrgentSale(patch.urgentSale);
-              if (patch.featuredOnly !== undefined) setFeaturedOnly(patch.featuredOnly);
-            }}
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            location={locationFilter.location}
-            radiusKm={locationFilter.radiusKm}
-            onLocationChange={(location) =>
-              handleLocationFilterChange({ location })
-            }
-            onLocationFilterApply={(location, radiusKm) =>
-              handleLocationFilterChange({ location, radiusKm })
-            }
-            onClear={clearFilters}
-            hasActiveFilters={Boolean(hasActiveFilters)}
-            onCloseMobile={() => setIsFilterDrawerOpen(false)}
-          />
-        </div>
+        )}
 
         <main className={MP.mainBrowse}>
           <div className="flex flex-col gap-3 mb-3 md:flex-row md:items-center md:justify-between">
