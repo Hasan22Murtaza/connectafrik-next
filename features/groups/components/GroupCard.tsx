@@ -172,15 +172,15 @@ const GroupCard: React.FC<GroupCardProps> = ({
                
               {group.is_verified && <span className="text-primary-600">✓</span>}
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-xs text-gray-500 ">
               <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-3.5 h-3.5" />
             {formatDistanceToNow(new Date(group.created_at), {
               addSuffix: true,
             })}
             </div>
             <div className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5" />
             {group.member_count} members
           </div>
           </div>

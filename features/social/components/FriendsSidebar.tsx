@@ -8,7 +8,7 @@ import { LuCake, LuUserCheck } from "react-icons/lu";
 export type FriendsSection = "home" | "requests" | "suggestions" | "all" | "birthdays";
 
 interface FriendsSidebarProps {
-  activeSection: FriendsSection;
+  activeSection?: FriendsSection | null;
   requestCount?: number;
   onSectionSelect: (section: FriendsSection) => void;
 }
