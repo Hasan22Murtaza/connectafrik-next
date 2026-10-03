@@ -42,6 +42,7 @@ import CreateGroupEventModal from '@/features/groups/components/CreateGroupEvent
 import GroupEventsList from '@/features/groups/components/GroupEventsList'
 import GroupMediaGallery from '@/features/groups/components/GroupMediaGallery'
 import GroupFilesList from '@/features/groups/components/GroupFilesList'
+import GroupsSidebar from '@/features/groups/components/GroupsSidebar'
 import ShareModal from '@/features/social/components/ShareModal'
 import { useMembers } from '@/shared/hooks/useMembers'
 import { sendNotification } from '@/shared/services/notificationService'
@@ -104,7 +105,14 @@ const GroupDetailPage: React.FC = () => {
   const tabQueryParam = searchParams?.get('tab')
   const { user, loading: authLoading } = useAuth()
   const { confirm, dialog } = useConfirmDialog()
-  const { fetchGroupById, joinGroup, leaveGroup } = useGroups()
+  const {
+    groups: sidebarGroups,
+    fetchGroupById,
+    fetchMyGroups,
+    fetchManagedGroups,
+    joinGroup,
+    leaveGroup,
+  } = useGroups()
   const { openGroupChat } = useGroupChat()
   const { 
     posts: groupPosts, 
@@ -118,6 +126,7 @@ const GroupDetailPage: React.FC = () => {
   } = useGroupPosts(groupId || '')
   
   const [group, setGroup] = useState<Group | null>(null)
+  const [managedGroups, setManagedGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [isJoining, setIsJoining] = useState(false)
   const [activeTab, setActiveTab] = useState<GroupTab>(() => {
@@ -137,6 +146,26 @@ const GroupDetailPage: React.FC = () => {
   const [shareModalState, setShareModalState] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null })
   const { members } = useMembers(shareModalState.open)
   const feedShimmerCount = useFeedShimmerCount()
+
+  useEffect(() => {
+    if (!user?.id) {
+      setManagedGroups([])
+      return
+    }
+
+    void fetchMyGroups()
+    void fetchManagedGroups().then(setManagedGroups)
+  }, [user?.id])
+
+  const joinedGroups = useMemo(
+    () =>
+      sidebarGroups.filter(
+        (sidebarGroup) =>
+          sidebarGroup.membership?.status === 'active' &&
+          !managedGroups.some((managedGroup) => managedGroup.id === sidebarGroup.id),
+      ),
+    [sidebarGroups, managedGroups],
+  )
 
   const {
     events,
@@ -484,9 +513,7 @@ const GroupDetailPage: React.FC = () => {
     })
   }, [])
 
-  if (authLoading || loading) {
-    return <GroupDetailPageShimmer />
-  }
+  
 
   if (!group) {
     return (
@@ -521,7 +548,26 @@ const GroupDetailPage: React.FC = () => {
   const categoryInfo = getCategoryInfoLarge(group.category)
 
   return (
-    <div className="min-h-screen max-w-full 2xl:max-w-screen-2xl mx-auto">
+    <div className="mx-auto flex min-h-screen  gap-4 px-2 py-5 sm:gap-6 sm:px-6">
+      <aside className="sticky top-22 hidden h-[calc(100vh-6rem)] w-80 shrink-0 self-start overflow-y-auto scrollbar-hover lg:block">
+        <GroupsSidebar
+          view="group-detail"
+          onViewChange={(nextView) =>
+            router.push(nextView === 'feed' ? '/groups' : `/groups?view=${nextView}`)
+          }
+          isAuthenticated={!!user}
+          managedGroups={managedGroups}
+          joinedGroups={joinedGroups}
+          activeGroupId={groupId}
+        />
+      </aside>
+      {(authLoading || loading) ? (
+        <div className="flex-1">
+          <GroupDetailPageShimmer />
+        </div>
+      ) : 
+      (
+        <main className="min-w-0 flex-1">
       {/* Banner */}
       <div className="relative">
         {group.banner_url ? (
@@ -540,7 +586,7 @@ const GroupDetailPage: React.FC = () => {
       </div>
 
       {/* Sticky Header */}
-      <div className={`bg-white border-b border-gray-200 transition-all duration-200 ${
+      <div className={`bg-surface border-b border-border transition-all duration-200 ${
         isSticky ? 'sticky top-0 z-40 shadow-sm' : ''
       }`}>
         <div className="px-4">
@@ -656,8 +702,8 @@ const GroupDetailPage: React.FC = () => {
               onClick={() => handleTabChange('posts')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'posts'
-                  ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-content '
+                  ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                  : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
               }`}
             >
               Posts
@@ -667,8 +713,8 @@ const GroupDetailPage: React.FC = () => {
               onClick={() => handleTabChange('about')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'about'
-                  ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-content '
+                  ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                  : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
               }`}
             >
               About
@@ -678,8 +724,8 @@ const GroupDetailPage: React.FC = () => {
               onClick={() => handleTabChange('members')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'members'
-                  ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-content '
+                  ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                  : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
               }`}
             >
               Members ({group.member_count})
@@ -690,8 +736,8 @@ const GroupDetailPage: React.FC = () => {
                 onClick={() => handleTabChange('requests')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                   activeTab === 'requests'
-                    ? 'text-primary-600 border-primary-600'
-                    : 'text-gray-600 border-transparent hover:text-content '
+                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -710,8 +756,8 @@ const GroupDetailPage: React.FC = () => {
                 onClick={() => handleTabChange('complaints')}
                 className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                   activeTab === 'complaints'
-                    ? 'text-primary-600 border-primary-600'
-                    : 'text-gray-600 border-transparent hover:text-content '
+                    ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                    : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
                 }`}
               >
                 <span className="flex items-center gap-2">
@@ -729,8 +775,8 @@ const GroupDetailPage: React.FC = () => {
               onClick={() => handleTabChange('events')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'events'
-                  ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-content '
+                  ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                  : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -743,8 +789,8 @@ const GroupDetailPage: React.FC = () => {
               onClick={() => handleTabChange('media')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'media'
-                  ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-content '
+                  ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                  : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -757,8 +803,8 @@ const GroupDetailPage: React.FC = () => {
               onClick={() => handleTabChange('files')}
               className={`px-4 py-3 font-medium transition-colors border-b-2 shrink-0  ${
                 activeTab === 'files'
-                  ? 'text-primary-600 border-primary-600'
-                  : 'text-gray-600 border-transparent hover:text-content '
+                  ? 'text-primary-600 border-primary-600 dark:text-orange-300 dark:border-orange-400'
+                  : 'text-gray-600 border-transparent hover:text-content dark:hover:bg-surface-hover'
               }`}
             >
               <span className="flex items-center gap-2">
@@ -771,7 +817,7 @@ const GroupDetailPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="py-6 px-4">
+      <div className="py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
        
           {/* Center Content */}
@@ -1096,8 +1142,8 @@ const GroupDetailPage: React.FC = () => {
           {/* Right Sidebar */}
           <div className="lg:col-span-5 space-y-4">
             {/* Stats Card */}
-            <div className="bg-white rounded-lg shadow-sm p-4 sticky top-35">
-              <h3 className="font-semibold text-gray-900 mb-4">Group Stats</h3>
+            <div className="sticky top-35 rounded-lg border border-border bg-surface p-4 shadow-sm">
+              <h3 className="mb-4 font-semibold text-content">Group Stats</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Members</span>
@@ -1177,6 +1223,10 @@ const GroupDetailPage: React.FC = () => {
           }}
         />
       )}
+      </main>
+      )}
+
+      
     </div>
   )
 }

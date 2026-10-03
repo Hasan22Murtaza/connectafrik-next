@@ -5,6 +5,7 @@ import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { apiClient } from "@/lib/api-client";
 import { FriendsGridShimmer, useShimmerCount } from "@/shared/components/ui/ShimmerLoaders";
 import { Friend, FriendRequest } from "@/shared/types";
+import FriendsSidebar, { type FriendsSection } from "@/features/social/components/FriendsSidebar";
 import {
   Cake,
   ChevronDown,
@@ -18,9 +19,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { FiUserPlus, FiUsers } from "react-icons/fi";
-import { IoHomeOutline } from "react-icons/io5";
-import { LuCake, LuUserCheck } from "react-icons/lu";
 
 
 
@@ -41,7 +39,7 @@ function mapBirthdayProfileToFriend(p: BirthdayProfileRow): Friend {
     birthday: p.birthday,
   };
 }
-type Section = "home" | "requests" | "suggestions" | "all" | "birthdays";
+type Section = FriendsSection;
 type RequestsView = "received" | "pending";
 const FRIENDS_SECTIONS: Section[] = ["home", "requests", "suggestions", "all", "birthdays"];
 
@@ -552,63 +550,17 @@ const FriendsPageContent: React.FC = () => {
       suggestion.username?.toLowerCase().includes(suggestionsSearchTerm.toLowerCase())
   );
 
-  const menu = [
-    { key: "home", label: "Home", icon: IoHomeOutline },
-    { key: "requests", label: "Friend Requests", icon: FiUserPlus },
-    { key: "suggestions", label: "Suggestions", icon: LuUserCheck },
-    { key: "all", label: "All friends", icon: FiUsers },
-    { key: "birthdays", label: "Birthdays", icon: LuCake },
-  ];
-
   return (
     <div className="min-h-screen px-4">
       <div className="flex gap-6">
         {/* Left Sidebar */}
         <div className="hidden md:block w-64 shrink-0">
           <div className="fixed top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
-            <h2 className="text-xl font-semibold text-content mb-6">Friends</h2>
-
-
-            <nav className="space-y-2">
-              {menu.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeSection === item.key;
-
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => selectSection(item.key as Section)}
-                    className={`group relative w-56 flex items-center justify-between px-3 py-2.5 rounded-lg
-                    transition-all duration-300
-                    ${isActive
-                        ? "bg-orange-50 text-primary-600"
-                        : "text-gray-900 hover:bg-gray-50 hover:text-gray-700"
-                      }`}
-                  >
-                
-
-                    <div className="flex items-center gap-2">
-                      <Icon
-                        className={`text-md transition-all duration-300 ease-in-out
-                         ${isActive
-                            ? "text-primary-600 scale-110"
-                            : "text-content-secondary group-hover:text-gray-600 "
-                          }`}
-                      />
-                      <span className="transition-all duration-300  ">
-                        {item.label}
-                      </span>
-                    </div>
-
-                    {item.key === "requests" && requests.length > 0 && (
-                      <span className="bg-primary-600 text-white text-xs px-2 py-0.5 rounded-full">
-                        {requests.length}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
+            <FriendsSidebar
+              activeSection={activeSection}
+              requestCount={requests.length}
+              onSectionSelect={selectSection}
+            />
           </div>
         </div>
 
