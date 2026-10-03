@@ -376,19 +376,21 @@ const GroupsPage: React.FC = () => {
 
         <div className="flex gap-4 lg:gap-6">
           {/* Left Sidebar - Desktop */}
-          <div className="hidden lg:block w-80 shrink-0 sticky top-22 self-start h-[calc(100vh-6rem)] overflow-y-auto scrollbar-hover ">
-            <GroupsSidebar
-              view={view}
-              onViewChange={handleViewChange}
-              isAuthenticated={!!user}
-              managedGroups={managedGroups}
-              joinedGroups={joinedGroups}
-            />
-          </div>
+          <div className="w-75 shrink-0 ">
+                  <aside className="fixed w-75 shrink-0 top-22 hidden h-[calc(100vh-6rem)] self-start overflow-y-auto scrollbar-hover lg:block">
+                    <GroupsSidebar
+                       view={view}
+                        onViewChange={handleViewChange}
+                        isAuthenticated={!!user}
+                        managedGroups={managedGroups}
+                        joinedGroups={joinedGroups}
+                    />
+                  </aside>
+                </div>
 
 
           {/* Main Content */}
-          <div className="flex-1  ">
+          <div className="flex-1 min-w-0 ">
             {view === "feed" && (
               <div className="">
                 <h2 className="text-xl sm:text-2xl font-semibold text-content mb-4 sm:mb-6">

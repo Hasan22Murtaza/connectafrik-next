@@ -1,14 +1,35 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/AuthContext'
 import { Group, GroupMembership } from '@/shared/types'
 import toast from 'react-hot-toast'
 
+const groupsCache = new Map<string, Group[]>()
+const managedGroupsCache = new Map<string, Group[]>()
+
+export const getCachedGroups = (userId?: string) =>
+  userId ? groupsCache.get(userId) : undefined
+
+export const getCachedManagedGroups = (userId?: string) =>
+  userId ? managedGroupsCache.get(userId) : undefined
+
 export const useGroups = () => {
   const { user } = useAuth()
-  const [groups, setGroups] = useState<Group[]>([])
+  const [groups, setGroups] = useState<Group[]>(() => getCachedGroups(user?.id) ?? [])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setGroups(getCachedGroups(user?.id) ?? [])
+  }, [user?.id])
+
+  const updateGroups = (updater: (current: Group[]) => Group[]) => {
+    setGroups((current) => {
+      const next = updater(current)
+      if (user?.id) groupsCache.set(user.id, next)
+      return next
+    })
+  }
 
   const fetchAllPages = async <T,>(
     endpoint: string,
@@ -77,10 +98,12 @@ export const useGroups = () => {
       setError(null)
 
       const list = await fetchAllPages<Group>('/api/groups/mine', undefined, 50)
+      groupsCache.set(user.id, list)
       setGroups(list)
     } catch (err: any) {
       console.error('My groups fetch error:', err)
       setError(err.message)
+      groupsCache.set(user.id, [])
       setGroups([])
       toast.error('Failed to load your groups')
     } finally {
@@ -122,7 +145,7 @@ export const useGroups = () => {
         }
       }
 
-      setGroups(prev => [groupWithMembership, ...prev])
+      updateGroups(prev => [groupWithMembership, ...prev])
       toast.success('Group created successfully!')
       return groupWithMembership
     } catch (err: any) {
@@ -165,7 +188,7 @@ export const useGroups = () => {
         toast.success('Joined group successfully!')
       }
 
-      setGroups(prev =>
+      updateGroups(prev =>
         prev.map(group =>
           group.id === groupId
             ? {
@@ -217,7 +240,7 @@ export const useGroups = () => {
         member_count?: number
       }>(`/api/groups/${groupId}/leave`)
 
-      setGroups(prev =>
+      updateGroups(prev =>
         prev.map(group =>
           group.id === groupId
             ? {
@@ -248,7 +271,7 @@ export const useGroups = () => {
       const res = await apiClient.patch<{ data: Group }>(`/api/groups/${groupId}`, updates)
       const data = res.data
 
-      setGroups(prev => prev.map(group => (group.id === groupId ? { ...group, ...data } : group)))
+      updateGroups(prev => prev.map(group => (group.id === groupId ? { ...group, ...data } : group)))
 
       toast.success('Group updated successfully!')
       return data
@@ -264,7 +287,7 @@ export const useGroups = () => {
     try {
       await apiClient.delete<{ success: boolean }>(`/api/groups/${groupId}`)
 
-      setGroups(prev => prev.filter(group => group.id !== groupId))
+      updateGroups(prev => prev.filter(group => group.id !== groupId))
 
       toast.success('Group deleted successfully!')
     } catch (err: any) {
@@ -287,7 +310,9 @@ export const useGroups = () => {
     if (!user) return []
 
     try {
-      return await fetchAllPages<Group>('/api/groups/managed', undefined, 50)
+      const list = await fetchAllPages<Group>('/api/groups/managed', undefined, 50)
+      managedGroupsCache.set(user.id, list)
+      return list
     } catch (err: any) {
       console.error('Managed groups fetch error:', err)
       return []

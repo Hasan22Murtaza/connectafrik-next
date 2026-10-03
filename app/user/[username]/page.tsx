@@ -105,17 +105,14 @@ const DetailRow = ({ icon: Icon, children }: { icon: React.ElementType; children
 )
 
 const ProfileSkeleton = ({
-  activeSection,
   onSectionSelect,
 }: {
-  activeSection: FriendsSection;
   onSectionSelect: (section: FriendsSection) => void;
 }) => (
   <div className="mx-auto flex min-h-screen w-full max-w-screen-2xl gap-4 px-4 pb-20 sm:gap-6 sm:pb-8">
     <aside className="hidden w-64 shrink-0 md:block">
       <div className="fixed top-18 h-[calc(100vh-6rem)] overflow-y-auto py-4">
         <FriendsSidebar
-          activeSection={activeSection}
           onSectionSelect={onSectionSelect}
         />
       </div>
@@ -640,7 +637,6 @@ const UserProfilePage: React.FC = () => {
   if (loading) {
     return (
       <ProfileSkeleton
-        activeSection={activeTab === 'friends' ? 'all' : 'home'}
         onSectionSelect={navigateToFriendsSection}
       />
     )
@@ -688,7 +684,7 @@ const UserProfilePage: React.FC = () => {
   const friendBtnConfig: Record<FriendStatus, { label: string; icon: React.ElementType; cls: string }> = {
     friends: { label: 'Friends', icon: UserCheck, cls: 'bg-green-100 text-green-800 hover:bg-green-200' },
     pending_sent: { label: 'Request Sent', icon: UserCheck, cls: 'bg-surface-secondary text-content-secondary hover:bg-surface-hover' },
-    pending_received: { label: 'Accept Request', icon: UserPlus, cls: 'bg-[#1b74e4] text-white hover:bg-[#1a6ed8]' },
+    pending_received: { label: 'Accept Request', icon: UserPlus, cls: 'bg-[#F97316] text-white hover:bg-[#ea580c]' },
     none: { label: 'Link Up', icon: UserPlus, cls: 'bg-[#e4e6eb] text-content hover:bg-[#d8dadf]' },
   }
   const fb = friendBtnConfig[friendshipStatus]
@@ -702,7 +698,6 @@ const UserProfilePage: React.FC = () => {
       <div className="hidden w-64 shrink-0 md:block">
         <div className="fixed top-18 h-[calc(100vh-6rem)] overflow-y-auto py-4">
           <FriendsSidebar
-            activeSection={activeTab === 'friends' ? 'all' : 'home'}
             onSectionSelect={navigateToFriendsSection}
           />
         </div>
