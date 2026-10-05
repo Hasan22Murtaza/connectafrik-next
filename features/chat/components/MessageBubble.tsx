@@ -1015,6 +1015,60 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       (att) => att.type === "image" || att.type === "video"
     );
 
+  if (message.message_type === "marketplace_inquiry") {
+    const meta = message.metadata || {};
+    const productId =
+      typeof meta.product_id === "string" && meta.product_id.trim()
+        ? meta.product_id.trim()
+        : null;
+    const productTitle =
+      typeof meta.product_title === "string" && meta.product_title.trim()
+        ? meta.product_title.trim()
+        : null;
+    const priceLabel =
+      typeof meta.product_price_label === "string" && meta.product_price_label.trim()
+        ? meta.product_price_label.trim()
+        : null;
+    const note =
+      typeof meta.note === "string" && meta.note.trim()
+        ? meta.note.trim()
+        : (message.content || "").split("\n").filter(Boolean).slice(-1)[0] || "";
+
+    return (
+      <div
+        className={`mb-2 flex animate-[chatMsgIn_200ms_ease-out] ${
+          isOwnMessage ? "justify-end" : "justify-start"
+        }`}
+      >
+        <div className="max-w-[min(100%,320px)] overflow-hidden rounded-2xl border border-border bg-surface text-content shadow-sm">
+          <div className="border-b border-border-subtle bg-surface-secondary px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-content-secondary">
+              Marketplace listing
+            </p>
+          </div>
+          <div className="px-3 py-2.5 space-y-1">
+            {productTitle && (
+              <p className="text-sm font-semibold text-content leading-snug">{productTitle}</p>
+            )}
+            {priceLabel && <p className="text-sm text-content">{priceLabel}</p>}
+            {productId && (
+              <p className="text-xs text-content-secondary break-all">Listing ID: {productId}</p>
+            )}
+            {productId && (
+              <a
+                href={`/marketplace/${productId}`}
+                className="inline-flex mt-1 text-sm font-semibold text-primary-600 hover:text-primary-700"
+              >
+                Open listing
+              </a>
+            )}
+            {note && <p className="pt-2 text-sm text-content whitespace-pre-wrap">{note}</p>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       id={`chat-message-${message.id}`}

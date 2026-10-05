@@ -2,7 +2,7 @@
 -- The Digital Ocean app keeps the Stripe payout logic; Supabase only triggers it.
 --
 -- Before the first successful run, create Vault secrets (SQL Editor):
---   select vault.create_secret('https://connectafrik.com', 'marketplace_app_url');
+--   select vault.create_secret('https://cribstalk.com', 'marketplace_app_url');
 --   select vault.create_secret('YOUR_CRON_SECRET', 'marketplace_cron_secret');
 -- YOUR_CRON_SECRET must match CRON_SECRET (or MARKETPLACE_CRON_SECRET) on the app server.
 

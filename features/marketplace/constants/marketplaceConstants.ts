@@ -23,6 +23,8 @@ import {
   Bookmark,
   Clock,
   ChevronRight,
+  Eye,
+  MessageCircle,
   ShoppingBag,
   Tag as TagIcon,
 } from "@/shared/icons";
@@ -37,7 +39,7 @@ export type MarketplaceSort =
   | "popular";
 
 export type MarketplaceHub = "browse" | "buying" | "selling";
-export type BuyingTab = "activity" | "saved" | "orders";
+export type BuyingTab = "activity" | "saved" | "inbox" | "recent";
 
 export const MARKETPLACE_HUB_LINKS = [
   { hub: "browse" as const, label: "Browse all", icon: Home, path: "/marketplace" },
@@ -60,7 +62,8 @@ export const MARKETPLACE_HUB_LINKS = [
 export const BUYING_TABS: { value: BuyingTab; label: string; icon: typeof Clock }[] = [
   { value: "activity", label: "Recent activity", icon: Clock },
   { value: "saved", label: "Saved", icon: Bookmark },
-  { value: "orders", label: "Purchase history", icon: ShoppingBag },
+  { value: "inbox", label: "Inbox", icon: MessageCircle },
+  { value: "recent", label: "Recently viewed", icon: Eye },
 ];
 
 export const MARKETPLACE_SORT_OPTIONS: { value: MarketplaceSort; label: string }[] = [
