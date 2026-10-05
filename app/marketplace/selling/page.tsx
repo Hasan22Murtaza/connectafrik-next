@@ -8,7 +8,6 @@ import SellerListingActions, {
 } from "@/features/marketplace/components/SellerListingActions";
 import { CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplaceConstants";
 import { MP } from "@/features/marketplace/constants/marketplaceLayout";
-import { SellerEarnings } from "@/features/marketplace/services/commissionService";
 import { formatProductPrice } from "@/features/marketplace/utils/productFormatting";
 import { DRAFT_TAG, hasTag } from "@/features/marketplace/utils/listingTags";
 import { apiClient } from "@/lib/api-client";
@@ -25,13 +24,10 @@ import {
   Info,
   LayoutGrid,
   List,
-  Package,
   Plus,
   Search,
-  Settings,
   Tag,
   TrendingUp,
-  Wallet,
 } from '@/shared/icons';
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -86,7 +82,6 @@ const SellerDashboardPage: React.FC = () => {
   const router = useRouter();
 
   const [listings, setListings] = useState<Product[]>([]);
-  const [earnings, setEarnings] = useState<SellerEarnings | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<ListingStatus>("all");
@@ -131,15 +126,6 @@ const SellerDashboardPage: React.FC = () => {
       }
 
       setListings(allListings);
-
-      try {
-        const earningsRes = await apiClient.get<{ data: SellerEarnings }>(
-          "/api/marketplace/earnings"
-        );
-        setEarnings(earningsRes.data);
-      } catch {
-        setEarnings(null);
-      }
     } catch {
       toast.error("Failed to load seller dashboard");
     } finally {
@@ -214,11 +200,19 @@ const SellerDashboardPage: React.FC = () => {
     Boolean(searchTerm) || statusFilter !== "all" || sortBy !== "newest";
 
   const stats = useMemo(() => {
-    const active = listings.filter((p) => p.is_available && p.stock_quantity > 0);
+    const active = listings.filter(
+      (p) => p.is_available && p.stock_quantity > 0 && !hasTag(p.tags, DRAFT_TAG)
+    );
+    const sold = listings.filter((p) => {
+      const pending = !p.is_available && p.stock_quantity > 0;
+      const isActive = p.is_available && p.stock_quantity > 0;
+      return !isActive && !pending && !hasTag(p.tags, DRAFT_TAG);
+    });
     const totalViews = listings.reduce((sum, p) => sum + (p.views_count || 0), 0);
     return {
       total: listings.length,
       active: active.length,
+      sold: sold.length,
       totalViews,
     };
   }, [listings]);
@@ -401,20 +395,6 @@ const SellerDashboardPage: React.FC = () => {
               <BarChart3 className={`${MP.navIcon} ${MP.navIconActive}`} />
               <span>My Listings</span>
             </div>
-            <button
-              onClick={() => router.push("/my-orders?tab=sales")}
-              className={`${MP.navItem} ${MP.navItemInactive}`}
-            >
-              <Package className={MP.navIcon} />
-              <span>Sales & orders</span>
-            </button>
-            <button
-              onClick={() => router.push("/marketplace/selling/payout-settings")}
-              className={`${MP.navItem} ${MP.navItemInactive}`}
-            >
-              <Settings className={MP.navIcon} />
-              <span>Payout settings</span>
-            </button>
           </nav>
 
           <div className={MP.sectionDivider} />
@@ -522,14 +502,10 @@ const SellerDashboardPage: React.FC = () => {
             </div>
             <div className={`${MP.card} ${MP.cardPadding}`}>
               <div className="flex items-center gap-1.5 text-content-secondary text-xs uppercase tracking-wide mb-0.5">
-                <Wallet className="w-3 h-3" />
-                Pending payout
+                <Tag className="w-3 h-3" />
+                Sold
               </div>
-              <p className="text-xl font-bold text-primary-600">
-                {earnings?.pending_payout != null
-                  ? `$${earnings.pending_payout.toLocaleString()}`
-                  : "—"}
-              </p>
+              <p className="text-xl font-bold text-content">{stats.sold}</p>
             </div>
           </div>
 

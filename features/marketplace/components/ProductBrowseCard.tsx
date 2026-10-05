@@ -34,11 +34,11 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   const conditionLabel =
     PRODUCT_CONDITIONS.find((item) => item.value === product.condition)?.label ||
     product.condition;
-  const isOutOfStock = product.stock_quantity === 0;
-  const isUnavailable = !product.is_available;
+  const isPending = !product.is_available && product.stock_quantity > 0;
+  const isSold = product.stock_quantity === 0;
   const justListed = isJustListed(product.created_at);
   const isUrgent = hasTag(product.tags, URGENT_TAG);
-  const showStatusOverlay = isOutOfStock || isUnavailable;
+  const showStatusOverlay = isSold || isPending;
   const { user } = useAuth();
 
   useEffect(() => {
@@ -124,7 +124,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         {showStatusOverlay && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-surface text-content text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
-              {isOutOfStock ? "Sold out" : "Unavailable"}
+              {isSold ? "Sold" : "Pending"}
             </span>
           </div>
         )}

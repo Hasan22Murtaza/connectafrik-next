@@ -70,7 +70,7 @@ Key files:
 1. Bunny dashboard → **CDN** → **Add Pull Zone**.
 2. **Origin type:** `Storage Zone` → select the zone from Step 1.
 3. Bunny assigns a hostname like `connectafrik-media.b-cdn.net`. Optionally
-   attach a custom domain (e.g. `media.connectafrik.com`).
+   attach a custom domain (e.g. `media.cribstalk.com`).
 4. The full base URL (`https://connectafrik-media.b-cdn.net` or your custom
    domain) → `NEXT_PUBLIC_BUNNY_CDN_URL`.
 

@@ -71,7 +71,7 @@ export function isAllowedTarget(rawTarget: string | null | undefined): boolean {
  * This is the HTTPS URL you share publicly — it opens the app if installed,
  * otherwise the website (or the smart resolver / store fallback).
  *
- * @example buildUniversalLink('/post/123') -> https://connectafrik.com/post/123
+ * @example buildUniversalLink('/post/123') -> https://cribstalk.com/post/123
  */
 export function buildUniversalLink(target: string): string {
   const normalized = normalizeTarget(target) ?? '/feed'

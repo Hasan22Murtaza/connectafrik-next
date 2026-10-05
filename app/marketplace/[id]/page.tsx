@@ -26,7 +26,6 @@ import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { apiClient } from "@/lib/api-client";
 import { Product } from "@/shared/types";
 import toast from "react-hot-toast";
-import ProductReviews from "@/features/marketplace/components/ProductReviews";
 import ReportListingModal from "@/features/marketplace/components/ReportListingModal";
 import { recordRecentlyViewed } from "@/features/marketplace/utils/recentlyViewed";
 import { startMarketplaceConversation } from "@/features/marketplace/services/marketplaceInboxService";
@@ -367,8 +366,9 @@ const ProductDetailPage: React.FC = () => {
 
   const images = product.images?.length ? product.images : [FALLBACK_IMAGE];
   const hasMultipleImages = images.length > 1;
-  const isOutOfStock = product.stock_quantity === 0;
-  const isUnavailable = !product.is_available;
+  const isPending = !product.is_available && product.stock_quantity > 0;
+  const isSold = product.stock_quantity === 0;
+  const isClosed = isSold || isPending;
   const isOwnProduct = user?.id === product.seller_id;
   const location = formatProductLocation(product);
   const subcategory = resolveSubcategory(product.subcategory, product.tags);
@@ -402,12 +402,10 @@ const ProductDetailPage: React.FC = () => {
     });
   }
   specRows.push({ label: "Condition", value: conditionLabel });
-  if (product.stock_quantity > 0) {
-    specRows.push({
-      label: "Quantity",
-      value: String(product.stock_quantity),
-    });
-  }
+  specRows.push({
+    label: "Status",
+    value: isSold ? "Sold" : isPending ? "Pending" : "Available",
+  });
   if (hasDelivery) {
     specRows.push({ label: "Delivery", value: "Available" });
   }
@@ -516,10 +514,10 @@ const ProductDetailPage: React.FC = () => {
                   }}
                 />
 
-                {(isOutOfStock || isUnavailable) && (
+                {isClosed && (
                   <div className="absolute inset-0 bg-black/45 flex items-center justify-center pointer-events-none">
                     <span className="bg-surface text-content text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
-                      {isOutOfStock ? "Sold out" : "Unavailable"}
+                      {isSold ? "Sold" : "Pending"}
                     </span>
                   </div>
                 )}
@@ -767,14 +765,6 @@ const ProductDetailPage: React.FC = () => {
               )}
                   </div>
                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-content-secondary">
-                    {(product.average_rating || 0) > 0 && (
-                      <span>
-                        ★ {(product.average_rating || 0).toFixed(1)}
-                        {product.reviews_count
-                          ? ` · ${product.reviews_count} reviews`
-                          : ""}
-                      </span>
-                    )}
                     {sellerListingCount != null && (
                       <span>
                         {sellerListingCount} active listing
@@ -896,22 +886,6 @@ const ProductDetailPage: React.FC = () => {
               </div>
             </section>
 
-            {/* Reviews */}
-            <section className="mx-4 lg:mx-6 border-t border-border py-6">
-              <ProductReviews
-                productId={product.id}
-                sellerId={product.seller_id}
-                averageRating={product.average_rating || 0}
-                reviewsCount={product.reviews_count || 0}
-                ratingBreakdown={{
-                  rating_1_count: product.rating_1_count || 0,
-                  rating_2_count: product.rating_2_count || 0,
-                  rating_3_count: product.rating_3_count || 0,
-                  rating_4_count: product.rating_4_count || 0,
-                  rating_5_count: product.rating_5_count || 0,
-                }}
-              />
-            </section>
           </div>
 
           {/* ── Desktop sticky purchase panel ── */}
@@ -932,9 +906,9 @@ const ProductDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleContactSeller}
-                  disabled={contactingSeller || isOwnProduct || isOutOfStock || isUnavailable}
+                  disabled={contactingSeller || isOwnProduct || isClosed}
                   className={`w-full py-3.5 px-4 rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.99] ${
-                    contactingSeller || isOwnProduct || isOutOfStock || isUnavailable
+                    contactingSeller || isOwnProduct || isClosed
                       ? "bg-surface-secondary text-content-tertiary cursor-not-allowed"
                       : "bg-primary-600 text-white hover:bg-primary-700 shadow-sm"
                   }`}
@@ -944,9 +918,11 @@ const ProductDetailPage: React.FC = () => {
                     ? "Opening chat…"
                     : isOwnProduct
                       ? "Your listing"
-                      : isOutOfStock || isUnavailable
-                        ? "Unavailable"
-                        : "Message seller"}
+                      : isSold
+                        ? "Sold"
+                        : isPending
+                          ? "Pending"
+                          : "Message seller"}
                 </button>
 
                 {!isOwnProduct && (
@@ -1048,15 +1024,17 @@ const ProductDetailPage: React.FC = () => {
             <button
               type="button"
               onClick={handleContactSeller}
-              disabled={contactingSeller || isOutOfStock || isUnavailable}
+              disabled={contactingSeller || isClosed}
               className="flex-1 h-12 rounded-xl font-semibold text-[15px] bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-[0.98] inline-flex items-center justify-center gap-2"
             >
               <MessageCircle className="w-5 h-5" />
               {contactingSeller
                 ? "Opening…"
-                : isOutOfStock || isUnavailable
-                  ? "Unavailable"
-                  : "Message seller"}
+                : isSold
+                  ? "Sold"
+                  : isPending
+                    ? "Pending"
+                    : "Message seller"}
             </button>
           </div>
         </div>

@@ -39,7 +39,7 @@ export type MarketplaceSort =
   | "popular";
 
 export type MarketplaceHub = "browse" | "buying" | "selling";
-export type BuyingTab = "activity" | "saved" | "inbox" | "recent" | "orders";
+export type BuyingTab = "activity" | "saved" | "inbox" | "recent";
 
 export const MARKETPLACE_HUB_LINKS = [
   { hub: "browse" as const, label: "Browse all", icon: Home, path: "/marketplace" },
@@ -64,7 +64,6 @@ export const BUYING_TABS: { value: BuyingTab; label: string; icon: typeof Clock 
   { value: "saved", label: "Saved", icon: Bookmark },
   { value: "inbox", label: "Inbox", icon: MessageCircle },
   { value: "recent", label: "Recently viewed", icon: Eye },
-  { value: "orders", label: "Order history", icon: ShoppingBag },
 ];
 
 export const MARKETPLACE_SORT_OPTIONS: { value: MarketplaceSort; label: string }[] = [

@@ -1,5 +1,3 @@
-'use client'
-
 import React, { useEffect, useRef, useState } from 'react'
 import Portal from '@/shared/components/ui/Portal'
 import { Lock, Loader2 } from '@/shared/icons'

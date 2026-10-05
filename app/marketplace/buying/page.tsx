@@ -21,7 +21,6 @@ import {
   LayoutGrid,
   List,
   MessageCircle,
-  ShoppingBag,
 } from '@/shared/icons';
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
@@ -29,19 +28,6 @@ import toast from "react-hot-toast";
 
 interface SavedProduct extends Product {
   saved_at?: string;
-}
-
-interface PurchaseOrder {
-  id: string;
-  order_number: string;
-  product_title: string;
-  product_image: string | null;
-  product_id?: string;
-  total_amount: number;
-  currency: string;
-  status: string;
-  payment_status: string;
-  created_at: string;
 }
 
 interface MarketplaceThreadRow {
@@ -56,7 +42,7 @@ interface MarketplaceThreadRow {
 
 interface ActivityItem {
   id: string;
-  type: "saved" | "purchased" | "viewed";
+  type: "saved" | "viewed";
   timestamp: string;
   productId: string;
   title: string;
@@ -79,7 +65,6 @@ const BuyingPageContent: React.FC = () => {
   const activeTab = (searchParams.get("tab") as BuyingTab) || "activity";
 
   const [savedItems, setSavedItems] = useState<SavedProduct[]>([]);
-  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [threads, setThreads] = useState<MarketplaceThreadRow[]>([]);
   const [recentItems, setRecentItems] = useState<RecentListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,12 +81,8 @@ const BuyingPageContent: React.FC = () => {
 
     try {
       setLoading(true);
-      const [savedRes, ordersRes, threadsRes] = await Promise.all([
+      const [savedRes, threadsRes] = await Promise.all([
         apiClient.get<{ data: SavedProduct[] }>("/api/marketplace/saved", {
-          limit: 50,
-        }),
-        apiClient.get<{ data: PurchaseOrder[] }>("/api/orders", {
-          type: "purchases",
           limit: 50,
         }),
         apiClient
@@ -113,7 +94,6 @@ const BuyingPageContent: React.FC = () => {
       ]);
 
       setSavedItems(savedRes.data || []);
-      setOrders(ordersRes.data || []);
       setThreads(threadsRes.data || []);
       setRecentItems(readRecentlyViewed());
     } catch {
@@ -131,6 +111,12 @@ const BuyingPageContent: React.FC = () => {
     }
     fetchBuyingData();
   }, [user, authLoading, router, fetchBuyingData]);
+
+  useEffect(() => {
+    if (searchParams.get("tab") === "orders") {
+      router.replace("/marketplace/buying?tab=inbox");
+    }
+  }, [searchParams, router]);
 
   const activityItems = useMemo<ActivityItem[]>(() => {
     const savedActivities: ActivityItem[] = savedItems.map((product) => ({
@@ -157,22 +143,10 @@ const BuyingPageContent: React.FC = () => {
       subtitle: "Viewed",
     }));
 
-    const purchaseActivities: ActivityItem[] = orders.map((order) => ({
-      id: `order-${order.id}`,
-      type: "purchased",
-      timestamp: order.created_at,
-      productId: order.product_id || order.id,
-      title: order.product_title,
-      image: order.product_image,
-      price: order.total_amount,
-      currency: order.currency,
-      subtitle: `Order #${order.order_number}`,
-    }));
-
-    return [...savedActivities, ...viewedActivities, ...purchaseActivities].sort(
+    return [...savedActivities, ...viewedActivities].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-  }, [savedItems, orders, recentItems]);
+  }, [savedItems, recentItems]);
 
   const setTab = (tab: BuyingTab) => {
     router.push(`/marketplace/buying?tab=${tab}`);
@@ -280,60 +254,6 @@ const BuyingPageContent: React.FC = () => {
         <Bookmark className="w-4 h-4 fill-current" />
       </button> */}
     </div>
-  );
-
-  const renderOrderRow = (order: PurchaseOrder) => (
-    <button
-      key={order.id}
-      type="button"
-      onClick={() => router.push(`/my-orders/${order.id}`)}
-      className={MP.listRow}
-    >
-      <div className={MP.listThumb}>
-        <img
-          src={order.product_image || FALLBACK_IMAGE}
-          alt={order.product_title}
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <div className="flex-1 min-w-0">
-        
-        <p className="text-sm text-content line-clamp-2 mt-0.5">{order.product_title}</p>
-        <p className="font-bold text-content">
-          {order.currency} {order.total_amount.toLocaleString()}
-        </p>
-        <p className="text-xs text-content-secondary mt-1">
-          Order #{order.order_number} · {order.status} ·{" "}
-          {formatDistanceToNow(new Date(order.created_at), { addSuffix: true })}
-        </p>
-      </div>
-    </button>
-  );
-
-  const renderOrderCard = (order: PurchaseOrder) => (
-    <button
-      key={order.id}
-      type="button"
-      onClick={() => router.push(`/my-orders/${order.id}`)}
-      className="group flex flex-col text-left bg-surface rounded-lg border border-border-subtle shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-    >
-      <div className="aspect-square bg-surface-secondary overflow-hidden">
-        <img
-          src={order.product_image || FALLBACK_IMAGE}
-          alt={order.product_title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-        />
-      </div>
-      <div className="p-2 min-w-0">
-        <p className="text-sm text-content line-clamp-1 mt-0.5">{order.product_title}</p>
-        <p className="font-bold text-content text-sm">
-          {order.currency} {order.total_amount.toLocaleString()}
-        </p>
-        <p className="text-xs text-content-secondary mt-1 line-clamp-1">
-          #{order.order_number} · {order.status}
-        </p>
-      </div>
-    </button>
   );
 
   const renderTabContent = () => {
@@ -521,37 +441,7 @@ const BuyingPageContent: React.FC = () => {
       );
     }
 
-    if (orders.length === 0) {
-      return (
-        <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
-          <ShoppingBag className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
-          <p className="text-content-secondary mb-2">No earlier orders</p>
-          <p className="text-sm text-content-tertiary mb-4">
-            New listings are arranged by messaging the seller
-          </p>
-          <button onClick={() => router.push("/marketplace")} className="btn-primary">
-            Browse marketplace
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <>
-        {viewMode === "grid" ? (
-          <div className={MP.productGridCompact}>{orders.map(renderOrderCard)}</div>
-        ) : (
-          <div className={MP.listStack}>{orders.map(renderOrderRow)}</div>
-        )}
-        <button
-          type="button"
-          onClick={() => router.push("/my-orders")}
-          className="w-full mt-3 py-2.5 text-sm font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-        >
-          View all orders
-        </button>
-      </>
-    );
+    return null;
   };
 
   const tabTitle =
