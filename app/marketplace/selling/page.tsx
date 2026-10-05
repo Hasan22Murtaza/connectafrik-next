@@ -24,6 +24,7 @@ import {
   Info,
   LayoutGrid,
   List,
+  Package,
   Plus,
   Search,
   Tag,
