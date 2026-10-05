@@ -6,6 +6,7 @@ import {
 import { Product } from "@/shared/types";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { PRODUCT_CONDITIONS } from "../constants/marketplaceConstants";
 import { hasTag, URGENT_TAG } from "../utils/listingTags";
 import {
   formatProductLocation,
@@ -30,11 +31,14 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   const [isSaved, setIsSaved] = useState<boolean>(Boolean(product.is_saved));
   const mainImage = product.images?.[0] || FALLBACK_IMAGE;
   const location = formatProductLocation(product);
-  const isOutOfStock = product.stock_quantity === 0;
-  const isUnavailable = !product.is_available;
+  const conditionLabel =
+    PRODUCT_CONDITIONS.find((item) => item.value === product.condition)?.label ||
+    product.condition;
+  const isPending = !product.is_available && product.stock_quantity > 0;
+  const isSold = product.stock_quantity === 0;
   const justListed = isJustListed(product.created_at);
   const isUrgent = hasTag(product.tags, URGENT_TAG);
-  const showStatusOverlay = isOutOfStock || isUnavailable;
+  const showStatusOverlay = isSold || isPending;
   const { user } = useAuth();
 
   useEffect(() => {
@@ -120,22 +124,24 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         {showStatusOverlay && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-surface text-content text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
-              {isOutOfStock ? "Sold out" : "Unavailable"}
+              {isSold ? "Sold" : "Pending"}
             </span>
           </div>
         )}
       </div>
 
       <div className="flex flex-col gap-1 px-3 pt-2.5 pb-3 min-w-0">
-         <h3 className="text-sm text-content line-clamp-1 leading-snug">
-          {product.title}
-        </h3>
         <p className="text-base font-bold text-content truncate leading-none">
           {formatProductPrice(product)}
         </p>
-       
+        <h3 className="text-sm text-content line-clamp-2 leading-snug">
+          {product.title}
+        </h3>
         {location && (
           <p className="text-xs text-content-secondary truncate">{location}</p>
+        )}
+        {conditionLabel && (
+          <p className="text-xs text-content-tertiary truncate">{conditionLabel}</p>
         )}
       </div>
     </article>

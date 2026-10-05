@@ -69,7 +69,6 @@ const PROFILE_LIST_COLUMNS =
   'id, username, full_name, avatar_url, is_verified, created_at, last_seen, last_active_at'
 
 const ACTIVE_WINDOW_DAYS = 30
-import { COMPLETED_ORDER_STATUSES } from '@/lib/marketplace/orderStatus'
 
 function startOfToday(): string {
   const d = new Date()
@@ -122,15 +121,8 @@ async function getDistinctColumnValues(
 }
 
 async function getSellerAndBuyerIdSets(serviceClient: SupabaseClient) {
-  const [productSellerIds, orderSellerIds, orderBuyerIds] = await Promise.all([
-    getDistinctColumnValues(serviceClient, 'products', 'seller_id'),
-    getDistinctColumnValues(serviceClient, 'orders', 'seller_id'),
-    getDistinctColumnValues(serviceClient, 'orders', 'buyer_id'),
-  ])
-
-  const sellerIds = new Set([...productSellerIds, ...orderSellerIds])
-  const buyerIds = new Set(orderBuyerIds)
-  return { sellerIds, buyerIds }
+  const productSellerIds = await getDistinctColumnValues(serviceClient, 'products', 'seller_id')
+  return { sellerIds: new Set(productSellerIds), buyerIds: new Set<string>() }
 }
 
 async function getAuthUserSafe(
@@ -436,61 +428,34 @@ async function getSellerStats(
   serviceClient: SupabaseClient,
   userId: string
 ): Promise<AdminUserSellerStats> {
-  const [listingsResult, activeListingsResult, soldResult, payoutsResult, sellerProductsResult] =
-    await Promise.all([
-      serviceClient
-        .from('products')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', userId),
-      serviceClient
-        .from('products')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', userId)
-        .eq('is_available', true),
-      serviceClient
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', userId)
-        .in('status', COMPLETED_ORDER_STATUSES),
-      serviceClient
-        .from('seller_payouts')
-        .select('amount')
-        .eq('seller_id', userId)
-        .eq('status', 'completed'),
-      serviceClient.from('products').select('id').eq('seller_id', userId),
-    ])
+  const [listingsResult, activeListingsResult, soldResult] = await Promise.all([
+    serviceClient
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_id', userId),
+    serviceClient
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_id', userId)
+      .eq('is_available', true)
+      .gt('stock_quantity', 0),
+    serviceClient
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('seller_id', userId)
+      .eq('stock_quantity', 0),
+  ])
 
   if (listingsResult.error) throw new Error(listingsResult.error.message)
   if (activeListingsResult.error) throw new Error(activeListingsResult.error.message)
   if (soldResult.error) throw new Error(soldResult.error.message)
 
-  let averageRating: number | null = null
-  const productIds = (sellerProductsResult.data ?? []).map((p) => p.id as string)
-  if (productIds.length > 0) {
-    const { data: reviewsData, error: reviewsError } = await serviceClient
-      .from('product_reviews')
-      .select('rating')
-      .in('product_id', productIds)
-
-    if (!reviewsError && reviewsData?.length) {
-      const ratings = reviewsData.map((r) => Number(r.rating)).filter((n) => !Number.isNaN(n))
-      if (ratings.length > 0) {
-        averageRating = ratings.reduce((sum, n) => sum + n, 0) / ratings.length
-      }
-    }
-  }
-
-  let totalEarnings: number | null = null
-  if (!payoutsResult.error && payoutsResult.data) {
-    totalEarnings = payoutsResult.data.reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
-  }
-
   return {
     total_listings: listingsResult.count ?? 0,
     active_listings: activeListingsResult.count ?? 0,
     sold_items: soldResult.count ?? 0,
-    average_rating: averageRating,
-    total_earnings: totalEarnings,
+    average_rating: null,
+    total_earnings: null,
   }
 }
 
@@ -511,46 +476,9 @@ export async function getAdminUserDetail(serviceClient: SupabaseClient, userId: 
   const accountType = resolveAccountType(userId, sellerIds, buyerIds)
   const isSeller = accountType === 'seller' || accountType === 'both'
 
-  const [buyerOrdersResult, sellerOrdersResult, reviewsWrittenResult, sellerStats] =
-    await Promise.all([
-      serviceClient
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('buyer_id', userId),
-      serviceClient
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('seller_id', userId),
-      serviceClient
-        .from('product_reviews')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
-      isSeller ? getSellerStats(serviceClient, userId) : Promise.resolve(null),
-    ])
-
-  if (buyerOrdersResult.error) throw new Error(buyerOrdersResult.error.message)
-  if (sellerOrdersResult.error) throw new Error(sellerOrdersResult.error.message)
-
-  let reviewsReceivedCount = 0
-  if (isSeller) {
-    const { data: sellerProducts } = await serviceClient
-      .from('products')
-      .select('id')
-      .eq('seller_id', userId)
-
-    const productIds = (sellerProducts ?? []).map((p) => p.id as string)
-    if (productIds.length > 0) {
-      const { count, error: reviewsError } = await serviceClient
-        .from('product_reviews')
-        .select('id', { count: 'exact', head: true })
-        .in('product_id', productIds)
-
-      if (!reviewsError) reviewsReceivedCount = count ?? 0
-    }
-  }
-
-  const totalOrders = (buyerOrdersResult.count ?? 0) + (sellerOrdersResult.count ?? 0)
-  const totalReviews = (reviewsWrittenResult.count ?? 0) + reviewsReceivedCount
+  const sellerStats = isSeller ? await getSellerStats(serviceClient, userId) : null
+  const totalOrders = 0
+  const totalReviews = 0
 
   const listingsCounts = isSeller
     ? await getListingsCounts(serviceClient, [userId])

@@ -26,7 +26,7 @@ const contactCards = [
     icon: Mail,
     content: (
       <a
-        href="mailto:info@connectafrik.com"
+        href="mailto:info@cribstalk.com"
         className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
       >
         info@cribstalk.com

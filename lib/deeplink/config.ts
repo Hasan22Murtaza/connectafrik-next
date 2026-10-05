@@ -38,7 +38,7 @@ const WEB_BASE_URL = stripTrailingSlash(
 export const deepLinkConfig = {
   environment: ENVIRONMENT,
 
-  /** e.g. https://connectafrik.com (prod) or http://localhost:3000 (dev). */
+  /** e.g. https://cribstalk.com (prod) or http://localhost:3000 (dev). */
   webBaseUrl: WEB_BASE_URL,
 
   /** Host only, used inside the AASA / assetlinks payloads. */
@@ -46,7 +46,7 @@ export const deepLinkConfig = {
     try {
       return new URL(WEB_BASE_URL).host
     } catch {
-      return 'connectafrik.com'
+      return 'cribstalk.com'
     }
   })(),
 

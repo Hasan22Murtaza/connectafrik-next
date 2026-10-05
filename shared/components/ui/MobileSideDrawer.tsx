@@ -14,7 +14,6 @@ import {
 } from "react-icons/fa";
 import { IoBookmarkOutline } from "react-icons/io5";
 import { MdOutlineGroups2 } from "react-icons/md";
-import { RiHandbagLine } from "react-icons/ri";
 import DisplayModeMenu from '@/shared/components/theme/DisplayModeMenu'
 import { useSpaceNavCounts } from '@/shared/hooks/useSpaceNavCounts'
 
@@ -35,14 +34,13 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
   const [showUserSearch, setShowUserSearch] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
-  const { friendRequestCount, newOrderCount } = useSpaceNavCounts()
+  const { friendRequestCount } = useSpaceNavCounts()
 
   const shortcuts = [
     { icon: Search, label: 'Search Users', action: 'search' },
     { icon: FaRegUser, label: 'Friends', path: '/friends', badge: formatBadge(friendRequestCount) },
     { icon: MdOutlineGroups2, label: 'Groups', path: '/groups' },
     { icon: BsShop, label: 'TradeHub', path: '/marketplace' },
-    { icon: RiHandbagLine, label: 'My Orders', path: '/my-orders', badge: formatBadge(newOrderCount) },
     { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
     { icon: MessageSquare, label: 'Feedback', path: '/feedback' },
   ]
