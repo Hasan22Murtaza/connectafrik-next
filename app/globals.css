@@ -527,7 +527,7 @@ body {
   align-items: center;
   justify-content: center;
   background-color: var(--interactive-primary);
-  color: var(--content-inverse);
+  color: #FFFFFF;
   font-weight: 600;
   border-radius: 0.5rem;
   transition: all 0.2s;

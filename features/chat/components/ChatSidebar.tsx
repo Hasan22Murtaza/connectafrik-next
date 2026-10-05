@@ -818,7 +818,7 @@ export default function ChatSidebar({
                       ? "Search locked chats"
                       : "Search or start a new chat"
               }
-              className="w-full rounded-full border border-gray-300  py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
+              className="w-full rounded-full border border-gray-300 py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100 dark:focus-visible:ring-orange-900/40"
             />
             {search ? (
               <button
@@ -843,8 +843,8 @@ export default function ChatSidebar({
                   type="button"
                   onClick={() => setFilter(chip.key)}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${active
-                      ? "bg-[#25D366]/20 text-content dark:bg-[#25D366]/25"
-                      : "border border-border  text-content-secondary hover:bg-orange-50 hover:border-orange-100 hover:text-orange-700"
+                      ? "bg-[#25D366]/20 text-content dark:bg-[#25D366]/25 dark:text-green-300"
+                      : "border border-border text-content-secondary hover:bg-orange-50 hover:border-orange-100 hover:text-orange-700 dark:hover:bg-surface-hover dark:hover:border-border-strong dark:hover:text-orange-300"
                     }`}
                 >
                   <span>{chip.label}</span>
@@ -864,7 +864,7 @@ export default function ChatSidebar({
                 setSearch("");
                 void openLockedFolder();
               }}
-              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50"
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white dark:bg-surface-secondary">
                 <Lock className="h-5 w-5" aria-hidden />
@@ -893,7 +893,7 @@ export default function ChatSidebar({
                 setSearch("");
                 setMenuThreadId(null);
               }}
-              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50"
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
             >
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
                 <Archive className="h-5 w-5" aria-hidden />
@@ -921,7 +921,7 @@ export default function ChatSidebar({
               setView("marketplace");
               setSearch("");
             }}
-            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50"
+            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
               <Store className="h-5 w-5" aria-hidden />
@@ -977,7 +977,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 ${selected ? "bg-orange-50" : "bg-transparent"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-orange-50 dark:bg-orange-500/15 dark:hover:bg-orange-500/15" : "bg-transparent"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1023,7 +1023,7 @@ export default function ChatSidebar({
                         e.stopPropagation();
                         setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                       }}
-                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
@@ -1206,7 +1206,7 @@ export default function ChatSidebar({
                         <button
                           type="button"
                           onClick={(e) => onMenuAction(e, thread, "clear")}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                         >
                           <Trash2 className="h-4 w-4" />
                           <span>Delete chat</span>
@@ -1257,7 +1257,7 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition hover:bg-orange-50 ${selected ? "bg-surface-hover" : "bg-transparent"
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-surface-hover" : "bg-transparent"
                     }`}
                 >
                   <div className="h-12 w-12 shrink-0">
@@ -1351,7 +1351,7 @@ export default function ChatSidebar({
                     }}
                     role="button"
                     tabIndex={0}
-                    className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 ${selected ? "bg-orange-50" : "bg-transparent"
+                    className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-orange-50 dark:bg-orange-500/15 dark:hover:bg-orange-500/15" : "bg-transparent"
                       }`}
                   >
                     <div className="h-12 w-12 shrink-0">
@@ -1377,7 +1377,7 @@ export default function ChatSidebar({
                                 e.stopPropagation();
                                 setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                               }}
-                              className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+                              className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </button>
@@ -1424,7 +1424,7 @@ export default function ChatSidebar({
                                 <button
                                   type="button"
                                   onClick={(e) => onMenuAction(e, thread, "clear")}
-                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                   <span>Delete chat</span>
@@ -1496,7 +1496,7 @@ export default function ChatSidebar({
                           onClick={() => onOpenThread(thread.id, thread)}
                           role="button"
                           tabIndex={0}
-                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-orange-50 ${selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : ""
+                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-primary-50 text-primary-700 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/15" : ""
                             }`}
                         >
                           <div className="h-12 w-12 shrink-0">
@@ -1519,7 +1519,7 @@ export default function ChatSidebar({
                               e.stopPropagation();
                               setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                             }}
-                            className="rounded-full p-1.5 text-content-tertiary hover:bg-orange-50"
+                            className="rounded-full p-1.5 text-content-tertiary hover:bg-orange-50 dark:hover:bg-surface-hover"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>

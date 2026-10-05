@@ -613,16 +613,12 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
   const deleteComment = async (commentId: string): Promise<{ error: string | null }> => {
     try {
       if (!user) throw new Error('User not authenticated')
+      if (!postId) throw new Error('No post selected')
 
-      const { error } = await supabase
-        .from('comments')
-        .update({ is_deleted: true, content: '[deleted]' })
-        .eq('id', commentId)
-        .eq('author_id', user.id)
+      await apiClient.delete(
+        `/api/posts/${postId}/comments/${commentId}`
+      )
 
-      if (error) throw error
-
-      // Update local state
       setComments(prev => updateCommentDeleted(prev, commentId))
       return { error: null }
 
@@ -634,6 +630,7 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
   const updateComment = async (commentId: string, input: string | UpdateCommentPayload): Promise<{ error: string | null }> => {
     try {
       if (!user) throw new Error('User not authenticated')
+      if (!postId) throw new Error('No post selected')
 
       const normalized = normalizeUpdateCommentPayload(input)
       const textContent = sanitizeCommentText(normalized.text)
@@ -641,21 +638,17 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
         throw new Error('Comment cannot be empty')
       }
 
-      const { error } = await supabase
-        .from('comments')
-        .update({
-          content: textContent,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', commentId)
-        .eq('author_id', user.id)
-
-      if (error) throw error
+      const response = await apiClient.patch<{ data: { updated_at?: string; content?: string } }>(
+        `/api/posts/${postId}/comments/${commentId}`,
+        { content: textContent }
+      )
+      const updated = response?.data
 
       setComments(prev => updateCommentContent(prev, commentId, {
         text: textContent,
         attachments: [],
-        raw: textContent
+        raw: updated?.content ?? textContent,
+        updated_at: updated?.updated_at
       }))
       return { error: null }
 
@@ -664,7 +657,7 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
     }
   }
 
-  const updateCommentContent = (comments: Comment[], commentId: string, payload: CommentContentPayload & { raw?: string }): Comment[] => {
+  const updateCommentContent = (comments: Comment[], commentId: string, payload: CommentContentPayload & { raw?: string; updated_at?: string }): Comment[] => {
     return comments.map(comment => {
       if (comment.id === commentId) {
         return {
@@ -672,7 +665,7 @@ export const useComments = (postId: string, options?: UseCommentsOptions) => {
           content: payload.text,
           attachments: payload.attachments ?? [],
           raw_content: payload.raw ?? comment.raw_content,
-          updated_at: new Date().toISOString()
+          updated_at: payload.updated_at ?? new Date().toISOString()
         }
       } else if (comment.replies && comment.replies.length > 0) {
         return {
