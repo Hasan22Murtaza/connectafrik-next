@@ -1195,7 +1195,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         </div>
       </div>
 
-      <div className={isTheater ? "min-h-0 flex-1 overflow-y-auto" : undefined}>
+      <div className={isTheater ? "min-h-0 flex-1 " : undefined}>
 
       {/* Caption above location check-in map */}
       {!isEditing && showLocationCheckIn && renderPlainCaption()}
