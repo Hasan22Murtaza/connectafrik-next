@@ -146,7 +146,7 @@ const Signup: React.FC = () => {
   return (
     <AuthPageShell
       title="Create a new account"
-      subtitle="Connect with people and communities worldwide"
+      subtitle="Where every voice finds a home"
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
         <div className="grid grid-cols-2 gap-3">

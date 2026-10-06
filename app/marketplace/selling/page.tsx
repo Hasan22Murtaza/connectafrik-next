@@ -6,18 +6,24 @@ import SellerListingActions, {
   getListingTip,
   ListingActionMenuItem,
 } from "@/features/marketplace/components/SellerListingActions";
+import SellerSidebar, { SellerMobileNav } from "@/features/marketplace/components/SellerSidebar";
 import { CREATE_LISTING_PATH } from "@/features/marketplace/constants/marketplaceConstants";
 import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import { formatProductPrice } from "@/features/marketplace/utils/productFormatting";
-import { DRAFT_TAG, hasTag } from "@/features/marketplace/utils/listingTags";
+import {
+  matchesSellerListingFilter,
+  type SellerListingFilter,
+} from "@/features/marketplace/utils/listingStates";
 import { apiClient } from "@/lib/api-client";
-import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import {
+  SellerListingsContentShimmer,
+  SellerListingsPageShimmer,
+} from "@/shared/components/ui/ShimmerLoaders";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Product } from "@/shared/types";
 import { format } from "date-fns";
 import {
   ArrowLeft,
-  BarChart3,
   ChevronDown,
   ChevronUp,
   Eye,
@@ -30,20 +36,31 @@ import {
   Tag,
   TrendingUp,
 } from '@/shared/icons';
-import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 
-type ListingStatus = "all" | "active" | "sold" | "draft";
+type ListingStatus = SellerListingFilter;
 type ListingSort = "newest" | "oldest" | "title-asc" | "title-desc";
 type ViewMode = "list" | "grid";
 
 const STATUS_FILTERS: { value: ListingStatus; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "active", label: "Active Listings" },
-  { value: "sold", label: "Sold Listings" },
-  { value: "draft", label: "Draft Listings" },
+  { value: "needs-attention", label: "Needs attention" },
+  { value: "active-pending", label: "Active & pending" },
+  { value: "active", label: "Active" },
+  { value: "sold", label: "Sold & out of stock" },
+  { value: "draft", label: "Drafts" },
+  { value: "renew", label: "To renew" },
 ];
+
+function parseListingStatus(value: string | null): ListingStatus {
+  const allowed = STATUS_FILTERS.map((item) => item.value);
+  if (value && allowed.includes(value as ListingStatus)) {
+    return value as ListingStatus;
+  }
+  return "all";
+}
 
 const SORT_OPTIONS: { value: ListingSort; label: string }[] = [
   { value: "newest", label: "Date listed: newest first" },
@@ -78,26 +95,23 @@ const FilterAccordion: React.FC<FilterAccordionProps> = ({
   </div>
 );
 
-const SellerDashboardPage: React.FC = () => {
+const SellerListingsPageContent: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [listings, setListings] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<ListingStatus>("all");
+  const [statusFilter, setStatusFilter] = useState<ListingStatus>(() =>
+    parseListingStatus(searchParams.get("status"))
+  );
   const [sortBy, setSortBy] = useState<ListingSort>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [markingSoldId, setMarkingSoldId] = useState<string | null>(null);
   const { confirm, dialog } = useConfirmDialog();
   const [sortExpanded, setSortExpanded] = useState(true);
   const [statusExpanded, setStatusExpanded] = useState(true);
-
-  const sellerName =
-    (user?.user_metadata?.full_name as string | undefined) ||
-    user?.email?.split("@")[0] ||
-    "Seller";
-  const sellerAvatar = user?.user_metadata?.avatar_url as string | undefined;
 
   const fetchDashboardData = useCallback(async () => {
     if (!user) return;
@@ -143,6 +157,10 @@ const SellerDashboardPage: React.FC = () => {
     fetchDashboardData();
   }, [user, authLoading, router, fetchDashboardData]);
 
+  useEffect(() => {
+    setStatusFilter(parseListingStatus(searchParams.get("status")));
+  }, [searchParams]);
+
   const filteredListings = useMemo(() => {
     let result = [...listings];
 
@@ -155,16 +173,8 @@ const SellerDashboardPage: React.FC = () => {
       );
     }
 
-    if (statusFilter === "active") {
-      result = result.filter(
-        (p) => p.is_available && p.stock_quantity > 0 && !hasTag(p.tags, DRAFT_TAG)
-      );
-    } else if (statusFilter === "sold") {
-      result = result.filter(
-        (p) => (!p.is_available || p.stock_quantity === 0) && !hasTag(p.tags, DRAFT_TAG)
-      );
-    } else if (statusFilter === "draft") {
-      result = result.filter((p) => hasTag(p.tags, DRAFT_TAG));
+    if (statusFilter !== "all") {
+      result = result.filter((p) => matchesSellerListingFilter(p, statusFilter));
     }
 
     switch (sortBy) {
@@ -201,14 +211,8 @@ const SellerDashboardPage: React.FC = () => {
     Boolean(searchTerm) || statusFilter !== "all" || sortBy !== "newest";
 
   const stats = useMemo(() => {
-    const active = listings.filter(
-      (p) => p.is_available && p.stock_quantity > 0 && !hasTag(p.tags, DRAFT_TAG)
-    );
-    const sold = listings.filter((p) => {
-      const pending = !p.is_available && p.stock_quantity > 0;
-      const isActive = p.is_available && p.stock_quantity > 0;
-      return !isActive && !pending && !hasTag(p.tags, DRAFT_TAG);
-    });
+    const active = listings.filter((p) => matchesSellerListingFilter(p, "active"));
+    const sold = listings.filter((p) => matchesSellerListingFilter(p, "sold"));
     const totalViews = listings.reduce((sum, p) => sum + (p.views_count || 0), 0);
     return {
       total: listings.length,
@@ -372,32 +376,13 @@ const SellerDashboardPage: React.FC = () => {
   };
 
   if (authLoading || (!user && loading)) {
-    return (
-      <div className="min-h-screen px-4 py-6">
-        <MarketplaceGridShimmer count={6} />
-      </div>
-    );
+    return <SellerListingsPageShimmer />;
   }
 
   return (
     <div className={MP.page}>
-      <div className={MP.shell}>
-        <aside className={`hidden lg:block ${MP.sidebar}`}>
-          <button
-            onClick={() => router.push("/marketplace")}
-            className={`${MP.backLink} mb-2`}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            TradeHub
-          </button>
-
-          <nav className={`${MP.sidebarNav} ${MP.navList}`}>
-            <div className={`${MP.navItem} ${MP.navItemActive}`}>
-              <BarChart3 className={`${MP.navIcon} ${MP.navIconActive}`} />
-              <span>My Listings</span>
-            </div>
-          </nav>
-
+      <div className={MP.shellFull}>
+        <SellerSidebar>
           <div className={MP.sectionDivider} />
 
           <div>
@@ -456,7 +441,7 @@ const SellerDashboardPage: React.FC = () => {
               </FilterAccordion>
             </div>
           </div>
-        </aside>
+        </SellerSidebar>
 
         <main className={MP.main}>
           <div className={`${MP.headerRow} mb-4`}>
@@ -468,7 +453,7 @@ const SellerDashboardPage: React.FC = () => {
                 <ArrowLeft className="w-4 h-4" />
                 TradeHub
               </button>
-              <h1 className={MP.pageTitle}>My Listings</h1>
+              <h1 className={MP.pageTitle}>Your listings</h1>
             </div>
             <button
               onClick={() => router.push(CREATE_LISTING_PATH)}
@@ -479,6 +464,12 @@ const SellerDashboardPage: React.FC = () => {
             </button>
           </div>
 
+          <SellerMobileNav />
+
+          {loading ? (
+            <SellerListingsContentShimmer />
+          ) : (
+            <>
           <div className={`${MP.statsGrid} mb-4`}>
             <div className={`${MP.card} ${MP.cardPadding}`}>
               <div className="flex items-center gap-1.5 text-content-secondary text-xs uppercase tracking-wide mb-0.5">
@@ -570,9 +561,7 @@ const SellerDashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {loading ? (
-            <MarketplaceGridShimmer count={6} />
-          ) : filteredListings.length === 0 ? (
+          {filteredListings.length === 0 ? (
             <div className="text-center py-16 bg-surface rounded-xl border border-border-subtle">
               <Package className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
               <p className="text-content-secondary mb-2">No listings found</p>
@@ -680,6 +669,8 @@ const SellerDashboardPage: React.FC = () => {
               })}
             </div>
           )}
+            </>
+          )}
         </main>
 
       </div>
@@ -688,4 +679,10 @@ const SellerDashboardPage: React.FC = () => {
   );
 };
 
-export default SellerDashboardPage;
+const SellerListingsPage: React.FC = () => (
+  <Suspense fallback={<SellerListingsPageShimmer />}>
+    <SellerListingsPageContent />
+  </Suspense>
+);
+
+export default SellerListingsPage;

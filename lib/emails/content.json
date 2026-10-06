@@ -1,10 +1,10 @@
 {
   "shared": {
     "brand": "CribsTalk",
-    "tagline": "Connecting people worldwide",
+    "tagline": "Home for Every Voice",
     "teamName": "The CribsTalk team",
     "defaultHeaderTitle": "CribsTalk",
-    "defaultHeaderSubtitle": "Connecting people worldwide",
+    "defaultHeaderSubtitle": "Where Every Voice Finds a Home",
     "copyright": "© {{year}} CribsTalk. All rights reserved.",
     "automatedNote": "This is an automated email. Please do not reply to this message.",
     "needHelp": "Need help?",
@@ -84,7 +84,7 @@
       "lead": "Click the button below to verify your email address and activate your account:",
       "buttonLabel": "Verify your email",
       "footerFallbackLink": "If the button doesn't work, copy and paste this link into your browser:",
-      "text": "Verify your email\n\nClick the link below to verify your email address and activate your CribsTalk account:\n\n{{confirmationUrl}}\n\nCribsTalk — Connecting people worldwide\n\nThis is an automated email. Please do not reply to this message.",
+      "text": "Verify your email\n\nClick the link below to verify your email address and activate your CribsTalk account:\n\n{{confirmationUrl}}\n\nCribsTalk — Home for Every Voice\n\nThis is an automated email. Please do not reply to this message.",
       "badge": "Verify"
     },
     "otp": {
@@ -96,7 +96,7 @@
         "headerSubtitle": "One step left to activate your account",
         "codeHint": "Use the verification code below. It expires in 10 minutes.",
         "ignoreHint": "If you did not request this code, you can safely ignore this email.",
-        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not request this code, you can safely ignore this email.\n\nCribsTalk — Connecting people worldwide",
+        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not request this code, you can safely ignore this email.\n\nCribsTalk — Home for Every Voice",
         "badge": "Verify"
       },
       "login": {
@@ -107,7 +107,7 @@
         "headerSubtitle": "Confirm it’s you to continue",
         "codeHint": "Use the verification code below. It expires in 10 minutes.",
         "ignoreHint": "If you did not request this code, you can safely ignore this email.",
-        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not request this code, you can safely ignore this email.\n\nCribsTalk — Connecting people worldwide",
+        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not request this code, you can safely ignore this email.\n\nCribsTalk — Home for Every Voice",
         "badge": "Sign in"
       },
       "two_factor": {
@@ -118,7 +118,7 @@
         "headerSubtitle": "A second step to protect your account",
         "codeHint": "Use the verification code below. It expires in 10 minutes.",
         "ignoreHint": "If you did not try to sign in, change your password and review active sessions.",
-        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not try to sign in, change your password and review active sessions.\n\nCribsTalk — Connecting people worldwide",
+        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not try to sign in, change your password and review active sessions.\n\nCribsTalk — Home for Every Voice",
         "badge": "Security"
       },
       "recovery": {
@@ -129,7 +129,7 @@
         "headerSubtitle": "Use this code to choose a new password",
         "codeHint": "Use the verification code below. It expires in 10 minutes.",
         "ignoreHint": "If you did not request this code, you can safely ignore this email.",
-        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not request this code, you can safely ignore this email.\n\nCribsTalk — Connecting people worldwide",
+        "text": "{{headline}}\n\nYour verification code is: {{code}}\n\nThis code expires in 10 minutes.\n\nIf you did not request this code, you can safely ignore this email.\n\nCribsTalk — Home for Every Voice",
         "badge": "Security"
       }
     },
