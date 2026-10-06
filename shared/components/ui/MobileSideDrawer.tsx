@@ -3,7 +3,8 @@
 import {
   Search,
   X,
-  MessageSquare
+  MessageSquare,
+  Settings,
 } from '@/shared/icons'
 import { usePathname, useRouter } from 'next/navigation'
 import React, { useState } from 'react'
@@ -42,6 +43,7 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
     { icon: MdOutlineGroups2, label: 'Groups', path: '/groups' },
     { icon: BsShop, label: 'TradeHub', path: '/marketplace' },
     { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
+    { icon: Settings, label: 'Settings', path: '/settings' },
     { icon: MessageSquare, label: 'Feedback', path: '/feedback' },
   ]
 
