@@ -1,9 +1,10 @@
 "use client";
 import saved from "@/public/assets/icons/bookmark.png";
+import feedback from "@/public/assets/icons/feedback.png";
 import friend from "@/public/assets/icons/friend.png";
 import group from "@/public/assets/icons/groups.png";
 import marketplace from "@/public/assets/icons/market.png";
-import orders from "@/public/assets/icons/my-order.png";
+import settings from "@/public/assets/icons/settings.png";
 import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,8 +14,10 @@ const shortcuts = [
   { name: "Friends", to: "/friends", icon: friend, badgeKey: "friends" },
   { name: "Groups", to: "/groups", icon: group },
   { name: "TradeHub", to: "/marketplace", icon: marketplace },
-  { name: "My Orders", to: "/my-orders", icon: orders, badgeKey: "orders" },
   { name: "Saved", to: "/saved", icon: saved },
+  { name: "Feedback", to: "/feedback", icon: feedback },
+  { name: "Settings", to: "/settings", icon: settings },
+
 ];
 
 function formatBadge(count) {

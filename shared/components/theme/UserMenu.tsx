@@ -26,20 +26,6 @@ const UserMenu: React.FC<UserMenuProps> = ({ isOpen, onSignOut, onClose }) => {
         >
           My Profile
         </Link>
-        <Link
-          href="/settings"
-          onClick={onClose}
-          className="block px-4 py-2 text-sm text-content rounded-md hover:bg-surface-hover transition-colors"
-        >
-          Settings
-        </Link>
-        <Link
-          href="/feedback"
-          onClick={onClose}
-          className="block px-4 py-2 text-sm text-content rounded-md hover:bg-surface-hover transition-colors"
-        >
-          Feedback
-        </Link>
 
         <hr className="my-1 border-border" />
 

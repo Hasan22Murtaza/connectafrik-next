@@ -35,6 +35,7 @@ import {
   type ProfileLocationValue,
 } from "@/shared/types/location";
 import { CreateListingFormShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import toast from "react-hot-toast";
 
 const initialFormData = {
   title: "",
