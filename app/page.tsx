@@ -209,7 +209,7 @@ const PrimaryCta: React.FC<{
 }> = ({ href, children, className = "" }) => (
   <Link
     href={href}
-    className={`group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#F97316] px-7 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EA580C] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 focus-visible:ring-offset-2 sm:text-base ${className}`}
+    className={`group inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#F97316] px-7 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#EA580C] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 sm:text-base ${className}`}
   >
     {children}
   </Link>
@@ -222,7 +222,7 @@ const SecondaryCta: React.FC<{
 }> = ({ href, children, className = "" }) => (
   <Link
     href={href}
-    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-7 py-3 text-sm font-semibold text-[#111827] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#F9FAFB] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 focus-visible:ring-offset-2 sm:text-base ${className}`}
+    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-7 py-3 text-sm font-semibold text-[#111827] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#F9FAFB] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-950 sm:text-base ${className}`}
   >
     {children}
   </Link>
@@ -234,11 +234,11 @@ const SectionHeading: React.FC<{
   align?: "left" | "center";
 }> = ({ title, description, align = "center" }) => (
   <div className={`max-w-2xl ${align === "center" ? "mx-auto text-center" : ""}`}>
-    <h2 className="text-[1.75rem] font-bold tracking-tight text-[#111827] sm:text-4xl">
+    <h2 className="text-[1.75rem] font-bold tracking-tight text-[#111827] dark:text-slate-100 sm:text-4xl">
       {title}
     </h2>
     {description ? (
-      <p className="mt-4 text-base leading-relaxed text-[#4B5563] sm:text-lg">
+      <p className="mt-4 text-base leading-relaxed text-[#4B5563] dark:text-slate-300 sm:text-lg">
         {description}
       </p>
     ) : null}
@@ -297,9 +297,9 @@ const Home: React.FC = () => {
   }, []);
 
   return (
-    <div ref={rootRef} className="overflow-x-hidden bg-white text-[#111827]">
+    <div ref={rootRef} className="overflow-x-hidden bg-white text-[#111827] transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
       {/* ============================== HERO ============================== */}
-      <section className="relative isolate overflow-hidden bg-[#FBF6EF]">
+      <section className="relative isolate overflow-hidden bg-[#FBF6EF] dark:bg-slate-950">
         {/* Banner image */}
         <div className="pointer-events-none absolute inset-0 -z-20">
           <img
@@ -350,7 +350,7 @@ const Home: React.FC = () => {
               </Reveal>
 
               <Reveal delay={2}>
-                <p className="mx-auto sm:mt-4 max-w-lg text-base leading-relaxed text-[#4B5563] sm:mt-5 sm:text-lg lg:mx-0">
+                <p className="mx-auto sm:mt-4 max-w-lg text-base leading-relaxed text-[#4B5563] dark:text-slate-300 sm:mt-5 sm:text-lg lg:mx-0">
                   A place for your people, your stories, your conversations, and
                   the communities you care about.
                 </p>
@@ -400,7 +400,7 @@ const Home: React.FC = () => {
                       />
                     ))}
                   </div>
-                  <p className="max-w-[11rem] text-left text-sm leading-snug text-[#6B7280]">
+                  <p className="max-w-[11rem] text-left text-sm leading-snug text-[#6B7280] dark:text-slate-400">
                     People already sharing moments on CribsTalk
                   </p>
                 </div>
@@ -412,20 +412,20 @@ const Home: React.FC = () => {
               <div className="relative mx-auto aspect-[4/5] w-full max-w-[480px] sm:aspect-[5/6] lg:aspect-auto lg:min-h-[560px] lg:max-w-none">
                 {/* Curved glass plate behind cards */}
                 <div
-                  className="absolute inset-[4%] bg-white/55 shadow-[0_30px_80px_rgba(15,23,42,0.08)] backdrop-blur-[2px] sm:inset-[3%]"
+                  className="absolute inset-[4%] bg-white/55 shadow-[0_30px_80px_rgba(15,23,42,0.08)] backdrop-blur-[2px] dark:bg-slate-800/70 dark:shadow-[0_30px_80px_rgba(2,6,23,0.45)] sm:inset-[3%]"
                   style={{
                     borderRadius: "42% 58% 48% 52% / 48% 42% 58% 52%",
                   }}
                 />
                 <div
-                  className="absolute inset-[10%] border border-white/70 bg-gradient-to-br from-white/70 to-[#FBF6EF]/50 sm:inset-[8%]"
+                  className="absolute inset-[10%] border border-white/70 bg-gradient-to-br from-white/70 to-[#FBF6EF]/50 dark:border-slate-700 dark:from-slate-800/80 dark:to-slate-900/80 sm:inset-[8%]"
                   style={{
                     borderRadius: "48% 52% 55% 45% / 45% 55% 45% 55%",
                   }}
                 />
 
                 {/* Main post card */}
-                <article className="lp-animate-float-slow absolute right-[2%] top-[2%] z-20 w-[72%] max-w-[320px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_20px_50px_rgba(15,23,42,0.12)] transition-shadow duration-300 hover:shadow-[0_24px_60px_rgba(15,23,42,0.16)] sm:right-[4%] sm:top-[4%] sm:p-4">
+                <article className="lp-animate-float-slow absolute right-[2%] top-[2%] z-20 w-[72%] max-w-[320px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_20px_50px_rgba(15,23,42,0.12)] transition-shadow duration-300 hover:shadow-[0_24px_60px_rgba(15,23,42,0.16)] dark:border-slate-700 dark:bg-slate-800 dark:shadow-[0_20px_50px_rgba(2,6,23,0.45)] sm:right-[4%] sm:top-[4%] sm:p-4">
                   <div className="flex items-center gap-3">
                     <img
                       src={avatars.daniel}
@@ -433,14 +433,14 @@ const Home: React.FC = () => {
                       className="h-10 w-10 rounded-full object-cover"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-[#111827]">
+                      <p className="truncate text-sm font-semibold text-[#111827] dark:text-slate-100">
                         Daniel Carter
                       </p>
-                      <p className="text-xs text-[#6B7280]">@danielc · 2h</p>
+                      <p className="text-xs text-[#6B7280] dark:text-slate-400">@danielc · 2h</p>
                     </div>
-                    <MoreHorizontal className="h-4 w-4 text-[#9CA3AF]" />
+                    <MoreHorizontal className="h-4 w-4 text-[#9CA3AF] dark:text-slate-400" />
                   </div>
-                  <p className="mt-3 text-sm leading-relaxed text-[#374151]">
+                  <p className="mt-3 text-sm leading-relaxed text-[#374151] dark:text-slate-200">
                     Weekend hike with friends — some places become memories.
                   </p>
                   <div className="mt-3 overflow-hidden rounded-xl">
@@ -451,7 +451,7 @@ const Home: React.FC = () => {
                       loading="eager"
                     />
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-sm text-[#6B7280]">
+                  <div className="mt-3 flex items-center justify-between text-sm text-[#6B7280] dark:text-slate-300">
                     <button
                       type="button"
                       className="inline-flex items-center gap-1.5 font-medium text-rose-500 transition-transform hover:scale-105"
@@ -469,7 +469,7 @@ const Home: React.FC = () => {
                 </article>
 
                 {/* Profile card */}
-                <div className="lp-animate-float absolute left-[1%] top-[12%] z-20 w-[48%] max-w-[210px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_16px_40px_rgba(15,23,42,0.10)] transition-transform duration-300 hover:-translate-y-0.5 sm:left-[2%] sm:top-[14%] sm:p-4">
+                <div className="lp-animate-float absolute left-[1%] top-[12%] z-20 w-[48%] max-w-[210px] rounded-2xl border border-black/[0.06] bg-white p-3.5 shadow-[0_16px_40px_rgba(15,23,42,0.10)] transition-transform duration-300 hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-800 dark:shadow-[0_16px_40px_rgba(2,6,23,0.45)] sm:left-[2%] sm:top-[14%] sm:p-4">
                   <div className="flex items-center gap-2.5">
                     <img
                       src={avatars.maya}
@@ -477,14 +477,14 @@ const Home: React.FC = () => {
                       className="h-11 w-11 rounded-full object-cover ring-2 ring-[#F97316]/25"
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#111827]">
+                      <p className="truncate text-sm font-semibold text-[#111827] dark:text-slate-100">
                         Maya Johnson
                       </p>
-                      <p className="text-xs text-[#6B7280]">@mayaj</p>
+                      <p className="text-xs text-[#6B7280] dark:text-slate-400">@mayaj</p>
                     </div>
                   </div>
-                  <p className="mt-2.5 text-xs text-[#6B7280]">
-                    <span className="font-semibold text-[#111827]">1.2K</span>{" "}
+                  <p className="mt-2.5 text-xs text-[#6B7280] dark:text-slate-300">
+                    <span className="font-semibold text-[#111827] dark:text-slate-100">1.2K</span>{" "}
                     followers
                   </p>
                   <button
@@ -496,20 +496,20 @@ const Home: React.FC = () => {
                 </div>
 
                 {/* Notification */}
-                <div className="lp-animate-float-slow absolute bottom-[28%] right-[0%] z-30 flex max-w-[210px] items-center gap-2.5 rounded-2xl border border-black/[0.06] bg-white px-3 py-2.5 shadow-xl sm:bottom-[30%] sm:right-[2%]">
-                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-orange-50 text-[#F97316]">
+                <div className="lp-animate-float-slow absolute bottom-[28%] right-[0%] z-30 flex max-w-[210px] items-center gap-2.5 rounded-2xl border border-black/[0.06] bg-white px-3 py-2.5 shadow-xl dark:border-slate-700 dark:bg-slate-800 sm:bottom-[30%] sm:right-[2%]">
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-orange-50 text-[#F97316] dark:bg-orange-500/15 dark:text-orange-300">
                     <Bell className="h-4 w-4" />
                   </span>
                   <div>
-                    <p className="text-xs font-semibold text-[#111827]">
+                    <p className="text-xs font-semibold text-[#111827] dark:text-slate-100">
                       Someone liked your post
                     </p>
-                    <p className="text-[11px] text-[#6B7280]">Just now</p>
+                    <p className="text-[11px] text-[#6B7280] dark:text-slate-400">Just now</p>
                   </div>
                 </div>
 
                 {/* Message preview */}
-                <div className="lp-animate-float absolute bottom-[14%] left-[0%] z-30 w-[52%] max-w-[220px] rounded-2xl border border-black/[0.06] bg-white p-3 shadow-xl sm:bottom-[16%] sm:left-[2%] sm:p-3.5">
+                <div className="lp-animate-float absolute bottom-[14%] left-[0%] z-30 w-[52%] max-w-[220px] rounded-2xl border border-black/[0.06] bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-800 sm:bottom-[16%] sm:left-[2%] sm:p-3.5">
                   <div className="flex items-center gap-2.5">
                     <div className="relative">
                       <img
@@ -520,10 +520,10 @@ const Home: React.FC = () => {
                       <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-semibold text-[#111827]">
+                      <p className="truncate text-xs font-semibold text-[#111827] dark:text-slate-100">
                         Sophia
                       </p>
-                      <p className="truncate text-[11px] text-[#6B7280]">
+                      <p className="truncate text-[11px] text-[#6B7280] dark:text-slate-300">
                         That photo is beautiful ✨
                       </p>
                     </div>
@@ -531,17 +531,17 @@ const Home: React.FC = () => {
                 </div>
 
                 {/* Community card */}
-                <div className="lp-animate-float absolute bottom-[1%] right-[4%] z-20 flex w-[64%] max-w-[260px] items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-lg sm:bottom-[2%] sm:right-[6%]">
+                <div className="lp-animate-float absolute bottom-[1%] right-[4%] z-20 flex w-[64%] max-w-[260px] items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800 dark:shadow-[0_16px_40px_rgba(2,6,23,0.45)] sm:bottom-[2%] sm:right-[6%]">
                   <img
                     src={`${LP}/discover-travel.png`}
                     alt="Travel Stories community"
                     className="h-11 w-11 rounded-xl object-cover"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-semibold text-[#111827]">
+                    <p className="truncate text-xs font-semibold text-[#111827] dark:text-slate-100">
                       Travel Stories
                     </p>
-                    <p className="text-[11px] text-[#6B7280]">8.2K members</p>
+                    <p className="text-[11px] text-[#6B7280] dark:text-slate-300">8.2K members</p>
                   </div>
                   <button
                     type="button"
@@ -575,7 +575,7 @@ const Home: React.FC = () => {
 
 
       {/* ======================== COMMUNITIES ======================== */}
-      <section id="communities" className="scroll-mt-24 py-16 sm:py-20 lg:py-24">
+      <section id="communities" className="scroll-mt-24 py-16 sm:py-20 lg:py-24 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Reveal>
             <SectionHeading
@@ -589,7 +589,7 @@ const Home: React.FC = () => {
               {communityCards.map((community) => (
                 <article
                   key={community.name}
-                  className="w-[78%] flex-none overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md sm:w-auto"
+                  className="w-[78%] flex-none overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md dark:border-slate-700 dark:bg-slate-800 sm:w-auto"
                 >
                   <div className="aspect-[16/9] overflow-hidden">
                     <img
@@ -600,15 +600,15 @@ const Home: React.FC = () => {
                     />
                   </div>
                   <div className="p-4 sm:p-5">
-                    <h3 className="text-base font-semibold text-[#111827]">
+                    <h3 className="text-base font-semibold text-[#111827] dark:text-slate-100">
                       {community.name}
                     </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280]">
+                    <p className="mt-1.5 text-sm leading-relaxed text-[#6B7280] dark:text-slate-300">
                       {community.description}
                     </p>
                     <div className="mt-4 flex items-center justify-between gap-3">
-                      <span className="text-sm text-[#6B7280]">
-                        <span className="font-semibold text-[#111827]">
+                      <span className="text-sm text-[#6B7280] dark:text-slate-300">
+                        <span className="font-semibold text-[#111827] dark:text-slate-100">
                           {community.members}
                         </span>{" "}
                         members
@@ -631,7 +631,7 @@ const Home: React.FC = () => {
       {/* ======================== MESSAGING ======================== */}
       <section
         id="messaging"
-        className="scroll-mt-24 bg-[#FAFAF9] py-16 sm:py-20 lg:py-24"
+        className="scroll-mt-24 bg-[#FAFAF9] py-16 sm:py-20 lg:py-24 dark:bg-slate-900"
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Reveal>
@@ -642,21 +642,21 @@ const Home: React.FC = () => {
           </Reveal>
 
           <Reveal delay={2} className="mx-auto mt-10 max-w-4xl sm:mt-14">
-            <div className="overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+            <div className="overflow-hidden rounded-[24px] border border-black/[0.06] bg-white shadow-[0_20px_50px_rgba(15,23,42,0.08)] dark:border-slate-700 dark:bg-slate-800 dark:shadow-[0_20px_50px_rgba(2,6,23,0.45)]">
               <div className="grid lg:grid-cols-[280px_1fr]">
                 {/* Conversation list */}
-                <div className="border-b border-[#F3F4F6] lg:border-b-0 lg:border-r sm:block hidden">
-                  <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-4">
-                    <p className="font-semibold text-[#111827]">Messages</p>
-                    <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-[#EA580C]">
+                <div className="border-b border-[#F3F4F6] lg:border-b-0 lg:border-r dark:border-slate-700 sm:block hidden">
+                  <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-4 dark:border-slate-700">
+                    <p className="font-semibold text-[#111827] dark:text-slate-100">Messages</p>
+                    <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-[#EA580C] dark:bg-orange-500/10 dark:text-orange-300">
                       3 new
                     </span>
                   </div>
-                  <ul className="divide-y divide-[#F3F4F6]">
+                  <ul className="divide-y divide-[#F3F4F6] dark:divide-slate-700">
                     {conversations.map((chat) => (
                       <li
                         key={chat.name}
-                        className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${chat.active ? "bg-[#FBF6EF]/80" : "hover:bg-[#F9FAFB]"
+                        className={`flex items-center gap-3 px-4 py-3.5 transition-colors ${chat.active ? "bg-[#FBF6EF]/80 dark:bg-slate-700/80" : "hover:bg-[#F9FAFB] dark:hover:bg-slate-700/60"
                           }`}
                       >
                         <div className="relative flex-none">
@@ -671,14 +671,14 @@ const Home: React.FC = () => {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="truncate text-sm font-semibold text-[#111827]">
+                            <p className="truncate text-sm font-semibold text-[#111827] dark:text-slate-100">
                               {chat.name}
                             </p>
-                            <span className="flex-none text-[11px] text-[#9CA3AF]">
+                            <span className="flex-none text-[11px] text-[#9CA3AF] dark:text-slate-400">
                               {chat.time}
                             </span>
                           </div>
-                          <p className="truncate text-sm text-[#6B7280]">
+                          <p className="truncate text-sm text-[#6B7280] dark:text-slate-300">
                             {chat.preview}
                           </p>
                         </div>
@@ -689,7 +689,7 @@ const Home: React.FC = () => {
 
                 {/* Active conversation */}
                 <div className="flex min-h-[360px] flex-col">
-                  <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-3.5 sm:px-5">
+                  <div className="flex items-center justify-between border-b border-[#F3F4F6] px-4 py-3.5 sm:px-5 dark:border-slate-700">
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <img
@@ -700,14 +700,14 @@ const Home: React.FC = () => {
                         <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
                       </div>
                       <div>
-                        <p className="font-semibold text-[#111827]">
+                        <p className="font-semibold text-[#111827] dark:text-slate-100">
                           Emma Laurent
                         </p>
-                        <p className="text-xs text-emerald-600">Online</p>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400">Online</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EF] text-[#F97316]">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF6EF] text-[#F97316] dark:bg-slate-700 dark:text-orange-300">
                         <Phone className="h-4 w-4" />
                       </span>
                       <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F97316] text-white">
@@ -716,15 +716,15 @@ const Home: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-1 space-y-3 bg-[#FAFAF9]/60 px-4 py-5 sm:px-5">
-                    <div className="max-w-[80%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm text-[#374151] shadow-sm">
+                  <div className="flex-1 space-y-3 bg-[#FAFAF9]/60 px-4 py-5 sm:px-5 dark:bg-slate-900/80">
+                    <div className="max-w-[80%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm text-[#374151] shadow-sm dark:bg-slate-700 dark:text-slate-200">
                       The group call yesterday was great — we should do that
                       again.
                     </div>
                     <div className="ml-auto max-w-[80%] rounded-2xl rounded-tr-md bg-[#F97316] px-4 py-3 text-sm text-white shadow-sm">
                       Absolutely. I&apos;ll send the invite for Friday.
                     </div>
-                    <div className="overflow-hidden rounded-2xl rounded-tl-md bg-white shadow-sm">
+                    <div className="overflow-hidden rounded-2xl rounded-tl-md bg-white shadow-sm dark:bg-slate-700">
                       <img
                         src={`${LP}/chat-share.png`}
                         alt="Shared photo in chat"
@@ -732,7 +732,7 @@ const Home: React.FC = () => {
                         loading="lazy"
                       />
                     </div>
-                    <div className="max-w-[75%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm text-[#374151] shadow-sm">
+                    <div className="max-w-[75%] rounded-2xl rounded-tl-md bg-white px-4 py-3 text-sm text-[#374151] shadow-sm dark:bg-slate-700 dark:text-slate-200">
                       Perfect{" "}
                       <span className="inline-flex align-middle text-rose-500">
                         <Heart className="inline h-3.5 w-3.5 fill-rose-500" />
@@ -740,9 +740,9 @@ const Home: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="border-t border-[#F3F4F6] px-4 py-3 sm:px-5">
-                    <div className="flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3 py-2.5">
-                      <span className="flex-1 text-sm text-[#9CA3AF]">
+                  <div className="border-t border-[#F3F4F6] px-4 py-3 sm:px-5 dark:border-slate-700">
+                    <div className="flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3 py-2.5 dark:border-slate-600 dark:bg-slate-700">
+                      <span className="flex-1 text-sm text-[#9CA3AF] dark:text-slate-300">
                         Message…
                       </span>
                       <Send className="h-4 w-4 text-[#F97316]" />
@@ -780,15 +780,15 @@ const Home: React.FC = () => {
                   loading="lazy"
                 />
               </div>
-              <div className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm sm:p-4">
+              <div className="flex items-center gap-3 rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:shadow-[0_16px_40px_rgba(2,6,23,0.35)] sm:p-4">
                 <img
                   src={avatars.maya}
                   alt="Sofia"
                   className="h-11 w-11 rounded-full object-cover ring-2 ring-[#F97316]/30"
                 />
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">Sofia</p>
-                  <p className="truncate text-xs text-[#6B7280]">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Sofia</p>
+                  <p className="truncate text-xs text-[#6B7280] dark:text-slate-300">
                     Shared a new photo
                   </p>
                 </div>
@@ -801,16 +801,16 @@ const Home: React.FC = () => {
                   loading="lazy"
                 />
               </div>
-              <div className="rounded-2xl border border-black/[0.06] bg-[#FBF6EF] p-3 sm:p-4">
-                <p className="text-xs font-semibold text-[#111827]">
+              <div className="rounded-2xl border border-black/[0.06] bg-[#FBF6EF] p-3 sm:p-4 dark:border-slate-700 dark:bg-slate-800">
+                <p className="text-xs font-semibold text-[#111827] dark:text-slate-100">
                   Photography
                 </p>
-                <p className="mt-1 text-[11px] text-[#6B7280]">8.1K members</p>
+                <p className="mt-1 text-[11px] text-[#6B7280] dark:text-slate-300">8.1K members</p>
                 <span className="mt-3 inline-flex rounded-full bg-[#F97316] px-2.5 py-1 text-[11px] font-semibold text-white">
                   Join
                 </span>
               </div>
-              <div className="flex flex-col justify-between rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm sm:p-4">
+              <div className="flex flex-col justify-between rounded-2xl border border-black/[0.06] bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-4">
                 <div className="flex -space-x-2">
                   {[
                     avatars.emma,
@@ -821,16 +821,16 @@ const Home: React.FC = () => {
                       key={src}
                       src={src}
                       alt=""
-                      className="h-8 w-8 rounded-full border-2 border-white object-cover"
+                      className="h-8 w-8 rounded-full border-2 border-white object-cover dark:border-slate-800"
                     />
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-[#6B7280]">
+                <p className="mt-2 text-xs text-[#6B7280] dark:text-slate-300">
                   <span className="font-semibold text-rose-500">♡ 128</span> new
                   reactions today
                 </p>
               </div>
-              <div className="col-span-2 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm">
+              <div className="col-span-2 overflow-hidden rounded-2xl border border-black/[0.06] bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex items-start gap-3">
                   <img
                     src={avatars.marcus}
@@ -838,10 +838,10 @@ const Home: React.FC = () => {
                     className="h-10 w-10 rounded-full object-cover"
                   />
                   <div>
-                    <p className="text-sm font-semibold text-[#111827]">
+                    <p className="text-sm font-semibold text-[#111827] dark:text-slate-100">
                       Marcus Webb
                     </p>
-                    <p className="mt-1 text-sm text-[#4B5563]">
+                    <p className="mt-1 text-sm text-[#4B5563] dark:text-slate-300">
                       Built something new this week and shared it with the
                       community — the feedback already feels like friends.
                     </p>
@@ -854,7 +854,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* ======================== MOBILE ======================== */}
-      <section className="bg-[#FAFAF9] py-16 sm:py-20 lg:py-24">
+      <section className="bg-[#FAFAF9] py-16 sm:py-20 lg:py-24 dark:bg-slate-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <Reveal>
@@ -872,9 +872,9 @@ const Home: React.FC = () => {
                 ].map(({ icon: Icon, label }) => (
                   <li
                     key={label}
-                    className="flex items-center gap-3 text-[15px] text-[#374151]"
+                    className="flex items-center gap-3 text-[15px] text-[#374151] dark:text-slate-200"
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#F97316] shadow-sm ring-1 ring-black/[0.04]">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#F97316] shadow-sm ring-1 ring-black/[0.04] dark:bg-slate-700 dark:text-orange-300 dark:ring-slate-600">
                       <Icon className="h-4 w-4" />
                     </span>
                     {label}
@@ -963,11 +963,11 @@ const Home: React.FC = () => {
       {/* ======================== FINAL CTA ======================== */}
       <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
         <Reveal className="mx-auto max-w-7xl">
-          <div className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-[#FBF6EF] px-6 py-14 text-center sm:px-10 sm:py-16 lg:px-16 lg:py-20">
-            <h2 className="relative mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-[#111827] sm:text-4xl lg:text-5xl">
+          <div className="relative overflow-hidden rounded-[28px] border border-black/[0.06] bg-[#FBF6EF] px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+            <h2 className="relative mx-auto max-w-2xl text-3xl font-extrabold tracking-tight text-[#111827] dark:text-slate-100 sm:text-4xl lg:text-5xl">
               Your people. Your stories. Your Crib.
             </h2>
-            <p className="relative mx-auto mt-5 max-w-xl text-base text-[#4B5563] sm:text-lg">
+            <p className="relative mx-auto mt-5 max-w-xl text-base text-[#4B5563] dark:text-slate-300 sm:text-lg">
               Join CribsTalk and start building your corner of the community.
             </p>
 

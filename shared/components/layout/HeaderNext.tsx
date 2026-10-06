@@ -432,7 +432,7 @@ const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center gap-2 sm:gap-3">
                   <Link
                     href="/signin"
-                    className="hidden rounded-full border border-[#E5E7EB] bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
+                    className="hidden rounded-full  bg-white px-4 py-2.5 text-sm font-semibold text-[#111827] dark:text-slate-100 transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:inline-flex"
                   >
                     Sign In
                   </Link>
