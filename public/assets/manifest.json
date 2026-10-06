@@ -1,7 +1,7 @@
 {
   "name": "CribsTalk - Global Social Platform",
   "short_name": "CribsTalk",
-  "description": "A global social platform for connecting, communicating, sharing, and building communities worldwide.",
+  "description": "Where every voice finds a home. Connect, share, and build community on CribsTalk.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

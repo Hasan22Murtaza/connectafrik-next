@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
 } from "@/shared/icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { SEO_SITE_TAGLINE, SEO_SITE_TAGLINE_SHORT } from "@/lib/seo/config";
 
 /* ------------------------------------------------------------------ */
 /*  Preview content (visual only — no API calls)                       */
@@ -338,13 +339,13 @@ const Home: React.FC = () => {
             <div className="relative z-10 flex flex-col text-center lg:text-left">
               <Reveal>
                 <p className="text-sm font-semibold tracking-[0.14em] text-[#F97316]">
-                  CONNECT · SHARE · BELONG
+                  {SEO_SITE_TAGLINE_SHORT.toUpperCase()}
                 </p>
               </Reveal>
 
               <Reveal delay={1}>
                 <h1 className="mt-2  font-extrabold sm:leading-[1.02] tracking-tight text-[#111827] sm:mt-3 sm:text-[3.5rem] lg:text-[4.5rem] text-[1.8rem] ">
-                  Bringing People and Communities Together.
+                  {SEO_SITE_TAGLINE}
                 </h1>
               </Reveal>
 

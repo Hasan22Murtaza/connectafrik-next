@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { Mail, Phone, Heart } from "@/shared/icons";
+import { SEO_SITE_TAGLINE, SEO_SITE_TAGLINE_SHORT } from "@/lib/seo/config";
 
 const productLinks = [
   { href: "/feed", label: "Feed" },
@@ -37,7 +38,7 @@ const Footer: React.FC = () => {
               className="w-32"
             />
             <p className="max-w-xs text-sm font-medium leading-relaxed text-[#4B5563]">
-              Connect · Share · Belong
+              {SEO_SITE_TAGLINE}
             </p>
             <p className="max-w-xs text-sm leading-relaxed text-[#6B7280]">
               Our Crib. Our Culture. Our Roots.
@@ -126,7 +127,7 @@ const Footer: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center gap-1.5 text-sm text-[#6B7280]">
             <span>© {currentYear} CribsTalk</span>
             <Heart className="h-3.5 w-3.5 fill-[#F97316] text-[#F97316]" />
-            <span>Connect · Share · Belong</span>
+            <span>{SEO_SITE_TAGLINE_SHORT}</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-[#6B7280]">
             <Link

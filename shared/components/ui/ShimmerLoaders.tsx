@@ -1,5 +1,6 @@
 "use client";
 
+import { MP } from "@/features/marketplace/constants/marketplaceLayout";
 import React, { useEffect, useState } from "react";
 
 // ============== Hooks ==============
@@ -270,19 +271,37 @@ export function GroupDetailPageShimmer() {
   );
 }
 
-// ============== Marketplace ==============
+// ============== Marketplace / TradeHub ==============
 
-/** Product card grid shimmer. Pass count from useShimmerCount(). */
+function SellingNavShimmer() {
+  return (
+    <>
+      <div className="h-4 w-20 animate-shimmer rounded mb-3" />
+      <div className="h-7 w-24 animate-shimmer rounded mb-3" />
+      <div className="h-10 w-full animate-shimmer rounded-lg mb-3" />
+      <div className="border-t border-border pt-2 space-y-2">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-10 w-full animate-shimmer rounded-lg" />
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** Browse product card grid. Matches ProductBrowseCard + MP.productGrid. */
 export function MarketplaceGridShimmer({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-1 sm:gap-1.5">
+    <div className={MP.productGrid}>
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="w-full min-w-0 flex flex-col">
-          <div className="aspect-square w-full animate-shimmer rounded-md flex-shrink-0" />
-          <div className="pt-1 space-y-1 min-w-0">
-            <div className="h-4 w-16 animate-shimmer rounded" />
-            <div className="h-3 w-full max-w-full animate-shimmer rounded" />
-            <div className="h-3 w-2/3 max-w-full animate-shimmer rounded" />
+        <div
+          key={i}
+          className="rounded-xl overflow-hidden bg-surface border border-border-subtle shadow-sm"
+        >
+          <div className="aspect-square w-full animate-shimmer" />
+          <div className="flex flex-col gap-2 px-3 pt-2.5 pb-3">
+            <div className="h-5 w-16 animate-shimmer rounded" />
+            <div className="h-4 w-full animate-shimmer rounded" />
+            <div className="h-3 w-2/3 animate-shimmer rounded" />
           </div>
         </div>
       ))}
@@ -290,28 +309,255 @@ export function MarketplaceGridShimmer({ count }: { count: number }) {
   );
 }
 
-/** Full-page shimmer for marketplace Suspense fallback. */
+/** Horizontal listing row used on selling / buying list views. */
+export function MarketplaceListShimmer({ count = 5 }: { count?: number }) {
+  return (
+    <div className={MP.listStack}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className={`${MP.card} ${MP.cardPadding}`}>
+          <div className="flex gap-2">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg animate-shimmer shrink-0" />
+            <div className="flex-1 min-w-0 space-y-2 py-0.5">
+              <div className="h-5 w-20 animate-shimmer rounded" />
+              <div className="h-4 w-3/4 max-w-sm animate-shimmer rounded" />
+              <div className="h-3 w-40 animate-shimmer rounded" />
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3 pt-2 border-t border-border-subtle">
+            <div className="h-9 flex-1 animate-shimmer rounded-lg" />
+            <div className="h-9 w-20 animate-shimmer rounded-lg shrink-0" />
+            <div className="h-9 w-9 animate-shimmer rounded-lg shrink-0" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Full-page shimmer for TradeHub browse Suspense fallback. */
 export function MarketplacePageShimmer() {
   const count = useShimmerCount();
   return (
-    <div className="min-h-screen bg-gray-50 max-w-full 2xl:max-w-screen-2xl mx-auto w-full min-w-0 overflow-x-hidden px-3 sm:px-4">
-      <div className="flex gap-3">
-        <aside className="hidden md:block w-[260px] shrink-0 bg-white px-3 py-4">
-          <div className="h-7 w-28 animate-shimmer rounded mb-4" />
-          <div className="h-9 w-full animate-shimmer rounded mb-4" />
-          <div className="h-4 w-20 animate-shimmer rounded mb-2" />
-          <div className="space-y-1">
+    <div className={MP.page}>
+      <div className={MP.shell}>
+        <aside className="hidden md:flex md:flex-col md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-[280px] md:shrink-0 md:self-start bg-surface px-4 pt-3">
+          <div className="h-8 w-28 animate-shimmer rounded mb-4" />
+          <div className="space-y-2 mb-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-8 w-full animate-shimmer rounded" />
+              <div key={i} className="h-10 w-full animate-shimmer rounded-lg" />
+            ))}
+          </div>
+          <div className="border-t border-border-subtle pt-3 space-y-2">
+            <div className="h-5 w-16 animate-shimmer rounded mb-2" />
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-9 w-full animate-shimmer rounded-lg" />
             ))}
           </div>
         </aside>
-        <main className="flex-1 py-4 min-w-0 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-            <div className="h-8 w-48 animate-shimmer rounded" />
-            <div className="h-9 w-24 animate-shimmer rounded shrink-0" />
+        <main className={MP.mainBrowse}>
+          <div className="flex flex-col gap-3 mb-3 md:flex-row md:items-center md:justify-between">
+            <div className="h-7 w-40 animate-shimmer rounded" />
+            <div className="h-10 w-full md:w-72 animate-shimmer rounded-full" />
+          </div>
+          <div className="flex gap-2 overflow-hidden mb-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="h-8 w-20 animate-shimmer rounded-full shrink-0" />
+            ))}
           </div>
           <MarketplaceGridShimmer count={count} />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function SellerDashboardContentShimmer() {
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div className={`${MP.card} p-4 sm:p-5`}>
+        <div className="h-6 w-28 animate-shimmer rounded mb-3" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 rounded-xl border border-border-subtle p-4"
+            >
+              <div className="w-6 h-6 rounded animate-shimmer shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-32 animate-shimmer rounded" />
+                <div className="h-8 w-12 animate-shimmer rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className={`${MP.card} p-4 sm:p-5`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="h-6 w-36 animate-shimmer rounded" />
+          <div className="hidden sm:block h-8 w-40 animate-shimmer rounded-lg" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="flex items-start gap-3 rounded-xl border border-border-subtle p-4"
+            >
+              <div className="w-6 h-6 rounded animate-shimmer shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-28 animate-shimmer rounded" />
+                <div className="h-8 w-10 animate-shimmer rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SellerDashboardPageShimmer() {
+  return (
+    <div className={MP.page}>
+      <div className={MP.shellFull}>
+        <aside className={`hidden lg:block ${MP.sidebarFull}`}>
+          <SellingNavShimmer />
+        </aside>
+        <main className={MP.main}>
+          <div className="lg:hidden mb-4 space-y-3">
+            <div className="h-4 w-20 animate-shimmer rounded" />
+            <div className="h-7 w-28 animate-shimmer rounded" />
+            <div className="flex gap-2">
+              <div className="h-8 w-28 animate-shimmer rounded-full" />
+              <div className="h-8 w-24 animate-shimmer rounded-full" />
+            </div>
+          </div>
+          <SellerDashboardContentShimmer />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function SellerListingsContentShimmer() {
+  return (
+    <>
+      <div className={`${MP.statsGrid} mb-4`}>
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className={`${MP.card} ${MP.cardPadding}`}>
+            <div className="h-3 w-24 animate-shimmer rounded mb-2" />
+            <div className="h-7 w-10 animate-shimmer rounded" />
+          </div>
+        ))}
+      </div>
+      <div className={`${MP.card} ${MP.cardPadding} mb-4`}>
+        <div className="h-10 w-full max-w-md animate-shimmer rounded-md" />
+      </div>
+      <MarketplaceListShimmer count={4} />
+    </>
+  );
+}
+
+export function SellerListingsPageShimmer() {
+  return (
+    <div className={MP.page}>
+      <div className={MP.shellFull}>
+        <aside className={`hidden lg:block ${MP.sidebarFull}`}>
+          <SellingNavShimmer />
+          <div className="border-t border-border my-4" />
+          <div className="h-5 w-16 animate-shimmer rounded mb-3" />
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-9 w-full animate-shimmer rounded-lg" />
+            ))}
+          </div>
+        </aside>
+        <main className={MP.main}>
+          <div className="h-7 w-36 animate-shimmer rounded mb-4" />
+          <SellerListingsContentShimmer />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function BuyingPageShimmer() {
+  const count = useShimmerCount();
+  return (
+    <div className={MP.page}>
+      <div className={MP.shellFull}>
+        <aside className={`hidden lg:block ${MP.sidebarFull}`}>
+          <div className="h-4 w-20 animate-shimmer rounded mb-3" />
+          <div className="h-7 w-24 animate-shimmer rounded mb-3" />
+          <div className="border-t border-border pt-2 space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-10 w-full animate-shimmer rounded-lg" />
+            ))}
+          </div>
+        </aside>
+        <main className={MP.main}>
+          <div className="lg:hidden mb-3 space-y-3">
+            <div className="h-4 w-20 animate-shimmer rounded" />
+            <div className="h-7 w-24 animate-shimmer rounded" />
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-8 w-24 animate-shimmer rounded-full shrink-0" />
+              ))}
+            </div>
+          </div>
+          <div className="hidden lg:flex items-center justify-between mb-4">
+            <div className="h-7 w-40 animate-shimmer rounded" />
+            <div className="h-9 w-20 animate-shimmer rounded-lg" />
+          </div>
+          <MarketplaceGridShimmer count={count} />
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export function CreateListingFormShimmer() {
+  return (
+    <div className="bg-surface rounded-2xl border border-border-subtle p-4 sm:p-6 space-y-5">
+      <div>
+        <div className="h-4 w-16 animate-shimmer rounded mb-2" />
+        <div className="h-32 w-full animate-shimmer rounded-xl" />
+      </div>
+      {[1, 2].map((i) => (
+        <div key={i}>
+          <div className="h-4 w-20 animate-shimmer rounded mb-2" />
+          <div className="h-11 w-full animate-shimmer rounded-lg" />
+        </div>
+      ))}
+      <div>
+        <div className="h-4 w-24 animate-shimmer rounded mb-2" />
+        <div className="h-24 w-full animate-shimmer rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i}>
+            <div className="h-4 w-16 animate-shimmer rounded mb-2" />
+            <div className="h-11 w-full animate-shimmer rounded-lg" />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end gap-3 pt-2">
+        <div className="h-11 w-24 animate-shimmer rounded-xl" />
+        <div className="h-11 w-36 animate-shimmer rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+export function CreateListingPageShimmer() {
+  return (
+    <div className="min-h-screen px-4 pb-8">
+      <div className="flex gap-4 min-w-0 w-full max-w-screen-2xl mx-auto">
+        <aside className="hidden lg:block w-[240px] shrink-0 py-6">
+          <div className="h-4 w-24 animate-shimmer rounded" />
+        </aside>
+        <main className="flex-1 py-6 min-w-0 max-w-3xl">
+          <div className="h-8 w-44 animate-shimmer rounded mb-6" />
+          <CreateListingFormShimmer />
         </main>
       </div>
     </div>

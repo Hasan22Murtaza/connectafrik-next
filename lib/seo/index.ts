@@ -5,6 +5,8 @@ export {
   SEO_DEFAULT_DESCRIPTION,
   SEO_DEFAULT_TITLE,
   SEO_SITE_NAME,
+  SEO_SITE_TAGLINE,
+  SEO_SITE_TAGLINE_SHORT,
   SITEMAP_CHUNK_SIZE,
 } from './config'
 export { generateJsonLd, organizationJsonLd, websiteJsonLd, breadcrumbJsonLd } from './jsonld'

@@ -10,7 +10,12 @@ import {
   type RecentListing,
 } from "@/features/marketplace/utils/recentlyViewed";
 import { apiClient } from "@/lib/api-client";
-import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import {
+  BuyingPageShimmer,
+  MarketplaceGridShimmer,
+  MarketplaceListShimmer,
+  useShimmerCount,
+} from "@/shared/components/ui/ShimmerLoaders";
 import { Product } from "@/shared/types";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -69,6 +74,7 @@ const BuyingPageContent: React.FC = () => {
   const [recentItems, setRecentItems] = useState<RecentListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const shimmerCount = useShimmerCount();
 
   const buyerName =
     (user?.user_metadata?.full_name as string | undefined) ||
@@ -258,7 +264,10 @@ const BuyingPageContent: React.FC = () => {
 
   const renderTabContent = () => {
     if (loading) {
-      return <MarketplaceGridShimmer count={6} />;
+      if (activeTab === "inbox" || viewMode === "list") {
+        return <MarketplaceListShimmer count={5} />;
+      }
+      return <MarketplaceGridShimmer count={shimmerCount} />;
     }
 
     if (activeTab === "activity") {
@@ -479,11 +488,7 @@ const BuyingPageContent: React.FC = () => {
   );
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen px-4 py-6">
-        <MarketplaceGridShimmer count={6} />
-      </div>
-    );
+    return <BuyingPageShimmer />;
   }
 
   return (
@@ -574,13 +579,7 @@ const BuyingPageContent: React.FC = () => {
 };
 
 const BuyingPage: React.FC = () => (
-  <Suspense
-    fallback={
-      <div className="min-h-screen px-4 py-6">
-        <MarketplaceGridShimmer count={6} />
-      </div>
-    }
-  >
+  <Suspense fallback={<BuyingPageShimmer />}>
     <BuyingPageContent />
   </Suspense>
 );

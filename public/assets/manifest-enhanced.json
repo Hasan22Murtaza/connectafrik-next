@@ -1,7 +1,7 @@
 {
   "name": "CribsTalk - Global Social Network",
   "short_name": "CribsTalk",
-  "description": "Connect with friends, share moments, chat, video call, and build community worldwide. Shop at the marketplace and stay connected.",
+  "description": "Where every voice finds a home. Connect with friends, share moments, chat, and build community on CribsTalk.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

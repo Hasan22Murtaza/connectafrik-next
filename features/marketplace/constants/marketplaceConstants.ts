@@ -52,9 +52,9 @@ export const MARKETPLACE_HUB_LINKS = [
   },
   {
     hub: "selling" as const,
-    label: "My Listings",
+    label: "Selling",
     icon: TagIcon,
-    path: "/marketplace/selling",
+    path: "/marketplace/selling/dashboard",
     requiresAuth: true,
   },
 ];
