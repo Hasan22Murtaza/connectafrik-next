@@ -36,6 +36,7 @@ import {
 } from "@/shared/types/location";
 import { CreateListingFormShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import toast from "react-hot-toast";
+import Link from "next/link";
 
 const initialFormData = {
   title: "",
