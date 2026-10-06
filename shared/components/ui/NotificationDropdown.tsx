@@ -494,15 +494,12 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({ isOpen, onC
 
        
 
-        // Order notification → navigate to order detail page
         case 'new_order': {
-          const orderId = data.order_id || data.id
-          if (orderId) {
-            router.push(`/my-orders/${orderId}`)
-          } else if (fallbackUrl) {
-            router.push(fallbackUrl)
+          const productId = data.product_id
+          if (productId) {
+            router.push(`/marketplace/${productId}`)
           } else {
-            router.push('/my-orders')
+            router.push('/marketplace/selling')
           }
           onClose()
           break

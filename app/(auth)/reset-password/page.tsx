@@ -3,17 +3,18 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Globe, Eye, EyeOff, Lock, CheckCircle } from '@/shared/icons'
+import { Eye, EyeOff, Lock, CheckCircle } from '@/shared/icons'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiClient } from '@/lib/api-client'
 import toast from 'react-hot-toast'
+import { AuthPageShell } from '@/shared/components/auth/AuthPageShell'
 
 const ResetPassword: React.FC = () => {
   const { session, loading: authLoading } = useAuth()
   const router = useRouter()
   const [formData, setFormData] = useState({
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -21,7 +22,6 @@ const ResetPassword: React.FC = () => {
   const [isSuccess, setIsSuccess] = useState(false)
 
   useEffect(() => {
-    // Check if user has a valid session (from the reset link)
     if (!authLoading && !session) {
       toast.error('Invalid or expired reset link. Please request a new one.')
       router.push('/forgot-password')
@@ -30,13 +30,12 @@ const ResetPassword: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Validation
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match')
       return
@@ -46,7 +45,7 @@ const ResetPassword: React.FC = () => {
       toast.error('Password must be at least 6 characters')
       return
     }
-    
+
     setIsLoading(true)
     try {
       await apiClient.post<{ updated: boolean }>('/api/auth/update-password', {
@@ -55,8 +54,7 @@ const ResetPassword: React.FC = () => {
 
       setIsSuccess(true)
       toast.success('Password updated successfully!')
-      
-      // Redirect to sign in after 2 seconds
+
       setTimeout(() => {
         router.push('/signin')
       }, 2000)
@@ -69,167 +67,129 @@ const ResetPassword: React.FC = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 to-african-green/10 flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+      <AuthPageShell title="Set New Password" subtitle="Loading your session...">
+        <div className="py-6 text-center">
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-[#F97316]" />
+          <p className="mt-4 text-sm text-[#6B7280]">Loading...</p>
         </div>
-      </div>
+      </AuthPageShell>
     )
   }
 
   if (!session) {
-    return null // Will redirect in useEffect
+    return null
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-african-green/10 flex items-center justify-center">
-      <div className="max-w-md w-full ">
-        {/* Header */}
-        <div className="text-center mb-8">
-        <div className="flex items-center justify-center mb-4">
-            <Link href={"/"}>
-            <img src="/assets/images/logo_2.png" alt="" className="w-30" />
-            </Link>
-          </div>
-          <h1 className="sm:text-3xl text-2xl  font-bold text-gray-900 mb-2">
-            {isSuccess ? "Password Updated!" : "Set New Password"}
-          </h1>
-          <p className="text-gray-600 sm:text-base text-sm">
-            {isSuccess
-              ? "Your password has been successfully updated"
-              : "Enter your new password below"}
-          </p>
-        </div>
-
-        {/* Form */}
-        <div className="card">
-          {!isSuccess ? (
-            <form onSubmit={handleSubmit} className="space-y-2">
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  New Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="input-field !px-10"
-                    placeholder="Enter your new password"
-                    minLength={6}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Must be at least 6 characters
-                </p>
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Confirm New Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    required
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    className="input-field !px-10"
-                    placeholder="Confirm your new password"
-                    minLength={6}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Submit Button */}
+    <AuthPageShell
+      title={isSuccess ? 'Password Updated!' : 'Set New Password'}
+      subtitle={
+        isSuccess
+          ? 'Your password has been successfully updated'
+          : 'Enter your new password below'
+      }
+    >
+      {!isSuccess ? (
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <div>
+            <label htmlFor="password" className="sr-only">
+              New Password
+            </label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9CA3AF]" />
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={formData.password}
+                onChange={handleInputChange}
+                className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+                placeholder="Enter your new password"
+                minLength={6}
+              />
               <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full btn-primary  text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#9CA3AF] hover:text-[#6B7280]"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {isLoading ? "Updating Password..." : "Update Password"}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
-            </form>
-          ) : (
-            <div className="space-y-6">
-              <div className="text-center py-4">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Password Successfully Updated
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  You can now sign in with your new password.
-                </p>
-                <p className="text-xs text-gray-500">
-                  Redirecting to sign in page...
-                </p>
-              </div>
-
-              <Link
-                href="/signin"
-                className="w-full flex justify-center btn-primary text-base"
-              >
-                Go to Sign In
-              </Link>
             </div>
-          )}
+            <p className="mt-1.5 text-xs text-[#6B7280]">Must be at least 6 characters</p>
+          </div>
 
-          {/* Back to Sign In */}
-          {!isSuccess && (
-            <div className="mt-6 text-center">
-              <Link
-                href="/signin"
-                className="text-sm text-primary-600 hover:text-primary-500 font-medium"
+          <div>
+            <label htmlFor="confirmPassword" className="sr-only">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9CA3AF]" />
+              <input
+                id="confirmPassword"
+                name="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                required
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
+                placeholder="Confirm your new password"
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#9CA3AF] hover:text-[#6B7280]"
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
               >
-                Back to Sign In
-              </Link>
+                {showConfirmPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
             </div>
-          )}
+          </div>
+
+          <button type="submit" disabled={isLoading} className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base">
+            {isLoading ? (
+              'Updating Password...'
+            ) : (
+              <>
+                Update Password <span aria-hidden="true">→</span>
+              </>
+            )}
+          </button>
+
+          <p className="pt-1 text-center text-sm text-[#6B7280]">
+            <Link href="/signin" className="font-medium text-[#22C55E] hover:text-[#16A34A]">
+              Back to Sign In
+            </Link>
+          </p>
+        </form>
+      ) : (
+        <div className="space-y-5">
+          <div className="py-4 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-[#111827]">
+              Password Successfully Updated
+            </h3>
+            <p className="mb-2 text-sm text-[#6B7280]">
+              You can now sign in with your new password.
+            </p>
+            <p className="text-xs text-[#6B7280]">Redirecting to sign in page...</p>
+          </div>
+
+          <Link href="/signin" className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base">
+            Go to Sign In
+          </Link>
         </div>
-      </div>
-    </div>
-  );
+      )}
+    </AuthPageShell>
+  )
 }
 
 export default ResetPassword
-

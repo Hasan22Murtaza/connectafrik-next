@@ -6,6 +6,7 @@ import {
 import { Product } from "@/shared/types";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { PRODUCT_CONDITIONS } from "../constants/marketplaceConstants";
 import { hasTag, URGENT_TAG } from "../utils/listingTags";
 import {
   formatProductLocation,
@@ -16,6 +17,7 @@ import {
 interface ProductBrowseCardProps {
   product: Product;
   onView: (productId: string) => void;
+  handleUnsave?: () => void;
 }
 
 const FALLBACK_IMAGE =
@@ -24,15 +26,19 @@ const FALLBACK_IMAGE =
 const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
   product,
   onView,
+  handleUnsave,
 }) => {
   const [isSaved, setIsSaved] = useState<boolean>(Boolean(product.is_saved));
   const mainImage = product.images?.[0] || FALLBACK_IMAGE;
   const location = formatProductLocation(product);
-  const isOutOfStock = product.stock_quantity === 0;
-  const isUnavailable = !product.is_available;
+  const conditionLabel =
+    PRODUCT_CONDITIONS.find((item) => item.value === product.condition)?.label ||
+    product.condition;
+  const isPending = !product.is_available && product.stock_quantity > 0;
+  const isSold = product.stock_quantity === 0;
   const justListed = isJustListed(product.created_at);
   const isUrgent = hasTag(product.tags, URGENT_TAG);
-  const showStatusOverlay = isOutOfStock || isUnavailable;
+  const showStatusOverlay = isSold || isPending;
   const { user } = useAuth();
 
   useEffect(() => {
@@ -57,6 +63,16 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
     }
   };
 
+  const handleUnsaveClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (handleUnsave) {
+      void handleUnsave();
+      return;
+    }
+    void handleSave();
+  };
+
+
   return (
     <article
       className="group cursor-pointer rounded-xl overflow-hidden bg-surface border border-border-subtle shadow-sm hover:bg-surface-hover hover:shadow-md transition-all duration-200"
@@ -75,10 +91,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         />
         <button
           type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            void handleSave();
-          }}
+          onClick={handleUnsaveClick}
           className={`p-2.5 rounded-full backdrop-blur-sm shadow-sm transition-all active:scale-95 absolute top-2 right-2 ${isSaved
               ? "bg-primary-600 text-white"
               : "bg-surface/90 text-content hover:bg-surface"
@@ -111,7 +124,7 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         {showStatusOverlay && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <span className="bg-surface text-content text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide">
-              {isOutOfStock ? "Sold out" : "Unavailable"}
+              {isSold ? "Sold" : "Pending"}
             </span>
           </div>
         )}
@@ -126,6 +139,9 @@ const ProductBrowseCard: React.FC<ProductBrowseCardProps> = ({
         </h3>
         {location && (
           <p className="text-xs text-content-secondary truncate">{location}</p>
+        )}
+        {conditionLabel && (
+          <p className="text-xs text-content-tertiary truncate">{conditionLabel}</p>
         )}
       </div>
     </article>

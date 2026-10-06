@@ -1,6 +1,14 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
@@ -32,26 +40,44 @@ export const useAuth = () => {
   return context
 }
 
+/**
+ * Keep the same `user` object reference across TOKEN_REFRESHED / duplicate
+ * INITIAL_SESSION events so downstream effects keyed on `user` do not remount.
+ * Only replace when the user id changes, the user signs out, or USER_UPDATED.
+ */
+function nextStableUser(
+  prev: User | null,
+  next: User | null,
+  event: string
+): User | null {
+  if (!next) return null
+  if (event === 'USER_UPDATED') return next
+  if (prev?.id === next.id) return prev
+  return next
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
   const { setTheme } = useTheme()
+  const setThemeRef = useRef(setTheme)
+  setThemeRef.current = setTheme
 
-  const resetThemeToLight = () => {
-    setTheme('light')
-  }
+  const resetThemeToLight = useCallback(() => {
+    setThemeRef.current('light')
+  }, [])
 
   useEffect(() => {
     // Get initial session (guard against refresh_token_not_found / invalid session)
     supabase.auth
       .getSession()
-      .then(({ data: { session } }) => {
-        setSession(session)
-        setUser(session?.user ?? null)
+      .then(({ data: { session: initialSession } }) => {
+        setSession(initialSession)
+        setUser((prev) => nextStableUser(prev, initialSession?.user ?? null, 'INITIAL_SESSION'))
         setLoading(false)
-        if (session?.user && typeof window !== 'undefined') {
+        if (initialSession?.user && typeof window !== 'undefined') {
           checkAndSetupFCMTokenOnLogin()
         }
       })
@@ -64,12 +90,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes (guard against malformed session updates)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       try {
-        setSession(session ?? null)
-        setUser(session?.user ?? null)
+        // Always refresh session tokens; stabilize user identity separately.
+        setSession(nextSession ?? null)
+        setUser((prev) => nextStableUser(prev, nextSession?.user ?? null, event))
         setLoading(false)
-        if (event === 'SIGNED_IN' && session?.user && typeof window !== 'undefined') {
+        if (event === 'SIGNED_IN' && nextSession?.user && typeof window !== 'undefined') {
           checkAndSetupFCMTokenOnLogin()
         }
         if (event === 'SIGNED_OUT') {
@@ -83,9 +110,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     })
 
     return () => subscription.unsubscribe()
-  }, [setTheme])
+  }, [resetThemeToLight])
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       const response = await fetch('/api/auth/signin', {
         method: 'POST',
@@ -125,17 +152,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } as AuthError,
       }
     }
-  }
+  }, [])
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
     })
     return { error }
-  }
+  }, [])
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     try {
       await fetch('/api/auth/reset-password', {
         method: 'POST',
@@ -150,43 +177,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } as AuthError,
       }
     }
-  }
+  }, [])
 
-  const updatePassword = async (password: string) => {
+  const updatePassword = useCallback(async (password: string) => {
     const { error } = await supabase.auth.updateUser({
       password,
     })
     return { error }
-  }
+  }, [])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     resetThemeToLight()
     await deactivateTokenOnLogout().catch(() => {})
     await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'local' })
     router.push('/')
-  }
+  }, [resetThemeToLight, router])
 
-  const signOutAllDevices = async () => {
+  const signOutAllDevices = useCallback(async () => {
     resetThemeToLight()
     await deactivateTokenOnLogout().catch(() => {})
     await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'global' })
     router.push('/')
-  }
+  }, [resetThemeToLight, router])
 
-  const value = {
-    user,
-    session,
-    loading,
-    signIn,
-    signUp,
-    resetPassword,
-    updatePassword,
-    signOut,
-    signOutAllDevices,
-  }
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      session,
+      loading,
+      signIn,
+      signUp,
+      resetPassword,
+      updatePassword,
+      signOut,
+      signOutAllDevices,
+    }),
+    [
+      user,
+      session,
+      loading,
+      signIn,
+      signUp,
+      resetPassword,
+      updatePassword,
+      signOut,
+      signOutAllDevices,
+    ]
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-

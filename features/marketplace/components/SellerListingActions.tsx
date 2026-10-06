@@ -63,7 +63,12 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
     destructive?: boolean;
     hidden?: boolean;
   }[] = [
-      { action: "renew", label: "Renew listing", icon: RefreshCw, hidden: isActive },
+      {
+        action: "renew",
+        label: "Mark as available",
+        icon: RefreshCw,
+        hidden: isActive,
+      },
       {
         action: "pending",
         label: "Mark as pending",
@@ -104,6 +109,17 @@ const SellerListingActions: React.FC<SellerListingActionsProps> = ({
         <span className="flex-1 py-2 px-2.5 rounded-lg bg-yellow-50 text-yellow-800 text-sm font-medium text-center">
           Pending
         </span>
+      )}
+
+      {!isActive && !isPending && (
+        <button
+          type="button"
+          onClick={() => onMenuAction("renew")}
+          className="flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg bg-surface-secondary hover:bg-surface-hover text-content text-sm font-semibold transition-colors"
+        >
+          <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+          Mark as available
+        </button>
       )}
 
       <button

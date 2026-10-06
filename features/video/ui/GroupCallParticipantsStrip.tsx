@@ -7,6 +7,7 @@ export interface CallParticipantProfile {
   full_name?: string | null;
   username?: string | null;
   avatar_url?: string | null;
+  is_friend?: boolean;
 }
 
 interface GroupCallParticipantsStripProps {

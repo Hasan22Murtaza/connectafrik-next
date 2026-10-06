@@ -48,7 +48,7 @@ const iconBtnActive = 'bg-primary/15 text-primary hover:bg-primary/20 hover:text
 const devicePillOn = 'bg-surface-secondary text-content hover:bg-surface-tertiary';
 const devicePillOff = 'bg-primary text-content-inverse hover:bg-primary-hover';
 const glassCluster =
-  'flex items-center gap-0.5 rounded-full border border-white/70 bg-surface/60 px-1 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-surface/70 sm:gap-1.5 sm:px-2 sm:py-2';
+  'flex items-center gap-0.5 rounded-full border border-border bg-surface/90 px-1 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:gap-1.5 sm:px-2 sm:py-2';
 
 const CallControls: React.FC<CallControlsProps> = ({
   isMuted,
@@ -145,7 +145,7 @@ const CallControls: React.FC<CallControlsProps> = ({
           </button>
         </div>
 
-        <div className={`${glassCluster} order-3 min-w-0 max-w-full basis-full justify-center overflow-x-auto [scrollbar-width:none] sm:order-2 sm:basis-auto sm:justify-center [&::-webkit-scrollbar]:hidden`}>
+        <div className={`${glassCluster} order-3 min-w-0 max-w-full basis-full justify-center  [scrollbar-width:none] sm:order-2 sm:basis-auto sm:justify-center [&::-webkit-scrollbar]:hidden`}>
           {onSendReaction ? (
             <div className="relative" ref={reactionWrapRef}>
               <button
@@ -268,7 +268,7 @@ const CallControls: React.FC<CallControlsProps> = ({
           </button>
           <button
             onClick={onEndCall}
-            className="flex h-10 w-12 shrink-0 items-center justify-center rounded-full bg-danger text-content-inverse transition hover:opacity-90 focus:outline-none touch-manipulation sm:h-12 sm:w-[4.5rem]"
+            className="flex h-10 w-12 shrink-0 items-center justify-center rounded-full bg-danger text-content-inverse transition hover:opacity-90 focus:outline-none touch-manipulation sm:h-12 sm:w-18"
             title={endCallLabel}
             aria-label={endCallLabel}
           >

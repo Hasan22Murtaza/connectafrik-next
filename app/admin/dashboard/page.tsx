@@ -340,7 +340,7 @@ export default function AdminDashboardPage() {
                     <AdminTableRow key={order.id}>
                       <AdminTableCell>
                         <Link
-                          href={`/my-orders/${order.id}`}
+                          href="/marketplace"
                           className="text-primary-600 hover:text-primary-700 font-mono text-xs font-medium transition-colors"
                         >
                           {order.id.slice(0, 8)}…

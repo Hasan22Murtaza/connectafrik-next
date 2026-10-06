@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { ThumbsUp, MessageCircle } from '@/shared/icons'
 import { PiShareFatLight } from 'react-icons/pi'
 import ReactionTooltip from '@/features/social/components/ReactionTooltip'
@@ -16,6 +16,7 @@ export interface ReactionGroup {
   type: string
   count: number
   users: Array<{ id: string; full_name?: string; username?: string; avatar_url?: string | null }>
+  currentUserReacted?: boolean
 }
 
 export interface PostEngagementProps {
@@ -27,7 +28,7 @@ export interface PostEngagementProps {
   showViews?: boolean
   /** When true, the current user has already shared this post (highlights the Share action). */
   isShared?: boolean
-  onLike: (emoji?: string) => void
+  onLike: (emoji?: string) => void | boolean | Promise<void | boolean>
   onComment: () => void
   onShare: () => void
   onUserClick?: (userId: string) => void
@@ -53,7 +54,93 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
   const [hoveredReaction, setHoveredReaction] = useState<string | null>(null)
   const [showReactionPicker, setShowReactionPicker] = useState(false)
   const [showReactionsModal, setShowReactionsModal] = useState(false)
+  const [reactionOverride, setReactionOverride] = useState<ReactionKind | null | undefined>(undefined)
   const closeTimeout = useRef<NodeJS.Timeout | null>(null)
+  const reactionRequestId = useRef(0)
+  const propUserReaction = reactionGroups.find((group) => group.currentUserReacted)?.type
+  const hasOptimisticReaction = reactionOverride !== undefined
+  const userReaction = hasOptimisticReaction
+    ? reactionOverride || undefined
+    : propUserReaction
+  const userReactionConfig = userReaction
+    ? REACTION_CONFIG[userReaction as ReactionKind]
+    : undefined
+  const displayedReactionGroups = hasOptimisticReaction
+    ? (() => {
+        const nextReaction = reactionOverride || undefined
+        const groups = reactionGroups.map((group) => ({
+          ...group,
+          count: Math.max(
+            0,
+            group.count - Number(group.type === propUserReaction) + Number(group.type === nextReaction)
+          ),
+          currentUserReacted: group.type === nextReaction && nextReaction !== undefined,
+        }))
+
+        if (nextReaction && !groups.some((group) => group.type === nextReaction)) {
+          groups.push({
+            type: nextReaction,
+            count: 1,
+            users: [],
+            currentUserReacted: true,
+          })
+        }
+
+        return groups.filter((group) => group.count > 0).sort((a, b) => b.count - a.count)
+      })()
+    : reactionGroups
+  const displayedReactionCount = hasOptimisticReaction
+    ? Math.max(
+        0,
+        totalReactionCount + Number(Boolean(reactionOverride)) - Number(Boolean(propUserReaction))
+      )
+    : totalReactionCount
+
+  useEffect(() => {
+    const handleReactionUpdate = (event: Event) => {
+      const { detail } = event as CustomEvent<{
+        postId?: string
+        action?: string
+        reactionType?: string
+      }>
+      if (detail?.postId !== postId || !detail.reactionType) return
+
+      setReactionOverride(detail.action === 'removed' ? null : detail.reactionType as ReactionKind)
+    }
+
+    window.addEventListener('reaction-updated', handleReactionUpdate)
+    window.addEventListener('group-reaction-updated', handleReactionUpdate)
+    return () => {
+      window.removeEventListener('reaction-updated', handleReactionUpdate)
+      window.removeEventListener('group-reaction-updated', handleReactionUpdate)
+    }
+  }, [postId])
+
+  useEffect(() => {
+    if (
+      reactionOverride !== undefined &&
+      (propUserReaction ?? null) === reactionOverride
+    ) {
+      setReactionOverride(undefined)
+    }
+  }, [propUserReaction, reactionOverride])
+
+  const applyReaction = useCallback(async (nextReaction: ReactionKind | null, emoji: string) => {
+    const requestId = ++reactionRequestId.current
+    setReactionOverride(nextReaction)
+
+    try {
+      const succeeded = await onLike(emoji)
+      if (succeeded === false && requestId === reactionRequestId.current) {
+        setReactionOverride(undefined)
+      }
+    } catch {
+      if (requestId === reactionRequestId.current) {
+        setReactionOverride(undefined)
+      }
+    }
+  }, [onLike])
+
 
   const handleLikeHover = useCallback(() => {
     if (closeTimeout.current) {
@@ -71,15 +158,15 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
 
   const handleReactionSelect = useCallback((kind: ReactionKind) => {
     setShowReactionPicker(false)
-    onLike(KIND_TO_EMOJI[kind])
-  }, [onLike])
+    void applyReaction(userReaction === kind ? null : kind, KIND_TO_EMOJI[kind])
+  }, [applyReaction, userReaction])
 
   return (
     <div>
       {/* Stats Row */}
       <div className="flex items-center justify-between px-1 py-1">
         <div className="flex items-center gap-1.5">
-          {reactionGroups.length > 0 && (
+          {displayedReactionGroups.length > 0 && (
             <div
               className="flex items-center gap-1 cursor-pointer group"
               onClick={(e) => {
@@ -88,7 +175,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
               }}
             >
               <div className="flex items-center -space-x-1">
-                {reactionGroups.slice(0, 3).map((group, index) => (
+                {displayedReactionGroups.slice(0, 3).map((group, index) => (
                   <div
                     key={group.type}
                     className="relative"
@@ -108,9 +195,9 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
                   </div>
                 ))}
               </div>
-              {totalReactionCount > 0 && (
+              {displayedReactionCount > 0 && (
                 <span className="text-[15px] text-gray-500 group-hover:underline">
-                  {totalReactionCount}
+                  {displayedReactionCount}
                 </span>
               )}
             </div>
@@ -192,14 +279,34 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
 
           <button
             onClick={(e) => {
-              e.stopPropagation()
-              onLike('👍')
+              e.stopPropagation();
+              void applyReaction(
+                userReaction ? null : 'like',
+                userReaction ? KIND_TO_EMOJI[userReaction as ReactionKind] : KIND_TO_EMOJI.like
+              )
             }}
-            className="flex w-full items-center justify-center gap-1.5 py-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium"
-            aria-label="Like post"
+            className={`flex w-full items-center noto-color-emoji-regular justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium dark:hover:bg-blue-900/10 ${userReactionConfig
+                ? `${userReaction === 'love'
+                  ? 'text-red-500'
+                  : userReaction === 'like'
+                    ? 'text-blue-600'
+                    : 'text-amber-500'
+                } ${userReactionConfig.hoverBg}`
+                : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 '
+              }`}
+            aria-label={
+              userReactionConfig
+                ? `${userReactionConfig.label} reaction`
+                : 'Like post'
+            }
           >
-            <ThumbsUp className="w-4 h-4" />
-            <span>Like</span>
+            {userReactionConfig ? (
+              <ReactionIcon type={userReaction!} size={18} />
+            ) : (
+              <ThumbsUp className="w-4 h-4" />
+            )}
+
+            <span>{userReactionConfig?.label || 'Like'}</span>
           </button>
         </div>
 
@@ -208,7 +315,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
             e.stopPropagation()
             onComment()
           }}
-          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium"
+          className="flex flex-1 items-center justify-center gap-1.5 py-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium dark:hover:bg-blue-900/10"
           aria-label="Comment on post"
         >
           <MessageCircle className="w-4 h-4" />
@@ -220,11 +327,10 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
             e.stopPropagation()
             onShare()
           }}
-          className={`flex flex-1 items-center justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium ${
-            isShared
+          className={`flex flex-1 items-center justify-center gap-1.5 py-1.5 transition-colors duration-150 cursor-pointer rounded-lg text-sm font-medium ${isShared
               ? 'text-green-600 hover:bg-green-50'
-              : 'text-gray-500 hover:text-green-600 hover:bg-green-50'
-          }`}
+              : 'text-gray-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-blue-900/10'
+            }`}
           aria-label={isShared ? 'Shared post' : 'Share post'}
           aria-pressed={isShared}
         >
@@ -239,7 +345,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
       <ReactionsModal
         isOpen={showReactionsModal}
         onClose={() => setShowReactionsModal(false)}
-        reactionGroups={reactionGroups}
+        reactionGroups={displayedReactionGroups}
         onUserClick={onUserClick}
         reactionsEndpoint={reactionsEndpoint || (postId ? `/api/posts/${postId}/reaction` : undefined)}
       />

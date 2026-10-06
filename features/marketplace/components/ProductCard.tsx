@@ -1,10 +1,7 @@
-import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { MapPin, Bookmark, Eye, Tag, Package, ShoppingCart, MessageCircle, Share2 } from '@/shared/icons'
+import React from 'react'
+import { MapPin, Bookmark, Eye, Package, MessageCircle, Share2 } from '@/shared/icons'
 import { Product } from '@/shared/types'
 import { formatDistanceToNow } from 'date-fns'
-import { useProductionChat } from '@/contexts/ProductionChatContext'
-import { ChatParticipant } from '@/features/chat/services/supabaseMessagingService'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -15,11 +12,8 @@ interface ProductCardProps {
   onPurchaseSuccess?: () => void
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPurchaseSuccess }) => {
-  const [isContactingseller, setIsContactingeller] = useState(false)
+const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView }) => {
   const { user } = useAuth()
-  const router = useRouter()
-  const { startChatWithMembers } = useProductionChat()
 
   const getCurrencySymbol = (currency: string) => {
     const symbols: Record<string, string> = {
@@ -48,7 +42,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
   const handleShareProduct = async (e: React.MouseEvent) => {
     e.stopPropagation()
 
-    const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/marketplace/product/${product.id}`
+    const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/marketplace/${product.id}`
     const shareText = `Check out this product: ${product.title} - ${getCurrencySymbol(product.currency)}${product.price.toLocaleString()}`
 
     // Try native share API first (mobile)
@@ -241,42 +235,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onSave, onView, onPu
           
           </div>
         )}
-          {/* Buy Button */}
           <button
             onClick={(e) => {
               e.stopPropagation()
-              if (!user) {
-                toast.error('Please sign in to purchase')
-                router.push(`/signin?redirect=/marketplace/${product.id}/checkout`)
-                return
-              }
-              if (isOwnProduct) {
-                toast.error('This is your own product')
-                return
-              }
-              if (isOutOfStock || isUnavailable) return
-              router.push(`/marketplace/${product.id}/checkout`)
+              onView(product.id)
             }}
-            disabled={isOutOfStock || isUnavailable || isOwnProduct}
-            className={`py-2 px-2 rounded-lg  flex items-center justify-center space-x-1 transition-colors text-sm  ${
-              isOwnProduct ? 'flex-1' : 'w-fit'
-            } ${
-              isOutOfStock || isUnavailable || isOwnProduct
-                ? 'bg-surface-tertiary text-content-secondary cursor-not-allowed'
-                : 'bg-primary-600 text-white hover:bg-primary-700'
-            }`}
-            aria-label={isOutOfStock ? 'Out of stock' : isUnavailable ? 'Unavailable' : isOwnProduct ? 'Your product' : 'Buy now'}
+            className="py-2 px-3 rounded-lg flex items-center justify-center space-x-1 transition-colors text-sm bg-primary-600 text-white hover:bg-primary-700"
+            aria-label={isOwnProduct ? 'Your listing' : 'View listing'}
           >
-            <ShoppingCart className="w-4 h-4" />
-            <span>
-              {isOwnProduct
-                ? 'Your Product'
-                : isOutOfStock
-                ? 'Out of Stock'
-                : isUnavailable
-                ? 'Unavailable'
-                : 'Buy Now'}
-            </span>
+            <MessageCircle className="w-4 h-4" />
+            <span>{isOwnProduct ? 'Your listing' : 'Message'}</span>
           </button>
         </div>
       </div>

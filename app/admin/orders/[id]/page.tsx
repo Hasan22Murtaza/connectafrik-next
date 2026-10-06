@@ -247,7 +247,7 @@ export default function AdminOrderDetailPage() {
               Refresh
             </button>
             <Link
-              href={`/my-orders/${order.id}`}
+              href="/marketplace"
               target="_blank"
               className={AP.btnSecondary}
             >

@@ -104,12 +104,12 @@ type PostMediaLayout = "single" | "grid";
 
 interface PostCardProps {
   post: Post;
-  onLike: (postId: string) => void;
+  onLike: (postId: string) => void | boolean | Promise<void | boolean>;
   onComment: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
   onEdit?: (postId: string, updates: { content: string; category: 'politics' | 'culture' | 'general'; media_urls?: string[]; media_type?: string; tags?: string[]; background_id?: string | null }) => void;
-  onEmojiReaction?: (postId: string, emoji: string) => void;
+  onEmojiReaction?: (postId: string, emoji: string) => void | boolean | Promise<void | boolean>;
   showEmojiPicker?: boolean;
   postReactions?: { [emoji: string]: string[] };
   isPostLiked?: boolean;
@@ -187,7 +187,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
   }, [post.id, post.is_saved]);
 
   useEffect(() => {
-    setIsShared(post.isShare ?? false);
+    setIsShared(post?.isShare ?? false);
   }, [post.id, post.isShare]);
 
   useEffect(() => {
@@ -1408,7 +1408,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           })()}
         </div>
       )}
-
       {/* Engagement Stats & Actions */}
       <PostEngagement
         reactionGroups={getReactionGroups()}
@@ -1419,12 +1418,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
         showViews={!!(post.media_urls && post.media_urls.some((url) => isVideoFile(url)))}
         isShared={isShared}
         onLike={(emoji) => {
-          if (onEmojiReaction) {
-            onEmojiReaction(post.id, emoji || "👍");
-          } else {
-            onLike(post.id);
-          }
-        }}
+              if (onEmojiReaction) {
+                return onEmojiReaction(post.id, emoji || "👍");
+              } else {
+                return onLike(post.id);
+              }
+            }}
         onComment={() => {
           if (isDetail) {
             const composer = document.getElementById(`post-${post.id}-comment-input`);
@@ -1438,7 +1437,6 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
           setShowInlineComments((prev) => !prev);
         }}
         onShare={() => {
-          setIsShared(true);
           onShare(post.id);
         }}
         onUserClick={(userId) => router.push(`/user/${userId}`)}
@@ -1494,8 +1492,8 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
       {/* Inline Comments Section - Facebook style */}
       {showInlineComments && (
         <div
-          id={`post-${post.id}-comments`}
-          className={` mt-1 ${isTheater ? "flex-1 min-h-0" : ""}`}
+          id={` post-${post.id}-comments`}
+          className={`border-t border-gray-100 mt-3 ${isTheater ? "flex-1 min-h-0" : ""}`}
           onClick={(e) => e.stopPropagation()}
         >
           <CommentsSection

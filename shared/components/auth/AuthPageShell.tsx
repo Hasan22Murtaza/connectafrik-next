@@ -1,37 +1,25 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
 
 type AuthPageShellProps = {
   title: string
   subtitle: string
   children: React.ReactNode
+  /** @deprecated Logo is rendered by the auth layout */
   showLogo?: boolean
 }
 
-export function AuthPageShell({
-  title,
-  subtitle,
-  children,
-  showLogo = true,
-}: AuthPageShellProps) {
+export function AuthPageShell({ title, subtitle, children }: AuthPageShellProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center p-4 transition-opacity duration-300">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-6">
-          {showLogo && (
-            <div className="flex items-center justify-center mb-4">
-              <Link href="/">
-                <img src="/assets/images/logo_2.png" alt="CribsTalk" className="w-30" />
-              </Link>
-            </div>
-          )}
-          <h1 className="sm:text-3xl text-2xl font-bold text-content mb-2">{title}</h1>
-          <p className="text-content-secondary sm:text-base text-sm">{subtitle}</p>
-        </div>
-        <div className="card transition-all duration-300">{children}</div>
+    <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] transition-all duration-300 sm:px-8 ">
+      <div className="mb-6 text-center">
+        <h1 className="text-[1.65rem] font-extrabold leading-tight tracking-tight text-[#111827] sm:text-[1.85rem]">
+          {title}
+        </h1>
+        <p className="mt-2 text-sm text-[#6B7280] sm:text-base">{subtitle}</p>
       </div>
+      {children}
     </div>
   )
 }

@@ -42,9 +42,10 @@ export async function GET(request: NextRequest) {
       .select('*')
       .in('thread_id', threadIds)
       .in('status', JOINABLE_STATUSES)
-      .gte('started_at', since)
+      // Re-invites bump started_at; also catch rows whose invite was refreshed via updated_at.
+      .or(`started_at.gte.${since},updated_at.gte.${since}`)
       .neq('created_by', user.id)
-      .order('started_at', { ascending: false })
+      .order('updated_at', { ascending: false })
       .limit(20)
 
     if (error) return errorResponse(error.message, 400)
@@ -67,7 +68,16 @@ export async function GET(request: NextRequest) {
       const declined = Array.isArray(meta.declinedUserIds) ? (meta.declinedUserIds as string[]) : []
       if (declined.includes(user.id)) return false
 
-      if (meta.targetUserId && meta.targetUserId !== user.id) return false
+      const invited = Array.isArray(meta.invitedUserIds)
+        ? (meta.invitedUserIds as unknown[]).filter((id): id is string => typeof id === 'string')
+        : []
+      const isInvitee =
+        meta.targetUserId === user.id ||
+        meta.lastInvitedUserId === user.id ||
+        invited.includes(user.id)
+
+      // Targeted invite for someone else (unless this user is also listed as invitee).
+      if (meta.targetUserId && meta.targetUserId !== user.id && !isInvitee) return false
 
       return true
     })

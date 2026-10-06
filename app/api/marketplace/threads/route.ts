@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server'
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import {
+  buildMarketplaceInquiryContent,
   DEFAULT_INQUIRY_MESSAGE,
   MARKETPLACE_INQUIRY,
   findMarketplaceThreadForProduct,
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     const { data: product, error: productError } = await serviceClient
       .from('products')
-      .select('id, title, seller_id, is_available, images')
+      .select('id, title, seller_id, is_available, images, price, currency')
       .eq('id', productId)
       .maybeSingle()
 
@@ -78,14 +79,31 @@ export async function POST(request: NextRequest) {
 
     let messageId: string | null = null
     if (sendInquiry && isNewThread) {
+      const priceNumber = typeof product.price === 'number' ? product.price : Number(product.price)
+      const currency = typeof product.currency === 'string' ? product.currency : 'USD'
+      const priceLabel =
+        Number.isFinite(priceNumber) && priceNumber === 0
+          ? 'FREE'
+          : Number.isFinite(priceNumber)
+            ? `${currency} ${priceNumber.toLocaleString()}`
+            : currency
+      const inquiryContent = buildMarketplaceInquiryContent({
+        title: product.title,
+        productId: product.id,
+        priceLabel,
+        note: message,
+      })
+
       const { id } = await insertMarketplaceMessage(serviceClient, {
         threadId,
         senderId: user.id,
-        content: message,
+        content: inquiryContent,
         messageType: MARKETPLACE_INQUIRY,
         metadata: {
           product_id: product.id,
           product_title: product.title,
+          product_price_label: priceLabel,
+          note: message,
         },
       })
       messageId = id

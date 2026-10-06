@@ -513,7 +513,7 @@ const StoriesBar: React.FC = () => {
 
   return (
     <>
-      <div className="bg-surface  relative">
+      <div className="relative">
         {showLeftArrow && (
           <button
             onClick={() => scroll('left')}

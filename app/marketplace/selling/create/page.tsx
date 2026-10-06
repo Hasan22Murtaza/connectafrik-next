@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import CreateProductForm from "@/features/marketplace/components/CreateProductForm";
-import { MarketplaceGridShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import { CreateListingPageShimmer } from "@/shared/components/ui/ShimmerLoaders";
 import { ArrowLeft, Lightbulb, Shield } from '@/shared/icons';
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useMemo } from "react";
@@ -29,11 +29,7 @@ const CreateListingPageContent: React.FC = () => {
   }, [user, authLoading, router, editProductId]);
 
   if (authLoading || !user) {
-    return (
-      <div className="min-h-screen px-4 py-6">
-        <MarketplaceGridShimmer count={4} />
-      </div>
-    );
+    return <CreateListingPageShimmer />;
   }
 
   return (
@@ -100,8 +96,8 @@ const CreateListingPageContent: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-blue-900 text-sm mb-1">Stay safe</h3>
                   <p className="text-xs text-blue-800 leading-relaxed">
-                    Meet in public places, never share payment details in chat, and use
-                    CribsTalk checkout for buyer protection.
+                    Meet in a public place, inspect the item, and arrange payment directly
+                    with the buyer. Do not send money in advance.
                   </p>
                 </div>
               </div>
@@ -115,13 +111,7 @@ const CreateListingPageContent: React.FC = () => {
 
 const CreateListingPage: React.FC = () => {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen px-4 py-6">
-          <MarketplaceGridShimmer count={4} />
-        </div>
-      }
-    >
+    <Suspense fallback={<CreateListingPageShimmer />}>
       <CreateListingPageContent />
     </Suspense>
   );

@@ -205,6 +205,7 @@ interface MessageBubbleProps {
   threadId: string;
   isOwnMessage: boolean;
   currentUserId: string;
+  currentUserAvatarUrl?: string;
   threadParticipants?: string[];
   participantPresence?: Record<string, "online" | "offline">;
   onReply?: (message: ChatMessage) => void;
@@ -242,7 +243,7 @@ interface MessageBubbleProps {
   uploadProgressById?: Record<string, number>;
   onCancelUpload?: () => void;
   /** First bubble in a consecutive same-sender cluster — shows the WhatsApp tail */
-  showTail?: boolean;
+  // showTail?: boolean;
   /** Last bubble in a consecutive same-sender cluster */
   isClusterEnd?: boolean;
 }
@@ -252,6 +253,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   threadId,
   isOwnMessage,
   currentUserId,
+  currentUserAvatarUrl,
   threadParticipants = [],
   participantPresence = {},
   onReply,
@@ -281,7 +283,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isUploading = false,
   uploadProgressById,
   onCancelUpload,
-  showTail = true,
+  // showTail = true,
   isClusterEnd = true,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -339,11 +341,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     });
   }, [computeMenuPlacement]);
 
-  const openMessageMenu = useCallback(() => {
-    setShowQuickReactions(false);
-    setMenuPlacement(computeMenuPlacement());
-    setShowMenu(true);
-  }, [computeMenuPlacement]);
+  // const openMessageMenu = useCallback(() => {
+  //   setShowQuickReactions(false);
+  //   setMenuPlacement(computeMenuPlacement());
+  //   setShowMenu(true);
+  // }, [computeMenuPlacement]);
 
   useLayoutEffect(() => {
     if (!showMenu) return;
@@ -497,11 +499,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     canMessageSender ||
     Boolean(onReply);
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!showOverflowMenu && !onReact) return;
-    openMessageMenu();
-  };
+  // const handleContextMenu = (e: React.MouseEvent) => {
+  //   e.preventDefault();
+  //   if (!showOverflowMenu && !onReact) return;
+  //   openMessageMenu();
+  // };
 
   const handleForwardClick = () => {
     if (onForward && isForwardableChatMessage(message)) onForward(message);
@@ -916,15 +918,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   /** Outgoing / incoming bubble fill — WhatsApp-inspired, tokenized for themes */
   const bubbleBg = isOwnMessage ? "chat-bubble-own" : "chat-bubble-in";
-  const bubbleShape = isOwnMessage
-    ? showTail
-      ? "rounded-tl-[8px] rounded-tr-[0px] rounded-br-[8px] rounded-bl-[8px] after:pointer-events-none after:absolute after:-right-[6px] after:top-0 after:border-y-[6px] after:border-y-transparent after:border-l-[7px] after:border-l-[var(--chat-bubble-own)]"
-      : "rounded-[8px]"
-    : showTail
-      ? "rounded-tr-[8px] rounded-tl-[5px] rounded-br-[8px] rounded-bl-[8px] ring-1 ring-black/[0.04] before:pointer-events-none before:absolute before:-left-[6px] before:top-0 before:border-y-[6px] before:border-y-transparent before:border-r-[7px] before:border-r-[var(--chat-bubble-in)]"
-      : "rounded-[8px] ring-1 ring-black/[0.04]";
+  const bubbleShape = isOwnMessage ? "rounded-[18px] rounded-tr-none " : "rounded-[18px] rounded-tl-none border-gray-200 border";
   const forwardAccent =
-    showForwardBadge && isOwnMessage ? "border-l-[3px] border-[#25d366] pl-[9px]" : "";
+    showForwardBadge && isOwnMessage ? "border-l-[3px] border-gray-100 pl-[9px]" : "";
   const emojiOnly =
     !isDeleted &&
     !locationPayload &&
@@ -1019,10 +1015,64 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       (att) => att.type === "image" || att.type === "video"
     );
 
+  if (message.message_type === "marketplace_inquiry") {
+    const meta = message.metadata || {};
+    const productId =
+      typeof meta.product_id === "string" && meta.product_id.trim()
+        ? meta.product_id.trim()
+        : null;
+    const productTitle =
+      typeof meta.product_title === "string" && meta.product_title.trim()
+        ? meta.product_title.trim()
+        : null;
+    const priceLabel =
+      typeof meta.product_price_label === "string" && meta.product_price_label.trim()
+        ? meta.product_price_label.trim()
+        : null;
+    const note =
+      typeof meta.note === "string" && meta.note.trim()
+        ? meta.note.trim()
+        : (message.content || "").split("\n").filter(Boolean).slice(-1)[0] || "";
+
+    return (
+      <div
+        className={`mb-2 flex animate-[chatMsgIn_200ms_ease-out] ${
+          isOwnMessage ? "justify-end" : "justify-start"
+        }`}
+      >
+        <div className="max-w-[min(100%,320px)] overflow-hidden rounded-2xl border border-border bg-surface text-content shadow-sm">
+          <div className="border-b border-border-subtle bg-surface-secondary px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-content-secondary">
+              Marketplace listing
+            </p>
+          </div>
+          <div className="px-3 py-2.5 space-y-1">
+            {productTitle && (
+              <p className="text-sm font-semibold text-content leading-snug">{productTitle}</p>
+            )}
+            {priceLabel && <p className="text-sm text-content">{priceLabel}</p>}
+            {productId && (
+              <p className="text-xs text-content-secondary break-all">Listing ID: {productId}</p>
+            )}
+            {productId && (
+              <a
+                href={`/marketplace/${productId}`}
+                className="inline-flex mt-1 text-sm font-semibold text-primary-600 hover:text-primary-700"
+              >
+                Open listing
+              </a>
+            )}
+            {note && <p className="pt-2 text-sm text-content whitespace-pre-wrap">{note}</p>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       id={`chat-message-${message.id}`}
-      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : isClusterEnd ? "mb-2" : "mb-[2px]"
+      className={`relative flex items-end gap-1.5 animate-[chatMsgIn_220ms_ease-out] sm:gap-2 ${hasReactions ? "mb-8" : isClusterEnd && "mb-2"
         } ${isOwnMessage ? "flex-row-reverse justify-end" : "justify-start"} ${highlighted ? "chat-message-jump-highlight rounded-xl" : ""} ${selectionMode ? "cursor-pointer pl-8" : ""
         }`}
       onClick={
@@ -1033,12 +1083,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      onContextMenu={handleContextMenu}
+      // onContextMenu={handleContextMenu}
     >
       {selectionMode ? (
         <span
           className={`absolute left-0 top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border ${isMessageSelected
-              ? "border-[#00a884] bg-[#00a884] text-white"
+              ? "border-[#F97316] bg-[#e6a97e] text-white"
               : "border-[#8696a0] bg-white dark:bg-surface"
             }`}
           aria-hidden
@@ -1047,7 +1097,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </span>
       ) : null}
       <div
-        className={`relative min-w-0 max-w-[88%] flex-1 sm:max-w-[min(82%,440px)] ${isOwnMessage ? "ml-auto flex flex-col items-end" : "mr-auto flex flex-col items-start"}`}
+        className={`relative min-w-0 max-w-[82%] flex-1 sm:max-w-[min(82%,400px)] ${isOwnMessage ? "ml-auto flex flex-col items-end" : "mr-auto flex flex-col items-start"}`}
       >
         {showSenderHeader && !isOwnMessage && message.sender ? (
           <div className="mb-0.5 flex max-w-full items-center gap-1.5 px-1">
@@ -1091,40 +1141,40 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           }}
         >
           <div
-            className={`relative inline-block max-w-full overflow-visible transition-shadow ${emojiOnly
+            className={`relative group inline-block max-w-full overflow-visible transition-shadow ${emojiOnly
                 ? "bg-transparent shadow-none px-1"
-                : `shadow-[0_1px_0.5px_rgba(11,20,26,0.13)] ${bubbleBg} ${bubbleShape} ${visualMediaOnly
+                : `shadow-[0 12px 32px rgba(0, 0, 0, 0.35)]  ${bubbleBg} ${bubbleShape} ${visualMediaOnly
                   ? "w-fit p-[3px] pb-1"
                   : mediaOnly
                     ? "w-fit p-1 pb-0.5"
                     : hasAttachments
-                      ? "w-fit px-2.5 py-1.5"
-                      : "px-2.5 py-1.5"
+                      ? "w-fit  p-1.5"
+                      : "p-1.5"
                 }`
               } ${forwardAccent} ${isComposerEditingThis
                 ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-transparent"
                 : ""
               }`}
           >
-            {!isDeleted && (showOverflowMenu || onReact) && !selectionMode && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
-              <div className="absolute right-0 top-0 z-20">
+            {!isDeleted && !isComposerEditingThis ? (
+              <div className="absolute right-0 top-0 z-25 opacity-0 invisible group-hover:opacity-100 group-hover:visible">
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleMessageMenu();
                   }}
-                  className="
+                  className={`
                       relative flex h-6 w-8
                       items-start justify-end
                       overflow-hidden
-                      rounded-bl-[50px]
+                      ${isOwnMessage ? "rounded-bl-[50px]" : "rounded-tr-[18px] rounded-bl-[50px]"}
                       bg-gradient-to-bl from-black/20 via-black/10  via-black/5 to-transparent
                       text-white
                       backdrop-blur-sm
                       transition
                       hover:from-black/30 hover:via-black/15
-                    "
+                    `}
                   aria-label="Open message actions"
                 >
                   <span className="flex h-6 w-6 items-center justify-center">
@@ -1134,10 +1184,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </div>
             ) : null}
 
-            {!isDeleted && !selectionMode && (onReact || onReply) && (isHovered || showMenu || showQuickReactions || showReactionPicker) ? (
+            {!isDeleted ? (
               <div
-                className={`absolute z-30 flex items-center gap-0.5 ${isOwnMessage ? "right-full mr-1.5" : "left-full ml-1.5"
-                  } top-1/2 -translate-y-1/2`}
+                className={`absolute top-1/2 z-30 flex -translate-y-1/2 items-center gap-1.5
+                text-content-tertiary
+                opacity-0 invisible
+                transition-all duration-200 ease-out
+                group-hover:opacity-100 group-hover:visible
+                ${isOwnMessage
+                  ? "right-full mr-1 group-hover:translate-x-0 translate-x-1"
+                  : "left-full ml-1 group-hover:translate-x-0 -translate-x-1"
+                }`}
               >
                 {onReact ? (
                   <button
@@ -1147,7 +1204,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       setShowQuickReactions((s) => !s);
                       setShowMenu(false);
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary dark:hover:bg-surface-hover"
+                    className=""
                     aria-label="Add reaction"
                   >
                     <Smile className="h-4 w-4" />
@@ -1160,14 +1217,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                       e.stopPropagation();
                       handleReply();
                     }}
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#54656f] shadow-[0_1px_1px_rgba(11,20,26,0.2)] ring-1 ring-black/5 transition hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary dark:hover:bg-surface-hover"
+                    className=""
                     aria-label="Reply"
                   >
                     <Reply className="h-4 w-4" />
                   </button>
                 ) : null}
               </div>
-            ) : null}
+              ) : null}
             {/* emojis */}
             <div>
               {onReact ? (
@@ -1246,12 +1303,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {showMenu ? (
               <div
                 ref={messageMenuRef}
-                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] flex-col items-stretch gap-1.5 ${isOwnMessage ? "right-0 items-end sm:right-full sm:mr-1" : "left-0 items-start sm:left-full sm:ml-1"
-                  } ${menuPlacement === "above"
+                className={`absolute z-[9999] flex max-w-[calc(100vw-1rem)] 
+                   flex-col  gap-1.5 
+                   ${isOwnMessage ? "right-0 items-end" 
+                    : "left-0 items-start sm:left-[70%] "}
+                   ${menuPlacement === "above"
                     ? "bottom-full mb-2"
                     : menuPlacement === "side"
                       ? "top-4"
-                      : "top-full mt-2 sm:top-4 sm:mt-0"
+                      : "top-full mt-2 sm:top-5 sm:mt-0"
                   }`}
                 onClick={(e) => e.stopPropagation()}
                 onMouseEnter={handleReactionPickerEnter}
@@ -1277,24 +1337,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                         {emoji}
                       </button>
                     ))}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowReactionPicker((prev) => !prev);
-                      }}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-content-secondary hover:bg-surface-hover"
-                      aria-label="More reactions"
-                    >
-                      <TbMoodPlus className="h-5 w-5" />
-                    </button>
+                    
                   </div>
                 ) : null}
+
+                
 
                 {(showOverflowMenu || onReact) && messageOverflowMenuSections.length > 0 ? (
                   <div
                     role="menu"
-                    className={`w-[180px] max-w-[calc(100vw-1.5rem)] ${isOwnMessage ? "h-52" : "h-48"}  p-1 scrollbar-hover overflow-auto rounded-xl bg-white py-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface`}
+                    className="w-[180px] max-w-[calc(100vw-1.5rem)] max-h-[320px] overflow-y-auto scrollbar-hover rounded-xl bg-white p-1 shadow-[0_2px_5px_rgba(11,20,26,0.26)] ring-1 ring-black/[0.08] dark:bg-surface"
                   >
                     {messageOverflowMenuSections.map((section, sectionIdx) => (
                       <Fragment key={section.id}>
@@ -1340,11 +1392,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {showForwardBadge && !isDeleted ? (
               <div className="mb-1 flex items-center gap-1 pr-1">
                 <ChevronsRight
-                  className="h-3.5 w-3.5 shrink-0 text-content-tertiary"
+                  className={`h-3.5 w-3.5 shrink-0 ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}
                   strokeWidth={2}
                   aria-hidden
                 />
-                <span className="text-[12px] italic leading-snug text-content-tertiary">Forwarded</span>
+                <span className={`text-[12px] italic leading-snug ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>Forwarded</span>
               </div>
             ) : null}
 
@@ -1356,45 +1408,45 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   onScrollToMessage?.(message.reply_to_id!);
                 }}
                 className={`mb-1.5 max-w-full overflow-hidden rounded-lg border-l-[3px] px-2 py-1.5 text-left transition hover:opacity-90 ${isOwnMessage
-                    ? "border-[#25d366] bg-black/[0.06] dark:bg-white/10"
-                    : "border-primary-500 bg-surface-secondary/70"
+                    ? "border-gray-100 bg-black/[0.06] dark:bg-white/10"
+                    : "border-orange-500 bg-surface-secondary/70"
                   }`}
                 aria-label={`Jump to message from ${replyQuote.senderName}`}
               >
-                <div className="truncate text-[11px] font-semibold text-primary-700 dark:text-primary-300">
+                <div className={`truncate text-[13px] font-semibold ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>
                   {replyQuote.senderName}
                 </div>
-                <div className="truncate text-[12px] italic text-content-tertiary">
+                <div className={`truncate text-[12px] italic ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>
                   {replyQuote.preview}
                 </div>
               </button>
             ) : null}
 
             {isDeleted ? (
-              <p className="pr-1 text-sm italic text-content-tertiary">This message was deleted</p>
+              <p className="pr-1 text-sm italic text-white">This message was deleted</p>
             ) : callPresentation ? (
               <div className="flex min-w-0 items-start gap-2.5">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface shadow-[0_0.5px_1.5px_rgba(11,20,26,0.12)]">
                   {callPresentation.variant === "missed" ? (
                     <PhoneMissed className="h-[22px] w-[22px] text-[#ea0038]" strokeWidth={2} aria-hidden />
                   ) : callPresentation.variant === "video" ? (
-                    <Video className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
+                    <Video className="h-[21px] w-[21px] text-primary-600" strokeWidth={2} aria-hidden />
                   ) : isOwnMessage ? (
-                    <PhoneOutgoing className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
+                    <PhoneOutgoing className="h-[21px] w-[21px] text-primary-600" strokeWidth={2} aria-hidden />
                   ) : (
                     <PhoneIncoming className="h-[21px] w-[21px] text-content" strokeWidth={2} aria-hidden />
                   )}
                 </div>
                 <div className="min-w-0 flex-1 pt-0.5">
-                  <p className="text-[15px] font-medium leading-snug text-content">{callPresentation.title}</p>
-                  <p className="mt-0.5 text-[13px] leading-snug text-content-tertiary">{callPresentation.subtitle}</p>
+                  <p className={`text-[15px] font-medium leading-snug ${isOwnMessage ? "text-white" : "text-content"}`}>{callPresentation.title}</p>
+                  <p className={`mt-0.5 text-[13px] leading-snug ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>{callPresentation.subtitle}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end justify-end self-stretch">
                   <div className="flex items-end justify-end gap-1">
                     {showEditedBadge ? (
                       <span className="text-[11px] lowercase leading-none text-content-tertiary">edited</span>
                     ) : null}
-                    <span className="shrink-0 text-[11px] tabular-nums text-content-tertiary">
+                    <span className= {`shrink-0 text-[11px] tabular-nums ${isOwnMessage ? " text-white" : " text-content-tertiary"}`}>
                       {format(new Date(message.created_at), "HH:mm")}
                     </span>
                     <MessageStatusIndicator status={messageStatus} isOwnMessage={isOwnMessage} />
@@ -1423,6 +1475,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   <MessageAttachments
                     attachments={message.attachments}
                     isOwnMessage={isOwnMessage}
+                    profileImageUrl={
+                      message.sender?.avatarUrl ||
+                      (isOwnMessage ? currentUserAvatarUrl : undefined)
+                    }
                     onOpenMedia={(items, index) => setMediaViewer({ items, index })}
                     isUploading={isUploading}
                     uploadProgressById={uploadProgressById}
@@ -1441,15 +1497,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className={`mb-1.5 flex max-w-full items-start gap-2 overflow-hidden rounded-lg border-l-[3px] p-2 transition hover:opacity-95 ${isOwnMessage
-                        ? "border-[#128c7e] bg-black/[0.05] dark:bg-white/10"
-                        : "border-primary-500 bg-surface-secondary/60"
+                        ? "border-[#fff] bg-black/[0.05] dark:bg-white/5"
+                        : "border-orange-500 bg-surface-secondary/60"
                       }`}
-                    style={{ width: "min(100%, 280px)" }}
                   >
-                    <ExternalLink className="mt-0.5 h-4 w-4 shrink-0 text-content-tertiary" />
+                    <ExternalLink className={`mt-0.5 h-4 w-4 shrink-0 ${isOwnMessage ? "text-white" : "text-content-tertiary"}`} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-semibold text-content">Link</p>
-                      <p className="break-all text-[11px] text-content-tertiary">{linkPreviewUrl}</p>
+                      <p className={`truncate text-[12px] font-semibold ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>Link</p>
+                      <p className={`break-all text-[11px] ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>{linkPreviewUrl}</p>
                     </div>
                   </a>
                 ) : null}
@@ -1530,7 +1585,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <div
                 className={
                   visualMediaOnly
-                    ? "pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-end justify-end gap-1 rounded-[6px] bg-black/45 px-1.5 py-0.5"
+                    ? "pointer-events-none absolute bottom-1.5 right-1.5 z-10 flex items-end justify-end gap-1  rounded-[6px] bg-black/45 px-1.5 py-0.5"
                     : mediaOnly
                       ? "mt-0.5 flex items-end justify-end gap-1 px-0.5"
                       : "mt-0.5 flex items-end justify-end gap-1 pl-6"
@@ -1539,15 +1594,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-1 gap-y-0">
                   {showEditedBadge ? (
                     <span
-                      className={`text-[11px] lowercase leading-none ${visualMediaOnly ? "text-white/90" : "text-content-tertiary"
+                      className={`text-[11px] lowercase leading-none ${visualMediaOnly ? "text-white/90" : "text-content-secondary"
                         }`}
                     >
                       edited
                     </span>
                   ) : null}
                   <span
-                    className={`shrink-0 text-[11px] tabular-nums ${visualMediaOnly ? "text-white/90" : "text-content-tertiary"
-                      }`}
+                    className={`shrink-0 text-[11px] tabular-nums ${isOwnMessage || visualMediaOnly ? "text-white" : "text-content-tertiary "}`}
                   >
                     {format(new Date(message.created_at), "HH:mm")}
                   </span>

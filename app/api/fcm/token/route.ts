@@ -136,6 +136,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const user_id = searchParams.get('user_id')
     const device_id = searchParams.get('device_id')
+    const fcm_token = searchParams.get('fcm_token')
 
     // This endpoint is intentionally unauthenticated; user_id must be provided.
     if (!user_id) {
@@ -151,23 +152,55 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    let query = supabase
-      .from('fcm_tokens')
-      .update({
-        is_active: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user_id)
-
-
-    if (device_id) {
-      query = query.eq('device_id', device_id)
+    if (!device_id && !fcm_token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'device_id or fcm_token is required',
+        },
+        {
+          status: 400,
+          headers: corsHeaders,
+        }
+      )
     }
 
-    const { error } = await query
+    const deactivatedAt = new Date().toISOString()
+    const deactivatePayload = {
+      is_active: false,
+      auth_session_id: null as string | null,
+      updated_at: deactivatedAt,
+    }
 
-    if (error) {
-      console.error('❌ Error deactivating FCM token:', error)
+    // Match by device_id and/or fcm_token so logout still works when localStorage
+    // device_id drifted from the row stored at registration time.
+    const errors: string[] = []
+
+    if (device_id) {
+      const { error } = await supabase
+        .from('fcm_tokens')
+        .update(deactivatePayload)
+        .eq('user_id', user_id)
+        .eq('device_id', device_id)
+      if (error) {
+        console.error('❌ Error deactivating FCM token by device_id:', error)
+        errors.push(error.message)
+      }
+    }
+
+    if (fcm_token) {
+      const { error } = await supabase
+        .from('fcm_tokens')
+        .update(deactivatePayload)
+        .eq('user_id', user_id)
+        .eq('fcm_token', fcm_token)
+      if (error) {
+        console.error('❌ Error deactivating FCM token by fcm_token:', error)
+        errors.push(error.message)
+      }
+    }
+
+    if (errors.length > 0) {
       return NextResponse.json(
         { 
           success: false,

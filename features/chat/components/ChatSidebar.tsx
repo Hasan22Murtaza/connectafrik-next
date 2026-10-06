@@ -14,6 +14,7 @@ import type { ChatParticipant } from "@/shared/types/chat";
 import { toast } from "react-hot-toast";
 import { ChatRichTextPreview } from "@/features/chat/richtext";
 import { useConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
+import CreateChatGroupModal from "@/features/chat/components/CreateChatGroupModal";
 
 const PAGE_SIZE = 10;
 
@@ -87,11 +88,13 @@ export default function ChatSidebar({
   const [search, setSearch] = useState("");
   const [menuThreadId, setMenuThreadId] = useState<string | null>(null);
   const [blockedExpanded, setBlockedExpanded] = useState(false);
-  const [view, setView] = useState<"chats" | "marketplace" | "locked">("chats");
+  const [view, setView] = useState<"chats" | "marketplace" | "locked" | "archived">("chats");
   const [filter, setFilter] = useState<"all" | "unread" | "groups">("all");
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [mpThreads, setMpThreads] = useState<ChatThread[]>([]);
-  const [mpLoading, setMpLoading] = useState(true);
+  const [mpLoading, setMpLoading] = useState(false);
+  const [mpLoaded, setMpLoaded] = useState(false);
   const [lockedThreads, setLockedThreads] = useState<ChatThread[]>([]);
   const [lockedLoading, setLockedLoading] = useState(false);
   const [filterThreads, setFilterThreads] = useState<ChatThread[]>([]);
@@ -125,6 +128,7 @@ export default function ChatSidebar({
     if (!currentUser?.id) {
       setMpThreads([]);
       setMpLoading(false);
+      setMpLoaded(false);
       return;
     }
     setMpLoading(true);
@@ -134,6 +138,7 @@ export default function ChatSidebar({
         { limit: 50, page: 0, category: "marketplace" }
       );
       setMpThreads(rows);
+      setMpLoaded(true);
     } finally {
       setMpLoading(false);
     }
@@ -143,9 +148,12 @@ export default function ChatSidebar({
     void loadGeneral();
   }, [loadGeneral]);
 
+  // Only fetch marketplace threads when that section is open.
   useEffect(() => {
-    void loadMarketplace();
-  }, [loadMarketplace]);
+    if (view === "marketplace" && currentUser?.id) {
+      void loadMarketplace();
+    }
+  }, [view, currentUser?.id, loadMarketplace]);
 
   useEffect(() => {
     if (folderOpen) setView("locked");
@@ -227,10 +235,10 @@ export default function ChatSidebar({
       filter === "groups"
         ? supabaseMessagingService.getGroupThreads(participant, { limit: 50, page: 0 })
         : supabaseMessagingService.getUnreadThreads(participant, {
-            limit: 50,
-            page: 0,
-            category: "general",
-          });
+          limit: 50,
+          page: 0,
+          category: "general",
+        });
     request
       .then(({ threads: rows }) => {
         if (!cancelled) setFilterThreads(rows);
@@ -253,14 +261,13 @@ export default function ChatSidebar({
       if (!tid) return;
       const known = threads.some((t) => t.id === tid) || mpThreads.some((t) => t.id === tid);
       if (known) return;
-      // A thread we haven't listed was opened — let the API place it in the
-      // right list (general vs marketplace) by reloading both.
+      // Unknown thread opened — refresh the list(s) that are actually in use.
       void loadGeneral();
-      void loadMarketplace();
+      if (view === "marketplace" || mpLoaded) void loadMarketplace();
     };
     window.addEventListener("openChatThread", handler as EventListener);
     return () => window.removeEventListener("openChatThread", handler as EventListener);
-  }, [currentUser?.id, threads, mpThreads, loadGeneral, loadMarketplace]);
+  }, [currentUser?.id, threads, mpThreads, view, mpLoaded, loadGeneral, loadMarketplace]);
 
   const loadMoreThreads = useCallback(async () => {
     if (!currentUser?.id || isLoadingMore || !hasMore || lastLoadedPage < 0) return;
@@ -334,23 +341,35 @@ export default function ChatSidebar({
 
   const mergedThreads = useMemo(() => {
     // Membership comes from the API (general category). The realtime context
-    // pool only overlays live fields (unread, last message) for listed threads.
+    // pool overlays live fields (unread, last message); keep local prefs.
     const ctxById = new Map(contextThreads.map((t) => [t.id, t]));
     return threads
-      .map((t) => ctxById.get(t.id) ?? t)
+      .map((t) => {
+        const ctx = ctxById.get(t.id);
+        if (!ctx) return t;
+        return {
+          ...ctx,
+          archived: t.archived,
+          pinned: t.pinned,
+          pinned_at: t.pinned_at,
+          is_block: t.is_block,
+          is_locked: t.is_locked,
+          locked_at: t.locked_at,
+        };
+      })
       .sort((a, b) => {
-      const pinA = a.pinned ? 1 : 0;
-      const pinB = b.pinned ? 1 : 0;
-      if (pinA !== pinB) return pinB - pinA;
-      if (pinA && pinB) {
-        const pinnedAtA = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
-        const pinnedAtB = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
-        if (pinnedAtA !== pinnedAtB) return pinnedAtB - pinnedAtA;
-      }
-      const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
-      const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
-      return bTime - aTime;
-    });
+        const pinA = a.pinned ? 1 : 0;
+        const pinB = b.pinned ? 1 : 0;
+        if (pinA !== pinB) return pinB - pinA;
+        if (pinA && pinB) {
+          const pinnedAtA = a.pinned_at ? new Date(a.pinned_at).getTime() : 0;
+          const pinnedAtB = b.pinned_at ? new Date(b.pinned_at).getTime() : 0;
+          if (pinnedAtA !== pinnedAtB) return pinnedAtB - pinnedAtA;
+        }
+        const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+        const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+        return bTime - aTime;
+      });
   }, [threads, contextThreads]);
 
   const marketplaceThreads = useMemo(() => {
@@ -399,6 +418,27 @@ export default function ChatSidebar({
     [mergedThreads]
   );
 
+  const archivedThreads = useMemo(
+    () =>
+      mergedThreads
+        .filter((t) => t.archived === true && !t.is_locked)
+        .sort((a, b) => {
+          const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+          const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+          return bTime - aTime;
+        }),
+    [mergedThreads]
+  );
+
+  const archivedUnread = useMemo(
+    () =>
+      archivedThreads.reduce(
+        (sum, t) => sum + (typeof t.unread_count === "number" ? t.unread_count : 0),
+        0
+      ),
+    [archivedThreads]
+  );
+
   const filteredActive = useMemo(
     () => activeThreads.filter(matchesSearch),
     [activeThreads, matchesSearch]
@@ -407,6 +447,11 @@ export default function ChatSidebar({
   const filteredBlocked = useMemo(
     () => blockedThreads.filter(matchesSearch),
     [blockedThreads, matchesSearch]
+  );
+
+  const filteredArchived = useMemo(
+    () => archivedThreads.filter(matchesSearch),
+    [archivedThreads, matchesSearch]
   );
 
   // Server-fetched filter list (groups/unread), overlaid with realtime context
@@ -466,7 +511,16 @@ export default function ChatSidebar({
           currentUser.id,
           !thread.archived
         );
-        if (updated) updateThreadState(updated);
+        if (updated) {
+          setThreads((prev) => {
+            const next = prev.map((t) => (t.id === updated.id ? updated : t));
+            if (thread.archived) {
+              const stillArchived = next.some((t) => t.archived === true && !t.is_locked);
+              if (!stillArchived) setView("chats");
+            }
+            return next;
+          });
+        }
         toast.success(thread.archived ? "Chat restored" : "Chat archived");
       } catch {
         toast.error("Could not update archive");
@@ -474,7 +528,7 @@ export default function ChatSidebar({
         setMenuThreadId(null);
       }
     },
-    [currentUser?.id, updateThreadState]
+    [currentUser?.id]
   );
 
   const handleToggleBlock = useCallback(
@@ -643,9 +697,8 @@ export default function ChatSidebar({
 
   return (
     <aside
-      className={`flex h-full w-full flex-col border-r border-border  sm:w-[360px] sm:shrink-0 lg:w-[400px] ${
-        selectedThreadId ? "hidden sm:flex" : "flex"
-      }`}
+      className={`flex h-full w-full flex-col border-r border-border  sm:w-[360px] sm:shrink-0 lg:w-[400px] ${selectedThreadId ? "hidden sm:flex" : "flex"
+        }`}
     >
       <header className="shrink-0 border-b border-border bg-surface">
         <div className="flex items-center justify-between gap-2 px-4 pt-1 sm:pt-1">
@@ -660,6 +713,19 @@ export default function ChatSidebar({
             >
               <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
               TradeHub
+            </button>
+          ) : view === "archived" ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("chats");
+                setSearch("");
+                setMenuThreadId(null);
+              }}
+              className="-ml-1 flex items-center gap-2 text-xl font-semibold text-content"
+            >
+              <ArrowLeft className="h-5 w-5 shrink-0" aria-hidden />
+              Archived
             </button>
           ) : view === "locked" ? (
             <button
@@ -679,15 +745,6 @@ export default function ChatSidebar({
           )}
           {view === "chats" ? (
             <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                onClick={() => router.push("/friends")}
-                aria-label="New chat"
-                title="New chat"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition hover:bg-surface-hover hover:text-content"
-              >
-                <SquarePen className="h-5 w-5" aria-hidden />
-              </button>
               <div className="relative">
                 <button
                   type="button"
@@ -708,7 +765,7 @@ export default function ChatSidebar({
                       type="button"
                       onClick={() => {
                         setHeaderMenuOpen(false);
-                        router.push("/groups/create");
+                        setCreateGroupOpen(true);
                       }}
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
                     >
@@ -745,7 +802,7 @@ export default function ChatSidebar({
           ) : null}
         </div>
 
-        <div className="px-4 pt-1">
+        <div className="px-4 py-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-content-tertiary" />
             <input
@@ -755,11 +812,13 @@ export default function ChatSidebar({
               placeholder={
                 view === "marketplace"
                   ? "Search marketplace"
-                  : view === "locked"
-                    ? "Search locked chats"
-                    : "Search or start a new chat"
+                  : view === "archived"
+                    ? "Search archived"
+                    : view === "locked"
+                      ? "Search locked chats"
+                      : "Search or start a new chat"
               }
-              className="w-full rounded-full border border-gray-300  py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100"
+              className="w-full rounded-full border border-gray-300 py-2.5 pl-10 pr-9 text-sm text-content placeholder:text-content-secondary outline-none transition focus-visible:border-orange-300 focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-orange-100 dark:focus-visible:ring-orange-900/40"
             />
             {search ? (
               <button
@@ -783,11 +842,10 @@ export default function ChatSidebar({
                   key={chip.key}
                   type="button"
                   onClick={() => setFilter(chip.key)}
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${
-                    active
-                      ? "bg-[#25D366]/20 text-content dark:bg-[#25D366]/25"
-                      : "border border-border text-content-secondary hover:bg-surface-hover"
-                  }`}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition ${active
+                      ? "bg-[#25D366]/20 text-content dark:bg-[#25D366]/25 dark:text-green-300"
+                      : "border border-border text-content-secondary hover:bg-orange-50 hover:border-orange-100 hover:text-orange-700 dark:hover:bg-surface-hover dark:hover:border-border-strong dark:hover:text-orange-300"
+                    }`}
                 >
                   <span>{chip.label}</span>
                 </button>
@@ -799,58 +857,88 @@ export default function ChatSidebar({
 
       {view === "chats" ? (
         <>
-        {lockedCount > 0 ? (
+          {lockedCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                void openLockedFolder();
+              }}
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white dark:bg-surface-secondary">
+                <Lock className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium text-content">Locked Chats</p>
+                <p className="truncate text-sm text-content-secondary">
+                  {lockedCount} locked conversation{lockedCount === 1 ? "" : "s"}
+                </p>
+              </div>
+              {lockedUnread > 0 ? (
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                  {lockedUnread > 99 ? "99+" : lockedUnread}
+                </span>
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+              )}
+              <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+            </button>
+          ) : null}
+          {archivedThreads.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setView("archived");
+                setSearch("");
+                setMenuThreadId(null);
+              }}
+              className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-secondary text-content-secondary">
+                <Archive className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-medium text-content">Archived</p>
+                <p className="truncate text-sm text-content-secondary">
+                  {archivedThreads.length} archived chat
+                  {archivedThreads.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              {archivedUnread > 0 ? (
+                <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                  {archivedUnread > 99 ? "99+" : archivedUnread}
+                </span>
+              ) : (
+                <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
+              )}
+              <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => {
+              setView("marketplace");
               setSearch("");
-              void openLockedFolder();
             }}
-            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover"
+            className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#111b21] text-white dark:bg-surface-secondary">
-              <Lock className="h-5 w-5" aria-hidden />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+              <Store className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-medium text-content">Locked Chats</p>
-              <p className="truncate text-sm text-content-secondary">
-                {lockedCount} locked conversation{lockedCount === 1 ? "" : "s"}
-              </p>
+              <p className="truncate text-[15px] font-medium text-content">TradeHub messages</p>
+              <p className="truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
             </div>
-            {lockedUnread > 0 ? (
+            {marketplaceUnread > 0 ? (
               <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
-                {lockedUnread > 99 ? "99+" : lockedUnread}
+                {marketplaceUnread > 99 ? "99+" : marketplaceUnread}
               </span>
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
             )}
-            <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
+            <span className="pointer-events-none absolute bottom-0 left-0 right-0 h-px bg-border-subtle" />
           </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => {
-            setView("marketplace");
-            setSearch("");
-          }}
-          className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover"
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
-            <Store className="h-5 w-5" aria-hidden />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-medium text-content">TradeHub messages</p>
-            <p className="truncate text-sm text-content-secondary">Buying &amp; selling conversations</p>
-          </div>
-          {marketplaceUnread > 0 ? (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
-              {marketplaceUnread > 99 ? "99+" : marketplaceUnread}
-            </span>
-          ) : (
-            <ChevronRight className="h-4 w-4 shrink-0 text-content-tertiary" aria-hidden />
-          )}
-          <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" />
-        </button>
         </>
       ) : null}
 
@@ -889,9 +977,8 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${
-                    selected ? "bg-surface-hover" : "bg-transparent"
-                  }`}
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-orange-50 dark:bg-orange-500/15 dark:hover:bg-orange-500/15" : "bg-transparent"
+                    }`}
                 >
                   <div className="h-12 w-12 shrink-0">
                     {avatarUrl ? (
@@ -936,7 +1023,7 @@ export default function ChatSidebar({
                         e.stopPropagation();
                         setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
                       }}
-                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
                     >
                       <MoreVertical className="h-4 w-4" />
                     </button>
@@ -961,6 +1048,168 @@ export default function ChatSidebar({
                         >
                           <Unlock className="h-4 w-4" />
                           <span>Unlock chat</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : view === "archived" ? (
+        <div className="flex-1 overflow-y-auto">
+          {filteredArchived.length === 0 ? (
+            <div className="px-4 py-10 text-center">
+              <Archive className="mx-auto mb-3 h-10 w-10 text-content-tertiary" aria-hidden />
+              <p className="text-sm font-semibold text-content">
+                {query ? "No archived chats match your search" : "No archived chats"}
+              </p>
+              <p className="mt-1 text-sm text-content-secondary">
+                Archive a chat from its menu to move it here.
+              </p>
+            </div>
+          ) : (
+            filteredArchived.map((thread) => {
+              const others = thread.participants.filter(
+                (participant: ChatParticipant) => participant.id !== currentUser?.id
+              );
+              const primary = others[0] ?? thread.participants[0];
+              const isGroup = isGroupThread(thread, currentUser?.id);
+              const displayName =
+                isGroup && thread.name ? thread.name : primary?.name || thread.name || "Chat";
+              const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
+              const selected = selectedThreadId === thread.id;
+              const canBlock = isDirectBlockableThread(thread, currentUser?.id);
+              const activeCall = activeCallsByThread[thread.id];
+
+              return (
+                <div
+                  key={thread.id}
+                  onClick={() => onOpenThread(thread.id, thread)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenThread(thread.id, thread);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${
+                    selected ? "bg-surface-hover" : "bg-transparent"
+                  }`}
+                >
+                  <div className="h-12 w-12 shrink-0">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex min-w-0 items-center gap-1 text-[15px] font-medium text-content">
+                        {thread.pinned ? (
+                          <Pin className="h-3.5 w-3.5 shrink-0 text-content-tertiary" aria-hidden />
+                        ) : null}
+                        <span className="truncate">{displayName}</span>
+                      </span>
+                      <span
+                        className={`shrink-0 text-xs tabular-nums ${
+                          thread.unread_count > 0 ? "text-[#25D366]" : "text-content-tertiary"
+                        }`}
+                      >
+                        {formatThreadListTime(thread.last_message_at)}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between gap-2">
+                      <p
+                        className={`truncate text-sm ${
+                          activeCall ? "font-medium text-green-600" : "text-content-secondary"
+                        }`}
+                      >
+                        {activeCall ? (
+                          `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
+                        ) : (
+                          <>
+                            <span className="text-content-tertiary">Archived · </span>
+                            {thread.last_message_preview ? (
+                              <ChatRichTextPreview content={thread.last_message_preview} />
+                            ) : (
+                              "Tap to open chat"
+                            )}
+                          </>
+                        )}
+                      </p>
+                      {thread.unread_count > 0 ? (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
+                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="relative self-center">
+                    <button
+                      type="button"
+                      data-chat-menu-trigger
+                      aria-label="Chat actions"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                      }}
+                      className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                    {menuThreadId === thread.id ? (
+                      <div
+                        data-chat-menu
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "toggle-archive")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          <Archive className="h-4 w-4" />
+                          <span>Unarchive chat</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "toggle-pin")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                          <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
+                        </button>
+                        {canBlock ? (
+                          <button
+                            type="button"
+                            onClick={(e) => onMenuAction(e, thread, "toggle-block")}
+                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                          >
+                            <Ban className="h-4 w-4" />
+                            <span>{thread.is_block ? "Unblock contact" : "Block contact"}</span>
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "lock")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                        >
+                          <Lock className="h-4 w-4" />
+                          <span>Lock chat</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => onMenuAction(e, thread, "clear")}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span>Delete chat</span>
                         </button>
                       </div>
                     ) : null}
@@ -1008,9 +1257,8 @@ export default function ChatSidebar({
                   }}
                   role="button"
                   tabIndex={0}
-                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition hover:bg-surface-hover ${
-                    selected ? "bg-surface-hover" : "bg-transparent"
-                  }`}
+                  className={`group relative flex w-full cursor-pointer items-center gap-3 px-3 py-3 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-surface-hover" : "bg-transparent"
+                    }`}
                 >
                   <div className="h-12 w-12 shrink-0">
                     {avatarUrl ? (
@@ -1025,18 +1273,16 @@ export default function ChatSidebar({
                     <div className="flex items-center justify-between gap-2">
                       <p className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</p>
                       <span
-                        className={`shrink-0 text-xs tabular-nums ${
-                          thread.unread_count > 0 ? "text-[#25D366]" : "text-content-tertiary"
-                        }`}
+                        className={`shrink-0 text-xs tabular-nums ${thread.unread_count > 0 ? "text-[#25D366]" : "text-content-tertiary"
+                          }`}
                       >
                         {formatThreadListTime(thread.last_message_at)}
                       </span>
                     </div>
                     <div className="mt-0.5 flex items-center justify-between gap-2">
                       <p
-                        className={`truncate text-sm ${
-                          activeCall ? "font-medium text-green-600" : "text-content-secondary"
-                        }`}
+                        className={`truncate text-sm ${activeCall ? "font-medium text-green-600" : "text-content-secondary"
+                          }`}
                       >
                         {activeCall ? (
                           `● ${activeCall.callType === "video" ? "Video" : "Audio"} call · ${activeCall.participantCount} in call`
@@ -1060,258 +1306,267 @@ export default function ChatSidebar({
           )}
         </div>
       ) : (
-      <div
-        className="flex-1 overflow-y-auto"
-        onScroll={filter === "all" ? handleThreadsScroll : undefined}
-      >
-        {(filter === "all" ? isLoading : filterLoading && visibleActive.length === 0) ? (
-          <div className="p-4 text-sm text-content-secondary">Loading chats...</div>
-        ) : visibleActive.length === 0 && !showBlockedSection ? (
-          <div className="px-4 py-10 text-center text-sm text-content-secondary">
-            {filter === "unread"
-              ? "No unread chats."
-              : filter === "groups"
-                ? "No group chats."
-                : "No conversations found."}
-          </div>
-        ) : (
-          <>
-          {visibleActive.length === 0 && showBlockedSection && !query ? (
-            <p className="px-4 pb-2 pt-3 text-xs text-content-secondary">
-              No active chats — open <span className="font-medium text-content">Blocked</span> below.
-            </p>
-          ) : null}
-          {visibleActive.map((thread) => {
-            const others = thread.participants.filter(
-              (participant: ChatParticipant) => participant.id !== currentUser?.id
-            );
-            const primary = others[0] ?? thread.participants[0];
-            const isGroup = isGroupThread(thread, currentUser?.id);
-            const displayName = isGroup && thread.name ? thread.name : primary?.name || thread.name || "Chat";
-            const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
-            const selected = selectedThreadId === thread.id;
-            const canBlock = isDirectBlockableThread(thread, currentUser?.id);
-            const activeCall = activeCallsByThread[thread.id];
+        <div
+          className="flex-1 overflow-y-auto"
+          onScroll={filter === "all" ? handleThreadsScroll : undefined}
+        >
+          {(filter === "all" ? isLoading : filterLoading && visibleActive.length === 0) ? (
+            <div className="p-4 text-sm text-content-secondary">Loading chats...</div>
+          ) : visibleActive.length === 0 && !showBlockedSection ? (
+            <div className="px-4 py-10 text-center text-sm text-content-secondary">
+              {filter === "unread"
+                ? "No unread chats."
+                : filter === "groups"
+                  ? "No group chats."
+                  : "No conversations found."}
+            </div>
+          ) : (
+            <>
+              {visibleActive.length === 0 && showBlockedSection && !query ? (
+                <p className="px-4 pb-2 pt-3 text-xs text-content-secondary">
+                  No active chats — open <span className="font-medium text-content">Blocked</span> below.
+                </p>
+              ) : null}
+              {visibleActive.map((thread) => {
+                const others = thread.participants.filter(
+                  (participant: ChatParticipant) => participant.id !== currentUser?.id
+                );
+                const primary = others[0] ?? thread.participants[0];
+                const isGroup = isGroupThread(thread, currentUser?.id);
+                const displayName = isGroup && thread.name ? thread.name : primary?.name || thread.name || "Chat";
+                const avatarUrl = isGroup && thread.banner_url ? thread.banner_url : primary?.avatarUrl;
+                const selected = selectedThreadId === thread.id;
+                const canBlock = isDirectBlockableThread(thread, currentUser?.id);
+                const activeCall = activeCallsByThread[thread.id];
 
-            return (
-              <div
-                key={thread.id}
-                onClick={() => onOpenThread(thread.id, thread)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onOpenThread(thread.id, thread);
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-hover ${
-                  selected ? "bg-surface-hover" : "bg-transparent"
-                }`}
-              >
-                <div className="h-12 w-12 shrink-0">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
-                      {displayName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</span>
-                    <span
-                      className={`shrink-0 text-xs tabular-nums ${
-                        thread.unread_count > 0 ? "text-[#25D366]" : "text-content-tertiary"
-                      }`}
-                    >
-                      {formatThreadListTime(thread.last_message_at)}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-between gap-2">
-                    <p className={`truncate text-sm ${activeCall ? 'text-green-600 font-medium' : 'text-content-secondary'}`}>
-                      {activeCall ? (
-                        `● ${activeCall.callType === 'video' ? 'Video' : 'Audio'} call · ${activeCall.participantCount} in call`
-                      ) : thread.last_message_preview ? (
-                        <ChatRichTextPreview content={thread.last_message_preview} />
-                      ) : (
-                        "Tap to open chat"
-                      )}
-                    </p>
-                    <span className="flex shrink-0 items-center gap-1.5">
-                      {thread.pinned ? <Pin className="h-3.5 w-3.5 text-content-tertiary" aria-label="Pinned" /> : null}
-                      {thread.unread_count > 0 ? (
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#25D366] px-1 text-[11px] font-semibold text-white">
-                          {thread.unread_count > 99 ? "99+" : thread.unread_count}
-                        </span>
-                      ) : null}
-                    </span>
-                  </div>
-                </div>
-                <div className="relative self-center">
-                  <button
-                    type="button"
-                    data-chat-menu-trigger
-                    aria-label="Chat actions"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                return (
+                  <div
+                    key={thread.id}
+                    onClick={() => onOpenThread(thread.id, thread)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onOpenThread(thread.id, thread);
+                      }
                     }}
-                    className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-surface-hover hover:text-content sm:opacity-0 sm:group-hover:opacity-100"
+                    role="button"
+                    tabIndex={0}
+                    className={`group cursor-pointer relative flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-orange-50 dark:bg-orange-500/15 dark:hover:bg-orange-500/15" : "bg-transparent"
+                      }`}
                   >
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
-                  {menuThreadId === thread.id ? (
-                    <div
-                      data-chat-menu
-                      onClick={(e) => e.stopPropagation()}
-                      className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
-                    >
-                        <button
-                        type="button"
-                        onClick={(e) => onMenuAction(e, thread, "toggle-archive")}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                      >
-                        <Archive className="h-4 w-4" />
-                        <span>{thread.archived ? "Unarchive chat" : "Archive chat"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => onMenuAction(e, thread, "toggle-pin")}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                      >
-                        {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-                        <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
-                      </button>
-                      {canBlock ? (
-                        <button
-                          type="button"
-                          onClick={(e) => onMenuAction(e, thread, "toggle-block")}
-                          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                        >
-                          <Ban className="h-4 w-4" />
-                          <span>{thread.is_block ? "Unblock contact" : "Block contact"}</span>
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={(e) => onMenuAction(e, thread, "lock")}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
-                      >
-                        <Lock className="h-4 w-4" />
-                        <span>Lock chat</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => onMenuAction(e, thread, "clear")}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span>Clear chat</span>
-                      </button>
+                    <div className="h-12 w-12 shrink-0">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                          {displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                     </div>
-                  ) : null}
-                </div>
-                {/* <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" /> */}
-              </div>
-            );
-          })}
-          {showBlockedSection ? (
-            <div className="border-t border-border px-4 pt-2">
-              <button
-                type="button"
-                onClick={() => setBlockedExpanded((e) => !e)}
-                className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
-              >
-                <ChevronDown
-                  className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? "" : "-rotate-90"}`}
-                />
-                Blocked ({blockedThreads.length})
-              </button>
-              {blockedExpanded
-                ? filteredBlocked.map((thread) => {
-                    const others = thread.participants.filter(
-                      (participant: ChatParticipant) => participant.id !== currentUser?.id
-                    );
-                    const primary = others[0] ?? thread.participants[0];
-                    const displayName = primary?.name || thread.name || "Chat";
-                    const avatarUrl = primary?.avatarUrl;
-                    const selected = selectedThreadId === thread.id;
-
-                    return (
-                      <div
-                        key={`blocked-${thread.id}`}
-                        onClick={() => onOpenThread(thread.id, thread)}
-                        role="button"
-                        tabIndex={0}
-                        className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-surface-hover ${
-                          selected ? "bg-primary-50 text-primary-700 dark:text-primary-400" : ""
-                        }`}
-                      >
-                        <div className="h-12 w-12 shrink-0">
-                          {avatarUrl ? (
-                            <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
-                          ) : (
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
-                              {displayName.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[15px] font-medium text-content">{displayName}</p>
-                          <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
-                        </div>
-                        <button
-                          type="button"
-                          data-chat-menu-trigger
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
-                          }}
-                          className="rounded-full p-1.5 text-content-tertiary hover:bg-surface-hover"
-                        >
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                        {menuThreadId === thread.id ? (
-                          <div
-                            data-chat-menu
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute right-4 top-10 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
-                          >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        {/* <div className="flex gap-4"> */}
+                          <span className="min-w-0 truncate text-[15px] font-medium text-content">{displayName}</span>
+                          <div className="flex gap-1">
+                            <div>
                             <button
                               type="button"
-                              onClick={(e) => onMenuAction(e, thread, "toggle-block")}
-                              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                              data-chat-menu-trigger
+                              aria-label="Chat actions"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                              }}
+                              className="rounded-full p-1.5 text-content-tertiary opacity-60 transition hover:bg-orange-50 hover:text-content dark:hover:bg-surface-hover sm:opacity-0 sm:group-hover:opacity-100"
                             >
-                              <Ban className="h-4 w-4" />
-                              <span>Unblock contact</span>
+                              <MoreVertical className="h-4 w-4" />
                             </button>
+                            {menuThreadId === thread.id ? (
+                              <div
+                                data-chat-menu
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute right-0 top-8 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={(e) => onMenuAction(e, thread, "toggle-archive")}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                                >
+                                  <Archive className="h-4 w-4" />
+                                  <span>{thread.archived ? "Unarchive chat" : "Archive chat"}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => onMenuAction(e, thread, "toggle-pin")}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                                >
+                                  {thread.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                                  <span>{thread.pinned ? "Unpin chat" : "Pin chat"}</span>
+                                </button>
+                                {canBlock ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => onMenuAction(e, thread, "toggle-block")}
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                                  >
+                                    <Ban className="h-4 w-4" />
+                                    <span>{thread.is_block ? "Unblock contact" : "Block contact"}</span>
+                                  </button>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  onClick={(e) => onMenuAction(e, thread, "lock")}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                                >
+                                  <Lock className="h-4 w-4" />
+                                  <span>Lock chat</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => onMenuAction(e, thread, "clear")}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Delete chat</span>
+                                </button>
+                              </div>
+                            ) : null}
+                            </div>
+                            <span className="flex shrink-0 items-center gap-1.5">
+                          {thread.pinned ? <Pin className="h-3.5 w-3.5 text-content-tertiary" aria-label="Pinned" /> : null}
+                          {thread.unread_count > 0 ? (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary-500 px-1 text-[11px] font-semibold text-white">
+                              {thread.unread_count > 99 ? "99+" : thread.unread_count}
+                            </span>
+                          ) : null}
+                        </span>
                           </div>
-                        ) : null}
+                        {/* </div> */}
+                        
                       </div>
-                    );
-                  })
-                : null}
+                      <div className="mt-0.5 flex items-center justify-between gap-2">
+                        <p className={`truncate text-sm ${activeCall ? 'text-orange-500 font-medium' : 'text-content-secondary'}`}>
+                          {activeCall ? (
+                            `● ${activeCall.callType === 'video' ? 'Video' : 'Audio'} call · ${activeCall.participantCount} in call`
+                          ) : thread.last_message_preview ? (
+                            <ChatRichTextPreview content={thread.last_message_preview} />
+                          ) : (
+                            "Tap to open chat"
+                          )}
+                        </p>
+                        <span
+                          className={`shrink-0 text-xs tabular-nums ${thread.unread_count > 0 ? "text-orange-500" : "text-content-tertiary"
+                            }`}
+                        >
+                          {formatThreadListTime(thread.last_message_at)}
+                        </span>
+
+                      </div>
+                    </div>
+
+                    {/* <span className="pointer-events-none absolute bottom-0 left-[4.5rem] right-0 h-px bg-border-subtle" /> */}
+                  </div>
+                );
+              })}
+              {showBlockedSection ? (
+                <div className="border-t border-border px-4 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setBlockedExpanded((e) => !e)}
+                    className="mb-1 flex w-full items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-content-secondary hover:text-content"
+                  >
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 transition-transform ${blockedExpanded ? "" : "-rotate-90"}`}
+                    />
+                    Blocked ({blockedThreads.length})
+                  </button>
+                  {blockedExpanded
+                    ? filteredBlocked.map((thread) => {
+                      const others = thread.participants.filter(
+                        (participant: ChatParticipant) => participant.id !== currentUser?.id
+                      );
+                      const primary = others[0] ?? thread.participants[0];
+                      const displayName = primary?.name || thread.name || "Chat";
+                      const avatarUrl = primary?.avatarUrl;
+                      const selected = selectedThreadId === thread.id;
+
+                      return (
+                        <div
+                          key={`blocked-${thread.id}`}
+                          onClick={() => onOpenThread(thread.id, thread)}
+                          role="button"
+                          tabIndex={0}
+                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-primary-50 text-primary-700 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/15" : ""
+                            }`}
+                        >
+                          <div className="h-12 w-12 shrink-0">
+                            {avatarUrl ? (
+                              <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                            ) : (
+                              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-tertiary font-semibold text-content-secondary">
+                                {displayName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[15px] font-medium text-content">{displayName}</p>
+                            <p className="truncate text-xs text-content-secondary">Blocked · tap to manage</p>
+                          </div>
+                          <button
+                            type="button"
+                            data-chat-menu-trigger
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuThreadId((prev) => (prev === thread.id ? null : thread.id));
+                            }}
+                            className="rounded-full p-1.5 text-content-tertiary hover:bg-orange-50 dark:hover:bg-surface-hover"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                          {menuThreadId === thread.id ? (
+                            <div
+                              data-chat-menu
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute right-4 top-10 z-20 w-52 rounded-xl border border-border bg-surface p-1 shadow-xl"
+                            >
+                              <button
+                                type="button"
+                                onClick={(e) => onMenuAction(e, thread, "toggle-block")}
+                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-content hover:bg-surface-hover"
+                              >
+                                <Ban className="h-4 w-4" />
+                                <span>Unblock contact</span>
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })
+                    : null}
+                </div>
+              ) : null}
+            </>
+          )}
+          {filter === "all" && !isLoading && hasMore ? (
+            <div className="flex justify-center py-3 text-sm text-content-secondary">
+              {isLoadingMore ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Loading more…
+                </span>
+              ) : (
+                <span className="text-content-tertiary">Scroll for more</span>
+              )}
             </div>
           ) : null}
-          </>
-        )}
-        {filter === "all" && !isLoading && hasMore ? (
-          <div className="flex justify-center py-3 text-sm text-content-secondary">
-            {isLoadingMore ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Loading more…
-              </span>
-            ) : (
-              <span className="text-content-tertiary">Scroll for more</span>
-            )}
-          </div>
-        ) : null}
-      </div>
+        </div>
       )}
       {dialog}
+      <CreateChatGroupModal
+        open={createGroupOpen}
+        onClose={() => setCreateGroupOpen(false)}
+        onCreated={(threadId) => onOpenThread(threadId)}
+      />
     </aside>
   );
 }

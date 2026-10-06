@@ -25,6 +25,7 @@ import {
 interface MessageAttachmentsProps {
   attachments: ChatAttachment[];
   isOwnMessage: boolean;
+  profileImageUrl?: string;
   onOpenMedia?: (items: ChatMediaViewerItem[], index: number) => void;
   isUploading?: boolean;
   uploadProgressById?: Record<string, number>;
@@ -150,12 +151,12 @@ function WaveBars({ active }: { active?: boolean }) {
 const VoiceNotePlayer: React.FC<{
   att: ChatAttachment;
   isOwnMessage: boolean;
-}> = ({ att, isOwnMessage }) => {
+  profileImageUrl?: string;
+}> = ({ att, isOwnMessage, profileImageUrl }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [current, setCurrent] = useState(0);
-
   useEffect(() => {
     const audio = new Audio(att.url);
     audioRef.current = audio;
@@ -190,7 +191,7 @@ const VoiceNotePlayer: React.FC<{
 
   return (
     <div
-      className={`flex w-[min(100%,280px)] min-w-0 items-center gap-2.5 rounded-2xl px-2 py-1.5 ${
+      className={`flex w-[min(100%,295px)] min-w-0 items-center gap-2.5 rounded-2xl px-2 py-1.5 ${
         isOwnMessage ? "chat-bubble-own-file" : "bg-surface-secondary/80"
       }`}
     >
@@ -200,18 +201,27 @@ const VoiceNotePlayer: React.FC<{
           e.stopPropagation();
           toggle();
         }}
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white transition ${
-          isOwnMessage ? "bg-[#128c7e] hover:bg-[#0e7368]" : "bg-primary-600 hover:bg-primary-700"
-        }`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${isOwnMessage ? "bg-gray-50 text-orange-500" : "bg-primary-500 text-white"} transition`}
         aria-label={playing ? "Pause voice note" : "Play voice note"}
       >
         {playing ? <Pause className="h-4 w-4 fill-current" /> : <Play className="h-4 w-4 fill-current ml-0.5" />}
       </button>
-      <div className="min-w-0 flex-1 text-content-secondary">
+      <div className={`min-w-0 flex-1 flex items-center justify-between gap-2 ${isOwnMessage ? "text-white" : "text-content-secondary"}`}>
         <WaveBars active={playing} />
-        <div className="mt-0.5 text-[11px] tabular-nums text-content-tertiary">
+        <div className={`mt-0.5 text-[11px] tabular-nums ${isOwnMessage ? "text-white/80" : "text-content-tertiary"}`}>
           {formatMediaDuration(playing || current > 0 ? current : duration)}
         </div>
+        {profileImageUrl ? (
+          <img
+            src={profileImageUrl}
+            alt=""
+            className="h-9 w-9 shrink-0 rounded-full object-cover"
+          />
+        ) : (
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/10">
+            <UserRound className="h-4 w-4" aria-hidden />
+          </span>
+        )}
       </div>
     </div>
   );
@@ -230,7 +240,7 @@ const VideoThumb: React.FC<{
         e.stopPropagation();
         onOpen();
       }}
-      className="group relative block w-full max-w-[min(100%,280px)] overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+      className="group relative block w-full overflow-hidden rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
     >
       <video
         src={att.url}
@@ -256,6 +266,7 @@ const VideoThumb: React.FC<{
 const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
   attachments,
   isOwnMessage,
+  profileImageUrl,
   onOpenMedia,
   isUploading = false,
   uploadProgressById,
@@ -291,7 +302,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
       className={
         onlyVisualMedia
           ? "mb-0.5 max-w-full space-y-2"
-          : "mb-0.5 w-[21rem] max-w-full space-y-2"
+          : "mb-0.5  max-w-full space-y-2"
       }
     >
       {multiImage ? (
@@ -403,7 +414,11 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         if (isVoiceNoteAttachment(att)) {
           return (
             <div key={att.id} className="relative overflow-hidden rounded-2xl">
-              <VoiceNotePlayer att={att} isOwnMessage={isOwnMessage} />
+              <VoiceNotePlayer
+                att={att}
+                isOwnMessage={isOwnMessage}
+                profileImageUrl={profileImageUrl}
+              />
               {isUploading ? (
                 <UploadMediaOverlay
                   percent={progressFor(att.id)}
@@ -491,8 +506,8 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                 <MapPin className="h-5 w-5" />
               </span>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-content">Location</p>
-                <p className="truncate text-[11px] text-content-tertiary">{att.name}</p>
+                <p className={`text-sm font-medium ${isOwnMessage ? "text-white" : "text-content"}`}>Location</p>
+                <p className={`truncate text-[11px] ${isOwnMessage ? "text-white" : "text-content-tertiary"}`}>{att.name}</p>
               </div>
               {isUploading ? (
                 <UploadMediaOverlay
@@ -543,10 +558,10 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
             <div className="flex items-center gap-2.5 px-2.5 pb-2 pt-2.5">
               {fileIcon}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[14px] font-medium leading-snug text-content">
+                <p className={`truncate text-[14px] font-medium leading-snug ${isOwnMessage ? "text-white" : "text-content"}`}>
                   {att.name}
                 </p>
-                <p className="mt-0.5 text-[12px] leading-snug text-[#667781] dark:text-content-tertiary">
+                <p className={`mt-0.5 text-[12px] leading-snug ${isOwnMessage ? "text-white" : "text-[#667781]"} dark:text-content-tertiary`}>
                   {fileMetaLine}
                 </p>
               </div>
@@ -563,7 +578,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                     e.stopPropagation();
                     openAttachment(att);
                   }}
-                  className="py-1.5 text-center text-[13.5px] font-medium text-[#027eb5] transition hover:bg-black/[0.04] dark:text-sky-400"
+                  className={`py-1.5 text-center text-[13.5px] font-medium  transition hover:bg-black/[0.04]  ${isOwnMessage ? "text-white" : "text-[#027eb5]"}`}
                 >
                   Open
                 </button>
@@ -573,7 +588,7 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                     e.stopPropagation();
                     saveAttachment(att);
                   }}
-                  className="border-l border-black/[0.08] py-1.5 text-center text-[13.5px] font-medium text-[#027eb5] transition hover:bg-black/[0.04] dark:border-white/10 dark:text-sky-400"
+                  className={`border-l border-black/[0.08] py-1.5 text-center text-[13.5px] font-medium  transition hover:bg-black/[0.04] dark:border-white/10 dark:text-sky-400 ${isOwnMessage ? "text-white" : "text-[#027eb5]"}`}
                 >
                   Save as...
                 </button>

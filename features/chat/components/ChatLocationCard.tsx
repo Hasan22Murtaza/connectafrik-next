@@ -39,7 +39,7 @@ const ChatLocationCard: React.FC<ChatLocationCardProps> = ({
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
-      className={`mb-1 block w-[min(100%,280px)] overflow-hidden rounded-xl transition hover:opacity-95 ${
+      className={`mb-1 block  overflow-hidden rounded-xl transition hover:opacity-95 ${
         isOwnMessage ? "chat-bubble-own-file" : ""
       }`}
     >
@@ -51,29 +51,29 @@ const ChatLocationCard: React.FC<ChatLocationCardProps> = ({
             className="h-full w-full object-cover"
             loading="lazy"
           />
-          <span className="absolute bottom-2 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#00a884] text-white shadow-md">
+          <span className="absolute bottom-2 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-[#F97316] text-white shadow-md">
             <MapPin className="h-5 w-5" />
           </span>
         </div>
       ) : (
         <div className="flex h-28 items-center justify-center bg-gradient-to-br from-emerald-500/20 to-sky-500/20">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#00a884] text-white shadow-md">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F97316] text-white shadow-md">
             <MapPin className="h-6 w-6" />
           </span>
         </div>
       )}
       <div className="flex items-start gap-2 px-2.5 py-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-content">
+          <p className={`truncate text-sm font-semibold ${isOwnMessage ? "text-white" :"text-content" } `}>
             {location.display_name}
           </p>
           {subtitle ? (
-            <p className="truncate text-[11px] text-content-tertiary">{subtitle}</p>
+            <p className={`truncate text-[11px] ${isOwnMessage ? "text-surface-secondary" : "text-content-tertiary" } `}>{subtitle}</p>
           ) : (
             <p className="text-[11px] text-content-tertiary">Tap to open in Maps</p>
           )}
         </div>
-        <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-content-tertiary" />
+        <ExternalLink className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${isOwnMessage ? "text-surface-secondary" : "text-content-tertiary" }`} />
       </div>
     </a>
   );

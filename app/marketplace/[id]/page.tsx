@@ -11,11 +11,11 @@ import {
   Heart,
   MapPin,
   MessageCircle,
+  Flag,
   Phone,
   Share2,
   Shield,
   ShoppingBag,
-  ShoppingCart,
   Truck,
   UserPlus,
   X,
@@ -26,7 +26,8 @@ import { useProductionChat } from "@/contexts/ProductionChatContext";
 import { apiClient } from "@/lib/api-client";
 import { Product } from "@/shared/types";
 import toast from "react-hot-toast";
-import ProductReviews from "@/features/marketplace/components/ProductReviews";
+import ReportListingModal from "@/features/marketplace/components/ReportListingModal";
+import { recordRecentlyViewed } from "@/features/marketplace/utils/recentlyViewed";
 import { startMarketplaceConversation } from "@/features/marketplace/services/marketplaceInboxService";
 import { buildMarketplaceSeedThread } from "@/features/marketplace/utils/marketplaceChatThread";
 import {
@@ -51,6 +52,7 @@ import {
   unfollowUser,
 } from "@/features/social/services/followService";
 import { ProductDetailPageShimmer } from "@/shared/components/ui/ShimmerLoaders";
+import Link from "next/link";
 
 const FALLBACK_IMAGE =
   "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800";
@@ -76,6 +78,7 @@ const ProductDetailPage: React.FC = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [fadeIn, setFadeIn] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
@@ -88,6 +91,7 @@ const ProductDetailPage: React.FC = () => {
       const productData = res.data;
       setProduct(productData);
       setIsSaved(!!productData.is_saved);
+      recordRecentlyViewed(productData);
       setSelectedImage(0);
       setDescExpanded(false);
       requestAnimationFrame(() => setFadeIn(true));
@@ -362,11 +366,11 @@ const ProductDetailPage: React.FC = () => {
 
   const images = product.images?.length ? product.images : [FALLBACK_IMAGE];
   const hasMultipleImages = images.length > 1;
-  const isOutOfStock = product.stock_quantity === 0;
-  const isUnavailable = !product.is_available;
+  const isPending = !product.is_available && product.stock_quantity > 0;
+  const isSold = product.stock_quantity === 0;
+  const isClosed = isSold || isPending;
   const isOwnProduct = user?.id === product.seller_id;
   const location = formatProductLocation(product);
-  const canPurchase = !isOutOfStock && !isUnavailable && !isOwnProduct;
   const subcategory = resolveSubcategory(product.subcategory, product.tags);
   const conditionLabel =
     PRODUCT_CONDITIONS.find((c) => c.value === product.condition)?.label ||
@@ -398,12 +402,10 @@ const ProductDetailPage: React.FC = () => {
     });
   }
   specRows.push({ label: "Condition", value: conditionLabel });
-  if (product.stock_quantity > 0) {
-    specRows.push({
-      label: "Quantity",
-      value: String(product.stock_quantity),
-    });
-  }
+  specRows.push({
+    label: "Status",
+    value: isSold ? "Sold" : isPending ? "Pending" : "Available",
+  });
   if (hasDelivery) {
     specRows.push({ label: "Delivery", value: "Available" });
   }
@@ -414,23 +416,9 @@ const ProductDetailPage: React.FC = () => {
     specRows.push({ label: "Tag", value: tag });
   });
 
-  const handleBuyNow = () => {
-    if (!user) {
-      toast.error("Please sign in to purchase");
-      router.push(`/signin?redirect=/marketplace/${id}`);
-      return;
-    }
-    if (isOwnProduct) {
-      toast.error("This is your own product");
-      return;
-    }
-    if (isOutOfStock || isUnavailable) return;
-    router.push(`/marketplace/${id}/checkout`);
-  };
-
   const openSellerProfile = () => {
-    if (product.seller?.username) {
-      router.push(`/user/${encodeURIComponent(product.seller.username)}`);
+    if (product.seller?.id) {
+      router.push(`/user/${product.seller.id}`);
     }
   };
 
@@ -462,6 +450,16 @@ const ProductDetailPage: React.FC = () => {
           >
             <Share2 className="w-5 h-5 text-content" />
           </button>
+          {!isOwnProduct && (
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              className="p-2 rounded-full hover:bg-surface-hover transition-colors active:scale-95"
+              aria-label="Report listing"
+            >
+              <Flag className="w-5 h-5 text-content" />
+            </button>
+          )}
           <button
             type="button"
             onClick={handleSave}
@@ -516,10 +514,10 @@ const ProductDetailPage: React.FC = () => {
                   }}
                 />
 
-                {(isOutOfStock || isUnavailable) && (
+                {isClosed && (
                   <div className="absolute inset-0 bg-black/45 flex items-center justify-center pointer-events-none">
                     <span className="bg-surface text-content text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
-                      {isOutOfStock ? "Sold out" : "Unavailable"}
+                      {isSold ? "Sold" : "Pending"}
                     </span>
                   </div>
                 )}
@@ -534,6 +532,16 @@ const ProductDetailPage: React.FC = () => {
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
+                  {!isOwnProduct && (
+                    <button
+                      type="button"
+                      onClick={() => setReportOpen(true)}
+                      className="p-2.5 rounded-full bg-surface/90 backdrop-blur-sm text-content hover:bg-surface shadow-sm transition-all active:scale-95"
+                      aria-label="Report listing"
+                    >
+                      <Flag className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleSave}
@@ -716,6 +724,7 @@ const ProductDetailPage: React.FC = () => {
                   />
                 </button>
                 <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={openSellerProfile}
@@ -728,32 +737,7 @@ const ProductDetailPage: React.FC = () => {
                       @{product.seller?.username || "unknown"}
                     </p>
                   </button>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-content-secondary">
-                    {(product.average_rating || 0) > 0 && (
-                      <span>
-                        ★ {(product.average_rating || 0).toFixed(1)}
-                        {product.reviews_count
-                          ? ` · ${product.reviews_count} reviews`
-                          : ""}
-                      </span>
-                    )}
-                    {sellerListingCount != null && (
-                      <span>
-                        {sellerListingCount} active listing
-                        {sellerListingCount === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {product.seller?.bio && (
-                <p className="mt-3 text-sm text-content-secondary leading-relaxed line-clamp-3">
-                  {product.seller.bio}
-                </p>
-              )}
-
-              {!isOwnProduct && (
+                   {!isOwnProduct && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {product.contact_phone && (
                     <a
@@ -775,10 +759,29 @@ const ProductDetailPage: React.FC = () => {
                     }`}
                   >
                     <UserPlus className="w-4 h-4" />
-                    {isFollowing ? "Following" : "Follow"}
+                    {isFollowing ? "Tap In" : "UnTap In"}
                   </button>
                 </div>
               )}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-content-secondary">
+                    {sellerListingCount != null && (
+                      <span>
+                        {sellerListingCount} active listing
+                        {sellerListingCount === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {product.seller?.bio && (
+                <p className="mt-3 text-sm text-content-secondary leading-relaxed line-clamp-3">
+                  {product.seller.bio}
+                </p>
+              )}
+
+             
             </section>
 
             {/* Description */}
@@ -883,22 +886,6 @@ const ProductDetailPage: React.FC = () => {
               </div>
             </section>
 
-            {/* Reviews */}
-            <section className="mx-4 lg:mx-6 border-t border-border py-6">
-              <ProductReviews
-                productId={product.id}
-                sellerId={product.seller_id}
-                averageRating={product.average_rating || 0}
-                reviewsCount={product.reviews_count || 0}
-                ratingBreakdown={{
-                  rating_1_count: product.rating_1_count || 0,
-                  rating_2_count: product.rating_2_count || 0,
-                  rating_3_count: product.rating_3_count || 0,
-                  rating_4_count: product.rating_4_count || 0,
-                  rating_5_count: product.rating_5_count || 0,
-                }}
-              />
-            </section>
           </div>
 
           {/* ── Desktop sticky purchase panel ── */}
@@ -919,9 +906,9 @@ const ProductDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleContactSeller}
-                  disabled={contactingSeller || isOwnProduct}
+                  disabled={contactingSeller || isOwnProduct || isClosed}
                   className={`w-full py-3.5 px-4 rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 transition-all active:scale-[0.99] ${
-                    contactingSeller || isOwnProduct
+                    contactingSeller || isOwnProduct || isClosed
                       ? "bg-surface-secondary text-content-tertiary cursor-not-allowed"
                       : "bg-primary-600 text-white hover:bg-primary-700 shadow-sm"
                   }`}
@@ -931,28 +918,22 @@ const ProductDetailPage: React.FC = () => {
                     ? "Opening chat…"
                     : isOwnProduct
                       ? "Your listing"
-                      : "Message seller"}
+                      : isSold
+                        ? "Sold"
+                        : isPending
+                          ? "Pending"
+                          : "Message seller"}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleBuyNow}
-                  disabled={!canPurchase}
-                  className={`w-full py-3.5 px-4 rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 border-2 transition-all active:scale-[0.99] ${
-                    canPurchase
-                      ? "border-primary-600 text-primary-600 hover:bg-primary-50"
-                      : "border-border text-content-tertiary cursor-not-allowed"
-                  }`}
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                  {isOwnProduct
-                    ? "Your product"
-                    : isOutOfStock
-                      ? "Out of stock"
-                      : isUnavailable
-                        ? "Unavailable"
-                        : "Buy now"}
-                </button>
+                {!isOwnProduct && (
+                  <button
+                    type="button"
+                    onClick={() => setReportOpen(true)}
+                    className="w-full py-2 text-sm font-semibold text-content-secondary hover:text-content"
+                  >
+                    Report listing
+                  </button>
+                )}
 
                 {product.contact_phone && !isOwnProduct && (
                   <a
@@ -1031,15 +1012,6 @@ const ProductDetailPage: React.FC = () => {
       {!isOwnProduct && (
         <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border-subtle bg-surface/95 backdrop-blur-md px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-2 max-w-lg mx-auto">
-            <button
-              type="button"
-              onClick={handleContactSeller}
-              disabled={contactingSeller}
-              className="flex-1 h-12 rounded-xl font-semibold text-[15px] bg-surface-secondary text-content hover:bg-surface-hover disabled:opacity-50 transition-all active:scale-[0.98] inline-flex items-center justify-center gap-2"
-            >
-              <MessageCircle className="w-5 h-5" />
-              {contactingSeller ? "…" : "Message"}
-            </button>
             {product.contact_phone && (
               <a
                 href={`tel:${product.contact_phone}`}
@@ -1051,16 +1023,18 @@ const ProductDetailPage: React.FC = () => {
             )}
             <button
               type="button"
-              onClick={handleBuyNow}
-              disabled={!canPurchase}
-              className={`flex-1 h-12 rounded-xl font-semibold text-[15px] inline-flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
-                canPurchase
-                  ? "bg-primary-600 text-white hover:bg-primary-700"
-                  : "bg-surface-secondary text-content-tertiary cursor-not-allowed"
-              }`}
+              onClick={handleContactSeller}
+              disabled={contactingSeller || isClosed}
+              className="flex-1 h-12 rounded-xl font-semibold text-[15px] bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-all active:scale-[0.98] inline-flex items-center justify-center gap-2"
             >
-              <ShoppingCart className="w-5 h-5" />
-              {isOutOfStock || isUnavailable ? "Unavailable" : "Buy now"}
+              <MessageCircle className="w-5 h-5" />
+              {contactingSeller
+                ? "Opening…"
+                : isSold
+                  ? "Sold"
+                  : isPending
+                    ? "Pending"
+                    : "Message seller"}
             </button>
           </div>
         </div>
@@ -1161,6 +1135,13 @@ const ProductDetailPage: React.FC = () => {
         </div>
       )}
 
+      {reportOpen && (
+        <ReportListingModal
+          productId={product.id}
+          title={product.title}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   );
 };

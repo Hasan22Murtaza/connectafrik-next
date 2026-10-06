@@ -22,6 +22,7 @@ import { getSessionIdFromAccessToken } from '@/shared/utils/sessionDeviceLabel';
 import { supabaseMessagingService } from '@/features/chat/services/supabaseMessagingService';
 import { patchCallSessionWithRetry, getLatestCallSession } from '@/features/chat/services/callSessionRealtime';
 import { apiClient } from '@/lib/api-client';
+import { friendRequestService } from '@/features/social/services/friendRequestService';
 import {
   stopAll as stopAllRingtones,
   playRingbackTone,
@@ -113,7 +114,8 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   const [messageText, setMessageText] = useState('');
   const [showAddPeople, setShowAddPeople] = useState(false);
   const [addPeopleSearch, setAddPeopleSearch] = useState('');
-  const [addPeopleResults, setAddPeopleResults] = useState<any[]>([]);
+  const [addPeopleFriends, setAddPeopleFriends] = useState<any[]>([]);
+  const [addPeopleLoading, setAddPeopleLoading] = useState(false);
   const [addPeopleBusyById, setAddPeopleBusyById] = useState<Record<string, boolean>>({});
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [groupPage, setGroupPage] = useState(0);
@@ -224,6 +226,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
 
   const {
     isGroupCallSession,
+    sessionHostId,
     isGroupCallSessionRef,
     suppressSignalRef,
     signalMediaDisconnected,
@@ -602,12 +605,15 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     });
   }, [engagement, localParticipantInfo]);
 
+  const isCallHost = Boolean(sessionHostId && currentUserId && sessionHostId === currentUserId);
+
   const handleMuteParticipant = useCallback(
     (participantId: string, displayName?: string) => {
+      if (!isCallHost) return;
       engagement.requestMute(participantId);
       toast(`Muted ${displayName || 'participant'}`);
     },
-    [engagement],
+    [engagement, isCallHost],
   );
 
   const handleToggleVideo = useCallback(async () => {
@@ -808,24 +814,17 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       }
       setInvitingUserId(targetUser.id);
       try {
-        const threadRes = await apiClient.post<{ data: { id: string } }>(
-          '/api/chat/threads',
-          { participant_ids: [targetUser.id], type: 'direct' },
-        );
-        const directThreadId = threadRes?.data?.id;
-        if (!directThreadId) throw new Error('Thread not found');
-        await apiClient.post(`/api/chat/threads/${directThreadId}/call-sessions`, {
+        await apiClient.post('/api/chat/calls/invite', {
           call_id: callIdRef.current || callIdHint || '',
           call_type: effectiveCallType,
           room_id: roomIdHint || meetingId,
           target_user_id: targetUser.id,
-          is_group_call: true,
           caller_name: resolvedCallerName,
           provider: 'livekit',
         });
         setShowAddPeople(false);
         setAddPeopleSearch('');
-        setAddPeopleResults([]);
+        setAddPeopleFriends([]);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Could not add this person to the call.';
         toast.error(message);
@@ -844,26 +843,38 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
     ],
   );
 
+  // WhatsApp-style: show friends as soon as Add People opens; search filters that list.
   useEffect(() => {
-    if (!showAddPeople || !addPeopleSearch.trim() || addPeopleSearch.length < 2) {
-      setAddPeopleResults([]);
-      return;
-    }
-    const t = setTimeout(async () => {
+    if (!showAddPeople) return;
+    let cancelled = false;
+    setAddPeopleLoading(true);
+    void (async () => {
       try {
-        const res = await apiClient.get<{ data: any[] }>('/api/users/search', {
-          q: addPeopleSearch,
-          limit: 10,
-        });
-        if (isMountedRef.current) {
-          setAddPeopleResults((res?.data || []).filter((u: any) => u.id !== currentUserId));
-        }
+        const friends = await friendRequestService.getFriends();
+        if (cancelled || !isMountedRef.current) return;
+        setAddPeopleFriends(
+          (friends || []).filter((u: any) => u?.id && String(u.id) !== String(currentUserId)),
+        );
       } catch {
-        setAddPeopleResults([]);
+        if (!cancelled && isMountedRef.current) setAddPeopleFriends([]);
+      } finally {
+        if (!cancelled && isMountedRef.current) setAddPeopleLoading(false);
       }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [addPeopleSearch, showAddPeople, currentUserId]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [showAddPeople, currentUserId]);
+
+  const addPeopleResults = useMemo(() => {
+    const q = addPeopleSearch.trim().toLowerCase();
+    if (!q) return addPeopleFriends;
+    return addPeopleFriends.filter((u: any) => {
+      const name = String(u.full_name || '').toLowerCase();
+      const username = String(u.username || '').toLowerCase();
+      return name.includes(q) || username.includes(q);
+    });
+  }, [addPeopleFriends, addPeopleSearch]);
 
   useEffect(() => {
     if (!showAddPeople || addPeopleResults.length === 0) {
@@ -922,13 +933,17 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         audioVolume={opts.audioVolume}
         handRaised={engagement.isHandRaised(participant.identity)}
         onMute={
-          opts.isLocal
-            ? undefined
-            : () => handleMuteParticipant(participant.identity, participant.name || 'participant')
+          isCallHost && !opts.isLocal
+            ? () =>
+                handleMuteParticipant(
+                  participant.identity,
+                  participant.name || 'participant',
+                )
+            : undefined
         }
       />
     ),
-    [engagement.isHandRaised, handleMuteParticipant],
+    [engagement.isHandRaised, handleMuteParticipant, isCallHost],
   );
 
   const participantByIdentity = useMemo(() => {
@@ -1338,6 +1353,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
         <AddPeoplePanel
           addPeopleSearch={addPeopleSearch}
           addPeopleResults={addPeopleResults}
+          loading={addPeopleLoading}
           participants={remoteParticipants.map((p) => ({
             id: p.identity,
             displayName: p.name || p.identity,
@@ -1349,6 +1365,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
           onClose={() => {
             setShowAddPeople(false);
             setAddPeopleSearch('');
+            setAddPeopleFriends([]);
             setAddPeopleBusyById({});
           }}
           onInvite={handleInviteToCall}

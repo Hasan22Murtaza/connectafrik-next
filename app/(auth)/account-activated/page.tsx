@@ -3,42 +3,28 @@
 import React from 'react'
 import Link from 'next/link'
 import { CheckCircle2 } from '@/shared/icons'
+import { AuthPageShell } from '@/shared/components/auth/AuthPageShell'
 
 const AccountActivated: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-6">
-          <div className="flex items-center justify-center mb-4">
-            <Link href="/">
-              <img src="/assets/images/logo_2.png" alt="CribsTalk" className="w-30" />
-            </Link>
-          </div>
+    <AuthPageShell
+      title="Account activated successfully"
+      subtitle="Your email has been verified. You can now sign in and start connecting with people and communities worldwide."
+    >
+      <div className="text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <CheckCircle2 className="h-9 w-9 text-green-600" />
         </div>
 
-        <div className="card text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-9 h-9 text-green-600" />
-          </div>
+        <Link href="/signin" className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base">
+          Continue to sign in <span aria-hidden="true">→</span>
+        </Link>
 
-          <h1 className="sm:text-2xl text-xl font-bold text-content mb-2">
-            Account activated successfully
-          </h1>
-          <p className="text-content-secondary sm:text-base text-sm mb-6">
-            Your email has been verified. You can now sign in and start connecting with
-            people and communities worldwide.
-          </p>
-
-          <Link href="/signin" className="w-full btn-primary text-base inline-block">
-            Continue to sign in
-          </Link>
-
-          <p className="text-xs text-content-secondary mt-4">
-            Welcome to CribsTalk — connecting people worldwide.
-          </p>
-        </div>
+        <p className="mt-5 text-xs text-[#6B7280]">
+          Welcome to CribsTalk — connecting people worldwide.
+        </p>
       </div>
-    </div>
+    </AuthPageShell>
   )
 }
 

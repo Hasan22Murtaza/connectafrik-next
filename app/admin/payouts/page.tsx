@@ -158,7 +158,7 @@ export default function AdminPayoutsPage() {
                     </AdminTableCell>
                     <AdminTableCell>
                       <Link
-                        href={`/my-orders/${payout.order_id}`}
+                        href="/marketplace"
                         target="_blank"
                         className="text-primary-600 hover:text-primary-700 font-mono text-xs flex items-center gap-0.5 font-medium transition-colors"
                       >
@@ -254,7 +254,7 @@ export default function AdminPayoutsPage() {
                       </AdminTableCell>
                       <AdminTableCell>
                         <Link
-                          href={`/my-orders/${payout.order_id}`}
+                          href="/marketplace"
                           target="_blank"
                           className="text-primary-600 hover:text-primary-700 font-mono text-xs font-medium transition-colors"
                         >

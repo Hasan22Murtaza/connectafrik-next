@@ -65,7 +65,7 @@ export function OtpInput({
           onChange={(e) => handleOtpChange(index, e.target.value)}
           onKeyDown={(e) => handleKeyDown(index, e)}
           onPaste={index === 0 ? handlePaste : undefined}
-          className="w-12 h-14 text-center text-2xl font-semibold border-2 border-gray-300 rounded-lg  focus:outline-none focus:border-primary-600 focus:ring-2 focus:ring-primary-200 transition-colors disabled:opacity-50"
+          className="h-14 w-12 rounded-xl border border-[#E5E7EB] bg-white text-center text-2xl font-semibold text-[#111827] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20 disabled:opacity-50"
           autoFocus={autoFocus && index === 0}
           aria-label={`Digit ${index + 1} of 6`}
         />

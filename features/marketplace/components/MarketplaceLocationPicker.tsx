@@ -23,7 +23,7 @@ import {
 } from "@/features/marketplace/utils/marketplaceLocation";
 
 const modalFieldClass =
-  "w-full px-4 pt-5 pb-2.5 bg-surface-input border border-transparent rounded-xl text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:bg-surface focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all";
+  "w-full px-4  py-3 bg-surface-input border border-transparent rounded-xl text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:bg-surface focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all";
 
 export type MarketplaceLocationPickerProps = {
   location: ProfileLocationValue;
@@ -208,21 +208,21 @@ const MarketplaceLocationPicker: React.FC<MarketplaceLocationPickerProps> = ({
               onClick={() => setOpen(false)}
             />
 
-            <div className="relative w-full sm:max-w-lg bg-surface rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-center px-4 py-4 border-b border-border shrink-0 relative">
+            <div className="relative w-full sm:max-w-lg bg-surface rounded-2xl shadow-xl max-h-[92vh] overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-4 py-4  shrink-0 bg-primary-600 relative">
                 <h2
                   id="marketplace-location-modal-title"
-                  className="text-base font-bold text-content"
+                  className="text-base font-bold text-white"
                 >
                   Change location
                 </h2>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-surface-hover transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full text-gray-200 hover:text-gray-400 transition-colors"
                   aria-label="Close"
                 >
-                  <X className="w-5 h-5 text-content-secondary" />
+                  <X className="w-5 h-5 " />
                 </button>
               </div>
 
@@ -232,7 +232,6 @@ const MarketplaceLocationPicker: React.FC<MarketplaceLocationPickerProps> = ({
                 </p>
 
                 <div className="relative">
-                  <MapPin className="absolute left-3.5 top-[1.65rem] w-4 h-4 text-content-tertiary z-10 pointer-events-none" />
                   <LocationSearch
                     value={draftLocation}
                     onChange={setDraftLocation}

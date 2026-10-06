@@ -122,7 +122,8 @@ const GlobalCallNotification: React.FC = () => {
     const { threadId, callRequest } = primaryIncoming
     const roomId = callRequest.roomId || ''
     const callId = callRequest.callId || ''
-    return `${threadId}|${callId}|${roomId}|${callRequest.type}`
+    const invitedAt = callRequest.invitedAt || ''
+    return `${threadId}|${callId}|${roomId}|${callRequest.type}|${invitedAt}`
   }, [primaryIncoming])
 
   // If callRequests flickers empty for one frame, clearing openedIncomingSignatureRef caused a second

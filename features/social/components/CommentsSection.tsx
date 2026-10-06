@@ -543,7 +543,7 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
   return (
     <div
       id={`comment-${comment.id}`}
-      className={`${depth > 0 ? 'ml-10 mt-2' : 'mt-1'} ${
+      className={ ` ${depth > 0 ? 'ml-10 mt-2' : 'mt-1'} ${
         highlightCommentId === comment.id ? 'rounded-xl ring-2 ring-primary-300 bg-primary-50/40 px-1 py-0.5' : ''
       }`}
     >
@@ -667,7 +667,8 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                 onClick={handleLike}
                 className={`font-semibold transition hover:underline ${comment.isLiked ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
               >
-                Like
+
+                {comment.isLiked ? `${comment.likes_count > 0 ? comment.likes_count : ''} ❤️` : 'Like'}
               </button>
               {replyAllowed && (
                 <button
@@ -678,9 +679,9 @@ const FBCommentItem: React.FC<FBCommentItemProps> = ({
                 </button>
               )}
               <span className="text-gray-400">{timeAgo}</span>
-              {comment.likes_count > 0 && (
-                <span className="text-gray-400 ml-auto">{comment.likes_count} ❤️</span>
-              )}
+              {/* {comment.likes_count > 0 && (
+                <span className="text-gray-400 ml-auto">{comment.likes_count}</span>
+              )} */}
             </div>
           )}
 

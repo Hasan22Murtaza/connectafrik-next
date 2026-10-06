@@ -323,7 +323,8 @@ export const removeToken = async (): Promise<boolean> => {
 
 /**
  * Deactivate FCM token for the current device on logout.
- * Sets is_active = false in fcm_tokens so push notifications are not sent to this user until they log in again.
+ * Sets is_active = false in fcm_tokens and deletes the Firebase registration token
+ * so Chrome stops receiving push for this browser until the user logs in again.
  * Call this before signOut() while the session is still valid.
  */
 export const deactivateTokenOnLogout = async (): Promise<void> => {
@@ -333,19 +334,65 @@ export const deactivateTokenOnLogout = async (): Promise<void> => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { device_id } = getDeviceInfo()
+    // Prefer existing localStorage id only — do not mint a new device_id on logout,
+    // which would miss the row that was registered under the previous id.
+    let device_id: string | null = null
+    try {
+      device_id = localStorage.getItem('fcm_device_id')
+    } catch {
+      device_id = null
+    }
 
-    if (!device_id) return
+    // Ensure messaging is ready so we can read + delete the browser push token.
+    if (!messaging) {
+      await initialize().catch(() => false)
+    }
 
-    const url = `/api/fcm/token?user_id=${encodeURIComponent(user.id)}&device_id=${encodeURIComponent(device_id)}`
-    const response = await fetch(url, {
+    let fcmToken: string | null = null
+    try {
+      if (messaging) {
+        fcmToken = await getFCMTokenFromFirebase()
+      }
+    } catch {
+      fcmToken = null
+    }
+
+    const params = new URLSearchParams({ user_id: user.id })
+    if (device_id) params.set('device_id', device_id)
+    if (fcmToken) params.set('fcm_token', fcmToken)
+
+    const response = await fetch(`/api/fcm/token?${params.toString()}`, {
       method: 'DELETE',
     })
 
     if (response.ok) {
+      invalidateTokenStatusCache()
       console.log('🔔 FCM token deactivated for this device on logout')
     } else {
       console.warn('⚠️ Could not deactivate FCM token on logout:', response.status)
+    }
+
+    // Unregister this browser's FCM push subscription so Chrome cannot deliver
+    // notifications for the logged-out session even if a stale DB row remains.
+    try {
+      if (messaging) {
+        await deleteToken(messaging)
+      }
+    } catch (deleteErr) {
+      console.warn('⚠️ Could not delete Firebase messaging token on logout:', deleteErr)
+    }
+
+    // Dismiss any notifications already shown in this browser.
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(
+        regs.map(async (reg) => {
+          const notes = await reg.getNotifications()
+          notes.forEach((n) => n.close())
+        })
+      )
+    } catch {
+      // non-fatal
     }
   } catch (error) {
     console.warn('⚠️ Error deactivating FCM token on logout:', error)

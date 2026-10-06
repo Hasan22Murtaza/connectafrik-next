@@ -298,7 +298,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({
               {isMenuOpen && (
                 <ul
                   role="menu"
-                  className="absolute right-0 top-full z-50 mt-1 m-0 w-52 list-none rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+                  className="absolute right-0 p-1 top-full z-50 mt-1 m-0 w-52 list-none rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
                 >
                   {isPendingInvite ? (
                     <li role="none">
@@ -309,7 +309,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({
                           setOpenMenuId(null)
                           handleRemoveMember(member, true)
                         }}
-                        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                        className="flex w-full items-center gap-2 px-3 py-1.5 rounded-md text-left text-sm font-medium text-red-600 hover:bg-red-50"
                       >
                         <X className="h-4 w-4" />
                         Cancel invite
@@ -332,7 +332,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({
                                   setOpenMenuId(null)
                                   handleRoleChange(member, role)
                                 }}
-                                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50 ${
+                                className={`flex w-full items-center gap-2 px-3 py-2 rounded-md text-left text-sm hover:bg-gray-50 disabled:opacity-50 ${
                                   role === normalizedRole ? 'font-semibold text-gray-900' : 'text-gray-700'
                                 }`}
                               >
@@ -345,7 +345,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({
                         </>
                       )}
                       {showRestrict && (
-                        <li role="none" className={showRoleSelect ? 'border-t border-gray-100' : ''}>
+                        <li role="none" >
                           <button
                             type="button"
                             role="menuitem"
@@ -353,7 +353,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({
                               setOpenMenuId(null)
                               handleTogglePostingRestricted(member)
                             }}
-                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-amber-700 hover:bg-amber-50"
+                            className="flex w-full items-center gap-2 px-3 py-1.5 rounded-md text-left text-sm font-medium text-amber-700 hover:bg-amber-50"
                           >
                             <Ban className="h-4 w-4" />
                             {member.posting_restricted ? 'Allow posts' : 'Restrict posting'}
@@ -361,7 +361,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({
                         </li>
                       )}
                       {showRemove && (
-                        <li role="none" className={showRestrict || showRoleSelect ? 'border-t border-gray-100' : ''}>
+                        <li role="none" >
                           <button
                             type="button"
                             role="menuitem"
@@ -369,7 +369,7 @@ const GroupMembersList: React.FC<GroupMembersListProps> = ({
                               setOpenMenuId(null)
                               handleRemoveMember(member)
                             }}
-                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                            className="flex w-full items-center gap-2 px-3 py-1.5 rounded-md text-left text-sm font-medium text-red-600 hover:bg-red-50"
                           >
                             <UserMinus className="h-4 w-4" />
                             Remove

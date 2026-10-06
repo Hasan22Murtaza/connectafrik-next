@@ -46,7 +46,7 @@ const ChatFormattingToolbar: React.FC<ChatFormattingToolbarProps> = ({
 }) => {
   const btnBase =
     "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-content-secondary transition hover:bg-surface-hover hover:text-content disabled:pointer-events-none disabled:opacity-40";
-  const btnActive = "bg-[#00a884]/15 text-[#00a884]";
+  const btnActive = "bg-[#F97316]/15 text-[#F97316]";
 
   return (
     <div

@@ -1,16 +1,10 @@
 "use client";
 
 import {
-  Copy,
-  Download,
   FileText,
-  Highlighter,
   Plus,
   Send,
   Smile,
-  Square,
-  Sticker,
-  Wand2,
   X,
 } from "@/shared/icons";
 import {
@@ -32,7 +26,6 @@ interface ChatMediaComposerProps {
   onTyping?: () => void;
   onClose: () => void;
   onRemove: (index: number) => void;
-  onReplaceFile?: (index: number, next: FileUploadResult) => void;
   onAddFiles: (files: FileUploadResult[]) => void;
   onSend: () => void;
   viewOnceAvailable?: boolean;
@@ -41,27 +34,6 @@ interface ChatMediaComposerProps {
   sending?: boolean;
   disabled?: boolean;
   compact?: boolean;
-}
-
-function CropRotateIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M6 2v4H2" />
-      <path d="M6 6a8 8 0 1 0 8-4" />
-      <path d="M7 10h7v7H7z" />
-      <path d="M7 14h7" />
-      <path d="M11 10v7" />
-    </svg>
-  );
 }
 
 function ToolButton({
@@ -92,52 +64,6 @@ function ToolButton({
   );
 }
 
-async function rotateImageFile(
-  item: FileUploadResult
-): Promise<FileUploadResult> {
-  const src = item.previewUrl || item.url;
-  if (!src) throw new Error("No image to rotate");
-
-  const img = new Image();
-  img.decoding = "async";
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error("Could not load image"));
-    img.src = src;
-  });
-
-  const canvas = document.createElement("canvas");
-  canvas.width = img.naturalHeight;
-  canvas.height = img.naturalWidth;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not rotate image");
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(Math.PI / 2);
-  ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-
-  const mime = item.mimeType?.startsWith("image/")
-    ? item.mimeType
-    : "image/jpeg";
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (next) => (next ? resolve(next) : reject(new Error("Could not rotate image"))),
-      mime,
-      0.92
-    );
-  });
-
-  const file = new File([blob], item.name, { type: blob.type });
-  const previewUrl = URL.createObjectURL(blob);
-  return {
-    ...item,
-    file,
-    url: previewUrl,
-    previewUrl,
-    size: blob.size,
-    mimeType: blob.type,
-  };
-}
-
 const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
   files,
   caption,
@@ -145,7 +71,6 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
   onTyping,
   onClose,
   onRemove,
-  onReplaceFile,
   onAddFiles,
   onSend,
   viewOnceAvailable = false,
@@ -157,7 +82,6 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [emojiOpen, setEmojiOpen] = useState(false);
-  const [rotating, setRotating] = useState(false);
   const addInputRef = useRef<HTMLInputElement>(null);
   const captionRef = useRef<HTMLTextAreaElement>(null);
   const prevLenRef = useRef(files.length);
@@ -201,56 +125,34 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
     if (results.length) onAddFiles(results);
   };
 
-  const handleRotate = async () => {
-    if (!current || current.type !== "image" || rotating) return;
-    setRotating(true);
-    try {
-      const next = await rotateImageFile(current);
-      onReplaceFile?.(activeIndex, next);
-    } catch {
-      toast.error("Could not rotate this photo");
-    } finally {
-      setRotating(false);
-    }
-  };
-
-  const handleCopy = async () => {
-    if (!current || !previewSrc) return;
-    try {
-      let copyBlob: Blob;
-      if (current.file instanceof Blob) {
-        copyBlob = current.file;
-      } else {
-        const res = await fetch(previewSrc);
-        if (!res.ok) throw new Error("copy");
-        copyBlob = await res.blob();
+  const handlePaste = useCallback(
+    async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      if (disabled || sending) return;
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const imageFiles: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
       }
-      if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
-        await navigator.clipboard.writeText(previewSrc);
-        toast.success("Copied");
-        return;
+      if (imageFiles.length === 0) {
+        const filesFromList = Array.from(e.clipboardData?.files ?? []).filter(
+          (f) => f.type.startsWith("image/")
+        );
+        imageFiles.push(...filesFromList);
       }
-      const mimeType = copyBlob.type && copyBlob.type.length > 0 ? copyBlob.type : "image/png";
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          [mimeType]: copyBlob,
-        } as ConstructorParameters<typeof ClipboardItem>[0]),
-      ]);
-      toast.success("Copied");
-    } catch {
-      toast.error("Could not copy");
-    }
-  };
-
-  const handleDownload = () => {
-    if (!current || !previewSrc) return;
-    const a = document.createElement("a");
-    a.href = previewSrc;
-    a.download = current.name || "media";
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    a.click();
-  };
+      if (imageFiles.length === 0) return;
+      e.preventDefault();
+      try {
+        const results = await fileUploadService.fromFiles(imageFiles);
+        if (results.length) onAddFiles(results);
+      } catch {
+        toast.error("Could not add pasted images");
+      }
+    },
+    [disabled, sending, onAddFiles]
+  );
 
   const insertEmoji = useCallback(
     (emoji: string) => {
@@ -273,68 +175,6 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
       <div className="flex shrink-0 items-center gap-0.5 px-1.5 py-1.5 sm:px-2">
         <ToolButton label="Close" onClick={onClose}>
           <X className="h-5 w-5" strokeWidth={1.75} />
-        </ToolButton>
-
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto scrollbar-thin">
-          <ToolButton
-            label="Crop / rotate"
-            onClick={() => void handleRotate()}
-            active={rotating}
-          >
-            <CropRotateIcon className="h-[18px] w-[18px]" />
-          </ToolButton>
-          <ToolButton label="Filters">
-            <Wand2 className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </ToolButton>
-          <ToolButton label="Draw">
-            <svg
-              className="h-[18px] w-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z" />
-              <path d="M13.5 6.5l3 3" />
-            </svg>
-          </ToolButton>
-          <ToolButton label="Add text">
-            <span className="text-[13px] font-semibold leading-none">Aa</span>
-          </ToolButton>
-          <ToolButton label="Shapes">
-            <Square className="h-[17px] w-[17px]" strokeWidth={1.75} />
-          </ToolButton>
-          <ToolButton label="Blur">
-            <Highlighter className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </ToolButton>
-          <ToolButton
-            label="Emoji"
-            onClick={() => setEmojiOpen((open) => !open)}
-            active={emojiOpen}
-          >
-            <Smile className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </ToolButton>
-          <ToolButton
-            label="Stickers"
-            onClick={() => setEmojiOpen((open) => !open)}
-          >
-            <Sticker className="h-[18px] w-[18px]" strokeWidth={1.75} />
-          </ToolButton>
-          <ToolButton label="Quality">
-            <span className="text-[10px] font-bold leading-none tracking-wide">
-              HD
-            </span>
-          </ToolButton>
-        </div>
-
-        <ToolButton label="Copy" onClick={() => void handleCopy()}>
-          <Copy className="h-[17px] w-[17px]" strokeWidth={1.75} />
-        </ToolButton>
-        <ToolButton label="Download" onClick={handleDownload}>
-          <Download className="h-[17px] w-[17px]" strokeWidth={1.75} />
         </ToolButton>
       </div>
 
@@ -393,6 +233,7 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
                 onCaptionChange(e.target.value);
                 onTyping?.();
               }}
+              onPaste={(e) => void handlePaste(e)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -421,7 +262,7 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
               onClick={() => onViewOnceChange?.(!viewOnceEnabled)}
               className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
                 viewOnceEnabled
-                  ? "bg-[#00a884] text-white shadow-sm"
+                  ? "bg-[#F97316] text-white shadow-sm"
                   : "bg-white text-[#54656f] shadow-[0_1px_2px_rgba(11,20,26,0.06)] hover:bg-[#f0f2f5] dark:bg-surface dark:text-content-secondary"
               }`}
               aria-pressed={viewOnceEnabled}
@@ -452,7 +293,7 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
                 onClick={() => setActiveIndex(index)}
                 className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-[#d1d7db] ring-2 transition dark:bg-surface-secondary ${
                   selected
-                    ? "ring-[#00a884]"
+                    ? "ring-[#F97316]"
                     : "ring-transparent hover:ring-[#8696a0]/50"
                 }`}
                 aria-label={`Select ${file.name}`}
@@ -514,7 +355,7 @@ const ChatMediaComposer: React.FC<ChatMediaComposerProps> = ({
           type="button"
           onClick={onSend}
           disabled={disabled || sending}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#00a884] text-white shadow-[0_2px_8px_rgba(0,168,132,0.35)] transition hover:bg-[#008f72] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:w-14"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#F97316] text-white shadow-lg transition hover:bg-[#ea580c] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:w-14"
           aria-label="Send"
         >
           {sending ? (

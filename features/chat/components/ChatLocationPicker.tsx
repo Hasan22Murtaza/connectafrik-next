@@ -206,7 +206,7 @@ const ChatLocationPicker: React.FC<ChatLocationPickerProps> = ({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search places or address"
-              className="w-full rounded-full border border-border bg-surface-secondary py-2.5 pl-9 pr-10 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-[#00a884]/25"
+              className="w-full rounded-full border border-border bg-surface-secondary py-2.5 pl-9 pr-10 text-sm text-content placeholder:text-content-tertiary focus:outline-none focus:ring-2 focus:ring-[#F97316]/25"
               autoComplete="off"
             />
             {loading ? (
@@ -234,7 +234,7 @@ const ChatLocationPicker: React.FC<ChatLocationPickerProps> = ({
             disabled={currentLoading}
             className="flex w-full items-center gap-3 border-b border-border-subtle px-4 py-3.5 text-left transition hover:bg-surface-hover disabled:opacity-60"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#00a884]/15 text-[#00a884]">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F97316]/15 text-[#F97316]">
               {currentLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (

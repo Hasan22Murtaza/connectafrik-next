@@ -5,6 +5,23 @@ export const MARKETPLACE_SYSTEM = 'marketplace_system'
 
 export const DEFAULT_INQUIRY_MESSAGE = 'Is this still available? 🙂'
 
+export function buildMarketplaceInquiryContent(params: {
+  title: string
+  productId: string
+  priceLabel: string
+  note?: string
+}): string {
+  const note = params.note?.trim() || DEFAULT_INQUIRY_MESSAGE
+  return [
+    'Marketplace Listing',
+    `Product: ${params.title}`,
+    `Price: ${params.priceLabel}`,
+    `Listing ID: ${params.productId}`,
+    '',
+    note,
+  ].join('\n')
+}
+
 export function isMarketplaceMessageType(t: string | undefined): boolean {
   return t === MARKETPLACE_INQUIRY || t === MARKETPLACE_SYSTEM
 }

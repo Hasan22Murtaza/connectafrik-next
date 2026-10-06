@@ -230,10 +230,10 @@ const VideoUploader: React.FC<VideoUploaderProps> = ({
           </div>
 
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <Film className="w-5 h-5 text-primary-600" />
+            <div className="flex items-start space-x-2 gap-1">
+              <Film className="w-5 h-5 text-primary-600 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-gray-900">{selectedFile.name}</p>
+                <p className="text-sm font-medium text-gray-900 break-all">{selectedFile.name}</p>
                 <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
               </div>
             </div>

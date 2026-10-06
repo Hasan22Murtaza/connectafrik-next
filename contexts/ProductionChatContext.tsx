@@ -97,6 +97,8 @@ export interface CallRequest {
   callId?: string
   isGroupCall?: boolean
   isRejoin?: boolean
+  /** ISO timestamp of this invite attempt — changes on re-invite so Accept UI can show again. */
+  invitedAt?: string
 }
 
 export interface ActiveCallInfo {
@@ -116,12 +118,13 @@ interface ProductionChatContextType {
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    options?: { forceGroupCall?: boolean }
   ) => Promise<void>
   joinCall: (threadId: string) => Promise<void>
   callRequests: Record<string, CallRequest>
   activeCallsByThread: Record<string, ActiveCallInfo>
-  currentUser: { id: string; name?: string; avatarUrl?: string } | null
+  currentUser: ChatParticipant | null
   clearCallRequest: (threadId: string) => void
   openThreads: string[]
   closeThread: (threadId: string) => void
@@ -129,6 +132,8 @@ interface ProductionChatContextType {
   getMessagesForThread: (threadId: string) => ChatMessage[]
   /** True until the first messages fetch for this thread completes (success or error). */
   isMessagesLoadingForThread: (threadId: string) => boolean
+  /** Whether older pages exist beyond the initial page-0 load (undefined while loading). */
+  getThreadHasOlderMessages: (threadId: string) => boolean | undefined
   sendMessage: (threadId: string, text: string, payload?: any) => Promise<void>
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
@@ -173,7 +178,9 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
+  const [hasOlderByThread, setHasOlderByThread] = useState<Record<string, boolean>>({})
   const messagesRef = useRef<Record<string, ChatMessage[]>>({})
+  const messagesLoadInFlightRef = useRef<Set<string>>(new Set())
   const threadsRef = useRef<ChatThread[]>([])
   const callRequestsRef = useRef<Record<string, CallRequest>>({})
   const callStartInFlightRef = useRef<Set<string>>(new Set())
@@ -182,19 +189,28 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   /** Main window: pause any call poll while a call is active (accept is signaled via postMessage). */
   const pauseIncomingCallsPollRef = useRef(false)
 
-  const currentUser = useMemo(() => {
-    if (!user) return null
+  const userId = user?.id
+  const userEmail = user?.email
+  const userMetaFullName = user?.user_metadata?.full_name as string | undefined
+  const userMetaFirstName = user?.user_metadata?.first_name as string | undefined
+  const userMetaLastName = user?.user_metadata?.last_name as string | undefined
+  const userMetaAvatar =
+    (user?.user_metadata?.avatar_url as string | undefined) ||
+    (user?.user_metadata?.picture as string | undefined) ||
+    (user?.user_metadata?.profile_image as string | undefined)
+
+  const currentUser = useMemo((): ChatParticipant | null => {
+    if (!userId) return null
     const displayName =
-      user.user_metadata?.full_name ||
-      [user.user_metadata?.first_name, user.user_metadata?.last_name].filter(Boolean).join(' ') ||
-      user.email
-    const avatarUrl =
-      user.user_metadata?.avatar_url ||
-      user.user_metadata?.picture ||
-      user.user_metadata?.profile_image ||
-      undefined
-    return { id: user.id, name: displayName || user.email, avatarUrl }
-  }, [user])
+      userMetaFullName ||
+      [userMetaFirstName, userMetaLastName].filter(Boolean).join(' ') ||
+      userEmail
+    return {
+      id: userId,
+      name: displayName || userEmail || 'User',
+      avatarUrl: userMetaAvatar,
+    }
+  }, [userId, userEmail, userMetaFullName, userMetaFirstName, userMetaLastName, userMetaAvatar])
 
   useEffect(() => {
     callRequestsRef.current = callRequests
@@ -210,7 +226,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   // Preload call-related chunks/sdk during idle time so call startup is faster.
   useEffect(() => {
-    if (typeof window === 'undefined' || !user) return
+    if (typeof window === 'undefined' || !userId) return
     let cancelled = false
     const windowWithIdle = window as Window & {
       requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
@@ -236,7 +252,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [user])
+  }, [userId])
 
   const openThread = useCallback(async (threadId: string, seedThread?: ChatThread | null) => {
     supabaseMessagingService.allowRealtimeForThread(threadId)
@@ -356,6 +372,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           const { [thread.id]: _removed, ...rest } = prev
           return rest
         })
+        setHasOlderByThread((prev) => {
+          if (!Object.prototype.hasOwnProperty.call(prev, thread.id)) return prev
+          const { [thread.id]: _removed, ...rest } = prev
+          return rest
+        })
       }
     }
     const onSessionEnded = () => {
@@ -365,6 +386,17 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       if (lockedIds.size === 0) return
       setOpenThreads((prev) => prev.filter((id) => !lockedIds.has(id)))
       setMessages((prev) => {
+        let changed = false
+        const next = { ...prev }
+        for (const id of lockedIds) {
+          if (Object.prototype.hasOwnProperty.call(next, id)) {
+            delete next[id]
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+      setHasOlderByThread((prev) => {
         let changed = false
         const next = { ...prev }
         for (const id of lockedIds) {
@@ -424,6 +456,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     // An explicit empty array means loaded with no messages.
     return !Object.prototype.hasOwnProperty.call(messages, threadId)
   }, [messages])
+
+  const getThreadHasOlderMessages = useCallback((threadId: string) => {
+    if (!Object.prototype.hasOwnProperty.call(hasOlderByThread, threadId)) return undefined
+    return hasOlderByThread[threadId]
+  }, [hasOlderByThread])
 
   const sendMessage = useCallback(async (threadId: string, text: string, payload?: any) => {
     if (!currentUser) {
@@ -646,6 +683,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const clearMessagesForUser = useCallback((threadId: string, _userId: string) => {
     setMessages(prev => ({ ...prev, [threadId]: [] }))
+    setHasOlderByThread((prev) => ({ ...prev, [threadId]: false }))
   }, [])
 
   const markMessageDeletedForUser = useCallback((threadId: string, messageId: string, userId: string) => {
@@ -862,7 +900,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     type: 'audio' | 'video',
     targetUserId?: string,
     targetUserName?: string,
-    targetUserAvatarUrl?: string
+    targetUserAvatarUrl?: string,
+    options?: { forceGroupCall?: boolean }
   ) => {
     const telemetryBase = {
       threadId,
@@ -925,7 +964,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const cachedParticipantIds = (thread?.participants || [])
         .map((p: any) => p?.id)
         .filter((id: string | undefined) => Boolean(id && id !== currentUser?.id)) as string[]
-      let isGroupCall = (thread?.participants?.length || 0) > 2 || thread?.type === 'group'
+      let isGroupCall =
+        options?.forceGroupCall === true ||
+        (thread?.participants?.length || 0) > 2 ||
+        thread?.type === 'group'
 
       let resolvedTargetUserId = (targetUserId || '').trim()
       if (isGroupCall && resolvedTargetUserId) {
@@ -1154,6 +1196,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
   const clearCallRequest = useCallback((threadId: string) => {
     setCallRequests(prev => {
+      const existing = prev[threadId]
+      if (existing?.callId) {
+        const callId = existing.callId
+        // Drop all dispatch keys for this call so a later re-invite can ring again.
+        for (const key of [...dispatchedIncomingCallIdsRef.current]) {
+          if (key === callId || key.startsWith(`${callId}:`)) {
+            dispatchedIncomingCallIdsRef.current.delete(key)
+          }
+        }
+      }
       const updated = { ...prev }
       delete updated[threadId]
       return updated
@@ -1283,7 +1335,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         : status === 'ringing' || status === 'initiated'
       if (!joinable) return
 
-      if (meta.targetUserId && meta.targetUserId !== currentUser.id) return
+      const invited: string[] = Array.isArray(meta.invitedUserIds)
+        ? meta.invitedUserIds.filter((id: unknown): id is string => typeof id === 'string')
+        : []
+      const isInvitee =
+        meta.targetUserId === currentUser.id ||
+        meta.lastInvitedUserId === currentUser.id ||
+        invited.includes(currentUser.id)
+
+      // Targeted invite for someone else (unless this user is also listed).
+      if (meta.targetUserId && meta.targetUserId !== currentUser.id && !isInvitee) return
 
       // Already in the call on this device, or already declined -- not an
       // invitation. These guards are what make widening the status check
@@ -1298,10 +1359,30 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       const callType = (row.call_type as string) || (meta.callType as string)
       const callId = (row.call_id as string) || (meta.callId as string)
       if (!roomId || !callType || !callId) return
+
+      // Re-invites reuse the same call_id; include lastInvitedAt so a second
+      // invite after leave/decline can show the Accept UI again.
+      const inviteStamp =
+        typeof meta.lastInvitedAt === 'string' && meta.lastInvitedAt.trim()
+          ? meta.lastInvitedAt.trim()
+          : typeof meta.timestamp === 'string' && meta.timestamp.trim()
+            ? meta.timestamp.trim()
+            : ''
+      const dispatchKey = inviteStamp ? `${callId}:${inviteStamp}` : callId
+
       const existing = callRequestsRef.current[row.thread_id]
-      if (existing?.callId === callId) return
-      if (dispatchedIncomingCallIdsRef.current.has(callId)) return
-      dispatchedIncomingCallIdsRef.current.add(callId)
+      if (existing?.callId === callId && existing.roomId === roomId && !inviteStamp) return
+      // Same invite attempt already showing — skip. A newer lastInvitedAt is a new ring.
+      if (
+        existing?.callId === callId &&
+        existing.roomId === roomId &&
+        inviteStamp &&
+        dispatchedIncomingCallIdsRef.current.has(dispatchKey)
+      ) {
+        return
+      }
+      if (dispatchedIncomingCallIdsRef.current.has(dispatchKey)) return
+      dispatchedIncomingCallIdsRef.current.add(dispatchKey)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('incomingCall', {
@@ -1312,9 +1393,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
               callerName: (meta.callerName as string) || 'Unknown',
               callerAvatarUrl: meta.callerAvatarUrl as string | undefined,
               roomId,
-              targetUserId: meta.targetUserId as string | undefined,
+              targetUserId: (meta.targetUserId as string | undefined) || currentUser.id,
               callId,
               isGroupCall: meta.isGroupCall === true,
+              invitedAt: inviteStamp || undefined,
             },
           })
         )
@@ -1323,12 +1405,30 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     [currentUser]
   )
 
+  // Keep latest dispatcher in a ref so visibility/online catch-up effect
+  // does not remount when currentUser object identity changes.
+  const tryDispatchIncomingRef = useRef(tryDispatchIncomingFromCallSession)
+  useEffect(() => {
+    tryDispatchIncomingRef.current = tryDispatchIncomingFromCallSession
+  }, [tryDispatchIncomingFromCallSession])
+
   // Listen for incoming call requests (from WebSocket/Realtime)
   useEffect(() => {
     if (typeof window === 'undefined') return
 
     const handleIncomingCall = (event: CustomEvent) => {
-      const { threadId, type, callerId, callerName, callerAvatarUrl, roomId, targetUserId, callId, isGroupCall } = event.detail
+      const {
+        threadId,
+        type,
+        callerId,
+        callerName,
+        callerAvatarUrl,
+        roomId,
+        targetUserId,
+        callId,
+        isGroupCall,
+        invitedAt,
+      } = event.detail
       if (targetUserId && currentUser?.id && targetUserId !== currentUser.id) return
 
       setCallRequests(prev => {
@@ -1337,7 +1437,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           cur &&
           cur.callId === callId &&
           cur.roomId === roomId &&
-          cur.callerId === callerId
+          cur.callerId === callerId &&
+          (cur.invitedAt || '') === (invitedAt || '')
         ) {
           return prev
         }
@@ -1353,6 +1454,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             targetUserId,
             callId,
             isGroupCall,
+            ...(invitedAt ? { invitedAt } : {}),
           },
         }
       })
@@ -1374,8 +1476,20 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (!listed || (listed.is_locked && !isThreadUnlocked(threadId))) {
           continue
         }
+        // Skip threads that already have an initial page loaded (avoid duplicate page=0).
+        if (Object.prototype.hasOwnProperty.call(messagesRef.current, threadId)) {
+          continue
+        }
+        if (messagesLoadInFlightRef.current.has(threadId)) {
+          continue
+        }
+        messagesLoadInFlightRef.current.add(threadId)
         try {
-          const { messages: threadMessages } = await supabaseMessagingService.getThreadMessages(threadId)
+          const { messages: threadMessages, hasMore } = await supabaseMessagingService.getThreadMessages(
+            threadId,
+            { limit: 50, page: 0 },
+          )
+          setHasOlderByThread((prev) => ({ ...prev, [threadId]: hasMore }))
           setMessages(prev => {
             const current = prev[threadId] || []
             if (current.length === 0) {
@@ -1404,10 +1518,13 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           }
           console.error(`Error loading messages for thread ${threadId}:`, error)
           // Mark as loaded so the UI does not spin forever on failure.
+          setHasOlderByThread((prev) => ({ ...prev, [threadId]: false }))
           setMessages((prev) => {
             if (Object.prototype.hasOwnProperty.call(prev, threadId)) return prev
             return { ...prev, [threadId]: [] }
           })
+        } finally {
+          messagesLoadInFlightRef.current.delete(threadId)
         }
       }
     }
@@ -1482,7 +1599,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   }, [currentUser, openThreads, clearCallRequest, isThreadUnlocked, unlockedThreadKey, threads])
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!userId) return
 
     const channel = supabase
       .channel('message_reads_updates')
@@ -1534,12 +1651,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser])
+  }, [userId])
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!userId) return
 
-    const channelName = `global-call-sessions:${currentUser.id}:${Date.now().toString(36)}`
+    const channelName = `global-call-sessions:${userId}`
     const channel = supabase
       .channel(channelName)
       .on(
@@ -1548,7 +1665,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         (payload) => {
           const row = payload.new as Record<string, any>
           // RLS on call_sessions already limits events to threads this user participates in.
-          tryDispatchIncomingFromCallSession(row)
+          tryDispatchIncomingRef.current(row)
         }
       )
       .on(
@@ -1556,14 +1673,15 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         { event: 'UPDATE', schema: 'public', table: 'call_sessions' },
         (payload) => {
           const row = payload.new as Record<string, any>
+          const prev = (payload.old || {}) as Record<string, any>
           const meta = parseCallSessionMetadata(row.metadata)
           const st = String(row.status || '')
           const lsRaw = meta.last_signal as string | undefined
           const lsNorm = lsRaw ? toCallSessionStatusMessageType(String(lsRaw)) : ''
-          if (meta.acceptedBy === currentUser.id && (st === 'active' || lsNorm === 'active')) {
+          if (meta.acceptedBy === userId && (st === 'active' || lsNorm === 'active')) {
             clearCallRequest(row.thread_id)
           }
-          if (meta.rejectedBy === currentUser.id && (st === 'declined' || lsNorm === 'declined')) {
+          if (meta.rejectedBy === userId && (st === 'declined' || lsNorm === 'declined')) {
             clearCallRequest(row.thread_id)
           }
           if (
@@ -1576,6 +1694,19 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           ) {
             clearCallRequest(row.thread_id)
           }
+
+          // Re-invite updates an existing row back to ringing (same call_id).
+          // INSERT-only dispatch never sees this — surface Accept UI again.
+          if (
+            !['ended', 'missed', 'failed', 'declined'].includes(st) &&
+            (st === 'ringing' || st === 'initiated') &&
+            (lsNorm === 'ringing' ||
+              meta.reinvited === true ||
+              meta.last_signal === 'ringing' ||
+              String(prev.status || '') !== st)
+          ) {
+            tryDispatchIncomingRef.current(row)
+          }
         }
       )
       .subscribe()
@@ -1583,7 +1714,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [currentUser, clearCallRequest, tryDispatchIncomingFromCallSession])
+  }, [userId, clearCallRequest])
 
   // Pause poll while user is in an active call (popup notifies opener via CALL_STATUS).
   useEffect(() => {
@@ -1615,7 +1746,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   // not a continuous poll, and the endpoint bounds itself to a 90s window so
   // it can only ever surface calls still plausibly ringing.
   useEffect(() => {
-    if (!currentUser) return
+    if (!userId) return
     if (typeof window !== 'undefined' && window.location.pathname.startsWith('/call/')) return
     let cancelled = false
 
@@ -1627,7 +1758,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         if (cancelled) return
         const sessions = res?.sessions ?? []
         for (const row of sessions) {
-          tryDispatchIncomingFromCallSession(row)
+          tryDispatchIncomingRef.current(row)
         }
       } catch {
         /* ignore */
@@ -1645,16 +1776,16 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
 
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('online', onOnline)
-    window.addEventListener('focus', onOnline)
+    // Do not listen to `focus`: tab/devtools focus churn remounted this catch-up
+    // and looked like continuous polling. visibilitychange + online cover resume.
 
     return () => {
       cancelled = true
       window.clearTimeout(initial)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('online', onOnline)
-      window.removeEventListener('focus', onOnline)
     }
-  }, [currentUser, tryDispatchIncomingFromCallSession])
+  }, [userId])
 
   const value: ProductionChatContextType = {
     startChatWithMembers,
@@ -1670,6 +1801,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     getThreadById,
     getMessagesForThread,
     isMessagesLoadingForThread,
+    getThreadHasOlderMessages,
     sendMessage,
     minimizedThreadIds,
     markThreadRead,

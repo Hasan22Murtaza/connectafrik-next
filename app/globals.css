@@ -77,11 +77,12 @@
   --scrollbar-thumb: #bdbfc0;
   --scrollbar-thumb-hover: #d1d5dc;
 
-  /* Chat bubbles (WhatsApp-style, light) */
-  --chat-bubble-own: #dcf8c6;
-  --chat-bubble-own-file: #c5e8bc;
-  --chat-bubble-own-file-hover: #b8e0ad;
-  --chat-bubble-in: #ffffff;
+  /* Chat bubbles - Light Mode */
+--chat-bubble-own: #f97316;
+--chat-bubble-own-file: #ea540c;
+--chat-bubble-own-file-hover: #c2410c;
+
+--chat-bubble-in: #ffffff;
 }
 
 
@@ -128,10 +129,12 @@
   --scrollbar-thumb: #475569;
   --scrollbar-thumb-hover: #64748b;
 
-  --chat-bubble-own: #005c4b;
-  --chat-bubble-own-file: #0a4a3d;
-  --chat-bubble-own-file-hover: #0d5c4a;
-  --chat-bubble-in: #1e293b;
+ /* Chat bubbles - Light Mode */
+--chat-bubble-own: #f97316;
+--chat-bubble-own-file: #ea580c;
+--chat-bubble-own-file-hover: #c2410c;
+
+--chat-bubble-in: var(--surface-tertiary);
 }
 
 /* ─── Dark mode: bridge legacy Tailwind gray utilities ──────────────────── */
@@ -218,9 +221,9 @@
 .chat-bubble-own-file {
   background-color: var(--chat-bubble-own-file);
 }
-.chat-bubble-own-file:hover {
+/* .chat-bubble-own-file:hover {
   background-color: var(--chat-bubble-own-file-hover);
-}
+} */
 
 .chat-messages-pane {
   overflow-anchor: none;
@@ -290,7 +293,7 @@
 }
 .chat-rt-quote {
   margin: 0.25rem 0;
-  border-left: 3px solid #00a884;
+  border-left: 3px solid var(--primary-500);
   padding: 0.15rem 0.6rem;
   color: var(--content-secondary);
   background: color-mix(in srgb, var(--content-primary) 4%, transparent);
@@ -307,22 +310,23 @@
 .chat-rt-ol li {
   margin: 0.1rem 0;
 }
+
 .chat-rt-link {
-  color: #027eb5;
+  color: var(--primary-500);
   text-decoration: underline;
   text-underline-offset: 2px;
   word-break: break-all;
 }
 .dark .chat-rt-link,
 .chat-rt-own .chat-rt-link {
-  color: #7dd3fc;
+  color: var(--primary-100);
 }
 .chat-rt-mention {
   border-radius: 4px;
   padding: 0 3px;
   font-weight: 600;
-  background: color-mix(in srgb, #00a884 18%, transparent);
-  color: #0f766e;
+  background: color-mix(in srgb, var(--primary-100) 18%, transparent);
+  color: var(--primary-600);
 }
 .dark .chat-rt-mention {
   color: #5eead4;
@@ -483,7 +487,7 @@ body {
   justify-content: center;
   padding: 9px 16px;
   background-color: var(--interactive-primary);
-  color: var(--content-inverse);
+  color: #FFFFFF;
   font-weight: 600;
   border-radius: 0.5rem;
   transition: all 0.2s;
@@ -523,7 +527,7 @@ body {
   align-items: center;
   justify-content: center;
   background-color: var(--interactive-primary);
-  color: var(--content-inverse);
+  color: #FFFFFF;
   font-weight: 600;
   border-radius: 0.5rem;
   transition: all 0.2s;
@@ -599,6 +603,14 @@ body {
 }
 
 .hover\:bg-primary-600:hover {
+  background-color: var(--african-orange-dark);
+}
+
+.bg-primary-700 {
+  background-color: var(--african-orange);
+}
+
+.hover\:bg-primary-700:hover {
   background-color: var(--african-orange-dark);
 }
 
@@ -844,12 +856,19 @@ button {
   }
 }
 
-/* Scroll-reveal: hidden until .is-visible is added by IntersectionObserver */
+/* Scroll-reveal: hidden until .is-visible is added by IntersectionObserver.
+   Falls back to visible if JS never marks the element (e.g. slow hydration). */
 .lp-reveal {
   opacity: 0;
 }
 .lp-reveal.is-visible {
   animation: lp-reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (scripting: none) {
+  .lp-reveal {
+    opacity: 1;
+  }
 }
 
 .lp-delay-1 {

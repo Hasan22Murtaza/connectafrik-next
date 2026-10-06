@@ -120,7 +120,6 @@ const CreatePasswordForm: React.FC = () => {
   if (isSuccess) {
     return (
       <AuthPageShell
-        showLogo={false}
         title={purpose === 'recovery' ? 'Password Updated!' : 'Account Created!'}
         subtitle="You're all set. Redirecting you now..."
       >
@@ -135,7 +134,6 @@ const CreatePasswordForm: React.FC = () => {
 
   return (
     <AuthPageShell
-      showLogo={false}
       title={purpose === 'recovery' ? 'Create New Password' : 'Create Password'}
       subtitle={
         purpose === 'recovery'
@@ -143,13 +141,13 @@ const CreatePasswordForm: React.FC = () => {
           : 'Set a secure password to complete your registration'
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3.5">
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-content mb-2">
+          <label htmlFor="password" className="sr-only">
             Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary w-5 h-5" />
+            <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9CA3AF]" />
             <input
               id="password"
               name="password"
@@ -157,17 +155,17 @@ const CreatePasswordForm: React.FC = () => {
               required
               value={formData.password}
               onChange={handleInputChange}
-              className="input-field !px-10"
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
               placeholder="Enter your password"
               autoComplete="new-password"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-content-tertiary hover:text-content-secondary"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#9CA3AF] hover:text-[#6B7280]"
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
           <div className="mt-3">
@@ -176,14 +174,11 @@ const CreatePasswordForm: React.FC = () => {
         </div>
 
         <div>
-          <label
-            htmlFor="confirmPassword"
-            className="block text-sm font-medium text-content mb-2"
-          >
+          <label htmlFor="confirmPassword" className="sr-only">
             Confirm Password
           </label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-content-tertiary w-5 h-5" />
+            <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#9CA3AF]" />
             <input
               id="confirmPassword"
               name="confirmPassword"
@@ -191,44 +186,47 @@ const CreatePasswordForm: React.FC = () => {
               required
               value={formData.confirmPassword}
               onChange={handleInputChange}
-              className="input-field !px-10"
+              className="w-full h-12 rounded-xl border border-[#E5E7EB] bg-white pl-11 pr-11 text-sm text-[#111827] placeholder:text-[#9CA3AF] outline-none transition-shadow focus:border-[#F97316] focus:ring-2 focus:ring-[#F97316]/20"
               placeholder="Confirm your password"
               autoComplete="new-password"
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-content-tertiary hover:text-content-secondary"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 cursor-pointer text-[#9CA3AF] hover:text-[#6B7280]"
               aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
             >
-              {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {showConfirmPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
             </button>
           </div>
         </div>
 
         {inlineError && (
-          <p className="text-sm text-red-600" role="alert">
+          <p className="mt-1.5 text-xs text-red-600" role="alert">
             {inlineError}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full btn-primary text-base disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading
-            ? 'Saving...'
-            : purpose === 'recovery'
-              ? 'Reset Password'
-              : 'Complete Registration'}
+        <button type="submit" disabled={isLoading} className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base">
+          {isLoading ? (
+            'Saving...'
+          ) : (
+            <>
+              {purpose === 'recovery' ? 'Reset Password' : 'Complete Registration'}{' '}
+              <span aria-hidden="true">→</span>
+            </>
+          )}
         </button>
 
-        <div className="text-center">
-          <Link href="/signin" className="text-sm text-primary-600 hover:underline font-medium">
+        <p className="pt-1 text-center text-sm text-[#6B7280]">
+          <Link href="/signin" className="font-medium text-[#22C55E] hover:text-[#16A34A]">
             Back to Sign In
           </Link>
-        </div>
+        </p>
       </form>
     </AuthPageShell>
   )
@@ -238,9 +236,9 @@ const CreatePassword: React.FC = () => {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center">
-          <p className="text-content-secondary">Loading...</p>
-        </div>
+        <AuthPageShell title="Create Password" subtitle="Loading...">
+          <p className="text-center text-sm text-content-secondary">Loading...</p>
+        </AuthPageShell>
       }
     >
       <CreatePasswordForm />

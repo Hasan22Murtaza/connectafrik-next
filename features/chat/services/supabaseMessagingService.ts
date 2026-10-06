@@ -143,6 +143,15 @@ export function shouldSkipOptimisticMessageSend(
   return false
 }
 
+export interface RecentCallParticipant {
+  id: string
+  name: string
+  avatar_url?: string | null
+  joined?: boolean
+  is_self?: boolean
+  is_friend?: boolean
+}
+
 export interface RecentCallEntry {
   /** Stable row id for call history (one entry per call session). */
   session_id: string
@@ -158,6 +167,7 @@ export interface RecentCallEntry {
   contact_name?: string | null
   contact_avatar_url?: string | null
   banner_url?: string | null
+  participants?: RecentCallParticipant[]
 }
 
 type ThreadSubscriber = (thread: ChatThread) => void
@@ -193,11 +203,11 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
   // (e.g. from the realtime handler) so we only send push once from the sendMessage path.
   if (!options?.skipPush && !SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(message.message_type || '')) {
     try {
-      const res = await apiClient.get<{ data: { user_id: string }[] }>(
+      const res = await apiClient.get<{ data: { user_id: string }[] } | { user_id: string }[]>(
         `/api/chat/threads/${message.thread_id}/participants`,
         { exclude_user_id: message.sender_id }
       )
-      const participants = res?.data ?? []
+      const participants = Array.isArray(res) ? res : (res?.data ?? [])
 
       if (participants.length > 0) {
         // Deduplicate participant user_ids to avoid sending multiple notifications to the same user
@@ -1292,6 +1302,16 @@ export const supabaseMessagingService = {
           contact_name: r.contact_name ?? null,
           contact_avatar_url: r.contact_avatar_url ?? null,
           banner_url: r.banner_url ?? null,
+          participants: Array.isArray(r.participants)
+            ? r.participants.map((p: any) => ({
+                id: String(p.id),
+                name: String(p.name || 'Unknown'),
+                avatar_url: p.avatar_url ?? null,
+                joined: p.joined !== false,
+                is_self: Boolean(p.is_self),
+                is_friend: Boolean(p.is_friend),
+              }))
+            : [],
         }
       })
     } catch (err) {
@@ -1366,11 +1386,16 @@ export const supabaseMessagingService = {
             if (targetUserId) {
               targetParticipants = [{ user_id: targetUserId }]
             } else {
-              const callParticipantsRes = await apiClient.get<{ data: { user_id: string }[] }>(
+              const callParticipantsRes = await apiClient.get<
+                { data: { user_id: string }[] } | { user_id: string }[]
+              >(
                 `/api/chat/threads/${threadId}/participants`,
                 { exclude_user_id: currentUser.id }
               )
-              targetParticipants = callParticipantsRes?.data ?? []
+              const rawParts = Array.isArray(callParticipantsRes)
+                ? callParticipantsRes
+                : (callParticipantsRes?.data ?? [])
+              targetParticipants = rawParts
             }
 
             targetParticipants = Array.from(

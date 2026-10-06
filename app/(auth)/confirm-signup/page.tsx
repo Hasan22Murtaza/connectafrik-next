@@ -1,12 +1,12 @@
 'use client'
 
 import React, { Suspense, useEffect, useRef } from 'react'
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from '@/shared/icons'
 import { supabase } from '@/lib/supabase'
 import { apiClient } from '@/lib/api-client'
 import { authLinkErrorQuery, parseAuthHash } from '@/lib/auth/parseAuthHash'
+import { AuthPageShell } from '@/shared/components/auth/AuthPageShell'
 
 const ConfirmSignupForm: React.FC = () => {
   const router = useRouter()
@@ -57,35 +57,28 @@ const ConfirmSignupForm: React.FC = () => {
   }, [router, searchParams])
 
   return (
-    <div className="card py-10">
-      <Loader2 className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-4" />
-      <p className="text-content font-medium">Confirming your account…</p>
-      <p className="text-content-secondary text-sm mt-2">Please wait a moment.</p>
+    <div className="py-4 text-center">
+      <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary-600" />
+      <p className="font-medium text-content">Confirming your account…</p>
+      <p className="mt-2 text-sm text-content-secondary">Please wait a moment.</p>
     </div>
   )
 }
 
 const ConfirmSignup: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F97316]/15 via-[#149941]/15 to-[#0B7FB0]/15 flex items-center justify-center p-4">
-      <div className="max-w-md w-full text-center">
-        <div className="flex items-center justify-center mb-6">
-          <Link href="/">
-            <img src="/assets/images/logo_2.png" alt="CribsTalk" className="w-30" />
-          </Link>
-        </div>
-        <Suspense
-          fallback={
-            <div className="card py-10">
-              <Loader2 className="w-8 h-8 text-primary-600 animate-spin mx-auto mb-4" />
-              <p className="text-content font-medium">Loading…</p>
-            </div>
-          }
-        >
-          <ConfirmSignupForm />
-        </Suspense>
-      </div>
-    </div>
+    <AuthPageShell title="Confirming account" subtitle="Please wait a moment.">
+      <Suspense
+        fallback={
+          <div className="py-4 text-center">
+            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary-600" />
+            <p className="font-medium text-content">Loading…</p>
+          </div>
+        }
+      >
+        <ConfirmSignupForm />
+      </Suspense>
+    </AuthPageShell>
   )
 }
 
