@@ -138,6 +138,8 @@ interface ProductionChatContextType {
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
+  chatDropdownThreads: ChatThread[]
+  setChatDropdownThreads: React.Dispatch<React.SetStateAction<ChatThread[]>>
   setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
   setThreadBlocked: (threadId: string, is_block: boolean) => Promise<void>
   setThreadPinned: (threadId: string, pinned: boolean) => Promise<void>
@@ -177,6 +179,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [activeCallsByThread, setActiveCallsByThread] = useState<Record<string, ActiveCallInfo>>({})
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
+  const [chatDropdownThreadCache, setChatDropdownThreadCache] = useState<{
+    userId: string
+    threads: ChatThread[]
+  } | null>(null)
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
   const [hasOlderByThread, setHasOlderByThread] = useState<Record<string, boolean>>({})
   const messagesRef = useRef<Record<string, ChatMessage[]>>({})
@@ -211,6 +217,29 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
       avatarUrl: userMetaAvatar,
     }
   }, [userId, userEmail, userMetaFullName, userMetaFirstName, userMetaLastName, userMetaAvatar])
+
+  const chatDropdownThreads =
+    userId && chatDropdownThreadCache?.userId === userId
+      ? chatDropdownThreadCache.threads
+      : []
+  const setChatDropdownThreads = useCallback<
+    React.Dispatch<React.SetStateAction<ChatThread[]>>
+  >(
+    (nextThreads) => {
+      if (!userId) return
+      setChatDropdownThreadCache((prev) => {
+        const currentThreads = prev?.userId === userId ? prev.threads : []
+        return {
+          userId,
+          threads:
+            typeof nextThreads === 'function'
+              ? nextThreads(currentThreads)
+              : nextThreads,
+        }
+      })
+    },
+    [userId]
+  )
 
   useEffect(() => {
     callRequestsRef.current = callRequests
@@ -1806,6 +1835,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     minimizedThreadIds,
     markThreadRead,
     threads,
+    chatDropdownThreads,
+    setChatDropdownThreads,
     setThreadArchived,
     setThreadBlocked,
     setThreadPinned,
@@ -1820,4 +1851,3 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     </ProductionChatContext.Provider>
   )
 }
-

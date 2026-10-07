@@ -215,7 +215,7 @@ const SigninForm: React.FC = () => {
   return (
     <div className="rounded-[28px] border border-black/[0.06] bg-white px-5 py-8 shadow-[0_12px_40px_rgba(15,23,42,0.08)] sm:px-8 sm:py-5">
       <div className="mb-4 text-center">
-        <h1 className="text-[1.60rem] font-extrabold leading-tight tracking-tight text-[#111827] sm:text-[1.85rem]">
+        <h1 className="text-[1.60rem] font-extrabold leading-tight tracking-tight text-[#111827] dark:text-slate-100 sm:text-[1.85rem]">
           Welcome back <span aria-hidden="true">👋</span>
         </h1>
       </div>
@@ -224,7 +224,7 @@ const SigninForm: React.FC = () => {
         type="button"
         onClick={handleGoogleSignIn}
         disabled={isGoogleLoading || isLoading}
-        className="flex h-12 w-full min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] transition-colors !hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-12 w-full min-h-12 items-center justify-center gap-2 rounded-full border border-[#E5E7EB] bg-white text-sm font-medium text-[#374151] dark:text-slate-200 transition-colors !hover:bg-[#F9FAFB] disabled:cursor-not-allowed disabled:opacity-50"
       >
         <FcGoogle className="h-5 w-5" />
         {isGoogleLoading ? "Redirecting..." : "Continue with Google"}

@@ -187,7 +187,7 @@ export default function FeedbackPage() {
               id="feedback-type"
               value={feedbackType}
               onChange={(e) => setFeedbackType(e.target.value as FeedbackType | '')}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="input-field"
             >
               <option value="">Select a type</option>
               {FEEDBACK_TYPE_OPTIONS.map((opt) => (
@@ -215,7 +215,7 @@ export default function FeedbackPage() {
               maxLength={200}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Short summary of your feedback"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="input-field"
             />
             {errors.title && <p className="mt-1.5 text-xs text-red-600">{errors.title}</p>}
           </div>
@@ -234,7 +234,7 @@ export default function FeedbackPage() {
               rows={6}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Tell us what happened, what you expected, or what you'd like to see..."
-              className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="input-field"
             />
             <div className="mt-1.5 flex items-center justify-between">
               {errors.message ? (
@@ -304,7 +304,7 @@ export default function FeedbackPage() {
                 onChange={(e) => setUserName(e.target.value)}
                 readOnly={Boolean(user && defaultName)}
                 placeholder="Your name"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-500/20 read-only:cursor-default read-only:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:read-only:bg-slate-900/80"
+                className="input-field"
               />
             </div>
             <div>
@@ -320,7 +320,7 @@ export default function FeedbackPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-primary-300 focus:bg-white focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                className="input-field"
               />
               {errors.email && <p className="mt-1.5 text-xs text-red-600">{errors.email}</p>}
             </div>
