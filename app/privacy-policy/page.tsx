@@ -39,7 +39,7 @@ const SECTIONS: Section[] = [
 ]
 
 const sectionHeadingClasses =
-  'scroll-mt-28 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl'
+  'scroll-mt-24 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-xl lg:text-2xl'
 
 function SectionCard({
   id,
@@ -53,7 +53,7 @@ function SectionCard({
   return (
     <section
       id={id}
-      className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8"
+      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-6 lg:p-8"
       aria-labelledby={`${id}-heading`}
     >
       <div className="mb-5 border-b border-slate-200 pb-4 dark:border-slate-800">
@@ -85,10 +85,10 @@ const PrivacyPolicyPage = () => {
   }, [searchQuery])
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-8 dark:from-slate-950 dark:to-slate-950 sm:py-12">
+    <main className="min-h-screen bg-slate-50/70 py-8 dark:bg-slate-950 sm:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <header className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-6">
+        <header className="mb-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-6 lg:p-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="max-w-3xl space-y-3">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <Shield className="h-3.5 w-3.5" />
@@ -103,7 +103,7 @@ const PrivacyPolicyPage = () => {
                 describes your rights and choices.
               </p>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 sm:w-auto">
               <p className="font-medium text-slate-800 dark:text-slate-200">
                 Last updated
               </p>
@@ -115,7 +115,7 @@ const PrivacyPolicyPage = () => {
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-8">
           <aside className="lg:sticky lg:top-24 lg:h-fit">
             <nav
-              className="max-h-[78vh] space-y-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-5"
+              className="w-full space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-5 lg:max-h-[78vh] lg:overflow-y-auto"
               aria-label="Table of contents"
             >
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -154,7 +154,7 @@ const PrivacyPolicyPage = () => {
             </nav>
           </aside>
 
-          <article className="space-y-6 [scroll-behavior:smooth]">
+          <article className="min-w-0 space-y-6 [scroll-behavior:smooth]">
             <div className="rounded-2xl border-l-4 border-emerald-500 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
               Important: By using CribsTalk, you agree to this policy and
               consent to processing as described below, subject to your local
@@ -547,7 +547,7 @@ const PrivacyPolicyPage = () => {
                     Or email{' '}
                     <a
                       href="mailto:info@cribstalk.com"
-                      className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+                      className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
                     >
                       info@cribstalk.com
                     </a>{' '}
@@ -759,14 +759,14 @@ const PrivacyPolicyPage = () => {
                 Email{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>{' '}
                 or{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>
@@ -806,7 +806,7 @@ const PrivacyPolicyPage = () => {
                 Email:{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>
@@ -815,7 +815,7 @@ const PrivacyPolicyPage = () => {
                 Support:{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-emerald-700 underline underline-offset-2 transition hover:text-emerald-600 dark:text-emerald-400 dark:hover:text-emerald-300"
+                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>{' '}
