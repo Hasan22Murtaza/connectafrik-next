@@ -160,18 +160,31 @@ export interface CallHistoryDropdownProps {
  * Header calls menu: WhatsApp-style chronological log with Call info + participants.
  */
 function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
-  const { startCall, startChatWithMembers, currentUser, threads: contextThreads } =
-    useProductionChat()
-  const [threads, setThreads] = useState<ChatThread[]>([])
-  const [recentCallEntries, setRecentCallEntries] = useState<RecentCallEntry[]>([])
-  const [threadsLoading, setThreadsLoading] = useState(true)
-  const [recentCallsLoading, setRecentCallsLoading] = useState(true)
+  const {
+    startCall,
+    startChatWithMembers,
+    currentUser,
+    threads: contextThreads,
+    callHistoryThreads: threads,
+    setCallHistoryThreads: setThreads,
+    recentCallEntries,
+    setRecentCallEntries,
+  } = useProductionChat()
+  const [recentCallsLoading, setRecentCallsLoading] = useState(
+    recentCallEntries.length === 0
+  )
   const [callsLoadingMore, setCallsLoadingMore] = useState(false)
-  const [callsHasMore, setCallsHasMore] = useState(true)
-  const [callsPage, setCallsPage] = useState(0)
+  const [callsHasMore, setCallsHasMore] = useState(
+    recentCallEntries.length >= PAGE_SIZE
+  )
+  const [callsPage, setCallsPage] = useState(() =>
+    Math.max(0, Math.ceil(recentCallEntries.length / PAGE_SIZE) - 1)
+  )
   const [selectedCallId, setSelectedCallId] = useState<string | null>(null)
   const [startingCallKey, setStartingCallKey] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const recentCallEntriesRef = useRef(recentCallEntries)
+  recentCallEntriesRef.current = recentCallEntries
 
   useEffect(() => {
     const onMarkedRead = (event: Event) => {
@@ -197,22 +210,22 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
   useEffect(() => {
     const loadThreads = async () => {
       if (!currentUser) {
-        setThreadsLoading(false)
         return
       }
-      setThreadsLoading(true)
-      try {
-        const { threads: userThreads } = await supabaseMessagingService.getUserThreads(
-          { id: currentUser.id, name: currentUser.name || '' },
-          { limit: PAGE_SIZE, page: 0 }
-        )
-        setThreads(userThreads)
-      } finally {
-        setThreadsLoading(false)
-      }
+      const { threads: userThreads } = await supabaseMessagingService.getUserThreads(
+        { id: currentUser.id, name: currentUser.name || '' },
+        { limit: PAGE_SIZE, page: 0 }
+      )
+      setThreads((prev) => {
+        const byId = new Map(prev.map((thread) => [thread.id, thread]))
+        for (const thread of userThreads) {
+          byId.set(thread.id, { ...byId.get(thread.id), ...thread })
+        }
+        return [...byId.values()]
+      })
     }
     loadThreads()
-  }, [currentUser])
+  }, [currentUser, setThreads])
 
   useEffect(() => {
     const loadRecentCalls = async () => {
@@ -220,18 +233,25 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
         setRecentCallsLoading(false)
         return
       }
-      setRecentCallsLoading(true)
+      setRecentCallsLoading(recentCallEntriesRef.current.length === 0)
       try {
         const entries = await supabaseMessagingService.getRecentCalls(currentUser.id, PAGE_SIZE, 0)
-        setRecentCallEntries(entries)
-        setCallsPage(0)
+        setRecentCallEntries((prev) => {
+          const byId = new Map(prev.map((entry) => [entry.session_id, entry]))
+          for (const entry of entries) {
+            byId.set(entry.session_id, { ...byId.get(entry.session_id), ...entry })
+          }
+          return [...byId.values()].sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )
+        })
         setCallsHasMore(entries.length >= PAGE_SIZE)
       } finally {
         setRecentCallsLoading(false)
       }
     }
     loadRecentCalls()
-  }, [currentUser?.id])
+  }, [currentUser?.id, setRecentCallEntries])
 
   const loadMoreCalls = useCallback(async () => {
     if (!currentUser?.id || callsLoadingMore || !callsHasMore) return
@@ -399,7 +419,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
     }
   }
 
-  const listLoading = recentCallsLoading || threadsLoading
+  const listLoading = recentCallsLoading && recentCallEntries.length === 0
 
   if (selectedCall) {
     const dir = selectedCall.call_direction ?? 'incoming'

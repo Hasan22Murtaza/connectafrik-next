@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import {
   ChatMessage,
   ChatThread,
+  RecentCallEntry,
   shouldSkipOptimisticMessageSend,
   supabaseMessagingService,
 } from '@/features/chat/services/supabaseMessagingService'
@@ -138,6 +139,10 @@ interface ProductionChatContextType {
   minimizedThreadIds: string[]
   markThreadRead: (threadId: string) => void
   threads: ChatThread[]
+  callHistoryThreads: ChatThread[]
+  setCallHistoryThreads: React.Dispatch<React.SetStateAction<ChatThread[]>>
+  recentCallEntries: RecentCallEntry[]
+  setRecentCallEntries: React.Dispatch<React.SetStateAction<RecentCallEntry[]>>
   chatDropdownThreads: ChatThread[]
   setChatDropdownThreads: React.Dispatch<React.SetStateAction<ChatThread[]>>
   setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
@@ -182,6 +187,11 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [chatDropdownThreadCache, setChatDropdownThreadCache] = useState<{
     userId: string
     threads: ChatThread[]
+  } | null>(null)
+  const [callHistoryCache, setCallHistoryCache] = useState<{
+    userId: string
+    threads: ChatThread[]
+    entries: RecentCallEntry[]
   } | null>(null)
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>({})
   const [hasOlderByThread, setHasOlderByThread] = useState<Record<string, boolean>>({})
@@ -235,6 +245,48 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
             typeof nextThreads === 'function'
               ? nextThreads(currentThreads)
               : nextThreads,
+        }
+      })
+    },
+    [userId]
+  )
+  const callHistoryThreads =
+    userId && callHistoryCache?.userId === userId ? callHistoryCache.threads : []
+  const recentCallEntries =
+    userId && callHistoryCache?.userId === userId ? callHistoryCache.entries : []
+  const setCallHistoryThreads = useCallback<
+    React.Dispatch<React.SetStateAction<ChatThread[]>>
+  >(
+    (nextThreads) => {
+      if (!userId) return
+      setCallHistoryCache((prev) => {
+        const current =
+          prev?.userId === userId ? prev : { userId, threads: [], entries: [] }
+        return {
+          ...current,
+          threads:
+            typeof nextThreads === 'function'
+              ? nextThreads(current.threads)
+              : nextThreads,
+        }
+      })
+    },
+    [userId]
+  )
+  const setRecentCallEntries = useCallback<
+    React.Dispatch<React.SetStateAction<RecentCallEntry[]>>
+  >(
+    (nextEntries) => {
+      if (!userId) return
+      setCallHistoryCache((prev) => {
+        const current =
+          prev?.userId === userId ? prev : { userId, threads: [], entries: [] }
+        return {
+          ...current,
+          entries:
+            typeof nextEntries === 'function'
+              ? nextEntries(current.entries)
+              : nextEntries,
         }
       })
     },
@@ -1835,6 +1887,10 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     minimizedThreadIds,
     markThreadRead,
     threads,
+    callHistoryThreads,
+    setCallHistoryThreads,
+    recentCallEntries,
+    setRecentCallEntries,
     chatDropdownThreads,
     setChatDropdownThreads,
     setThreadArchived,
