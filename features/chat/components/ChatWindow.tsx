@@ -2836,7 +2836,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <img
                   src={headerAvatarUrl}
                   alt={displayThreadName}
-                  className="h-10 w-10 rounded-full object-cover ring-2 ring-border-subtle ring-orange-100"
+                  className="h-10 w-10 rounded-full object-cover ring-2 ring-orange-400 "
                   onError={() => setHeaderImageFailed(true)}
                 />
               ) : (
