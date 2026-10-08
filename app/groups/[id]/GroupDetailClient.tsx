@@ -1203,7 +1203,7 @@ const GroupDetailPage: React.FC = () => {
                           <img
                             src={group.creator.avatar_url}
                             alt={group.creator.full_name}
-                            className="w-8 h-8 rounded-full"
+                            className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
