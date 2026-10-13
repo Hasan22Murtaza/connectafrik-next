@@ -172,7 +172,7 @@ export const FeedReelsStrip: React.FC = () => {
         </h3>
         <Link
           href="/memories/explore"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-primary-700"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
           aria-label="More reels"
         >
           <MoreHorizontal className="w-5 h-5" />
@@ -214,7 +214,7 @@ export const FeedReelsStrip: React.FC = () => {
       <div className="border-t border-border-subtle py-3">
         <Link
           href="/memories/explore"
-          className="block text-center text-sm font-semibold text-primary-600 hover:text-primary-700 hover:underline"
+          className="block text-center text-sm font-semibold text-primary-600 hover:text-orange-500 hover:underline"
         >
           See all
         </Link>

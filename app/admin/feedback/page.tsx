@@ -338,7 +338,7 @@ export default function AdminFeedbackPage() {
                       <AdminTableCell>
                         <Link
                           href={`/admin/feedback/${item.id}`}
-                          className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700"
+                          className="inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-orange-500"
                         >
                           View <Eye className="w-3.5 h-3.5" aria-hidden="true" />
                         </Link>

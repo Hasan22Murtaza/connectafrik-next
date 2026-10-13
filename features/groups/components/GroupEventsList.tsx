@@ -238,7 +238,7 @@ const EventCard: React.FC<EventCardProps> = ({
           onClick={() => onToggleAttendance(event.id)}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
             event.isAttending
-              ? 'bg-primary-100 text-primary-700 hover:bg-primary-200'
+              ? 'bg-primary-100 text-orange-500 hover:bg-primary-200'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >

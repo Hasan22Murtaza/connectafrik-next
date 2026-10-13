@@ -354,7 +354,7 @@ const ProductDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={() => router.push("/marketplace")}
-            className="inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-semibold text-sm"
+            className="inline-flex items-center gap-2 text-primary-600 hover:text-orange-500 font-semibold text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to TradeHub
@@ -755,7 +755,7 @@ const ProductDetailPage: React.FC = () => {
                     className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors active:scale-[0.98] inline-flex items-center gap-1.5 disabled:opacity-50 ${
                       isFollowing
                         ? "text-content bg-surface-secondary hover:bg-surface-hover"
-                        : "text-primary-700 bg-primary-50 hover:bg-primary-100"
+                        : "text-orange-500 bg-primary-50 hover:bg-primary-100"
                     }`}
                   >
                     <UserPlus className="w-4 h-4" />
@@ -794,7 +794,7 @@ const ProductDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setDescExpanded((v) => !v)}
-                  className="mt-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+                  className="mt-2 text-sm font-semibold text-primary-600 hover:text-orange-500 transition-colors"
                 >
                   {descExpanded ? "Show less" : "Show more"}
                 </button>
@@ -961,7 +961,7 @@ const ProductDetailPage: React.FC = () => {
                     `/marketplace?category=${encodeURIComponent(product.category)}`
                   )
                 }
-                className="text-sm font-semibold text-primary-600 hover:text-primary-700"
+                className="text-sm font-semibold text-primary-600 hover:text-orange-500"
               >
                 See all
               </button>

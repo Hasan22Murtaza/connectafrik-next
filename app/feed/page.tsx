@@ -383,7 +383,7 @@ const FeedPage: React.FC = () => {
                 }}
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                   explorationBoost
-                    ? 'border-primary-500 bg-primary-50 text-primary-700'
+                    ? 'border-primary-500 bg-primary-50 text-orange-500'
                     : 'border-border bg-surface text-content-secondary hover:border-primary-200 hover:text-primary-600'
                 }`}
               >

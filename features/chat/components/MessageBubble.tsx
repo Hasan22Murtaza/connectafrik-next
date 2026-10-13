@@ -1061,7 +1061,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {productId && (
               <a
                 href={`/marketplace/${productId}`}
-                className="inline-flex mt-1 text-sm font-semibold text-primary-600 hover:text-primary-700"
+                className="inline-flex mt-1 text-sm font-semibold text-primary-600 hover:text-orange-500"
               >
                 Open listing
               </a>

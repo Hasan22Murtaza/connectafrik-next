@@ -112,7 +112,7 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
               className="h-12 w-12 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-base font-semibold text-primary-700">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-base font-semibold text-orange-500">
               {threadDisplayName.charAt(0).toUpperCase()}
             </div>
           )}
@@ -679,7 +679,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 text-sm font-medium text-primary-600 hover:text-primary-700"
+            className="shrink-0 text-sm font-medium text-primary-600 hover:text-orange-500"
           >
             Close
           </button>
@@ -783,7 +783,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             }}
             className="group my-1 flex w-full items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-gray-100 "
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-orange-500">
               <Store className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -844,7 +844,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
                       {avatarUrl ? (
                         <img src={avatarUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 text-base font-semibold text-primary-700">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 text-base font-semibold text-orange-500">
                           {displayName.charAt(0).toUpperCase()}
                         </div>
                       )}

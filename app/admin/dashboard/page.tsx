@@ -308,7 +308,7 @@ export default function AdminDashboardPage() {
           action={
             <Link
               href="/admin/orders"
-              className="text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+              className="text-xs font-medium text-primary-600 hover:text-orange-500 transition-colors"
             >
               View all →
             </Link>
@@ -341,7 +341,7 @@ export default function AdminDashboardPage() {
                       <AdminTableCell>
                         <Link
                           href="/marketplace"
-                          className="text-primary-600 hover:text-primary-700 font-mono text-xs font-medium transition-colors"
+                          className="text-primary-600 hover:text-orange-500 font-mono text-xs font-medium transition-colors"
                         >
                           {order.id.slice(0, 8)}…
                         </Link>

@@ -334,7 +334,7 @@ const SavedTabs: React.FC<{
             <span>{tab.label}</span>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-semibold transition-colors ${
-                isActive ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-500'
+                isActive ? 'bg-primary-100 text-orange-500' : 'bg-gray-100 text-gray-500'
               }`}
             >
               {counts[tab.id]}

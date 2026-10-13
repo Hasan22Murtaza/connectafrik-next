@@ -104,7 +104,7 @@ export function ChatLockAuthModal({
           className="mx-4 w-full max-w-md rounded-lg bg-surface p-6 shadow-xl"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 text-orange-500">
             <Lock className="h-6 w-6" aria-hidden />
           </div>
           <h3 id="chat-lock-auth-title" className="text-lg font-semibold text-content">
@@ -197,7 +197,7 @@ export function ChatLockAuthModal({
             <button
               type="button"
               onClick={() => setUsePassword((v) => !v)}
-              className="mt-3 text-sm font-medium text-primary-700 hover:underline"
+              className="mt-3 text-sm font-medium text-orange-500 hover:underline"
             >
               {usePassword ? 'Use chat lock PIN' : 'Use account password instead'}
             </button>

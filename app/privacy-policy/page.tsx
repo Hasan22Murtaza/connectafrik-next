@@ -547,7 +547,7 @@ const PrivacyPolicyPage = () => {
                     Or email{' '}
                     <a
                       href="mailto:info@cribstalk.com"
-                      className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
+                      className="font-medium text-orange-500 underline underline-offset-2 transition hover:text-orange-600"
                     >
                       info@cribstalk.com
                     </a>{' '}
@@ -759,14 +759,14 @@ const PrivacyPolicyPage = () => {
                 Email{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
+                  className="font-medium text-orange-500 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>{' '}
                 or{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
+                  className="font-medium text-orange-500 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>
@@ -806,7 +806,7 @@ const PrivacyPolicyPage = () => {
                 Email:{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
+                  className="font-medium text-orange-500 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>
@@ -815,7 +815,7 @@ const PrivacyPolicyPage = () => {
                 Support:{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="font-medium text-primary-700 underline underline-offset-2 transition hover:text-orange-600"
+                  className="font-medium text-orange-500 underline underline-offset-2 transition hover:text-orange-600"
                 >
                   info@cribstalk.com
                 </a>{' '}

@@ -284,7 +284,7 @@ export default function AdminReportDetailPage() {
               <Link
                 href={`/post/${detail.post_id}`}
                 target="_blank"
-                className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-primary-600 hover:text-primary-700"
+                className="inline-flex items-center gap-1 mt-4 text-sm font-medium text-primary-600 hover:text-orange-500"
               >
                 Open post <ExternalLink className="w-3.5 h-3.5" />
               </Link>
@@ -373,7 +373,7 @@ export default function AdminReportDetailPage() {
             {detail.post?.author?.id && (
               <Link
                 href={`/admin/users/${detail.post.author.id}`}
-                className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-primary-600 hover:text-primary-700"
+                className="inline-flex items-center gap-1 mt-3 text-sm font-medium text-primary-600 hover:text-orange-500"
               >
                 View user <ExternalLink className="w-3.5 h-3.5" />
               </Link>

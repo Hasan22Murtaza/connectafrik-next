@@ -202,7 +202,7 @@ export default function AdminOrdersPage() {
                       <AdminTableCell className="font-mono text-xs">
                         <Link
                           href={`/admin/orders/${order.id}`}
-                          className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                          className="text-primary-600 hover:text-orange-500 font-medium transition-colors"
                         >
                           {order.order_number || order.id.slice(0, 8)}
                         </Link>
@@ -235,7 +235,7 @@ export default function AdminOrdersPage() {
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/admin/orders/${order.id}`}
-                            className="text-primary-600 hover:text-primary-700 text-xs flex items-center gap-0.5 font-medium transition-colors"
+                            className="text-primary-600 hover:text-orange-500 text-xs flex items-center gap-0.5 font-medium transition-colors"
                           >
                             View <Eye className="w-3 h-3" aria-hidden="true" />
                           </Link>

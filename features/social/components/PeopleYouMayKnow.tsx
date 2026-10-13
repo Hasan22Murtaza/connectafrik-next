@@ -146,7 +146,7 @@ export const PeopleYouMayKnow: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowUserSearch(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-primary-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-content-secondary transition-colors hover:bg-primary-50 hover:text-orange-500"
             aria-label="More options"
           >
             <MoreHorizontal className="w-5 h-5" />
@@ -193,7 +193,7 @@ export const PeopleYouMayKnow: React.FC = () => {
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary-100 to-primary-200">
-                      <span className="text-3xl font-semibold text-primary-700">
+                      <span className="text-3xl font-semibold text-orange-500">
                         {rec.full_name.charAt(0).toUpperCase()}
                       </span>
                     </div>
@@ -242,7 +242,7 @@ export const PeopleYouMayKnow: React.FC = () => {
         <div className="border-t border-border-subtle py-3">
           <Link
             href="/friends"
-            className="block text-center text-sm font-semibold text-primary-600 hover:text-primary-700 hover:underline"
+            className="block text-center text-sm font-semibold text-primary-600 hover:text-orange-500 hover:underline"
           >
             See all
           </Link>

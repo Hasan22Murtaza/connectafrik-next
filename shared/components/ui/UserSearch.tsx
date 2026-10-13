@@ -158,7 +158,7 @@ export const UserSearch: React.FC<UserSearchProps> = ({ onClose, onUserSelect })
                     />
                   ) : (
                     <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-lg font-semibold text-primary-700">
+                      <span className="text-lg font-semibold text-orange-500">
                         {result.full_name.charAt(0).toUpperCase()}
                       </span>
                     </div>

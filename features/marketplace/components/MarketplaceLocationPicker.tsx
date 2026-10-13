@@ -171,7 +171,7 @@ const MarketplaceLocationPicker: React.FC<MarketplaceLocationPickerProps> = ({
           type="button"
           onClick={() => !disabled && setOpen(true)}
           disabled={disabled}
-          className={`inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors disabled:opacity-50 ${className}`}
+          className={`inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-orange-500 transition-colors disabled:opacity-50 ${className}`}
         >
           <MapPin className="w-4 h-4 shrink-0" />
           <span className="truncate max-w-[200px] sm:max-w-none">{chipLabel}</span>

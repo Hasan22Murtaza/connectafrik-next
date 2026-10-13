@@ -134,7 +134,7 @@ const TermsOfServicePage: React.FC = () => {
                 contact us at{' '}
                 <a
                   href="mailto:info@cribstalk.com"
-                  className="text-primary-700 underline-offset-2 hover:text-orange-600 hover:underline"
+                  className="text-orange-500 underline-offset-2 hover:text-orange-600 hover:underline"
                 >
                   info@cribstalk.com
                 </a>

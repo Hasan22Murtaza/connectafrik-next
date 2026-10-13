@@ -408,7 +408,7 @@ export default function AdminReportsPage() {
                         <AdminTableCell className="align-middle">
                           <Link
                             href={`/admin/reports/${group.post_id}`}
-                            className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                            className="text-sm font-medium text-primary-600 hover:text-orange-500"
                           >
                             Review
                           </Link>

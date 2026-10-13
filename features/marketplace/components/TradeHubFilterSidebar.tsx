@@ -50,9 +50,9 @@ interface TradeHubFilterSidebarProps {
 const menuRowClass =
   "w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-[15px] text-content hover:bg-primary-50 transition-colors";
 
-const menuRowActiveClass = "bg-primary-50 text-primary-700";
+const menuRowActiveClass = "bg-primary-50 text-orange-500";
 
-const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold text-primary-700";
+const sectionTitleClass = "px-4 pt-4 pb-2 text-[17px] font-bold ";
 
 const dividerClass = "border-t border-gray-100 my-1";
 
@@ -140,7 +140,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
               !filters.category ? menuRowActiveClass : ""
             }`}
           >
-            <span className={!filters.category ? "font-semibold text-primary-700" : ""}>
+            <span className={!filters.category ? "font-semibold text-orange-500" : ""}>
               All Categories
             </span>
           </button>
@@ -155,10 +155,10 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                     onClick={() => openCategoryPanel(category)}
                     className={`${menuRowClass} ${isActive ? menuRowActiveClass : ""}`}
                   >
-                    <span className={isActive ? "font-semibold text-primary-700" : ""}>
+                    <span className={isActive ? "font-semibold text-orange-500" : ""}>
                       {category.label}
                       {isActive && filters.subcategory ? (
-                        <span className="block text-xs font-normal text-primary-600/80 mt-0.5">
+                        <span className="block text-xs font-normal text-orange-500/80 mt-0.5">
                           {getSubcategoriesForCategory(category.value).find(
                             (s) => s.value === filters.subcategory
                           )?.label || filters.subcategory}
@@ -194,7 +194,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
           <div className="px-4 pb-3 space-y-3">
             {location && onLocationChange && (
               <div>
-                <label className="block text-xs font-semibold text-primary-700 mb-1.5">
+                <label className="block text-xs font-semibold text-orange-500 mb-1.5">
                   Location
                 </label>
                 <MarketplaceLocationPicker
@@ -210,7 +210,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
 
             {sortBy != null && onSortChange && (
               <div>
-                <label className="block text-xs font-semibold text-primary-700 mb-1.5">
+                <label className="block text-xs font-semibold text-orange-500 mb-1.5">
                   Sort by
                 </label>
                 <select
@@ -229,7 +229,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-primary-700 mb-1.5">
+              <label className="block text-xs font-semibold text-orange-500 mb-1.5">
                 Condition
               </label>
               <select
@@ -247,7 +247,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-primary-700 mb-1.5">
+              <label className="block text-xs font-semibold text-orange-500 mb-1.5">
                 Price range
               </label>
               <div className="flex items-center gap-2">
@@ -279,7 +279,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
               filters.featuredOnly) && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-primary-700 mb-1.5">
+                  <label className="block text-xs font-semibold text-orange-500 mb-1.5">
                     Date posted
                   </label>
                   <select
@@ -373,12 +373,12 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
             className="w-full flex items-center gap-2 px-4 py-3.5 text-left border-b border-primary-100 hover:bg-primary-50 transition-colors sticky top-0 bg-surface z-10"
           >
             <ChevronRight className="w-4 h-4 text-primary-600 rotate-180 shrink-0" />
-            <span className="text-[13px] font-bold uppercase tracking-wide text-primary-700">
+            <span className="text-[13px] font-bold uppercase tracking-wide text-orange-500">
               Main Menu
             </span>
           </button>
 
-          <h3 className="px-4 pt-4 pb-2 text-[20px] font-bold text-primary-700 leading-tight">
+          <h3 className="px-4 pt-4 pb-2 text-[20px] font-bold text-orange-500 leading-tight">
             {drillCategory?.label || getCategoryLabel(filters.category)}
           </h3>
 
@@ -400,7 +400,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                 drillCategory &&
                 filters.category === drillCategory.value &&
                 !filters.subcategory
-                  ? "font-semibold text-primary-700"
+                  ? "font-semibold text-orange-500"
                   : ""
               }
             >
@@ -423,7 +423,7 @@ const TradeHubFilterSidebar: React.FC<TradeHubFilterSidebarProps> = ({
                     }
                     className={`${menuRowClass} ${isActive ? menuRowActiveClass : ""}`}
                   >
-                    <span className={isActive ? "font-semibold text-primary-700" : ""}>
+                    <span className={isActive ? "font-semibold text-orange-500" : ""}>
                       {sub.label}
                     </span>
                   </button>

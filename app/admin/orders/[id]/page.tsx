@@ -100,7 +100,7 @@ function PartyCard({
               <Link
                 href={`/user/${party.id}`}
                 target="_blank"
-                className="text-xs text-primary-600 hover:text-primary-700"
+                className="text-xs text-primary-600 hover:text-orange-500"
               >
                 @{party.username}
               </Link>
@@ -317,7 +317,7 @@ export default function AdminOrderDetailPage() {
                 <Link
                   href={`/marketplace/${order.product_id}`}
                   target="_blank"
-                  className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-2 inline-block"
+                  className="text-xs text-primary-600 hover:text-orange-500 font-medium mt-2 inline-block"
                 >
                   View product →
                 </Link>
@@ -422,7 +422,7 @@ export default function AdminOrderDetailPage() {
               {dispute.id && (
                 <Link
                   href={`/admin/disputes`}
-                  className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-2 inline-block"
+                  className="text-xs text-primary-600 hover:text-orange-500 font-medium mt-2 inline-block"
                 >
                   Manage in disputes →
                 </Link>
@@ -539,7 +539,7 @@ export default function AdminOrderDetailPage() {
               </div>
               <Link
                 href="/admin/payouts"
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-3 inline-block"
+                className="text-xs text-primary-600 hover:text-orange-500 font-medium mt-3 inline-block"
               >
                 View all payouts →
               </Link>

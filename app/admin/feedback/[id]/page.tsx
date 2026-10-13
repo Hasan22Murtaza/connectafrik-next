@@ -261,7 +261,7 @@ export default function AdminFeedbackDetailPage() {
                   href={feedback.attachment_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                  className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-orange-500 font-medium"
                 >
                   Open full size <ExternalLink className="w-3.5 h-3.5" />
                 </a>
@@ -372,14 +372,14 @@ export default function AdminFeedbackDetailPage() {
                   feedback.profiles?.username ? (
                     <Link
                       href={`/admin/users/${feedback.user_id}`}
-                      className="text-primary-600 hover:text-primary-700"
+                      className="text-primary-600 hover:text-orange-500"
                     >
                       @{feedback.profiles.username}
                     </Link>
                   ) : (
                     <Link
                       href={`/admin/users/${feedback.user_id}`}
-                      className="text-primary-600 hover:text-primary-700"
+                      className="text-primary-600 hover:text-orange-500"
                     >
                       View profile
                     </Link>

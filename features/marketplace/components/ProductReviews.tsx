@@ -402,7 +402,7 @@ const ProductReviews: React.FC<ProductReviewsProps> = ({
                       disabled={!user || review.user_id === user?.id}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         review.is_helpful
-                          ? 'bg-primary-100 text-primary-700'
+                          ? 'bg-primary-100 text-orange-500'
                           : 'text-content-secondary hover:bg-surface-hover'
                       } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >

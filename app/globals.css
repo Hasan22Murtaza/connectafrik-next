@@ -580,7 +580,7 @@ body {
 .group:hover .group-hover\:text-primary-600 {
   color: var(--primary-600) !important;
 }
-.text-primary-700 {
+.text-orange-500 {
   color: var(--primary-700);
 }
 

@@ -2844,7 +2844,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   onError={() => setHeaderImageFailed(true)}
                 />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700 ring-2 ring-border-subtle">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-orange-500 ring-2 ring-border-subtle">
                   {headerInitial}
                 </div>
               )}
@@ -2871,7 +2871,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                           {p.avatar_url ? (
                             <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
                           ) : (
-                            <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-primary-700">
+                            <span className="flex h-full w-full items-center justify-center text-[9px] font-semibold text-orange-500">
                               {(p.full_name || p.username || '?').charAt(0).toUpperCase()}
                             </span>
                           )}
@@ -3314,7 +3314,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   <button
                     type="button"
                     onClick={() => void handleBlockToggle()}
-                    className="font-medium text-primary-700 underline hover:text-primary-800"
+                    className="font-medium text-orange-500 underline hover:text-primary-800"
                   >
                     Unblock
                   </button>

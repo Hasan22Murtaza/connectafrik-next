@@ -923,7 +923,7 @@ export default function ChatSidebar({
             }}
             className="relative flex w-full shrink-0 items-center gap-3 px-3 py-2 text-left transition hover:bg-orange-50 dark:hover:bg-surface-hover"
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-orange-500">
               <Store className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
@@ -984,7 +984,7 @@ export default function ChatSidebar({
                     {avatarUrl ? (
                       <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                     ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -1103,7 +1103,7 @@ export default function ChatSidebar({
                     {avatarUrl ? (
                       <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                     ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -1264,7 +1264,7 @@ export default function ChatSidebar({
                     {avatarUrl ? (
                       <img src={avatarUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
                     ) : (
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 font-semibold text-primary-700">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary-100 font-semibold text-orange-500">
                         {displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -1358,7 +1358,7 @@ export default function ChatSidebar({
                       {avatarUrl ? (
                         <img src={avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-primary-700">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-100 font-semibold text-orange-500">
                           {displayName.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -1496,7 +1496,7 @@ export default function ChatSidebar({
                           onClick={() => onOpenThread(thread.id, thread)}
                           role="button"
                           tabIndex={0}
-                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-primary-50 text-primary-700 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/15" : ""
+                          className={`group relative flex w-full cursor-pointer items-start gap-3 border-b border-border-subtle py-3 text-left opacity-80 transition hover:bg-orange-50 dark:hover:bg-surface-hover ${selected ? "bg-primary-50 text-orange-500 dark:bg-orange-500/15 dark:text-orange-300 dark:hover:bg-orange-500/15" : ""
                             }`}
                         >
                           <div className="h-12 w-12 shrink-0">

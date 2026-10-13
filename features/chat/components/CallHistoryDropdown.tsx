@@ -76,7 +76,7 @@ function ParticipantAvatar({
   }
   return (
     <div
-      className={`${sizeClass} rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-semibold shrink-0`}
+      className={`${sizeClass} rounded-full bg-primary-100 text-orange-500 flex items-center justify-center font-semibold shrink-0`}
     >
       {(name || '?').charAt(0).toUpperCase()}
     </div>
@@ -141,7 +141,7 @@ function SplitCircleAvatar({
             />
           ) : (
             <span
-              className={`flex h-full w-full items-center justify-center font-semibold text-primary-700 ${textClass}`}
+              className={`flex h-full w-full items-center justify-center font-semibold text-orange-500 ${textClass}`}
             >
               {(p.name || '?').charAt(0).toUpperCase()}
             </span>
@@ -598,7 +598,7 @@ function CallHistoryDropdown({ onClose }: CallHistoryDropdownProps) {
         <button
           type="button"
           onClick={onClose}
-          className="text-xs font-medium text-primary-600 hover:text-primary-700"
+          className="text-xs font-medium text-primary-600 hover:text-orange-500"
         >
           Close
         </button>
