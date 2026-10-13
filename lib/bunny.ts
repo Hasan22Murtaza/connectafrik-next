@@ -38,11 +38,16 @@ interface BunnyConfig {
   s3Endpoint: string
 }
 
+function readEnv(name: string): string {
+  const value = process.env[name]
+  return typeof value === 'string' ? value.trim() : ''
+}
+
 function getBunnyConfig(): BunnyConfig {
-  const accessKey = process.env.BUNNY_STORAGE_ACCESS_KEY
-  const storageZone = process.env.BUNNY_STORAGE_ZONE_NAME
-  const cdnUrl = process.env.NEXT_PUBLIC_BUNNY_CDN_URL
-  const region = (process.env.BUNNY_STORAGE_REGION || '').toLowerCase().trim()
+  const accessKey = readEnv('BUNNY_STORAGE_ACCESS_KEY')
+  const storageZone = readEnv('BUNNY_STORAGE_ZONE_NAME')
+  const cdnUrl = readEnv('NEXT_PUBLIC_BUNNY_CDN_URL') || readEnv('BUNNY_CDN_URL')
+  const region = readEnv('BUNNY_STORAGE_REGION').toLowerCase()
 
   const missing: string[] = []
   if (!accessKey) missing.push('BUNNY_STORAGE_ACCESS_KEY')
@@ -66,13 +71,11 @@ function getBunnyConfig(): BunnyConfig {
   }
 
   const storageHost =
-    process.env.BUNNY_STORAGE_HOST?.trim() ||
-    REGION_HOSTS[region] ||
-    REGION_HOSTS['']
+    readEnv('BUNNY_STORAGE_HOST') || REGION_HOSTS[region] || REGION_HOSTS['']
 
   const s3Region = region || 'de'
   const s3Endpoint =
-    process.env.BUNNY_S3_ENDPOINT?.trim().replace(/\/+$/, '') ||
+    readEnv('BUNNY_S3_ENDPOINT').replace(/\/+$/, '') ||
     `https://${s3Region}-s3.storage.bunnycdn.com`
 
   return {
