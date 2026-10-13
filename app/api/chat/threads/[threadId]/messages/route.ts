@@ -16,6 +16,20 @@ import {
   sanitizeViewOnceMessage,
   viewOnceThreadPreview,
 } from '@/lib/chat/chatViewOnce'
+import {
+  assertEnvelopesMatchDevices,
+  attachEnvelopes,
+  E2eeRequestError,
+  e2eePreview,
+  insertEnvelopes,
+  isE2eeVersion,
+  messageTypeUsesE2ee,
+  parseEnvelopeList,
+  stripSensitiveMetadata,
+  threadRequiresE2ee,
+  type EnvelopeRowInput,
+} from '@/lib/e2ee/server'
+import { E2EE_VERSION } from '@/lib/e2ee/types'
 
 const MESSAGE_SELECT = `
   *,
@@ -212,9 +226,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     })
     // Preserve natural chat display (oldest -> newest) inside the fetched page.
     const chronological = [...formatted].reverse()
+    const withEnvelopes = await attachEnvelopes(serviceClient, user.id, chronological)
 
     return jsonResponse({
-      data: chronological,
+      data: withEnvelopes,
       page,
       pageSize: limit,
       hasMore: totalCount > (to + 1),
@@ -222,6 +237,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
       totalPages,
     })
   } catch (error: any) {
+    if (error instanceof E2eeRequestError) {
+      return errorResponse(error.message, error.status, { code: error.code })
+    }
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }
@@ -258,7 +276,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const messageDenied = privacyDecisionResponse(messageDecision)
     if (messageDenied) return messageDenied
 
-    const safeContent = typeof content === 'string' ? content : ''
+    let safeContent = typeof content === 'string' ? content : ''
     const hasAttachments = Boolean(attachments && attachments.length > 0)
     if (wantsViewOnce) {
       if (!hasAttachments || !attachmentsAreViewOnceEligible(attachments || [])) {
@@ -269,20 +287,43 @@ export async function POST(request: NextRequest, context: RouteContext) {
       }
     }
     const viewOnceKind = wantsViewOnce ? detectViewOnceKind(attachments || []) : null
-    const mergedMetadata = wantsViewOnce
+    let storedMetadata: Record<string, unknown> | null = wantsViewOnce
       ? {
           ...(metadata && typeof metadata === 'object' ? metadata : {}),
           view_once: true,
           view_once_kind: viewOnceKind,
         }
-      : metadata || null
-    const preview = wantsViewOnce && viewOnceKind
+      : (metadata as Record<string, unknown> | null) || null
+    let preview = wantsViewOnce && viewOnceKind
       ? viewOnceThreadPreview(viewOnceKind, false)
       : safeContent.length > 100
         ? safeContent.slice(0, 97) + '...'
         : (safeContent || (hasAttachments ? 'Shared an attachment' : ''))
     const now = new Date().toISOString()
     const normalizedMessageType = message_type || 'text'
+    let e2eeEnvelopes: EnvelopeRowInput[] = []
+    let senderDeviceId: number | null = null
+    if (messageTypeUsesE2ee(normalizedMessageType)) {
+      if (isE2eeVersion(body.e2ee_version)) {
+        senderDeviceId = Number(body.sender_device_id)
+        if (!Number.isInteger(senderDeviceId) || senderDeviceId < 1) {
+          return errorResponse('Missing sending device', 400, { code: 'E2EE_INVALID' })
+        }
+        e2eeEnvelopes = parseEnvelopeList(body.envelopes)
+        await assertEnvelopesMatchDevices(
+          serviceClient,
+          threadId,
+          user.id,
+          senderDeviceId,
+          e2eeEnvelopes
+        )
+        safeContent = ''
+        preview = e2eePreview()
+        storedMetadata = stripSensitiveMetadata(storedMetadata)
+      } else if (await threadRequiresE2ee(serviceClient, threadId)) {
+        return errorResponse('This conversation is end-to-end encrypted', 400, { code: 'E2EE_REQUIRED' })
+      }
+    }
     const incomingIdentity = extractCallIdentity(metadata)
 
     if (DEDUPED_CALL_SIGNAL_TYPES.has(normalizedMessageType)) {
@@ -387,10 +428,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
         sender_id: user.id,
         content: safeContent,
         message_type: normalizedMessageType,
-        metadata: mergedMetadata,
+        metadata: storedMetadata,
         reply_to_id: reply_to_id || null,
         ...(typeof is_forward === 'boolean' ? { is_forward } : {}),
         ...(wantsViewOnce ? { view_once: true } : {}),
+        ...(senderDeviceId
+          ? { e2ee_version: E2EE_VERSION, e2ee_sender_device_id: senderDeviceId }
+          : {}),
       })
       .select(MESSAGE_SELECT)
       .single()
@@ -399,7 +443,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return errorResponse(msgError?.message || 'Failed to send message', 400)
     }
 
-    const [readsRes, threadRes, bumpRes] = await Promise.all([
+    const writes = Promise.all([
       serviceClient.from('message_reads').insert({ message_id: message.id, user_id: user.id }),
       serviceClient
         .from('chat_threads')
@@ -415,6 +459,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
         p_sender_id: user.id,
       }),
     ])
+    const envelopes = senderDeviceId
+      ? insertEnvelopes(serviceClient, message.id, e2eeEnvelopes)
+      : Promise.resolve()
+    const [readsRes, threadRes, bumpRes] = await writes
+    await envelopes
     if (readsRes.error) return errorResponse(readsRes.error.message, 400)
     if (threadRes.error) return errorResponse(threadRes.error.message, 400)
     if (bumpRes.error) {
@@ -449,10 +498,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       read_by: [user.id],
       attachments: attData || [],
       reactions: [],
+      e2ee_envelopes: [],
     })
 
     return jsonResponse({ data: result }, 201)
   } catch (error: any) {
+    if (error instanceof E2eeRequestError) {
+      return errorResponse(error.message, error.status, { code: error.code })
+    }
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }
