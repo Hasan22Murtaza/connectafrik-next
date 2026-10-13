@@ -834,7 +834,7 @@ const UserProfilePage: React.FC = () => {
           <div className={`w-full lg:w-[300px] flex-shrink-0 space-y-2 sm:space-y-4 lg:sticky lg:top-20 lg:self-start ${activeTab === 'posts' ? 'hidden lg:block' : activeTab === 'about' || activeTab === 'photos' || activeTab === 'friends' || activeTab === 'reels' ? 'hidden lg:block' : ''}`}>
             <div className="bg-surface sm:rounded-2xl shadow-card p-4">
               <h2 className="text-base sm:text-lg font-semibold text-content mb-3">Personal details</h2>
-              {profile.bio && <p className="text-sm text-content leading-relaxed mb-3 pb-3 border-b border-border">{profile.bio}</p>}
+              {profile.bio && <p className="text-sm text-content leading-relaxed mb-3  line-clamp-4">{profile.bio}</p>}
               <div className="space-y-2.5">
                 {visibleFields.country && profile.country && <DetailRow icon={MapPin}>From <span className="font-semibold">{profile.country}</span></DetailRow>}
                 {visibleFields.location && profileLivesInLine ? (

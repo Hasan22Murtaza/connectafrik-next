@@ -552,7 +552,7 @@ const FriendsPageContent: React.FC = () => {
 
   return (
     <div className="min-h-screen px-4">
-      <div className="flex gap-6">
+      <div className="flex gap-6 sm:pb-0 pb-18">
         {/* Left Sidebar */}
         <div className="hidden md:block w-64 shrink-0">
           <div className="fixed top-18 h-[calc(100vh-6rem)]  py-4 overflow-y-auto ">
@@ -565,12 +565,14 @@ const FriendsPageContent: React.FC = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 max-w-full py-3 sm:py-6 px-4 ">
+        <div className="flex-1 max-w-full py-3 sm:py-6 sm:px-4 px-0 ">
           <div className="flex gap-2 sm:hidden overflow-x-auto w-full pb-5  scrollbar-hide">
             {/* We use inline-flex + min-w-fit to prevent shrinking */}
             <button
               onClick={() => selectSection("all")}
-              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "home" || activeSection === "all" ? "bg-orange-100 text-orange-700" : "text-content"
+              className={`min-w-fit   text-center rounded-full px-3 py-1.5 font-medium transition-colors
+                 ${activeSection === "home" || activeSection === "all" ?
+                   " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
                 }`}
             >
               All friends
@@ -578,7 +580,8 @@ const FriendsPageContent: React.FC = () => {
 
             <button
               onClick={() => selectSection("suggestions")}
-              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "suggestions" ? "bg-orange-100 text-orange-700" : "text-content"
+              className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors 
+                ${activeSection === "suggestions" ? " border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
                 }`}
             >
               Friend suggestions
@@ -587,7 +590,7 @@ const FriendsPageContent: React.FC = () => {
             {(loading || sentLoading || requests.length > 0 || sentRequests.length > 0) && (
               <button
                 onClick={() => selectSection("requests")}
-                className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "bg-orange-100 text-orange-700" : "text-content"
+                className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "requests" ? "border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
                   }`}
               >
                 Friend requests
@@ -601,7 +604,7 @@ const FriendsPageContent: React.FC = () => {
 
             <button
               onClick={() => selectSection("birthdays")}
-              className={`min-w-fit flex-shrink-0 bg-surface-tertiary text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "bg-orange-100 text-orange-700" : "text-content"
+              className={`min-w-fit flex-shrink-0  text-center rounded-full px-4 py-2 font-medium transition-colors ${activeSection === "birthdays" ? "border border-orange-500 bg-orange-100 text-orange-500" : "text-content bg-surface-tertiary"
                 }`}
             >
               Birthdays
@@ -613,7 +616,7 @@ const FriendsPageContent: React.FC = () => {
               {(loading || sentLoading || requests.length > 0 || sentRequests.length > 0) && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-2xl font-semibold text-content">Friend Requests</h2>
+                  <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
                   <button
                     onClick={() => selectSection("requests")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
@@ -756,7 +759,7 @@ const FriendsPageContent: React.FC = () => {
               {/* People You May Know Section */}
               <div>
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-semibold text-content">People You May Know</h2>
+                  <h2 className="sm:text-2xl font-semibold text-content text-lg">People You May Know</h2>
                   <button
                     onClick={() => selectSection("suggestions")}
                     className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 "
@@ -850,7 +853,7 @@ const FriendsPageContent: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-2xl font-semibold text-content">Friend Requests</h2>
+                <h2 className="sm:text-2xl font-semibold text-content text-lg">Friend Requests</h2>
                 <button className="text-primary-600 hover:text-orange-700 font-medium hover:underline duration-300 " onClick={() => selectSection("home")}>
                   See all
                 </button>
@@ -963,7 +966,7 @@ const FriendsPageContent: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-                <h2 className="text-2xl font-semibold text-content">All Friends</h2>
+                <h2 className="sm:text-2xl font-semibold text-content text-lg">All Friends</h2>
                 <div className="relative max-w-full w-sm ">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
                   <input
@@ -1048,7 +1051,7 @@ const FriendsPageContent: React.FC = () => {
             <div>
               {/* Header */}
               <div className="flex items-center justify-between mb-6 flex-wrap gap-2 ">
-                <h2 className="text-2xl font-semibold text-content">Suggestions</h2>
+                <h2 className="sm:text-2xl font-semibold text-content text-lg">Suggestions</h2>
                 <div className="relative max-w-full w-sm">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-content-secondary w-5 h-5" />
                   <input
@@ -1132,7 +1135,7 @@ const FriendsPageContent: React.FC = () => {
             </div>
           ) : activeSection === "birthdays" ? (
             <div>
-              <h2 className="text-2xl font-semibold text-content mb-6">Birthdays</h2>
+              <h2 className="sm:text-2xl font-semibold text-content text-lg mb-6">Birthdays</h2>
 
               {birthdaysLoading ? (
                 <FriendsGridShimmer count={shimmerCount} />
