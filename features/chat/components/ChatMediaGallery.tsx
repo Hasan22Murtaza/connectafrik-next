@@ -487,21 +487,20 @@ export default function ChatMediaGallery({
 
   return (
     <div
-      className="absolute inset-0 z-[70] flex flex-col overflow-hidden rounded-2xl bg-surface"
+      className="absolute inset-0 z-[70] flex flex-col overflow-hidden bg-surface"
       role="dialog"
       aria-modal="true"
       aria-label={galleryTitle}
     >
-      <div className="flex shrink-0 items-center gap-2 border-b border-border bg-surface-secondary px-2 py-2 text-content">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-4 text-content">
         <button
           type="button"
           onClick={onClose}
-          className="flex h-9 w-9 items-center justify-center rounded-full hover:bg-surface-hover"
           aria-label="Back"
         >
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
           <ImageIcon className="h-5 w-5 shrink-0 opacity-90" />
           <span className="truncate text-sm font-semibold">{galleryTitle}</span>
         </div>

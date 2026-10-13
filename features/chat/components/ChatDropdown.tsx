@@ -228,11 +228,16 @@ const ChatDropdownThreadRow: React.FC<ChatDropdownThreadRowProps> = ({
 
 const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const router = useRouter()
-  const { openThread, currentUser, threads: contextThreads } = useProductionChat()
+  const {
+    openThread,
+    currentUser,
+    threads: contextThreads,
+    chatDropdownThreads: threads,
+    setChatDropdownThreads: setThreads,
+  } = useProductionChat()
   const { lockedCount, lockedUnread, openLockedFolder, lockThread } = useChatLock()
   const { confirm, dialog } = useConfirmDialog()
-  const [threads, setThreads] = useState<ChatThread[]>([])
-  const [threadsLoading, setThreadsLoading] = useState(true)
+  const [threadsLoading, setThreadsLoading] = useState(threads.length === 0)
   const [threadsLoadingMore, setThreadsLoadingMore] = useState(false)
   const [threadsHasMore, setThreadsHasMore] = useState(true)
   const [threadsListLastPage, setThreadsListLastPage] = useState(-1)
@@ -244,6 +249,8 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
   const [blockedExpanded, setBlockedExpanded] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const threadsRef = useRef(threads)
+  threadsRef.current = threads
 
   useEffect(() => {
     const onMarkedRead = (event: Event) => {
@@ -286,14 +293,18 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
         setThreadsListLastPage(-1)
         return
       }
-      setThreadsLoading(true)
+      setThreadsLoading(threadsRef.current.length === 0)
       setThreadsListLastPage(-1)
       try {
         const { threads: userThreads, hasMore } = await supabaseMessagingService.getUserThreads(
           { id: currentUser.id, name: currentUser.name || '' },
           { limit: PAGE_SIZE, page: 0, category: 'general' }
         )
-        setThreads(userThreads)
+        setThreads((prev) => {
+          const existingIds = new Set(prev.map((thread) => thread.id))
+          const newThreads = userThreads.filter((thread) => !existingIds.has(thread.id))
+          return [...prev, ...newThreads]
+        })
         setThreadsHasMore(hasMore)
         setThreadsListLastPage(0)
       } finally {
@@ -301,7 +312,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
       }
     }
     loadThreads()
-  }, [currentUser])
+  }, [currentUser, setThreads])
 
   // Only fetch marketplace when the TradeHub section is open.
   useEffect(() => {
@@ -608,10 +619,14 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
     () => activeThreads.filter(filterThread),
     [activeThreads, filterThread]
   )
+
+
   const filteredArchived = useMemo(
     () => archivedThreads.filter(filterThread),
     [archivedThreads, filterThread]
   )
+  
+
   const filteredBlocked = useMemo(
     () => blockedThreads.filter(filterThread),
     [blockedThreads, filterThread]
@@ -894,7 +909,7 @@ const ChatDropdown: React.FC<ChatDropdownProps> = ({ onClose }) => {
             </div>
           )}
         </div>
-      ) : threadsLoading ? (
+      ) : threadsLoading && mergedThreads.length === 0 ? (
         <ChatDropdownShimmer mode="chat" count={5} />
       ) : mergedThreads.length === 0 ? (
         <div className="py-6 text-center text-sm text-content-secondary">

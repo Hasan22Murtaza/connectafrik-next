@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 import { saveSignupMetadata } from '@/lib/auth/clientStorage'
 import type { SignupProfileMetadata } from '@/lib/auth/otpTypes'
 import { AuthPageShell } from '@/shared/components/auth/AuthPageShell'
+import { Check } from 'lucide-react'
 
 const Signup: React.FC = () => {
   const router = useRouter()
@@ -21,6 +22,7 @@ const Signup: React.FC = () => {
     customGender: '',
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -256,10 +258,42 @@ const Signup: React.FC = () => {
             )}
           </div>
         </div>
+        <div className="flex items-start justify-center gap-2">
+          <label className="flex gap-2 items-center cursor-pointer relative mt-1">
+            <input
+             type="checkbox"
+              className="hidden peer"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              aria-invalid={!acceptTerms}
+             />
+            <span className="w-4 h-4 border border-slate-300 rounded relative flex items-center justify-center peer-checked:border-orange-600"></span>
+            <Check className="absolute w-3 h-3 text-orange-500 opacity-0 peer-checked:opacity-100 left-1/2 transform -translate-x-1/2" />
+          </label>
+
+          <p className=" text-xs leading-5 text-[#6B7280]">
+            By continuing, you agree to our{' '}
+            <Link
+              href="/terms-of-service"
+              className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
+            >
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link
+              href="/privacy-policy"
+              className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
+
 
         <button
           type="submit"
-          disabled={!isFormValid || isLoading}
+          disabled={!isFormValid || isLoading || !acceptTerms}
           className="flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#F97316] text-sm font-semibold text-white transition-colors hover:bg-[#EA580C] disabled:cursor-not-allowed disabled:opacity-50 sm:text-base"
         >
           {isLoading ? 'Sending code...' : (
@@ -276,23 +310,7 @@ const Signup: React.FC = () => {
           </Link>
         </p>
 
-        <p className="pt-1 text-center text-xs text-[#6B7280]">
-          By continuing, you agree to our{' '}
-          <Link
-            href="/terms-of-service"
-            className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
-          >
-            Terms of Service
-          </Link>{' '}
-          and{' '}
-          <Link
-            href="/privacy-policy"
-            className="underline decoration-[#D1D5DB] underline-offset-2 hover:text-[#6B7280]"
-          >
-            Privacy Policy
-          </Link>
-          .
-        </p>
+
       </form>
     </AuthPageShell>
   )

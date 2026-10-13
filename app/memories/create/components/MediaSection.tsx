@@ -220,16 +220,7 @@ export function MediaSection({
             <p className="mt-1.5 text-xs text-content-secondary sm:text-sm">
               MP4, MOV, WebM · Max {MAX_REEL_DURATION / 60} minutes
             </p>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                onBrowseClick()
-              }}
-              className="btn-primary mt-4 text-sm"
-            >
-              Browse files
-            </button>
+           
             <input
               ref={fileInputRef}
               type="file"

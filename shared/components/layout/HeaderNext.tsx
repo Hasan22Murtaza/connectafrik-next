@@ -445,7 +445,7 @@ const Header: React.FC<HeaderProps> = ({
 
                   <button
                     type="button"
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827] transition-colors hover:bg-[#F9FAFB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:hidden"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-[#111827] transition-colors hover:bg-[#F9FAFB] dark:text-slate-50 dark:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F97316]/40 sm:hidden"
                     aria-label={guestMenuOpen ? "Close menu" : "Open menu"}
                     aria-expanded={guestMenuOpen}
                     onClick={() => setGuestMenuOpen((open) => !open)}
@@ -464,20 +464,20 @@ const Header: React.FC<HeaderProps> = ({
         {!user && guestMenuOpen && (
           <div className="border-t border-black/[0.06] bg-white sm:hidden">
             <nav
-              className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 sm:px-6"
+              className="mx-auto flex max-w-7xl sm:flex-col flex-row gap-2 px-4 py-4 sm:px-6"
               aria-label="Mobile"
             >
               <Link
                 href="/signin"
                 onClick={() => setGuestMenuOpen(false)}
-                className="inline-flex h-12 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-sm font-semibold text-[#111827]"
+                className="flex-1 inline-flex h-12 items-center justify-center rounded-full border border-[#E5E7EB] dark:border-slate-200 dark:text-slate-50 bg-white text-sm font-semibold text-[#111827]"
               >
                 Sign In
               </Link>
               <Link
                 href="/signup"
                 onClick={() => setGuestMenuOpen(false)}
-                className="inline-flex h-12 items-center justify-center rounded-full bg-[#F97316] text-sm font-semibold text-white hover:bg-[#EA580C]"
+                className="flex-1 inline-flex h-12 items-center justify-center rounded-full bg-[#F97316] text-sm font-semibold text-white hover:bg-[#EA580C]"
               >
                 Join CribsTalk
               </Link>
