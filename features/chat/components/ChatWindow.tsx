@@ -1528,6 +1528,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       if (filesSnapshot.length > 0) {
         try {
           uploadedAttachments = await fileUploadService.uploadFiles(filesSnapshot, {
+            threadId,
             signal: optimisticId
               ? uploadAbortByMessageRef.current.get(optimisticId)?.signal
               : undefined,
@@ -1566,6 +1567,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           type: f.type,
           size: f.size,
           mimeType: f.mimeType,
+          ...(f.e2ee ? { e2ee: f.e2ee } : {}),
         })),
         reply_to_id: replyTarget?.thread_id === threadId ? replyTarget.id : undefined,
         ...(sendAsViewOnce ? { view_once: true } : {}),
@@ -2236,6 +2238,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               beginMessageUpload(optimisticId, results);
             }
             const uploaded = await fileUploadService.uploadFiles(results, {
+              threadId,
               signal: optimisticId
                 ? uploadAbortByMessageRef.current.get(optimisticId)?.signal
                 : undefined,
@@ -2253,6 +2256,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type: f.type,
                 size: f.size,
                 mimeType: f.mimeType,
+                ...(f.e2ee ? { e2ee: f.e2ee } : {}),
               })),
               ...(prependSendId
                 ? {

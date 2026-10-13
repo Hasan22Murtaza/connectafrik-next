@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
+  ChatAttachment,
   ChatMessage,
   ChatThread,
   RecentCallEntry,
@@ -31,14 +32,24 @@ import {
 /** Realtime UPDATEs use a lightweight mapper (no attachments/sender joins); preserve rich fields from cache. */
 function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): ChatMessage {
   const incomingEmptyReads = !(incoming.read_by && incoming.read_by.length)
-  const incomingEmptyAttachments = !(incoming.attachments && incoming.attachments.length)
+  const incomingAttachmentsBlank =
+    (incoming.attachments?.length || 0) > 0 && incoming.attachments!.every((attachment) => !attachment.url)
+  const previousHasMedia = (prev.attachments || []).some((attachment) => attachment.url)
+  const incomingEmptyAttachments = !(incoming.attachments && incoming.attachments.length) || (incomingAttachmentsBlank && previousHasMedia)
   const incomingEmptyReactions = !(incoming.reactions && incoming.reactions.length)
   const senderLooksStub =
     incoming.sender?.name === 'Loading...' &&
     incoming.sender?.id === incoming.sender_id
+  const incomingFailed = incoming.e2ee_status === 'failed'
+  const keepReadable =
+    incomingFailed &&
+    (prev.e2ee_status === 'decrypted' || Boolean(prev.content && prev.e2ee_status !== 'failed'))
 
   return {
     ...incoming,
+    content: keepReadable ? prev.content : incoming.content,
+    e2ee_status: keepReadable ? prev.e2ee_status ?? 'decrypted' : incoming.e2ee_status,
+    e2ee_error: keepReadable ? undefined : incoming.e2ee_error,
     read_by: incomingEmptyReads ? prev.read_by : (incoming.read_by ?? []),
     attachments: incomingEmptyAttachments ? prev.attachments : incoming.attachments,
     reactions: incomingEmptyReactions ? prev.reactions : incoming.reactions,
@@ -379,6 +390,14 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('openChatThread', { detail: { threadId } }))
     }
+
+    const listed =
+      (seedThread?.id === threadId ? seedThread : null) ||
+      threadsRef.current.find((thread) => thread.id === threadId)
+    const participantIds = listed?.participants?.map((participant) => participant.id).filter(Boolean)
+    void import('@/lib/e2ee/client')
+      .then((mod) => mod.warmThreadEncryption(threadId, participantIds))
+      .catch(() => undefined)
   }, [threads, currentUser])
 
   const closeThread = useCallback((threadId: string) => {
@@ -595,7 +614,12 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         is_forward: payload?.is_forward === true,
         view_once: payload?.view_once === true,
         view_once_opened: false,
-        attachments: payload?.attachments,
+        attachments: Array.isArray(payload?.attachments)
+          ? payload.attachments.map((attachment: ChatAttachment) => {
+              const { e2ee: _e2ee, ...rest } = attachment
+              return rest
+            })
+          : payload?.attachments,
         sender: {
           id: currentUser.id,
           name: currentUser.name || 'You',
@@ -620,6 +644,8 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
 
     try {
+      const listed = threadsRef.current.find((thread) => thread.id === threadId)
+      const participantIds = listed?.participants?.map((participant) => participant.id).filter(Boolean)
       const message = await supabaseMessagingService.sendMessage(
         threadId,
         {
@@ -630,6 +656,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
           metadata: metadataForApi,
           is_forward: payload?.is_forward === true,
           view_once: payload?.view_once === true,
+          participant_ids: participantIds,
         },
         currentUser
       )

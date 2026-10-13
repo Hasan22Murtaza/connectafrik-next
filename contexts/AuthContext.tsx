@@ -189,6 +189,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = useCallback(async () => {
     resetThemeToLight()
     await deactivateTokenOnLogout().catch(() => {})
+    const { revokeCurrentDeviceAndWipe } = await import('@/lib/e2ee/client')
+    await revokeCurrentDeviceAndWipe().catch(() => {})
     await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'local' })
     router.push('/')
@@ -197,6 +199,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOutAllDevices = useCallback(async () => {
     resetThemeToLight()
     await deactivateTokenOnLogout().catch(() => {})
+    const { revokeAllDevicesAndWipe } = await import('@/lib/e2ee/client')
+    await revokeAllDevicesAndWipe().catch(() => {})
     await flushUserPresenceOnLeave()
     await supabase.auth.signOut({ scope: 'global' })
     router.push('/')

@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const { data: messages, error: messagesError } = await serviceClient
       .from('chat_messages')
-      .select('id, content, thread_id, is_deleted, message_type')
+      .select('id, content, thread_id, is_deleted, message_type, e2ee_version')
       .in('id', messageIds)
       .eq('thread_id', threadId)
 
@@ -88,6 +88,10 @@ export async function POST(request: NextRequest) {
       }
       if ((message.message_type || 'text') !== 'text') {
         errors[messageId] = 'Only text messages can be translated'
+        continue
+      }
+      if (message.e2ee_version) {
+        errors[messageId] = 'End-to-end encrypted messages are not sent to the server for translation'
         continue
       }
       if (!isTranslatableMessageContent(message.content)) {

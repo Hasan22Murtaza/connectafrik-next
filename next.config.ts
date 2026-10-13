@@ -12,6 +12,11 @@ const bunnyCdnHost = (() => {
 
 const nextConfig: NextConfig = {
   reactStrictMode: false,
+  transpilePackages: [
+    '@privacyresearch/libsignal-protocol-typescript',
+    '@privacyresearch/curve25519-typescript',
+    '@privacyresearch/libsignal-protocol-protobuf-ts',
+  ],
 
   images: {
     remotePatterns: [
