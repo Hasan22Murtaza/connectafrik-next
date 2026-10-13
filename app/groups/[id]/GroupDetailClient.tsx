@@ -524,7 +524,7 @@ const GroupDetailPage: React.FC = () => {
     return (
       <div className="mx-auto flex min-h-screen gap-4 px-2 py-5 sm:gap-6 sm:px-6">
         {/* Keep Groups Sidebar visible while group page loads */}
-        <aside className="sticky top-22 hidden h-[calc(100vh-6rem)] w-75 shrink-0 self-start overflow-y-auto scrollbar-hover lg:block">
+        <aside className="sticky top-22 hidden h-[calc(100vh-6rem)] w-75 shrink-0  self-start overflow-y-auto scrollbar-hover lg:block">
           <GroupsSidebar
             view="group-detail"
             onViewChange={(nextView) =>
@@ -597,7 +597,7 @@ const GroupDetailPage: React.FC = () => {
   return (
     <div className="mx-auto flex min-h-screen  gap-4 px-2 py-5 sm:gap-6 sm:px-6">
 
-      <div className="w-75 shrink-0 ">
+      <div className="w-75 shrink-0 hidden lg:block">
         <aside className="fixed w-75 shrink-0 top-22 hidden h-[calc(100vh-6rem)] self-start overflow-y-auto scrollbar-hover lg:block">
           <GroupsSidebar
             view="group-detail"
@@ -635,7 +635,7 @@ const GroupDetailPage: React.FC = () => {
         <div className={`transition-all duration-200 ${isSticky ? 'sticky top-0 z-40' : ''
           }`}>
           <div >
-            <div className="flex sm:items-center items-start justify-between py-3">
+            <div className="flex sm:items-center items-start justify-between py-3 flex-wrap gap-2  px-2 sm:px-0">
               {/* Group Name & Info */}
               <div className="flex items-center gap-4">
                 <div>
@@ -657,7 +657,7 @@ const GroupDetailPage: React.FC = () => {
                   <>
                     <button
                       onClick={() => setShowInviteModal(true)}
-                      className="btn-primary flex items-center gap-2"
+                      className="btn-primary flex items-center gap-2 flex-1"
                     >
                       <UserPlus className="w-4 h-4" />
                       <span className='hidden sm:block'>Invite</span>
@@ -682,7 +682,7 @@ const GroupDetailPage: React.FC = () => {
                         className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
                       >
                         <Edit className="w-4 h-4" />
-                        Manage
+                        <span className='hidden sm:block'>Manage</span>
                       </button>
                     )}
                   </>
@@ -1203,7 +1203,7 @@ const GroupDetailPage: React.FC = () => {
                           <img
                             src={group.creator.avatar_url}
                             alt={group.creator.full_name}
-                            className="w-8 h-8 rounded-full"
+                            className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">

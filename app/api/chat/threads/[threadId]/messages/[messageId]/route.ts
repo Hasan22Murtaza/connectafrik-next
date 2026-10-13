@@ -4,6 +4,17 @@ import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-uti
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
 import { sanitizeViewOnceMessage } from '@/lib/chat/chatViewOnce'
+import {
+  assertEnvelopesMatchDevices,
+  attachEnvelopes,
+  E2eeRequestError,
+  e2eePreview,
+  isE2eeVersion,
+  parseEnvelopeList,
+  replaceEnvelopes,
+  threadRequiresE2ee,
+} from '@/lib/e2ee/server'
+import { E2EE_VERSION } from '@/lib/e2ee/types'
 
 const MESSAGE_SELECT = `
   *,
@@ -55,8 +66,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (!message) return errorResponse('Message not found', 404)
 
     const data = await enrichMessageResponse(serviceClient, message, user.id)
-    return jsonResponse({ data })
+    const [withEnvelopes] = await attachEnvelopes(serviceClient, user.id, [data])
+    return jsonResponse({ data: withEnvelopes })
   } catch (error: any) {
+    if (error instanceof E2eeRequestError) {
+      return errorResponse(error.message, error.status, { code: error.code })
+    }
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }
@@ -72,6 +87,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = await request.json()
     const content = body.content
     const isForwardFlag = body.is_forward
+    const wantsE2ee = isE2eeVersion(body.e2ee_version)
 
     const allowed = await requireChatThreadAccess(serviceClient, user.id, threadId)
     if (!allowed) {
@@ -82,13 +98,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return errorResponse('content must be a string', 400)
     }
     const safeContent = content.trim()
-    if (!safeContent) {
-      return errorResponse('content cannot be empty', 400)
-    }
 
     const { data: existing, error: fetchError } = await serviceClient
       .from('chat_messages')
-      .select('id, sender_id, thread_id, message_type, is_deleted, view_once')
+      .select('id, sender_id, thread_id, message_type, is_deleted, view_once, e2ee_version')
       .eq('id', messageId)
       .eq('thread_id', threadId)
       .maybeSingle()
@@ -110,10 +123,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const now = new Date().toISOString()
+    const encryptEdit =
+      wantsE2ee ||
+      isE2eeVersion((existing as { e2ee_version?: number | null }).e2ee_version) ||
+      (await threadRequiresE2ee(serviceClient, threadId))
+    if (encryptEdit && !wantsE2ee) {
+      return errorResponse('This conversation is end-to-end encrypted', 400, { code: 'E2EE_REQUIRED' })
+    }
+    if (!encryptEdit && !safeContent) {
+      return errorResponse('content cannot be empty', 400)
+    }
+
+    let envelopes: ReturnType<typeof parseEnvelopeList> = []
     const updateRow: Record<string, unknown> = {
       content: safeContent,
       updated_at: now,
       is_edited: true,
+    }
+    if (encryptEdit) {
+      const senderDeviceId = Number(body.sender_device_id)
+      if (!Number.isInteger(senderDeviceId) || senderDeviceId < 1) {
+        return errorResponse('Missing sending device', 400, { code: 'E2EE_INVALID' })
+      }
+      envelopes = parseEnvelopeList(body.envelopes)
+      await assertEnvelopesMatchDevices(serviceClient, threadId, user.id, senderDeviceId, envelopes)
+      updateRow.content = ''
+      updateRow.e2ee_version = E2EE_VERSION
+      updateRow.e2ee_sender_device_id = senderDeviceId
     }
     if (typeof isForwardFlag === 'boolean') {
       updateRow.is_forward = isForwardFlag
@@ -129,6 +165,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (updateError || !updated) {
       return errorResponse(updateError?.message || 'Failed to update message', 400)
     }
+    if (encryptEdit) {
+      await replaceEnvelopes(serviceClient, messageId, envelopes)
+    }
 
     const { data: latest } = await serviceClient
       .from('chat_messages')
@@ -140,7 +179,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .maybeSingle()
 
     if (latest?.id === messageId) {
-      const preview = safeContent.length > 100 ? safeContent.slice(0, 97) + '...' : safeContent
+      const preview = encryptEdit
+        ? e2eePreview()
+        : safeContent.length > 100
+          ? safeContent.slice(0, 97) + '...'
+          : safeContent
       await serviceClient
         .from('chat_threads')
         .update({
@@ -153,8 +196,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const data = await enrichMessageResponse(serviceClient, updated, user.id)
-    return jsonResponse({ data })
+    const [withEnvelopes] = await attachEnvelopes(serviceClient, user.id, [data])
+    return jsonResponse({ data: withEnvelopes })
   } catch (error: any) {
+    if (error instanceof E2eeRequestError) {
+      return errorResponse(error.message, error.status, { code: error.code })
+    }
     if (error.message === 'Unauthorized' || error.message === 'Missing Authorization header') {
       return unauthorizedResponse()
     }

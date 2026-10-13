@@ -344,18 +344,18 @@ const GroupsPage: React.FC = () => {
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button
               onClick={() => handleViewChange("feed")}
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary  ${view === "feed"
-                  ? "text-orange-600 bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300"
-                  : "text-content hover:bg-surface-secondary dark:hover:bg-surface-hover"
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium  ${view === "feed"
+                  ? "text-orange-600 bg-primary-50 border border-orange-500"
+                  : "text-content hover:bg-surface-secondary dark:hover:bg-surface-hover  bg-surface-tertiary"
                 }`}
             >
               Your feed
             </button>
             <button
               onClick={() => handleViewChange("discover")}
-              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary ${view === "discover"
-                  ? "text-orange-600 bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300"
-                  : "text-content hover:bg-surface-secondary dark:hover:bg-surface-hover"
+              className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium  ${view === "discover"
+                  ? "text-orange-600 bg-primary-50 border border-orange-500"
+                  : "text-content bg-surface-tertiary hover:bg-surface-secondary dark:hover:bg-surface-hover"
                 }`}
             >
               Discover
@@ -363,9 +363,9 @@ const GroupsPage: React.FC = () => {
             {user && (
               <button
                 onClick={() => handleViewChange("my-groups")}
-                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium bg-surface-tertiary ${view === "my-groups"
-                    ? "text-orange-600 bg-orange-100 dark:bg-orange-500/15 dark:text-orange-300"
-                    : "text-content hover:bg-surface-secondary dark:hover:bg-surface-hover"
+                className={`px-4 py-2 rounded-full whitespace-nowrap transition-colors text-sm font-medium  ${view === "my-groups"
+                    ? "text-orange-600 bg-primary-50 border border-orange-500"
+                    : "text-content bg-surface-tertiary hover:bg-surface-secondary dark:hover:bg-surface-hover"
                   }`}
               >
                 Your groups
@@ -376,7 +376,7 @@ const GroupsPage: React.FC = () => {
 
         <div className="flex gap-4 lg:gap-6">
           {/* Left Sidebar - Desktop */}
-          <div className="w-75 shrink-0 ">
+          <div className="w-75 shrink-0 lg:block hidden ">
                   <aside className="fixed w-75 shrink-0 top-22 hidden h-[calc(100vh-6rem)] self-start overflow-y-auto scrollbar-hover lg:block">
                     <GroupsSidebar
                        view={view}

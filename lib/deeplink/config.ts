@@ -64,7 +64,7 @@ export const deepLinkConfig = {
 
   android: {
     /** Application id of the Android app. */
-    packageName: process.env.NEXT_PUBLIC_ANDROID_PACKAGE || 'com.example.connectafrik',
+    packageName: process.env.NEXT_PUBLIC_ANDROID_PACKAGE || 'com.alora.cribsTalk',
     /**
      * SHA-256 signing-certificate fingerprints (comma separated).
      * Include BOTH the upload key and the Play App Signing key.

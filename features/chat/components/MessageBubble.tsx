@@ -483,6 +483,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     !isOwnMessage &&
     !isDeleted &&
     (message.message_type || "text") === "text" &&
+    !message.e2ee_version &&
     Boolean((message.content || "").trim());
   const offerTranslateLink =
     canTranslate &&
@@ -930,7 +931,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     !isDeleted && !locationPayload && message.content
       ? extractCribsTalkPostId(stripMarkdown(message.content))
       : null;
-  const sourceContent = translationDisplay?.text ?? message.content ?? "";
+  const e2eeFailed = message.e2ee_status === "failed";
+  const sourceContent = e2eeFailed
+    ? message.e2ee_error || "Unable to decrypt this message"
+    : translationDisplay?.text ?? message.content ?? "";
   const displayContent = sharedPostId
     ? stripCribsTalkPostUrls(sourceContent)
     : sourceContent;

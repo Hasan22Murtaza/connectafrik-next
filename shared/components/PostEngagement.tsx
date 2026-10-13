@@ -336,9 +336,7 @@ const PostEngagement: React.FC<PostEngagementProps> = ({
         >
           <PiShareFatLight className="w-4 h-4" />
           <span>{isShared ? 'Shared' : 'Share'}</span>
-          {sharesCount > 0 && (
-            <span className="text-xs font-semibold">{sharesCount}</span>
-          )}
+         
         </button>
       </div>
 
