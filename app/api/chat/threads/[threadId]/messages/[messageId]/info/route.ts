@@ -3,6 +3,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { sanitizeViewOnceMessage } from '@/lib/chat/chatViewOnce'
+import { decodeMessageContent } from '@/lib/chat/messageCodec'
 
 const MESSAGE_SELECT = `
   *,
@@ -176,6 +177,10 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       })
 
     const sent_at = (message.created_at as string | undefined) ?? null
+    const plainContent = await decodeMessageContent(
+      threadId,
+      typeof message.content === 'string' ? message.content : ''
+    )
     const latest_read_at =
       read_receipts.length > 0 ? read_receipts[read_receipts.length - 1]?.read_at ?? null : null
     const latest_delivered_at =
@@ -196,7 +201,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     const quoted = replyRes?.data ?? null
     if (quoted?.id) {
-      const raw = typeof quoted.content === 'string' ? quoted.content : ''
+      const rawStored = typeof quoted.content === 'string' ? quoted.content : ''
+      const raw = await decodeMessageContent(threadId, rawStored)
       const preview =
         raw.length > REPLY_PREVIEW_MAX ? `${raw.slice(0, REPLY_PREVIEW_MAX - 1)}…` : raw
       const s = quoted.sender
@@ -218,6 +224,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
     return jsonResponse(sanitizeViewOnceMessage({
       ...message,
+      content: plainContent,
       read_by: readBy,
       attachments: attachmentsRes.data || [],
       reactions,

@@ -1567,7 +1567,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           type: f.type,
           size: f.size,
           mimeType: f.mimeType,
-          ...(f.e2ee ? { e2ee: f.e2ee } : {}),
         })),
         reply_to_id: replyTarget?.thread_id === threadId ? replyTarget.id : undefined,
         ...(sendAsViewOnce ? { view_once: true } : {}),
@@ -2256,7 +2255,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 type: f.type,
                 size: f.size,
                 mimeType: f.mimeType,
-                ...(f.e2ee ? { e2ee: f.e2ee } : {}),
               })),
               ...(prependSendId
                 ? {

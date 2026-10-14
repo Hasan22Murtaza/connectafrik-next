@@ -12,6 +12,7 @@ import {
   isTranslatableMessageContent,
 } from '@/lib/messageTranslation'
 import { DeepSeekError } from '@/lib/deepseek'
+import { decodeMessageContent } from '@/lib/chat/messageCodec'
 
 type TranslateBody = {
   threadId?: string
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     const { data: messages, error: messagesError } = await serviceClient
       .from('chat_messages')
-      .select('id, content, thread_id, is_deleted, message_type, e2ee_version')
+      .select('id, content, thread_id, is_deleted, message_type')
       .in('id', messageIds)
       .eq('thread_id', threadId)
 
@@ -90,11 +91,8 @@ export async function POST(request: NextRequest) {
         errors[messageId] = 'Only text messages can be translated'
         continue
       }
-      if (message.e2ee_version) {
-        errors[messageId] = 'End-to-end encrypted messages are not sent to the server for translation'
-        continue
-      }
-      if (!isTranslatableMessageContent(message.content)) {
+      const plainContent = await decodeMessageContent(threadId, message.content)
+      if (!isTranslatableMessageContent(plainContent)) {
         errors[messageId] = 'Message has no translatable text'
         continue
       }
@@ -113,7 +111,7 @@ export async function POST(request: NextRequest) {
         const created = await getOrCreateMessageTranslation(
           serviceClient,
           messageId,
-          message.content!.trim(),
+          plainContent.trim(),
           targetLanguage
         )
         translations[messageId] = {

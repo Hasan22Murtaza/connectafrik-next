@@ -3,6 +3,7 @@ import { getAuthenticatedUser, createServiceClient } from '@/lib/supabase-server
 import { jsonResponse, errorResponse, unauthorizedResponse } from '@/lib/api-utils'
 import { requireChatThreadAccess } from '@/lib/chat/chatThreadAccess'
 import { requireUnlockedLockedThread } from '@/lib/chat/chatLock'
+import { decodeMessageContent } from '@/lib/chat/messageCodec'
 
 type RouteContext = { params: Promise<{ threadId: string }> }
 
@@ -136,7 +137,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         )
         .eq('thread_id', threadId)
         .eq('is_deleted', false)
-        .or('content.ilike.%http://%,content.ilike.%https://%,content.ilike.%www.%')
+        .or('content.ilike.%http://%,content.ilike.%https://%,content.ilike.%www.%,content.like.e2ee1.%')
         .order('created_at', { ascending: false })
         .range(from, to)
 
@@ -145,7 +146,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       const items: Record<string, unknown>[] = []
       for (const row of rows || []) {
         if (isDeletedForUser(row.deleted_for, user.id)) continue
-        const linkUrl = extractFirstUrl(row.content as string)
+        const plain = await decodeMessageContent(threadId, String(row.content || ''))
+        const linkUrl = extractFirstUrl(plain)
         if (!linkUrl) continue
         const createdAt = row.created_at as string
         items.push({
@@ -161,7 +163,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
           file_name: null,
           file_size: null,
           mime_type: null,
-          content_preview: String(row.content || '').slice(0, 280),
+          content_preview: plain.slice(0, 280),
         })
       }
 
@@ -236,6 +238,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       const createdAt = msg.created_at as string
       const url = String(row.file_url || '')
+      const plainCaption = await decodeMessageContent(
+        threadId,
+        typeof msg.content === 'string' ? msg.content : ''
+      )
       items.push({
         id: row.id,
         message_id: row.message_id,
@@ -249,7 +255,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         file_name: row.file_name ?? null,
         file_size: row.file_size ?? null,
         mime_type: fileType || null,
-        content_preview: typeof msg.content === 'string' ? msg.content.slice(0, 160) : null,
+        content_preview: plainCaption ? plainCaption.slice(0, 160) : null,
       })
     }
 

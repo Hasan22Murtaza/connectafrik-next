@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
 import { MARKETPLACE_SYSTEM } from '@/lib/chat/marketplaceChat'
 import { deepseekChatCompletion } from '@/lib/deepseek'
+import { decodeMessageContent } from '@/lib/chat/messageCodec'
 
 const MESSAGE_BATCH_SIZE = 200
 const MAX_MESSAGES_FOR_TRANSCRIPT = 800
@@ -148,7 +149,8 @@ export async function fetchThreadDialogueForTranscript(
       const deletedFor = Array.isArray(message.deleted_for) ? message.deleted_for : []
       if (deletedFor.includes(viewerUserId)) continue
 
-      const line = formatMessageLine(message)
+      const content = await decodeMessageContent(threadId, message.content)
+      const line = formatMessageLine({ ...message, content })
       if (!line) continue
 
       lines.push(line)
