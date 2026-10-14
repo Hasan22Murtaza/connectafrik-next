@@ -184,6 +184,7 @@ export interface RecentCallEntry {
   contact_name?: string | null
   contact_avatar_url?: string | null
   banner_url?: string | null
+  duration_seconds?: number | null
   participants?: RecentCallParticipant[]
 }
 
@@ -1384,16 +1385,22 @@ export const supabaseMessagingService = {
     }
   },
 
-  async getRecentCalls(currentUserId: string, limit = 10, page = 0): Promise<RecentCallEntry[]> {
-    if (!currentUserId) return []
+  async getRecentCalls(
+    currentUserId: string,
+    limit = 10,
+    page = 0
+  ): Promise<{ entries: RecentCallEntry[]; hasMore: boolean; page: number }> {
+    if (!currentUserId) return { entries: [], hasMore: false, page }
 
     try {
-      const res = await apiClient.get<{ data: any[]; meta?: { page: number; pageSize: number; hasMore: boolean } }>(
-        '/api/chat/calls',
-        { limit, page }
-      )
-      const list = res?.data ?? []
-      return list.map((r: any) => {
+      const res = await apiClient.get<{
+        data: any[]
+        meta?: { page: number; pageSize: number; hasMore: boolean }
+      }>('/api/chat/calls', { limit, page })
+      const list = Array.isArray(res?.data) ? res.data : []
+      const hasMore =
+        typeof res?.meta?.hasMore === 'boolean' ? res.meta.hasMore : list.length >= limit
+      const entries = list.map((r: any) => {
         const meta = (r.metadata ?? {}) as Record<string, unknown>
         const callType = (r.call_type === 'video' || meta.callType === 'video' ? 'video' : 'audio') as
           | 'audio'
@@ -1412,6 +1419,10 @@ export const supabaseMessagingService = {
           contact_name: r.contact_name ?? null,
           contact_avatar_url: r.contact_avatar_url ?? null,
           banner_url: r.banner_url ?? null,
+          duration_seconds:
+            typeof r.duration_seconds === 'number' && Number.isFinite(r.duration_seconds)
+              ? Math.max(0, Math.floor(r.duration_seconds))
+              : null,
           participants: Array.isArray(r.participants)
             ? r.participants.map((p: any) => ({
                 id: String(p.id),
@@ -1424,9 +1435,10 @@ export const supabaseMessagingService = {
             : [],
         }
       })
+      return { entries, hasMore, page: res?.meta?.page ?? page }
     } catch (err) {
       console.error('Error fetching recent calls:', err)
-      return []
+      return { entries: [], hasMore: false, page }
     }
   },
 

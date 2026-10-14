@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
     const limit = Number.isNaN(parsedLimit) ? 10 : Math.min(Math.max(parsedLimit, 1), 50)
     const page = Number.isNaN(parsedPage) ? 0 : Math.max(parsedPage, 0)
     const from = page * limit
+    // Inclusive range: fetch limit+1 to detect hasMore without an extra count query.
     const to = from + limit
 
     const { data: participantRows } = await serviceClient
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     const { data: sessionRows, error } = await serviceClient
       .from('call_sessions')
       .select(
-        'id, thread_id, status, call_type, metadata, started_at, ended_at, updated_at, created_at, created_by, call_id, participants'
+        'id, thread_id, status, call_type, metadata, started_at, ended_at, duration_seconds, updated_at, created_at, created_by, call_id, participants'
       )
       .in('thread_id', threadIds)
       .order('updated_at', { ascending: false })
@@ -285,6 +286,20 @@ export async function GET(request: NextRequest) {
         meta.isGroupCall === true ||
         meta.isGroupCall === 'true'
 
+      const durationFromRow =
+        typeof r.duration_seconds === 'number' && Number.isFinite(r.duration_seconds)
+          ? Math.max(0, Math.floor(r.duration_seconds))
+          : null
+      const durationFromRange =
+        r.started_at && r.ended_at
+          ? Math.max(
+              0,
+              Math.floor(
+                (new Date(r.ended_at).getTime() - new Date(r.started_at).getTime()) / 1000
+              )
+            )
+          : null
+
       return {
         session_id: sessionId,
         thread_id: r.thread_id,
@@ -302,6 +317,7 @@ export async function GET(request: NextRequest) {
         contact_last_seen: otherProfile?.last_seen || null,
         banner_url: thread?.banner_url ?? null,
         created_by: r.created_by ?? null,
+        duration_seconds: durationFromRow ?? durationFromRange,
         participants: callParticipants,
       }
     })

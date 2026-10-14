@@ -19,8 +19,6 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import ChatDropdown from "@/features/chat/components/ChatDropdown";
-import CallHistoryDropdown from "@/features/chat/components/CallHistoryDropdown";
 import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
 import { FaBars } from "react-icons/fa";
 import MobileSideDrawer from "../ui/MobileSideDrawer";
@@ -44,10 +42,8 @@ const Header: React.FC<HeaderProps> = ({
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showInbox, setShowInbox] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showCalls, setShowCalls] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -64,7 +60,7 @@ const Header: React.FC<HeaderProps> = ({
   // Sync internal search term with external prop
   const searchTerm = externalSearchTerm !== undefined ? externalSearchTerm : internalSearchTerm;
 
-  const { unreadMessages, callBadgeCount, markCallsViewed } = useHeaderInboxCounts();
+  const { unreadMessages, callBadgeCount } = useHeaderInboxCounts();
   const { friendRequestCount } = useSpaceNavCounts();
   console.log("Unread Messages:", unreadMessages);
   console.log("Friend Request Count:", friendRequestCount);
@@ -313,14 +309,13 @@ const Header: React.FC<HeaderProps> = ({
                   {/* Notifications & Messaging */}
                   <div className="flex items-center space-x-2 sm:space-x-2 border-border-subtle w-65 xl:w-80 2xl:w-[24rem] justify-end">
 
-                    <div className="relative">
-                      <button
-                        onClick={() => {
-                          setShowInbox(!showInbox);
-                          setShowNotifications(false);
-                          setShowCalls(false);
-                        }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                    {/* Chat & Calls live in LeftSidebar on lg+; keep in header for mobile */}
+                    <div className="relative lg:hidden">
+                      <Link
+                        href="/chat"
+                        onClick={() => setShowNotifications(false)}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
+                        aria-label="Chat"
                       >
                         <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         {unreadMessages > 0 && (
@@ -328,22 +323,15 @@ const Header: React.FC<HeaderProps> = ({
                             {unreadMessages > 99 ? "99+" : unreadMessages}
                           </span>
                         )}
-                      </button>
-                      {showInbox && (
-                        <ChatDropdown onClose={() => setShowInbox(false)} />
-                      )}
+                      </Link>
                     </div>
 
-                    <div className="relative">
-                      <button
-                        onClick={() => {
-                          const opening = !showCalls;
-                          setShowCalls(opening);
-                          setShowNotifications(false);
-                          setShowInbox(false);
-                          if (opening) markCallsViewed();
-                        }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                    <div className="relative lg:hidden">
+                      <Link
+                        href="/calls"
+                        onClick={() => setShowNotifications(false)}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
+                        aria-label="Calls"
                       >
                         <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                         {callBadgeCount > 0 && (
@@ -351,18 +339,13 @@ const Header: React.FC<HeaderProps> = ({
                             {callBadgeCount > 99 ? "99+" : callBadgeCount}
                           </span>
                         )}
-                      </button>
-                      {showCalls && (
-                        <CallHistoryDropdown onClose={() => setShowCalls(false)} />
-                      )}
+                      </Link>
                     </div>
 
                     <div className="relative">
                       <button
                         onClick={() => {
                           setShowNotifications(!showNotifications);
-                          setShowInbox(false);
-                          setShowCalls(false);
                         }}
                         className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
                       >
