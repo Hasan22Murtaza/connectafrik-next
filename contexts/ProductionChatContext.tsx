@@ -154,8 +154,6 @@ interface ProductionChatContextType {
   setCallHistoryThreads: React.Dispatch<React.SetStateAction<ChatThread[]>>
   recentCallEntries: RecentCallEntry[]
   setRecentCallEntries: React.Dispatch<React.SetStateAction<RecentCallEntry[]>>
-  chatDropdownThreads: ChatThread[]
-  setChatDropdownThreads: React.Dispatch<React.SetStateAction<ChatThread[]>>
   setThreadArchived: (threadId: string, archived: boolean) => Promise<void>
   setThreadBlocked: (threadId: string, is_block: boolean) => Promise<void>
   setThreadPinned: (threadId: string, pinned: boolean) => Promise<void>
@@ -195,10 +193,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
   const [activeCallsByThread, setActiveCallsByThread] = useState<Record<string, ActiveCallInfo>>({})
   const [openThreads, setOpenThreads] = useState<string[]>([])
   const [threads, setThreads] = useState<ChatThread[]>([])
-  const [chatDropdownThreadCache, setChatDropdownThreadCache] = useState<{
-    userId: string
-    threads: ChatThread[]
-  } | null>(null)
   const [callHistoryCache, setCallHistoryCache] = useState<{
     userId: string
     threads: ChatThread[]
@@ -239,28 +233,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [userId, userEmail, userMetaFullName, userMetaFirstName, userMetaLastName, userMetaAvatar])
 
-  const chatDropdownThreads =
-    userId && chatDropdownThreadCache?.userId === userId
-      ? chatDropdownThreadCache.threads
-      : []
-  const setChatDropdownThreads = useCallback<
-    React.Dispatch<React.SetStateAction<ChatThread[]>>
-  >(
-    (nextThreads) => {
-      if (!userId) return
-      setChatDropdownThreadCache((prev) => {
-        const currentThreads = prev?.userId === userId ? prev.threads : []
-        return {
-          userId,
-          threads:
-            typeof nextThreads === 'function'
-              ? nextThreads(currentThreads)
-              : nextThreads,
-        }
-      })
-    },
-    [userId]
-  )
   const callHistoryThreads =
     userId && callHistoryCache?.userId === userId ? callHistoryCache.threads : []
   const recentCallEntries =
@@ -1918,8 +1890,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     setCallHistoryThreads,
     recentCallEntries,
     setRecentCallEntries,
-    chatDropdownThreads,
-    setChatDropdownThreads,
     setThreadArchived,
     setThreadBlocked,
     setThreadPinned,

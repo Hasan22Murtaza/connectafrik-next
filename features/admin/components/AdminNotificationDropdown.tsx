@@ -122,7 +122,7 @@ export function AdminNotificationDropdown() {
             <Link
               href="/admin/dashboard"
               onClick={() => setOpen(false)}
-              className="text-xs font-medium text-primary-600 hover:text-primary-700"
+              className="text-xs font-medium text-primary-600 hover:text-orange-500"
             >
               View dashboard overview
             </Link>

@@ -21,10 +21,10 @@ const RightSidebar = ({ birthdays = [], contacts = [], ads = [], onlineContacts 
           />
 
           <div>
-            <p className="font-semibold text-primary-600 group-hover:text-primary-700 transition-colors">
+            <p className="font-semibold text-primary-600 group-hover:text-orange-500 transition-colors">
               Discover CribsTalk
             </p>
-            <p className="text-xs font-medium text-primary-700 dark:text-primary-400">
+            <p className="text-xs font-medium text-orange-500 dark:text-primary-400">
               A global home for community
             </p>
           </div>

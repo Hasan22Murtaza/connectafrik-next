@@ -550,7 +550,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                     onClick={() => setRecordingMode('upload')}
                     className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
                       recordingMode === 'upload'
-                        ? 'border-orange-400 bg-primary-50 text-primary-700'
+                        ? 'border-orange-400 bg-primary-50 text-orange-500'
                         : 'border-gray-300 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -564,7 +564,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                     }}
                     className={`flex-1 py-3 px-4 rounded-lg border-2 transition-colors ${
                       (recordingMode as string) === 'record'
-                        ? 'border-primary-500 bg-primary-50 text-primary-700'
+                        ? 'border-primary-500 bg-primary-50 text-orange-500'
                         : 'border-gray-300 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -782,7 +782,7 @@ const CreateReel: React.FC<CreateReelProps> = ({ onSuccess, onCancel }) => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-primary-600 hover:text-primary-700 font-medium"
+                    className="text-primary-600 hover:text-orange-500 font-medium"
                   >
                     Change Video
                   </button>

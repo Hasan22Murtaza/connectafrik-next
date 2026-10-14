@@ -379,10 +379,10 @@ const CulturePage: React.FC = () => {
 
       {/* Mobile category modal */}
       {showCategoryModal && (
-        <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center overflow-y-auto py-4 px-2">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowCategoryModal(false)} />
-          <div className="relative bg-surface rounded-2xl shadow-2xl max-h-[80vh] w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-4 bg-green-100">
+          <div className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-surface shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-border bg-green-100 px-4 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-green-600">Cultural Categories</h2>
               </div>
@@ -395,7 +395,7 @@ const CulturePage: React.FC = () => {
                 ✕
               </button>
             </div>
-            <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
               <button
                 type="button"
                 onClick={() => {
@@ -441,7 +441,7 @@ const CulturePage: React.FC = () => {
                 </button>
               ))}
             </div>
-            <div className="border-t border-border p-4">
+            <div className="shrink-0 border-t border-border p-4">
               <button
                 type="button"
                 onClick={() => {
@@ -473,4 +473,3 @@ const CulturePage: React.FC = () => {
 }
 
 export default CulturePage
-

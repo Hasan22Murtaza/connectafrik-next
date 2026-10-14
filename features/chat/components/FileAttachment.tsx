@@ -50,7 +50,7 @@ const FileAttachment: React.FC<FileAttachmentProps> = ({ isOpen, onClose, onFile
           </svg>
           <p className="mt-3 text-sm text-content-secondary">
             Drag and drop files here or
-            <button onClick={handleClick} className="ml-1 font-medium text-primary-600 hover:text-primary-700">
+            <button onClick={handleClick} className="ml-1 font-medium text-primary-600 hover:text-orange-500">
               browse
             </button>
           </p>

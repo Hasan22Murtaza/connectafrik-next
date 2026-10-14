@@ -88,7 +88,7 @@ const ContactsRail: React.FC = () => {
                 className="h-9 w-9 rounded-full object-cover"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-orange-500">
                 {contact.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -100,21 +100,21 @@ const ContactsRail: React.FC = () => {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleStartChat(contact)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-primary-700"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500"
               title="Open chat"
             >
               <MessageCircle className="h-4 w-4" />
             </button>
             <button
               onClick={() => handleStartCall(contact, 'audio')}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-primary-700"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500"
               title="Start voice call"
             >
               <Phone className="h-4 w-4" />
             </button>
             <button
               onClick={() => handleStartCall(contact, 'video')}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-primary-700"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-secondary text-content-secondary transition-colors hover:bg-primary-100 hover:text-orange-500"
               title="Start video call"
             >
               <Video className="h-4 w-4" />

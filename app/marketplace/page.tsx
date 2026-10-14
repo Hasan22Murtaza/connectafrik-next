@@ -357,10 +357,11 @@ const MarketplacePage: React.FC = () => {
         )}
 
         <main className={MP.mainBrowse}>
+          <div className="pb-18 md:pb-0">
           <div className="flex flex-col gap-3 mb-3 md:flex-row md:items-center md:justify-between">
-            <h1 className={`${MP.pageTitleLg} truncate`}>Today&apos;s picks</h1>
-
-            <div className="flex items-center gap-2 w-full md:w-auto">
+              <h1 className={`${MP.pageTitleLg} truncate`}>Today&apos;s picks</h1>
+              
+            <div className="flex  flex-wrap gap-2 w-full md:w-auto">
               <button
                 type="button"
                 onClick={() => setIsFilterDrawerOpen(true)}
@@ -370,6 +371,7 @@ const MarketplacePage: React.FC = () => {
                 <Filter className="w-4 h-4" />
                 Filters
               </button>
+
               <div className="relative flex-1 min-w-0 md:w-64 lg:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-secondary pointer-events-none" />
                 <input
@@ -380,28 +382,29 @@ const MarketplacePage: React.FC = () => {
                   aria-label="Search TradeHub"
                 />
               </div>
-
-              {user && (
-                <button
-                  onClick={goToCreateListing}
-                  className="btn-primary hidden sm:flex items-center gap-1.5 text-sm"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Create Listing
-                </button>
-              )}
+              <div className="hidden md:block">
+                {user && (
+                  <button
+                    onClick={goToCreateListing}
+                    className="btn-primary flex items-center gap-1.5 text-sm "
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Create Listing
+                  </button>
+                )}
+              </div>
             </div>
+
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-3 mb-1 scrollbar-hide -mx-1 px-1">
             <button
               type="button"
               onClick={() => selectCategory("")}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selectedCategory === ""
-                  ? "bg-primary-600 text-white"
+              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedCategory === ""
+                  ? "bg-primary-50 text-orange-500 border border-orange-500"
                   : "bg-surface-secondary text-content hover:bg-surface-hover"
-              }`}
+                }`}
             >
               All
             </button>
@@ -410,11 +413,10 @@ const MarketplacePage: React.FC = () => {
                 key={category.value}
                 type="button"
                 onClick={() => selectCategory(category.value)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  selectedCategory === category.value
-                    ? "bg-primary-600 text-white"
+                className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedCategory === category.value
+                    ? "bg-primary-50 text-orange-500 border border-orange-500"
                     : "bg-surface-secondary text-content hover:bg-surface-hover"
-                }`}
+                  }`}
               >
                 {category.label}
               </button>
@@ -468,13 +470,14 @@ const MarketplacePage: React.FC = () => {
               )}
             </>
           )}
+          </div>
         </main>
       </div>
 
       {user && (
         <button
           onClick={goToCreateListing}
-          className="sm:hidden fixed bottom-5 right-5 z-20 w-12 h-12 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center hover:bg-primary-700 transition-colors"
+          className="sm:hidden fixed bottom-14 right-5 z-20 w-12 h-12 rounded-full bg-primary-600 text-white shadow-lg flex items-center justify-center hover:bg-primary-700 transition-colors"
           aria-label="Create Listing"
         >
           <Plus className="w-5 h-5" />

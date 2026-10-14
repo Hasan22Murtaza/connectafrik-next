@@ -160,7 +160,7 @@ export default function AdminPayoutsPage() {
                       <Link
                         href="/marketplace"
                         target="_blank"
-                        className="text-primary-600 hover:text-primary-700 font-mono text-xs flex items-center gap-0.5 font-medium transition-colors"
+                        className="text-primary-600 hover:text-orange-500 font-mono text-xs flex items-center gap-0.5 font-medium transition-colors"
                       >
                         {payout.order_id.slice(0, 8)}…
                         <ExternalLink className="w-3 h-3" aria-hidden="true" />
@@ -256,7 +256,7 @@ export default function AdminPayoutsPage() {
                         <Link
                           href="/marketplace"
                           target="_blank"
-                          className="text-primary-600 hover:text-primary-700 font-mono text-xs font-medium transition-colors"
+                          className="text-primary-600 hover:text-orange-500 font-mono text-xs font-medium transition-colors"
                         >
                           {payout.order_id.slice(0, 8)}…
                         </Link>

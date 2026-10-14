@@ -93,7 +93,7 @@ export function TwoFactorSetupModal({
             type="button"
             onClick={onResend}
             disabled={busy || resending}
-            className="mx-auto flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mx-auto flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${resending ? 'animate-spin' : ''}`} />
             {resending ? 'Sending…' : 'Resend code'}

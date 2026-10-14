@@ -175,7 +175,7 @@ export default function AdminDisputesPage() {
                     href={`/marketplace/disputes/${selected.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-primary-600 flex items-center gap-1 hover:text-primary-700 font-medium transition-colors shrink-0"
+                    className="text-sm text-primary-600 flex items-center gap-1 hover:text-orange-500 font-medium transition-colors shrink-0"
                   >
                     Full detail <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                   </a>

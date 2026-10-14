@@ -5,6 +5,8 @@ import {
   X,
   MessageSquare,
   Settings,
+  Landmark,
+  Palette,
 } from '@/shared/icons'
 import { usePathname, useRouter } from 'next/navigation'
 import React, { useState } from 'react'
@@ -39,12 +41,15 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
 
   const shortcuts = [
     { icon: Search, label: 'Search Users', action: 'search' },
-    { icon: FaRegUser, label: 'Friends', path: '/friends', badge: formatBadge(friendRequestCount) },
-    { icon: MdOutlineGroups2, label: 'Groups', path: '/groups' },
-    { icon: BsShop, label: 'TradeHub', path: '/marketplace' },
+    { icon: Landmark, label: 'Politics', path: '/politics' },
+    { icon: Palette, label: 'Culture', path: '/culture' },
+    // { icon: FaRegUser, label: 'Friends', path: '/friends', badge: formatBadge(friendRequestCount) },
+    // { icon: MdOutlineGroups2, label: 'Groups', path: '/groups' },
+    // { icon: BsShop, label: 'TradeHub', path: '/marketplace' },
     { icon: IoBookmarkOutline, label: 'Saved', path: '/saved' },
     { icon: Settings, label: 'Settings', path: '/settings' },
-    { icon: MessageSquare, label: 'Feedback', path: '/feedback' },
+    { icon: MessageSquare, label: 'Feedback', path: '/feedback' }
+  
   ]
 
   const handleClick = (item: any) => {
@@ -106,11 +111,11 @@ const MobileSideDrawer: React.FC<MobileSideDrawerProps> = ({
                       }`}
                     />
                     <span className="flex-1 text-left">{item.label}</span>
-                    {'badge' in item && item.badge ? (
+                    {/* {'badge' in item && item.badge ? (
                       <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center">
                         {item.badge}
                       </span>
-                    ) : null}
+                    ) : null} */}
                   </button>
                 </li>
               )

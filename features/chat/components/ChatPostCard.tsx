@@ -177,7 +177,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({
               className="h-6 w-6 rounded-full object-cover"
             />
           ) : (
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-[10px] font-bold text-primary-700">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-[10px] font-bold text-orange-500">
               {authorName.charAt(0).toUpperCase()}
             </span>
           )}

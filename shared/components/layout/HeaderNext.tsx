@@ -10,17 +10,15 @@ import {
   Phone,
   Home,
   Video,
-  Landmark,
-  Palette,
   Users,
   Menu,
   Close,
+  Store,
+  UserRound,
 } from "@/shared/icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/shared/hooks/useProfile";
 import { useNotifications } from "@/shared/hooks/useNotifications";
-import ChatDropdown from "@/features/chat/components/ChatDropdown";
-import CallHistoryDropdown from "@/features/chat/components/CallHistoryDropdown";
 import NotificationDropdown from "@/shared/components/ui/NotificationDropdown";
 import { FaBars } from "react-icons/fa";
 import MobileSideDrawer from "../ui/MobileSideDrawer";
@@ -29,6 +27,7 @@ import SearchResultsDropdown from "@/shared/components/search/SearchResultsDropd
 import MobileSearchModal from "@/shared/components/search/MobileSearchModal";
 import UserMenu from "@/shared/components/theme/UserMenu";
 import { useHeaderInboxCounts } from "@/shared/hooks/useHeaderInboxCounts";
+import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
 
 interface HeaderProps {
   searchTerm?: string;
@@ -43,10 +42,8 @@ const Header: React.FC<HeaderProps> = ({
   const { user, signOut } = useAuth();
   const { profile } = useProfile();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showInbox, setShowInbox] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showCalls, setShowCalls] = useState(false);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -63,7 +60,10 @@ const Header: React.FC<HeaderProps> = ({
   // Sync internal search term with external prop
   const searchTerm = externalSearchTerm !== undefined ? externalSearchTerm : internalSearchTerm;
 
-  const { unreadMessages, callBadgeCount, markCallsViewed } = useHeaderInboxCounts();
+  const { unreadMessages, callBadgeCount } = useHeaderInboxCounts();
+  const { friendRequestCount } = useSpaceNavCounts();
+  console.log("Unread Messages:", unreadMessages);
+  console.log("Friend Request Count:", friendRequestCount);
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
@@ -243,54 +243,42 @@ const Header: React.FC<HeaderProps> = ({
                           <Video className="w-12" />
                           <span className="text-sm font-medium">Reels</span>
 
-                          {/* <span
-                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname.startsWith("/memories")
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                              }`}
-                          /> */}
                         </Link>
                       </li>
 
-                      {/* Politics */}
+                      {/* tradehub */}
                       <li className="relative">
                         <Link
-                          href="/politics"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/politics"
+                          href="/marketplace"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/marketplace"
                             ? "text-primary-600"
                             : "text-content-secondary hover:text-primary-600"
                             }`}
                         >
-                          <Landmark className="w-12" />
-                          <span className="text-sm font-medium">Politics</span>
+                          <Store className="w-12" />
+                          <span className="text-sm font-medium">TradeHub</span>
 
-                          {/* <span
-                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/politics"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                              }`}
-                          /> */}
+                          
                         </Link>
                       </li>
 
-                      {/* Culture */}
+                      {/* friends */}
                       <li className="relative">
                         <Link
-                          href="/culture"
-                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/culture"
+                          href="/friends"
+                          className={`group flex flex-col items-center gap-1 pb-2 px-0 sm:px-4 transition-colors ${pathname === "/friends"
                             ? "text-primary-600"
                             : "text-content-secondary hover:text-primary-600"
                             }`}
                         >
-                          <Palette className="w-12" />
-                          <span className="text-sm font-medium">Culture</span>
+                          <UserRound className="w-12" />
+                          <span className="text-sm font-medium">Friends</span>
 
-                          {/* <span
-                            className={`absolute bottom-0 left-0 h-[2px] bg-primary-600 rounded-full transition-all duration-300 ease-in-out ${pathname === "/culture"
-                              ? "w-full"
-                              : "w-0 group-hover:w-full"
-                              }`}
-                          /> */}
+                          {friendRequestCount > 0 && (
+                            <span className="absolute top-0 right-2 w-4 h-4 px-1.2 rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center">
+                              {friendRequestCount > 99 ? "99+" : friendRequestCount}
+                            </span>
+                          )}
                         </Link>
                       </li>
 
@@ -321,14 +309,13 @@ const Header: React.FC<HeaderProps> = ({
                   {/* Notifications & Messaging */}
                   <div className="flex items-center space-x-2 sm:space-x-2 border-border-subtle w-65 xl:w-80 2xl:w-[24rem] justify-end">
 
-                    <div className="relative">
-                      <button
-                        onClick={() => {
-                          setShowInbox(!showInbox);
-                          setShowNotifications(false);
-                          setShowCalls(false);
-                        }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                    {/* Chat & Calls live in LeftSidebar on lg+; keep in header for mobile */}
+                    <div className="relative lg:hidden">
+                      <Link
+                        href="/chat"
+                        onClick={() => setShowNotifications(false)}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
+                        aria-label="Chat"
                       >
                         <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         {unreadMessages > 0 && (
@@ -336,22 +323,15 @@ const Header: React.FC<HeaderProps> = ({
                             {unreadMessages > 99 ? "99+" : unreadMessages}
                           </span>
                         )}
-                      </button>
-                      {showInbox && (
-                        <ChatDropdown onClose={() => setShowInbox(false)} />
-                      )}
+                      </Link>
                     </div>
 
-                    <div className="relative">
-                      <button
-                        onClick={() => {
-                          const opening = !showCalls;
-                          setShowCalls(opening);
-                          setShowNotifications(false);
-                          setShowInbox(false);
-                          if (opening) markCallsViewed();
-                        }}
-                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
+                    <div className="relative lg:hidden">
+                      <Link
+                        href="/calls"
+                        onClick={() => setShowNotifications(false)}
+                        className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors inline-flex"
+                        aria-label="Calls"
                       >
                         <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                         {callBadgeCount > 0 && (
@@ -359,18 +339,13 @@ const Header: React.FC<HeaderProps> = ({
                             {callBadgeCount > 99 ? "99+" : callBadgeCount}
                           </span>
                         )}
-                      </button>
-                      {showCalls && (
-                        <CallHistoryDropdown onClose={() => setShowCalls(false)} />
-                      )}
+                      </Link>
                     </div>
 
                     <div className="relative">
                       <button
                         onClick={() => {
                           setShowNotifications(!showNotifications);
-                          setShowInbox(false);
-                          setShowCalls(false);
                         }}
                         className="relative p-1 sm:p-1.5 lg:p-2 text-content-tertiary hover:text-primary-600 transition-colors"
                       >
@@ -516,30 +491,35 @@ const Header: React.FC<HeaderProps> = ({
                 </Link>
               </li>
 
-              {/* Politics */}
+              {/* TradeHub */}
               <li>
                 <Link
-                  href="/politics"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/politics"
+                  href="/marketplace"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/marketplace"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Landmark className="w-6 h-6" />
+                  <Store className="w-6 h-6" />
                 </Link>
               </li>
 
-              {/* Culture */}
-              <li>
+              {/* Friends */}
+              <li className="relative">
                 <Link
-                  href="/culture"
-                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/culture"
+                  href="/friends"
+                  className={`flex items-center justify-center py-2 px-3 transition-colors ${pathname === "/friends"
                     ? "text-primary-600"
                     : "text-gray-500 hover:text-primary-600"
                     }`}
                 >
-                  <Palette className="w-6 h-6" />
+                  <UserRound className="w-6 h-6" />
                 </Link>
+                {friendRequestCount > 0 && (
+                  <span className="absolute top-0 right-0 w-4.5 h-4.5  rounded-full bg-red-500 text-white text-xs font-medium flex items-center justify-center">
+                    {friendRequestCount > 99 ? "99+" : friendRequestCount}
+                  </span>
+                )}
               </li>
 
               {/* Groups */}

@@ -477,7 +477,7 @@ export default function AdminUsersPage() {
                         <div className="flex flex-col gap-1 min-w-[88px]">
                           <Link
                             href={`/admin/users/${user.id}`}
-                            className="text-primary-600 hover:text-primary-700 text-xs flex items-center gap-0.5 font-medium transition-colors"
+                            className="text-primary-600 hover:text-orange-500 text-xs flex items-center gap-0.5 font-medium transition-colors"
                           >
                             View <Eye className="w-3 h-3" aria-hidden="true" />
                           </Link>

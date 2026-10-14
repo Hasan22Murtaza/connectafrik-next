@@ -47,7 +47,7 @@ const GroupCallParticipantsStrip: React.FC<GroupCallParticipantsStripProps> = ({
             {p.avatar_url ? (
               <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-primary-700">
+              <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-orange-500">
                 {initial(p)}
               </span>
             )}
