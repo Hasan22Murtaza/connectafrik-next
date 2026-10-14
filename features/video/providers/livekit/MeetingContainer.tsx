@@ -72,6 +72,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
   decodedRecipientAvatarUrl,
   refreshToken,
   livekitServerUrl,
+  endToEndEncrypted = false,
 }) => {
   const { session, user } = useAuth();
   const room = useRoomContext();
@@ -289,6 +290,10 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
       }
       try {
         const { token: freshToken } = await refreshToken();
+        await room.setE2EEEnabled(true).catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : '';
+          if (!/e2ee not configured/i.test(message)) throw err;
+        });
         await room.connect(livekitServerUrl, freshToken);
         await room.localParticipant
           .setMicrophoneEnabled(true, CALL_AUDIO_CAPTURE)
@@ -1278,6 +1283,7 @@ const LiveKitMeetingContainer: React.FC<MeetingContainerProps> = ({
               <LiveKitParticipantStatusChrome participant={remoteOne} />
             ) : null
           }
+          endToEndEncrypted={endToEndEncrypted}
         />
 
         {callStatus === 'ringing' && !isIncoming && (

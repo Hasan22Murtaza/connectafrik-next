@@ -1,4 +1,5 @@
 import React from 'react';
+import { Lock } from '@/shared/icons';
 import type { CallStatus } from '@/features/video/core/types';
 
 interface CallStatusOverlayProps {
@@ -18,6 +19,20 @@ interface CallStatusOverlayProps {
   /** Remote video tile/grid is already filling the surface — don't cover it with chrome. */
   remoteMediaVisible?: boolean;
   extraPersonChrome?: React.ReactNode;
+  endToEndEncrypted?: boolean;
+}
+
+function EndToEndEncryptedLine({ onDark = false }: { onDark?: boolean }) {
+  return (
+    <div
+      className={`mt-1 flex items-center justify-center gap-1 text-xs sm:text-sm ${
+        onDark ? 'text-white/90 drop-shadow' : 'text-content-secondary'
+      }`}
+    >
+      <Lock className="h-3.5 w-3.5" aria-hidden />
+      <span>End-to-end encrypted</span>
+    </div>
+  );
 }
 
 const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
@@ -35,6 +50,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
   showConnectedGroupGallery = false,
   remoteMediaVisible = false,
   extraPersonChrome = null,
+  endToEndEncrypted = false,
 }) => {
   const activeName = isIncoming ? decodedCallerName : decodedRecipientName;
   const activeAvatarUrl = (isIncoming ? decodedCallerAvatarUrl : decodedRecipientAvatarUrl) || '';
@@ -50,6 +66,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
 
   const videoSurfaceUp =
     remoteMediaVisible || !!remoteScreenShareStream || isScreenSharing || showConnectedGroupGallery;
+  const onDarkVideo = remoteMediaVisible || !!remoteScreenShareStream || isScreenSharing;
 
   const showPersonChrome =
     callStatus === 'ringing' ||
@@ -86,6 +103,21 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
         isAudioConnectedTopLayout ? 'flex justify-center items-start pt-24 sm:pt-28 md:pt-32' : ''
       }`}
     >
+      {endToEndEncrypted && videoSurfaceUp && callStatus !== 'ended' && (
+        <div className="absolute top-4 left-0 right-0 z-10 flex justify-center px-4">
+          <div className="text-center">
+            <div
+              className={`text-base sm:text-lg font-semibold break-words ${
+                onDarkVideo ? 'text-white drop-shadow-md' : 'text-content'
+              }`}
+            >
+              {activeName}
+            </div>
+            <EndToEndEncryptedLine onDark={onDarkVideo} />
+          </div>
+        </div>
+      )}
+
       {callStatus === 'reconnecting' && videoSurfaceUp && (
         <div className="absolute top-16 left-0 right-0 flex justify-center z-10">
           <div className="rounded-full bg-black/70 text-white text-xs sm:text-sm font-medium px-3 py-1.5 backdrop-blur-sm border border-white/15">
@@ -105,6 +137,7 @@ const CallStatusOverlay: React.FC<CallStatusOverlayProps> = ({
               <div className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold break-words px-2">
                 {activeName}
               </div>
+              {endToEndEncrypted ? <EndToEndEncryptedLine /> : null}
             </div>
             <div className="mb-3 sm:mb-4 flex justify-center">
               {activeAvatarUrl ? (
