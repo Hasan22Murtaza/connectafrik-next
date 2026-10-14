@@ -1,22 +1,24 @@
 "use client";
-import saved from "@/public/assets/icons/bookmark.png";
-import feedback from "@/public/assets/icons/feedback.png";
-import friend from "@/public/assets/icons/friend.png";
-import group from "@/public/assets/icons/groups.png";
-import marketplace from "@/public/assets/icons/market.png";
-import settings from "@/public/assets/icons/settings.png";
 import { useSpaceNavCounts } from "@/shared/hooks/useSpaceNavCounts";
-import Image from "next/image";
+import {
+  Bookmark,
+  MessageSquareText,
+  Settings,
+  Store,
+  UserRound,
+  UsersRound,
+  Landmark,
+  Palette,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const shortcuts = [
-  { name: "Friends", to: "/friends", icon: friend, badgeKey: "friends" },
-  { name: "Groups", to: "/groups", icon: group },
-  { name: "TradeHub", to: "/marketplace", icon: marketplace },
-  { name: "Saved", to: "/saved", icon: saved },
-  { name: "Feedback", to: "/feedback", icon: feedback },
-  { name: "Settings", to: "/settings", icon: settings },
+  { name: "Politics", to: "/politics", icon: Landmark},
+  { name: "Culture", to: "/culture", icon: Palette },
+  { name: "Saved", to: "/saved", icon: Bookmark },
+  { name: "Feedback", to: "/feedback", icon: MessageSquareText },
+  { name: "Settings", to: "/settings", icon: Settings },
 
 ];
 
@@ -27,10 +29,9 @@ function formatBadge(count) {
 
 const LeftSidebar = () => {
   const pathname = usePathname();
-  const { friendRequestCount, newOrderCount } = useSpaceNavCounts();
+  const {newOrderCount } = useSpaceNavCounts();
 
   const badgeFor = (badgeKey) => {
-    if (badgeKey === "friends") return formatBadge(friendRequestCount);
     if (badgeKey === "orders") return formatBadge(newOrderCount);
     return null;
   };
@@ -47,7 +48,7 @@ const LeftSidebar = () => {
             <li key={item.name}>
               <Link
                 href={item.to}
-                className={`group relative flex items-center space-x-3 px-3 py-2 rounded-lg 
+                className={`group relative flex items-center space-x-2 px-3 py-2 rounded-lg 
           transition-all duration-300 ease-in-out
           ${
             isActive
@@ -56,7 +57,11 @@ const LeftSidebar = () => {
           } 
          `}
               >
-                <Image src={Icon} alt={`${item.name} icon`} width={30} height={30} />
+                <Icon
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0"
+                  strokeWidth={1.6}
+                />
 
                 <span className="font-medium flex-1">{item.name}</span>
 
