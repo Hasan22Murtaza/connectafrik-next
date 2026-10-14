@@ -21,14 +21,6 @@ export interface FileUploadResult extends ChatAttachment {
   mimeType: string
   file?: File
   previewUrl?: string
-  e2ee?: {
-    key: string
-    iv: string
-    originalName: string
-    originalMime: string
-    originalSize: number
-    originalType: 'image' | 'video' | 'file'
-  }
 }
 
 const createId = (): string => {
@@ -85,16 +77,7 @@ export const fileUploadService = {
         continue
       }
 
-      let uploadFile = result.file
-      let e2ee = result.e2ee
-      if (options?.threadId) {
-        const { encryptBrowserFile, shouldEncryptThread } = await import('@/lib/e2ee/client')
-        if (await shouldEncryptThread(options.threadId)) {
-          const encrypted = await encryptBrowserFile(result.file)
-          uploadFile = encrypted.file
-          e2ee = encrypted.material
-        }
-      }
+      const uploadFile = result.file
 
       const { publicUrl } = await uploadFileToBunny(uploadFile, {
         folder: 'chat-media',
@@ -107,9 +90,8 @@ export const fileUploadService = {
       uploaded.push({
         ...result,
         url: publicUrl,
-        size: e2ee ? uploadFile.size : result.size,
+        size: result.size,
         file: undefined,
-        e2ee,
       })
     }
 

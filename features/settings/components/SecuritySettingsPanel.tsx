@@ -24,7 +24,6 @@ import toast from 'react-hot-toast'
 import { useConfirmDialog } from '@/shared/components/ui/ConfirmDialog'
 import { ChangePasswordModal } from './ChangePasswordModal'
 import { TwoFactorSetupModal } from './TwoFactorSetupModal'
-import { E2eeDevicesCard } from './E2eeDevicesCard'
 import {
   Divider,
   SettingsActionRow,
@@ -353,8 +352,6 @@ export function SecuritySettingsPanel() {
             onChange={(two_factor_enabled) => setSecurity({ ...security, two_factor_enabled })}
           />
         </SettingsCard>
-
-        <E2eeDevicesCard />
 
         <SettingsCard>
           <SettingsSectionHeader title="Login activity" description="Get notified about new sign-ins." />

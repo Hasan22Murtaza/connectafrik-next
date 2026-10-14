@@ -8,7 +8,7 @@ import {
 } from '@/features/chat/services/callSessionRealtime'
 import { GROUP_MEMBER_JOINED, GROUP_MEMBER_LEFT } from '@/lib/groupChatSystemMessages'
 import { MARKETPLACE_SYSTEM, isMarketplaceMessageType } from '@/lib/chat/marketplaceChat'
-import { E2EE_PUSH_BODY } from '@/lib/e2ee/types'
+import { decodeMessageContent, encodeMessageContent } from '@/lib/chat/messageCodec'
 
 /** call_sessions.status-aligned message_type values (signaling; excluded from generic chat push). */
 const ALL_CALL_SIGNAL_MESSAGE_TYPES: string[] = [
@@ -32,15 +32,6 @@ export interface ChatAttachment {
   type: 'image' | 'video' | 'file'
   size: number
   mimeType: string
-  /** Present only while a send is being encrypted. Never persisted. */
-  e2ee?: {
-    key: string
-    iv: string
-    originalName: string
-    originalMime: string
-    originalSize: number
-    originalType: 'image' | 'video' | 'file'
-  }
 }
 
 export interface MessageReactionSummary {
@@ -72,11 +63,10 @@ export interface ChatMessage {
   view_once_opened?: boolean
   view_once_opened_at?: string | null
   view_once_opened_by?: string | null
+  ciphertext?: string | null
+  megolm_session_id?: string | null
+  sender_device_id?: string | null
   e2ee_version?: number | null
-  e2ee_sender_device_id?: number | null
-  e2ee_status?: 'legacy' | 'decrypted' | 'failed'
-  e2ee_error?: string
-  e2ee_envelopes?: Array<{ recipient_device_id: number; message_type: number; ciphertext: string }>
 }
 
 export function getChatMessageAuthorId(message: Pick<ChatMessage, 'sender_id' | 'sender'>): string {
@@ -244,7 +234,16 @@ const notifyMessageSubscribers = async (message: ChatMessage, options?: { skipPu
           (message as any).profiles?.avatar_url ||
           ''
         
-        const messagePreview = E2EE_PUSH_BODY
+        const isViewOnce = Boolean(message.view_once)
+        const viewOnceVideo = (message.attachments || []).some(
+          (a) => a.type === 'video' || (a.mimeType || '').startsWith('video/')
+        )
+        const messagePreview = isViewOnce
+          ? (viewOnceVideo ? 'New video' : 'New photo')
+          : (message.content ||
+            (message.attachments && message.attachments.length > 0
+              ? 'Shared an attachment'
+              : 'Sent a message'))
 
         // Send ONE push notification per unique participant (saves 1 DB record + pushes to all their devices)
         for (const userId of uniqueUserIds) {
@@ -523,18 +522,22 @@ const initializeSubscriptions = (currentUser: ChatParticipant) => {
         schema: 'public',
         table: 'chat_threads',
       },
-      (payload) => {
+      async (payload) => {
         const row = (payload.new || {}) as Record<string, unknown>
         const threadId = typeof row.id === 'string' ? row.id : ''
         if (!threadId) return
         const now = new Date().toISOString()
         const threadType = row.type === 'group' || row.type === 'marketplace' ? row.type : 'direct'
+        const rawPreview = typeof row.last_message_preview === 'string' ? row.last_message_preview : null
+        const preview = rawPreview
+          ? clipDecodedPreview(await decodeMessageContent(threadId, rawPreview))
+          : null
         notifyThreadSubscribers({
           id: threadId,
           name: typeof row.name === 'string' ? row.name : '',
           type: threadType,
           participants: [{ id: currentUser.id, name: currentUser.name || 'User' }],
-          last_message_preview: typeof row.last_message_preview === 'string' ? row.last_message_preview : null,
+          last_message_preview: preview,
           last_message_at: typeof row.last_message_at === 'string' ? row.last_message_at : now,
           unread_count: typeof row.unread_count === 'number' ? row.unread_count : 0,
           created_at: typeof row.created_at === 'string' ? row.created_at : now,
@@ -675,7 +678,12 @@ const formatThread = async (thread: any, currentUserId: string): Promise<ChatThr
     name: displayName,
     type: resolvedType,
     participants,
-    last_message_preview: thread.last_message_preview,
+    last_message_preview: clipDecodedPreview(
+      await decodeMessageContent(
+        thread.id,
+        typeof thread.last_message_preview === 'string' ? thread.last_message_preview : ''
+      )
+    ) || null,
     last_message_at: lastMessageAt,
     unread_count: unreadCount || 0,
     archived: typeof thread.archived === 'boolean' ? thread.archived : false,
@@ -916,41 +924,38 @@ const mapApiMessageToChatMessage = (message: any): ChatMessage => {
     },
     reply_to_id: message.reply_to_id,
     reactions: Array.isArray(message.reactions) ? message.reactions : [],
+    ciphertext: message.ciphertext ?? null,
+    megolm_session_id: message.megolm_session_id ?? null,
+    sender_device_id: message.sender_device_id ?? null,
     e2ee_version: message.e2ee_version ?? null,
-    e2ee_sender_device_id: message.e2ee_sender_device_id ?? null,
-    e2ee_envelopes: Array.isArray(message.e2ee_envelopes) ? message.e2ee_envelopes : [],
   }
 }
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+function clipDecodedPreview(value: string): string {
+  const trimmed = value.trim()
+  if (trimmed.length <= 100) return trimmed
+  return trimmed.slice(0, 97) + '...'
+}
 
-const presentedMessages = new Map<string, ChatMessage>()
-let attachmentUpdatesBound = false
+function shouldEncodeMessageContent(messageType: string | undefined, content: string): boolean {
+  if (!content.trim()) return false
+  return !SKIP_GENERIC_CHAT_PUSH_MESSAGE_TYPES.has(messageType || 'text')
+}
 
-async function presentChatMessages(messages: ChatMessage[]): Promise<ChatMessage[]> {
-  if (typeof window === 'undefined' || messages.length === 0) return messages
-  const { presentEncryptedMessage, subscribeAttachmentUpdates } = await import('@/lib/e2ee/client')
-  if (!attachmentUpdatesBound) {
-    attachmentUpdatesBound = true
-    subscribeAttachmentUpdates((update) => {
-      const current = presentedMessages.get(update.messageId)
-      if (!current || !update.attachments) return
-      const next = { ...current, attachments: update.attachments }
-      presentedMessages.set(update.messageId, next)
-      notifyMessageSubscribers(next, { skipPush: true })
-    })
-  }
-  const presented: ChatMessage[] = []
-  for (const message of messages) {
-    const next = await presentEncryptedMessage(message)
-    const previous = presentedMessages.get(next.id)
-    const incomingBlank = (next.attachments || []).length > 0 && (next.attachments || []).every((attachment) => !attachment.url)
-    const previousReady = (previous?.attachments || []).some((attachment) => attachment.url)
-    const stored = incomingBlank && previousReady ? { ...next, attachments: previous!.attachments } : next
-    presentedMessages.set(stored.id, stored)
-    presented.push(stored)
-  }
-  return presented
+async function contentForStorage(
+  threadId: string,
+  messageType: string | undefined,
+  content: string
+): Promise<string> {
+  if (!shouldEncodeMessageContent(messageType, content)) return content
+  return encodeMessageContent(threadId, content)
+}
+
+async function showStoredMessage(message: any): Promise<ChatMessage> {
+  const mapped = mapApiMessageToChatMessage(message)
+  if (!mapped.thread_id || !mapped.content) return mapped
+  const content = await decodeMessageContent(mapped.thread_id, mapped.content)
+  return content === mapped.content ? mapped : { ...mapped, content }
 }
 
 async function presentRealtimeMessage(
@@ -958,59 +963,15 @@ async function presentRealtimeMessage(
   row: Record<string, unknown>,
   options?: { retryAttachments?: boolean }
 ): Promise<ChatMessage> {
-  const encrypted = Number(row.e2ee_version) === 1
-  const delays = encrypted ? [0, 120, 280, 600] : [0]
-  let mapped = mapApiMessageToChatMessage(row)
-  for (let attempt = 0; attempt < delays.length; attempt += 1) {
-    if (delays[attempt]) await sleep(delays[attempt])
-    try {
-      const fullMessage = await fetchHydratedThreadMessage(threadId, String(row.id), {
-        retryAttachments: attempt === 0 ? options?.retryAttachments : false,
-      })
-      if (fullMessage) mapped = mapApiMessageToChatMessage(fullMessage)
-    } catch {
-      if (!encrypted) break
-    }
-    if (!encrypted) break
-    const { data } = await supabase.auth.getSession()
-    const own = Boolean(data.session?.user?.id && mapped.sender_id === data.session.user.id)
-    if (own || ((mapped.e2ee_envelopes?.length || 0) > 0 && mapped.e2ee_sender_device_id)) break
-  }
-  const [formatted] = await presentChatMessages([mapped])
-  return formatted
-}
-
-async function mergeEncryptedSearch(
-  threadId: string,
-  keyword: string,
-  serverMatches: ChatMessage[]
-): Promise<ChatMessage[]> {
-  const needle = keyword.toLowerCase()
-  const matchesContent = (message: ChatMessage) => {
-    const text = (message.content || '').toLowerCase()
-    const names = (message.attachments || []).map((attachment) => attachment.name || '').join(' ').toLowerCase()
-    return text.includes(needle) || names.includes(needle)
-  }
-  const kept = serverMatches.filter(matchesContent)
   try {
-    const recent = await apiClient.get<{ data?: any[] }>(`/api/chat/threads/${threadId}/messages`, {
-      limit: 100,
-      page: 0,
+    const fullMessage = await fetchHydratedThreadMessage(threadId, String(row.id), {
+      retryAttachments: options?.retryAttachments,
     })
-    const rawList = Array.isArray(recent)
-      ? recent
-      : Array.isArray((recent as { data?: any[] })?.data)
-        ? (recent as { data: any[] }).data
-        : []
-    const decrypted = await presentChatMessages(rawList.map((message) => mapApiMessageToChatMessage(message)))
-    const byId = new Map<string, ChatMessage>()
-    for (const message of [...kept, ...decrypted.filter(matchesContent)]) {
-      byId.set(message.id, message)
-    }
-    return [...byId.values()].sort((a, b) => a.created_at.localeCompare(b.created_at))
+    if (fullMessage) return showStoredMessage(fullMessage)
   } catch {
-    return kept
+    // Realtime payload is enough when the hydrated fetch fails.
   }
+  return showStoredMessage(row)
 }
 
 const unwrapApiMessage = (res: unknown): Record<string, unknown> | null => {
@@ -1023,6 +984,8 @@ const unwrapApiMessage = (res: unknown): Record<string, unknown> | null => {
   if ('id' in obj) return obj
   return null
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const fetchHydratedThreadMessage = async (
   threadId: string,
@@ -1341,14 +1304,8 @@ export const supabaseMessagingService = {
     const limit = options?.limit ?? 50
     const page = options?.page ?? 0
     const keyword = options?.keyword?.trim()
-    const params: Record<string, string | number | boolean | undefined> = { limit, page }
-    if (keyword) params.keyword = keyword
 
-    try {
-      const res = await apiClient.get<{
-        data?: any[]
-        hasMore?: boolean
-      }>(`/api/chat/threads/${threadId}/messages`, params)
+    const readPage = (res: unknown, pageSize: number) => {
       const payload = res as Record<string, unknown>
       const rawList = Array.isArray(payload)
         ? payload
@@ -1356,17 +1313,45 @@ export const supabaseMessagingService = {
       const hasMore =
         typeof payload?.hasMore === 'boolean'
           ? payload.hasMore
-          : rawList.length >= limit
-      if (fallbackEnabled) {
-        fallbackEnabled = false
+          : rawList.length >= pageSize
+      return { rawList, hasMore }
+    }
+
+    try {
+      if (!keyword) {
+        const res = await apiClient.get<Record<string, unknown>>(
+          `/api/chat/threads/${threadId}/messages`,
+          { limit, page }
+        )
+        const { rawList, hasMore } = readPage(res, limit)
+        if (fallbackEnabled) fallbackEnabled = false
+        const messages = await Promise.all(rawList.map((m: any) => showStoredMessage(m)))
+        return { messages, hasMore }
       }
-      let messages = await presentChatMessages(rawList.map((m: any) => mapApiMessageToChatMessage(m)))
-      if (keyword) {
-        messages = await mergeEncryptedSearch(threadId, keyword, messages)
+
+      const needle = keyword.toLowerCase()
+      const needed = (page + 1) * limit
+      const matched: ChatMessage[] = []
+      let dbPage = 0
+      let dbHasMore = true
+      while (matched.length < needed && dbHasMore && dbPage < 12) {
+        const res = await apiClient.get<Record<string, unknown>>(
+          `/api/chat/threads/${threadId}/messages`,
+          { limit, page: dbPage, keyword }
+        )
+        const { rawList, hasMore } = readPage(res, limit)
+        const decoded = await Promise.all(rawList.map((m: any) => showStoredMessage(m)))
+        for (const message of decoded) {
+          if ((message.content || '').toLowerCase().includes(needle)) matched.push(message)
+        }
+        dbHasMore = hasMore && rawList.length > 0
+        dbPage += 1
       }
+      if (fallbackEnabled) fallbackEnabled = false
+      const start = page * limit
       return {
-        messages,
-        hasMore,
+        messages: matched.slice(start, start + limit),
+        hasMore: dbHasMore || matched.length > start + limit,
       }
     } catch (error) {
       console.error('Error in getThreadMessages:', error)
@@ -1467,60 +1452,20 @@ export const supabaseMessagingService = {
 
   async sendMessage(threadId: string, payload: SendMessageOptions, currentUser: ChatParticipant): Promise<ChatMessage> {
     try {
-      const {
-        prepareOutgoingMessage,
-        presentEncryptedMessage,
-        rememberDecryptedMessage,
-        isDeviceListChangedError,
-        clearEncryptionCache,
-      } = await import('@/lib/e2ee/client')
-      const clientSendId =
-        payload.metadata && typeof payload.metadata.__clientSendId === 'string'
-          ? payload.metadata.__clientSendId
-          : undefined
-      const buildPrepared = (force = false) =>
-        prepareOutgoingMessage({
-          threadId,
-          content: payload.content,
-          messageType: payload.message_type,
-          metadata: payload.metadata,
-          attachments: payload.attachments as import('@/lib/e2ee/client').PreparedAttachment[] | undefined,
-          participantIds: payload.participant_ids,
-          clientSendId,
-          force,
-        })
-      let prepared = await buildPrepared(false)
-      const postBody = () => ({
-        content: prepared.content,
-        message_type: payload.message_type ?? 'text',
-        metadata: prepared.metadata,
-        attachments: prepared.attachments,
+      const messageType = payload.message_type ?? 'text'
+      const storedContent = await contentForStorage(threadId, messageType, payload.content ?? '')
+      const res = await apiClient.post<{ data: any }>(`/api/chat/threads/${threadId}/messages`, {
+        content: storedContent,
+        message_type: messageType,
+        metadata: payload.metadata,
+        attachments: payload.attachments,
         reply_to_id: payload.reply_to_id,
         ...(payload.is_forward === true ? { is_forward: true } : {}),
         ...(payload.view_once === true ? { view_once: true } : {}),
-        ...(prepared.e2ee_version
-          ? {
-              e2ee_version: prepared.e2ee_version,
-              sender_device_id: prepared.sender_device_id,
-              envelopes: prepared.envelopes,
-            }
-          : {}),
       })
-      let res: { data: any }
-      try {
-        res = await apiClient.post<{ data: any }>(`/api/chat/threads/${threadId}/messages`, postBody())
-      } catch (error) {
-        if (!isDeviceListChangedError(error)) throw error
-        clearEncryptionCache(threadId)
-        prepared = await buildPrepared(true)
-        res = await apiClient.post<{ data: any }>(`/api/chat/threads/${threadId}/messages`, postBody())
-      }
       const rawMessage = (res as any)?.data
       if (!rawMessage) throw new Error('No message returned')
-      if (prepared.localPayload) {
-        await rememberDecryptedMessage(rawMessage.id, threadId, prepared.localPayload)
-      }
-      const formattedMessage = await presentEncryptedMessage(mapApiMessageToChatMessage(rawMessage))
+      const formattedMessage = await showStoredMessage(rawMessage)
 
       // Send call signaling notifications.
       // For reject/missed signals we await delivery to avoid window-close races in call popup flows.
@@ -1706,15 +1651,7 @@ export const supabaseMessagingService = {
       `/api/chat/threads/${threadId}/messages/${messageId}/view-once/media`,
       { attachmentId },
       { 'x-view-once-token': token }
-    ).then(async (blob) => {
-      const { decryptViewOnceBlob } = await import('@/lib/e2ee/client')
-      try {
-        return await decryptViewOnceBlob(messageId, blob)
-      } catch (error) {
-        if (error instanceof Error && error.message === 'Unable to decrypt this attachment') throw error
-        return blob
-      }
-    })
+    )
   },
 
   async completeViewOnce(threadId: string, messageId: string): Promise<void> {
@@ -1818,33 +1755,13 @@ export const supabaseMessagingService = {
     }
 
     try {
-      const {
-        prepareOutgoingMessage,
-        presentEncryptedMessage,
-        rememberDecryptedMessage,
-      } = await import('@/lib/e2ee/client')
-      const prepared = await prepareOutgoingMessage({
-        threadId,
-        content: trimmed,
-        messageType: 'text',
-      })
       const res = await apiClient.patch<{ data: Record<string, unknown> }>(
         `/api/chat/threads/${threadId}/messages/${messageId}`,
-        prepared.e2ee_version
-          ? {
-              content: prepared.content,
-              e2ee_version: prepared.e2ee_version,
-              sender_device_id: prepared.sender_device_id,
-              envelopes: prepared.envelopes,
-            }
-          : { content: trimmed }
+        { content: await encodeMessageContent(threadId, trimmed) }
       )
       const rawMessage = res.data
       if (!rawMessage || typeof rawMessage !== 'object') throw new Error('No message returned')
-      if (prepared.localPayload) {
-        await rememberDecryptedMessage(messageId, threadId, prepared.localPayload)
-      }
-      const formattedMessage = await presentEncryptedMessage(mapApiMessageToChatMessage(rawMessage))
+      const formattedMessage = await showStoredMessage(rawMessage)
 
       return formattedMessage
     } catch (error) {
@@ -2008,12 +1925,11 @@ export const supabaseMessagingService = {
       const relayThreadMessageUpdate = async (row: Record<string, unknown>): Promise<void> => {
         if (deniedRealtimeThreadIds.has(threadId)) return
         const meta = row.metadata && typeof row.metadata === 'object' ? (row.metadata as Record<string, unknown>) : null
-        if (row.view_once === true || meta?.view_once === true || Number(row.e2ee_version) === 1) {
+        if (row.view_once === true || meta?.view_once === true) {
           await hydrateThreadMessageInsert(row)
           return
         }
-        const [formatted] = await presentChatMessages([mapApiMessageToChatMessage(row)])
-        notifyMessageSubscribers(formatted, { skipPush: true })
+        notifyMessageSubscribers(await showStoredMessage(row), { skipPush: true })
       }
 
       const channel = supabase
@@ -2112,7 +2028,7 @@ export const supabaseMessagingService = {
     if (!threadId) return null
     try {
       const message = await fetchHydratedThreadMessage(threadId, messageId)
-      return message ? mapApiMessageToChatMessage(message) : null
+      return message ? showStoredMessage(message) : null
     } catch (error) {
       console.error('Error updating message sender info:', error)
       return null

@@ -326,14 +326,20 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
                   : "min-h-[88px] sm:min-h-[100px]"
               }`}
             >
-              <img
-                src={att.url}
-                alt={att.name}
-                className={`h-full w-full object-cover transition duration-300 hover:opacity-90 ${
-                  isGifAttachment(att) ? "" : "animate-[chatImgShine_1.2s_ease]"
-                }`}
-                loading="lazy"
-              />
+              {att.url ? (
+                <img
+                  src={att.url}
+                  alt={att.name}
+                  className={`h-full w-full object-cover transition duration-300 hover:opacity-90 ${
+                    isGifAttachment(att) ? "" : "animate-[chatImgShine_1.2s_ease]"
+                  }`}
+                  loading="lazy"
+                />
+              ) : (
+                <span className="flex h-full min-h-[88px] items-center justify-center text-xs text-content-tertiary">
+                  Photo
+                </span>
+              )}
               {isUploading ? (
                 <UploadMediaOverlay
                   percent={progressFor(att.id)}
@@ -354,6 +360,16 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
 
         if (att.type === "image") {
           const gif = isGifAttachment(att);
+          if (!att.url) {
+            return (
+              <div
+                key={att.id}
+                className="flex h-36 w-52 items-center justify-center rounded-xl bg-black/10 text-xs text-content-tertiary"
+              >
+                Photo
+              </div>
+            );
+          }
           return (
             <div key={att.id} className="relative max-w-full overflow-hidden rounded-xl">
               <button
@@ -392,6 +408,16 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         }
 
         if (att.type === "video") {
+          if (!att.url) {
+            return (
+              <div
+                key={att.id}
+                className="flex h-36 w-52 items-center justify-center rounded-xl bg-black/10 text-xs text-content-tertiary"
+              >
+                Video
+              </div>
+            );
+          }
           return (
             <div key={att.id} className="relative max-w-full overflow-hidden rounded-xl">
               <VideoThumb
@@ -412,6 +438,16 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
         }
 
         if (isVoiceNoteAttachment(att)) {
+          if (!att.url) {
+            return (
+              <div
+                key={att.id}
+                className="flex h-14 w-[min(100%,295px)] items-center rounded-2xl bg-black/10 px-3 text-xs text-content-tertiary"
+              >
+                Voice message
+              </div>
+            );
+          }
           return (
             <div key={att.id} className="relative overflow-hidden rounded-2xl">
               <VoiceNotePlayer
@@ -442,12 +478,16 @@ const MessageAttachments: React.FC<MessageAttachmentsProps> = ({
               </span>
               <div className="min-w-0 flex-1 overflow-hidden">
                 <p className="truncate text-xs font-medium text-content">{att.name}</p>
-                <audio
-                  src={att.url}
-                  controls
-                  preload="metadata"
-                  className="mt-1 h-8 w-full max-w-full"
-                />
+                {att.url ? (
+                  <audio
+                    src={att.url}
+                    controls
+                    preload="metadata"
+                    className="mt-1 h-8 w-full max-w-full"
+                  />
+                ) : (
+                  <p className="mt-1 text-[11px] text-content-tertiary">Loading audio…</p>
+                )}
               </div>
               {isUploading ? (
                 <UploadMediaOverlay

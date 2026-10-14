@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
-  ChatAttachment,
   ChatMessage,
   ChatThread,
   RecentCallEntry,
@@ -40,16 +39,8 @@ function mergeChatMessageRealtime(prev: ChatMessage, incoming: ChatMessage): Cha
   const senderLooksStub =
     incoming.sender?.name === 'Loading...' &&
     incoming.sender?.id === incoming.sender_id
-  const incomingFailed = incoming.e2ee_status === 'failed'
-  const keepReadable =
-    incomingFailed &&
-    (prev.e2ee_status === 'decrypted' || Boolean(prev.content && prev.e2ee_status !== 'failed'))
-
   return {
     ...incoming,
-    content: keepReadable ? prev.content : incoming.content,
-    e2ee_status: keepReadable ? prev.e2ee_status ?? 'decrypted' : incoming.e2ee_status,
-    e2ee_error: keepReadable ? undefined : incoming.e2ee_error,
     read_by: incomingEmptyReads ? prev.read_by : (incoming.read_by ?? []),
     attachments: incomingEmptyAttachments ? prev.attachments : incoming.attachments,
     reactions: incomingEmptyReactions ? prev.reactions : incoming.reactions,
@@ -362,14 +353,6 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('openChatThread', { detail: { threadId } }))
     }
-
-    const listed =
-      (seedThread?.id === threadId ? seedThread : null) ||
-      threadsRef.current.find((thread) => thread.id === threadId)
-    const participantIds = listed?.participants?.map((participant) => participant.id).filter(Boolean)
-    void import('@/lib/e2ee/client')
-      .then((mod) => mod.warmThreadEncryption(threadId, participantIds))
-      .catch(() => undefined)
   }, [threads, currentUser])
 
   const closeThread = useCallback((threadId: string) => {
@@ -586,12 +569,7 @@ export const ProductionChatProvider: React.FC<{ children: React.ReactNode }> = (
         is_forward: payload?.is_forward === true,
         view_once: payload?.view_once === true,
         view_once_opened: false,
-        attachments: Array.isArray(payload?.attachments)
-          ? payload.attachments.map((attachment: ChatAttachment) => {
-              const { e2ee: _e2ee, ...rest } = attachment
-              return rest
-            })
-          : payload?.attachments,
+        attachments: payload?.attachments,
         sender: {
           id: currentUser.id,
           name: currentUser.name || 'You',
