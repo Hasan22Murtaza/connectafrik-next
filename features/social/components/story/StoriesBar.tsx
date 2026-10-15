@@ -50,8 +50,16 @@ interface StoryCardProps {
   hasUnseenStory?: boolean
 }
 
+const PLACEHOLDER_NAMES = new Set(['Unknown', 'Unknown User'])
+
+const storyAuthorName = (story: { user_name?: string | null; username?: string | null }) => {
+  const name = story.user_name?.trim()
+  if (name && !PLACEHOLDER_NAMES.has(name)) return name
+  return story.username?.trim() || name || 'Unknown'
+}
+
 const StoryCard: React.FC<StoryCardProps> = React.memo(({ story, onClick, hasUnseenStory = true }) => {
-  const displayName = story.username || story.user_name || 'Unknown'
+  const displayName = storyAuthorName(story)
   const displayAvatar = story.profile_picture_url || story.user_avatar || ''
   const textOverlay = parseTextOverlay(story.text_overlay)
   const isTextStory = isTextStoryLike(story, textOverlay)
@@ -342,9 +350,9 @@ const StoriesBar: React.FC = () => {
     ...story,
     id: story?.id || story?.story_id || '',
     user_id: story?.user_id || '',
-    user_name: story?.username || story?.user_name || 'Unknown User',
+    user_name: story?.user_name || 'Unknown User',
     user_avatar: story?.profile_picture_url || story?.user_avatar || '',
-    username: story?.username || story?.user_name || '',
+    username: story?.username || '',
     profile_picture_url: story?.profile_picture_url || story?.user_avatar || '',
     background_color: story?.background_color || '#2563eb',
     background_gradient: story?.background_gradient || null,
