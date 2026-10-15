@@ -888,19 +888,7 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                     <h3 className="font-semibold text-content truncate text-sm sm:text-base !no-underline">
                       {post.author.full_name}
                     </h3>
-                    {post.reposted_post && (
-                      <span className="text-content-secondary text-xs sm:text-sm">reposted</span>
-                    )}
-                    <span className="text-content-secondary truncate text-xs sm:text-sm">
-                      @{post.author.username}
-                    </span>
-                    {post.author.country && (
-                      <span className="text-content-tertiary truncate text-xs sm:text-sm">
-                        • {post.author.country}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2 mt-1 flex-wrap">
+
                     <time
                       className="text-content-secondary text-xs sm:text-sm"
                       dateTime={post.created_at}
@@ -909,6 +897,12 @@ export const PostCard: React.FC<PostCardProps> = React.memo(({
                         addSuffix: true,
                       })}
                     </time>
+                  </div>
+                    
+                  <div className="flex items-center space-x-2 mt-1 flex-wrap">
+                    <span className="text-content-secondary truncate text-xs sm:text-sm">
+                      @{post.author.username}
+                    </span>
                     {isDetail && (
                       <>
                         <span aria-hidden className="text-content-tertiary">
